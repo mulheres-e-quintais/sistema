@@ -206,19 +206,19 @@
     },
     async salvarTurma(t) {
       const d = ler(); const eu = euMesmo();
-      if (!eu || !(eu.papel === 'coord_geral' || (eu.papel === 'professor_fic' && t.professor_id === eu.id))) throw falha('Só a coordenação geral ou o próprio professor cria a turma.');
+      if (!eu || eu.papel !== 'professor_fic') throw falha('Só os professores do FIC criam turmas.');
       if (!d.equipe.some(m => m.id === t.professor_id && m.papel === 'professor_fic' && m.status === 'ativa')) throw falha('A turma precisa de um(a) professor(a) do FIC ativo(a).');
       if (String(t.nome || '').trim().length < 3) throw falha('Dê um nome à turma.');
       if (t.inicio && t.fim && t.fim < t.inicio) throw falha('O fim da turma é antes do início.');
       d.turmas = d.turmas || []; const agora = new Date().toISOString(); const i = d.turmas.findIndex(x => x.id === t.id);
-      if (i >= 0) { const antes = d.turmas[i]; if (eu.papel === 'professor_fic' && antes.professor_id !== eu.id) throw falha('Esta turma é de outro professor.'); d.turmas[i] = Object.assign({}, antes, t, { atualizado_em: agora }); }
+      if (i >= 0) { const antes = d.turmas[i]; d.turmas[i] = Object.assign({}, antes, t, { atualizado_em: agora }); }
       else d.turmas.push(Object.assign({}, t, { id: uid(), criado_por: eu.id, criado_em: agora, atualizado_em: agora }));
       gravar(); return copia(i >= 0 ? d.turmas[i] : d.turmas[d.turmas.length - 1]);
     },
     async matricular(turma_id, equipe_id, numero, data) {
       const d = ler(); const eu = euMesmo(); const t = (d.turmas || []).find(x => x.id === turma_id);
       if (!t) throw falha('Turma não encontrada.');
-      if (!eu || !(eu.papel === 'coord_geral' || (eu.papel === 'professor_fic' && t.professor_id === eu.id))) throw falha('Só o professor da turma ou a coordenação geral matricula.');
+      if (!eu || eu.papel !== 'professor_fic') throw falha('A matrícula no FIC é feita pelos professores do curso.');
       const p = d.equipe.find(m => m.id === equipe_id);
       if (!p || p.status !== 'ativa' || !R.ehCampo(p.papel)) throw falha('Só bolsistas e agentes de campo ativas são matriculadas no FIC.');
       if (t.uf && p.uf !== t.uf) throw falha('Esta turma é de ' + t.uf + '; ' + p.nome + ' é de ' + p.uf + '.');
@@ -235,7 +235,7 @@
       const d = ler(); const eu = euMesmo(); const m = (d.matriculas || []).find(x => x.id === id && !x.cancelada_em);
       if (!m) throw falha('Matrícula não encontrada ou já cancelada.');
       const t = (d.turmas || []).find(x => x.id === m.turma_id);
-      if (!eu || !(eu.papel === 'coord_geral' || (eu.papel === 'professor_fic' && t && t.professor_id === eu.id))) throw falha('Só o professor da turma ou a coordenação geral cancela.');
+      if (!eu || eu.papel !== 'professor_fic' || !t) throw falha('A matrícula no FIC é cancelada pelos professores do curso.');
       if (String(motivo || '').trim().length < 5) throw falha('Escreva o motivo do cancelamento.');
       if ((d.visitas || []).some(v => v.executor_id === m.equipe_id && v.situacao !== 'cancelada'))
         throw falha('Esta pessoa já tem visita no roteiro de campo, que depende da matrícula. Para corrigir número ou data, matricule de novo na mesma turma.');
@@ -432,7 +432,7 @@
       if (d.equipe.some(m => m.status === 'ativa' && (m.cpf === cpf || String(m.email).toLowerCase() === email))) throw falha('Já existe pessoa ativa na equipe com este CPF ou e-mail. Fale com a coordenação.');
       d.pre_cadastros = (d.pre_cadastros || []).concat([{ id: uid(), convite_id: c.id, papel: c.papel, uf: c.uf, substitui_id: c.substitui_id,
         nome: String(dados.nome).trim(), cpf, email, telefone: dados.telefone || null, municipio: dados.municipio || null, organizacao: dados.organizacao || null,
-        nome_social: dados.nome_social || null, data_nascimento: dados.data_nascimento || null, nis: dados.nis || null, endereco: dados.endereco || {}, socioeconomico: dados.socioeconomico || null,
+        cadastro_arlo: !!dados.cadastro_arlo, nome_social: dados.nome_social || null, data_nascimento: dados.data_nascimento || null, nis: dados.nis || null, endereco: dados.endereco || {}, socioeconomico: dados.socioeconomico || null,
         consentimento_lgpd: true, enviado_em: new Date().toISOString(), situacao: 'aguardando' }]);
       c.usado_em = new Date().toISOString(); gravar();
     },

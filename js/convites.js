@@ -15,23 +15,29 @@
   function camposPessoais(d, pub) {
     d = d || {}; const en = d.endereco || {}; const se = d.socioeconomico || null; const v = x => E(x == null ? '' : x);
     const op = (lista, sel) => '<option value="">Selecione…</option>' + lista.map(x => `<option ${x === sel ? 'selected' : ''}>${E(x)}</option>`).join('');
-    return `<fieldset><legend>Mais dados pessoais</legend><div class="campos">
+    const arlo = d.cadastro_arlo === true;   // sem resposta ainda: nenhuma opção marcada
+    const sn = (val, t) => `<label class="sn${d.cadastro_arlo === val ? ' on' : ''}"><input type="radio" name="cadastro_arlo" value="${val ? 'sim' : 'nao'}" ${d.cadastro_arlo === val ? 'checked' : ''} data-arlo>${t}</label>`;
+    return `<fieldset><legend>Cadastro no Arlo</legend>
+        <div class="criterio" id="w-cadastro_arlo"><span>${pub ? 'Você já tem' : 'A pessoa já tem'} cadastro no Arlo?</span><span class="sn-par">${sn(true, 'Sim')}${sn(false, 'Não')}</span></div>
+        <p class="small muted" data-arlo-nota ${arlo ? '' : 'hidden'}>Então bastam os dados básicos: nome, CPF, celular, e-mail e a cidade onde mora (usada no cálculo da ajuda de custo). Nascimento, NIS, endereço completo e conta bancária ficam no Arlo.</p>
+      </fieldset>
+      <div data-arlo-opc ${arlo ? 'hidden' : ''}><fieldset><legend>Mais dados pessoais</legend><div class="campos">
         <div class="campo"><label for="dp-soc">Nome social <span class="muted">(se usar)</span></label><input id="dp-soc" name="nome_social" value="${v(d.nome_social)}" placeholder="Como prefere ser chamada"></div>
-        <div class="campo"><label for="dp-nasc">Data de nascimento</label><input id="dp-nasc" name="data_nascimento" type="date" value="${v(d.data_nascimento)}" max="${R.hoje()}" ${pub ? 'required' : ''}></div>
+        <div class="campo"><label for="dp-nasc">Data de nascimento</label><input id="dp-nasc" name="data_nascimento" type="date" value="${v(d.data_nascimento)}" max="${R.hoje()}"></div>
         <div class="campo inteiro"><label for="dp-nis">PIS/NIS/PASEP <span class="muted">(se tiver)</span></label><input id="dp-nis" name="nis" inputmode="numeric" value="${v(d.nis)}" placeholder="000.00000.00-0"></div>
-      </div></fieldset>
+      </div></fieldset></div>
       <fieldset><legend>Endereço</legend>
         <p class="small muted" style="margin-top:-6px">Usado para calcular a ajuda de custo das visitas (distância até os quintais) e para a FUNCERN.</p>
         <div class="campos">
-        <div class="campo"><label for="dp-cep">CEP</label><input id="dp-cep" name="cep" inputmode="numeric" value="${v(en.cep)}" placeholder="00000-000" data-cep><span class="dica" id="dp-cep-dica">Preenche o resto sozinho quando há internet.</span></div>
-        <div class="campo"><label for="dp-num">Número</label><input id="dp-num" name="numero" value="${v(en.numero)}" placeholder="s/n se não tiver"></div>
-        <div class="campo inteiro"><label for="dp-log">Logradouro (rua, sítio, estrada)</label><input id="dp-log" name="logradouro" value="${v(en.logradouro)}"></div>
-        <div class="campo"><label for="dp-comp">Complemento</label><input id="dp-comp" name="complemento" value="${v(en.complemento)}"></div>
-        <div class="campo"><label for="dp-bai">Bairro ou comunidade</label><input id="dp-bai" name="bairro" value="${v(en.bairro)}"></div>
+        <div class="campo" data-arlo-opc ${arlo ? 'hidden' : ''}><label for="dp-cep">CEP</label><input id="dp-cep" name="cep" inputmode="numeric" value="${v(en.cep)}" placeholder="00000-000" data-cep><span class="dica" id="dp-cep-dica">Preenche o resto sozinho quando há internet.</span></div>
+        <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo"><label for="dp-num">Número</label><input id="dp-num" name="numero" value="${v(en.numero)}" placeholder="s/n se não tiver"></div>
+        <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo inteiro"><label for="dp-log">Logradouro (rua, sítio, estrada)</label><input id="dp-log" name="logradouro" value="${v(en.logradouro)}"></div>
+        <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo"><label for="dp-comp">Complemento</label><input id="dp-comp" name="complemento" value="${v(en.complemento)}"></div>
+        <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo"><label for="dp-bai">Bairro ou comunidade</label><input id="dp-bai" name="bairro" value="${v(en.bairro)}"></div>
         <div class="campo"><label for="dp-cid">Cidade</label><input id="dp-cid" name="cidade" value="${v(en.cidade)}"></div>
         <div class="campo"><label for="dp-uf">Estado</label><select id="dp-uf" name="uf_end">${op(['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE', 'Outro'], en.uf)}</select></div>
       </div></fieldset>
-      <fieldset><legend>Questionário socioeconômico (opcional)</legend>
+      <fieldset data-arlo-opc ${arlo ? 'hidden' : ''}><legend>Questionário socioeconômico (opcional)</legend>
         <label class="check"><input type="checkbox" name="tem_socio" ${se ? 'checked' : ''} data-socio> <span>Responder. Os dados servem só para o perfil da equipe nos relatórios, sem nome.</span></label>
         <div class="campos" data-socio-campos ${se ? '' : 'hidden'}>
           <div class="campo"><label for="dp-esc">Escolaridade</label><select id="dp-esc" name="escolaridade">${op(ESCOLARIDADE, se && se.escolaridade)}</select></div>
@@ -46,11 +52,18 @@
     Object.keys(endereco).forEach(k => { if (!endereco[k]) delete endereco[k]; });
     const socio = fd.get('tem_socio') ? { escolaridade: t('escolaridade') || null, raca_etnia: t('raca_etnia') || null,
       renda_familiar: t('renda_familiar') === '' ? null : +t('renda_familiar'), pessoas_casa: t('pessoas_casa') === '' ? null : +t('pessoas_casa') } : null;
-    return { nome_social: t('nome_social') || null, data_nascimento: t('data_nascimento') || null, nis: R.soDigitos(t('nis')) || null, endereco, socioeconomico: socio };
+    const arlo = fd.get('cadastro_arlo') === 'sim';
+    if (arlo) {   // no Arlo: guarda só a cidade (cálculo da ajuda de custo); o resto fica lá
+      ['cep', 'logradouro', 'numero', 'complemento', 'bairro'].forEach(k => delete endereco[k]);
+      return { cadastro_arlo: true, _arlo_resp: fd.get('cadastro_arlo'), nome_social: t('nome_social') || null, data_nascimento: null, nis: null, endereco, socioeconomico: null };
+    }
+    return { cadastro_arlo: false, _arlo_resp: fd.get('cadastro_arlo'), nome_social: t('nome_social') || null, data_nascimento: t('data_nascimento') || null, nis: R.soDigitos(t('nis')) || null, endereco, socioeconomico: socio };
   }
   function validarPessoais(d, pub) {
     const e = {};
-    if (pub && !d.data_nascimento) e.data_nascimento = 'Informe a data de nascimento.';
+    if (!d._arlo_resp) e.cadastro_arlo = 'Responda se já tem cadastro no Arlo.';
+    if (pub && !d.cadastro_arlo && !d.data_nascimento) e.data_nascimento = 'Informe a data de nascimento.';
+    if (pub && d.cadastro_arlo && !d.endereco.cidade) e.cidade = 'Informe a cidade onde mora.';
     if (d.data_nascimento && (d.data_nascimento > R.hoje() || R.idade(d.data_nascimento) < 16)) e.data_nascimento = 'Data de nascimento inválida.';
     if (d.nis && d.nis.length !== 11) e.nis = 'O PIS/NIS tem 11 números.';
     if (d.endereco.cep && d.endereco.cep.length !== 8) e.cep = 'O CEP tem 8 números.';
@@ -63,6 +76,12 @@
   }
   document.addEventListener('change', ev => {
     const t = ev.target;
+    if (t.matches && t.matches('[data-arlo]')) {
+      const f = t.form; const sim = t.value === 'sim';
+      f.querySelectorAll('[data-arlo-opc]').forEach(x => { x.hidden = sim; });
+      const n = f.querySelector('[data-arlo-nota]'); if (n) n.hidden = !sim;
+      t.closest('.sn-par').querySelectorAll('.sn').forEach(l => l.classList.toggle('on', l.contains(t)));
+    }
     if (t.matches && t.matches('[data-socio]')) { const c = t.closest('fieldset').querySelector('[data-socio-campos]'); if (c) c.hidden = !t.checked; }
   });
   document.addEventListener('input', async ev => {
@@ -116,7 +135,7 @@
   function painel(p) {
     const x = (S().pre || []).find(y => y.id === p.id); if (!x) return '<div class="painel-corpo"><p>Pré-cadastro não encontrado.</p></div>';
     const dl = [['Nome', x.nome], ['CPF', R.fmtCPF(x.cpf)], ['E-mail', x.email], ['Celular', x.telefone], ['Município', x.municipio], ['Organização', x.organizacao],
-      ['Nome social', x.nome_social], ['Nascimento', x.data_nascimento && R.fmtData(x.data_nascimento)], ['PIS/NIS', x.nis],
+      ['Cadastro no Arlo', x.cadastro_arlo ? 'Sim: dados completos e conta no Arlo' : 'Não'], ['Nome social', x.nome_social], ['Nascimento', x.data_nascimento && R.fmtData(x.data_nascimento)], ['PIS/NIS', x.nis],
       ['Endereço', textoEndereco(x.endereco)], ['Socioeconômico', x.socioeconomico ? 'Respondido' : 'Não respondeu'],
       ['Termo de dados (LGPD)', 'Aceito por ela no envio'], ['Enviado em', new Date(x.enviado_em).toLocaleString('pt-BR')]].filter(l => l[1]);
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">Cadastro enviado pelo link</span><h2 id="painel-t">${E(x.nome)}</h2>
@@ -140,7 +159,7 @@
   function dadosPre(id) {
     const x = (S().pre || []).find(y => y.id === id); if (!x) return null;
     return { nome: x.nome, nome_social: x.nome_social, cpf: x.cpf, email: x.email, telefone: x.telefone, municipio: x.municipio || (x.endereco || {}).cidade, organizacao: x.organizacao,
-      consentimento_lgpd: true, _pre: x, _priv: { data_nascimento: x.data_nascimento, nis: x.nis, endereco: x.endereco || {}, socioeconomico: x.socioeconomico } };
+      consentimento_lgpd: true, _pre: x, cadastro_arlo: !!x.cadastro_arlo, _priv: { cadastro_arlo: !!x.cadastro_arlo, data_nascimento: x.data_nascimento, nis: x.nis, endereco: x.endereco || {}, socioeconomico: x.socioeconomico } };
   }
 
   /* ---------- página pública do link ---------- */
@@ -201,7 +220,7 @@
         telefone: String(fd.get('telefone') || '').trim(), municipio: String(fd.get('municipio') || '').trim(), organizacao: String(fd.get('organizacao') || '').trim(),
         consentimento_lgpd: !!fd.get('consentimento_lgpd') };
       Object.assign(d, lerPessoais(fd)); d.municipio = d.endereco.cidade || '';
-      const erros = validarPessoais(d, true);
+      const erros = validarPessoais(d, true); delete d._arlo_resp;
       if (d.nome.split(' ').length < 2 || d.nome.length < 5) erros.nome = 'Escreva o nome completo.';
       if (!R.cpfValido(d.cpf)) erros.cpf = 'CPF inválido. Confira os números.';
       if (!R.emailValido(d.email)) erros.email = 'E-mail inválido.';

@@ -1,5 +1,5 @@
 -- =====================================================================
--- Mulheres & Quintais — Etapa 11: professores do curso FIC, turmas e matrículas
+-- Mulheres & Quintais — Etapa 11: professores do curso FIC, turmas e matrículas; cadastro no Arlo
 -- Supabase > SQL Editor > New query > cole este arquivo inteiro > Run.
 -- Rodar depois de 01 a 10. Pode rodar de novo sem estragar nada.
 -- =====================================================================
@@ -7,11 +7,14 @@
 --   * Novo perfil: professor(a) do curso FIC (IFRN, sem estado). Só a coordenação geral cadastra,
 --     à mão ou por link de convite. Tem os mesmos dados pessoais e bancários das bolsistas.
 --   * Habilitação do professor: documentos na FUNCERN e termo (não se matricula no FIC).
---   * O professor cria turmas e matricula bolsistas e agentes de campo. A matrícula registrada
---     na turma preenche a "matrícula no FIC" da habilitação da pessoa.
+--   * Só os professores do FIC criam turmas e matriculam bolsistas e agentes de campo (qualquer um
+--     deles, em qualquer turma, para ninguém ficar travado na ausência do outro). A matrícula preenche
+--     a "matrícula no FIC" da habilitação; ninguém mais altera esse passo.
 --   * O professor vê da equipe só o necessário para matricular (nome, função, estado, município
 --     e a situação da matrícula) — nada de CPF, e-mail, telefone ou endereço.
 --   * Matrícula de quem já tem visita no roteiro não é cancelada (a visita depende dela).
+--   * Quem já tem cadastro no Arlo informa só os dados básicos (nome, CPF, e-mail, celular, município);
+--     nascimento, NIS, endereço completo e dados bancários ficam no Arlo.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -122,10 +125,9 @@ drop policy if exists matriculas_ler on public.matriculas_fic;
 create policy turmas_ler on public.turmas_fic for select to authenticated
   using (coalesce(public.meu_papel(), '') in ('coord_geral','coord_tecnico','professor_fic'));
 create policy turmas_incluir on public.turmas_fic for insert to authenticated
-  with check (public.meu_papel() = 'coord_geral' or (public.meu_papel() = 'professor_fic' and professor_id = public.meu_id()));
+  with check (public.meu_papel() = 'professor_fic');
 create policy turmas_alterar on public.turmas_fic for update to authenticated
-  using (public.meu_papel() = 'coord_geral' or (public.meu_papel() = 'professor_fic' and professor_id = public.meu_id()))
-  with check (public.meu_papel() = 'coord_geral' or (public.meu_papel() = 'professor_fic' and professor_id = public.meu_id()));
+  using (public.meu_papel() = 'professor_fic') with check (public.meu_papel() = 'professor_fic');
 create policy matriculas_ler on public.matriculas_fic for select to authenticated
   using (coalesce(public.meu_papel(), '') in ('coord_geral','coord_tecnico','professor_fic') or equipe_id = public.meu_id());
 grant select, insert, update on public.turmas_fic to authenticated;
@@ -136,12 +138,26 @@ create trigger turmas_fic_auditoria after insert or update on public.turmas_fic 
 drop trigger if exists matriculas_fic_auditoria on public.matriculas_fic;
 create trigger matriculas_fic_auditoria after insert or update on public.matriculas_fic for each row execute function public.auditar();
 
--- quem pode matricular nesta turma: a coordenação geral ou o professor dela
+-- quem matricula: sempre um professor do FIC (qualquer um deles, em qualquer turma)
 create or replace function public.pode_matricular(p_turma uuid) returns boolean
 language sql stable security definer set search_path = public as $$
-  select coalesce(public.meu_papel(), '') = 'coord_geral'
-      or exists (select 1 from public.turmas_fic t where t.id = p_turma and t.professor_id = public.meu_id() and public.meu_papel() = 'professor_fic');
+  select coalesce(public.meu_papel(), '') = 'professor_fic' and exists (select 1 from public.turmas_fic t where t.id = p_turma);
 $$;
+
+-- a matrícula no FIC da habilitação só muda pelas funções de matrícula (nem a coordenação altera à mão).
+-- Quem roda direto no SQL Editor do Supabase (sem login) continua podendo corrigir.
+create or replace function public.equipe_matricula_so_professor() returns trigger
+language plpgsql as $$
+begin
+  if (new.matricula_fic_em is distinct from old.matricula_fic_em or new.matricula_fic_numero is distinct from old.matricula_fic_numero)
+     and auth.uid() is not null and coalesce(current_setting('mq.matricula_fic', true), '') <> '1' then
+    raise exception 'A matrícula no FIC é registrada pelos professores do curso, na aba Curso FIC.';
+  end if;
+  return new;
+end $$;
+drop trigger if exists equipe_matricula_so_professor on public.equipe;
+create trigger equipe_matricula_so_professor before update on public.equipe
+  for each row execute function public.equipe_matricula_so_professor();
 
 -- matricula (ou corrige número/data de quem já está nesta turma) e preenche a habilitação da pessoa
 create or replace function public.matricular_fic(p_turma uuid, p_equipe uuid, p_numero text, p_data date) returns uuid
@@ -150,7 +166,7 @@ declare t public.turmas_fic; p public.equipe; atual public.matriculas_fic; v_id 
 begin
   select * into t from public.turmas_fic where id = p_turma;
   if t.id is null then raise exception 'Turma não encontrada.'; end if;
-  if not public.pode_matricular(p_turma) then raise exception 'Só o professor da turma ou a coordenação geral matricula.'; end if;
+  if not public.pode_matricular(p_turma) then raise exception 'A matrícula no FIC é feita pelos professores do curso.'; end if;
   select * into p from public.equipe where id = p_equipe for update;
   if p.id is null or p.status <> 'ativa' or p.papel not in ('articulacao','apoio','agente') then
     raise exception 'Só bolsistas e agentes de campo ativas são matriculadas no FIC.';
@@ -169,7 +185,9 @@ begin
     insert into public.matriculas_fic (turma_id, equipe_id, numero, matriculado_em, criado_por)
       values (p_turma, p_equipe, trim(p_numero), p_data, public.meu_id()) returning id into v_id;
   end if;
+  perform set_config('mq.matricula_fic', '1', true);
   update public.equipe set matricula_fic_em = p_data, matricula_fic_numero = trim(p_numero) where id = p_equipe;
+  perform set_config('mq.matricula_fic', '', true);
   return v_id;
 end $$;
 revoke all on function public.matricular_fic(uuid, uuid, text, date) from public;
@@ -181,13 +199,15 @@ declare m public.matriculas_fic;
 begin
   select * into m from public.matriculas_fic where id = p_id for update;
   if m.id is null or m.cancelada_em is not null then raise exception 'Matrícula não encontrada ou já cancelada.'; end if;
-  if not public.pode_matricular(m.turma_id) then raise exception 'Só o professor da turma ou a coordenação geral cancela.'; end if;
+  if not public.pode_matricular(m.turma_id) then raise exception 'A matrícula no FIC é cancelada pelos professores do curso.'; end if;
   if length(trim(coalesce(p_motivo, ''))) < 5 then raise exception 'Escreva o motivo do cancelamento.'; end if;
   if exists (select 1 from public.visitas where executor_id = m.equipe_id and situacao <> 'cancelada') then
     raise exception 'Esta pessoa já tem visita no roteiro de campo, que depende da matrícula. Para corrigir número ou data, matricule de novo na mesma turma.';
   end if;
   update public.matriculas_fic set cancelada_em = now(), motivo_cancelamento = trim(p_motivo) where id = p_id;
+  perform set_config('mq.matricula_fic', '1', true);
   update public.equipe set matricula_fic_em = null, matricula_fic_numero = null where id = m.equipe_id;
+  perform set_config('mq.matricula_fic', '', true);
 end $$;
 revoke all on function public.cancelar_matricula_fic(uuid, text) from public;
 grant execute on function public.cancelar_matricula_fic(uuid, text) to authenticated;
@@ -205,6 +225,40 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke all on function public.equipe_para_fic() from public;
 grant execute on function public.equipe_para_fic() to authenticated;
+
+
+-- ---------------------------------------------------------------------
+-- 3. Cadastro no Arlo: quem já tem, informa só os dados básicos
+-- ---------------------------------------------------------------------
+alter table public.equipe add column if not exists cadastro_arlo boolean not null default false;
+alter table public.pre_cadastros add column if not exists cadastro_arlo boolean not null default false;
+
+create or replace function public.enviar_pre_cadastro(p_token text, p_dados jsonb) returns void
+language plpgsql security definer set search_path = public as $$
+declare c public.convites; v_cpf text := regexp_replace(coalesce(p_dados->>'cpf', ''), '\D', '', 'g');
+        v_email text := lower(trim(coalesce(p_dados->>'email', '')));
+        v_arlo boolean := coalesce((p_dados->>'cadastro_arlo')::boolean, false);
+begin
+  select * into c from public.convites where token = p_token for update;
+  if c.id is null or c.usado_em is not null or c.cancelado_em is not null or c.expira_em <= now() then
+    raise exception 'Este link não vale mais. Peça um novo à coordenação.';
+  end if;
+  if coalesce((p_dados->>'consentimento_lgpd')::boolean, false) is not true then raise exception 'É preciso aceitar o uso dos dados para o cadastro.'; end if;
+  if not v_arlo and nullif(p_dados->>'data_nascimento', '') is null then raise exception 'Informe a data de nascimento.'; end if;
+  if exists (select 1 from public.equipe where status = 'ativa' and (cpf = v_cpf or lower(email::text) = v_email)) then
+    raise exception 'Já existe pessoa ativa na equipe com este CPF ou e-mail. Fale com a coordenação.';
+  end if;
+  insert into public.pre_cadastros (convite_id, papel, uf, substitui_id, nome, cpf, email, telefone, municipio, organizacao,
+                                    nome_social, data_nascimento, nis, endereco, socioeconomico, consentimento_lgpd, cadastro_arlo)
+    values (c.id, c.papel, c.uf, c.substitui_id, trim(p_dados->>'nome'), v_cpf, v_email,
+            nullif(trim(p_dados->>'telefone'), ''), nullif(trim(p_dados->>'municipio'), ''), nullif(trim(p_dados->>'organizacao'), ''),
+            nullif(trim(p_dados->>'nome_social'), ''), nullif(p_dados->>'data_nascimento', '')::date,
+            nullif(regexp_replace(coalesce(p_dados->>'nis', ''), '\D', '', 'g'), ''),
+            coalesce(p_dados->'endereco', '{}'::jsonb), p_dados->'socioeconomico', true, v_arlo);
+  update public.convites set usado_em = now() where id = c.id;
+end $$;
+revoke all on function public.enviar_pre_cadastro(text, jsonb) from public;
+grant execute on function public.enviar_pre_cadastro(text, jsonb) to anon, authenticated;
 
 -- matrículas que já existiam na habilitação (registradas à mão pela coordenação) continuam valendo;
 -- aparecem na tela como "registrada pela coordenação, sem turma".

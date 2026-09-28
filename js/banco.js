@@ -17,7 +17,9 @@
   }
   function desenhar() { const el = $('#banco-meu'); if (el) el.innerHTML = corpoMinha(); }
   function corpoMinha() {
-    const cab = `<div class="banco-cab"><h2 id="t-banco">Dados bancários para a FUNCERN</h2><span class="chip ${B.meus && !B.meus.erro ? 'ok' : 'pend'}">${B.meus && !B.meus.erro ? 'Informados' : 'Faltam'}</span></div>
+    const arlo = !!(S().eu && S().eu.cadastro_arlo); const tem = B.meus && !B.meus.erro;
+    const cab = `<div class="banco-cab"><h2 id="t-banco">Dados bancários para a FUNCERN</h2><span class="chip ${tem || arlo ? 'ok' : 'pend'}">${tem ? 'Informados' : arlo ? 'No Arlo' : 'Faltam'}</span></div>
+      ${arlo && !tem ? '<p class="small">Você informou que já tem cadastro no Arlo: a conta que está lá vale. Só preencha aqui se ela mudou.</p>' : ''}
       <p class="small muted">Só você vê estes números. A coordenação vê apenas se foram informados, e a coordenação geral repassa à FUNCERN, que paga a bolsa ou a ajuda de custo.</p>`;
     if (B.meus === null) return cab + '<p class="muted">Carregando…</p>';
     if (B.meus && B.meus.erro) return cab + `<div class="aviso">${/09_dados|PGRST202|meus_dados/.test(B.meus.erro) ? 'Ainda não instalado no servidor (arquivo 09_dados_bancarios.sql).' : E(B.meus.erro)}</div>`;

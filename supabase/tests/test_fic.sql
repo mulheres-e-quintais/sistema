@@ -35,8 +35,11 @@ select pg_temp.como('prof@ifrn.edu.br'); set role authenticated; select (public.
 select count(*) from public.equipe;
 \echo '== 8. professor vê a lista para matricular, sem CPF/e-mail (4 linhas: 2 professores, Ana, Bia)'
 select papel, uf, nome, matricula_fic_em from public.equipe_para_fic();
-\echo '== 9. professor cria turma de outro professor (ERRO)'
-insert into public.turmas_fic (nome, uf, professor_id) values ('Turma Alheia','PI',(select id from public.equipe_para_fic() where nome = 'Professora Dois'));
+\echo '== 9. coordenação geral não cria turma nem matricula (ERRO, ERRO) nem altera a matrícula à mão (ERRO)'
+reset role; select pg_temp.como('cleone.lima@ifrn.edu.br'); set role authenticated; select (public.vincular_conta()).papel;
+insert into public.turmas_fic (nome, uf, professor_id) values ('Turma Coord','PI',(select id from public.equipe where email = 'prof@ifrn.edu.br'));
+update public.equipe set matricula_fic_em = current_date - 1, matricula_fic_numero = '123' where email = 'ana@x.org';
+reset role; select pg_temp.como('prof@ifrn.edu.br'); set role authenticated; select (public.vincular_conta()).papel;
 \echo '== 10. professor cria a própria turma PI (OK)'
 insert into public.turmas_fic (nome, uf, municipio, inicio, fim, professor_id) values ('FIC Agroecologia PI','PI','Paulistana','2026-10-01','2027-03-30',(select (public.vincular_conta()).id));
 \echo '== 11. matricula Ana na turma PI (OK) e a habilitação dela recebe a matrícula'
@@ -56,7 +59,7 @@ update public.equipe set matricula_fic_em = '2026-10-01' where email = 'bia@x.or
 reset role;
 
 select pg_temp.como('prof2@ifrn.edu.br'); set role authenticated; select (public.vincular_conta()).papel;
-\echo '== 17. outro professor matricula na turma que não é dele (ERRO)'
+\echo '== 17. outro professor matricula na turma do colega (OK: qualquer professor matricula)'
 select public.matricular_fic((select id from public.turmas_fic limit 1), (select id from public.equipe_para_fic() where nome = 'Ana Bolsista'), '20261FIC0009', current_date - 1);
 reset role;
 
