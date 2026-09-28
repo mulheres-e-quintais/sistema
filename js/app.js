@@ -57,6 +57,8 @@
         try { const r = await S.api.listarSolicitacoes(); S.solic = r.lista; S.solicVis = r.vinculos; }
         catch (e) { if (e.semRede || !semFic(e)) throw e; S.pagSemBanco = true; S.solic = []; S.solicVis = {}; }
       }
+      // valor do kit por quintal (para a projeção do investimento no diagnóstico)
+      try { const k = S.api.lerParametros ? await S.api.lerParametros('kit') : null; S.kitPar = k && k.valor_quintal ? k : {}; } catch (e) { if (e.semRede) throw e; S.kitPar = {}; }
       S.pre = /^coord/.test(S.eu.papel) && S.api.listarPreCadastros ? await opcional(S.api.listarPreCadastros) : [];
       S.exemplo = /^coord/.test(S.eu.papel) && S.api.contarExemplo ? await opcional(async () => [await S.api.contarExemplo()]).then(r => r[0] || 0) : 0;
       S.semRede = false;

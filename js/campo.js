@@ -163,10 +163,11 @@
       <div class="quadro-scroll" style="display:block"><table class="quadro tab-campo-uf"><thead><tr><th>Estado</th><th>Dias de campo</th><th class="c">Diagnósticos</th><th class="c">Planos aprovados</th><th class="c">Sem água na seca</th><th class="c">Agentes de campo</th></tr></thead>
         <tbody>${MQ.UFS.map(linhaUF).join('')}</tbody></table></div>
       <p class="small muted" style="margin:6px 2px 0"><b>Sem água na seca:</b> diagnósticos em que a água não dura no período seco. Essa mulher não recebe o kit (é encaminhada a programa de cisternas) e a vaga dela precisa ser preenchida pela lista de espera. Acima de 30% no estado é sinal de alerta.</p><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p>
+      ${blocoKitPar()}
       ${MQ.impactoUI ? MQ.impactoUI.secaoCoord() : ''}
       ${aguard.length ? `<div class="bloco"><h3>${souTec ? 'Planos para você aprovar' : 'Planos aguardando a coordenação técnica'} (${aguard.length})</h3><div class="lista-fichas">
         ${aguard.map(d => { const f = ficha(d.ficha_id) || {}; return `<button class="vagabtn ficha-linha" data-acao="campo-diag-ver" data-ficha="${E(d.ficha_id)}"><span class="nm">${E(f.nome || '—')}</span>
-          <span style="display:flex;gap:6px;flex-wrap:wrap">${d.sem_agua ? '<span class="chip crit">Sem água: sem plano</span>' : `<span class="chip pend">Lote ${d.lote}</span>`}<span class="chip off">${E((d.dados && d.dados.kit || []).filter(k => k.item).length)} itens no kit</span></span>
+          <span style="display:flex;gap:6px;flex-wrap:wrap">${d.sem_agua ? '<span class="chip crit">Sem água: sem plano</span>' : `<span class="chip pend">Lote ${d.lote}</span>`}<span class="chip off">${E((d.dados && d.dados.kit || []).filter(k => k.item).length)} itens no kit${totalKit(d.dados && d.dados.kit) ? ' · ' + brl(totalKit(d.dados && d.dados.kit)) : ''}</span></span>
           <span class="sub">${E(d.uf)} · ${E(f.municipio || '')} · visita em ${R.fmtData(d.data_visita)} por ${E((pessoa(d.executor_id) || {}).nome || '—')}</span></button>`; }).join('')}</div></div>` : ''}
       <div class="secao-cab"><h2>Roteiro</h2><span class="seg">${['', ...MQ.UFS.map(u => u.uf)].map(u => `<button type="button" data-acao="campo-uf" data-uf="${u}" aria-pressed="${ufRoteiro === u}">${u || 'Todos'}</button>`).join('')}</span></div>
       ${roteiro(ufRoteiro, souTec)}`;
@@ -209,9 +210,37 @@
     <input name="fam_ocup" placeholder="Estuda / trabalha?" value="${E(x.ocupacao || '')}" aria-label="Estuda ou trabalha">
     <label class="mini-chk"><input type="checkbox" name="fam_ajuda" ${x.ajuda ? 'checked' : ''}>Ajuda no quintal</label>
     <button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`;
-  const linhaKit = (x = {}) => `<div class="linha-din kit" data-linha="kit">
-    <input name="kit_item" placeholder="Item (da lista aprovada)" value="${E(x.item || '')}" aria-label="Item"><input name="kit_qtd" placeholder="Qtd." value="${E(x.qtd || '')}" aria-label="Quantidade">
+  const linhaKit = (x = {}) => `<div class="linha-din kit kit5" data-linha="kit">
+    <input name="kit_item" placeholder="Item (da lista aprovada)" value="${E(x.item || '')}" aria-label="Item"><input name="kit_qtd" placeholder="Qtd." inputmode="decimal" value="${E(x.qtd || '')}" aria-label="Quantidade">
+    <input name="kit_valor" placeholder="R$ unid." inputmode="decimal" value="${E(x.valor != null ? String(x.valor).replace('.', ',') : '')}" aria-label="Valor estimado de cada unidade (R$)">
     <input name="kit_para" placeholder="Para quê" value="${E(x.para || '')}" aria-label="Para quê"><button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`;
+  /* coordenação: valor do kit por quintal e o total projetado pelos planos */
+  function blocoKitPar() {
+    const lim = +((S().kitPar || {}).valor_quintal) || 0;
+    const planos = diagnosticos().filter(d => !d.sem_agua && d.situacao !== 'devolvido');
+    const tots = planos.map(d => totalKit(d.dados && d.dados.kit)).filter(v => v > 0);
+    const soma = tots.reduce((a, b) => a + b, 0); const acima = lim ? tots.filter(v => v > lim).length : 0;
+    return `<form class="bloco kit-par" data-form="diag-kitpar" novalidate><div><h3>Investimento nos quintais (kits)</h3>
+        <p class="small muted">${tots.length ? `${tots.length} plano${tots.length > 1 ? 's' : ''} com valores: <b>${brl(soma)}</b> projetados · média ${brl(soma / tots.length)} por quintal${acima ? ` · <b style="color:var(--crit)">${acima} acima do valor por quintal</b>` : ''}.` : 'Nenhum plano com valores ainda.'}
+        Quem faz o diagnóstico vê a projeção do kit e o quanto falta ou passa deste valor.</p></div>
+      <div class="campos"><div class="campo"><label for="kp-v">Valor do kit por quintal (R$)</label><input id="kp-v" name="valor_quintal" inputmode="decimal" value="${lim ? String(lim).replace('.', ',') : ''}" placeholder="Ex.: 2500" ${/^coord/.test(S().eu.papel) ? '' : 'disabled'}></div></div>
+      <div class="aviso erro" data-erro hidden></div>
+      ${/^coord/.test(S().eu.papel) ? '<div class="acoes"><button class="btn" type="submit">Salvar valor</button></div>' : ''}</form>`;
+  }
+  /* projeção do investimento no quintal: soma de quantidade × valor estimado de cada item */
+  const numBR = t => { const m = String(t == null ? '' : t).replace(/\./g, '').replace(',', '.').match(/-?\d+(\.\d+)?/); return m ? +m[0] : null; };
+  const totalKit = kit => (kit || []).reduce((s, x) => s + (numBR(x.qtd) || 0) * (x.valor != null ? +x.valor : 0), 0);
+  const brl = v => (+v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  function projKit(kit) {
+    const tot = totalKit(kit); const lim = +((S().kitPar || {}).valor_quintal) || 0;
+    const semValor = (kit || []).filter(x => x.item && (x.valor == null || !(+x.valor > 0))).length;
+    const pct = lim ? Math.min(100, Math.round(tot / lim * 100)) : 0;
+    return `<div class="kit-proj ${lim && tot > lim ? 'passou' : ''}"><div class="kp-l"><span class="small muted">Projeção do investimento no quintal</span><b class="num">${brl(tot)}</b></div>
+      ${lim ? `<span class="bar" role="img" aria-label="${pct}% do valor por quintal"><i class="${tot > lim ? 'cheio' : ''}" style="width:${pct}%"></i></span>
+        <span class="small">${tot > lim ? `<b>Passa ${brl(tot - lim)}</b> do valor por quintal (${brl(lim)}). Tire ou troque itens.` : `Valor por quintal: ${brl(lim)} · sobram ${brl(lim - tot)}`}</span>`
+        : '<span class="small muted">A coordenação ainda não definiu o valor por quintal (aba Campo).</span>'}
+      ${semValor ? `<span class="small">${semValor === 1 ? '1 item sem valor' : semValor + ' itens sem valor'}: informe o preço estimado de cada unidade.</span>` : ''}</div>`;
+  }
   const linhaCron = (x = {}) => `<div class="linha-din kit" data-linha="cron">
     <input name="cr_oque" placeholder="O que fazer" value="${E(x.oque || '')}" aria-label="O que fazer"><input name="cr_ini" placeholder="Mês início" value="${E(x.inicio || '')}" aria-label="Mês de início">
     <input name="cr_fim" placeholder="Mês fim" value="${E(x.fim || '')}" aria-label="Mês de fim"><input name="cr_quem" placeholder="Quem faz" value="${E(x.quem || '')}" aria-label="Quem faz">
@@ -296,8 +325,10 @@
         </fieldset>
         <fieldset><legend>10. Kit escolhido</legend>
           <p class="small muted" style="margin-top:-6px">Só itens da lista aprovada pela coordenação, sem passar do valor por quintal. Sem irrigação, comece pelos itens de água (caixa d’água, gotejamento) e pela cobertura do solo.</p>
+          <div class="kit-cab" aria-hidden="true"><span>Item</span><span>Qtd.</span><span>R$ unid.</span><span>Para quê</span></div>
           <div id="w-kit" class="linhas">${(d.kit && d.kit.length ? d.kit : [{}]).map(linhaKit).join('')}</div>
-          <button type="button" class="link" data-acao="campo-linha-add" data-tipo="kit">+ Item</button></fieldset>
+          <button type="button" class="link" data-acao="campo-linha-add" data-tipo="kit">+ Item</button>
+          <div id="kit-proj">${projKit(d.kit)}</div></fieldset>
         <fieldset><legend>11. Cronograma</legend>
           <div class="linhas">${(d.cronograma && d.cronograma.length ? d.cronograma : [{}]).map(linhaCron).join('')}</div>
           <button type="button" class="link" data-acao="campo-linha-add" data-tipo="cron">+ Atividade</button>
@@ -335,7 +366,8 @@
       producao, renda_quintal: num('renda_quintal'), praticas: todos('praticas'), horas_dia: num('horas_dia'), participa: todos('participa'),
       dificuldades: txt('dificuldades'), sonhos: txt('sonhos'),
       objetivos: todos('objetivos'), frase_objetivo: txt('frase_objetivo'),
-      kit: linhas('kit', [['item', 'kit_item'], ['qtd', 'kit_qtd'], ['para', 'kit_para']]).filter(x => x.item),
+      kit: linhas('kit', [['item', 'kit_item'], ['qtd', 'kit_qtd'], ['valor', 'kit_valor'], ['para', 'kit_para']]).filter(x => x.item)
+        .map(x => Object.assign(x, { valor: numBR(x.valor) })),
       cronograma: linhas('cron', [['oque', 'cr_oque'], ['inicio', 'cr_ini'], ['fim', 'cr_fim'], ['quem', 'cr_quem']]).filter(x => x.oque),
       lote: num('lote'), mes_implantacao: txt('mes_implantacao'), compromissos: !!fd.get('compromissos'),
       impacto: MQ.impactoUI && form.querySelector('fieldset.impacto') ? MQ.impactoUI.ler(form) : undefined
@@ -343,6 +375,7 @@
     const existentes = String(fd.get('fotos_existentes') || '').split('|').filter(Boolean);
     d.fotos_ok = ['geral', 'agua', 'plantio'].filter(k => fotosTemp[k] || existentes.some(x => new RegExp('diag_' + k).test(x)) || existentes.includes('exemplo')).length;
     d.fotos = existentes;
+    d.kit_total = totalKit(d.kit);
     return d;
   }
 
@@ -386,7 +419,8 @@
           ${dl([['Práticas', (d.praticas || []).map(k => rot(MQ.DIAG.praticas, k)).join(', ')], ['Horas por dia', d.horas_dia], ['Participa de', (d.participa || []).map(k => rot(MQ.DIAG.participa, k)).join(', ')], ['Dificuldades', d.dificuldades], ['Quer', d.sonhos]])}</div>
         ${dg.sem_agua ? '<div class="aviso erro">Sem água que dure na seca: não há plano nem kit. Encaminhar para programa de cisternas.</div>' : `
         <div class="bloco"><h3>Plano do quintal</h3>${dl([['Objetivo', (d.objetivos || []).map(k => rot(MQ.DIAG.objetivos, k)).join(', ')], ['Em 12 meses', d.frase_objetivo], ['Lote', d.lote ? 'Lote ' + d.lote : null], ['Mês previsto', d.mes_implantacao]])}
-          <h3 style="margin-top:8px">Kit</h3>${tab(['Item', 'Qtd.', 'Para quê'], (d.kit || []).map(x => [x.item, x.qtd, x.para]))}
+          <h3 style="margin-top:8px">Kit</h3>${tab(['Item', 'Qtd.', 'R$ unid.', 'Subtotal', 'Para quê'], (d.kit || []).map(x => [x.item, x.qtd, x.valor != null ? brl(x.valor) : '—', x.valor != null ? brl((numBR(x.qtd) || 0) * x.valor) : '—', x.para]))}
+          ${projKit(d.kit)}
           <h3 style="margin-top:8px">Cronograma</h3>${tab(['O que', 'Início', 'Fim', 'Quem'], (d.cronograma || []).map(x => [x.oque, x.inicio, x.fim, x.quem]))}</div>`}
         <div class="bloco"><h3>Fotos</h3><div class="acoes">${(dg.fotos || []).map((x, i) => `<button class="btn peq" data-acao="ficha-foto" data-path="${E(x)}">${x === 'exemplo' ? 'Foto de exemplo' : 'Foto ' + (i + 1)}</button>`).join('') || '<span class="muted small">Sem fotos enviadas.</span>'}</div><div id="fi-foto-vista"></div></div>
         ${MQ.sugestaoUI && !dg._fila ? MQ.sugestaoUI.bloco(f, dg) : ''}
@@ -485,6 +519,12 @@
 
   async function enviar(tipo, form, fd) {
     const eu = S().eu;
+    if (tipo === 'diag-kitpar') {
+      const v = numBR(fd.get('valor_quintal'));
+      if (!(v >= 100 && v <= 100000)) return U().mostrarErros(form, { valor_quintal: 'Informe um valor entre R$ 100 e R$ 100.000.' });
+      await U().ocupado(form, async () => { S().kitPar = await S().api.salvarParametros('kit', { valor_quintal: v }) || { valor_quintal: v }; U().render(); U().toast('Valor por quintal salvo.'); });
+      return;
+    }
     if (tipo === 'visita') {
       const v0 = visitas().find(x => x.id === form.dataset.id);
       const v = Object.assign({}, v0 || { id: form.dataset.id, situacao: 'prevista' }, {
@@ -586,5 +626,11 @@
     const b = ev.target.closest('form[data-form=diag-decisao] button[name=decisao]'); if (b) b.form.dataset.decisao = b.value;
   }, true);
 
+  document.addEventListener('input', ev => {
+    const t = ev.target; if (!t.matches || !t.matches('[name=kit_qtd],[name=kit_valor],[name=kit_item]')) return;
+    const f = t.form; const box = f && f.querySelector('#kit-proj'); if (!box) return;
+    const kit = [...f.querySelectorAll('[data-linha="kit"]')].map(l => ({ item: l.querySelector('[name=kit_item]').value.trim(), qtd: l.querySelector('[name=kit_qtd]').value, valor: numBR(l.querySelector('[name=kit_valor]').value) })).filter(x => x.item);
+    box.innerHTML = projKit(kit);
+  });
   MQ.campoUI = { secaoBolsista, telaAgente, abaCoord, painel, clique, enviar, diagnosticos, visitas, guardar };
 })();
