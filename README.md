@@ -60,6 +60,8 @@ supabase/11_fic.sql              etapa 11: professores do FIC, turmas e matrícu
 supabase/12_pagamentos.sql       etapa 12: visita feita (implantação/acompanhamento) e solicitação de pagamento: solicita → aval → auxiliar lança no Arlo
 supabase/13_avaliacao.sql        etapa 13: visita de avaliação (5ª visita, 200 dias de campo por estado) e medidas de impacto antes × depois
 supabase/06_apagar_exemplo.sql   apaga os dados inventados
+supabase/00_verificar.sql        só lê: mostra quais etapas já estão instaladas e quantos registros há
+supabase/14_zerar_para_teste.sql apaga TUDO menos a coordenação geral (pede confirmação ZERAR; sem desfazer)
 supabase/tests/         testes das regras do banco
 ```
 
