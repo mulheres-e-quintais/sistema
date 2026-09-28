@@ -139,7 +139,7 @@
     const r = esc * (foco ? 1.25 : 1.0);
     const bolas = pts.map(({ f, cat, p }) => {
       const c = CATS.find(k => k.id === cat).cor; const [x, y] = p.xy;
-      const txt = `${f.nome} · ${f.municipio}/${f.uf} · ${(MQ.RESULTADOS[f.resultado] || {}).nome}${f.situacao !== 'aprovada' ? ' (' + (MQ.SITUACOES[f.situacao] || {}).nome + ')' : ''}${p.exato ? '' : ' · posição aproximada (município)'}`;
+      const txt = `${f.municipio}/${f.uf} · ${(MQ.RESULTADOS[f.resultado] || {}).nome}${f.situacao !== 'aprovada' ? ' (' + (MQ.SITUACOES[f.situacao] || {}).nome + ')' : ''}${p.exato ? '' : ' · posição aproximada'} · clique para abrir a ficha`;
       return p.exato
         ? `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="var(--surface)" stroke-width="${r * 0.45}" class="q-pt" data-acao="ficha-ver" data-id="${E(f.id)}" data-dica="${E(txt)}"><title>${E(txt)}</title></circle>`
         : `<circle cx="${x}" cy="${y}" r="${r * 0.85}" fill="var(--surface)" stroke="${c}" stroke-width="${r * 0.55}" class="q-pt" data-acao="ficha-ver" data-id="${E(f.id)}" data-dica="${E(txt)}"><title>${E(txt)}</title></circle>`;
@@ -162,6 +162,39 @@
       </div>
       <p class="nota">O mapa mostra onde moram as mulheres: use só dentro do sistema. Em relatórios e divulgação, mostre números por município.</p>
     </section>`;
+  }
+
+
+  /* ---------- perfil das mulheres (recorte) e linha de base de renda ---------- */
+  function perfil(S, d) {
+    const base = d.selAprov.length ? d.selAprov : d.fichas.filter(f => f.resultado === 'selecionada');
+    const rotBase = d.selAprov.length ? 'das ' + base.length + ' selecionadas e aprovadas' : 'das ' + base.length + ' fichas marcadas como selecionadas (ainda sem aprovação)';
+    const itens = [
+      ['p_cadunico', 'Família no CadÚnico'], ['p_sustento', 'Principal responsável pelo sustento'], ['p_sem_ater', 'Sem assistência técnica (ATER)'],
+      ['p_grupo', 'Participa de grupo, associação ou MPA'], ['p_raca_povo', 'Negra, indígena, quilombola ou de comunidade tradicional'],
+      ['p_caf', 'Com CAF'], ['p_jovem', 'Jovem de 18 a 29 anos']
+    ];
+    const barras = base.length ? itens.map(([k, t]) => {
+      const n = base.filter(f => f[k]).length, pct = Math.round(n / base.length * 100);
+      return `<li><span class="pf-rot">${E(t)}</span><span class="pf-bar"><i style="width:${pct}%"></i></span><span class="num pf-v"><b>${pct}%</b> <span class="muted">(${n})</span></span></li>`;
+    }).join('') : '';
+    const diags = (S.diagnosticos || []).filter(x => x.renda_quintal != null || x.renda_familiar != null);
+    const mediana = arr => { const a = arr.filter(v => v != null && !isNaN(v)).map(Number).sort((x, y) => x - y); if (!a.length) return null; const m = Math.floor(a.length / 2); return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; };
+    const mq = mediana(diags.map(x => x.renda_quintal)), mf = mediana(diags.map(x => x.renda_familiar));
+    const semRenda = diags.filter(x => !(+x.renda_quintal > 0)).length;
+    return `<section class="secao" aria-labelledby="t-perfil">
+      <div class="secao-cab"><div><h2 id="t-perfil">Quem são as mulheres</h2><p>${base.length ? 'Percentual ' + rotBase + ', pelos critérios de prioridade da ficha.' : 'Aparece quando houver mulheres selecionadas.'}</p></div></div>
+      <div class="duas-col" style="grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)">
+        <div class="bloco">${base.length ? `<ul class="perfil">${barras}</ul>
+          <p class="nota">"Negra, indígena, quilombola ou de comunidade tradicional" é um único campo na ficha v2: não dá para separar quilombolas.</p>` : '<p class="muted">Sem dados ainda.</p>'}</div>
+        <div class="bloco"><h3>Renda com o quintal: linha de base</h3>
+          ${diags.length ? `<div class="resumo" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+              <div><span class="v num">${R.fmtBRL(mq || 0).replace(',00', '')}</span><span class="l">mediana por mês com vendas do quintal</span></div>
+              <div><span class="v num">${R.fmtBRL(mf || 0).replace(',00', '')}</span><span class="l">mediana da renda familiar por mês</span></div></div>
+            <p class="small">${semRenda} de ${diags.length} mulheres (${Math.round(semRenda / diags.length * 100)}%) não tinham renda de vendas do quintal no diagnóstico.</p>`
+            : '<p class="small muted">Vem do diagnóstico (1ª visita). Quando os diagnósticos forem registrados, aparecem aqui a mediana de renda do quintal e da família.</p>'}
+          <p class="nota">O "depois" só será comparável se a visita final perguntar a mesma coisa, do mesmo jeito. Sem isso, não há "renda antes × depois".</p></div>
+      </div></section>`;
   }
 
   function visaoGeral(S) {
@@ -187,8 +220,6 @@
         <div><span class="v num">${d.selAprov.length}<small> de 200</small></span><span class="l">mulheres selecionadas e aprovadas</span></div>
       </div>
 
-      ${MQ.GEO ? mapa(S, d) : ''}
-
       <section class="secao" aria-labelledby="t-alertas">
         <h2 id="t-alertas">O que pede atenção</h2>
         ${al.length ? `<ul class="alertas">${al.map(x => `<li class="al-${x.nivel}"><span class="al-ic" aria-hidden="true">${icone(x.nivel)}</span>
@@ -196,6 +227,10 @@
           ${x.aba ? `<button class="link small" data-acao="aba" data-aba="${x.aba}">Ver</button>` : ''}</li>`).join('')}</ul>`
           : '<p class="aviso" style="background:var(--ok-bg)">Nada pendente nos dados do sistema.</p>'}
       </section>
+
+      ${MQ.GEO ? mapa(S, d) : ''}
+
+      ${perfil(S, d)}
 
       <div class="duas-col">
         <section class="secao" aria-labelledby="t-metas">
