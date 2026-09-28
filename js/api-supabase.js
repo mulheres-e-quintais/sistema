@@ -138,8 +138,18 @@
       const { data, error } = await sb.from('visitas').select('*').order('data_prevista');
       if (error) throw erro(error); return data;
     },
-    async salvarVisita(v) {
+    async salvarVisita(v, fotos) {
       const r = Object.assign({}, v); ['criado_por', 'criado_em', 'atualizado_em'].forEach(k => delete r[k]);
+      // fotos da visita feita (implantação/acompanhamento): <UF>/<ficha>/visita_<id>_<n>.jpg no bucket "campo"
+      const caminhos = new Set(r.fotos || []);
+      for (const [k, blob] of Object.entries(fotos || {})) {
+        if (!blob) continue;
+        const path = r.uf + '/' + r.ficha_id + '/visita_' + r.id + '_' + k + '.jpg';
+        const { error } = await sb.storage.from('campo').upload(path, blob, { upsert: true, contentType: blob.type || 'image/jpeg' });
+        if (error) throw erro(error);
+        caminhos.add(path);
+      }
+      if (caminhos.size || 'fotos' in r) r.fotos = [...caminhos];
       return gravar('visitas', r);
     },
     async listarDiagnosticos() {
@@ -165,7 +175,7 @@
       if (error) throw erro(error); return data;
     },
     async linkFoto(path) {
-      const balde = /\/diag_/.test(path) ? 'campo' : 'fichas';
+      const balde = /\/(diag_|visita_)/.test(path) ? 'campo' : 'fichas';
       const { data, error } = await sb.storage.from(balde).createSignedUrl(path, 600);
       if (error) throw erro(error);
       return data.signedUrl;
@@ -320,6 +330,19 @@
       }
       return path;
     },
+    /* ---------- Solicitação de pagamento (12_pagamentos.sql) ---------- */
+    async listarSolicitacoes() {
+      const { data, error } = await sb.from('solicitacoes_pagamento').select('*').order('solicitada_em', { ascending: false }); if (error) throw erro(error);
+      const { data: vs, error: e2 } = await sb.from('solicitacao_visitas').select('*'); if (e2) throw erro(e2);
+      return { lista: data, vinculos: Object.fromEntries((vs || []).map(x => [x.visita_id, x.solicitacao_id])) };
+    },
+    async solicitarPagamento(tipo, mes, valor, relatorio, visitas, detalhe) {
+      const { data, error } = await sb.rpc('solicitar_pagamento', { p_tipo: tipo, p_mes: mes, p_valor: valor, p_relatorio: relatorio || null, p_visitas: visitas && visitas.length ? visitas : null, p_detalhe: detalhe || {} });
+      if (error) throw erro(error); return data;
+    },
+    async avalizarPagamento(id, ok, obs, valor) { const { error } = await sb.rpc('avalizar_pagamento', { p_id: id, p_ok: ok, p_obs: obs || null, p_valor: valor }); if (error) throw erro(error); },
+    async registrarNoArlo(id, protocolo) { const { error } = await sb.rpc('registrar_no_arlo', { p_id: id, p_protocolo: protocolo || null }); if (error) throw erro(error); },
+
     /* ---------- Curso FIC: turmas e matrículas (11_fic.sql) ---------- */
     async listarEquipeFic() {
       const { data, error } = await sb.rpc('equipe_para_fic'); if (error) throw erro(error);

@@ -200,6 +200,67 @@
     async trocarPerfil(p) { const d = ler(); d.perfil = p; this.perfisDemo(); gravar(); return euMesmo(); },
     async recomecar() { mem = null; try { localStorage.removeItem(CHAVE); } catch (e) {} ler(); gravar(); return euMesmo(); },
 
+    /* ---------- Solicitação de pagamento (mesmas regras do 12_pagamentos.sql) ---------- */
+    async listarSolicitacoes() {
+      const d = ler(); const eu = euMesmo(); if (!eu) return { lista: [], vinculos: {} };
+      const ve = ['coord_geral', 'coord_tecnico', 'auxiliar_adm'].includes(eu.papel);
+      const l = (d.solicitacoes || []).filter(s => ve || s.equipe_id === eu.id).sort((a, b) => String(b.solicitada_em).localeCompare(String(a.solicitada_em)));
+      const ids = new Set(l.map(s => s.id));
+      return copia({ lista: l, vinculos: Object.fromEntries(Object.entries(d.solic_visitas || {}).filter(([, sid]) => ids.has(sid))) });
+    },
+    async solicitarPagamento(tipo, mes, valor, relatorio, visitas, detalhe) {
+      const d = ler(); const eu = euMesmo(); d.solicitacoes = d.solicitacoes || []; d.solic_visitas = d.solic_visitas || {};
+      if (!eu) throw falha('Entre no sistema para solicitar.');
+      if (tipo === 'ajuda_custo' && !R.ehCampo(eu.papel)) throw falha('Ajuda de custo é só para bolsistas e agentes de campo que fazem visitas.');
+      if (tipo === 'bolsa' && !['coord_tecnico', 'articulacao', 'apoio', 'professor_fic', 'auxiliar_adm'].includes(eu.papel)) throw falha('Seu perfil não recebe bolsa mensal pelo projeto.');
+      if (!R.habilitado(eu)) throw falha('Sua habilitação ainda não está completa: sem ela não há pagamento.');
+      const m = String(mes).slice(0, 7) + '-01'; if (m.slice(0, 7) > R.hoje().slice(0, 7)) throw falha('Só dá para solicitar o mês atual ou meses anteriores.');
+      const s = d.solicitacoes.find(x => x.tipo === tipo && x.equipe_id === eu.id && x.mes === m);
+      if (s && s.situacao !== 'devolvida') throw falha('Você já solicitou este mês. Acompanhe a situação na lista.');
+      if (tipo === 'ajuda_custo') {
+        if (!(visitas || []).length) throw falha('Marque as visitas feitas no mês.');
+        const ruim = visitas.some(id => { const v = (d.visitas || []).find(x => x.id === id); const sid = d.solic_visitas[id];
+          return !v || v.executor_id !== eu.id || v.situacao !== 'realizada' || String(v.data_realizada).slice(0, 7) !== m.slice(0, 7) || (sid && (!s || sid !== s.id)); });
+        if (ruim) throw falha('Há visita que não é sua, não está feita, é de outro mês ou já foi solicitada.');
+      } else if (String(relatorio || '').trim().length < 50) throw falha('Escreva o relatório de atividades do mês (pelo menos algumas linhas).');
+      const agora = new Date().toISOString(); let alvo = s;
+      if (!alvo) { alvo = { id: uid(), tipo, equipe_id: eu.id, mes: m }; d.solicitacoes.push(alvo); }
+      Object.assign(alvo, { situacao: 'solicitada', valor_solicitado: valor, valor_avalizado: null, relatorio: relatorio || null, detalhe: detalhe || {}, solicitada_em: agora, aval_por: null, aval_em: null });
+      Object.keys(d.solic_visitas).forEach(k => { if (d.solic_visitas[k] === alvo.id) delete d.solic_visitas[k]; });
+      (visitas || []).forEach(id => { d.solic_visitas[id] = alvo.id; });
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: alvo.id, acao: s ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: null, depois: copia(alvo) });
+      gravar(); return alvo.id;
+    },
+    async avalizarPagamento(id, ok, obs, valor) {
+      const d = ler(); const eu = euMesmo(); const s = (d.solicitacoes || []).find(x => x.id === id);
+      if (!s) throw falha('Solicitação não encontrada.');
+      if (s.situacao !== 'solicitada') throw falha('Esta solicitação não está aguardando aval.');
+      if (s.equipe_id === eu.id) throw falha('Ninguém dá o aval na própria solicitação.');
+      const pe = d.equipe.find(x => x.id === s.equipe_id) || {};
+      const quem = s.tipo === 'bolsa' && ['coord_tecnico', 'professor_fic', 'auxiliar_adm'].includes(pe.papel) ? 'coord_geral' : 'coord_tecnico';
+      if (!(eu.papel === 'coord_geral' || eu.papel === quem)) throw falha('O aval desta solicitação é da ' + (quem === 'coord_geral' ? 'coordenação geral.' : 'coordenação técnica.'));
+      const agora = new Date().toISOString();
+      if (ok) Object.assign(s, { situacao: 'avalizada', valor_avalizado: valor != null ? valor : s.valor_solicitado, aval_por: eu.id, aval_em: agora, obs_aval: obs || null });
+      else {
+        if (String(obs || '').trim().length < 5) throw falha('Para devolver, escreva o que precisa ser corrigido.');
+        Object.assign(s, { situacao: 'devolvida', aval_por: eu.id, aval_em: agora, obs_aval: obs });
+        Object.keys(d.solic_visitas || {}).forEach(k => { if (d.solic_visitas[k] === s.id) delete d.solic_visitas[k]; });
+      }
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: s.id, acao: 'UPDATE', por: eu.id, em: agora, antes: null, depois: copia(s) });
+      gravar();
+    },
+    async registrarNoArlo(id, protocolo) {
+      const d = ler(); const eu = euMesmo(); const s = (d.solicitacoes || []).find(x => x.id === id);
+      if (!eu || !['auxiliar_adm', 'coord_geral'].includes(eu.papel)) throw falha('Quem lança o pagamento no Arlo é o auxiliar administrativo.');
+      if (!s) throw falha('Solicitação não encontrada.');
+      if (s.situacao !== 'avalizada') throw falha('Só solicitação com aval vai para o Arlo.');
+      if (s.equipe_id === eu.id) throw falha('O seu próprio pagamento é lançado pelo outro auxiliar ou pela coordenação geral.');
+      const agora = new Date().toISOString();
+      Object.assign(s, { situacao: 'lancada', arlo_por: eu.id, arlo_em: agora, arlo_protocolo: protocolo || null });
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: s.id, acao: 'UPDATE', por: eu.id, em: agora, antes: null, depois: copia(s) });
+      gravar();
+    },
+
     /* ---------- Curso FIC (mesmas regras do 11_fic.sql) ---------- */
     async listarEquipeFic() {
       const eu = euMesmo(); if (!eu || !['coord_geral', 'coord_tecnico', 'professor_fic'].includes(eu.papel)) return [];
@@ -357,7 +418,8 @@
       if (R.ehBolsista(eu.papel)) return copia(d.visitas.filter(v => v.uf === eu.uf));
       return copia(d.visitas.filter(v => v.executor_id === eu.id));
     },
-    async salvarVisita(v) {
+    async salvarVisita(v, fotos) {
+      if (fotos && Object.keys(fotos).length) v = Object.assign({}, v, { fotos: Object.keys(fotos).map(k => 'visita_' + v.id + '_' + k + '.jpg') });
       const d = ler(); d.visitas = d.visitas || []; const eu = euMesmo();
       const i = d.visitas.findIndex(x => x.id === v.id); const antes = i >= 0 ? d.visitas[i] : null;
       const f = d.fichas.find(x => x.id === v.ficha_id);
@@ -375,6 +437,13 @@
         if (v.etapa !== 'diagnostico' && !d.visitas.some(x => x.ficha_id === v.ficha_id && x.etapa === 'diagnostico' && x.situacao === 'realizada')) throw falha('Primeiro o diagnóstico: implantação e acompanhamento só depois dele.');
         if (d.visitas.filter(x => x.uf === f.uf && x.situacao !== 'cancelada').length >= MQ.DIAS_CAMPO_UF) throw falha('O estado ' + f.uf + ' já usou os 160 dias de campo previstos.');
       }
+      if (v.situacao === 'realizada' && (!antes || antes.situacao !== 'realizada') && v.etapa !== 'diagnostico') {
+        if (!v.data_realizada || v.data_realizada > R.hoje()) throw falha('Informe a data em que a visita foi feita (não pode ser no futuro).');
+        if (String(v.relato || '').trim().length < 20) throw falha('Conte em poucas linhas o que foi feito na visita (pelo menos 20 letras).');
+      }
+      if (antes && (v.situacao !== antes.situacao || (v.data_realizada || null) !== (antes.data_realizada || null) || v.executor_id !== antes.executor_id)
+          && (d.solic_visitas || {})[antes.id] && ['solicitada', 'avalizada', 'lancada'].includes(((d.solicitacoes || []).find(s => s.id === d.solic_visitas[antes.id]) || {}).situacao))
+        throw falha('Esta visita já está numa solicitação de pagamento. Para mudar, a solicitação precisa ser devolvida pela coordenação.');
       const agora = new Date().toISOString();
       const n = Object.assign({}, antes || {}, v, { uf: f.uf, atualizado_em: agora, criado_em: antes ? antes.criado_em : agora, criado_por: antes ? antes.criado_por : eu.id });
       if (!n.situacao) n.situacao = 'prevista';

@@ -46,6 +46,12 @@
       S.visitas = await opcional(S.api.listarVisitas);
       S.diagnosticos = await opcional(S.api.listarDiagnosticos);
       S.aud = /^coord/.test(S.eu.papel) ? await S.api.auditoria() : [];
+      // solicitações de pagamento (12_pagamentos.sql); sem o script, o resto continua
+      S.pagSemBanco = false;
+      if (S.api.listarSolicitacoes) {
+        try { const r = await S.api.listarSolicitacoes(); S.solic = r.lista; S.solicVis = r.vinculos; }
+        catch (e) { if (e.semRede || !semFic(e)) throw e; S.pagSemBanco = true; S.solic = []; S.solicVis = {}; }
+      }
       S.pre = /^coord/.test(S.eu.papel) && S.api.listarPreCadastros ? await opcional(S.api.listarPreCadastros) : [];
       S.exemplo = /^coord/.test(S.eu.papel) && S.api.contarExemplo ? await opcional(async () => [await S.api.contarExemplo()]).then(r => r[0] || 0) : 0;
       S.semRede = false;
@@ -141,7 +147,8 @@
     const aguard = (S.fichas || []).filter(f => f.situacao === 'aguardando').length;
     const diagAguard = (S.diagnosticos || []).filter(x => x.situacao === 'aguardando').length;
     const abas = [['visao', 'Visão geral'], ['equipe', 'Equipe'], ['selecao', 'Seleção' + (aguard ? ` <span class="conta">${aguard}</span>` : '')],
-      ['campo', 'Campo' + (diagAguard ? ` <span class="conta">${diagAguard}</span>` : '')], ['fic', 'Curso FIC'], ['custos', 'Custos'], ['historico', 'Histórico']];
+      ['campo', 'Campo' + (diagAguard ? ` <span class="conta">${diagAguard}</span>` : '')], ['fic', 'Curso FIC'],
+      ['pagamentos', 'Pagamentos' + ((n => n ? ` <span class="conta">${n}</span>` : '')(MQ.pagUI ? MQ.pagUI.contaAval() : 0))], ['custos', 'Custos'], ['historico', 'Histórico']];
     const nav = `<nav class="abas" aria-label="Seções">${abas.map(([id, t]) => `<button type="button" data-acao="aba" data-aba="${id}" ${aba === id ? 'aria-current="page"' : ''}>${t}</button>`).join('')}</nav>`;
     const intro = souGeral
       ? 'Você cadastra a coordenação técnica indicada pelo MPA, os professores do curso FIC e os auxiliares administrativos. O auxiliar cadastra a equipe no Arlo (FUNCERN) e registra isso e o termo na habilitação; a matrícula no FIC é dos professores.'
@@ -170,6 +177,7 @@
     else if (aba === 'selecao') corpo = MQ.fichasUI ? MQ.fichasUI.secaoCoord() : '';
     else if (aba === 'custos') corpo = MQ.custosUI ? MQ.custosUI.aba() : '';
     else if (aba === 'fic') corpo = MQ.ficUI ? MQ.ficUI.aba() : '';
+    else if (aba === 'pagamentos') corpo = MQ.pagUI ? MQ.pagUI.abaCoord() : '';
     else if (aba === 'campo') corpo = (MQ.campoUI ? MQ.campoUI.abaCoord() : '') + (MQ.vitrineUI && !S.campoSemBanco ? MQ.vitrineUI.secaoCoord() : '');
     else corpo = `<section class="secao" aria-labelledby="t-h"><h2 id="t-h">Histórico de alterações</h2>${historico()}</section>`;
     const avisoEx = S.exemplo ? `<div class="aviso erro" role="status"><b>Este sistema está com dados de exemplo (${S.exemplo} registros inventados).</b> Servem para testar; não aparecem na vitrine pública. Antes de cadastrar a equipe e as fichas de verdade, a coordenação geral roda o arquivo 06_apagar_exemplo.sql no Supabase.</div>` : '';
@@ -265,10 +273,12 @@
         <div><span class="v num">${semTermo.length}</span><span class="l">no Arlo, falta o termo</span></div>
         <div><span class="v num">${ok.length}</span><span class="l">Arlo e termo registrados</span></div></div>
       <p class="small muted">Abra a pessoa, veja os dados (e a conta, se precisar), cadastre no Arlo e registre a data em <b>Registrar passos da habilitação</b>. Cada consulta de conta bancária fica no histórico.</p>
+      ${MQ.pagUI ? MQ.pagUI.secaoAuxiliar() : ''}
       ${grupo('Falta cadastrar no Arlo', semArlo, 'Todos já estão no Arlo.')}
       ${grupo('No Arlo, falta registrar o termo', semTermo, 'Nenhum termo pendente.')}
       <details class="hist"><summary>Arlo e termo registrados (${ok.length})</summary><div style="padding:0 18px 16px">${ok.length ? `<div class="grade-prof">${ok.map(linha).join('')}</div>` : '<p class="muted">Ninguém ainda.</p>'}</div></details>
       <div class="bloco"><h2>Sua habilitação</h2><p class="small muted">A sua é registrada pelo outro auxiliar ou pela coordenação geral.</p>${passos(eu)}</div>
+      ${MQ.pagUI ? MQ.pagUI.secaoMinha() : ''}
       <div class="bloco"><div class="cab-av">${avatar(eu, 96)}<div style="display:grid;gap:6px"><h2>Meus dados</h2>${botaoFoto(eu)}</div></div>${dadosDL(eu)}<p class="small muted">Algum dado errado? Fale com a coordenação geral.</p></div>
       ${MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
     </main>`;
@@ -334,6 +344,7 @@
         <div><span class="v num">${m.meta_visitas}</span><span class="l">visitas de acompanhamento (Meta 4)</span></div></div></div>` : ''}
       ${MQ.fichasUI ? MQ.fichasUI.secaoBolsista() : ''}
       ${MQ.campoUI ? MQ.campoUI.secaoBolsista() : ''}
+      ${MQ.pagUI ? MQ.pagUI.secaoMinha() : ''}
       <section class="secao"><div class="secao-cab"><h2>Próximos formulários</h2><span class="chip pend">Em preparação</span></div>
         <p class="small muted">Até entrarem no sistema, use os modelos em papel (versão 2).</p>
         <ul class="forms">${MQ.FORMULARIOS.filter(f => f.n > 3).map(f => `<li><span class="n">${f.n}</span><b>${esc(f.nome)}</b><span class="small muted">${esc(f.quando)}</span></li>`).join('')}</ul></section>
@@ -375,7 +386,7 @@
     let el = $('#painel');
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
     const p = S.painel;
-    const corpo = /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
+    const corpo = /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
     el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel" role="dialog" aria-modal="true" aria-labelledby="painel-t">${corpo}</aside>`;
     const foco = el.querySelector('[autofocus]') || el.querySelector('.fechar');
     if (foco) foco.focus();
@@ -471,7 +482,8 @@
 
   function painelCadastro(p) {
     const pre = p.pre && MQ.convitesUI ? MQ.convitesUI.dadosPre(p.pre) : null;
-    const m = p.id ? porId(p.id) : Object.assign({ papel: p.papel, uf: p.uf || null, substitui_id: p.subst || null, data_inicio: MQ.PROJETO.inicioBolsas }, pre || {});
+    const hojeVig = (h => h < MQ.PROJETO.vigencia.inicio ? MQ.PROJETO.vigencia.inicio : h > MQ.PROJETO.vigencia.fim ? MQ.PROJETO.vigencia.fim : h)(R.hoje());
+    const m = p.id ? porId(p.id) : Object.assign({ papel: p.papel, uf: p.uf || null, substitui_id: p.subst || null, data_inicio: hojeVig }, pre || {});
     const priv = p.id ? (MQ.convitesUI ? MQ.convitesUI.privado(p.id) : null) : (pre ? pre._priv : {});
     const edit = !!p.id;
     const bols = R.ehBolsista(m.papel);
@@ -503,7 +515,8 @@
         </div></fieldset>
         ${MQ.convitesUI ? (priv === undefined ? '<p class="small muted">Carregando os dados pessoais…</p>' : MQ.convitesUI.camposPessoais(Object.assign({ nome_social: m.nome_social, cadastro_arlo: p.id ? !!m.cadastro_arlo : m.cadastro_arlo }, priv || {}), false, m.papel)) : ''}
         <fieldset><legend>Bolsa</legend><div class="campos">
-          <div class="campo"><label for="c-ini">Início da bolsa</label><input id="c-ini" name="data_inicio" type="date" value="${v('data_inicio')}" min="${MQ.PROJETO.vigencia.inicio}" max="${MQ.PROJETO.vigencia.fim}" required></div>
+          <div class="campo"><label for="c-ini">Início ${m.papel === 'agente' ? 'no projeto' : 'da bolsa'}</label><input id="c-ini" name="data_inicio" type="date" value="${v('data_inicio')}" min="${MQ.PROJETO.vigencia.inicio}" max="${MQ.PROJETO.vigencia.fim}" required>
+            ${edit ? '' : '<span class="dica">Sugerimos hoje. Mude se a pessoa começou em outro dia.</span>'}</div>
         </div></fieldset>
         ${bols ? `<fieldset><legend>Previsão de atividades (opcional)</legend>
           <p class="small muted" style="margin-top:-6px">Item 6 do termo de compromisso. É só previsão: diagnóstico, implantação e visitas podem ser feitos por esta bolsista, pela outra do estado ou por outra pessoa, paga por ajuda de custo. O sistema registra quem fez cada atividade.</p>
@@ -569,6 +582,7 @@
       else if (/^conv-/.test(a) && MQ.convitesUI) await MQ.convitesUI.clique(a, el);
       else if (/^custo-/.test(a) && MQ.custosUI) await MQ.custosUI.clique(a, el);
       else if (/^fic-/.test(a) && MQ.ficUI) { S.voltarFoco = el; await MQ.ficUI.clique(a, el); }
+      else if (/^pag-/.test(a) && MQ.pagUI) { S.voltarFoco = el; await MQ.pagUI.clique(a, el); }
       else if (/^vit-/.test(a) && MQ.vitrineUI) await MQ.vitrineUI.clique(a, el);
       else if (/^campo-/.test(a) && MQ.campoUI) { S.voltarFoco = el; await MQ.campoUI.clique(a, el); }
       else if (a === 'ver') { S.voltarFoco = el; abrirPainel({ tipo: 'detalhe', id: el.dataset.id }); }
@@ -642,6 +656,7 @@
       if (/^vit-/.test(tipo) && MQ.vitrineUI) await MQ.vitrineUI.enviar(tipo, form, fd);
       if (/^custo-/.test(tipo) && MQ.custosUI) await MQ.custosUI.enviar(tipo, form, fd);
       if (/^fic-/.test(tipo) && MQ.ficUI) await MQ.ficUI.enviar(tipo, form, fd);
+      if (/^pag-/.test(tipo) && MQ.pagUI) await MQ.pagUI.enviar(tipo, form, fd);
       if (/^conv-/.test(tipo) && MQ.convitesUI) await MQ.convitesUI.enviar(tipo, form, fd);
       if (tipo === 'banco' && MQ.bancoUI) await MQ.bancoUI.enviar(tipo, form, fd);
       if (tipo === 'apl' && MQ.sugestaoUI) await MQ.sugestaoUI.enviar(tipo, form, fd);
