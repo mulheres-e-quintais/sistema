@@ -80,7 +80,7 @@
     render();
     if (r.enviados && avisar !== false) toast(r.enviados + (r.enviados > 1 ? ' registros enviados.' : ' registro enviado.'));
   }
-  MQ.ui = { S, esc, nomeUF, toast: m => toast(m), render: () => render(), abrirPainel: p => abrirPainel(p), fecharPainel: () => fecharPainel(),
+  MQ.ui = { S, esc, meuCadastro: (m, n) => meuCadastro(m, n), nomeUF, toast: m => toast(m), render: () => render(), abrirPainel: p => abrirPainel(p), fecharPainel: () => fecharPainel(),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), sincronizar: a => sincronizar(a),
     porId: id => porId(id), avatar: (m, t) => avatar(m, t), passos: m => passos(m), dadosDL: m => dadosDL(m), botaoFoto: m => botaoFoto(m), cartaoPessoa: m => cartaoPessoa(m) };
 
@@ -296,8 +296,7 @@
       <details class="hist"><summary>Arlo e termo registrados (${ok.length})</summary><div style="padding:0 18px 16px">${ok.length ? `<div class="grade-prof">${ok.map(linha).join('')}</div>` : '<p class="muted">Ninguém ainda.</p>'}</div></details>
       <div class="bloco"><h2>Sua habilitação</h2><p class="small muted">A sua é registrada pela coordenação geral.</p>${passos(eu)}</div>
       ${MQ.pagUI ? MQ.pagUI.secaoMinha() : ''}
-      <div class="bloco"><div class="cab-av">${avatar(eu, 96)}<div style="display:grid;gap:6px"><h2>Meus dados</h2>${botaoFoto(eu)}</div></div>${dadosDL(eu)}<p class="small muted">Algum dado errado? Fale com a coordenação geral.</p></div>
-      ${MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
+      ${meuCadastro(eu, 'Algum dado errado? Fale com a coordenação geral.')}
     </main>`;
   }
 
@@ -348,6 +347,14 @@
       <ul class="linha-tempo">${S.aud.slice(0, 60).map(a => `<li><time datetime="${esc(a.em)}">${fmt(a.em)}</time><span>${descreverAud(a)}</span></li>`).join('')}</ul></details>`;
   }
 
+  /* dados da própria pessoa e conta: fechados por padrão (o que falta é cobrado no quadro de pendências) */
+  function meuCadastro(m, nota) {
+    return `<details class="hist meu-cad" ${S.meuCadAberto ? 'open' : ''} data-meu-cad><summary><span><b>Meus dados e conta bancária</b><span class="small muted"> · foto, contato e conta para a FUNCERN</span></span></summary>
+      <div class="meu-cad-in"><div class="bloco"><div class="cab-av">${avatar(m, 96)}<div style="display:grid;gap:6px"><h2>Meus dados</h2>${botaoFoto(m)}</div></div>${dadosDL(m)}<p class="small muted">${esc(nota)}</p></div>
+      ${MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}</div></details>`;
+  }
+  document.addEventListener('toggle', ev => { if (ev.target.matches && ev.target.matches('[data-meu-cad]')) S.meuCadAberto = ev.target.open; }, true);
+
   function telaBolsista() {
     const m = Object.assign({}, S.eu, porId(S.eu.id) || {});   // inclui o link da foto
     const s = R.situacao(m);
@@ -364,9 +371,8 @@
       ${MQ.pagUI ? MQ.pagUI.secaoMinha() : ''}
       <section class="secao"><div class="secao-cab"><h2>Próximos formulários</h2><span class="chip pend">Em preparação</span></div>
         <p class="small muted">Até entrarem no sistema, use os modelos em papel (versão 2).</p>
-        <ul class="forms">${MQ.FORMULARIOS.filter(f => f.n > 3).map(f => `<li><span class="n">${f.n}</span><b>${esc(f.nome)}</b><span class="small muted">${esc(f.quando)}</span></li>`).join('')}</ul></section>
-      <div class="bloco"><div class="cab-av">${avatar(m, 96)}<div style="display:grid;gap:6px"><h2>Meus dados</h2>${botaoFoto(m)}</div></div>${dadosDL(m)}<p class="small muted">Algum dado errado? Fale com a coordenação técnica, que corrige o cadastro.</p></div>
-      ${MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
+        <ul class="forms">${MQ.FORMULARIOS.filter(f => f.n === 4).map(f => `<li><span class="n">${f.n}</span><b>${esc(f.nome)}</b><span class="small muted">${esc(f.quando)}</span></li>`).join('')}</ul></section>
+      ${meuCadastro(m, 'Algum dado errado? Fale com a coordenação técnica, que corrige o cadastro.')}
     </main>`;
   }
 
