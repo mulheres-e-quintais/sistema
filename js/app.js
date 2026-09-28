@@ -172,8 +172,8 @@
 
   function cartaoPessoa(m) {
     const s = R.situacao(m);
-    return `<div class="pessoa"><div style="display:grid;gap:6px;min-width:0">
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${avatar(m, 44)}<span class="nm">${esc(m.nome)}</span><span class="chip ${s.cod}">${esc(s.rot)}</span></div>
+    return `<div class="pessoa com-foto">${avatar(m, 80)}<div style="display:grid;gap:6px;min-width:0">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="nm">${esc(m.nome)}</span><span class="chip ${s.cod}">${esc(s.rot)}</span></div>
         <div class="dd"><span>${esc(m.email)}</span><span class="num">${esc(m.telefone)}</span>${m.municipio ? `<span>${esc(m.municipio)}</span>` : ''}${m.organizacao ? `<span>${esc(m.organizacao)}</span>` : ''}</div></div>
       <div class="acts"><button class="btn" data-acao="ver" data-id="${m.id}">Ver detalhes</button></div></div>`;
   }
@@ -190,8 +190,8 @@
     if (m) {
       const s = R.situacao(m);
       const plano = m.meta_diagnosticos != null ? `${m.meta_diagnosticos} diag. · ${m.meta_quintais || 0} quintais · ${m.meta_visitas || 0} visitas` : 'Plano individual não preenchido';
-      return `<button class="vagabtn" data-acao="ver" data-id="${m.id}"><span class="nm com-av">${avatar(m, 30)}<span>${esc(m.nome)}</span></span>
-        <span><span class="chip ${s.cod}">${esc(s.rot)}</span></span><span class="sub">${esc(plano)}</span></button>`;
+      return `<button class="vagabtn com-foto" data-acao="ver" data-id="${m.id}">${avatar(m, 56)}<span class="vb-t"><span class="nm">${esc(m.nome)}</span>
+        <span><span class="chip ${s.cod}">${esc(s.rot)}</span></span><span class="sub">${esc(plano)}</span></span></button>`;
     }
     const ant = ultimaDesligada(papel, uf);
     const posso = S.eu.papel === 'coord_tecnico';
@@ -207,7 +207,7 @@
       <div class="secao-cab"><div><h2 id="t-ag">Agentes de campo</h2><p>Alunas do FIC que fazem visitas por ajuda de custo · sem limite por estado · cadastradas pela coordenação técnica · veem só os quintais atribuídos</p></div></div>
       <div class="grade-uf">${MQ.UFS.map(u => { const l = ag.filter(m => m.uf === u.uf);
         return `<div class="cartao"><div class="cab-uf"><span class="uf"><span class="sigla">${u.uf}</span></span><span class="nomeuf muted">${u.nome}</span></div>
-          ${l.map(m => { const s = R.situacao(m); return `<button class="vagabtn" data-acao="ver" data-id="${m.id}"><span class="nm com-av">${avatar(m, 30)}<span>${esc(m.nome)}</span></span><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span></button>`; }).join('') || '<p class="small muted" style="padding:4px">Nenhuma agente.</p>'}
+          ${l.map(m => { const s = R.situacao(m); return `<button class="vagabtn com-foto" data-acao="ver" data-id="${m.id}">${avatar(m, 48)}<span class="vb-t"><span class="nm">${esc(m.nome)}</span><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span></span></button>`; }).join('') || '<p class="small muted" style="padding:4px">Nenhuma agente.</p>'}
           ${podeCad ? `<button class="btn peq" data-acao="novo" data-papel="agente" data-uf="${u.uf}">+ Agente em ${u.uf}</button>` : ''}</div>`; }).join('')}</div>
     </section>`;
   }
@@ -272,7 +272,7 @@
       <section class="secao"><div class="secao-cab"><h2>Próximos formulários</h2><span class="chip pend">Em preparação</span></div>
         <p class="small muted">Até entrarem no sistema, use os modelos em papel (versão 2).</p>
         <ul class="forms">${MQ.FORMULARIOS.filter(f => f.n > 3).map(f => `<li><span class="n">${f.n}</span><b>${esc(f.nome)}</b><span class="small muted">${esc(f.quando)}</span></li>`).join('')}</ul></section>
-      <div class="bloco"><div class="cab-av">${avatar(m, 56)}<div style="display:grid;gap:6px"><h2>Meus dados</h2>${botaoFoto(m)}</div></div>${dadosDL(m)}<p class="small muted">Algum dado errado? Fale com a coordenação técnica, que corrige o cadastro.</p></div>
+      <div class="bloco"><div class="cab-av">${avatar(m, 96)}<div style="display:grid;gap:6px"><h2>Meus dados</h2>${botaoFoto(m)}</div></div>${dadosDL(m)}<p class="small muted">Algum dado errado? Fale com a coordenação técnica, que corrige o cadastro.</p></div>
     </main>`;
   }
 
@@ -343,7 +343,7 @@
       ${m.meta_diagnosticos != null ? `<dl class="dl"><dt>Diagnósticos</dt><dd class="num">${m.meta_diagnosticos ?? '—'}</dd><dt>Quintais</dt><dd class="num">${m.meta_quintais ?? '—'}</dd><dt>Visitas</dt><dd class="num">${m.meta_visitas ?? '—'}</dd></dl>` : '<p class="muted small">Não preenchido.</p>'}</div>` : '';
     const hoje = R.hoje() > m.data_inicio ? R.hoje() : m.data_inicio;
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(nomeUF(m.uf)) : ''}</span>
-        <div class="cab-av">${avatar(m, 56)}<div style="display:grid;gap:4px"><h2 id="painel-t">${esc(m.nome)}</h2><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span></div></div>
+        <div class="cab-av">${avatar(m, 96)}<div style="display:grid;gap:4px"><h2 id="painel-t">${esc(m.nome)}</h2><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span></div></div>
         ${botaoFoto(m) ? `<span>${botaoFoto(m)}</span>` : ''}</div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo">
