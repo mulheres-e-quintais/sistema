@@ -137,7 +137,7 @@
       : 'Cadastre as bolsistas indicadas pelo MPA: uma de articulação estadual e uma de apoio estadual por estado.';
     let corpo = '';
     if (aba === 'visao') corpo = MQ.painelUI ? MQ.painelUI.visaoGeral(S) : '';
-    else if (aba === 'equipe') corpo = (MQ.convitesUI ? MQ.convitesUI.secaoPendentes() : '') + `
+    else if (aba === 'equipe') corpo = (MQ.convitesUI ? MQ.convitesUI.secaoPendentes() : '') + (MQ.bancoUI ? MQ.bancoUI.blocoExportar() : '') + `
       <div class="cab"><div><span class="eyebrow">Equipe do projeto · processo ${esc(MQ.PROJETO.processo)}</span><h1>Coordenação e bolsistas</h1><p>${intro}</p></div>${prazoChip()}</div>
       <div class="resumo" aria-label="Resumo da equipe">
         <div><span class="v num">${ct ? 1 : 0}<small> de 1</small></span><span class="l">coordenação técnica cadastrada</span></div>
@@ -281,6 +281,7 @@
         <p class="small muted">Até entrarem no sistema, use os modelos em papel (versão 2).</p>
         <ul class="forms">${MQ.FORMULARIOS.filter(f => f.n > 3).map(f => `<li><span class="n">${f.n}</span><b>${esc(f.nome)}</b><span class="small muted">${esc(f.quando)}</span></li>`).join('')}</ul></section>
       <div class="bloco"><div class="cab-av">${avatar(m, 96)}<div style="display:grid;gap:6px"><h2>Meus dados</h2>${botaoFoto(m)}</div></div>${dadosDL(m)}<p class="small muted">Algum dado errado? Fale com a coordenação técnica, que corrige o cadastro.</p></div>
+      ${MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
     </main>`;
   }
 
@@ -335,6 +336,9 @@
       m.status === 'desligada' ? ['Motivo', m.motivo_desligamento] : null
     ].filter(Boolean).filter(l => l[1]);
     const pv = MQ.convitesUI && (S.eu.id === m.id || /^coord/.test(S.eu.papel)) ? MQ.convitesUI.privado(m.id) : null;
+    if (MQ.bancoUI && /^coord/.test(S.eu.papel) && m.status === 'ativa' && m.papel !== 'coord_geral') {
+      const b = MQ.bancoUI.informou(m.id); if (b) linhas.push(['Conta para a FUNCERN', b.ok ? 'Informada por ela' + (b.em ? ' em ' + new Date(b.em).toLocaleDateString('pt-BR') : '') : 'Ainda não informou']);
+    }
     if (pv) linhas.push(['Nascimento', pv.data_nascimento && R.fmtData(pv.data_nascimento)], ['PIS/NIS', pv.nis], ['Endereço', MQ.convitesUI.textoEndereco(pv.endereco)],
       ['Socioeconômico', pv.socioeconomico ? 'Respondido' : null]);
     return `<dl class="dl">${linhas.filter(l => l[1]).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`;
@@ -376,6 +380,7 @@
         </form>
 
         ${plano}
+        ${m.id === S.eu.id && m.papel !== 'coord_geral' && MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
 
         <div class="bloco"><h3>Habilitação</h3>${m.papel === 'coord_geral' ? '<p class="small muted">Não se aplica.</p>' : passos(m)}
           ${editaHab && m.papel !== 'coord_geral' ? formHabilitacao(m) : ''}</div>
@@ -486,14 +491,16 @@
     const el = ev.target.closest('[data-acao]'); if (!el) return;
     const a = el.dataset.acao;
     try {
+      if (a === 'perfil' && MQ.bancoUI) MQ.bancoUI.limpar();
       if (a === 'perfil' && el.dataset.p === 'entrada') { S.verEntrada = true; S.painel = null; render(); window.scrollTo(0, 0); }
       else if (a === 'perfil') { S.verEntrada = false; S.aba = null; S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.trocarPerfil(el.dataset.p); await carregar(); render(); }
       else if (a === 'recomecar') { S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.recomecar(); await carregar(); render(); toast('Demonstração recomeçada com os dados de exemplo.'); }
       else if (a === 'modo-login') { S.modoLogin = el.dataset.m; render(); const f = $('#l-email'); if (f) f.focus(); }
-      else if (a === 'sair') { await S.api.sair(); S.eu = null; S.equipe = []; render(); }
+      else if (a === 'sair') { if (MQ.bancoUI) MQ.bancoUI.limpar(); await S.api.sair(); S.eu = null; S.equipe = []; render(); }
       else if (a === 'fechar') fecharPainel();
       else if (a === 'aba') { S.aba = el.dataset.aba; render(); window.scrollTo(0, 0); }
       else if (/^ficha/.test(a) && MQ.fichasUI) { S.voltarFoco = el; await MQ.fichasUI.clique(a, el); }
+      else if (/^banco-/.test(a) && MQ.bancoUI) await MQ.bancoUI.clique(a, el);
       else if (/^conv-/.test(a) && MQ.convitesUI) await MQ.convitesUI.clique(a, el);
       else if (/^custo-/.test(a) && MQ.custosUI) await MQ.custosUI.clique(a, el);
       else if (/^vit-/.test(a) && MQ.vitrineUI) await MQ.vitrineUI.clique(a, el);
@@ -569,6 +576,7 @@
       if (/^vit-/.test(tipo) && MQ.vitrineUI) await MQ.vitrineUI.enviar(tipo, form, fd);
       if (/^custo-/.test(tipo) && MQ.custosUI) await MQ.custosUI.enviar(tipo, form, fd);
       if (/^conv-/.test(tipo) && MQ.convitesUI) await MQ.convitesUI.enviar(tipo, form, fd);
+      if (tipo === 'banco' && MQ.bancoUI) await MQ.bancoUI.enviar(tipo, form, fd);
       if (tipo === 'cadastro') {
         const p = S.painel;
         const base = p.id ? porId(p.id) : { papel: p.papel, uf: p.uf || null, substitui_id: p.subst || null };

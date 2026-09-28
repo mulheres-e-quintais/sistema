@@ -1,8 +1,8 @@
 /* Guarda o sistema no aparelho para abrir e preencher fichas sem internet.
    Os dados vão para o servidor pela fila do próprio app quando a conexão volta. */
-const VERSAO = 'mq-v17';
+const VERSAO = 'mq-v18';
 const ARQUIVOS = ['./', 'index.html', 'css/app.css', 'js/config.js', 'js/dados.js', 'js/regras.js',
-  'js/api-demo.js', 'js/api-supabase.js', 'js/fila.js', 'js/fichas.js', 'js/geo.js', 'js/painel.js', 'js/campo.js', 'js/vitrine.js', 'js/custos.js', 'js/convites.js', 'js/app.js',
+  'js/api-demo.js', 'js/api-supabase.js', 'js/fila.js', 'js/fichas.js', 'js/geo.js', 'js/painel.js', 'js/campo.js', 'js/vitrine.js', 'js/custos.js', 'js/convites.js', 'js/banco.js', 'js/app.js',
   'assets/logo-claro.svg', 'assets/isotipo.svg', 'assets/icon-192.png', 'manifest.webmanifest'];
 const EXTERNOS = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 self.addEventListener('install', e => e.waitUntil(caches.open(VERSAO).then(c => c.addAll(ARQUIVOS)).then(() => self.skipWaiting())));

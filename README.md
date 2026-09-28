@@ -44,6 +44,7 @@ js/campo.js             roteiro de visitas, agente de campo, diagnóstico e plan
 js/vitrine.js           tela de entrada com números e página pública "O projeto em números"
 js/custos.js            cálculo da ajuda de custo por visita
 js/convites.js          link de cadastro (a pessoa preenche; a coordenação confere e aprova)
+js/banco.js             dados bancários para a FUNCERN
 js/app.js               telas e navegação
 sw.js, manifest         instalação no celular e abertura sem internet
 supabase/01_criar_banco.sql      etapa 1: equipe, regras de acesso (RLS), auditoria, login
@@ -53,6 +54,7 @@ supabase/04_vitrine_e_custos.sql etapa 4: vitrine pública e custo das visitas
 supabase/05_dados_exemplo.sql    dados inventados para testar (opcional)
 supabase/07_fotos_equipe.sql     etapa 7: foto da equipe (sem foto, mostra as iniciais)
 supabase/08_convites.sql         etapa 8: link de cadastro, dados pessoais complementares, desligar só sem pendência
+supabase/09_dados_bancarios.sql  etapa 9: conta e Pix para a FUNCERN (só a pessoa vê; exportação registrada)
 supabase/06_apagar_exemplo.sql   apaga os dados inventados
 supabase/schema.sql              versão antiga da etapa 1 (não usar; mantida para histórico)
 supabase/tests/         testes das regras do banco
@@ -73,7 +75,7 @@ Use o seletor "Ver como" para alternar entre coordenação geral, coordenação 
 ## Colocar em produção (cerca de 1 hora)
 
 1. **Criar o projeto no Supabase** (supabase.com, plano gratuito). Escolha a região **South America (São Paulo)** para os dados ficarem no Brasil. Crie a conta com um e-mail institucional, não pessoal, para o projeto não depender de uma pessoa.
-2. **Criar o banco:** em *SQL Editor*, rode em ordem, cada um inteiro: `01_criar_banco.sql`, `02_fichas.sql`, `03_campo.sql`, `04_vitrine_e_custos.sql`, `07_fotos_equipe.sql`, `08_convites.sql`. O 02, o 03 e o 04 podem ser rodados de novo sem estragar dados. Enquanto uma etapa não for rodada, o sistema funciona e mostra "Ainda não instalado no servidor" na parte correspondente.
+2. **Criar o banco:** em *SQL Editor*, rode em ordem, cada um inteiro: `01_criar_banco.sql`, `02_fichas.sql`, `03_campo.sql`, `04_vitrine_e_custos.sql`, `07_fotos_equipe.sql`, `08_convites.sql`, `09_dados_bancarios.sql`. O 02, o 03 e o 04 podem ser rodados de novo sem estragar dados. Enquanto uma etapa não for rodada, o sistema funciona e mostra "Ainda não instalado no servidor" na parte correspondente.
 3. **Cadastrar a coordenação geral:** o fim do `01_criar_banco.sql` tem um `insert` com os dados da coordenação geral. Confira nome, CPF, e-mail e telefone antes de rodar.
 4. **Login com senha:** em *Authentication > Sign In / Providers > Email*, **desligue "Confirm email"**. Cada pessoa cria a própria senha em "Primeiro acesso", e o banco só aceita e-mails já cadastrados pela coordenação. Assim o sistema não depende de servidor de e-mail. Para "esqueci a senha": a coordenação geral apaga o usuário em *Authentication > Users* e a pessoa faz o primeiro acesso de novo (o cadastro na equipe não é afetado). No painel, cada pessoa mostra se já fez o primeiro acesso: confira logo depois de cadastrar alguém.
 5. **Ligar o sistema ao banco:** em `js/config.js`, preencha `supabaseUrl` e `supabaseAnonKey` (em *Project Settings > API*). A chave anon é pública por desenho; quem protege os dados são as regras do banco.
@@ -125,7 +127,7 @@ psql -d teste4 -f supabase/tests/test_vitrine.sql     # 14 casos da vitrine e do
 
 ## Decisões tomadas
 
-- **Não guarda conta bancária nem Pix.** Esses dados vão direto para a FUNCERN, que paga as bolsas. Menos dado guardado significa menos risco (LGPD, art. 6º, III).
+- **Conta bancária e Pix** (exigência da FUNCERN): ficam numa tabela sem acesso direto. Só a própria pessoa informa e vê os números, depois de entrar no sistema; as coordenações veem apenas se foi informado; só a coordenação geral gera a planilha para a FUNCERN, e cada geração fica no histórico. Esses dados não entram no cache do celular nem nos dados de exemplo.
 - **Login com senha criada no primeiro acesso**, sem depender de envio de e-mail. A conta só é criada se o e-mail já estiver cadastrado pela coordenação. Limite conhecido: ninguém confirma que a pessoa é dona do e-mail, então quem souber o e-mail de uma bolsista recém-cadastrada poderia criar a senha antes dela. Por isso, a coordenação confere no painel se o primeiro acesso foi feito pela própria pessoa. Com um servidor de e-mail funcionando, dá para voltar ao login por link.
 - **Ajuda de custo por visita:** R$ 50 por hora (diagnóstico 3 h; implantação, acompanhamento e avaliação 2 h), carro a 10 km/L, 1 refeição por visita. Decisão da coordenação geral: agentes e bolsistas recebem as horas. Confirmar com a FUNCERN, porque bolsistas já recebem bolsa mensal pela mesma atividade.
 - **Visita de avaliação** ainda não pode ser agendada: o plano prevê 160 dias de campo por estado (4 visitas × 40 quintais); uma 5ª visita passaria desse total.

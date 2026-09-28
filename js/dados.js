@@ -154,3 +154,8 @@ MQ.CUSTO_PADRAO = {
   fator_estrada: 1.3       // linha reta × 1,3 ≈ distância pela estrada (estimativa)
 };
 MQ.ETAPAS_CUSTO = { diagnostico: 'Diagnóstico', implantacao: 'Implantação', acompanhamento: 'Acompanhamento', avaliacao: 'Avaliação' };
+
+/* ---------- Bancos (código de compensação) para o cadastro na FUNCERN ---------- */
+MQ.BANCOS = [['001', 'Banco do Brasil'], ['104', 'Caixa Econômica Federal'], ['004', 'Banco do Nordeste'], ['237', 'Bradesco'], ['341', 'Itaú'],
+  ['033', 'Santander'], ['260', 'Nubank'], ['077', 'Inter'], ['756', 'Sicoob'], ['748', 'Sicredi'], ['336', 'C6 Bank'], ['323', 'Mercado Pago'],
+  ['380', 'PicPay'], ['290', 'PagBank'], ['212', 'Banco Original'], ['070', 'BRB'], ['041', 'Banrisul']];

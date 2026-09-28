@@ -143,6 +143,7 @@
     s += `<circle cx="${320 + h % 40}" cy="36" r="18" fill="#E7B04A"/></svg>`;
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
   }
+  const bancoMem = {};   // demonstração: dados bancários só na memória (somem ao recarregar), como exemplo de cuidado
   function gravar() { try { localStorage.setItem(CHAVE, JSON.stringify(mem)); } catch (e) { /* segue só em memória */ } }
   const copia = o => JSON.parse(JSON.stringify(o));
   const falha = msg => { const e = new Error(msg); e.regra = true; return e; };
@@ -374,6 +375,16 @@
       const d = ler(); const eu = euMesmo(); const m = d.equipe.find(x => x.id === id);
       if (!eu || !m || !(eu.id === id || R.podeCadastrar(eu.papel, m.papel))) throw falha('Seu perfil não pode alterar estes dados.');
       d.privado = d.privado || {}; d.privado[id] = Object.assign({ equipe_id: id }, copia(dados)); gravar();
+    },
+    async meusDadosBancarios() { const eu = euMesmo(); return eu ? copia((bancoMem[eu.id]) || null) : null; },
+    async salvarMeusDadosBancarios(dd) { const eu = euMesmo(); if (!eu) throw falha('Entre no sistema.'); bancoMem[eu.id] = Object.assign({}, dd, { atualizado_em: new Date().toISOString() }); },
+    async situacaoBancaria() {
+      const eu = euMesmo(); if (!eu || !/^coord/.test(eu.papel)) return [];
+      return ler().equipe.filter(m => m.status === 'ativa' && m.papel !== 'coord_geral').map(m => ({ equipe_id: m.id, informado: !!bancoMem[m.id], atualizado_em: (bancoMem[m.id] || {}).atualizado_em || null }));
+    },
+    async exportarDadosBancarios() {
+      const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral gera a planilha bancária para a FUNCERN.');
+      return ler().equipe.filter(m => m.status === 'ativa' && bancoMem[m.id]).map(m => Object.assign({ nome: m.nome, cpf: m.cpf, papel: m.papel, uf: m.uf, email: m.email, telefone: m.telefone }, bancoMem[m.id]));
     },
     async listarPreCadastros() {
       const eu = euMesmo(); if (!eu) return [];
