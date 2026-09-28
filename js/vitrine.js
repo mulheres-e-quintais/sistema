@@ -81,7 +81,7 @@
         <div class="vit-mapa">${MQ.painelUI.mapaUFs(t.porUF('selecionadas'), 'mulheres selecionadas')}<span class="vit-leg">Mulheres selecionadas por estado</span></div>
         <div id="vit-foto">${foto(d, V.foto, 'vit-foto') || `<div class="vit-sem-foto"><span>As fotos dos quintais aparecem aqui quando a coordenação aprovar, só de quem autorizou.</span></div>`}</div>
       </div>
-      <p class="vit-rodape"><a href="#numeros" class="vit-link">Ver o projeto em números →</a><span>Totais sem nomes nem endereços${quando() ? ' · atualizado ' + quando() : ''}</span></p>`;
+      <p class="vit-rodape"><span>Totais sem nomes nem endereços${quando() ? ' · atualizado ' + quando() : ''}</span></p>`;
   }
   function desenharEntrada() {
     const el = $('#vitrine'); if (!el) return;
