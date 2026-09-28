@@ -180,7 +180,6 @@
     if (PUB.token !== token) { PUB.token = token; PUB.conv = null; PUB.enviado = false;
       setTimeout(async () => { try { PUB.conv = await S().api.verConvite(token); } catch (e) { PUB.conv = { valido: false, motivo: 'erro', erro: e.message }; } desenhar(); }, 0); }
     return `<main class="ent ent-conv"><div class="ent-fundo" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i></div>
-      <div class="conv-topo"><div class="ent-marca"><img src="assets/isotipo.svg" alt="" width="34" height="48"><span><b class="serif">Mulheres &amp; Quintais</b><small>Quintais Produtivos para Mulheres Rurais</small></span></div></div>
       <div id="convite" class="conv-miolo">${corpo()}</div></main>`;
   }
   function desenhar() { const el = $('#convite'); if (el) el.innerHTML = corpo(); }

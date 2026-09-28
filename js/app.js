@@ -104,8 +104,8 @@
     const modoDemo = S.api.modo === 'demo';
     const conv = /^#convite=([\w-]+)/.exec(location.hash);
     if (conv || location.hash === '#numeros') { S.painel = null; const pf = $('#painel'); if (pf) pf.remove(); }
-    if (conv && MQ.convitesUI) { app.innerHTML = MQ.convitesUI.pagina(conv[1]); document.title = 'Cadastro · Mulheres & Quintais'; return; }
-    if (location.hash === '#numeros' && MQ.vitrineUI) { app.innerHTML = barra(true) + MQ.vitrineUI.pagina(); document.title = 'O projeto em números · Mulheres & Quintais'; return; }
+    if (conv && MQ.convitesUI) { app.innerHTML = barra(true, true) + MQ.convitesUI.pagina(conv[1]) + rodape(); document.title = 'Cadastro · Mulheres & Quintais'; return; }
+    if (location.hash === '#numeros' && MQ.vitrineUI) { app.innerHTML = barra(true) + MQ.vitrineUI.pagina() + rodape(); document.title = 'O projeto em números · Mulheres & Quintais'; return; }
     document.title = 'Mulheres & Quintais';
     const telaEntrada = (modoDemo && S.verEntrada) || (!S.eu && !modoDemo && !S.api.temSessao);
     let h = (telaEntrada ? '' : barra()) + (modoDemo ? faixaDemo() : '');
@@ -121,17 +121,26 @@
       else if (S.eu.papel === 'auxiliar_adm') h += telaAuxiliar();
       else h += telaBolsista();
     }
-    app.innerHTML = h;
+    app.innerHTML = h + rodape();
     if (S.painel) desenharPainel();
     if (S.rolarPara && S.eu && !S.verEntrada) { const y = S.rolarPara; S.rolarPara = 0; requestAnimationFrame(() => window.scrollTo(0, y)); }
     else if (S.eu && !S.verEntrada && MQ.pendUI) MQ.pendUI.cobrar();
   }
 
-  function barra(publica) {
+  /* rodapé de todas as páginas */
+  function rodape() {
+    return `<footer class="rodape"><div class="rodape-in">
+      <div class="rodape-marca"><img src="assets/isotipo.svg" alt="" width="26" height="37"><span><b>Mulheres &amp; Quintais</b><small>Quintais Produtivos para Mulheres Rurais</small></span></div>
+      <p class="rodape-org">IFRN Campus Apodi · MPA · FUNCERN<br><span>Processo ${esc(MQ.PROJETO.processo)}</span></p>
+      <p class="rodape-lgpd">Os dados deste sistema são protegidos pela Lei Geral de Proteção de Dados (Lei nº 13.709/2018) e usados só para o projeto.
+        <button type="button" class="link" data-acao="ajuda">Ajuda</button></p>
+    </div></footer>`;
+  }
+  function barra(publica, semBotao) {
     return `<header class="barra"><div class="barra-in">
       <div class="marca"><img class="emb" src="assets/isotipo.svg" alt="" width="36" height="52"><img src="assets/logo-claro.svg" alt="Mulheres &amp; Quintais" width="112" height="36"><span class="sep" aria-hidden="true"></span>
         <span class="sis"><b>Sistema do projeto</b>Quintais Produtivos para Mulheres Rurais</span></div>
-      ${publica ? `<a class="btn-barra" href="#">${S.eu ? 'Voltar ao sistema' : 'Entrar'}</a>` : S.eu && !S.verEntrada ? `<div class="quem"><button class="btn-ajuda" data-acao="ajuda" title="Ajuda desta tela" aria-label="Ajuda desta tela">?</button><button class="btn-meus" data-acao="meus-dados" title="Meus dados" aria-label="Meus dados e conta bancária">${avatar(Object.assign({}, S.eu, porId(S.eu.id) || {}), 34)}</button><span><span class="nome">${esc(S.eu.nome)}</span><br><span class="papel">${esc(P[S.eu.papel].nome)}${S.eu.uf ? ' · ' + esc(S.eu.uf) : ''}</span></span>
+      ${publica ? (semBotao ? '' : `<a class="btn-barra" href="#">${S.eu ? 'Voltar ao sistema' : 'Entrar'}</a>`) : S.eu && !S.verEntrada ? `<div class="quem"><button class="btn-ajuda" data-acao="ajuda" title="Ajuda desta tela" aria-label="Ajuda desta tela">?</button><button class="btn-meus" data-acao="meus-dados" title="Meus dados" aria-label="Meus dados e conta bancária">${avatar(Object.assign({}, S.eu, porId(S.eu.id) || {}), 34)}</button><span><span class="nome">${esc(S.eu.nome)}</span><br><span class="papel">${esc(P[S.eu.papel].nome)}${S.eu.uf ? ' · ' + esc(S.eu.uf) : ''}</span></span>
         ${S.api.modo === 'supabase' ? '<button class="btn-barra" data-acao="sair">Sair</button>' : ''}</div>` : ''}
     </div></header>`;
   }
@@ -445,7 +454,6 @@
           ${primeiro ? '' : '<p class="nota">Esqueceu a senha? A coordenação geral libera um novo primeiro acesso.</p>'}
           <button type="button" class="link ent-ajuda" data-acao="ajuda" data-k="entrada">Precisa de ajuda para entrar?</button>
         </form>
-        <p class="ent-rodape">IFRN Campus Apodi · MPA · FUNCERN</p>
       </section>
     </main>`;
   }
@@ -600,7 +608,7 @@
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>`;
     // cadastro novo: primeiro escolhe como (link para a pessoa preencher ou à mão)
     if (!edit && !pre && MQ.convitesUI && p.modo !== 'manual') {
-      if (p.modo === 'link') return cabP + `<div class="painel-corpo">${MQ.convitesUI.blocoLink(p)}<button type="button" class="link troca-modo" data-acao="cad-modo" data-m="manual">Prefiro cadastrar à mão agora →</button></div>`;
+      if (p.modo === 'link') return cabP + `<div class="painel-corpo">${MQ.convitesUI.blocoLink(p)}<button type="button" class="cad-modo cad-modo-2" data-acao="cad-modo" data-m="manual"><b>Prefere cadastrar à mão?</b><span>Abra o formulário e digite os dados você mesmo.</span></button></div>`;
       return cabP + `<div class="painel-corpo"><p class="muted">Como você quer fazer este cadastro?</p>
         <div class="cad-modos">
           <button class="cad-modo" data-acao="cad-modo" data-m="link" autofocus><b>Gerar link de cadastro</b>
@@ -613,7 +621,7 @@
         <h2 id="painel-t">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(nomeUF(m.uf)) : ''}</h2></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo"><form class="f" data-form="cadastro" novalidate>
-        ${!edit && !pre && MQ.convitesUI ? `<button type="button" class="link troca-modo" data-acao="cad-modo" data-m="link">← Prefiro gerar um link para a pessoa preencher</button>` : ''}
+        ${!edit && !pre && MQ.convitesUI ? `<button type="button" class="cad-modo cad-modo-2 cad-modo-topo" data-acao="cad-modo" data-m="link"><b>Prefere que a pessoa preencha?</b><span>Gere um link e mande pelo WhatsApp.</span></button>` : ''}
         <div class="fixo">${m.papel === 'agente' ? '<span class="small muted">Pagamento</span><b>Ajuda de custo por visita</b>' : `<span class="small muted">Função</span><b>${esc(P[m.papel].nome)}</b>`}
           <span class="small">${P[m.papel].faz ? esc(P[m.papel].faz) : 'Planeja, coordena e acompanha a execução técnica nos 5 estados.'}</span>
           ${['professor_fic', 'auxiliar_adm'].includes(m.papel) ? '<span class="small">Habilitação: cadastro no Arlo (FUNCERN) e termo de compromisso (não se matricula no FIC).</span>' : ''}
