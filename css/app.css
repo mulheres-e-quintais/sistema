@@ -762,3 +762,11 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .pend-item.seu { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
 .pend-item p { margin: 4px 0 0; color: var(--ink-2); }
 .pend-item > div { flex: 1 1 220px; }
+
+/* cadastro novo: escolher link ou à mão */
+.cad-modos { display: grid; gap: 12px; }
+.cad-modo { text-align: left; display: flex; flex-direction: column; gap: 6px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; position: relative; }
+.cad-modo:hover, .cad-modo:focus-visible { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+.cad-modo b { font-size: 16px; }
+.cad-modo span { color: var(--ink-2); font-size: 14px; line-height: 1.45; }
+.cad-modo em { order: -1; font: 600 11px var(--cond, inherit); letter-spacing: .06em; text-transform: uppercase; font-style: normal; color: var(--accent); }

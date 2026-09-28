@@ -524,6 +524,21 @@
     const v = k => esc(m[k] == null ? '' : m[k]);
     const munis = bols ? (MQ.MUNICIPIOS[m.uf] || []) : [];
     const titulo = edit ? 'Editar cadastro' : subst ? 'Cadastrar substituta' : 'Novo cadastro';
+    const cabP = `<div class="painel-cab"><div class="t"><span class="eyebrow">${titulo}</span>
+        <h2 id="painel-t">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(nomeUF(m.uf)) : ''}</h2></div>
+        <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>`;
+    // cadastro novo: primeiro escolhe como (link para a pessoa preencher ou à mão)
+    if (!edit && !pre && MQ.convitesUI && p.modo !== 'manual') {
+      if (p.modo === 'link') return cabP + `<div class="painel-corpo">${MQ.convitesUI.blocoLink(p)}
+        <div class="acoes"><button class="btn" data-acao="cad-modo" data-m="">← Voltar</button></div></div>`;
+      return cabP + `<div class="painel-corpo"><p class="muted">Como você quer fazer este cadastro?</p>
+        <div class="cad-modos">
+          <button class="cad-modo" data-acao="cad-modo" data-m="link" autofocus><b>Gerar link de cadastro</b>
+            <span>A pessoa preenche os próprios dados pelo celular e aceita o termo de uso dos dados. Você confere e aprova. Menos digitação e menos erro.</span><em>Recomendado</em></button>
+          <button class="cad-modo" data-acao="cad-modo" data-m="manual"><b>Cadastrar à mão agora</b>
+            <span>Você digita os dados. Use quando já tem tudo em mãos ou a pessoa não tem internet.</span></button>
+        </div></div>`;
+    }
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">${titulo}</span>
         <h2 id="painel-t">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(nomeUF(m.uf)) : ''}</h2></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
@@ -532,7 +547,7 @@
           <span class="small">${P[m.papel].faz ? esc(P[m.papel].faz) : 'Planeja, coordena e acompanha a execução técnica nos 5 estados.'}</span>
           ${['professor_fic', 'auxiliar_adm'].includes(m.papel) ? '<span class="small">Habilitação: cadastro no Arlo (FUNCERN) e termo de compromisso (não se matricula no FIC).</span>' : ''}
           ${m.papel === 'agente' ? '<span class="small">Precisa estar matriculada no FIC e cadastrada na FUNCERN antes da primeira visita paga. Vê só os quintais atribuídos a ela.</span>' : ''}</div>
-        ${!edit && !pre && MQ.convitesUI ? MQ.convitesUI.blocoLink(p) : ''}
+        ${!edit && !pre && MQ.convitesUI ? '<div class="acoes" style="margin:0"><button class="btn peq" type="button" data-acao="cad-modo" data-m="">← Voltar (link ou à mão)</button></div>' : ''}
         ${pre ? `<div class="aviso">Dados enviados por ela pelo link em ${R.fmtData(String(pre._pre.enviado_em).slice(0, 10))}. Confira, complete o que falta e salve: ao salvar, o cadastro é aprovado.</div>` : ''}
         ${subst ? `<div class="aviso">Substitui <b>${esc(subst.nome)}</b>, desligada em ${R.fmtData(subst.data_fim)}. O histórico liga as duas.</div>` : ''}
         <fieldset><legend>Dados pessoais</legend><div class="campos">
@@ -606,6 +621,7 @@
       if (a === 'perfil' && el.dataset.p === 'entrada') { S.verEntrada = true; S.painel = null; render(); window.scrollTo(0, 0); }
       else if (a === 'perfil') { S.verEntrada = false; S.aba = null; S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.trocarPerfil(el.dataset.p); await carregar(); render(); }
       else if (a === 'recomecar') { S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.recomecar(); await carregar(); render(); toast('Demonstração recomeçada com os dados de exemplo.'); }
+      else if (a === 'cad-modo') { abrirPainel(Object.assign({}, S.painel, { modo: el.dataset.m || undefined })); }
       else if (a === 'copiar-texto') { const t = el.closest('.bloco').querySelector('textarea'); try { await navigator.clipboard.writeText(t.value); toast('Mensagem copiada.'); } catch (e) { t.select(); toast('Selecione e copie a mensagem.'); } }
       else if (a === 'modo-login') { S.modoLogin = el.dataset.m; render(); const f = $('#l-email'); if (f) f.focus(); }
       else if (a === 'sair') { if (MQ.bancoUI) MQ.bancoUI.limpar(); try { Object.keys(sessionStorage).filter(k => /^mq-pend-visto-/.test(k)).forEach(k => sessionStorage.removeItem(k)); } catch (e) {} S.pendVisto = false; await S.api.sair(); S.eu = null; S.equipe = []; render(); }
