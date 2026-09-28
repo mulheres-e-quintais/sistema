@@ -579,9 +579,15 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 
 /* ---------- proposta de roteiro ---------- */
 .custo-nav { justify-self: start; }
-.tab-plano { min-width: 940px; }
-.tab-plano td, .tab-plano th { padding: 8px 12px; white-space: nowrap; }
-.tab-plano th { font-size: 11px; letter-spacing: .03em; }
+.tab-plano { min-width: 980px; table-layout: auto; }
+.tab-plano td, .tab-plano th { padding: 11px 14px; white-space: nowrap; }
+.tab-plano th { font-size: 11px; letter-spacing: .05em; }
+.tab-plano th:not(:first-child), .tab-plano td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+.tab-plano td:first-child { width: 1%; }
+.tab-plano tr.vazia td { color: var(--muted); }
+.tab-plano tr.vazia td b { font-weight: 500; }
+.tab-plano tr.vazia .link { color: var(--muted); }
+.tab-plano th:nth-child(9), .tab-plano td:nth-child(9) { background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .tab-plano tr.tot td { border-top: 2px solid var(--line-2); background: var(--surface-2); }
 .barras-mes { display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 6px; align-items: end; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 12px 10px; }
 .bm { display: grid; gap: 4px; justify-items: center; min-width: 0; }
@@ -675,3 +681,18 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
   .so-largo { display: none; } .so-cel { display: inline; }
   .quadro-sel td, .quadro-sel th, .tab-plano td, .tab-plano th, .tab-campo-uf td, .tab-campo-uf th { padding: 10px 6px; }
 }
+
+/* números centralizados nas tabelas de estado (Seleção e Campo) */
+.quadro-sel th:not(:first-child), .quadro-sel td:not(:first-child) { text-align: center; }
+.quadro .c { text-align: center; }
+.dias-cel { display: grid; gap: 4px; max-width: 200px; }
+/* escolha com explicação (Proposta de roteiro) */
+.escolha { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; max-width: 760px; }
+.escolha button { display: grid; gap: 3px; text-align: left; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r); background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; position: relative; padding-left: 40px; }
+.escolha button::before { content: ''; position: absolute; left: 14px; top: 15px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line-2); background: var(--surface); }
+.escolha button[aria-pressed="true"] { border-color: var(--accent); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--accent); }
+.escolha button[aria-pressed="true"]::before { border-color: var(--accent); background: radial-gradient(circle, var(--accent) 45%, var(--surface) 50%); }
+.escolha button span { font-size: 13px; color: var(--muted); }
+@media (max-width: 640px) { .escolha { grid-template-columns: 1fr; } }
+.quadro-sel td, .tab-campo-uf td { vertical-align: middle; }
+.quadro-sel .bar { width: 100%; }
