@@ -256,3 +256,24 @@ legend { font: 600 12px/1.2 var(--cond); letter-spacing: .09em; text-transform: 
   .painel { animation: entra .18s ease-out; }
   @keyframes entra { from { transform: translateX(24px); opacity: .6; } to { transform: none; opacity: 1; } }
 }
+
+/* ---------- fichas de indicação ---------- */
+.lista-fichas { display: grid; gap: 6px; }
+.ficha-linha { background: var(--surface); border: 1px solid var(--line); min-height: 0; }
+.ficha-linha:hover { border-color: var(--marrom-2); }
+.criterio { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 14px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 14px; color: var(--ink); }
+.criterio.tem-erro, .check.tem-erro { border-color: var(--crit); box-shadow: 0 0 0 1px var(--crit); }
+@media (max-width: 520px) { .criterio { grid-template-columns: 1fr; } }
+.sn-par { display: inline-flex; gap: 6px; }
+.sn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-2); border-radius: 999px; padding: 6px 14px; font-size: 14px; font-weight: 500; cursor: pointer; background: var(--surface); color: var(--ink-2); user-select: none; }
+.sn input { position: absolute; opacity: 0; pointer-events: none; }
+.sn:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.sn.on { background: var(--marrom); border-color: var(--marrom); color: var(--creme); }
+:root[data-theme="dark"] .sn.on { background: var(--areia); border-color: var(--areia); color: var(--marrom); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sn.on { background: var(--areia); border-color: var(--areia); color: var(--marrom); } }
+.sn.off { opacity: .45; cursor: not-allowed; }
+fieldset > .fixo { margin: 0; }
+.demo-in > span { max-width: 100%; }
+.seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+@media (max-width: 420px) { .seg button { padding: 5px 9px; font-size: 12px; } }
+.chip.crit { background: var(--crit-bg); color: var(--crit); }

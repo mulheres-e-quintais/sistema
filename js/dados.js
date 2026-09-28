@@ -61,3 +61,40 @@ MQ.FORMULARIOS = [
   { n: 4, nome: 'Termo de recebimento do kit', quando: 'Na entrega do kit, com foto' },
   { n: 5, nome: 'Relatório de visita técnica', quando: 'Uma por visita' }
 ];
+
+/* ---------- Ficha de indicação e seleção (modelo v2, set/2026) ---------- */
+MQ.CRITERIOS = [
+  ['c_agricultora', 'É mulher agricultora familiar e mora na comunidade atendida'],
+  ['c_maior18', 'Tem 18 anos ou mais'],
+  ['c_espaco', 'Tem espaço de quintal para produzir (próprio, cedido ou de uso da família)'],
+  ['c_agua', 'Tem fonte de água que atende o quintal no período seco (cisterna de produção, poço, açude/barreiro, rede). Só carro-pipa ou só cisterna de consumo não contam'],
+  ['c_disponibilidade', 'Tem disponibilidade para participar do diagnóstico, das visitas e das formações'],
+  ['c_sem_kit', 'Não recebeu kit igual de outro programa nos últimos 2 anos'],
+  ['c_sem_parentesco', 'Não é parente, até o 3º grau, de integrante da equipe do projeto (IFRN, FUNCERN, MPA ou bolsistas)'],
+  ['c_casa_unica', 'Ninguém da mesma casa foi selecionado']
+];
+MQ.PRIORIDADES = [
+  ['p_sustento', 'É a principal responsável pelo sustento da família', 2],
+  ['p_cadunico', 'Família inscrita no CadÚnico', 2],
+  ['p_sem_ater', 'Não tem acesso a assistência técnica (ATER) hoje', 2],
+  ['p_raca_povo', 'Mulher negra, indígena, quilombola ou de comunidade tradicional', 1],
+  ['p_jovem', 'Jovem de 18 a 29 anos', 1],
+  ['p_grupo', 'Participa de grupo de mulheres, associação ou do MPA', 1],
+  ['p_caf', 'Tem inscrição no CAF (Cadastro da Agricultura Familiar)', 1]
+];
+MQ.RESULTADOS = {
+  selecionada:  { nome: 'Selecionada', cls: 'ok' },
+  lista_espera: { nome: 'Lista de espera', cls: 'pend' },
+  sem_agua:     { nome: 'Sem água: encaminhada', cls: 'crit' },
+  nao_atende:   { nome: 'Não atende aos critérios', cls: 'off' }
+};
+MQ.SITUACOES = {
+  aguardando: { nome: 'Aguardando aprovação', cls: 'pend' },
+  aprovada:   { nome: 'Aprovada', cls: 'ok' },
+  devolvida:  { nome: 'Devolvida para correção', cls: 'crit' }
+};
+MQ.VAGAS_UF = 40;
+MQ.TERMO = {
+  finalidade: 'O Projeto Quintais Produtivos para Mulheres Rurais, executado pelo IFRN com recursos do MDA, em parceria com o MPA e a FUNCERN, vai usar os seus dados só para: fazer o diagnóstico e o plano do seu quintal; comprar e entregar o kit e acompanhar a produção; prestar contas ao MDA e aos órgãos de controle (CGU, TCU); e produzir relatórios sem mostrar o seu nome quando os dados forem divulgados em números.',
+  direitos: 'Você pode, a qualquer momento e sem custo, saber quais dados o projeto tem sobre você, pedir correção e retirar este consentimento. A retirada não apaga os registros que o projeto é obrigado a guardar para a prestação de contas. Os dados não serão vendidos nem repassados para outros fins (Lei nº 13.709/2018).'
+};

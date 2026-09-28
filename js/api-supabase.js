@@ -4,7 +4,12 @@
   let sb = null;
   let euCache = null;
 
-  const erro = e => { const x = new Error(R.mensagemErro(e)); x.original = e; return x; };
+  const erro = e => {
+    const x = new Error(R.mensagemErro(e)); x.original = e;
+    x.semRede = !navigator.onLine || /Failed to fetch|NetworkError|Load failed|network/i.test(String((e && e.message) || e));
+    return x;
+  };
+  const lerEuGuardado = () => { try { return JSON.parse(localStorage.getItem('mq-eu') || 'null'); } catch (e) { return null; } };
   const CAMPOS = ['papel', 'uf', 'nome', 'cpf', 'email', 'telefone', 'municipio', 'organizacao', 'data_inicio',
     'meta_diagnosticos', 'meta_quintais', 'meta_visitas', 'matricula_fic_em', 'matricula_fic_numero', 'docs_funcern_em',
     'termo_path', 'termo_assinado_em', 'obs_habilitacao', 'consentimento_lgpd', 'substitui_id', 'status', 'data_fim', 'motivo_desligamento'];
@@ -16,16 +21,25 @@
       sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, {
         auth: { persistSession: true, detectSessionInUrl: true }
       });
-      const { data } = await sb.auth.getSession();
-      this.temSessao = !!data.session;
-      if (!data.session) return null;
-      return this.eu(true);
+      let sessao = null;
+      try { sessao = (await sb.auth.getSession()).data.session; } catch (e) { /* sem rede */ }
+      const guardado = lerEuGuardado();
+      if (!sessao) {
+        // Sem internet, a sessão pode não ser renovada: usa o perfil guardado para trabalhar offline
+        if (!navigator.onLine && guardado) { this.temSessao = true; this.offline = true; euCache = guardado; return guardado; }
+        this.temSessao = false; return null;
+      }
+      this.temSessao = true;
+      try { return await this.eu(true); }
+      catch (e) { if (guardado && (e.semRede || !navigator.onLine)) { this.offline = true; euCache = guardado; return guardado; } throw e; }
     },
     async eu(forcar) {
       if (euCache && !forcar) return euCache;
       const { data, error } = await sb.rpc('vincular_conta');
       if (error) throw erro(error);
       euCache = data && data.id ? data : null;
+      try { if (euCache) localStorage.setItem('mq-eu', JSON.stringify(euCache)); else localStorage.removeItem('mq-eu'); } catch (e) {}
+      this.offline = false;
       return euCache;
     },
     async entrar(email) {
@@ -69,7 +83,40 @@
       this.temSessao = true;
       return this.eu(true);
     },
-    async sair() { euCache = null; this.temSessao = false; await sb.auth.signOut(); },
+    /* ---------- Fichas de indicação ---------- */
+    async listarFichas() {
+      const { data, error } = await sb.from('fichas').select('*').order('criado_em', { ascending: false });
+      if (error) throw erro(error);
+      return data;
+    },
+    async salvarFicha(dados, fotos) {
+      const f = Object.assign({}, dados);
+      for (const [campo, blob] of Object.entries(fotos || {})) {
+        if (!blob) continue;
+        const ext = /pdf/.test(blob.type) ? 'pdf' : 'jpg';
+        const path = f.uf + '/' + f.id + '/' + campo + '.' + ext;
+        const { error } = await sb.storage.from('fichas').upload(path, blob, { upsert: true, contentType: blob.type || 'image/jpeg' });
+        if (error) throw erro(error);
+        f['foto_' + campo + '_path'] = path;
+      }
+      ['tem_foto_ficha', 'tem_foto_termo', 'pontos', 'situacao', 'aprovada_por', 'aprovada_em', 'obs_coordenacao', 'bolsista_id', 'criado_em', 'atualizado_em']
+        .forEach(k => delete f[k]);
+      const { data, error } = await sb.from('fichas').upsert(f, { onConflict: 'id' }).select().single();
+      if (error) throw erro(error);
+      return data;
+    },
+    async decidirFicha(id, situacao, obs) {
+      const { data, error } = await sb.from('fichas').update({ situacao, obs_coordenacao: obs || null }).eq('id', id).select().single();
+      if (error) throw erro(error);
+      return data;
+    },
+    async linkFoto(path) {
+      const { data, error } = await sb.storage.from('fichas').createSignedUrl(path, 600);
+      if (error) throw erro(error);
+      return data.signedUrl;
+    },
+
+    async sair() { euCache = null; this.temSessao = false; try { localStorage.removeItem('mq-eu'); } catch (e) {} await sb.auth.signOut(); },
 
     async listarEquipe() {
       const { data, error } = await sb.from('equipe').select('*').order('criado_em');
