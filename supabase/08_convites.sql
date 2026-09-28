@@ -133,7 +133,7 @@ begin
   if p_papel in ('articulacao','apoio') and exists (select 1 from public.equipe where papel = p_papel and uf = upper(p_uf) and status = 'ativa') then
     raise exception 'Esta vaga já está ocupada no estado.';
   end if;
-  t := translate(encode(gen_random_bytes(18), 'base64'), '+/=', '-_');
+  t := replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');   -- sem pgcrypto (no Supabase ela fica em outro schema)
   insert into public.convites (token, papel, uf, substitui_id, criado_por)
     values (t, p_papel, case when p_papel = 'coord_tecnico' then null else upper(p_uf) end, p_substitui, public.meu_id());
   return t;
