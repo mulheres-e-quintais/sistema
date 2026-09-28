@@ -272,7 +272,7 @@
     if (!C.par) return '<p class="carregando">Carregando…</p>';
     const r = C.plano || (C.plano = planejar());
     const ufs = Object.values(r.ufs);
-    const tot = k => ufs.reduce((s, u) => s + (u[k] ? u[k].total : 0), 0);
+    const tot = k => ufs.reduce((s, u) => s + ((u[k] && u[k].total) || 0), 0);   // estado sem equipe ou sem quintal: conta 0
     const base = tot('base'), prop = tot('prop'), eco = base - prop;
     const nQ = ufs.reduce((s, u) => s + u.quintais, 0), nV = ufs.reduce((s, u) => s + u.visitas, 0), nT = ufs.reduce((s, u) => s + u.viagens.length, 0);
     const meses = {}; ufs.forEach(u => Object.entries(u.porMes).forEach(([m, v]) => { meses[m] = (meses[m] || 0) + v; }));
@@ -299,12 +299,12 @@
       ${C.refeicaoDia ? '<p class="small muted">Simulação: a regra atual paga 1 refeição por visita. Para valer, a coordenação precisa mudar a regra e combinar com a equipe.</p>' : ''}
       <section class="secao"><h2>Por estado</h2><div class="quadro-scroll" style="display:block"><table class="quadro tab-plano"><thead><tr>
           <th>Estado</th><th>Quintais</th><th>Visitas</th><th>Viagens</th><th>Km</th><th>Combustível</th><th>Refeição</th><th>Horas</th><th>Total</th><th>Sem agrupar</th></tr></thead><tbody>
-        ${ufs.map(u => `<tr><td><button class="link" data-acao="custo-plano-uf" data-uf="${u.uf}">${E(U().nomeUF(u.uf))}</button></td><td class="num">${u.quintais}</td><td class="num">${u.visitas}</td><td class="num">${u.viagens.length}</td>
+        ${ufs.map(u => `<tr><td><button class="link" data-acao="custo-plano-uf" data-uf="${u.uf}"><span class="so-largo">${E(U().nomeUF(u.uf))}</span><span class="so-cel">${u.uf}</span></button></td><td class="num">${u.quintais}</td><td class="num">${u.visitas}</td><td class="num">${u.viagens.length}</td>
           <td class="num">${fmtN(u.prop.km)}</td><td class="num">${brl(u.prop.comb)}</td><td class="num">${brl(u.prop.ref)}</td><td class="num">${brl(u.prop.horas * C.par.valor_hora)}</td>
           <td class="num"><b>${brl(u.prop.total || 0)}</b></td><td class="num muted">${brl(u.base.total || 0)}</td></tr>`).join('')}
         <tr class="tot"><td><b>Total</b></td><td class="num">${nQ}</td><td class="num">${nV}</td><td class="num">${nT}</td><td class="num">${fmtN(ufs.reduce((s, u) => s + u.prop.km, 0))}</td>
           <td class="num">${brl(ufs.reduce((s, u) => s + u.prop.comb, 0))}</td><td class="num">${brl(ufs.reduce((s, u) => s + u.prop.ref, 0))}</td><td class="num">${brl(ufs.reduce((s, u) => s + u.prop.horas, 0) * C.par.valor_hora)}</td>
-          <td class="num"><b>${brl(prop)}</b></td><td class="num muted">${brl(base)}</td></tr></tbody></table></div></section>
+          <td class="num"><b>${brl(prop)}</b></td><td class="num muted">${brl(base)}</td></tr></tbody></table></div><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p></section>
       <section class="secao"><h2>Por mês</h2><p class="small muted">As viagens de cada etapa espalhadas pelo período das metas: diagnóstico out–jan, implantação jan–jun, acompanhamentos fev–set.</p>
         <div class="barras-mes">${MESES_PROJ.map((nm, i) => { const v = meses[i + 1] || 0; return `<div class="bm"><span class="bm-v num">${v ? brl(v).replace(',00', '') : ''}</span><span class="bm-b"><i style="height:${Math.round(v / maxMes * 100)}%"></i></span><span class="bm-l">${nm}</span></div>`; }).join('')}</div></section>
       <section class="secao"><div class="secao-cab"><h2>${E(U().nomeUF(uf))}: quem visita e as viagens</h2>

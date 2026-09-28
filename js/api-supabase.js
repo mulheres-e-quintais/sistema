@@ -319,6 +319,26 @@
       }
       return path;
     },
+    /* ---------- Curso FIC: turmas e matrículas (11_fic.sql) ---------- */
+    async listarEquipeFic() {
+      const { data, error } = await sb.rpc('equipe_para_fic'); if (error) throw erro(error);
+      data.forEach(m => { const x = /^exemplo:(\d+)$/.exec(m.foto_path || ''); if (x) m.foto_url = 'assets/exemplo/pessoa-' + x[1] + '.svg'; });
+      const com = data.filter(m => m.foto_path && !m.foto_url);
+      if (com.length) { try { const { data: urls } = await sb.storage.from('equipe').createSignedUrls(com.map(m => m.foto_path), 3600);
+        (urls || []).forEach((u, i) => { if (u && u.signedUrl) com[i].foto_url = u.signedUrl; }); } catch (e) { /* sem foto */ } }
+      return data;
+    },
+    async listarTurmas() { const { data, error } = await sb.from('turmas_fic').select('*').order('criado_em'); if (error) throw erro(error); return data; },
+    async listarMatriculas() { const { data, error } = await sb.from('matriculas_fic').select('*').is('cancelada_em', null).order('criado_em'); if (error) throw erro(error); return data; },
+    async salvarTurma(t) {
+      const reg = { id: t.id || crypto.randomUUID(), nome: t.nome, uf: t.uf || null, municipio: t.municipio || null, inicio: t.inicio || null, fim: t.fim || null, professor_id: t.professor_id, obs: t.obs || null };
+      return gravar('turmas_fic', reg);
+    },
+    async matricular(turma_id, equipe_id, numero, data) {
+      const { data: id, error } = await sb.rpc('matricular_fic', { p_turma: turma_id, p_equipe: equipe_id, p_numero: numero, p_data: data }); if (error) throw erro(error); return id;
+    },
+    async cancelarMatricula(id, motivo) { const { error } = await sb.rpc('cancelar_matricula_fic', { p_id: id, p_motivo: motivo }); if (error) throw erro(error); },
+
     async auditoria() {
       const { data, error } = await sb.from('auditoria').select('*').order('em', { ascending: false }).limit(200);
       if (error) throw erro(error);

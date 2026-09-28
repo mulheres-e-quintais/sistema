@@ -164,7 +164,7 @@
     const munis = c.uf ? (MQ.MUNICIPIOS[c.uf] || []) : [];
     return `<form class="login conv-form" data-form="conv-enviar" novalidate>
       <div class="login-marca"><img src="assets/isotipo.svg" alt="" width="40" height="58"><span class="eyebrow">Cadastro na equipe</span></div>
-      <div><h1>Seus dados</h1><p class="muted" style="margin-top:6px">Você foi indicada para <b>${E(funcao(c.papel, c.uf))}</b> no projeto Quintais Produtivos para Mulheres Rurais. Preencha e envie; a coordenação confere antes de liberar o acesso.</p></div>
+      <div><h1>Seus dados</h1><p class="muted" style="margin-top:6px">Você foi indicad${c.papel === 'professor_fic' ? 'o(a)' : 'a'} para <b>${E(funcao(c.papel, c.uf))}</b> no projeto Quintais Produtivos para Mulheres Rurais. Preencha e envie; a coordenação confere antes de liberar o acesso.</p></div>
       <div class="campo"><label for="cv-nome">Nome completo</label><input id="cv-nome" name="nome" autocomplete="name" required></div>
       <div class="campos">
         <div class="campo"><label for="cv-cpf">CPF</label><input id="cv-cpf" name="cpf" inputmode="numeric" autocomplete="off" required></div>

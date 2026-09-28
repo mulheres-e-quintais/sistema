@@ -30,7 +30,16 @@
   async function carregar() {
     try {
       S.equipe = await S.api.listarEquipe();
-      S.fichas = await S.api.listarFichas();
+      // curso FIC (11_fic.sql): turmas e matrículas; o professor vê da equipe só o necessário para matricular
+      S.ficSemBanco = false;
+      const semFic = e => /PGRST20[25]|42P01|42883|does not exist|Could not find|schema cache/i.test(String((e.original && (e.original.code + ' ' + e.original.message)) || e.message));
+      if (/^coord|professor_fic/.test(S.eu.papel) && S.api.listarTurmas) {
+        try {
+          S.turmas = await S.api.listarTurmas(); S.matriculas = await S.api.listarMatriculas();
+          if (S.eu.papel === 'professor_fic') { const outros = await S.api.listarEquipeFic(); S.equipe = S.equipe.concat(outros.filter(o => !S.equipe.some(m => m.id === o.id))); }
+        } catch (e) { if (e.semRede || !semFic(e)) throw e; S.ficSemBanco = true; S.turmas = []; S.matriculas = []; }
+      } else { S.turmas = []; S.matriculas = []; }
+      S.fichas = S.eu.papel === 'professor_fic' ? [] : await S.api.listarFichas();
       // se o banco ainda não tiver as tabelas de campo (03_campo.sql), o resto do sistema continua funcionando
       const semTabela = e => !e.semRede && /PGRST205|42P01|does not exist|Could not find the table|schema cache/i.test(String((e.original && (e.original.code + ' ' + e.original.message)) || e.message));
       const opcional = async fn => { try { return fn ? await fn.call(S.api) : []; } catch (e) { if (semTabela(e)) { S.campoSemBanco = true; return []; } throw e; } };
@@ -60,7 +69,7 @@
   }
   MQ.ui = { S, esc, nomeUF, toast: m => toast(m), render: () => render(), abrirPainel: p => abrirPainel(p), fecharPainel: () => fecharPainel(),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), sincronizar: a => sincronizar(a),
-    porId: id => porId(id) };
+    porId: id => porId(id), avatar: (m, t) => avatar(m, t), passos: m => passos(m), dadosDL: m => dadosDL(m), botaoFoto: m => botaoFoto(m) };
 
   /* ---------- consultas ---------- */
   const ativos = () => S.equipe.filter(m => m.status === 'ativa');
@@ -88,6 +97,7 @@
     else if (!S.eu) h += modoDemo ? '<main class="wrap"><p class="carregando">Carregando…</p></main>' : (S.api.temSessao ? semCadastro() : login());
     else if (/^coord/.test(S.eu.papel)) h += telaCoordenacao();
     else if (S.eu.papel === 'agente' && MQ.campoUI) h += MQ.campoUI.telaAgente();
+    else if (S.eu.papel === 'professor_fic' && MQ.ficUI) h += MQ.ficUI.telaProfessor();
     else h += telaBolsista();
     app.innerHTML = h;
     if (S.painel) desenharPainel();
@@ -106,7 +116,7 @@
     const p = S.api.perfisDemo();
     const b = (id, t) => `<button type="button" data-acao="perfil" data-p="${id}" aria-pressed="${S.verEntrada ? id === 'entrada' : p === id}">${t}</button>`;
     return `<div class="demo"><div class="demo-in"><span><b>Demonstração</b> com dados de exemplo, gravados só neste navegador.</span>
-      <span>Ver como: <span class="seg" role="group" aria-label="Perfil">${b('coord_geral', 'Coordenação geral')}${b('coord_tecnico', 'Coordenação técnica')}${b('bolsista', 'Bolsista')}${b('agente', 'Agente de campo')}${b('entrada', 'Tela de entrada')}</span></span>
+      <span>Ver como: <span class="seg" role="group" aria-label="Perfil">${b('coord_geral', 'Coordenação geral')}${b('coord_tecnico', 'Coordenação técnica')}${b('bolsista', 'Bolsista')}${b('agente', 'Agente de campo')}${b('professor', 'Professor FIC')}${b('entrada', 'Tela de entrada')}</span></span>
       <button class="link" data-acao="recomecar">Recomeçar demonstração</button></div></div>`;
   }
 
@@ -130,10 +140,10 @@
     const aguard = (S.fichas || []).filter(f => f.situacao === 'aguardando').length;
     const diagAguard = (S.diagnosticos || []).filter(x => x.situacao === 'aguardando').length;
     const abas = [['visao', 'Visão geral'], ['equipe', 'Equipe'], ['selecao', 'Seleção' + (aguard ? ` <span class="conta">${aguard}</span>` : '')],
-      ['campo', 'Campo' + (diagAguard ? ` <span class="conta">${diagAguard}</span>` : '')], ['custos', 'Custos'], ['historico', 'Histórico']];
+      ['campo', 'Campo' + (diagAguard ? ` <span class="conta">${diagAguard}</span>` : '')], ['fic', 'Curso FIC'], ['custos', 'Custos'], ['historico', 'Histórico']];
     const nav = `<nav class="abas" aria-label="Seções">${abas.map(([id, t]) => `<button type="button" data-acao="aba" data-aba="${id}" ${aba === id ? 'aria-current="page"' : ''}>${t}</button>`).join('')}</nav>`;
     const intro = souGeral
-      ? 'Você cadastra a coordenação técnica indicada pelo MPA e registra a habilitação de cada bolsista: matrícula no curso FIC, documentos na FUNCERN e termo de compromisso.'
+      ? 'Você cadastra a coordenação técnica indicada pelo MPA e os professores do curso FIC, e registra a habilitação de cada bolsista: documentos na FUNCERN e termo de compromisso. A matrícula no FIC é registrada pelo professor, na aba Curso FIC.'
       : 'Cadastre as bolsistas indicadas pelo MPA: uma de articulação estadual e uma de apoio estadual por estado.';
     let corpo = '';
     if (aba === 'visao') corpo = MQ.painelUI ? MQ.painelUI.visaoGeral(S) : '';
@@ -149,6 +159,7 @@
         <div class="secao-cab"><h2 id="t-ct">Coordenação técnica</h2><p>Uma para os 5 estados · indicada pelo MPA · cadastrada pela coordenação geral</p></div>
         ${ct ? cartaoPessoa(ct) : vagaCoordTecnica(souGeral)}
       </section>
+      ${MQ.ficUI && !S.ficSemBanco ? MQ.ficUI.secaoEquipe() : ''}
       <section class="secao" aria-labelledby="t-b">
         <div class="secao-cab"><h2 id="t-b">Bolsistas por estado</h2><p>1 de articulação e 1 de apoio por estado · cadastradas pela coordenação técnica · meta de 40 quintais por estado</p></div>
         ${quadroTabela()}${quadroCartoes()}
@@ -156,6 +167,7 @@
       ${secaoAgentes()}`;
     else if (aba === 'selecao') corpo = MQ.fichasUI ? MQ.fichasUI.secaoCoord() : '';
     else if (aba === 'custos') corpo = MQ.custosUI ? MQ.custosUI.aba() : '';
+    else if (aba === 'fic') corpo = MQ.ficUI ? MQ.ficUI.aba() : '';
     else if (aba === 'campo') corpo = (MQ.campoUI ? MQ.campoUI.abaCoord() : '') + (MQ.vitrineUI && !S.campoSemBanco ? MQ.vitrineUI.secaoCoord() : '');
     else corpo = `<section class="secao" aria-labelledby="t-h"><h2 id="t-h">Histórico de alterações</h2>${historico()}</section>`;
     const avisoEx = S.exemplo ? `<div class="aviso erro" role="status"><b>Este sistema está com dados de exemplo (${S.exemplo} registros inventados).</b> Servem para testar; não aparecem na vitrine pública. Antes de cadastrar a equipe e as fichas de verdade, a coordenação geral roda o arquivo 06_apagar_exemplo.sql no Supabase.</div>` : '';
@@ -318,7 +330,7 @@
     let el = $('#painel');
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
     const p = S.painel;
-    const corpo = p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
+    const corpo = /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
     el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel" role="dialog" aria-modal="true" aria-labelledby="painel-t">${corpo}</aside>`;
     const foco = el.querySelector('[autofocus]') || el.querySelector('.fechar');
     if (foco) foco.focus();
@@ -388,15 +400,20 @@
   }
 
   function formHabilitacao(m) {
-    const feitos = [m.matricula_fic_em, m.docs_funcern_em, m.termo_assinado_em].filter(Boolean).length;
-    return `<details class="hab${feitos === 3 ? ' completa' : ''}" ${feitos === 3 ? '' : 'open'}><summary class="hab-sum">
-        <span class="hab-ic" aria-hidden="true">${feitos === 3 ? '✓' : feitos + '/3'}</span>
-        <span class="hab-t"><b>${feitos === 3 ? 'Datas da habilitação' : 'Registrar passos da habilitação'}</b><span class="small muted">${feitos === 3 ? 'Os 3 passos estão registrados · abra para ver ou corrigir uma data' : 'Matrícula no FIC, documentos na FUNCERN e termo assinado'}</span></span>
+    const fic = R.fazFIC(m.papel);
+    const lista = fic ? [m.matricula_fic_em, m.docs_funcern_em, m.termo_assinado_em] : [m.docs_funcern_em, m.termo_assinado_em];
+    const feitos = lista.filter(Boolean).length, total = lista.length;
+    const mt = (S.matriculas || []).find(x => x.equipe_id === m.id); const turma = mt && (S.turmas || []).find(t => t.id === mt.turma_id);
+    return `<details class="hab${feitos === total ? ' completa' : ''}" ${feitos === total ? '' : 'open'}><summary class="hab-sum">
+        <span class="hab-ic" aria-hidden="true">${feitos === total ? '✓' : feitos + '/' + total}</span>
+        <span class="hab-t"><b>${feitos === total ? 'Datas da habilitação' : 'Registrar passos da habilitação'}</b><span class="small muted">${feitos === total ? 'Os ' + total + ' passos estão registrados · abra para ver ou corrigir uma data' : (fic ? 'Matrícula no FIC, documentos na FUNCERN e termo assinado' : 'Documentos na FUNCERN e termo assinado')}</span></span>
         <span class="hab-seta" aria-hidden="true"></span></summary>
       <form class="f" data-form="hab" data-id="${m.id}" style="margin-top:12px" novalidate>
       <div class="campos">
+        ${!fic ? '' : turma ? `<div class="campo inteiro"><span class="dica" style="font-size:14px">Matrícula no FIC registrada pelo professor na turma <b>${esc(turma.nome)}</b> (nº ${esc(mt.numero)}, ${R.fmtData(mt.matriculado_em)}). Para corrigir, use a aba Curso FIC.</span></div>` : `
         <div class="campo"><label for="h-fic">Matrícula no FIC em</label><input id="h-fic" name="matricula_fic_em" type="date" value="${esc(m.matricula_fic_em || '')}"></div>
-        <div class="campo"><label for="h-ficn">Nº da matrícula</label><input id="h-ficn" name="matricula_fic_numero" value="${esc(m.matricula_fic_numero || '')}" placeholder="Conforme o SUAP"></div>
+        <div class="campo"><label for="h-ficn">Nº da matrícula</label><input id="h-ficn" name="matricula_fic_numero" value="${esc(m.matricula_fic_numero || '')}" placeholder="Conforme o SUAP">
+          <span class="dica">O mais comum é o professor registrar na aba Curso FIC.</span></div>`}
         <div class="campo"><label for="h-fun">Documentos entregues à FUNCERN em</label><input id="h-fun" name="docs_funcern_em" type="date" value="${esc(m.docs_funcern_em || '')}"></div>
         <div class="campo"><label for="h-ter">Termo de compromisso assinado em</label><input id="h-ter" name="termo_assinado_em" type="date" value="${esc(m.termo_assinado_em || '')}"></div>
         <div class="campo inteiro"><label for="h-arq">Termo assinado (PDF ou foto)</label><input id="h-arq" name="termo" type="file" accept="application/pdf,image/*">
@@ -423,6 +440,7 @@
       <div class="painel-corpo"><form class="f" data-form="cadastro" novalidate>
         <div class="fixo">${m.papel === 'agente' ? '<span class="small muted">Pagamento</span><b>Ajuda de custo por visita</b>' : `<span class="small muted">Função</span><b>${esc(P[m.papel].nome)}</b>`}
           <span class="small">${P[m.papel].faz ? esc(P[m.papel].faz) : 'Planeja, coordena e acompanha a execução técnica nos 5 estados.'}</span>
+          ${m.papel === 'professor_fic' ? '<span class="small">Habilitação: documentos na FUNCERN e termo de compromisso (não se matricula no FIC).</span>' : ''}
           ${m.papel === 'agente' ? '<span class="small">Precisa estar matriculada no FIC e cadastrada na FUNCERN antes da primeira visita paga. Vê só os quintais atribuídos a ela.</span>' : ''}</div>
         ${!edit && !pre && MQ.convitesUI ? MQ.convitesUI.blocoLink(p) : ''}
         ${pre ? `<div class="aviso">Dados enviados por ela pelo link em ${R.fmtData(String(pre._pre.enviado_em).slice(0, 10))}. Confira, complete o que falta e salve: ao salvar, o cadastro é aprovado.</div>` : ''}
@@ -436,7 +454,7 @@
             <span class="dica">É o login no sistema. Ela recebe um link de acesso neste e-mail.</span></div>
           <div class="campo"><label for="c-mun">Município onde mora</label><input id="c-mun" name="municipio" value="${v('municipio')}" ${bols ? 'list="lista-mun"' : 'placeholder="Município/UF"'}>
             ${bols ? `<datalist id="lista-mun">${munis.map(x => `<option value="${esc(x)}">`).join('')}</datalist><span class="dica">A lista traz os municípios do projeto técnico em ${esc(m.uf)}.</span>` : ''}</div>
-          <div class="campo"><label for="c-org">Organização ou movimento</label><input id="c-org" name="organizacao" value="${v('organizacao')}" placeholder="${bols ? 'Ex.: MPA, associação, sindicato' : 'Ex.: MPA'}"></div>
+          <div class="campo"><label for="c-org">Organização ou movimento</label><input id="c-org" name="organizacao" value="${v('organizacao')}" placeholder="${bols ? 'Ex.: MPA, associação, sindicato' : m.papel === 'professor_fic' ? 'Ex.: IFRN Campus Apodi' : 'Ex.: MPA'}"></div>
         </div></fieldset>
         ${MQ.convitesUI ? (priv === undefined ? '<p class="small muted">Carregando os dados pessoais…</p>' : MQ.convitesUI.camposPessoais(Object.assign({ nome_social: m.nome_social }, priv || {}), false)) : ''}
         <fieldset><legend>Bolsa</legend><div class="campos">
@@ -504,6 +522,7 @@
       else if (/^banco-/.test(a) && MQ.bancoUI) await MQ.bancoUI.clique(a, el);
       else if (/^conv-/.test(a) && MQ.convitesUI) await MQ.convitesUI.clique(a, el);
       else if (/^custo-/.test(a) && MQ.custosUI) await MQ.custosUI.clique(a, el);
+      else if (/^fic-/.test(a) && MQ.ficUI) { S.voltarFoco = el; await MQ.ficUI.clique(a, el); }
       else if (/^vit-/.test(a) && MQ.vitrineUI) await MQ.vitrineUI.clique(a, el);
       else if (/^campo-/.test(a) && MQ.campoUI) { S.voltarFoco = el; await MQ.campoUI.clique(a, el); }
       else if (a === 'ver') { S.voltarFoco = el; abrirPainel({ tipo: 'detalhe', id: el.dataset.id }); }
@@ -576,6 +595,7 @@
       if (/^(visita|diag)/.test(tipo) && MQ.campoUI) await MQ.campoUI.enviar(tipo, form, fd);
       if (/^vit-/.test(tipo) && MQ.vitrineUI) await MQ.vitrineUI.enviar(tipo, form, fd);
       if (/^custo-/.test(tipo) && MQ.custosUI) await MQ.custosUI.enviar(tipo, form, fd);
+      if (/^fic-/.test(tipo) && MQ.ficUI) await MQ.ficUI.enviar(tipo, form, fd);
       if (/^conv-/.test(tipo) && MQ.convitesUI) await MQ.convitesUI.enviar(tipo, form, fd);
       if (tipo === 'banco' && MQ.bancoUI) await MQ.bancoUI.enviar(tipo, form, fd);
       if (tipo === 'apl' && MQ.sugestaoUI) await MQ.sugestaoUI.enviar(tipo, form, fd);
@@ -611,7 +631,7 @@
             if (temAlgo) await S.api.salvarPrivado(novo.id, priv);
             if (p.pre) await S.api.decidirPreCadastro(p.pre, 'aprovado', null, novo.id);
             await recarregar(); abrirPainel({ tipo: 'detalhe', id: novo.id });
-            toast(nomeDe(m).split(' ')[0] + ' cadastrada. Próximo passo: matrícula no curso FIC.');
+            toast(nomeDe(m).split(' ')[0] + (m.papel === 'professor_fic' ? ' cadastrado(a). Próximo passo: documentos na FUNCERN e termo.' : ' cadastrada. Próximo passo: matrícula no curso FIC.'));
           }
         });
       }
@@ -619,6 +639,7 @@
         const id = form.dataset.id; const m = porId(id);
         const patch = {};
         ['matricula_fic_em', 'matricula_fic_numero', 'docs_funcern_em', 'termo_assinado_em', 'obs_habilitacao'].forEach(k => {
+          if (!form.querySelector('[name="' + k + '"]')) return;   // campo fora da tela (professor sem FIC, ou matrícula feita na turma)
           const val = String(fd.get(k) || '').trim() || null; if (val !== (m[k] || null)) patch[k] = val;
         });
         const erros = {};

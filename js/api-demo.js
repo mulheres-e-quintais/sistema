@@ -123,6 +123,22 @@
       mem.equipe.filter(m => m.papel !== 'coord_geral').forEach((m, i) => { if (!m.foto_url) { const l = homens.test(m.nome) ? hom : mul; m.foto_path = 'exemplo'; m.foto_url = 'assets/exemplo/pessoa-' + l[i % l.length] + '.svg'; } });
       mem.fotosEx = true;
     }
+    if (!mem.fic) {   // curso FIC: 2 professores, 1 turma no PI e as matrículas que já existiam (exemplo)
+      const cg = mem.equipe.find(m => m.papel === 'coord_geral'); const t0 = '2026-09-27T12:00:00.000Z';
+      const prof = (nome, n, cpf, email, foto) => ({ id: uid(), user_id: null, papel: 'professor_fic', uf: null, nome, cpf: gerarCPF(cpf), email, telefone: '(84) 99' + n + '-10' + n,
+        municipio: 'Apodi/RN', organizacao: 'IFRN Campus Apodi', data_inicio: MQ.PROJETO.inicioBolsas, data_fim: null, motivo_desligamento: null,
+        meta_diagnosticos: null, meta_quintais: null, meta_visitas: null, matricula_fic_em: null, matricula_fic_numero: null,
+        docs_funcern_em: '2026-09-28', termo_path: null, termo_assinado_em: null, obs_habilitacao: null, consentimento_lgpd: true, status: 'ativa',
+        substitui_id: null, criado_por: cg && cg.id, criado_em: t0, atualizado_em: t0, exemplo: true, foto_path: 'exemplo', foto_url: 'assets/exemplo/pessoa-' + foto + '.svg' });
+      const p1 = prof('Tiago Menezes (exemplo)', 811, 912345678, 'tiago.exemplo@ifrn.edu.br', 12), p2 = prof('Clara Bezerra (exemplo)', 822, 923456781, 'clara.exemplo@ifrn.edu.br', 9);
+      mem.equipe.push(p1, p2); mem.eu.professor = p1.id;
+      const tu = { id: uid(), nome: 'FIC Agroecologia e Quintais Produtivos – Piauí (exemplo)', uf: 'PI', municipio: 'Paulistana', inicio: '2026-09-29', fim: '2027-03-31',
+        professor_id: p1.id, obs: null, criado_por: p1.id, criado_em: t0, atualizado_em: t0 };
+      mem.turmas = [tu];
+      mem.matriculas = mem.equipe.filter(m => m.status === 'ativa' && m.uf === 'PI' && m.matricula_fic_em)
+        .map(m => ({ id: uid(), turma_id: tu.id, equipe_id: m.id, numero: m.matricula_fic_numero, matriculado_em: m.matricula_fic_em, criado_por: p1.id, criado_em: t0, cancelada_em: null }));
+      mem.fic = true;
+    }
     if (!mem.vitrine) {   // duas fotos de exemplo aprovadas pela coordenação (ilustrações)
       const [a, b] = mem.fichas.filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada' && f.consent_imagem);
       mem.vitrine = [a && { id: 'vit-1', path: 'exemplo-1.jpg', ficha_id: a.id, uf: a.uf, legenda: 'Canteiros de hortaliças no sertão do Piauí', sem_criancas: true, publicada_em: '2026-11-10T12:00:00Z' },
@@ -173,7 +189,60 @@
       return d.perfil;
     },
     async trocarPerfil(p) { const d = ler(); d.perfil = p; this.perfisDemo(); gravar(); return euMesmo(); },
-    async recomecar() { mem = semente(); gravar(); return euMesmo(); },
+    async recomecar() { mem = null; try { localStorage.removeItem(CHAVE); } catch (e) {} ler(); gravar(); return euMesmo(); },
+
+    /* ---------- Curso FIC (mesmas regras do 11_fic.sql) ---------- */
+    async listarEquipeFic() {
+      const eu = euMesmo(); if (!eu || !['coord_geral', 'coord_tecnico', 'professor_fic'].includes(eu.papel)) return [];
+      return copia(ler().equipe.filter(m => m.status === 'ativa' && ['articulacao', 'apoio', 'agente', 'professor_fic'].includes(m.papel))
+        .map(m => ({ id: m.id, papel: m.papel, uf: m.uf, nome: m.nome, nome_social: m.nome_social, municipio: m.municipio, status: m.status,
+          matricula_fic_em: m.matricula_fic_em, matricula_fic_numero: m.matricula_fic_numero, foto_path: m.foto_path, foto_url: m.foto_url })));
+    },
+    async listarTurmas() { const eu = euMesmo(); if (!eu || !['coord_geral', 'coord_tecnico', 'professor_fic'].includes(eu.papel)) return []; return copia(ler().turmas || []); },
+    async listarMatriculas() {
+      const eu = euMesmo(); if (!eu) return [];
+      const l = (ler().matriculas || []).filter(x => !x.cancelada_em);
+      return copia(['coord_geral', 'coord_tecnico', 'professor_fic'].includes(eu.papel) ? l : l.filter(x => x.equipe_id === eu.id));
+    },
+    async salvarTurma(t) {
+      const d = ler(); const eu = euMesmo();
+      if (!eu || !(eu.papel === 'coord_geral' || (eu.papel === 'professor_fic' && t.professor_id === eu.id))) throw falha('Só a coordenação geral ou o próprio professor cria a turma.');
+      if (!d.equipe.some(m => m.id === t.professor_id && m.papel === 'professor_fic' && m.status === 'ativa')) throw falha('A turma precisa de um(a) professor(a) do FIC ativo(a).');
+      if (String(t.nome || '').trim().length < 3) throw falha('Dê um nome à turma.');
+      if (t.inicio && t.fim && t.fim < t.inicio) throw falha('O fim da turma é antes do início.');
+      d.turmas = d.turmas || []; const agora = new Date().toISOString(); const i = d.turmas.findIndex(x => x.id === t.id);
+      if (i >= 0) { const antes = d.turmas[i]; if (eu.papel === 'professor_fic' && antes.professor_id !== eu.id) throw falha('Esta turma é de outro professor.'); d.turmas[i] = Object.assign({}, antes, t, { atualizado_em: agora }); }
+      else d.turmas.push(Object.assign({}, t, { id: uid(), criado_por: eu.id, criado_em: agora, atualizado_em: agora }));
+      gravar(); return copia(i >= 0 ? d.turmas[i] : d.turmas[d.turmas.length - 1]);
+    },
+    async matricular(turma_id, equipe_id, numero, data) {
+      const d = ler(); const eu = euMesmo(); const t = (d.turmas || []).find(x => x.id === turma_id);
+      if (!t) throw falha('Turma não encontrada.');
+      if (!eu || !(eu.papel === 'coord_geral' || (eu.papel === 'professor_fic' && t.professor_id === eu.id))) throw falha('Só o professor da turma ou a coordenação geral matricula.');
+      const p = d.equipe.find(m => m.id === equipe_id);
+      if (!p || p.status !== 'ativa' || !R.ehCampo(p.papel)) throw falha('Só bolsistas e agentes de campo ativas são matriculadas no FIC.');
+      if (t.uf && p.uf !== t.uf) throw falha('Esta turma é de ' + t.uf + '; ' + p.nome + ' é de ' + p.uf + '.');
+      if (String(numero || '').trim().length < 3) throw falha('Informe o número da matrícula (SUAP).');
+      if (!data || data > R.hoje()) throw falha('Data da matrícula vazia ou no futuro.');
+      d.matriculas = d.matriculas || []; const atual = d.matriculas.find(x => x.equipe_id === equipe_id && !x.cancelada_em);
+      if (atual && atual.turma_id !== turma_id) throw falha(p.nome + ' já está matriculada em outra turma. Cancele lá antes de trocar.');
+      if (atual) Object.assign(atual, { numero: String(numero).trim(), matriculado_em: data });
+      else d.matriculas.push({ id: uid(), turma_id, equipe_id, numero: String(numero).trim(), matriculado_em: data, criado_por: eu.id, criado_em: new Date().toISOString(), cancelada_em: null });
+      const antes = copia(p); Object.assign(p, { matricula_fic_em: data, matricula_fic_numero: String(numero).trim(), atualizado_em: new Date().toISOString() });
+      auditar('UPDATE', antes, p); gravar();
+    },
+    async cancelarMatricula(id, motivo) {
+      const d = ler(); const eu = euMesmo(); const m = (d.matriculas || []).find(x => x.id === id && !x.cancelada_em);
+      if (!m) throw falha('Matrícula não encontrada ou já cancelada.');
+      const t = (d.turmas || []).find(x => x.id === m.turma_id);
+      if (!eu || !(eu.papel === 'coord_geral' || (eu.papel === 'professor_fic' && t && t.professor_id === eu.id))) throw falha('Só o professor da turma ou a coordenação geral cancela.');
+      if (String(motivo || '').trim().length < 5) throw falha('Escreva o motivo do cancelamento.');
+      if ((d.visitas || []).some(v => v.executor_id === m.equipe_id && v.situacao !== 'cancelada'))
+        throw falha('Esta pessoa já tem visita no roteiro de campo, que depende da matrícula. Para corrigir número ou data, matricule de novo na mesma turma.');
+      Object.assign(m, { cancelada_em: new Date().toISOString(), motivo_cancelamento: String(motivo).trim() });
+      const p = d.equipe.find(x => x.id === m.equipe_id); const antes = copia(p);
+      Object.assign(p, { matricula_fic_em: null, matricula_fic_numero: null }); auditar('UPDATE', antes, p); gravar();
+    },
 
     async listarEquipe() {
       const d = ler(); const eu = euMesmo(); if (!eu) return [];
