@@ -337,6 +337,56 @@
       gravar(); return copia(d.diagnosticos[i]);
     },
 
+    /* ---------- Link de cadastro (mesmas regras do 08_convites.sql) ---------- */
+    async criarConvite(papel, uf, subst) {
+      const d = ler(); const eu = euMesmo();
+      if (!eu || !R.podeCadastrar(eu.papel, papel)) throw falha('Seu perfil não pode cadastrar esta função.');
+      const ativa = d.equipe.find(m => m.status === 'ativa' && m.papel === papel && (papel === 'coord_tecnico' || (R.ehBolsista(papel) && m.uf === uf)));
+      if (ativa && papel !== 'agente') throw falha(papel === 'coord_tecnico' ? 'Já há coordenação técnica ativa. Desligue antes de convidar outra.' : 'Esta vaga já está ocupada no estado.');
+      const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+      d.convites = (d.convites || []).concat([{ id: uid(), token, papel, uf: papel === 'coord_tecnico' ? null : uf, substitui_id: subst || null, criado_por: eu.id,
+        criado_em: new Date().toISOString(), expira_em: new Date(Date.now() + 7 * 864e5).toISOString(), usado_em: null }]);
+      gravar(); return token;
+    },
+    async verConvite(token) {
+      const c = (ler().convites || []).find(x => x.token === token);
+      if (!c) return { valido: false, motivo: 'inexistente' };
+      const motivo = c.usado_em ? 'usado' : new Date(c.expira_em) <= new Date() ? 'vencido' : null;
+      return { papel: c.papel, uf: c.uf, expira_em: c.expira_em, valido: !motivo, motivo };
+    },
+    async enviarPreCadastro(token, dados) {
+      const d = ler(); const c = (d.convites || []).find(x => x.token === token);
+      if (!c || c.usado_em || new Date(c.expira_em) <= new Date()) throw falha('Este link não vale mais. Peça um novo à coordenação.');
+      if (!dados.consentimento_lgpd) throw falha('É preciso aceitar o uso dos dados para o cadastro.');
+      const cpf = R.soDigitos(dados.cpf), email = String(dados.email || '').trim().toLowerCase();
+      if (d.equipe.some(m => m.status === 'ativa' && (m.cpf === cpf || String(m.email).toLowerCase() === email))) throw falha('Já existe pessoa ativa na equipe com este CPF ou e-mail. Fale com a coordenação.');
+      d.pre_cadastros = (d.pre_cadastros || []).concat([{ id: uid(), convite_id: c.id, papel: c.papel, uf: c.uf, substitui_id: c.substitui_id,
+        nome: String(dados.nome).trim(), cpf, email, telefone: dados.telefone || null, municipio: dados.municipio || null, organizacao: dados.organizacao || null,
+        nome_social: dados.nome_social || null, data_nascimento: dados.data_nascimento || null, nis: dados.nis || null, endereco: dados.endereco || {}, socioeconomico: dados.socioeconomico || null,
+        consentimento_lgpd: true, enviado_em: new Date().toISOString(), situacao: 'aguardando' }]);
+      c.usado_em = new Date().toISOString(); gravar();
+    },
+    async lerPrivado(id) {
+      const d = ler(); const eu = euMesmo(); if (!eu || !(eu.id === id || /^coord/.test(eu.papel))) return null;
+      return copia((d.privado || {})[id] || null);
+    },
+    async salvarPrivado(id, dados) {
+      const d = ler(); const eu = euMesmo(); const m = d.equipe.find(x => x.id === id);
+      if (!eu || !m || !(eu.id === id || R.podeCadastrar(eu.papel, m.papel))) throw falha('Seu perfil não pode alterar estes dados.');
+      d.privado = d.privado || {}; d.privado[id] = Object.assign({ equipe_id: id }, copia(dados)); gravar();
+    },
+    async listarPreCadastros() {
+      const eu = euMesmo(); if (!eu) return [];
+      return copia((ler().pre_cadastros || []).filter(x => x.situacao === 'aguardando' && R.podeCadastrar(eu.papel, x.papel)));
+    },
+    async decidirPreCadastro(id, situacao, obs, equipe_id) {
+      const d = ler(); const eu = euMesmo(); const x = (d.pre_cadastros || []).find(y => y.id === id);
+      if (!x || !eu || !R.podeCadastrar(eu.papel, x.papel)) throw falha('Seu perfil não pode decidir este cadastro.');
+      if (x.situacao !== 'aguardando') throw falha('Este pré-cadastro já foi decidido.');
+      if (situacao === 'recusado' && String(obs || '').trim().length < 5) throw falha('Para recusar, escreva o motivo.');
+      Object.assign(x, { situacao, obs: obs || null, equipe_id: equipe_id || null, decidido_por: eu.id, decidido_em: new Date().toISOString() }); gravar();
+    },
+
     /* ---------- Ajuda de custo por visita (mesmas regras do 04_vitrine_e_custos.sql) ---------- */
     async lerParametros(chave) { const d = ler(); return copia((d.parametros || {})[chave] || MQ.CUSTO_PADRAO); },
     async salvarParametros(chave, valor) {
@@ -393,7 +443,15 @@
       d.vitrine = (d.vitrine || []).filter(v => v.id !== id); gravar();
     },
 
-    async desligar(id, data_fim, motivo) { return this.atualizar(id, { status: 'desligada', data_fim, motivo_desligamento: motivo }); },
+    async desligar(id, data_fim, motivo) {
+      const d = ler(); const m = d.equipe.find(x => x.id === id);
+      if (m && ['agente', 'articulacao', 'apoio'].includes(m.papel)) {
+        const vp = (d.visitas || []).filter(v => v.executor_id === id && v.situacao === 'prevista').length;
+        const dv = (d.diagnosticos || []).filter(x => x.executor_id === id && x.situacao === 'devolvido').length;
+        if (vp || dv) throw falha(`Não dá para desligar ainda: ${vp} visita(s) agendada(s) com ela e ${dv} diagnóstico(s) devolvido(s) para ela corrigir. Passe as visitas para outra pessoa ou cancele, e resolva os diagnósticos.`);
+      }
+      return this.atualizar(id, { status: 'desligada', data_fim, motivo_desligamento: motivo });
+    },
 
     async enviarFotoEquipe(id, blob) {
       const d = ler(); const eu = euMesmo(); const m = d.equipe.find(x => x.id === id);

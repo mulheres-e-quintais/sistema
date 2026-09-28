@@ -79,7 +79,7 @@ create or replace function public.vitrine_fotos_antes() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare f record;
 begin
-  if public.meu_papel() not in ('coord_geral','coord_tecnico') then
+  if auth.uid() is not null and coalesce(public.meu_papel(), '') not in ('coord_geral','coord_tecnico') then
     raise exception 'Só a coordenação publica fotos na vitrine.';
   end if;
   select * into f from public.fichas where id = new.ficha_id;
@@ -258,7 +258,7 @@ create table if not exists public.custos_visita (
 create or replace function public.carimbar_coord() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  if public.meu_papel() not in ('coord_geral','coord_tecnico') then raise exception 'Só a coordenação altera valores de pagamento.'; end if;
+  if auth.uid() is not null and coalesce(public.meu_papel(), '') not in ('coord_geral','coord_tecnico') then raise exception 'Só a coordenação altera valores de pagamento.'; end if;
   if tg_table_name = 'parametros' then new.atualizado_por := public.meu_id(); new.atualizado_em := now();
   else new.definido_por := public.meu_id(); new.definido_em := now(); end if;
   return new;

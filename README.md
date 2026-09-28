@@ -43,6 +43,7 @@ js/painel.js            visão geral da coordenação (metas, alertas, estados, 
 js/campo.js             roteiro de visitas, agente de campo, diagnóstico e plano do quintal
 js/vitrine.js           tela de entrada com números e página pública "O projeto em números"
 js/custos.js            cálculo da ajuda de custo por visita
+js/convites.js          link de cadastro (a pessoa preenche; a coordenação confere e aprova)
 js/app.js               telas e navegação
 sw.js, manifest         instalação no celular e abertura sem internet
 supabase/01_criar_banco.sql      etapa 1: equipe, regras de acesso (RLS), auditoria, login
@@ -51,6 +52,7 @@ supabase/03_campo.sql            etapa 3: visitas, agentes de campo, diagnóstic
 supabase/04_vitrine_e_custos.sql etapa 4: vitrine pública e custo das visitas
 supabase/05_dados_exemplo.sql    dados inventados para testar (opcional)
 supabase/07_fotos_equipe.sql     etapa 7: foto da equipe (sem foto, mostra as iniciais)
+supabase/08_convites.sql         etapa 8: link de cadastro, dados pessoais complementares, desligar só sem pendência
 supabase/06_apagar_exemplo.sql   apaga os dados inventados
 supabase/schema.sql              versão antiga da etapa 1 (não usar; mantida para histórico)
 supabase/tests/         testes das regras do banco
@@ -71,7 +73,7 @@ Use o seletor "Ver como" para alternar entre coordenação geral, coordenação 
 ## Colocar em produção (cerca de 1 hora)
 
 1. **Criar o projeto no Supabase** (supabase.com, plano gratuito). Escolha a região **South America (São Paulo)** para os dados ficarem no Brasil. Crie a conta com um e-mail institucional, não pessoal, para o projeto não depender de uma pessoa.
-2. **Criar o banco:** em *SQL Editor*, rode em ordem, cada um inteiro: `01_criar_banco.sql`, `02_fichas.sql`, `03_campo.sql`, `04_vitrine_e_custos.sql`, `07_fotos_equipe.sql`. O 02, o 03 e o 04 podem ser rodados de novo sem estragar dados. Enquanto uma etapa não for rodada, o sistema funciona e mostra "Ainda não instalado no servidor" na parte correspondente.
+2. **Criar o banco:** em *SQL Editor*, rode em ordem, cada um inteiro: `01_criar_banco.sql`, `02_fichas.sql`, `03_campo.sql`, `04_vitrine_e_custos.sql`, `07_fotos_equipe.sql`, `08_convites.sql`. O 02, o 03 e o 04 podem ser rodados de novo sem estragar dados. Enquanto uma etapa não for rodada, o sistema funciona e mostra "Ainda não instalado no servidor" na parte correspondente.
 3. **Cadastrar a coordenação geral:** o fim do `01_criar_banco.sql` tem um `insert` com os dados da coordenação geral. Confira nome, CPF, e-mail e telefone antes de rodar.
 4. **Login com senha:** em *Authentication > Sign In / Providers > Email*, **desligue "Confirm email"**. Cada pessoa cria a própria senha em "Primeiro acesso", e o banco só aceita e-mails já cadastrados pela coordenação. Assim o sistema não depende de servidor de e-mail. Para "esqueci a senha": a coordenação geral apaga o usuário em *Authentication > Users* e a pessoa faz o primeiro acesso de novo (o cadastro na equipe não é afetado). No painel, cada pessoa mostra se já fez o primeiro acesso: confira logo depois de cadastrar alguém.
 5. **Ligar o sistema ao banco:** em `js/config.js`, preencha `supabaseUrl` e `supabaseAnonKey` (em *Project Settings > API*). A chave anon é pública por desenho; quem protege os dados são as regras do banco.
