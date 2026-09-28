@@ -209,7 +209,8 @@
       <div class="secao-cab"><div><h2 id="t-ag">Agentes de campo</h2><p>Alunas do FIC que fazem visitas por ajuda de custo · sem limite por estado · cadastradas pela coordenação técnica · veem só os quintais atribuídos</p></div></div>
       <div class="grade-uf">${MQ.UFS.map(u => { const l = ag.filter(m => m.uf === u.uf);
         return `<div class="cartao"><div class="cab-uf"><span class="uf"><span class="sigla">${u.uf}</span></span><span class="nomeuf muted">${u.nome}</span></div>
-          ${l.map(m => { const s = R.situacao(m); return `<button class="vagabtn com-foto" data-acao="ver" data-id="${m.id}">${avatar(m, 48)}<span class="vb-t"><span class="nm">${esc(m.nome)}</span><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span></span></button>`; }).join('') || '<p class="small muted" style="padding:4px">Nenhuma agente.</p>'}
+          ${l.map(m => { const s = R.situacao(m); const nv = (S.visitas || []).filter(v => v.executor_id === m.id && v.situacao === 'realizada').length;
+            return `<button class="vagabtn com-foto" data-acao="ver" data-id="${m.id}">${avatar(m, 48)}<span class="vb-t"><span class="nm">${esc(m.nome)}</span><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span><span class="sub">${nv ? nv + ' visita' + (nv > 1 ? 's' : '') + ' feita' + (nv > 1 ? 's' : '') : 'Nenhuma visita ainda'}</span></span></button>`; }).join('') || '<p class="small muted" style="padding:4px">Nenhuma agente.</p>'}
           ${podeCad ? `<button class="btn peq" data-acao="novo" data-papel="agente" data-uf="${u.uf}">+ Agente em ${u.uf}</button>` : ''}</div>`; }).join('')}</div>
     </section>`;
   }
@@ -374,7 +375,7 @@
     const feitos = [m.matricula_fic_em, m.docs_funcern_em, m.termo_assinado_em].filter(Boolean).length;
     return `<details class="hab${feitos === 3 ? ' completa' : ''}" ${feitos === 3 ? '' : 'open'}><summary class="hab-sum">
         <span class="hab-ic" aria-hidden="true">${feitos === 3 ? '✓' : feitos + '/3'}</span>
-        <span class="hab-t"><b>${feitos === 3 ? 'Habilitação completa' : 'Registrar passos da habilitação'}</b><span class="small muted">${feitos === 3 ? 'Clique para ver ou corrigir as datas' : 'Matrícula no FIC, documentos na FUNCERN e termo assinado'}</span></span>
+        <span class="hab-t"><b>${feitos === 3 ? 'Datas da habilitação' : 'Registrar passos da habilitação'}</b><span class="small muted">${feitos === 3 ? 'Os 3 passos estão registrados · abra para ver ou corrigir uma data' : 'Matrícula no FIC, documentos na FUNCERN e termo assinado'}</span></span>
         <span class="hab-seta" aria-hidden="true"></span></summary>
       <form class="f" data-form="hab" data-id="${m.id}" style="margin-top:12px" novalidate>
       <div class="campos">
