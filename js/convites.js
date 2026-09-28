@@ -113,7 +113,7 @@
   /* ---------- no formulário de cadastro: gerar o link ---------- */
   function blocoLink(p) {
     const chave = [p.papel, p.uf || '', p.subst || ''].join('|'); const tk = C.links[chave];
-    if (!tk) return `<div class="bloco conv-bloco"><div><b>Prefere que ela mesma preencha?</b>
+    if (!tk) return `<div class="bloco conv-bloco"><div><b>Link de cadastro</b>
         <p class="small muted">Gere um link e mande por WhatsApp ou e-mail. Ela preenche os próprios dados e aceita o termo; você confere, completa e aprova. O link vale 7 dias e só pode ser usado uma vez.</p></div>
         <div class="acoes"><button class="btn" data-acao="conv-gerar" data-papel="${E(p.papel)}" data-uf="${E(p.uf || '')}" data-subst="${E(p.subst || '')}">Gerar link de cadastro</button></div></div>`;
     const url = endereco(tk);
