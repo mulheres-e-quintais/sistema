@@ -864,9 +864,11 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
   .ent-marca img { height: 40px; }
   .ent-t { font-size: clamp(2rem, 9vw, 2.8rem); }
   .ent-s { font-size: .98rem; }
-  .ent-ufs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px 2px; }
-  .ent-ufs::-webkit-scrollbar { display: none; }
-  .ent-ufs li { flex: none; }
+  /* no celular, só as siglas, numa linha, sem rolagem */
+  .ent-ufs { flex-wrap: nowrap; gap: 8px; }
+  .ent-ufs li { flex: none; padding: 0; background: none; border: 0; backdrop-filter: none; }
+  .ent-ufs li span { display: none; }
+  .ent-ufs b { width: 36px; height: 36px; font-size: 12px; box-shadow: 0 4px 10px -4px color-mix(in srgb, var(--accent) 60%, transparent); }
   .ent-broto { display: none; }
   /* no celular: marca, frase e estados; depois o login; os números por último */
   .ent-hero { display: contents; }
