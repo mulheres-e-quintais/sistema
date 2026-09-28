@@ -14,7 +14,7 @@ Sistema web do projeto **Quintais Produtivos para Mulheres Rurais** (TED 7AAEKA,
 - Os resultados possíveis seguem os critérios marcados: sem água só permite "sem água: encaminhada" ou "não atende"; sem a autodeclaração, a mulher não pode ser selecionada.
 - A coordenação técnica aprova ou devolve cada ficha, com no máximo 40 selecionadas aprovadas por estado. A coordenação geral acompanha e baixa a planilha (CSV).
 
-**Visão geral (coordenação):** metas do plano de trabalho com previsto × realizado, o que pede atenção (vagas, habilitação, fichas paradas, mesma casa, estados com mais de 30% sem água), números por estado e próximos marcos. Só mostra o que está no sistema; o que ainda é registrado em papel aparece como tal.
+**Visão geral (coordenação):** metas do plano de trabalho com previsto × realizado, o que pede atenção (vagas, habilitação, fichas paradas, mesma casa, estados com mais de 30% sem água), números por estado, próximos marcos e **mapa dos quintais**: cada ficha aparece no mapa (posição do GPS quando registrada; senão, aproximada no município), com cor pela situação. O mapa é desenhado pelo próprio sistema, sem serviço externo, e funciona sem internet. Só mostra o que está no sistema; o que ainda é registrado em papel aparece como tal.
 
 **Próximas etapas:** diagnóstico e plano do quintal, relatório de visita técnica, termo de recebimento do kit.
 
@@ -32,6 +32,7 @@ js/api-demo.js          modo demonstração (sem servidor, dados de exemplo)
 js/api-supabase.js      modo produção (Supabase)
 js/fila.js              fila do aparelho (IndexedDB) para trabalhar sem internet
 js/fichas.js            ficha de indicação e termo de consentimento
+js/geo.js               contornos dos estados do Nordeste e municípios do projeto (para o mapa)
 js/painel.js            visão geral da coordenação (metas, alertas, estados, marcos)
 js/app.js               telas
 sw.js, manifest         instalação no celular e abertura sem internet

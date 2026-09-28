@@ -2,7 +2,7 @@
    as mesmas regras do banco. Os dados são de exemplo. */
 (function () {
   const R = MQ.regras;
-  const CHAVE = 'mq-demo-v2';
+  const CHAVE = 'mq-demo-v3';
   let mem = null;
 
   function gerarCPF(seed) {
@@ -71,9 +71,9 @@
       bolsista_id: ana.id, data_ficha: '2026-10-20', criado_em: '2026-10-20T13:00:00.000Z', atualizado_em: '2026-10-22T14:00:00.000Z', exemplo: true
     }, tudoSim, o);
     const lista = [
-      f(1, { nome: 'Francisca Alves de Sousa (exemplo)', p_sustento: true }),
-      f(2, { nome: 'Raimunda Nonata Ribeiro (exemplo)', comunidade: 'Assentamento Novo Horizonte', endereco: 'Rua do Açude, 3', p_raca_povo: true }),
-      f(3, { nome: 'Antônia Pereira Lima (exemplo)', municipio: 'Pio IX', comunidade: 'Comunidade Barra', endereco: 'Sítio Barra, s/n', data_nascimento: '1998-07-02', p_jovem: true, bolsista_id: null }),
+      f(1, { nome: 'Francisca Alves de Sousa (exemplo)', p_sustento: true, latitude: -8.1102, longitude: -41.1187 }),
+      f(2, { nome: 'Raimunda Nonata Ribeiro (exemplo)', comunidade: 'Assentamento Novo Horizonte', endereco: 'Rua do Açude, 3', p_raca_povo: true, latitude: -8.1731, longitude: -41.1649 }),
+      f(3, { nome: 'Antônia Pereira Lima (exemplo)', municipio: 'Pio IX', comunidade: 'Comunidade Barra', endereco: 'Sítio Barra, s/n', data_nascimento: '1998-07-02', p_jovem: true, bolsista_id: null, latitude: -6.8121, longitude: -40.5903 }),
       f(4, { nome: 'Josefa Maria da Conceição (exemplo)', situacao: 'aguardando', aprovada_por: null, aprovada_em: null, data_ficha: '2026-10-24', criado_em: '2026-10-24T12:00:00.000Z' }),
       f(5, { nome: 'Luzia Gomes Ferreira (exemplo)', situacao: 'aguardando', aprovada_por: null, aprovada_em: null, endereco: 'Sitio Lagoa do Mato 11', data_ficha: '2026-10-24', criado_em: '2026-10-24T12:30:00.000Z' }),
       f(6, { nome: 'Maria do Socorro Silva (exemplo)', resultado: 'lista_espera', posicao_espera: 1, p_cadunico: false, p_sem_ater: false }),
