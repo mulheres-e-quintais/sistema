@@ -560,3 +560,19 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .mc-mun { width: 100%; display: grid; grid-template-columns: 34px minmax(0, 1fr) auto 10px; gap: 10px; align-items: center; border: 0; background: transparent; padding: 7px 6px; border-radius: 8px; font: 14px var(--sans); color: var(--ink); text-align: left; cursor: pointer; }
 .mc-mun:hover { background: var(--surface-2); }
 .mc-barra { display: flex; height: 8px; border-radius: 4px; overflow: hidden; }
+
+/* ---------- proposta sugerida ---------- */
+.sug { border-left: 4px solid var(--accent); }
+.sug h4 { margin: 6px 0 0; font: 600 13px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.sug-agua { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.sug-agua > div { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; display: grid; gap: 2px; }
+.sug-agua .v { font: 600 22px var(--serif); color: var(--verde); }
+.sug-agua .l { font-size: 12px; color: var(--ink-2); }
+@media (max-width: 480px) { .sug-agua { grid-template-columns: 1fr; } }
+.sug-itens { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.sug-itens li { display: grid; grid-template-columns: 124px minmax(0, 1fr); gap: 10px; align-items: start; }
+.sug-itens li > div { display: grid; gap: 2px; }
+.sug-itens .chip { justify-self: start; }
+@media (max-width: 480px) { .sug-itens li { grid-template-columns: 1fr; gap: 4px; } }
+.sug-alertas, .sug-div { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
+.sug-alertas li { color: var(--crit); }

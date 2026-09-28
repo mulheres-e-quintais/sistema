@@ -500,6 +500,7 @@
       else if (a === 'fechar') fecharPainel();
       else if (a === 'aba') { S.aba = el.dataset.aba; render(); window.scrollTo(0, 0); }
       else if (/^ficha/.test(a) && MQ.fichasUI) { S.voltarFoco = el; await MQ.fichasUI.clique(a, el); }
+      else if (/^apl-/.test(a) && MQ.sugestaoUI) await MQ.sugestaoUI.clique(a, el);
       else if (/^banco-/.test(a) && MQ.bancoUI) await MQ.bancoUI.clique(a, el);
       else if (/^conv-/.test(a) && MQ.convitesUI) await MQ.convitesUI.clique(a, el);
       else if (/^custo-/.test(a) && MQ.custosUI) await MQ.custosUI.clique(a, el);
@@ -577,6 +578,7 @@
       if (/^custo-/.test(tipo) && MQ.custosUI) await MQ.custosUI.enviar(tipo, form, fd);
       if (/^conv-/.test(tipo) && MQ.convitesUI) await MQ.convitesUI.enviar(tipo, form, fd);
       if (tipo === 'banco' && MQ.bancoUI) await MQ.bancoUI.enviar(tipo, form, fd);
+      if (tipo === 'apl' && MQ.sugestaoUI) await MQ.sugestaoUI.enviar(tipo, form, fd);
       if (tipo === 'cadastro') {
         const p = S.painel;
         const base = p.id ? porId(p.id) : { papel: p.papel, uf: p.uf || null, substitui_id: p.subst || null };

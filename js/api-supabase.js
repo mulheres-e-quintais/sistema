@@ -203,6 +203,13 @@
     },
     async situacaoBancaria() { const { data, error } = await sb.rpc('situacao_bancaria'); if (error) throw erro(error); return data; },
     async exportarDadosBancarios() { const { data, error } = await sb.rpc('exportar_dados_bancarios'); if (error) throw erro(error); return data; },
+    async listarAPL() {
+      const { data, error } = await sb.from('apl_municipios').select('*'); if (error) throw erro(error); return data;
+    },
+    async salvarAPL(uf, municipio, apls, obs) {
+      const { error } = await sb.from('apl_municipios').upsert({ uf, municipio, apls, obs }, { onConflict: 'uf,municipio' });
+      if (error) throw erro(/apl_municipios|PGRST205/.test(error.message) ? 'O cadastro de APL ainda não foi instalado no servidor: rode o arquivo 10_apl.sql.' : error);
+    },
     async listarPreCadastros() {
       const { data, error } = await sb.from('pre_cadastros').select('*').eq('situacao', 'aguardando').order('enviado_em');
       if (error) throw erro(error); return data;
