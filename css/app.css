@@ -797,3 +797,10 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .dobra { margin-top: 14px; }
 .dobra-in { padding: 0 14px 14px; display: grid; gap: 12px; }
 .dobra-in > .bloco.roteiro { border: 0; padding: 0; box-shadow: none; background: none; }
+
+/* tela de entrada: login limpo à esquerda; lema e números ao lado (embaixo no celular) */
+.lado-entrada { display: grid; gap: 22px; align-content: start; min-width: 0; }
+.lado-entrada .lema { border-left: 0; padding: 0; }
+.lado-entrada .lema-t { font-size: clamp(1.6rem, 3.2vw, 2.3rem); line-height: 1.12; }
+.lado-entrada .lema-s { font-size: 1rem; max-width: 46ch; }
+@media (max-width: 900px) { .lado-entrada .lema { text-align: center; justify-items: center; } .lado-entrada .lema-s { margin: 0 auto; } }
