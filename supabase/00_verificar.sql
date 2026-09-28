@@ -2,7 +2,7 @@
 -- Mulheres & Quintais — VERIFICAR o banco (só lê, não muda nada)
 -- Supabase > SQL Editor > New query > cole este arquivo inteiro > Run.
 -- Mostra, etapa por etapa, o que já está instalado. Onde aparecer "FALTA", rode aquele script
--- (na ordem 01, 02, 03, 04, 07, 08, 09, 10, 11, 12, 13). Todos podem rodar de novo sem estragar nada.
+-- (na ordem 01, 02, 03, 04, 07, 08, 09, 10, 11, 12, 13, 15). Todos podem rodar de novo sem estragar nada.
 -- =====================================================================
 with col as (select table_name, column_name from information_schema.columns where table_schema = 'public'),
 fn as (select proname from pg_proc where pronamespace = 'public'::regnamespace),
@@ -26,6 +26,7 @@ chk as (
                    and exists (select 1 from fn where proname = 'registrar_no_arlo')
   union all select '13_avaliacao (versão final)', to_regclass('public.avaliacoes') is not null
                    and not exists (select 1 from fn where proname = 'exportar_dados_bancarios')
+  union all select '15_coord_geral_total', exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'fichas' and policyname = 'geral_tudo')
 )
 -- o SQL Editor do Supabase mostra só o último resultado: por isso vai tudo numa tabela só
 , conta as (

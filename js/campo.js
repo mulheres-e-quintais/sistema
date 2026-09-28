@@ -37,7 +37,7 @@
   const nomeMes = m => { const [a, b] = m.split('-'); return ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][+b - 1] + '/' + a; };
   const mesMais = (m, n) => { const [a, b] = m.split('-').map(Number); const d = new Date(a, b - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
   const codigoQuintal = f => f.uf + '-' + String(f.id).replace(/[^a-z0-9]/gi, '').slice(-5).toUpperCase();
-  const podeAgendar = uf => S().eu.papel === 'coord_tecnico' || (R.ehBolsista(S().eu.papel) && S().eu.uf === uf);
+  const podeAgendar = uf => R.decideCampo(S().eu.papel) || (R.ehBolsista(S().eu.papel) && S().eu.uf === uf);
 
   /* etapa de cada quintal, em forma de "pílulas" */
   function pilulas(f) {
@@ -147,7 +147,7 @@
   /* ---------- aba "Campo" da coordenação ---------- */
   function abaCoord() {
     if (S().campoSemBanco) return semBanco();
-    const souTec = S().eu.papel === 'coord_tecnico';
+    const souTec = R.decideCampo(S().eu.papel);
     const dgs = diagnosticos();
     const aguard = dgs.filter(d => d.situacao === 'aguardando').sort((a, b) => String(a.criado_em).localeCompare(String(b.criado_em)));
     const linhaUF = u => { const vs = visitas().filter(v => v.uf === u.uf && v.situacao !== 'cancelada');
@@ -360,7 +360,7 @@
     const f = ficha(p.ficha); const dg = diagnosticos().find(d => d.ficha_id === p.ficha);
     if (!f || !dg) return '<div class="painel-corpo"><p>Diagnóstico não encontrado.</p></div>';
     const d = Object.assign({}, dg, dg.dados || {});
-    const eu = S().eu; const souTec = eu.papel === 'coord_tecnico';
+    const eu = S().eu; const souTec = R.decideCampo(eu.papel);
     const podeCorrigir = dg.situacao !== 'aprovado' && ((R.ehBolsista(eu.papel) && eu.uf === dg.uf) || dg.executor_id === eu.id);
     const rot = (lista, k) => (lista.find(x => x[0] === k) || [0, k])[1];
     const dl = linhas => `<dl class="dl">${linhas.filter(l => l && l[1] != null && l[1] !== '' && !(Array.isArray(l[1]) && !l[1].length)).map(([k, v]) => `<dt>${k}</dt><dd>${E(v)}</dd>`).join('')}</dl>`;
@@ -391,7 +391,7 @@
         <div class="bloco"><h3>Fotos</h3><div class="acoes">${(dg.fotos || []).map((x, i) => `<button class="btn peq" data-acao="ficha-foto" data-path="${E(x)}">${x === 'exemplo' ? 'Foto de exemplo' : 'Foto ' + (i + 1)}</button>`).join('') || '<span class="muted small">Sem fotos enviadas.</span>'}</div><div id="fi-foto-vista"></div></div>
         ${MQ.sugestaoUI && !dg._fila ? MQ.sugestaoUI.bloco(f, dg) : ''}
         ${MQ.vitrineUI && !dg._fila ? MQ.vitrineUI.blocoPublicar(f, dg) : ''}
-        ${souTec && !dg._fila ? `<form class="bloco" data-form="diag-decisao" data-id="${E(dg.id)}" novalidate><h3>Decisão da coordenação técnica</h3>
+        ${souTec && !dg._fila ? `<form class="bloco" data-form="diag-decisao" data-id="${E(dg.id)}" novalidate><h3>Decisão da coordenação</h3>
           <p class="small muted">${dg.sem_agua ? 'Confirme o encaminhamento por falta de água.' : 'Aprove se o kit está na lista aprovada e cabe no valor por quintal, e se o cronograma é viável.'}</p>
           <div class="campo"><label for="dd-obs">Observação</label><textarea id="dd-obs" name="obs">${E(dg.obs_coordenacao || '')}</textarea></div>
           <div class="aviso erro" data-erro hidden></div>

@@ -37,8 +37,9 @@
   R.ehBolsista = p => p === 'articulacao' || p === 'apoio';
 
   /* Quem pode fazer o quê (espelha pode_gerenciar() no banco) */
+  /* a coordenação geral tem todos os acessos (decisão de 28/09/2026); a técnica cuida de bolsistas e agentes */
   R.podeCadastrar = (meuPapel, papelAlvo) =>
-    ((papelAlvo === 'coord_tecnico' || papelAlvo === 'professor_fic' || papelAlvo === 'auxiliar_adm') && meuPapel === 'coord_geral') ||
+    (meuPapel === 'coord_geral' && papelAlvo !== 'coord_geral') ||
     ((R.ehBolsista(papelAlvo) || papelAlvo === 'agente') && meuPapel === 'coord_tecnico');
   R.podeEditarDados = R.podeCadastrar;
   R.podeEditarHabilitacao = (meuPapel, papelAlvo) =>
@@ -180,7 +181,8 @@
   const R = MQ.regras;
   R.ehCampo = p => p === 'articulacao' || p === 'apoio' || p === 'agente';
   R.habilitado = m => !!(m && m.status === 'ativa' && (m.matricula_fic_em || !R.fazFIC(m.papel)) && m.docs_funcern_em && m.termo_assinado_em);
-  R.podeMatricular = papel => papel === 'professor_fic';   // sempre um dos professores do FIC, em qualquer turma
+  R.podeMatricular = papel => papel === 'professor_fic' || papel === 'coord_geral';
+  R.decideCampo = papel => papel === 'coord_tecnico' || papel === 'coord_geral';   // aprova ou devolve fichas e diagnósticos, agenda visitas   // sempre um dos professores do FIC, em qualquer turma
   /* sem água na seca (ou só carro-pipa): a visita para na Parte A */
   R.semAgua = d => d.agua_seca === 'nao' || (Array.isArray(d.fontes_agua) && d.fontes_agua.length > 0 && d.fontes_agua.every(f => f === 'carro_pipa'));
   R.validarDiagnostico = function (d) {
