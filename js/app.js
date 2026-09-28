@@ -37,6 +37,7 @@
       S.visitas = await opcional(S.api.listarVisitas);
       S.diagnosticos = await opcional(S.api.listarDiagnosticos);
       S.aud = /^coord/.test(S.eu.papel) ? await S.api.auditoria() : [];
+      S.pre = /^coord/.test(S.eu.papel) && S.api.listarPreCadastros ? await opcional(S.api.listarPreCadastros) : [];
       S.exemplo = /^coord/.test(S.eu.papel) && S.api.contarExemplo ? await opcional(async () => [await S.api.contarExemplo()]).then(r => r[0] || 0) : 0;
       S.semRede = false;
       try { localStorage.setItem(chaveCache(), JSON.stringify({ equipe: S.equipe, fichas: S.fichas, visitas: S.visitas, diagnosticos: S.diagnosticos, aud: S.aud, em: Date.now() })); } catch (e) {}
@@ -75,6 +76,9 @@
   function render() {
     const app = $('#app');
     const modoDemo = S.api.modo === 'demo';
+    const conv = /^#convite=([\w-]+)/.exec(location.hash);
+    if (conv || location.hash === '#numeros') { S.painel = null; const pf = $('#painel'); if (pf) pf.remove(); }
+    if (conv && MQ.convitesUI) { app.innerHTML = barra(true) + MQ.convitesUI.pagina(conv[1]); document.title = 'Cadastro · Mulheres & Quintais'; return; }
     if (location.hash === '#numeros' && MQ.vitrineUI) { app.innerHTML = barra(true) + MQ.vitrineUI.pagina(); document.title = 'O projeto em números · Mulheres & Quintais'; return; }
     document.title = 'Mulheres & Quintais';
     let h = barra() + (modoDemo ? faixaDemo() : '');
@@ -133,7 +137,7 @@
       : 'Cadastre as bolsistas indicadas pelo MPA: uma de articulação estadual e uma de apoio estadual por estado.';
     let corpo = '';
     if (aba === 'visao') corpo = MQ.painelUI ? MQ.painelUI.visaoGeral(S) : '';
-    else if (aba === 'equipe') corpo = `
+    else if (aba === 'equipe') corpo = (MQ.convitesUI ? MQ.convitesUI.secaoPendentes() : '') + `
       <div class="cab"><div><span class="eyebrow">Equipe do projeto · processo ${esc(MQ.PROJETO.processo)}</span><h1>Coordenação e bolsistas</h1><p>${intro}</p></div>${prazoChip()}</div>
       <div class="resumo" aria-label="Resumo da equipe">
         <div><span class="v num">${ct ? 1 : 0}<small> de 1</small></span><span class="l">coordenação técnica cadastrada</span></div>
@@ -159,6 +163,7 @@
   }
 
 
+  const nomeDe = m => m.nome_social ? m.nome_social : m.nome;
   /* foto pequena ao lado do nome; sem foto (ou link vencido), mostra as iniciais */
   const CORES_AV = ['#A44934', '#885B44', '#6B7A3A', '#2F6B66', '#8A5A00', '#6A4E7A', '#4F6A8A'];
   function avatar(m, tam) {
@@ -173,7 +178,7 @@
   function cartaoPessoa(m) {
     const s = R.situacao(m);
     return `<div class="pessoa com-foto">${avatar(m, 80)}<div style="display:grid;gap:6px;min-width:0">
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="nm">${esc(m.nome)}</span><span class="chip ${s.cod}">${esc(s.rot)}</span></div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="nm">${esc(nomeDe(m))}</span><span class="chip ${s.cod}">${esc(s.rot)}</span></div>
         <div class="dd"><span>${esc(m.email)}</span><span class="num">${esc(m.telefone)}</span>${m.municipio ? `<span>${esc(m.municipio)}</span>` : ''}${m.organizacao ? `<span>${esc(m.organizacao)}</span>` : ''}</div></div>
       <div class="acts"><button class="btn" data-acao="ver" data-id="${m.id}">Ver detalhes</button></div></div>`;
   }
@@ -192,7 +197,7 @@
       const nFichas = (S.fichas || []).filter(f => f.bolsista_id === m.id).length;
       const nVis = (S.visitas || []).filter(v => v.executor_id === m.id && v.situacao === 'realizada').length;
       const plano = nFichas || nVis ? `${nFichas} ficha${nFichas === 1 ? '' : 's'} lançada${nFichas === 1 ? '' : 's'} · ${nVis} visita${nVis === 1 ? '' : 's'} feita${nVis === 1 ? '' : 's'}` : 'Ainda sem fichas nem visitas';
-      return `<button class="vagabtn com-foto" data-acao="ver" data-id="${m.id}">${avatar(m, 56)}<span class="vb-t"><span class="nm">${esc(m.nome)}</span>
+      return `<button class="vagabtn com-foto" data-acao="ver" data-id="${m.id}">${avatar(m, 56)}<span class="vb-t"><span class="nm">${esc(nomeDe(m))}</span>
         <span><span class="chip ${s.cod}">${esc(s.rot)}</span></span><span class="sub">${esc(plano)}</span></span></button>`;
     }
     const ant = ultimaDesligada(papel, uf);
@@ -210,7 +215,7 @@
       <div class="grade-uf">${MQ.UFS.map(u => { const l = ag.filter(m => m.uf === u.uf);
         return `<div class="cartao"><div class="cab-uf"><span class="uf"><span class="sigla">${u.uf}</span></span><span class="nomeuf muted">${u.nome}</span></div>
           ${l.map(m => { const s = R.situacao(m); const nv = (S.visitas || []).filter(v => v.executor_id === m.id && v.situacao === 'realizada').length;
-            return `<button class="vagabtn com-foto" data-acao="ver" data-id="${m.id}">${avatar(m, 48)}<span class="vb-t"><span class="nm">${esc(m.nome)}</span><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span><span class="sub">${nv ? nv + ' visita' + (nv > 1 ? 's' : '') + ' feita' + (nv > 1 ? 's' : '') : 'Nenhuma visita ainda'}</span></span></button>`; }).join('') || '<p class="small muted" style="padding:4px">Nenhuma agente.</p>'}
+            return `<button class="vagabtn com-foto" data-acao="ver" data-id="${m.id}">${avatar(m, 48)}<span class="vb-t"><span class="nm">${esc(nomeDe(m))}</span><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span><span class="sub">${nv ? nv + ' visita' + (nv > 1 ? 's' : '') + ' feita' + (nv > 1 ? 's' : '') : 'Nenhuma visita ainda'}</span></span></button>`; }).join('') || '<p class="small muted" style="padding:4px">Nenhuma agente.</p>'}
           ${podeCad ? `<button class="btn peq" data-acao="novo" data-papel="agente" data-uf="${u.uf}">+ Agente em ${u.uf}</button>` : ''}</div>`; }).join('')}</div>
     </section>`;
   }
@@ -263,7 +268,7 @@
     const m = Object.assign({}, S.eu, porId(S.eu.id) || {});   // inclui o link da foto
     const s = R.situacao(m);
     return `<main class="wrap" id="principal">
-      <div class="cab"><div><span class="eyebrow">${esc(P[m.papel].nome)} · ${esc(nomeUF(m.uf))}</span><h1>Olá, ${esc(m.nome.split(' ')[0])}</h1>
+      <div class="cab"><div><span class="eyebrow">${esc(P[m.papel].nome)} · ${esc(nomeUF(m.uf))}</span><h1>Olá, ${esc(nomeDe(m).split(' ')[0])}</h1>
         <p>${esc(P[m.papel].faz)}</p></div><span class="chip ${s.cod}" style="font-size:13px;padding:4px 12px">${esc(s.rot)}</span></div>
       <div class="bloco"><h2>Habilitação para receber a bolsa</h2><p class="small muted">A bolsa de ${R.fmtBRL(P[m.papel].bolsa || 0)} por mês só é paga pela FUNCERN depois destes 4 passos. Dúvidas sobre matrícula e AVA: professores do curso FIC. Documentos, conta ou Pix: apoio administrativo.</p>${passos(m)}</div>
       ${m.meta_diagnosticos != null ? `<div class="bloco"><h2>Sua previsão de atividades</h2><p class="small muted">Previsão do termo de compromisso. O trabalho de campo do estado pode ser dividido de outro jeito, combinado com a coordenação técnica.</p><div class="resumo r3">
@@ -312,7 +317,7 @@
     let el = $('#painel');
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
     const p = S.painel;
-    const corpo = /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
+    const corpo = p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
     el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel" role="dialog" aria-modal="true" aria-labelledby="painel-t">${corpo}</aside>`;
     const foco = el.querySelector('[autofocus]') || el.querySelector('.fechar');
     if (foco) foco.focus();
@@ -321,7 +326,7 @@
   function dadosDL(m) {
     const subst = m.substitui_id && porId(m.substitui_id);
     const linhas = [
-      ['CPF', R.fmtCPF(m.cpf)], ['E-mail', m.email], ['Celular', m.telefone], ['Município', m.municipio],
+      m.nome_social ? ['Nome civil', m.nome] : null, ['CPF', R.fmtCPF(m.cpf)], ['E-mail', m.email], ['Celular', m.telefone], ['Município', m.municipio],
       ['Organização', m.organizacao], ['Início da bolsa', R.fmtData(m.data_inicio)],
       m.status === 'ativa' && S.api.modo === 'supabase' ? ['Acesso ao sistema', m.user_id ? 'Já criou a senha e entrou' : 'Ainda não fez o primeiro acesso'] : null,
       m.papel === 'agente' ? ['Pagamento', 'Ajuda de custo por visita (aba Custos)'] : null,
@@ -329,7 +334,10 @@
       m.status === 'desligada' ? ['Desligada em', R.fmtData(m.data_fim)] : null,
       m.status === 'desligada' ? ['Motivo', m.motivo_desligamento] : null
     ].filter(Boolean).filter(l => l[1]);
-    return `<dl class="dl">${linhas.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`;
+    const pv = MQ.convitesUI && (S.eu.id === m.id || /^coord/.test(S.eu.papel)) ? MQ.convitesUI.privado(m.id) : null;
+    if (pv) linhas.push(['Nascimento', pv.data_nascimento && R.fmtData(pv.data_nascimento)], ['PIS/NIS', pv.nis], ['Endereço', MQ.convitesUI.textoEndereco(pv.endereco)],
+      ['Socioeconômico', pv.socioeconomico ? 'Respondido' : null]);
+    return `<dl class="dl">${linhas.filter(l => l[1]).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`;
   }
 
   function passos(m) {
@@ -346,7 +354,7 @@
       ${m.meta_diagnosticos != null ? `<dl class="dl"><dt>Diagnósticos</dt><dd class="num">${m.meta_diagnosticos ?? '—'}</dd><dt>Quintais</dt><dd class="num">${m.meta_quintais ?? '—'}</dd><dt>Visitas</dt><dd class="num">${m.meta_visitas ?? '—'}</dd></dl>` : '<p class="muted small">Não preenchido.</p>'}</div>` : '';
     const hoje = R.hoje() > m.data_inicio ? R.hoje() : m.data_inicio;
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(nomeUF(m.uf)) : ''}</span>
-        <div class="cab-av">${avatar(m, 96)}<div style="display:grid;gap:4px"><h2 id="painel-t">${esc(m.nome)}</h2><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span></div></div>
+        <div class="cab-av">${avatar(m, 96)}<div style="display:grid;gap:4px"><h2 id="painel-t">${esc(nomeDe(m))}</h2><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span></div></div>
         ${botaoFoto(m) ? `<span>${botaoFoto(m)}</span>` : ''}</div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo">
@@ -355,7 +363,10 @@
           ${m.status === 'ativa' && !editaDados && R.ehBolsista(m.papel) && S.eu.papel === 'coord_geral' ? '<p class="nota">Dados pessoais e desligamento são da coordenação técnica.</p>' : ''}</div>
 
         <form class="bloco" data-form="desligar" data-id="${m.id}" hidden novalidate>
-          <h3>Desligar ${esc(m.nome.split(' ')[0])}</h3>
+          <h3>Desligar ${esc(nomeDe(m).split(' ')[0])}</h3>
+          ${(() => { const vp = (S.visitas || []).filter(v => v.executor_id === m.id && v.situacao === 'prevista').length;
+              const dv = (S.diagnosticos || []).filter(x => x.executor_id === m.id && x.situacao === 'devolvido').length;
+              return vp || dv ? `<div class="aviso erro"><b>Ainda não dá para desligar.</b> ${vp ? vp + ' visita' + (vp > 1 ? 's' : '') + ' agendada' + (vp > 1 ? 's' : '') + ' com ela' : ''}${vp && dv ? ' e ' : ''}${dv ? dv + ' diagnóstico' + (dv > 1 ? 's' : '') + ' devolvido' + (dv > 1 ? 's' : '') + ' para ela corrigir' : ''}. Na aba Campo, passe as visitas para outra pessoa ou cancele, e resolva os diagnósticos.</div>` : ''; })()}
           <p class="small muted">O cadastro não é apagado. A vaga fica livre para a substituta e o histórico guarda quem desligou, quando e por quê. Não dá para desfazer: se ela voltar, faça um novo cadastro.</p>
           <div class="campos"><div class="campo"><label for="d-data">Último dia na bolsa</label><input id="d-data" name="data_fim" type="date" min="${esc(m.data_inicio)}" value="${hoje}" required></div>
             <div class="campo"><label for="d-motivo">Motivo</label><select id="d-motivo" name="motivo">${MQ.MOTIVOS.map(x => `<option>${esc(x)}</option>`).join('')}</select></div>
@@ -392,7 +403,9 @@
   }
 
   function painelCadastro(p) {
-    const m = p.id ? porId(p.id) : { papel: p.papel, uf: p.uf || null, substitui_id: p.subst || null, data_inicio: MQ.PROJETO.inicioBolsas };
+    const pre = p.pre && MQ.convitesUI ? MQ.convitesUI.dadosPre(p.pre) : null;
+    const m = p.id ? porId(p.id) : Object.assign({ papel: p.papel, uf: p.uf || null, substitui_id: p.subst || null, data_inicio: MQ.PROJETO.inicioBolsas }, pre || {});
+    const priv = p.id ? (MQ.convitesUI ? MQ.convitesUI.privado(p.id) : null) : (pre ? pre._priv : {});
     const edit = !!p.id;
     const bols = R.ehBolsista(m.papel);
     const subst = m.substitui_id && porId(m.substitui_id);
@@ -406,6 +419,8 @@
         <div class="fixo">${m.papel === 'agente' ? '<span class="small muted">Pagamento</span><b>Ajuda de custo por visita</b>' : `<span class="small muted">Função</span><b>${esc(P[m.papel].nome)}</b>`}
           <span class="small">${P[m.papel].faz ? esc(P[m.papel].faz) : 'Planeja, coordena e acompanha a execução técnica nos 5 estados.'}</span>
           ${m.papel === 'agente' ? '<span class="small">Precisa estar matriculada no FIC e cadastrada na FUNCERN antes da primeira visita paga. Vê só os quintais atribuídos a ela.</span>' : ''}</div>
+        ${!edit && !pre && MQ.convitesUI ? MQ.convitesUI.blocoLink(p) : ''}
+        ${pre ? `<div class="aviso">Dados enviados por ela pelo link em ${R.fmtData(String(pre._pre.enviado_em).slice(0, 10))}. Confira, complete o que falta e salve: ao salvar, o cadastro é aprovado.</div>` : ''}
         ${subst ? `<div class="aviso">Substitui <b>${esc(subst.nome)}</b>, desligada em ${R.fmtData(subst.data_fim)}. O histórico liga as duas.</div>` : ''}
         <fieldset><legend>Dados pessoais</legend><div class="campos">
           <div class="campo inteiro"><label for="c-nome">Nome completo</label><input id="c-nome" name="nome" autocomplete="name" value="${v('nome')}" ${edit ? '' : 'autofocus'} required></div>
@@ -418,6 +433,7 @@
             ${bols ? `<datalist id="lista-mun">${munis.map(x => `<option value="${esc(x)}">`).join('')}</datalist><span class="dica">A lista traz os municípios do projeto técnico em ${esc(m.uf)}.</span>` : ''}</div>
           <div class="campo"><label for="c-org">Organização ou movimento</label><input id="c-org" name="organizacao" value="${v('organizacao')}" placeholder="${bols ? 'Ex.: MPA, associação, sindicato' : 'Ex.: MPA'}"></div>
         </div></fieldset>
+        ${MQ.convitesUI ? (priv === undefined ? '<p class="small muted">Carregando os dados pessoais…</p>' : MQ.convitesUI.camposPessoais(Object.assign({ nome_social: m.nome_social }, priv || {}), false)) : ''}
         <fieldset><legend>Bolsa</legend><div class="campos">
           <div class="campo"><label for="c-ini">Início da bolsa</label><input id="c-ini" name="data_inicio" type="date" value="${v('data_inicio')}" min="${MQ.PROJETO.vigencia.inicio}" max="${MQ.PROJETO.vigencia.fim}" required></div>
         </div></fieldset>
@@ -478,6 +494,7 @@
       else if (a === 'fechar') fecharPainel();
       else if (a === 'aba') { S.aba = el.dataset.aba; render(); window.scrollTo(0, 0); }
       else if (/^ficha/.test(a) && MQ.fichasUI) { S.voltarFoco = el; await MQ.fichasUI.clique(a, el); }
+      else if (/^conv-/.test(a) && MQ.convitesUI) await MQ.convitesUI.clique(a, el);
       else if (/^custo-/.test(a) && MQ.custosUI) await MQ.custosUI.clique(a, el);
       else if (/^vit-/.test(a) && MQ.vitrineUI) await MQ.vitrineUI.clique(a, el);
       else if (/^campo-/.test(a) && MQ.campoUI) { S.voltarFoco = el; await MQ.campoUI.clique(a, el); }
@@ -514,7 +531,7 @@
     } catch (e) { if (lab) lab.firstChild.textContent = txt; toast(e.message); }
   });
 
-  window.addEventListener('hashchange', () => { if (location.hash === '#numeros' || location.hash === '' || location.hash === '#') { render(); window.scrollTo(0, 0); } });
+  window.addEventListener('hashchange', () => { if (/^#(numeros|convite=|)$|^#convite=/.test(location.hash) || location.hash === '') { render(); window.scrollTo(0, 0); } });
   window.addEventListener('online', () => { if (S.eu) sincronizar(); });
   window.addEventListener('offline', () => { if (S.eu) render(); });
 
@@ -522,6 +539,8 @@
     const t = ev.target;
     if (t.name === 'cpf' && !t.readOnly) t.value = R.fmtCPF(t.value);
     if (t.name === 'telefone') t.value = R.fmtFone(t.value);
+    const c = t.closest && t.closest('.campo.tem-erro, .check.tem-erro');   // some o aviso do campo assim que a pessoa corrige
+    if (c) { c.classList.remove('tem-erro'); const e = c.querySelector('.erro'); if (e) e.remove(); }
   });
 
   document.addEventListener('submit', async ev => {
@@ -549,6 +568,7 @@
       if (/^(visita|diag)/.test(tipo) && MQ.campoUI) await MQ.campoUI.enviar(tipo, form, fd);
       if (/^vit-/.test(tipo) && MQ.vitrineUI) await MQ.vitrineUI.enviar(tipo, form, fd);
       if (/^custo-/.test(tipo) && MQ.custosUI) await MQ.custosUI.enviar(tipo, form, fd);
+      if (/^conv-/.test(tipo) && MQ.convitesUI) await MQ.convitesUI.enviar(tipo, form, fd);
       if (tipo === 'cadastro') {
         const p = S.painel;
         const base = p.id ? porId(p.id) : { papel: p.papel, uf: p.uf || null, substitui_id: p.subst || null };
@@ -560,19 +580,28 @@
           organizacao: String(fd.get('organizacao') || '').trim(), data_inicio: String(fd.get('data_inicio') || ''),
           consentimento_lgpd: !!fd.get('consentimento_lgpd')
         });
+        const temPriv = MQ.convitesUI && form.querySelector('[name=data_nascimento]');
+        const priv = temPriv ? MQ.convitesUI.lerPessoais(fd) : null;
+        if (priv) m.nome_social = priv.nome_social;
         if (R.ehBolsista(m.papel)) Object.assign(m, { meta_diagnosticos: num('meta_diagnosticos'), meta_quintais: num('meta_quintais'), meta_visitas: num('meta_visitas') });
         const erros = R.validar(m, S.equipe);
         if (p.id) delete erros.papel;
+        if (priv) Object.assign(erros, MQ.convitesUI.validarPessoais(priv, false));
         if (Object.keys(erros).length) return mostrarErros(form, erros);
         await ocupado(form, async () => {
           if (p.id) {
-            const patch = {}; ['nome', 'email', 'telefone', 'municipio', 'organizacao', 'data_inicio', 'consentimento_lgpd', 'meta_diagnosticos', 'meta_quintais', 'meta_visitas']
-              .forEach(k => { if (k in m && m[k] !== base[k]) patch[k] = m[k]; });
-            if (!Object.keys(patch).length) { fecharPainel(); return; }
+            const patch = {}; ['nome', 'nome_social', 'email', 'telefone', 'municipio', 'organizacao', 'data_inicio', 'consentimento_lgpd', 'meta_diagnosticos', 'meta_quintais', 'meta_visitas']
+              .forEach(k => { if (k in m && (m[k] || null) !== (base[k] || null)) patch[k] = m[k]; });
+            if (priv) { await S.api.salvarPrivado(p.id, priv); MQ.convitesUI.esquecerPrivado(p.id); }
+            if (!Object.keys(patch).length) { await recarregar(); abrirPainel({ tipo: 'detalhe', id: p.id }); toast('Dados salvos.'); return; }
             await S.api.atualizar(p.id, patch); await recarregar(); abrirPainel({ tipo: 'detalhe', id: p.id }); toast('Cadastro atualizado.');
           } else {
-            const novo = await S.api.criar(m); await recarregar(); abrirPainel({ tipo: 'detalhe', id: novo.id });
-            toast(m.nome.split(' ')[0] + ' cadastrada. Próximo passo: matrícula no curso FIC.');
+            const novo = await S.api.criar(m);
+            const temAlgo = priv && (priv.data_nascimento || priv.nis || Object.keys(priv.endereco).length || priv.socioeconomico);
+            if (temAlgo) await S.api.salvarPrivado(novo.id, priv);
+            if (p.pre) await S.api.decidirPreCadastro(p.pre, 'aprovado', null, novo.id);
+            await recarregar(); abrirPainel({ tipo: 'detalhe', id: novo.id });
+            toast(nomeDe(m).split(' ')[0] + ' cadastrada. Próximo passo: matrícula no curso FIC.');
           }
         });
       }

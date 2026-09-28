@@ -12,7 +12,7 @@
   const lerEuGuardado = () => { try { return JSON.parse(localStorage.getItem('mq-eu') || 'null'); } catch (e) { return null; } };
   const CAMPOS = ['papel', 'uf', 'nome', 'cpf', 'email', 'telefone', 'municipio', 'organizacao', 'data_inicio',
     'meta_diagnosticos', 'meta_quintais', 'meta_visitas', 'matricula_fic_em', 'matricula_fic_numero', 'docs_funcern_em',
-    'termo_path', 'termo_assinado_em', 'obs_habilitacao', 'foto_path', 'consentimento_lgpd', 'substitui_id', 'status', 'data_fim', 'motivo_desligamento'];
+    'termo_path', 'termo_assinado_em', 'obs_habilitacao', 'foto_path', 'nome_social', 'consentimento_lgpd', 'substitui_id', 'status', 'data_fim', 'motivo_desligamento'];
   const limpar = o => { const r = {}; CAMPOS.forEach(k => { if (k in o) r[k] = o[k] === '' ? null : o[k]; }); return r; };
 
   /* Grava com UPDATE quando o registro já existe e INSERT só quando é novo.
@@ -171,6 +171,38 @@
       return data.signedUrl;
     },
 
+    /* ---------- Link de cadastro (a pessoa preenche, a coordenação valida) ---------- */
+    async criarConvite(papel, uf, subst) {
+      const { data, error } = await sb.rpc('criar_convite', { p_papel: papel, p_uf: uf || null, p_substitui: subst || null });
+      if (error) throw erro(/criar_convite|PGRST202/.test(error.message) ? 'O link de cadastro ainda não foi instalado no servidor: rode o arquivo 08_convites.sql no Supabase.' : error);
+      return data;
+    },
+    async verConvite(token) {
+      if (!sb) sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, { auth: { persistSession: true } });
+      const { data, error } = await sb.rpc('ver_convite', { p_token: token });
+      if (error) throw erro(error); return data;
+    },
+    async enviarPreCadastro(token, dados) {
+      const { error } = await sb.rpc('enviar_pre_cadastro', { p_token: token, p_dados: dados });
+      if (error) throw erro(error);
+    },
+    async lerPrivado(id) {
+      const { data, error } = await sb.from('equipe_privado').select('*').eq('equipe_id', id).maybeSingle();
+      if (error) throw erro(error); return data;
+    },
+    async salvarPrivado(id, d) {
+      const reg = { equipe_id: id, data_nascimento: d.data_nascimento || null, nis: d.nis || null, endereco: d.endereco || {}, socioeconomico: d.socioeconomico || null, atualizado_em: new Date().toISOString() };
+      const { error } = await sb.from('equipe_privado').upsert(reg, { onConflict: 'equipe_id' });
+      if (error) throw erro(/equipe_privado|PGRST205/.test(error.message) ? 'Os dados pessoais complementares ainda não foram instalados no servidor: rode o arquivo 08_convites.sql no Supabase.' : error);
+    },
+    async listarPreCadastros() {
+      const { data, error } = await sb.from('pre_cadastros').select('*').eq('situacao', 'aguardando').order('enviado_em');
+      if (error) throw erro(error); return data;
+    },
+    async decidirPreCadastro(id, situacao, obs, equipe_id) {
+      const { error } = await sb.from('pre_cadastros').update({ situacao, obs: obs || null, equipe_id: equipe_id || null }).eq('id', id);
+      if (error) throw erro(error);
+    },
     async contarExemplo() {
       const { count, error } = await sb.from('exemplo').select('id', { count: 'exact', head: true });
       if (error) throw erro(error); return count || 0;
