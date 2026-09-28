@@ -617,3 +617,61 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
   .tab-rot td:last-child { grid-column: 2; grid-row: 1 / span 2; align-self: start; text-align: right; }
   .tab-rot td:not(:first-child):not(:last-child) { grid-column: 1; }
 }
+/* ---------- curso FIC ---------- */
+.grade-prof { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.fic-turma { display: grid; gap: 12px; }
+.ft-cab { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.ft-cab h3 { margin: 0 0 2px; }
+.ft-cab .acoes { display: flex; gap: 8px; flex-wrap: wrap; margin: 0; }
+.fic-lista { display: grid; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.fic-pessoa { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.fic-pessoa:last-child { border-bottom: 0; }
+.fp-t { display: grid; gap: 1px; min-width: 0; }
+.fp-t b { overflow-wrap: anywhere; font-weight: 600; }
+.fp-d { display: flex; gap: 12px; align-items: center; justify-content: flex-end; flex-wrap: wrap; text-align: right; }
+.fic-sem { border-color: var(--crit); }
+.fic-ufs { display: grid; gap: 8px; }
+.fic-ufs > div { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.fic-ufs .sigla { font-weight: 700; color: var(--accent); }
+.ok-aviso { background: var(--ok-bg, #E7F2E4); border-color: transparent; }
+.fic-marcar { display: grid; border: 1px solid var(--line); border-radius: var(--r); max-height: 52vh; overflow: auto; }
+.fm-l { display: grid; grid-template-columns: auto auto minmax(0, 1fr) 150px; gap: 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.fm-l:last-child { border-bottom: 0; }
+.fm-l:has(input[type=checkbox]:checked) { background: var(--surface-2); }
+.fm-l input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); }
+.fm-num { width: 100%; min-width: 0; padding: 7px 9px; border: 1px solid var(--line-2); border-radius: 8px; font: inherit; font-variant-numeric: tabular-nums; background: var(--surface); color: var(--ink); }
+@media (max-width: 640px) {
+  .fic-pessoa { grid-template-columns: auto minmax(0, 1fr); }
+  .fp-d { grid-column: 2; justify-content: flex-start; text-align: left; }
+  .fm-l { grid-template-columns: auto auto minmax(0, 1fr); }
+  .fm-num { grid-column: 3; }
+}
+.cab-sub { margin-top: 8px; padding-top: 20px; border-top: 1px solid var(--line); }
+.cab-sub h2 { font-size: 26px; margin: 2px 0 6px; }
+.fp-d .link { font-size: 13px; }
+/* ---------- celular: tabelas largas mostram só as colunas principais ---------- */
+.dica-cols { display: none; }
+@media (max-width: 640px) {
+  .dica-cols { display: block; font-size: 12px; color: var(--muted); margin: 6px 2px 0; }
+  .quadro-sel, .tab-plano, .tab-campo-uf { min-width: 0 !important; table-layout: auto; }
+  .quadro-sel .grupo { display: none; }
+  /* Seleção: Estado, Fichas, Selecionadas, Para aprovar */
+  .quadro-sel tr > :nth-child(4), .quadro-sel tr > :nth-child(5), .quadro-sel tr > :nth-child(6), .quadro-sel tr > :nth-child(8) { display: none; }
+  /* Proposta de roteiro: Estado, Quintais, Viagens, Total */
+  .tab-plano tr > :nth-child(3), .tab-plano tr > :nth-child(5), .tab-plano tr > :nth-child(6), .tab-plano tr > :nth-child(7), .tab-plano tr > :nth-child(8), .tab-plano tr > :nth-child(10) { display: none; }
+  /* Campo por estado: Estado, Dias de campo, Diagnósticos, Planos aprovados */
+  .tab-campo-uf tr > :nth-child(5), .tab-campo-uf tr > :nth-child(6) { display: none; }
+  .quadro-sel td, .quadro-sel th, .tab-plano td, .tab-plano th, .tab-campo-uf td, .tab-campo-uf th { padding: 10px 8px; }
+  .quadro-sel td.uf, .tab-campo-uf td.uf { width: auto; padding: 10px 8px; }
+  .quadro-sel .nomeuf, .tab-campo-uf .nomeuf { display: none; }
+}
+@media (max-width: 640px) {
+  .quadro-sel th, .tab-plano th, .tab-campo-uf th { white-space: normal; font-size: 10.5px; letter-spacing: .03em; }
+  .tab-plano td { white-space: nowrap; font-size: 14px; }
+  .quadro-sel .sigla, .tab-campo-uf .sigla { font-size: 20px; }
+}
+.so-cel { display: none; }
+@media (max-width: 640px) {
+  .so-largo { display: none; } .so-cel { display: inline; }
+  .quadro-sel td, .quadro-sel th, .tab-plano td, .tab-plano th, .tab-campo-uf td, .tab-campo-uf th { padding: 10px 6px; }
+}

@@ -38,20 +38,22 @@
 
   /* Quem pode fazer o quê (espelha pode_gerenciar() no banco) */
   R.podeCadastrar = (meuPapel, papelAlvo) =>
-    (papelAlvo === 'coord_tecnico' && meuPapel === 'coord_geral') ||
+    ((papelAlvo === 'coord_tecnico' || papelAlvo === 'professor_fic') && meuPapel === 'coord_geral') ||
     ((R.ehBolsista(papelAlvo) || papelAlvo === 'agente') && meuPapel === 'coord_tecnico');
   R.podeEditarDados = R.podeCadastrar;
   R.podeEditarHabilitacao = (meuPapel, papelAlvo) =>
-    (meuPapel === 'coord_geral' && (papelAlvo === 'coord_tecnico' || R.ehBolsista(papelAlvo) || papelAlvo === 'agente')) ||
+    (meuPapel === 'coord_geral' && (papelAlvo === 'coord_tecnico' || papelAlvo === 'professor_fic' || R.ehBolsista(papelAlvo) || papelAlvo === 'agente')) ||
     (meuPapel === 'coord_tecnico' && (R.ehBolsista(papelAlvo) || papelAlvo === 'agente'));
 
   /* Habilitação para receber bolsa: passo a passo do Guia das bolsistas */
+  /* professor do FIC não se matricula no curso: habilita com FUNCERN e termo */
+  R.fazFIC = papel => papel !== 'professor_fic' && papel !== 'coord_geral';
   R.passosHabilitacao = m => [
-    { id: 'dados',     nome: 'Dados enviados pela coordenação técnica', feito: true, quando: m.criado_em && m.criado_em.slice(0, 10) },
-    { id: 'fic',       nome: 'Matrícula no curso FIC (IFRN)', feito: !!m.matricula_fic_em, quando: m.matricula_fic_em, extra: m.matricula_fic_numero },
+    { id: 'dados',     nome: m.papel === 'professor_fic' || m.papel === 'coord_tecnico' ? 'Dados cadastrados pela coordenação geral' : 'Dados enviados pela coordenação técnica', feito: true, quando: m.criado_em && m.criado_em.slice(0, 10) },
+    R.fazFIC(m.papel) ? { id: 'fic', nome: 'Matrícula no curso FIC (IFRN)', feito: !!m.matricula_fic_em, quando: m.matricula_fic_em, extra: m.matricula_fic_numero } : null,
     { id: 'funcern',   nome: 'Documentos e conta/Pix entregues à FUNCERN', feito: !!m.docs_funcern_em, quando: m.docs_funcern_em },
     { id: 'termo',     nome: 'Termo de compromisso assinado', feito: !!m.termo_assinado_em, quando: m.termo_assinado_em, extra: m.termo_path }
-  ];
+  ].filter(Boolean);
   R.situacao = m => {
     if (m.status === 'desligada') return { cod: 'desligada', rot: 'Desligada' };
     if (m.papel === 'coord_geral') return { cod: 'ok', rot: 'Ativa' };
@@ -173,7 +175,8 @@
 (function () {
   const R = MQ.regras;
   R.ehCampo = p => p === 'articulacao' || p === 'apoio' || p === 'agente';
-  R.habilitado = m => !!(m && m.status === 'ativa' && m.matricula_fic_em && m.docs_funcern_em && m.termo_assinado_em);
+  R.habilitado = m => !!(m && m.status === 'ativa' && (m.matricula_fic_em || !R.fazFIC(m.papel)) && m.docs_funcern_em && m.termo_assinado_em);
+  R.podeMatricular = papel => papel === 'professor_fic' || papel === 'coord_geral';
   /* sem água na seca (ou só carro-pipa): a visita para na Parte A */
   R.semAgua = d => d.agua_seca === 'nao' || (Array.isArray(d.fontes_agua) && d.fontes_agua.length > 0 && d.fontes_agua.every(f => f === 'carro_pipa'));
   R.validarDiagnostico = function (d) {

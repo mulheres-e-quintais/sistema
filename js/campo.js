@@ -154,8 +154,8 @@
         <td class="num">${pessoasCampo(u.uf).filter(p => p.papel === 'agente').length}</td></tr>`; };
     return `<div class="cab"><div><span class="eyebrow">Trabalho de campo</span><h1 style="font-size:24px">Visitas, diagnósticos e planos</h1>
         <p>${souTec ? 'Você aprova ou devolve o plano de cada quintal antes da compra do kit.' : 'A aprovação dos planos é da coordenação técnica.'} Dias de campo: 160 por estado (40 quintais × 4 visitas).</p></div></div>
-      <div class="quadro-scroll" style="display:block"><table class="quadro"><thead><tr><th>Estado</th><th>Dias de campo</th><th>Diagnósticos</th><th>Planos aprovados</th><th>Sem água</th><th>Agentes</th></tr></thead>
-        <tbody>${MQ.UFS.map(linhaUF).join('')}</tbody></table></div>
+      <div class="quadro-scroll" style="display:block"><table class="quadro tab-campo-uf"><thead><tr><th>Estado</th><th>Dias de campo</th><th>Diagnósticos</th><th>Planos aprovados</th><th>Sem água</th><th>Agentes</th></tr></thead>
+        <tbody>${MQ.UFS.map(linhaUF).join('')}</tbody></table></div><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p>
       ${aguard.length ? `<div class="bloco"><h3>${souTec ? 'Planos para você aprovar' : 'Planos aguardando a coordenação técnica'} (${aguard.length})</h3><div class="lista-fichas">
         ${aguard.map(d => { const f = ficha(d.ficha_id) || {}; return `<button class="vagabtn ficha-linha" data-acao="campo-diag-ver" data-ficha="${E(d.ficha_id)}"><span class="nm">${E(f.nome || '—')}</span>
           <span style="display:flex;gap:6px;flex-wrap:wrap">${d.sem_agua ? '<span class="chip crit">Sem água: sem plano</span>' : `<span class="chip pend">Lote ${d.lote}</span>`}<span class="chip off">${E((d.dados && d.dados.kit || []).filter(k => k.item).length)} itens no kit</span></span>

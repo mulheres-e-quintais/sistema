@@ -32,7 +32,9 @@ MQ.PAPEIS = {
   apoio:         { nome: 'Apoio estadual',       curto: 'Apoio',          bolsa: 96000 / 5 / 12, org: 'MPA',
                    faz: 'Cuida da logística, da coleta e organização das informações, dos registros das ações e do monitoramento.' },
   agente:        { nome: 'Agente de campo',      curto: 'Agente',         bolsa: null, org: 'MPA',
-                   faz: 'Faz as visitas de diagnóstico, implantação e acompanhamento nos quintais atribuídos a ela, com ajuda de custo por dia de campo.' }
+                   faz: 'Faz as visitas de diagnóstico, implantação e acompanhamento nos quintais atribuídos a ela, com ajuda de custo por dia de campo.' },
+  professor_fic: { nome: 'Professor(a) do curso FIC', curto: 'Professor FIC', bolsa: null, org: 'IFRN',
+                   faz: 'Dá as aulas do curso FIC e registra no sistema as turmas e a matrícula das bolsistas e agentes de campo.' }
 };
 
 /* Motivos de cancelamento previstos no item 5 do termo de compromisso */

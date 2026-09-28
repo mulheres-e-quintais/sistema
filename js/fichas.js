@@ -111,7 +111,7 @@
         <tr><th>Estado</th><th>Fichas (total)</th><th class="sep">Selecionadas (vagas)</th><th class="sep">Lista de espera</th><th>Sem água</th><th>Não atendem</th><th class="sep">Para aprovar</th><th>Devolvidas</th></tr></thead>
         <tbody>${MQ.UFS.map(u => linha(u.uf, u.nome)).join('')}
         <tr><td class="uf"><b>Total</b></td><td class="num"><b>${tot.total}</b></td><td class="num sep"><b>${tot.aprovadas}</b> de ${MQ.VAGAS_UF * 5}</td><td class="num sep">${tot.espera}</td><td class="num">${tot.sem_agua}</td><td class="num">${tot.nao_atende}</td><td class="num sep"><b>${tot.aguardando}</b></td><td class="num">${tot.devolvidas}</td></tr>
-        </tbody></table></div>
+        </tbody></table></div><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p>
       ${aguardando.length ? `<div class="bloco"><h3>${souTec ? 'Para você aprovar' : 'Aguardando a coordenação técnica'} (${aguardando.length})</h3>
         <div class="lista-fichas">${aguardando.slice(0, 30).map(f => linhaFicha(f, true)).join('')}</div></div>` : ''}
       <details class="hist"><summary>Todas as fichas (${lista.length})</summary><div style="padding:0 18px 16px;display:grid;gap:12px">
