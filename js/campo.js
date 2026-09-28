@@ -496,7 +496,7 @@
         const fm = $('form[data-form=diag]'); if (!fm) return;
         fm.latitude.value = pos.coords.latitude.toFixed(6); fm.longitude.value = pos.coords.longitude.toFixed(6);
         dica.textContent = fm.latitude.value + ', ' + fm.longitude.value + ' (precisão de ' + Math.round(pos.coords.accuracy) + ' m)'; el.textContent = 'Localização registrada ✓';
-      }, err => { dica.textContent = err.code === 1 ? 'Permissão negada. Explique no campo abaixo.' : 'Não foi possível agora. Tente de novo ou explique abaixo.'; },
+      }, err => { dica.textContent = MQ.dicaGPS(err, 'Se não der, explique no campo abaixo.'); },
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 });
     }
     else if (a === 'campo-visita-cancelar') {

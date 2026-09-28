@@ -153,6 +153,18 @@ MQ.DIAG = {
 /* Kit do quintal: até R$ 4.500 por quintal (plano de trabalho; a coordenação pode ajustar na aba Campo) */
 MQ.KIT_QUINTAL = 4500;
 
+/* localização negada: o navegador não pergunta de novo sozinho, então explicamos como liberar */
+MQ.dicaGPS = (err, fim) => {
+  if (!err || err.code !== 1) return 'Não foi possível pegar a localização agora. Vá para um lugar aberto e tente de novo' + (fim ? '; ' + fim : '.');
+  const ua = navigator.userAgent || '';
+  const dentroApp = /FBAN|FBAV|Instagram|WhatsApp|Line\//i.test(ua);
+  const como = dentroApp ? 'Você abriu o link dentro do WhatsApp ou de outro aplicativo: abra no Chrome ou no Safari e tente de novo.'
+    : /iPhone|iPad/i.test(ua) ? 'Para liberar: Ajustes > Privacidade > Serviços de Localização (ligado) > Safari > "Ao Usar o App"; depois recarregue a página.'
+    : /Android/i.test(ua) ? 'Para liberar: toque no cadeado ao lado do endereço > Permissões > Localização > Permitir, e confira se a localização do celular está ligada; depois tente de novo.'
+    : 'Para liberar: clique no cadeado ao lado do endereço > Localização > Permitir, e tente de novo.';
+  return 'Localização bloqueada neste navegador. ' + como + (fim ? ' ' + fim : '');
+};
+
 MQ.CUSTO_PADRAO = {
   valor_hora: 50,
   horas: { diagnostico: 3, implantacao: 2, acompanhamento: 2, avaliacao: 2 },

@@ -351,7 +351,7 @@
         fm.latitude.value = pos.coords.latitude.toFixed(6); fm.longitude.value = pos.coords.longitude.toFixed(6);
         dica.textContent = fm.latitude.value + ', ' + fm.longitude.value + ' (precisão de ' + Math.round(pos.coords.accuracy) + ' m)';
         el.textContent = 'Localização registrada ✓';
-      }, err => { dica.textContent = err.code === 1 ? 'Permissão de localização negada. Pode seguir sem ela.' : 'Não foi possível obter a localização agora.'; },
+      }, err => { dica.textContent = MQ.dicaGPS(err, 'Se não der, pode seguir sem ela.'); },
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 });
     }
     else if (a === 'ficha-foto') {
