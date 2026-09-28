@@ -186,9 +186,19 @@
   function corpo() {
     const c = PUB.conv;
     if (!c) return '<div class="login ent-card"><p class="carregando">Abrindo o link…</p></div>';
-    if (PUB.enviado) return `<div class="login ent-card"><span class="eyebrow">Cadastro recebido</span>
-      <h2 class="serif">Obrigada!</h2><p>Seus dados foram enviados para a coordenação do projeto conferir.</p>
-      <div class="aviso"><b>Próximo passo:</b> quando a coordenação aprovar, entre em <a href="${E(location.origin + location.pathname)}">${E(location.host + location.pathname)}</a>, escolha <b>Primeiro acesso</b> e crie a sua senha com o e-mail que você informou.</div></div>`;
+    if (PUB.enviado) return `<div class="conv-boas"><h1 class="ent-t serif">Pronto, <em>recebemos</em>.</h1>
+        <p class="ent-s">Seus dados foram enviados para a coordenação do projeto conferir.</p>
+        <ol class="conv-etapas"><li class="feito"><b>✓</b> Seus dados</li><li class="on"><b>2</b> Coordenação confere</li><li><b>3</b> Você cria a senha</li></ol></div>
+      <div class="login ent-card conv-fim">
+        <span class="eyebrow">Próximo passo</span>
+        <h2 class="serif">Quando a coordenação aprovar</h2>
+        <ol class="conv-passos">
+          <li><span>Abra o sistema pelo botão abaixo (no Chrome ou no Safari).</span></li>
+          <li><span>Toque em <b>Primeiro acesso</b>.</span></li>
+          <li><span>Use o e-mail que você informou e crie a sua senha.</span></li>
+        </ol>
+        <a class="btn pri ent-btn" href="${E(location.origin + location.pathname)}">Ir para o sistema <span aria-hidden="true">→</span></a>
+        <p class="small muted">Guarde este endereço: <b>${E(location.host + location.pathname)}</b>. Se tiver dúvida, fale com quem mandou o link.</p></div>`;
     if (!c.valido) {
       const msg = { usado: 'Este link já foi usado.', vencido: 'Este link venceu (vale 7 dias).', cancelado: 'Este link foi cancelado.', inexistente: 'Link não encontrado. Confira se copiou inteiro.' }[c.motivo] || ('Não foi possível abrir o link. ' + (c.erro || ''));
       return `<div class="login ent-card"><span class="eyebrow">Cadastro na equipe</span><h2 class="serif">Link sem validade</h2><p>${E(msg)} Peça um novo à coordenação do projeto.</p></div>`;
