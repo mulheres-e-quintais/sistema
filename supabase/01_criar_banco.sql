@@ -73,7 +73,7 @@ create table if not exists public.equipe (
   constraint datas_coerentes check (data_fim is null or data_fim >= data_inicio)
 );
 
--- a soma do plano individual das 2 bolsistas de um estado não passa da meta do estado
+-- (função mantida só por compatibilidade; o gatilho que a usava foi retirado)
 create or replace function public.checar_meta_estado() returns trigger
 language plpgsql as $$
 declare d int; q int; v int;
@@ -178,9 +178,9 @@ drop trigger if exists equipe_antes on public.equipe;
 create trigger equipe_antes before insert or update on public.equipe
   for each row execute function public.equipe_antes();
 
+-- (sem trava de soma por estado: diagnóstico, implantação e visitas podem ser feitos por
+--  qualquer bolsista do estado ou por outra pessoa paga por ajuda de custo)
 drop trigger if exists equipe_meta_estado on public.equipe;
-create trigger equipe_meta_estado before insert or update on public.equipe
-  for each row execute function public.checar_meta_estado();
 
 -- ---------------------------------------------------------------------
 -- Auditoria
