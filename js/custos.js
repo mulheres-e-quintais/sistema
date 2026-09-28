@@ -280,10 +280,13 @@
     const uf = C.planoUF || (ufs.find(u => u.viagens.length) || {}).uf || 'PI'; const U0 = r.ufs[uf];
     return `<div class="cab"><div><span class="eyebrow">Planejamento</span><h1>Proposta de roteiro</h1>
         <p>Cada quintal fica com a pessoa habilitada do estado que mora mais perto, e as visitas da mesma etapa são juntadas em viagens de um dia (até ${JORNADA_H} horas contando o deslocamento). É uma proposta: a bolsista ajusta ao agendar.</p>
-        <p class="small muted">Lê do sistema: equipe habilitada e município onde mora, fichas selecionadas e aprovadas (com GPS do diagnóstico quando houver), visitas já feitas ou marcadas no roteiro de campo (em "Só o que falta" não entram de novo), diagnósticos sem água (só recebem o diagnóstico) e os valores da aba Pagamento. Em "Só o que falta", quem já visitou um quintal continua com ele${(() => { const n = ufs.reduce((s, u) => s + (u.continua || 0), 0); return n ? ` (${n} quintais)` : ''; })()}. Nenhum mês que já passou recebe custo.</p></div></div>
+        <p class="small muted">Lê do sistema: equipe habilitada e município onde mora, fichas selecionadas e aprovadas (com GPS do diagnóstico quando houver), o roteiro de campo, os diagnósticos sem água (só recebem o diagnóstico) e os valores da aba Pagamento. Nenhum mês que já passou recebe custo.</p></div></div>
       ${r.semOrigem.length ? `<div class="aviso">Sem município de moradia conhecido, fora do cálculo: ${r.semOrigem.map(m => E(m.nome_social || m.nome)).join(', ')}. Corrija o município no cadastro.</div>` : ''}
       ${r.semLocal ? `<div class="aviso">${r.semLocal} quintal(is) sem localização (nem GPS, nem município do mapa) ficaram fora.</div>` : ''}
-      <span class="seg" role="group" aria-label="O que planejar"><button type="button" data-acao="custo-plano-tudo" data-v="0" aria-pressed="${!C.planoTudo}">Só o que falta agendar</button><button type="button" data-acao="custo-plano-tudo" data-v="1" aria-pressed="${!!C.planoTudo}">Projeto inteiro</button></span>
+      <div class="escolha" role="group" aria-label="O que calcular">
+        <button type="button" data-acao="custo-plano-tudo" data-v="0" aria-pressed="${!C.planoTudo}"><b>Só o que falta agendar</b><span>Visitas que ainda não estão no roteiro de campo. Quem já visita um quintal continua com ele.</span></button>
+        <button type="button" data-acao="custo-plano-tudo" data-v="1" aria-pressed="${!!C.planoTudo}"><b>Projeto inteiro</b><span>As 4 visitas de todos os quintais aprovados, do zero: o custo total planejado.</span></button>
+      </div>
       ${(() => { if (!C.planoTudo) return ''; const at = C.planoAtual || (C.planoAtual = planejar({ tudo: true, cont: true }));
         const va = Object.values(at.ufs).reduce((s, u) => s + (u.prop.total || 0), 0); const n = Object.values(at.ufs).reduce((s, u) => s + (u.continua || 0), 0);
         if (!n || va - prop < 1) return '';
@@ -298,13 +301,13 @@
         <button class="btn peq" data-acao="custo-plano-csv">Baixar a proposta (CSV)</button></div>
       ${C.refeicaoDia ? '<p class="small muted">Simulação: a regra atual paga 1 refeição por visita. Para valer, a coordenação precisa mudar a regra e combinar com a equipe.</p>' : ''}
       <section class="secao"><h2>Por estado</h2><div class="quadro-scroll" style="display:block"><table class="quadro tab-plano"><thead><tr>
-          <th>Estado</th><th>Quintais</th><th>Visitas</th><th>Viagens</th><th>Km</th><th>Combustível</th><th>Refeição</th><th>Horas</th><th>Total</th><th>Sem agrupar</th></tr></thead><tbody>
-        ${ufs.map(u => `<tr><td><button class="link" data-acao="custo-plano-uf" data-uf="${u.uf}"><span class="so-largo">${E(U().nomeUF(u.uf))}</span><span class="so-cel">${u.uf}</span></button></td><td class="num">${u.quintais}</td><td class="num">${u.visitas}</td><td class="num">${u.viagens.length}</td>
-          <td class="num">${fmtN(u.prop.km)}</td><td class="num">${brl(u.prop.comb)}</td><td class="num">${brl(u.prop.ref)}</td><td class="num">${brl(u.prop.horas * C.par.valor_hora)}</td>
-          <td class="num"><b>${brl(u.prop.total || 0)}</b></td><td class="num muted">${brl(u.base.total || 0)}</td></tr>`).join('')}
-        <tr class="tot"><td><b>Total</b></td><td class="num">${nQ}</td><td class="num">${nV}</td><td class="num">${nT}</td><td class="num">${fmtN(ufs.reduce((s, u) => s + u.prop.km, 0))}</td>
-          <td class="num">${brl(ufs.reduce((s, u) => s + u.prop.comb, 0))}</td><td class="num">${brl(ufs.reduce((s, u) => s + u.prop.ref, 0))}</td><td class="num">${brl(ufs.reduce((s, u) => s + u.prop.horas, 0) * C.par.valor_hora)}</td>
-          <td class="num"><b>${brl(prop)}</b></td><td class="num muted">${brl(base)}</td></tr></tbody></table></div><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p></section>
+          <th>Estado</th><th>Quintais</th><th>Visitas</th><th>Viagens</th><th>Km</th><th>Combustível</th><th>Refeição</th><th>Horas pagas</th><th>Total</th><th>Sem agrupar</th></tr></thead><tbody>
+        ${ufs.map(u => `<tr class="${u.visitas ? '' : 'vazia'}"><td><button class="link" data-acao="custo-plano-uf" data-uf="${u.uf}"><span class="so-largo">${E(U().nomeUF(u.uf))}</span><span class="so-cel">${u.uf}</span></button></td><td>${u.quintais}</td><td>${u.visitas}</td><td>${u.viagens.length}</td>
+          <td>${fmtN(u.prop.km)}</td><td>${brl(u.prop.comb)}</td><td>${brl(u.prop.ref)}</td><td>${brl(u.prop.horas * C.par.valor_hora)}</td>
+          <td><b>${brl(u.prop.total || 0)}</b></td><td class="muted">${brl(u.base.total || 0)}</td></tr>`).join('')}
+        <tr class="tot"><td><b>Total</b></td><td>${nQ}</td><td>${nV}</td><td>${nT}</td><td>${fmtN(ufs.reduce((s, u) => s + u.prop.km, 0))}</td>
+          <td>${brl(ufs.reduce((s, u) => s + u.prop.comb, 0))}</td><td>${brl(ufs.reduce((s, u) => s + u.prop.ref, 0))}</td><td>${brl(ufs.reduce((s, u) => s + u.prop.horas, 0) * C.par.valor_hora)}</td>
+          <td><b>${brl(prop)}</b></td><td class="muted">${brl(base)}</td></tr></tbody></table></div><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p></section>
       <section class="secao"><h2>Por mês</h2><p class="small muted">As viagens de cada etapa espalhadas pelo período das metas: diagnóstico out–jan, implantação jan–jun, acompanhamentos fev–set.</p>
         <div class="barras-mes">${MESES_PROJ.map((nm, i) => { const v = meses[i + 1] || 0; return `<div class="bm"><span class="bm-v num">${v ? brl(v).replace(',00', '') : ''}</span><span class="bm-b"><i style="height:${Math.round(v / maxMes * 100)}%"></i></span><span class="bm-l">${nm}</span></div>`; }).join('')}</div></section>
       <section class="secao"><div class="secao-cab"><h2>${E(U().nomeUF(uf))}: quem visita e as viagens</h2>

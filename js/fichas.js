@@ -89,7 +89,7 @@
       const pct = Math.min(100, Math.round(c.aprovadas / MQ.VAGAS_UF * 100));
       return `<tr><td class="uf"><span class="sigla">${uf}</span><span class="nomeuf">${E(nome)}</span></td>
         <td class="num">${c.total}</td>
-        <td class="sep"><div style="display:grid;gap:4px"><span class="num"><b>${c.aprovadas}</b> de ${MQ.VAGAS_UF}</span><span class="bar"><i class="${c.aprovadas >= MQ.VAGAS_UF ? 'cheio' : ''}" style="width:${pct}%"></i></span></div></td>
+        <td class="sep c"><div style="display:grid;gap:4px;text-align:center"><span class="num"><b>${c.aprovadas}</b> de ${MQ.VAGAS_UF}</span><span class="bar"><i class="${c.aprovadas >= MQ.VAGAS_UF ? 'cheio' : ''}" style="width:${pct}%"></i></span></div></td>
         <td class="num sep">${c.espera}</td><td class="num">${c.sem_agua}</td><td class="num">${c.nao_atende}</td>
         <td class="num sep">${c.aguardando ? `<b>${c.aguardando}</b>` : 0}</td><td class="num">${c.devolvidas}</td></tr>`;
     };

@@ -148,14 +148,15 @@
       const feitas = vs.filter(v => v.situacao === 'realizada').length; const d = dgs.filter(x => x.uf === u.uf);
       const pct = Math.min(100, vs.length / MQ.DIAS_CAMPO_UF * 100), pctF = Math.min(100, feitas / MQ.DIAS_CAMPO_UF * 100);
       return `<tr><td class="uf"><span class="sigla">${u.uf}</span><span class="nomeuf">${u.nome}</span></td>
-        <td><div style="display:grid;gap:4px"><span class="num"><b>${feitas}</b> feitos · ${vs.length - feitas} previstos · <span class="muted">de ${MQ.DIAS_CAMPO_UF}</span></span>
-          <span class="medidor"><i style="width:${pct}%;opacity:.35"></i><i style="width:${pctF}%"></i></span></div></td>
-        <td class="num">${d.length} <span class="muted">de 40</span></td><td class="num">${d.filter(x => x.situacao === 'aprovado').length}</td><td class="num">${d.filter(x => x.sem_agua).length}</td>
-        <td class="num">${pessoasCampo(u.uf).filter(p => p.papel === 'agente').length}</td></tr>`; };
+        <td><div class="dias-cel"><span class="num"><b>${feitas}</b> feitos <span class="muted">de ${MQ.DIAS_CAMPO_UF}</span></span>
+          <span class="medidor"><i style="width:${pct}%;opacity:.35"></i><i style="width:${pctF}%"></i></span><span class="small muted">${vs.length - feitas} previsto${vs.length - feitas === 1 ? '' : 's'} no roteiro</span></div></td>
+        <td class="num c">${d.length} <span class="muted">de 40</span></td><td class="num c">${d.filter(x => x.situacao === 'aprovado').length}</td><td class="num c">${(n => n ? `<b style="color:var(--crit)">${n}</b>` : 0)(d.filter(x => x.sem_agua).length)}</td>
+        <td class="num c">${pessoasCampo(u.uf).filter(p => p.papel === 'agente').length}</td></tr>`; };
     return `<div class="cab"><div><span class="eyebrow">Trabalho de campo</span><h1 style="font-size:24px">Visitas, diagnósticos e planos</h1>
         <p>${souTec ? 'Você aprova ou devolve o plano de cada quintal antes da compra do kit.' : 'A aprovação dos planos é da coordenação técnica.'} Dias de campo: 160 por estado (40 quintais × 4 visitas).</p></div></div>
-      <div class="quadro-scroll" style="display:block"><table class="quadro tab-campo-uf"><thead><tr><th>Estado</th><th>Dias de campo</th><th>Diagnósticos</th><th>Planos aprovados</th><th>Sem água</th><th>Agentes</th></tr></thead>
-        <tbody>${MQ.UFS.map(linhaUF).join('')}</tbody></table></div><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p>
+      <div class="quadro-scroll" style="display:block"><table class="quadro tab-campo-uf"><thead><tr><th>Estado</th><th>Dias de campo</th><th class="c">Diagnósticos</th><th class="c">Planos aprovados</th><th class="c">Sem água na seca</th><th class="c">Agentes de campo</th></tr></thead>
+        <tbody>${MQ.UFS.map(linhaUF).join('')}</tbody></table></div>
+      <p class="small muted" style="margin:6px 2px 0"><b>Sem água na seca:</b> diagnósticos em que a água não dura no período seco. Essa mulher não recebe o kit (é encaminhada a programa de cisternas) e a vaga dela precisa ser preenchida pela lista de espera. Acima de 30% no estado é sinal de alerta.</p><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p>
       ${aguard.length ? `<div class="bloco"><h3>${souTec ? 'Planos para você aprovar' : 'Planos aguardando a coordenação técnica'} (${aguard.length})</h3><div class="lista-fichas">
         ${aguard.map(d => { const f = ficha(d.ficha_id) || {}; return `<button class="vagabtn ficha-linha" data-acao="campo-diag-ver" data-ficha="${E(d.ficha_id)}"><span class="nm">${E(f.nome || '—')}</span>
           <span style="display:flex;gap:6px;flex-wrap:wrap">${d.sem_agua ? '<span class="chip crit">Sem água: sem plano</span>' : `<span class="chip pend">Lote ${d.lote}</span>`}<span class="chip off">${E((d.dados && d.dados.kit || []).filter(k => k.item).length)} itens no kit</span></span>
