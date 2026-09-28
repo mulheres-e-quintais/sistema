@@ -132,8 +132,7 @@
     return `<footer class="rodape"><div class="rodape-in">
       <div class="rodape-marca"><img src="assets/isotipo.svg" alt="" width="26" height="37"><span><b>Mulheres &amp; Quintais</b><small>Quintais Produtivos para Mulheres Rurais</small></span></div>
       <p class="rodape-org">IFRN Campus Apodi · MPA · FUNCERN<br><span>Processo ${esc(MQ.PROJETO.processo)}</span></p>
-      <p class="rodape-lgpd">Os dados deste sistema são protegidos pela Lei Geral de Proteção de Dados (Lei nº 13.709/2018) e usados só para o projeto.
-        <button type="button" class="link" data-acao="ajuda">Ajuda</button></p>
+      <p class="rodape-lgpd">Dados protegidos pela LGPD (Lei nº 13.709/2018), usados só para o projeto.<br><button type="button" class="link" data-acao="ajuda">Ajuda</button></p>
     </div></footer>`;
   }
   function barra(publica, semBotao) {
