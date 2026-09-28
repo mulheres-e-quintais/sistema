@@ -73,10 +73,9 @@
   const esqueleto = () => `<span class="eyebrow">O projeto agora</span><h2 id="vit-t" class="serif">Mulheres &amp; Quintais em números</h2>
     <div class="vts">${'<div class="vt esq"><span class="vt-n">&nbsp;</span><span class="vt-l">&nbsp;</span></div>'.repeat(4)}</div>`;
   function corpoEntrada(d) {
-    const t = totais(d); const et = etapa(t);
+    const t = totais(d);
     return `<span class="eyebrow">O projeto agora</span>
       <h2 id="vit-t" class="serif">Mulheres &amp; Quintais em números</h2>
-      <p class="vit-etapa"><span class="vit-passo">Etapa ${et.n} de 4</span> ${E(et.nome)}</p>
       <div class="vts">${tiles(t).map(tile).join('')}</div>
       <div class="vit-duo">
         <div class="vit-mapa">${MQ.painelUI.mapaUFs(t.porUF('selecionadas'), 'mulheres selecionadas')}<span class="vit-leg">Mulheres selecionadas por estado</span></div>
