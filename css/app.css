@@ -544,3 +544,15 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .mc-dl { grid-template-columns: 96px minmax(0, 1fr); font-size: 13px; gap: 4px 10px; }
 .banco-cab { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .banco-exp { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.cab-lado { display: grid; gap: 10px; justify-items: end; }
+.atalho { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); color: var(--ink); text-decoration: none; box-shadow: 0 1px 2px rgba(69, 43, 26, .05); transition: border-color .15s, transform .15s; }
+.atalho:hover { border-color: var(--accent); transform: translateY(-1px); }
+.atalho > span:nth-child(2) { display: grid; gap: 1px; font-size: 14px; }
+.atalho-ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); flex: none; }
+.atalho-seta { color: var(--muted); font-size: 16px; }
+@media (max-width: 700px) { .cab-lado { justify-items: stretch; width: 100%; } }
+.alertas li { align-items: center; }
+.al-ic svg { display: block; }
+.al-ir { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2); border-radius: 999px; padding: 6px 10px 6px 12px; font: 500 13px var(--sans); cursor: pointer; white-space: nowrap; transition: background .15s, color .15s, border-color .15s; }
+.al-ir:hover, .al-ir:focus-visible { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+@media (max-width: 520px) { .al-ir span { display: none; } .al-ir { padding: 8px; } }

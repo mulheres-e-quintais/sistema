@@ -258,13 +258,21 @@
     const marcos = MQ.MARCOS.filter(m => R.diasAte(m.d) >= -7).slice(0, 4);
     const selPct = Math.min(100, d.selAprov.length / 200 * 100);
     const aguard = d.fichas.filter(f => f.situacao === 'aguardando').length;
-    const icone = n => n === 'crit' ? '!' : n === 'pend' ? '•' : 'i';
+    const svg = d => `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+    const icone = n => n === 'crit' ? svg('<path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17.5v.01"/>')
+      : n === 'pend' ? svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>') : svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.01"/>');
+    const NOME_ABA = { equipe: 'Equipe', selecao: 'Seleção', campo: 'Campo', custos: 'Custos', historico: 'Histórico', visao: 'Visão geral' };
     const rotNivel = { crit: 'Crítico', pend: 'Atenção', info: 'Informação' };
     return `
       <div class="cab"><div><span class="eyebrow">Visão geral · processo ${E(MQ.PROJETO.processo)}</span><h1>Mulheres &amp; Quintais</h1>
-        <p>Mês <b class="num">${mes}</b> de 13 · vigência até ${R.fmtData(MQ.PROJETO.vigencia.fim)} (${diasFim > 0 ? 'faltam ' + diasFim + ' dias' : 'encerrada'}).
-        Recursos e rubricas ficam no <a href="${E(MQ.PAINEL_FINANCEIRO)}" target="_blank" rel="noopener">painel financeiro e de entregas</a>.</p></div>
-        <div class="linha-tempo-mini" aria-label="Meses do projeto">${MESES.map((m, i) => `<span class="${i + 1 < mes ? 'passou' : i + 1 === mes ? 'agora' : ''}" title="${m}"></span>`).join('')}</div></div>
+        <p>Mês <b class="num">${mes}</b> de 13 · vigência até ${R.fmtData(MQ.PROJETO.vigencia.fim)} (${diasFim > 0 ? 'faltam ' + diasFim + ' dias' : 'encerrada'}).</p></div>
+        <div class="cab-lado">
+          <div class="linha-tempo-mini" aria-label="Meses do projeto">${MESES.map((m, i) => `<span class="${i + 1 < mes ? 'passou' : i + 1 === mes ? 'agora' : ''}" title="${m}"></span>`).join('')}</div>
+          <a class="atalho" href="${E(MQ.PAINEL_FINANCEIRO)}" target="_blank" rel="noopener">
+            <span class="atalho-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
+            <span><b>Financeiro e entregas</b><span class="small muted">Recursos, rubricas e metas físicas</span></span>
+            <span class="atalho-seta" aria-hidden="true">↗</span></a>
+        </div></div>
 
       <div class="resumo" aria-label="Números do projeto">
         <div><span class="v num">${d.pagaveis.length}<small> de 11</small></span><span class="l">na equipe (coordenação técnica e bolsistas)</span></div>
@@ -277,7 +285,7 @@
         <h2 id="t-alertas">O que pede atenção</h2>
         ${al.length ? `<ul class="alertas">${al.map(x => `<li class="al-${x.nivel}"><span class="al-ic" aria-hidden="true">${icone(x.nivel)}</span>
           <span><span class="sr">${rotNivel[x.nivel]}: </span><b>${E(x.texto)}</b><br><span class="small muted">${E(x.det)}</span></span>
-          ${x.aba ? `<button class="link small" data-acao="aba" data-aba="${x.aba}">Ver</button>` : ''}</li>`).join('')}</ul>`
+          ${x.aba ? `<button class="al-ir" data-acao="aba" data-aba="${x.aba}" title="Resolver na aba ${NOME_ABA[x.aba] || x.aba}" aria-label="Resolver na aba ${NOME_ABA[x.aba] || x.aba}"><span>${NOME_ABA[x.aba] || x.aba}</span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>` : ''}</li>`).join('')}</ul>`
           : '<p class="aviso" style="background:var(--ok-bg)">Nada pendente nos dados do sistema.</p>'}
       </section>
 
