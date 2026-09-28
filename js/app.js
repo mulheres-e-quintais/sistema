@@ -112,7 +112,6 @@
     const bols = ativos().filter(m => R.ehBolsista(m.papel));
     const pagaveis = ativos().filter(m => m.papel !== 'coord_geral');
     const aptas = pagaveis.filter(m => R.situacao(m).cod === 'ok').length;
-    const diag = bols.reduce((s, m) => s + (+m.meta_diagnosticos || 0), 0);
     const intro = souGeral
       ? 'Você cadastra a coordenação técnica indicada pelo MPA e registra a habilitação de cada bolsista: matrícula no curso FIC, documentos na FUNCERN e termo de compromisso.'
       : 'Cadastre as bolsistas indicadas pelo MPA: uma de articulação estadual e uma de apoio estadual por estado, com o plano de trabalho individual de cada uma.';
@@ -123,7 +122,7 @@
         <div><span class="v num">${ct ? 1 : 0}<small> de 1</small></span><span class="l">coordenação técnica cadastrada</span></div>
         <div><span class="v num">${bols.length}<small> de 10</small></span><span class="l">bolsistas cadastradas</span></div>
         <div><span class="v num">${aptas}<small> de ${pagaveis.length || 0}</small></span><span class="l">aptas a receber bolsa</span></div>
-        <div><span class="v num">${diag}<small> de 200</small></span><span class="l">diagnósticos distribuídos nos planos individuais</span></div>
+        <div><span class="v num">${(S.fichas || []).filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada').length}<small> de 200</small></span><span class="l">mulheres selecionadas e aprovadas</span></div>
       </div>
 
       <section class="secao" aria-labelledby="t-ct">
@@ -176,16 +175,18 @@
   }
 
   function planoUF(uf) {
-    const ln = (rot, campo, meta) => {
-      const v = somaUF(uf, campo); const pct = Math.min(100, Math.round(v / meta * 100));
-      return `<div class="ln"><span>${rot}</span><span class="bar" role="img" aria-label="${v} de ${meta}"><i class="${v >= meta ? 'cheio' : ''}" style="width:${pct}%"></i></span><span class="num">${v}/${meta}</span></div>`;
-    };
-    return `<div class="plano">${ln('Diagnóst.', 'meta_diagnosticos', 40)}${ln('Quintais', 'meta_quintais', 40)}${ln('Visitas', 'meta_visitas', 80)}</div>`;
+    // andamento da seleção (fichas) no estado: quem faz o trabalho de campo pode variar
+    const fs = (S.fichas || []).filter(f => f.uf === uf);
+    const aprov = fs.filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada').length;
+    const aguard = fs.filter(f => f.situacao === 'aguardando').length;
+    const pct = Math.min(100, Math.round(aprov / MQ.VAGAS_UF * 100));
+    return `<div class="plano"><div class="ln" style="grid-template-columns:minmax(0,1fr) 52px"><span class="bar" role="img" aria-label="${aprov} de ${MQ.VAGAS_UF} selecionadas aprovadas"><i class="${aprov >= MQ.VAGAS_UF ? 'cheio' : ''}" style="width:${pct}%"></i></span><span class="num">${aprov}/${MQ.VAGAS_UF}</span></div>
+      <span>${fs.length} ficha${fs.length === 1 ? '' : 's'}${aguard ? ` · <b>${aguard}</b> aguardando aprovação` : ''}</span></div>`;
   }
 
   function quadroTabela() {
     return `<div class="quadro-scroll"><table class="quadro"><colgroup><col class="c-uf"><col><col><col class="c-plano"></colgroup><thead><tr><th scope="col">Estado</th><th scope="col">Articulação estadual <span class="muted" style="text-transform:none;letter-spacing:0">· ${R.fmtBRL(P.articulacao.bolsa)}/mês</span></th>
-      <th scope="col">Apoio estadual <span class="muted" style="text-transform:none;letter-spacing:0">· ${R.fmtBRL(P.apoio.bolsa)}/mês</span></th><th scope="col">Plano individual somado</th></tr></thead><tbody>
+      <th scope="col">Apoio estadual <span class="muted" style="text-transform:none;letter-spacing:0">· ${R.fmtBRL(P.apoio.bolsa)}/mês</span></th><th scope="col">Seleção no estado</th></tr></thead><tbody>
       ${MQ.UFS.map(u => `<tr><td class="uf"><span class="sigla">${u.uf}</span><span class="nomeuf">${u.nome}</span></td>
         <td>${botaoVaga('articulacao', u.uf)}</td><td>${botaoVaga('apoio', u.uf)}</td><td>${planoUF(u.uf)}</td></tr>`).join('')}
       </tbody></table></div>`;
@@ -224,7 +225,7 @@
       <div class="cab"><div><span class="eyebrow">${esc(P[m.papel].nome)} · ${esc(nomeUF(m.uf))}</span><h1>Olá, ${esc(m.nome.split(' ')[0])}</h1>
         <p>${esc(P[m.papel].faz)}</p></div><span class="chip ${s.cod}" style="font-size:13px;padding:4px 12px">${esc(s.rot)}</span></div>
       <div class="bloco"><h2>Habilitação para receber a bolsa</h2><p class="small muted">A bolsa de ${R.fmtBRL(P[m.papel].bolsa)} por mês só é paga pela FUNCERN depois destes 4 passos. Dúvidas sobre matrícula e AVA: professores do curso FIC. Documentos, conta ou Pix: apoio administrativo.</p>${passos(m)}</div>
-      ${m.meta_diagnosticos != null ? `<div class="bloco"><h2>Seu plano de trabalho</h2><div class="resumo" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+      ${m.meta_diagnosticos != null ? `<div class="bloco"><h2>Sua previsão de atividades</h2><p class="small muted">Previsão do termo de compromisso. O trabalho de campo do estado pode ser dividido de outro jeito, combinado com a coordenação técnica.</p><div class="resumo" style="grid-template-columns:repeat(3,minmax(0,1fr))">
         <div><span class="v num">${m.meta_diagnosticos}</span><span class="l">diagnósticos (Meta 2)</span></div>
         <div><span class="v num">${m.meta_quintais}</span><span class="l">quintais implantados (Meta 3)</span></div>
         <div><span class="v num">${m.meta_visitas}</span><span class="l">visitas de acompanhamento (Meta 4)</span></div></div></div>` : ''}
@@ -297,8 +298,8 @@
     const s = R.situacao(m);
     const editaDados = m.status === 'ativa' && R.podeEditarDados(S.eu.papel, m.papel);
     const editaHab = m.status === 'ativa' && R.podeEditarHabilitacao(S.eu.papel, m.papel);
-    const plano = R.ehBolsista(m.papel) ? `<div class="bloco"><h3>Plano de trabalho individual</h3>
-      ${m.meta_diagnosticos != null ? `<dl class="dl"><dt>Diagnósticos</dt><dd class="num">${m.meta_diagnosticos} de 40 do estado</dd><dt>Quintais</dt><dd class="num">${m.meta_quintais} de 40</dd><dt>Visitas</dt><dd class="num">${m.meta_visitas} de 80</dd></dl>` : '<p class="muted small">Não preenchido.</p>'}</div>` : '';
+    const plano = R.ehBolsista(m.papel) ? `<div class="bloco"><h3>Previsão de atividades (plano individual)</h3>
+      ${m.meta_diagnosticos != null ? `<dl class="dl"><dt>Diagnósticos</dt><dd class="num">${m.meta_diagnosticos ?? '—'}</dd><dt>Quintais</dt><dd class="num">${m.meta_quintais ?? '—'}</dd><dt>Visitas</dt><dd class="num">${m.meta_visitas ?? '—'}</dd></dl>` : '<p class="muted small">Não preenchido.</p>'}</div>` : '';
     const hoje = R.hoje() > m.data_inicio ? R.hoje() : m.data_inicio;
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(nomeUF(m.uf)) : ''}</span>
         <h2 id="painel-t">${esc(m.nome)}</h2><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span></div>
@@ -347,8 +348,6 @@
     const bols = R.ehBolsista(m.papel);
     const subst = m.substitui_id && porId(m.substitui_id);
     const v = k => esc(m[k] == null ? '' : m[k]);
-    const sobra = campo => bols ? MQ.META_UF[campo.replace('meta_', '')] - ativos().filter(x => x.uf === m.uf && x.id !== m.id).reduce((s, x) => s + (+x[campo] || 0), 0) : 0;
-    const sugestao = campo => { const s = sobra(campo); return edit ? v(campo) : String(Math.max(0, Math.min(s, MQ.META_UF[campo.replace('meta_', '')] / 2))); };
     const munis = bols ? (MQ.MUNICIPIOS[m.uf] || []) : [];
     const titulo = edit ? 'Editar cadastro' : subst ? 'Cadastrar substituta' : 'Novo cadastro';
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">${titulo}</span>
@@ -372,12 +371,12 @@
         <fieldset><legend>Bolsa</legend><div class="campos">
           <div class="campo"><label for="c-ini">Início da bolsa</label><input id="c-ini" name="data_inicio" type="date" value="${v('data_inicio')}" min="${MQ.PROJETO.vigencia.inicio}" max="${MQ.PROJETO.vigencia.fim}" required></div>
         </div></fieldset>
-        ${bols ? `<fieldset><legend>Plano de trabalho individual</legend>
-          <p class="small muted" style="margin-top:-6px">Quanto fica sob responsabilidade desta bolsista (item 6 do termo de compromisso). A soma das duas bolsistas do estado não passa da meta.</p>
+        ${bols ? `<fieldset><legend>Previsão de atividades (opcional)</legend>
+          <p class="small muted" style="margin-top:-6px">Item 6 do termo de compromisso. É só previsão: diagnóstico, implantação e visitas podem ser feitos por esta bolsista, pela outra do estado ou por outra pessoa, paga por ajuda de custo. O sistema registra quem fez cada atividade.</p>
           <div class="campos" style="grid-template-columns:repeat(3,minmax(0,1fr))">
-            <div class="campo"><label for="c-md">Diagnósticos</label><input id="c-md" name="meta_diagnosticos" type="number" min="0" max="40" inputmode="numeric" value="${sugestao('meta_diagnosticos')}"><span class="dica">disponíveis: ${sobra('meta_diagnosticos')}</span></div>
-            <div class="campo"><label for="c-mq">Quintais</label><input id="c-mq" name="meta_quintais" type="number" min="0" max="40" inputmode="numeric" value="${sugestao('meta_quintais')}"><span class="dica">disponíveis: ${sobra('meta_quintais')}</span></div>
-            <div class="campo"><label for="c-mv">Visitas</label><input id="c-mv" name="meta_visitas" type="number" min="0" max="80" inputmode="numeric" value="${sugestao('meta_visitas')}"><span class="dica">disponíveis: ${sobra('meta_visitas')}</span></div>
+            <div class="campo"><label for="c-md">Diagnósticos</label><input id="c-md" name="meta_diagnosticos" type="number" min="0" inputmode="numeric" value="${v('meta_diagnosticos')}"></div>
+            <div class="campo"><label for="c-mq">Quintais</label><input id="c-mq" name="meta_quintais" type="number" min="0" inputmode="numeric" value="${v('meta_quintais')}"></div>
+            <div class="campo"><label for="c-mv">Visitas</label><input id="c-mv" name="meta_visitas" type="number" min="0" inputmode="numeric" value="${v('meta_visitas')}"></div>
           </div></fieldset>` : ''}
         <fieldset><legend>Proteção de dados</legend>
           <label class="check" id="w-lgpd"><input type="checkbox" id="c-lgpd" name="consentimento_lgpd" ${m.consentimento_lgpd ? 'checked' : ''}>

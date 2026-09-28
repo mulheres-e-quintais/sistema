@@ -77,12 +77,7 @@
     if (R.ehBolsista(m.papel)) {
       if (!m.id && ativos.some(x => x.papel === m.papel && x.uf === m.uf))
         e.papel = 'Já existe ' + MQ.PAPEIS[m.papel].nome.toLowerCase() + ' ativa em ' + m.uf + '. Desligue antes de cadastrar outra.';
-      const outras = ativos.filter(x => x.uf === m.uf);
-      [['meta_diagnosticos', 'diagnosticos'], ['meta_quintais', 'quintais'], ['meta_visitas', 'visitas']].forEach(([c, k]) => {
-        const soma = outras.reduce((s, x) => s + (+x[c] || 0), 0) + (+m[c] || 0);
-        if (+m[c] < 0) e[c] = 'Não pode ser negativo.';
-        else if (soma > MQ.META_UF[k]) e[c] = 'Passa da meta do estado: sobram ' + Math.max(0, MQ.META_UF[k] - (soma - (+m[c] || 0))) + '.';
-      });
+      ['meta_diagnosticos', 'meta_quintais', 'meta_visitas'].forEach(c => { if (m[c] != null && +m[c] < 0) e[c] = 'Não pode ser negativo.'; });
     }
     return e;
   };

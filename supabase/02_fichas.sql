@@ -14,6 +14,10 @@
 --   * Toda alteração vai para a auditoria.
 -- =====================================================================
 
+-- A previsão de atividades de cada bolsista não é mais limitada pela meta do estado:
+-- quem faz diagnóstico, implantação e visita pode ser qualquer bolsista ou outra pessoa.
+drop trigger if exists equipe_meta_estado on public.equipe;
+
 create or replace function public.minha_uf() returns text
 language sql stable security definer set search_path = public as $$
   select uf from public.equipe where user_id = auth.uid() and status = 'ativa' limit 1

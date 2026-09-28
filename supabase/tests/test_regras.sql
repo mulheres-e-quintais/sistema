@@ -50,7 +50,7 @@ values ('articulacao','PI','Carla Duplicada Teste','77777777777','carla@x.com','
 \echo '== 8. bolsista sem estado (espera ERRO de check)'
 insert into public.equipe (papel, nome, cpf, email, data_inicio, consentimento_lgpd)
 values ('apoio','Dora Sem Estado','88888888888','dora@x.com','2026-10-01',true);
-\echo '== 9. plano individual passa da meta do estado (espera ERRO)'
+\echo '== 9. previsão individual acima da meta do estado é permitida (espera OK)'
 update public.equipe set meta_diagnosticos = 25 where cpf = '55555555555';
 \echo '== 10. coord técnica tenta cadastrar coord técnica (espera ERRO de RLS)'
 insert into public.equipe (papel, nome, cpf, email, data_inicio, consentimento_lgpd)
