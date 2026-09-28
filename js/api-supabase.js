@@ -33,8 +33,13 @@
         email: email.trim().toLowerCase(),
         options: { emailRedirectTo: location.origin + location.pathname }
       });
-      if (error) throw erro(/não cadastrado|Database error/i.test(error.message)
-        ? 'Este e-mail não está cadastrado no projeto. Fale com a coordenação.' : error);
+      if (error) {
+        const msg = String(error.message || '');
+        if (/não cadastrado|Database error/i.test(msg)) throw erro('Este e-mail não está cadastrado no projeto. Fale com a coordenação.');
+        if (error.status === 429 || /rate limit|security purposes/i.test(msg)) throw erro('Muitas tentativas seguidas. Espere 1 minuto e tente de novo.');
+        if (/sending|smtp|email/i.test(msg)) throw erro('O servidor não conseguiu enviar o e-mail. Avise a coordenação. (' + msg + ')');
+        throw erro(error);
+      }
     },
     async sair() { euCache = null; this.temSessao = false; await sb.auth.signOut(); },
 

@@ -212,6 +212,7 @@
       <div><h1>Entrar</h1><p class="muted" style="margin-top:6px">Use o e-mail que a coordenação cadastrou. Você recebe um link de acesso por e-mail; não há senha.</p></div>
       ${S.enviado ? `<div class="aviso">Link enviado para <b>${esc(S.enviado)}</b>. Abra o e-mail neste aparelho e toque no link.</div>` : ''}
       <div class="campo"><label for="l-email">E-mail</label><input id="l-email" name="email" type="email" autocomplete="email" required></div>
+      <div class="aviso erro" data-erro hidden></div>
       <button class="btn pri" type="submit">Receber link de acesso</button></form></main>`;
   }
   function semCadastro() {
@@ -367,7 +368,7 @@
     });
     const lista = Object.values(erros || {});
     const texto = geral || (lista.length ? (lista.length > 1 ? 'Corrija os ' + lista.length + ' campos marcados.' : lista[0]) : '');
-    if (box) { box.textContent = texto; box.hidden = !texto; }
+    if (box) { box.textContent = texto; box.hidden = !texto; } else if (texto) toast(texto);
     const primeiro = form.querySelector('.tem-erro input, .tem-erro select, .tem-erro textarea, .check.tem-erro input');
     if (primeiro) primeiro.focus();
   }
@@ -410,7 +411,7 @@
     try {
       if (tipo === 'login') {
         const email = String(fd.get('email') || '');
-        if (!R.emailValido(email)) return toast('Digite um e-mail válido.');
+        if (!R.emailValido(email)) return mostrarErros(form, {}, 'Digite um e-mail válido.');
         await ocupado(form, () => S.api.entrar(email)); S.enviado = email; render();
       }
       if (tipo === 'cadastro') {
