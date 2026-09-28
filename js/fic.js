@@ -79,7 +79,7 @@
       <div class="cab"><div><span class="eyebrow">${E(P.professor_fic.nome)}</span><h1>Olá, ${E(nomeDe(eu).split(' ')[0])}</h1><p>${E(P.professor_fic.faz)}</p></div>
         <span class="chip ${s.cod}" style="font-size:13px;padding:4px 12px">${E(s.rot)}</span></div>
       ${aba()}
-      <div class="bloco"><h2>Habilitação para receber a bolsa</h2><p class="small muted">A FUNCERN paga a bolsa depois destes passos. Documentos, conta ou Pix: apoio administrativo.</p>${U().passos(eu)}</div>
+      ${MQ.regras.situacao(eu).cod === 'ok' ? '' : `<div class="bloco"><h2>Habilitação para receber a bolsa</h2><p class="small muted">A FUNCERN paga a bolsa depois destes passos. Documentos, conta ou Pix: auxiliar administrativo.</p>${U().passos(eu)}</div>`}
       ${MQ.pagUI ? MQ.pagUI.secaoMinha() : ''}
     </main>`;
   }

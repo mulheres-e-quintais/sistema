@@ -80,7 +80,7 @@
     render();
     if (r.enviados && avisar !== false) toast(r.enviados + (r.enviados > 1 ? ' registros enviados.' : ' registro enviado.'));
   }
-  MQ.ui = { S, esc, nomeUF, toast: m => toast(m), render: () => render(), abrirPainel: p => abrirPainel(p), fecharPainel: () => fecharPainel(),
+  MQ.ui = { S, esc, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: () => render(), abrirPainel: p => abrirPainel(p), fecharPainel: () => fecharPainel(),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), sincronizar: a => sincronizar(a),
     porId: id => porId(id), avatar: (m, t) => avatar(m, t), passos: m => passos(m), dadosDL: m => dadosDL(m), botaoFoto: m => botaoFoto(m), cartaoPessoa: m => cartaoPessoa(m) };
 
@@ -294,7 +294,7 @@
       ${grupo('Falta cadastrar no Arlo', semArlo, 'Todos já estão no Arlo.')}
       ${grupo('No Arlo, falta registrar o termo', semTermo, 'Nenhum termo pendente.')}
       <details class="hist"><summary>Arlo e termo registrados (${ok.length})</summary><div style="padding:0 18px 16px">${ok.length ? `<div class="grade-prof">${ok.map(linha).join('')}</div>` : '<p class="muted">Ninguém ainda.</p>'}</div></details>
-      <div class="bloco"><h2>Sua habilitação</h2><p class="small muted">A sua é registrada pela coordenação geral.</p>${passos(eu)}</div>
+      ${s.cod === 'ok' ? '' : `<div class="bloco"><h2>Sua habilitação</h2><p class="small muted">A sua é registrada pela coordenação geral.</p>${passos(eu)}</div>`}
       ${MQ.pagUI ? MQ.pagUI.secaoMinha() : ''}
     </main>`;
   }
@@ -349,6 +349,20 @@
   /* "Meus dados": abre pelo botão com a foto, no alto, ao lado de Sair */
   const NOTA_DADOS = { coord_tecnico: 'a coordenação geral', professor_fic: 'a coordenação geral', auxiliar_adm: 'a coordenação geral',
     articulacao: 'a coordenação técnica', apoio: 'a coordenação técnica', agente: 'a bolsista do estado ou a coordenação técnica' };
+  /* bloco recolhível que lembra se foi aberto (entre uma atualização da tela e outra) */
+  S.aberto = S.aberto || {};
+  function dobra(chave, titulo, conteudo, aberto) {
+    const ab = chave in S.aberto ? S.aberto[chave] : !!aberto;
+    return `<details class="hist dobra" data-lembrar="${esc(chave)}" ${ab ? 'open' : ''}><summary>${titulo}</summary><div class="dobra-in">${conteudo}</div></details>`;
+  }
+  document.addEventListener('toggle', ev => { const d = ev.target; if (d.dataset && d.dataset.lembrar) S.aberto[d.dataset.lembrar] = d.open; }, true);
+  // procurar dentro de uma lista sem redesenhar a tela
+  document.addEventListener('input', ev => {
+    const t = ev.target; if (!t.dataset || !t.dataset.procura) return;
+    const q = t.value.trim().toLowerCase(); const alvo = document.getElementById(t.dataset.procura); if (!alvo) return;
+    [...alvo.children].forEach(c => { c.hidden = !!q && !c.textContent.toLowerCase().includes(q); });
+  });
+
   function painelMeusDados() {
     const m = Object.assign({}, S.eu, porId(S.eu.id) || {});
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(nomeUF(m.uf)) : ''}</span><h2 id="painel-t">Meus dados</h2></div>
@@ -365,7 +379,7 @@
     return `<main class="wrap" id="principal">
       <div class="cab"><div><span class="eyebrow">${esc(P[m.papel].nome)} · ${esc(nomeUF(m.uf))}</span><h1>Olá, ${esc(nomeDe(m).split(' ')[0])}</h1>
         <p>${esc(P[m.papel].faz)}</p></div><span class="chip ${s.cod}" style="font-size:13px;padding:4px 12px">${esc(s.rot)}</span></div>
-      <div class="bloco"><h2>Habilitação para receber a bolsa</h2><p class="small muted">A bolsa de ${R.fmtBRL(P[m.papel].bolsa || 0)} por mês só é paga pela FUNCERN depois destes 4 passos. Dúvidas sobre matrícula e AVA: professores do curso FIC. Documentos, conta ou Pix: apoio administrativo.</p>${passos(m)}</div>
+      ${s.cod === 'ok' ? '' : `<div class="bloco"><h2>Habilitação para receber a bolsa</h2><p class="small muted">A bolsa de ${R.fmtBRL(P[m.papel].bolsa || 0)} por mês só é paga pela FUNCERN depois destes passos. Dúvidas sobre matrícula e AVA: professores do curso FIC. Documentos, conta ou Pix: auxiliar administrativo.</p>${passos(m)}</div>`}
       ${m.meta_diagnosticos != null ? `<div class="bloco"><h2>Sua previsão de atividades</h2><p class="small muted">Previsão do termo de compromisso. O trabalho de campo do estado pode ser dividido de outro jeito, combinado com a coordenação técnica.</p><div class="resumo r3">
         <div><span class="v num">${m.meta_diagnosticos}</span><span class="l">diagnósticos (Meta 2)</span></div>
         <div><span class="v num">${m.meta_quintais}</span><span class="l">quintais implantados (Meta 3)</span></div>
