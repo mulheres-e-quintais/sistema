@@ -883,3 +883,30 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
   .ent-broto .caule { stroke-dashoffset: 0; }
   .ent-broto .folha, .ent-broto .flor { transform: none; }
 }
+
+/* ---------- celular: barra numa linha só e menu de seções ---------- */
+.abas-m { display: none; }
+@media (max-width: 640px) {
+  .barra-in { flex-wrap: nowrap; padding: 8px 14px; gap: 10px; }
+  .marca { gap: 10px; }
+  .marca img.emb { height: 38px; }
+  .marca img:not(.emb), .marca .sep { display: none; }
+  .marca .sis { font-size: 11.5px; line-height: 1.25; }
+  .marca .sis b { font-size: 15px; }
+  .quem { gap: 8px; flex: none; }
+  .quem > span { display: none; }              /* nome e papel: aparecem ao tocar na foto (Meus dados) */
+  .quem .btn-barra { padding: 4px 10px; font-size: 12px; }
+  .abas { display: none; }
+  .abas-m { display: block; position: relative; margin: 2px 0 6px; }
+  .abas-m summary { list-style: none; display: flex; align-items: center; gap: 8px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px;
+    background: var(--surface); cursor: pointer; font-size: 16px; box-shadow: var(--shadow); }
+  .abas-m summary::-webkit-details-marker { display: none; }
+  .abas-m summary b { flex: 1; font-weight: 600; }
+  .abas-m-seta { transition: transform .2s; color: var(--muted); }
+  .abas-m[open] .abas-m-seta { transform: rotate(180deg); }
+  .abas-m-grade { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+  .abas-m-grade button { border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 11px 10px; font: 500 14.5px var(--sans); color: var(--ink); text-align: left; display: flex; gap: 6px; align-items: center; justify-content: space-between; cursor: pointer; }
+  .abas-m-grade button[aria-current="page"] { background: var(--sel-bg); color: var(--sel-ink); border-color: var(--sel-bg); }
+  .abas-m-grade .conta { background: var(--accent); color: var(--accent-ink); border-radius: 999px; font-size: 12px; padding: 0 7px; line-height: 18px; }
+  .cab .eyebrow { font-size: 11px; }
+}
