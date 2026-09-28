@@ -223,7 +223,7 @@
     return `<form class="bloco kit-par" data-form="diag-kitpar" novalidate><div><h3>Investimento nos quintais (kits)</h3>
         <p class="small muted">${tots.length ? `${tots.length} plano${tots.length > 1 ? 's' : ''} com valores: <b>${brl(soma)}</b> projetados · média ${brl(soma / tots.length)} por quintal${acima ? ` · <b style="color:var(--crit)">${acima} acima do valor por quintal</b>` : ''}.` : 'Nenhum plano com valores ainda.'}
         Quem faz o diagnóstico vê a projeção do kit e o quanto falta ou passa deste valor.</p></div>
-      <div class="campos"><div class="campo"><label for="kp-v">Valor do kit por quintal (R$)</label><input id="kp-v" name="valor_quintal" inputmode="decimal" value="${lim ? String(lim).replace('.', ',') : ''}" placeholder="Ex.: 2500" ${/^coord/.test(S().eu.papel) ? '' : 'disabled'}></div></div>
+      <div class="campos"><div class="campo"><label for="kp-v">Valor do kit por quintal (R$)</label><input id="kp-v" name="valor_quintal" inputmode="decimal" value="${lim ? String(lim).replace('.', ',') : ''}" placeholder="4500" ${/^coord/.test(S().eu.papel) ? '' : 'disabled'}></div></div>
       <div class="aviso erro" data-erro hidden></div>
       ${/^coord/.test(S().eu.papel) ? '<div class="acoes"><button class="btn" type="submit">Salvar valor</button></div>' : ''}</form>`;
   }

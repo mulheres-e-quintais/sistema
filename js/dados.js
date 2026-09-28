@@ -150,6 +150,9 @@ MQ.DIAG = {
 };
 
 /* ---------- Ajuda de custo por visita (valores padrão; a coordenação altera na aba Custos) ---------- */
+/* Kit do quintal: até R$ 4.500 por quintal (plano de trabalho; a coordenação pode ajustar na aba Campo) */
+MQ.KIT_QUINTAL = 4500;
+
 MQ.CUSTO_PADRAO = {
   valor_hora: 50,
   horas: { diagnostico: 3, implantacao: 2, acompanhamento: 2, avaliacao: 2 },
