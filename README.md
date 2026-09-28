@@ -62,6 +62,7 @@ supabase/13_avaliacao.sql        etapa 13: visita de avaliação (5ª visita, 20
 supabase/06_apagar_exemplo.sql   apaga os dados inventados
 supabase/00_verificar.sql        só lê: mostra quais etapas já estão instaladas e quantos registros há
 supabase/15_coord_geral_total.sql etapa 15: coordenação geral com todos os acessos (decisão de 28/09/2026)
+supabase/16_popular_teste.sql    depois do 14 e do 05: logins de teste por perfil e dados em todas as etapas (troque o e-mail)
 supabase/14_zerar_para_teste.sql apaga TUDO menos a coordenação geral (pede confirmação ZERAR; sem desfazer)
 supabase/tests/         testes das regras do banco
 ```
