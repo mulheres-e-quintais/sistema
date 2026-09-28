@@ -1,5 +1,5 @@
-/* Regras de negócio usadas na tela. O banco repete as mesmas regras (supabase/schema.sql):
-   a tela avisa cedo, o banco garante. */
+/* Regras de negócio da tela (as mesmas garantidas no banco: supabase/01 a 04).
+   A tela avisa cedo; o banco garante. */
 (function () {
   const R = (MQ.regras = {});
 

@@ -106,7 +106,7 @@
   }
 
   function prazoChip() {
-    const faltamVagas = 11 - ativos().filter(m => m.papel !== 'coord_geral').length;
+    const faltamVagas = 11 - ativos().filter(m => m.papel === 'coord_tecnico' || R.ehBolsista(m.papel)).length;
     if (faltamVagas <= 0) return '<span class="prazo ok">Equipe completa: 1 coordenação técnica e 10 bolsistas</span>';
     const d = R.diasAte(MQ.PROJETO.prazoIndicacao);
     const vagas = faltamVagas + (faltamVagas > 1 ? ' vagas abertas' : ' vaga aberta');
@@ -119,7 +119,7 @@
     const souGeral = S.eu.papel === 'coord_geral';
     const ct = naVaga('coord_tecnico');
     const bols = ativos().filter(m => R.ehBolsista(m.papel));
-    const pagaveis = ativos().filter(m => m.papel !== 'coord_geral');
+    const pagaveis = ativos().filter(m => m.papel === 'coord_tecnico' || R.ehBolsista(m.papel));
     const aptas = pagaveis.filter(m => R.situacao(m).cod === 'ok').length;
     const aba = S.aba || (souGeral ? 'visao' : 'selecao');
     const aguard = (S.fichas || []).filter(f => f.situacao === 'aguardando').length;
@@ -308,7 +308,7 @@
       ['CPF', R.fmtCPF(m.cpf)], ['E-mail', m.email], ['Celular', m.telefone], ['Município', m.municipio],
       ['Organização', m.organizacao], ['Início da bolsa', R.fmtData(m.data_inicio)],
       m.status === 'ativa' && S.api.modo === 'supabase' ? ['Acesso ao sistema', m.user_id ? 'Já criou a senha e entrou' : 'Ainda não fez o primeiro acesso'] : null,
-      m.papel === 'agente' ? ['Pagamento', 'Ajuda de custo por dia de campo (1 visita = 1 dia)'] : m.papel !== 'coord_geral' ? ['Bolsa mensal', R.fmtBRL(P[m.papel].bolsa) + ' (plano de trabalho)'] : null,
+      m.papel === 'agente' ? ['Pagamento', 'Ajuda de custo por visita: horas, combustível e refeição (aba Custos)'] : m.papel !== 'coord_geral' ? ['Bolsa mensal', R.fmtBRL(P[m.papel].bolsa) + ' (plano de trabalho)'] : null,
       subst ? ['Substitui', subst.nome] : null,
       m.status === 'desligada' ? ['Desligada em', R.fmtData(m.data_fim)] : null,
       m.status === 'desligada' ? ['Motivo', m.motivo_desligamento] : null
