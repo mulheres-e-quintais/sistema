@@ -147,9 +147,10 @@
   }
 
   async function clique(a, el) {
-    if (a === 'custo-visao') { C.visao = el.dataset.v; C.plano = null; U().render(); return; }
+    if (a === 'custo-visao') { C.visao = el.dataset.v; C.plano = null; C.planoAtual = null; U().render(); return; }
     if (a === 'custo-plano-uf') { C.planoUF = el.dataset.uf; U().render(); return; }
-    if (a === 'custo-plano-regra') { C.refeicaoDia = !C.refeicaoDia; C.plano = null; U().render(); return; }
+    if (a === 'custo-plano-tudo') { C.planoTudo = el.dataset.v === '1'; C.plano = null; C.planoAtual = null; U().render(); return; }
+    if (a === 'custo-plano-regra') { C.refeicaoDia = !C.refeicaoDia; C.plano = null; C.planoAtual = null; U().render(); return; }
     if (a === 'custo-plano-csv') { csvPlano(); return; }
     if (a === 'custo-mes') { C.mes = somaMes(C.mes || mesHoje(), +el.dataset.n); U().render(); }
     else if (a === 'custo-csv') csv();
@@ -163,7 +164,7 @@
       [['valor_hora', 0, 500], ['refeicao', 0, 200], ['km_por_litro', 1, 60], ['preco_litro', 1, 20], ['fator_estrada', 1, 2]].forEach(([k, a, b]) => { if (!(novo[k] >= a && novo[k] <= b)) erros[k] = `Entre ${a} e ${b}.`; });
       Object.keys(novo.horas).forEach(k => { if (!(novo.horas[k] > 0 && novo.horas[k] <= 12)) erros['h_' + k] = 'Entre 0,5 e 12 horas.'; });
       if (Object.keys(erros).length) return U().mostrarErros(form, erros);
-      await U().ocupado(form, async () => { C.par = Object.assign({}, MQ.CUSTO_PADRAO, await S().api.salvarParametros('custo_visita', novo)); C.plano = null; U().render(); U().toast('Valores salvos.'); });
+      await U().ocupado(form, async () => { C.par = Object.assign({}, MQ.CUSTO_PADRAO, await S().api.salvarParametros('custo_visita', novo)); C.plano = null; C.planoAtual = null; U().render(); U().toast('Valores salvos.'); });
     }
   }
   // simulação e km: reagem ao digitar, sem recarregar a tela
@@ -199,10 +200,13 @@
   function origemDe(p) { return coordMun(p.uf, p.municipio); }
   const dist = (a, b) => linhaReta(a, b) * C.par.fator_estrada;
 
-  function planejar() {
+  function planejar(op) {
+    op = op || { tudo: !!C.planoTudo, cont: !C.planoTudo };
     const par = C.par; const fichas = S().fichas || []; const equipe = (S().equipe || []).filter(m => m.status === 'ativa' && R.habilitado(m) && R.ehCampo(m.papel));
-    const feitas = new Set((S().visitas || []).filter(v => v.situacao === 'realizada').map(v => v.ficha_id + '|' + v.etapa + '|' + v.id));
-    const contaFeitas = (fid, et) => (S().visitas || []).filter(v => v.ficha_id === fid && v.etapa === et && v.situacao === 'realizada').length;
+    // feitas ou já marcadas no roteiro de campo: não entram de novo na proposta
+    const contaFeitas = (fid, et) => op.tudo ? 0 : (S().visitas || []).filter(v => v.ficha_id === fid && v.etapa === et && v.situacao !== 'cancelada').length;
+    const semAgua = new Set((S().diagnosticos || []).filter(d => d.sem_agua).map(d => d.ficha_id));
+    const mesAgora = (() => { const [a, m] = R.hoje().slice(0, 7).split('-').map(Number); return Math.max(1, (a - 2026) * 12 + m - 8); })();
     const res = { ufs: {}, semOrigem: [], semLocal: 0 };
     for (const { uf } of MQ.UFS) {
       const pessoas = equipe.filter(m => m.uf === uf).map(m => ({ m, o: origemDe(m), carga: 0 })).filter(x => { if (!x.o) res.semOrigem.push(x.m); return !!x.o; });
@@ -214,6 +218,11 @@
       const teto = Math.ceil(quintais.length / pessoas.length * 1.6);
       const pares = []; quintais.forEach((q, qi) => pessoas.forEach((p, pi) => pares.push([dist(p.o, q.d), qi, pi])));
       pares.sort((a, b) => a[0] - b[0]); const dono = {};
+      // quem já visitou (ou já tem visita marcada) continua com o mesmo quintal: a mulher conhece a pessoa
+      if (op.cont) quintais.forEach((q, qi) => { const ult = (S().visitas || []).filter(v => v.ficha_id === q.f.id && v.situacao !== 'cancelada' && v.executor_id)
+          .sort((a, b) => String(b.data_realizada || b.data_prevista).localeCompare(String(a.data_realizada || a.data_prevista)))[0];
+        const pi = ult ? pessoas.findIndex(p => p.m.id === ult.executor_id) : -1;
+        if (pi >= 0) { dono[qi] = pi; pessoas[pi].carga++; R0.continua = (R0.continua || 0) + 1; } });
       for (const [, qi, pi] of pares) { if (dono[qi] != null || pessoas[pi].carga >= teto) continue; dono[qi] = pi; pessoas[pi].carga++; }
       R0.longe = {};   // municípios cujos quintais ficam longe de quem visita
       quintais.forEach((q, qi) => { if (dono[qi] == null) return; const km = dist(pessoas[dono[qi]].o, q.d); const k = q.f.municipio;
@@ -223,7 +232,7 @@
         const meus = quintais.filter((q, qi) => dono[qi] === pi);
         R0.porPessoa[p.m.id] = { m: p.m, quintais: meus.length, viagens: 0, total: 0 };
         for (const [et, vezes] of ETAPAS_PLANO) for (let k = 0; k < vezes; k++) {
-          let pend = meus.filter(q => contaFeitas(q.f.id, et) <= k);
+          let pend = meus.filter(q => contaFeitas(q.f.id, et) <= k && !(et !== 'diagnostico' && semAgua.has(q.f.id)));
           const h = +(par.horas[et] || 2);
           // linha de base: uma viagem por visita
           pend.forEach(q => { const km = 2 * dist(p.o, q.d); R0.base.km += km; R0.base.comb += km / par.km_por_litro * par.preco_litro; R0.base.ref += +par.refeicao; R0.base.horas += h; });
@@ -250,7 +259,7 @@
       });
       // 3. meses: espalha as viagens de cada etapa pela janela prevista nas metas
       for (const [et] of ETAPAS_PLANO) {
-        const vs = R0.viagens.filter(v => v.etapa === et); const [ini, fim] = JANELA[et]; const nM = fim - ini + 1;
+        const vs = R0.viagens.filter(v => v.etapa === et); const fim = Math.max(JANELA[et][1], mesAgora); const ini = Math.min(Math.max(JANELA[et][0], mesAgora), fim); const nM = fim - ini + 1;
         vs.forEach((v, i) => { const mes = ini + Math.floor(i * nM / vs.length); v.mes = mes; R0.porMes[mes] = (R0.porMes[mes] || 0) + v.total; });
       }
       R0.base.total = R0.base.comb + R0.base.ref + R0.base.horas * par.valor_hora;
@@ -270,9 +279,16 @@
     const maxMes = Math.max(1, ...Object.values(meses));
     const uf = C.planoUF || (ufs.find(u => u.viagens.length) || {}).uf || 'PI'; const U0 = r.ufs[uf];
     return `<div class="cab"><div><span class="eyebrow">Planejamento</span><h1>Proposta de roteiro</h1>
-        <p>Cada quintal fica com a pessoa habilitada do estado que mora mais perto, e as visitas da mesma etapa são juntadas em viagens de um dia (até ${JORNADA_H} horas contando o deslocamento). É uma proposta: a bolsista ajusta ao agendar.</p></div></div>
+        <p>Cada quintal fica com a pessoa habilitada do estado que mora mais perto, e as visitas da mesma etapa são juntadas em viagens de um dia (até ${JORNADA_H} horas contando o deslocamento). É uma proposta: a bolsista ajusta ao agendar.</p>
+        <p class="small muted">Lê do sistema: equipe habilitada e município onde mora, fichas selecionadas e aprovadas (com GPS do diagnóstico quando houver), visitas já feitas ou marcadas no roteiro de campo (em "Só o que falta" não entram de novo), diagnósticos sem água (só recebem o diagnóstico) e os valores da aba Pagamento. Em "Só o que falta", quem já visitou um quintal continua com ele${(() => { const n = ufs.reduce((s, u) => s + (u.continua || 0), 0); return n ? ` (${n} quintais)` : ''; })()}. Nenhum mês que já passou recebe custo.</p></div></div>
       ${r.semOrigem.length ? `<div class="aviso">Sem município de moradia conhecido, fora do cálculo: ${r.semOrigem.map(m => E(m.nome_social || m.nome)).join(', ')}. Corrija o município no cadastro.</div>` : ''}
       ${r.semLocal ? `<div class="aviso">${r.semLocal} quintal(is) sem localização (nem GPS, nem município do mapa) ficaram fora.</div>` : ''}
+      <span class="seg" role="group" aria-label="O que planejar"><button type="button" data-acao="custo-plano-tudo" data-v="0" aria-pressed="${!C.planoTudo}">Só o que falta agendar</button><button type="button" data-acao="custo-plano-tudo" data-v="1" aria-pressed="${!!C.planoTudo}">Projeto inteiro</button></span>
+      ${(() => { if (!C.planoTudo) return ''; const at = C.planoAtual || (C.planoAtual = planejar({ tudo: true, cont: true }));
+        const va = Object.values(at.ufs).reduce((s, u) => s + (u.prop.total || 0), 0); const n = Object.values(at.ufs).reduce((s, u) => s + (u.continua || 0), 0);
+        if (!n || va - prop < 1) return '';
+        return `<div class="aviso"><b>Quem visita hoje custa mais.</b> Mantendo a pessoa que já visita cada quintal (${n} quintais), o projeto inteiro sai por <b>${brl(va)}</b>, ${brl(va - prop)} a mais que redistribuindo por proximidade. Trocar quem visita tem custo humano (a mulher já conhece a pessoa); vale ao menos nos casos mais distantes.</div>`; })()}
+      ${!C.planoTudo && !nV && nQ ? '<div class="aviso">Todas as visitas dos quintais aprovados já estão feitas ou marcadas no roteiro de campo. Veja <b>Projeto inteiro</b> para o custo total planejado.</div>' : ''}
       <div class="resumo">
         <div><span class="v num">${brl(prop)}</span><span class="l">custo previsto com a proposta (${nV} visitas em ${nT} viagens)</span></div>
         <div><span class="v num">${brl(base)}</span><span class="l">se cada visita fosse uma viagem</span></div>
