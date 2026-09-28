@@ -198,6 +198,12 @@
     if (!R.semAgua(d)) {
       if (!(d.objetivos || []).length) e.objetivos = 'Marque o objetivo do quintal.';
       if (!(d.kit || []).some(x => String(x.item || '').trim())) e.kit = 'Escolha pelo menos um item do kit.';
+      else if ((d.kit || []).some(x => x.item && !(+x.valor > 0))) e.kit = 'Informe o valor estimado de cada item (R$ por unidade): é a projeção do investimento no quintal.';
+      else {
+        const lim = +(((MQ.ui && MQ.ui.S.kitPar) || {}).valor_quintal) || 0;
+        const tot = d.kit_total != null ? d.kit_total : (d.kit || []).reduce((s, x) => s + (parseFloat(String(x.qtd || '').replace(',', '.')) || 0) * (+x.valor || 0), 0);
+        if (lim && tot > lim) e.kit = 'O kit passa do valor por quintal (' + tot.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) + ' de ' + lim.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) + '). Tire ou troque itens.';
+      }
       if (!d.lote) e.lote = 'Escolha o lote de implantação.';
       if (!d.compromissos) e.compromissos = 'A beneficiária precisa concordar com os compromissos.';
     }

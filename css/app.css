@@ -771,3 +771,18 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .cad-modo span { color: var(--ink-2); font-size: 14px; line-height: 1.45; }
 .cad-modo em { order: -1; font: 600 11px var(--cond, inherit); letter-spacing: .06em; text-transform: uppercase; font-style: normal; color: var(--accent); }
 .banco-painel { display: grid; gap: 14px; }
+
+/* kit: valor por item e projeção do investimento */
+.linha-din.kit5 { grid-template-columns: minmax(0, 2.2fr) minmax(0, .8fr) minmax(0, 1fr) minmax(0, 1.6fr) auto; }
+.kit-cab { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, .8fr) minmax(0, 1fr) minmax(0, 1.6fr) 32px; gap: 8px; font: 600 11px var(--cond, inherit); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 0 2px; }
+.kit-proj { display: grid; gap: 6px; margin-top: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+.kit-proj .kp-l { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.kit-proj .kp-l b { font-size: 20px; }
+.kit-proj.passou { border-color: var(--crit); }
+.kit-proj.passou .kp-l b { color: var(--crit); }
+.kit-par { display: grid; gap: 10px; }
+@media (max-width: 640px) {
+  .linha-din.kit5 { grid-template-columns: 1fr 1fr; }
+  .kit-cab { display: none; }
+}
+.kit-proj.passou .bar i { background: var(--crit); }
