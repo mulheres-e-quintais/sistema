@@ -143,3 +143,14 @@ MQ.DIAG = {
   objetivos: [['alimentacao', 'Alimentação da família'], ['venda', 'Venda do excedente'], ['animais', 'Criação de pequenos animais'], ['medicinais', 'Plantas medicinais']],
   fotos: [['geral', 'Visão geral do quintal'], ['agua', 'Fonte de água'], ['plantio', 'Área de plantio'], ['croqui', 'Croqui desenhado (casa, água, canteiros, árvores, animais, cerca, norte)']]
 };
+
+/* ---------- Ajuda de custo por visita (valores padrão; a coordenação altera na aba Custos) ---------- */
+MQ.CUSTO_PADRAO = {
+  valor_hora: 50,
+  horas: { diagnostico: 3, implantacao: 2, acompanhamento: 2, avaliacao: 2 },
+  km_por_litro: 10,        // carro
+  preco_litro: 6.50,       // gasolina, média ANP set/2026 ~R$ 6,52 (conferir no mês do pagamento)
+  refeicao: 25,            // 1 refeição por visita
+  fator_estrada: 1.3       // linha reta × 1,3 ≈ distância pela estrada (estimativa)
+};
+MQ.ETAPAS_CUSTO = { diagnostico: 'Diagnóstico', implantacao: 'Implantação', acompanhamento: 'Acompanhamento', avaliacao: 'Avaliação' };

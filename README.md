@@ -16,7 +16,13 @@ Sistema web do projeto **Quintais Produtivos para Mulheres Rurais** (TED 7AAEKA,
 
 **Visão geral (coordenação):** metas do plano de trabalho com previsto × realizado, o que pede atenção (vagas, habilitação, fichas paradas, mesma casa, estados com mais de 30% sem água), números por estado, próximos marcos e **mapa dos quintais**: cada ficha aparece no mapa (posição do GPS quando registrada; senão, aproximada no município), com cor pela situação. O mapa é desenhado pelo próprio sistema, sem serviço externo, e funciona sem internet. Só mostra o que está no sistema; o que ainda é registrado em papel aparece como tal.
 
-**Próximas etapas:** diagnóstico e plano do quintal, relatório de visita técnica, termo de recebimento do kit.
+**Etapa 3:** trabalho de campo. Roteiro de visitas por estado (quem visita: bolsista ou agente de campo habilitada), diagnóstico e plano do quintal (modelo 3) com GPS, fotos e fila sem internet, e aprovação do plano pela coordenação técnica.
+
+**Etapa 4:** vitrine pública e custo das visitas.
+- A tela de entrada e a página "O projeto em números" (`#numeros`) mostram só totais por estado e fotos escolhidas pela coordenação, de mulheres que autorizaram uso de imagem. Nada individual fica público; se a autorização for retirada, a foto sai na hora.
+- A aba **Custos** calcula a ajuda de custo de cada visita: horas × valor da hora + combustível de ida e volta + 1 refeição. A distância vem do km conferido pela coordenação ou, sem ele, de uma estimativa (linha reta × fator de estrada entre o município de quem visita e o quintal). Gera planilha do mês por pessoa.
+
+**Visual:** estilo da proposta ao MDA (papel claro, verde profundo, títulos em serifa Fraunces, texto em Public Sans), com modo escuro.
 
 ---
 
@@ -24,7 +30,7 @@ Sistema web do projeto **Quintais Produtivos para Mulheres Rurais** (TED 7AAEKA,
 
 ```
 index.html              página única (PWA)
-css/app.css             visual (identidade Mulheres & Quintais)
+css/app.css             visual (estilo da proposta ao MDA, claro e escuro)
 js/config.js            URL e chave do Supabase (vazio = modo demonstração)
 js/dados.js             dados do projeto: estados, municípios, valores de bolsa, metas
 js/regras.js            regras de negócio da tela (CPF, vagas, metas por estado)
@@ -33,10 +39,17 @@ js/api-supabase.js      modo produção (Supabase)
 js/fila.js              fila do aparelho (IndexedDB) para trabalhar sem internet
 js/fichas.js            ficha de indicação e termo de consentimento
 js/geo.js               contornos dos estados do Nordeste e municípios do projeto (para o mapa)
-js/painel.js            visão geral da coordenação (metas, alertas, estados, marcos)
-js/app.js               telas
+js/painel.js            visão geral da coordenação (metas, alertas, estados, marcos, mapa)
+js/campo.js             roteiro de visitas, agente de campo, diagnóstico e plano do quintal
+js/vitrine.js           tela de entrada com números e página pública "O projeto em números"
+js/custos.js            cálculo da ajuda de custo por visita
+js/app.js               telas e navegação
 sw.js, manifest         instalação no celular e abertura sem internet
-supabase/schema.sql     banco: tabelas, regras de acesso (RLS), auditoria
+supabase/01_criar_banco.sql      etapa 1: equipe, regras de acesso (RLS), auditoria, login
+supabase/02_fichas.sql           etapa 2: fichas de indicação e termo
+supabase/03_campo.sql            etapa 3: visitas, agentes de campo, diagnóstico
+supabase/04_vitrine_e_custos.sql etapa 4: vitrine pública e custo das visitas
+supabase/schema.sql              versão antiga da etapa 1 (não usar; mantida para histórico)
 supabase/tests/         testes das regras do banco
 ```
 
@@ -50,18 +63,16 @@ python3 -m http.server 8000
 # abra http://localhost:8000
 ```
 
-Use o seletor "Ver como" para alternar entre coordenação geral, coordenação técnica e bolsista.
+Use o seletor "Ver como" para alternar entre coordenação geral, coordenação técnica, bolsista, agente de campo e a tela de entrada.
 
 ## Colocar em produção (cerca de 1 hora)
 
 1. **Criar o projeto no Supabase** (supabase.com, plano gratuito). Escolha a região **South America (São Paulo)** para os dados ficarem no Brasil. Crie a conta com um e-mail institucional, não pessoal, para o projeto não depender de uma pessoa.
-2. **Criar o banco:** em *SQL Editor*, cole e rode todo o `supabase/schema.sql`.
-3. **Etapa 2:** rode também o `supabase/02_fichas.sql` (fichas de indicação, fotos e regras).
-   **Etapa 3:** rode o `supabase/03_campo.sql` (agentes de campo, roteiro de visitas, diagnóstico e plano do quintal, fotos de campo). Pode rodar de novo sem estragar nada. Enquanto não for rodado, o sistema funciona e mostra "Ainda não instalado no servidor" no trabalho de campo.
-4. **Cadastrar a coordenação geral:** no fim do `schema.sql` há um `insert` comentado. Preencha com os dados reais e rode só essa parte.
-5. **Login com senha:** em *Authentication > Sign In / Providers > Email*, **desligue "Confirm email"**. Cada pessoa cria a própria senha em "Primeiro acesso", e o banco só aceita e-mails já cadastrados pela coordenação. Assim o sistema não depende de servidor de e-mail. Para "esqueci a senha": a coordenação geral apaga o usuário em *Authentication > Users* e a pessoa faz o primeiro acesso de novo (o cadastro na equipe não é afetado). No painel, cada pessoa mostra se já fez o primeiro acesso: confira logo depois de cadastrar alguém.
-6. **Ligar o sistema ao banco:** em `js/config.js`, preencha `supabaseUrl` e `supabaseAnonKey` (em *Project Settings > API*). A chave anon é pública por desenho; quem protege os dados são as regras do banco.
-7. **Publicar:** suba a pasta para um repositório no GitHub e ative o *GitHub Pages*, ou arraste a pasta para o Vercel/Netlify. Precisa ser **https** para instalar no celular.
+2. **Criar o banco:** em *SQL Editor*, rode em ordem, cada um inteiro: `01_criar_banco.sql`, `02_fichas.sql`, `03_campo.sql`, `04_vitrine_e_custos.sql`. O 02, o 03 e o 04 podem ser rodados de novo sem estragar dados. Enquanto uma etapa não for rodada, o sistema funciona e mostra "Ainda não instalado no servidor" na parte correspondente.
+3. **Cadastrar a coordenação geral:** o fim do `01_criar_banco.sql` tem um `insert` com os dados da coordenação geral. Confira nome, CPF, e-mail e telefone antes de rodar.
+4. **Login com senha:** em *Authentication > Sign In / Providers > Email*, **desligue "Confirm email"**. Cada pessoa cria a própria senha em "Primeiro acesso", e o banco só aceita e-mails já cadastrados pela coordenação. Assim o sistema não depende de servidor de e-mail. Para "esqueci a senha": a coordenação geral apaga o usuário em *Authentication > Users* e a pessoa faz o primeiro acesso de novo (o cadastro na equipe não é afetado). No painel, cada pessoa mostra se já fez o primeiro acesso: confira logo depois de cadastrar alguém.
+5. **Ligar o sistema ao banco:** em `js/config.js`, preencha `supabaseUrl` e `supabaseAnonKey` (em *Project Settings > API*). A chave anon é pública por desenho; quem protege os dados são as regras do banco.
+6. **Publicar:** suba a pasta para um repositório no GitHub e ative o *GitHub Pages*, ou arraste a pasta para o Vercel/Netlify. Precisa ser **https** para instalar no celular.
 
 ## Regras garantidas pelo banco (não só pela tela)
 
@@ -74,8 +85,11 @@ Use o seletor "Ver como" para alternar entre coordenação geral, coordenação 
 | A coordenação geral só altera a habilitação das bolsistas | gatilho `equipe_antes` |
 | Papel, estado e CPF não mudam; quem foi desligada não volta | gatilho `equipe_antes` |
 | Desligamento exige data e motivo | restrição `desligamento_completo` |
-| Plano individual das 2 bolsistas não passa de 40 diagnósticos, 40 quintais e 80 visitas por estado | gatilho `checar_meta_estado` |
-| Bolsista vê só o próprio cadastro | política RLS `equipe_ler` |
+| Bolsista vê o próprio cadastro e a equipe do seu estado; agente vê só o próprio | política RLS `equipe_ler` |
+| Máximo de 40 selecionadas aprovadas por estado | gatilho `fichas_antes` |
+| Visita só para mulher selecionada e aprovada, feita por pessoa habilitada do mesmo estado; 1 diagnóstico, 1 implantação e 2 acompanhamentos por quintal; 160 dias de campo por estado | gatilho `visitas_antes` |
+| Vitrine pública só com totais; foto só com autorização de imagem e sem o nome na legenda | função `vitrine()` e gatilho `vitrine_fotos_antes` |
+| Valores de pagamento e km só a coordenação altera, com registro de quem alterou | gatilho `carimbar_coord` e RLS |
 | Ninguém apaga registros | sem política de DELETE |
 | Toda inclusão e alteração fica registrada | gatilho `auditar` |
 | Só entra quem foi cadastrado | gatilho em `auth.users` |
@@ -89,14 +103,19 @@ psql -d teste -f supabase/schema.sql
 psql -d teste -f supabase/tests/test_regras.sql   # 21 casos da equipe, com o resultado esperado em cada um
 # etapa 2 (em outro banco): stub, 01_criar_banco.sql com nome/CPF preenchidos, 02_fichas.sql e depois
 psql -d teste2 -f supabase/tests/test_fichas.sql  # 17 casos das fichas
-# etapa 3 (em outro banco): stub, 01 (CPF preenchido), 02, 03 e depois
-psql -d teste3 -f supabase/tests/test_campo.sql   # 17 casos de visitas e diagnóstico
+# etapa 3 (em outro banco): stub, 01 (CPF preenchido), 02, 03, 04 e depois
+psql -d teste3 -f supabase/tests/test_campo.sql       # 17 casos de visitas e diagnóstico
+psql -d teste3 -f supabase/tests/test_correcoes.sql   # remarcar/cancelar visitas e km
+# etapa 4 (em outro banco): stub, 01, 02, 03, 04 e depois
+psql -d teste4 -f supabase/tests/test_vitrine.sql     # 14 casos da vitrine e dos valores
 ```
 
 ## Decisões tomadas
 
 - **Não guarda conta bancária nem Pix.** Esses dados vão direto para a FUNCERN, que paga as bolsas. Menos dado guardado significa menos risco (LGPD, art. 6º, III).
 - **Login com senha criada no primeiro acesso**, sem depender de envio de e-mail. A conta só é criada se o e-mail já estiver cadastrado pela coordenação. Limite conhecido: ninguém confirma que a pessoa é dona do e-mail, então quem souber o e-mail de uma bolsista recém-cadastrada poderia criar a senha antes dela. Por isso, a coordenação confere no painel se o primeiro acesso foi feito pela própria pessoa. Com um servidor de e-mail funcionando, dá para voltar ao login por link.
+- **Ajuda de custo por visita:** R$ 50 por hora (diagnóstico 3 h; implantação, acompanhamento e avaliação 2 h), carro a 10 km/L, 1 refeição por visita. Decisão da coordenação geral: agentes e bolsistas recebem as horas. Confirmar com a FUNCERN, porque bolsistas já recebem bolsa mensal pela mesma atividade.
+- **Visita de avaliação** ainda não pode ser agendada: o plano prevê 160 dias de campo por estado (4 visitas × 40 quintais); uma 5ª visita passaria desse total.
 - **Valores de bolsa** vêm do plano de trabalho: coordenação técnica R$ 4.700, articulação R$ 2.200 e apoio R$ 1.600 por mês. Se o plano mudar, altere `js/dados.js`.
 - **Nomes das funções:** o sistema usa "articulação estadual" e "apoio estadual", como no plano de trabalho e no Guia das bolsistas. O modelo de termo de compromisso diz "articulação territorial" e "apoio técnico", e vale uniformizar o modelo.
 - **Modelo de dados alinhado à proposta de sistema nacional ao MDA** (18/07/2026): CPF validado, papéis de agentes de campo, habilitação e bolsa. Assim, os dados podem migrar se a proposta for adotada.
@@ -104,7 +123,6 @@ psql -d teste3 -f supabase/tests/test_campo.sql   # 17 casos de visitas e diagn�
 ## Próximos passos
 
 1. Backup semanal do banco (o plano gratuito do Supabase não guarda cópias) — antes do diagnóstico ir a campo.
-2. Visual novo no estilo da proposta ao MDA.
-3. Relatório de visita técnica (implantação e acompanhamentos; a visita final repete a pergunta de renda da linha de base).
-4. Termo de recebimento do kit (depende da lista do kit aprovada).
-5. Relatório mensal da bolsista gerado a partir dos registros do mês.
+2. Relatório de visita técnica (implantação e acompanhamentos; a visita final repete a pergunta de renda da linha de base).
+3. Termo de recebimento do kit (depende da lista do kit aprovada).
+4. Relatório mensal da bolsista gerado a partir dos registros do mês.

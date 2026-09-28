@@ -120,6 +120,8 @@ begin
       raise exception 'O agente de campo não reagenda nem cancela visitas. Fale com a bolsista do estado.';
     end if;
     if new.executor_id = old.executor_id and new.situacao = old.situacao then return new; end if;
+    -- cancelar sempre pode (libera o dia de campo), mesmo se a ficha foi devolvida depois
+    if new.situacao = 'cancelada' then return new; end if;
   end if;
   select * into f from public.fichas where id = new.ficha_id;
   if f.id is null then raise exception 'Ficha não encontrada.'; end if;
@@ -135,7 +137,7 @@ begin
   if not public.habilitado(ex) and new.situacao <> 'cancelada' then
     raise exception '% ainda não está habilitada (FIC, FUNCERN e termo): a visita não poderia ser paga.', ex.nome;
   end if;
-  if tg_op = 'INSERT' then
+  if tg_op = 'INSERT' and not exists (select 1 from public.visitas where id = new.id) then
     new.criado_por := public.meu_id(); new.criado_em := now();
     if new.etapa = 'acompanhamento' then
       select count(*) into n from public.visitas where ficha_id = new.ficha_id and etapa = 'acompanhamento' and situacao <> 'cancelada';

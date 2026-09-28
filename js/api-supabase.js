@@ -1,4 +1,4 @@
-/* Modo produção: Supabase (login por link no e-mail, dados no banco com RLS). */
+/* Modo produção: Supabase (login com e-mail e senha, dados no banco com RLS). */
 (function () {
   const R = MQ.regras;
   let sb = null;
@@ -14,6 +14,31 @@
     'meta_diagnosticos', 'meta_quintais', 'meta_visitas', 'matricula_fic_em', 'matricula_fic_numero', 'docs_funcern_em',
     'termo_path', 'termo_assinado_em', 'obs_habilitacao', 'consentimento_lgpd', 'substitui_id', 'status', 'data_fim', 'motivo_desligamento'];
   const limpar = o => { const r = {}; CAMPOS.forEach(k => { if (k in o) r[k] = o[k] === '' ? null : o[k]; }); return r; };
+
+  /* Grava com UPDATE quando o registro já existe e INSERT só quando é novo.
+     (upsert dispara o gatilho de inclusão mesmo ao editar, e as travas de inclusão bloqueariam a edição) */
+  async function gravar(tabela, reg) {
+    const { data: up, error: e1 } = await sb.from(tabela).update(reg).eq('id', reg.id).select();
+    if (e1) throw erro(e1);
+    if (up && up.length) return up[0];
+    const { data, error } = await sb.from(tabela).insert(reg).select().single();
+    if (error) throw erro(error);
+    return data;
+  }
+  /* Recodifica a imagem no navegador: tira metadados (EXIF com GPS, modelo do celular) antes de publicar */
+  function limparImagem(blob, max = 1600) {
+    return new Promise((res, rej) => {
+      const url = URL.createObjectURL(blob); const img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, max / Math.max(img.width, img.height)); const c = document.createElement('canvas');
+        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+        c.toBlob(b => b ? res(b) : rej(new Error('Não foi possível preparar a foto.')), 'image/jpeg', 0.85);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Arquivo de foto inválido.')); };
+      img.src = url;
+    });
+  }
 
   MQ.apiSupabase = {
     modo: 'supabase',
@@ -101,9 +126,7 @@
       }
       ['tem_foto_ficha', 'tem_foto_termo', 'pontos', 'situacao', 'aprovada_por', 'aprovada_em', 'obs_coordenacao', 'bolsista_id', 'criado_em', 'atualizado_em']
         .forEach(k => delete f[k]);
-      const { data, error } = await sb.from('fichas').upsert(f, { onConflict: 'id' }).select().single();
-      if (error) throw erro(error);
-      return data;
+      return gravar('fichas', f);
     },
     async decidirFicha(id, situacao, obs) {
       const { data, error } = await sb.from('fichas').update({ situacao, obs_coordenacao: obs || null }).eq('id', id).select().single();
@@ -117,8 +140,7 @@
     },
     async salvarVisita(v) {
       const r = Object.assign({}, v); ['criado_por', 'criado_em', 'atualizado_em'].forEach(k => delete r[k]);
-      const { data, error } = await sb.from('visitas').upsert(r, { onConflict: 'id' }).select().single();
-      if (error) throw erro(error); return data;
+      return gravar('visitas', r);
     },
     async listarDiagnosticos() {
       const { data, error } = await sb.from('diagnosticos').select('*').order('data_visita', { ascending: false });
@@ -136,8 +158,7 @@
       }
       d.fotos = [...caminhos];
       ['situacao', 'aprovado_por', 'aprovado_em', 'obs_coordenacao', 'executor_id', 'criado_em', 'atualizado_em'].forEach(k => delete d[k]);
-      const { data, error } = await sb.from('diagnosticos').upsert(d, { onConflict: 'id' }).select().single();
-      if (error) throw erro(error); return data;
+      return gravar('diagnosticos', d);
     },
     async decidirDiagnostico(id, situacao, obs) {
       const { data, error } = await sb.from('diagnosticos').update({ situacao, obs_coordenacao: obs || null }).eq('id', id).select().single();
@@ -150,7 +171,76 @@
       return data.signedUrl;
     },
 
-    async sair() { euCache = null; this.temSessao = false; try { localStorage.removeItem('mq-eu'); } catch (e) {} await sb.auth.signOut(); },
+    /* ---------- Ajuda de custo por visita ---------- */
+    async lerParametros(chave) {
+      const { data, error } = await sb.from('parametros').select('valor, atualizado_em').eq('chave', chave).maybeSingle();
+      if (error) throw erro(error); return data ? data.valor : null;
+    },
+    async salvarParametros(chave, valor) {
+      const { data, error } = await sb.from('parametros').upsert({ chave, valor }, { onConflict: 'chave' }).select('valor').single();
+      if (error) throw erro(error); return data.valor;
+    },
+    async listarCustos() {
+      const { data, error } = await sb.from('custos_visita').select('visita_id, km_ida, obs, definido_em');
+      if (error) throw erro(error); return data;
+    },
+    async salvarKm(visita_id, km_ida) {
+      if (km_ida == null) { const { error } = await sb.from('custos_visita').delete().eq('visita_id', visita_id); if (error) throw erro(error); return null; }
+      const { data, error } = await sb.from('custos_visita').upsert({ visita_id, km_ida }, { onConflict: 'visita_id' }).select().single();
+      if (error) throw erro(error); return data;
+    },
+
+    /* ---------- Vitrine pública (só totais e fotos aprovadas; funciona sem login) ---------- */
+    async vitrine() {
+      if (!sb) sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, { auth: { persistSession: true } });
+      const { data, error } = await sb.rpc('vitrine');
+      if (error) throw erro(error);
+      (data.fotos || []).forEach(f => { f.url = sb.storage.from('vitrine').getPublicUrl(f.path).data.publicUrl; });
+      return data;
+    },
+    async listarVitrine() {
+      const { data, error } = await sb.from('vitrine_fotos').select('*').order('publicada_em', { ascending: false });
+      if (error) throw erro(error);
+      data.forEach(f => { f.url = sb.storage.from('vitrine').getPublicUrl(f.path).data.publicUrl; });
+      return data;
+    },
+    /* Copia uma foto de campo (privada) para o bucket público, com nome aleatório, e registra.
+       O banco confere a autorização de imagem, crianças e nome na legenda. */
+    async publicarFoto({ ficha_id, origem, legenda, sem_criancas }) {
+      if (!/\/diag_/.test(origem)) throw erro('Só fotos do diagnóstico podem ir para a vitrine.');
+      const { data: bruto, error: e1 } = await sb.storage.from('campo').download(origem);
+      if (e1) throw erro(e1);
+      const blob = await limparImagem(bruto);
+      const path = MQ.novoId() + '.jpg';
+      const { error: e2 } = await sb.storage.from('vitrine').upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+      if (e2) throw erro(e2);
+      const { data, error } = await sb.from('vitrine_fotos').insert({ path, ficha_id, uf: 'XX', legenda, sem_criancas: !!sem_criancas }).select().single();
+      if (error) { await sb.storage.from('vitrine').remove([path]); throw erro(error); }
+      return data;
+    },
+    async retirarFoto(id, path) {
+      const { error: e1 } = await sb.storage.from('vitrine').remove([path]);   // primeiro o arquivo público
+      if (e1) throw erro(e1);
+      const { error } = await sb.from('vitrine_fotos').delete().eq('id', id);
+      if (error) throw erro(error);
+    },
+    /* Fotos cuja autorização foi retirada: o banco já tirou da vitrine; aqui apaga o arquivo público */
+    async limparVitrinePendente() {
+      const { data, error } = await sb.from('vitrine_remover').select('path');
+      if (error || !data || !data.length) return 0;
+      const paths = data.map(x => x.path);
+      const { error: e1 } = await sb.storage.from('vitrine').remove(paths);
+      if (e1) return 0;
+      await sb.from('vitrine_remover').delete().in('path', paths);
+      return paths.length;
+    },
+
+    async sair() {
+      euCache = null; this.temSessao = false;
+      // tira do aparelho a cópia dos dados (nomes, CPF, endereços); o que não foi enviado continua na fila para a próxima entrada
+      try { Object.keys(localStorage).filter(k => k === 'mq-eu' || k.startsWith('mq-cache-')).forEach(k => localStorage.removeItem(k)); } catch (e) {}
+      await sb.auth.signOut();
+    },
 
     async listarEquipe() {
       const { data, error } = await sb.from('equipe').select('*').order('criado_em');
