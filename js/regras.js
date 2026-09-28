@@ -104,3 +104,72 @@
   R.fmtBRL = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   R.diasAte = d => Math.ceil((new Date(d + 'T23:59:59') - new Date()) / 864e5);
 })();
+
+/* ---------- Regras da ficha de indicação ---------- */
+(function () {
+  const R = MQ.regras;
+  R.pontosFicha = f => MQ.PRIORIDADES.reduce((s, [k, , p]) => s + (f[k] ? p : 0), 0);
+  R.criteriosOk = f => MQ.CRITERIOS.every(([k]) => f[k] === true);
+  R.idade = (nasc, em) => {
+    if (!nasc) return null;
+    const a = new Date(nasc + 'T12:00:00'), b = new Date((em || R.hoje()) + 'T12:00:00');
+    let i = b.getFullYear() - a.getFullYear();
+    if (b.getMonth() < a.getMonth() || (b.getMonth() === a.getMonth() && b.getDate() < a.getDate())) i--;
+    return i;
+  };
+  /* Resultados possíveis conforme os critérios marcados */
+  R.resultadosPossiveis = f => {
+    const faltam = MQ.CRITERIOS.filter(([k]) => f[k] !== true).map(([k]) => k);
+    if (!faltam.length) return f.autodeclaracao ? ['selecionada', 'lista_espera'] : ['nao_atende'];
+    if (faltam.length === 1 && faltam[0] === 'c_agua') return ['sem_agua', 'nao_atende'];
+    return ['nao_atende'];
+  };
+  /* Endereço "normalizado" para achar a mesma casa escrita de jeitos diferentes */
+  R.normEndereco = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/\b(sitio|sit|rua|r|povoado|pov|fazenda|faz|assentamento|assent|comunidade|com|numero|n|no|s\/n|sn)\b\.?/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ').trim();
+  R.casasParecidas = (f, fichas) => {
+    const alvo = R.normEndereco(f.endereco); if (!alvo) return [];
+    return fichas.filter(x => x.id !== f.id && x.uf === f.uf && R.normEndereco(x.municipio) === R.normEndereco(f.municipio)
+      && R.normEndereco(x.endereco) === alvo);
+  };
+  R.validarFicha = function (f, fichas) {
+    const e = {};
+    if (!f.nome || f.nome.trim().split(/\s+/).length < 2) e.nome = 'Nome completo, como no documento.';
+    if (!R.cpfValido(f.cpf)) e.cpf = 'CPF inválido. Confira os 11 números.';
+    else if (fichas.some(x => x.id !== f.id && x.cpf === R.soDigitos(f.cpf))) e.cpf = 'Esta mulher já tem ficha no projeto.';
+    if (!f.data_nascimento) e.data_nascimento = 'Informe a data de nascimento.';
+    else { const i = R.idade(f.data_nascimento, f.data_ficha); if (i < 0 || i > 110) e.data_nascimento = 'Data de nascimento inválida.'; }
+    if (!f.municipio || f.municipio.trim().length < 3) e.municipio = 'Informe o município.';
+    if (!f.comunidade || f.comunidade.trim().length < 3) e.comunidade = 'Informe a comunidade ou assentamento.';
+    if (!f.endereco || f.endereco.trim().length < 3) e.endereco = 'Informe o endereço (rua, sítio, nº).';
+    if (f.nis && R.soDigitos(f.nis).length !== 11) e.nis = 'O NIS tem 11 números. Deixe em branco se ela não souber.';
+    if (f.pessoas_familia != null && (f.pessoas_familia < 1 || f.pessoas_familia > 30)) e.pessoas_familia = 'Entre 1 e 30.';
+    if (!f.consent_dados) e.consent_dados = 'Sem a autorização de uso dos dados, a ficha não pode ser registrada.';
+    if (f.assinatura === 'digital') {
+      if (!f.testemunha_nome || f.testemunha_nome.trim().split(/\s+/).length < 2) e.testemunha_nome = 'Nome completo da testemunha.';
+      if (!R.cpfValido(f.testemunha_cpf)) e.testemunha_cpf = 'CPF da testemunha inválido.';
+    }
+    MQ.CRITERIOS.forEach(([k]) => { if (f[k] !== true && f[k] !== false) e[k] = 'Marque sim ou não.'; });
+    if (f.c_maior18 === true && f.data_nascimento && R.idade(f.data_nascimento, f.data_ficha) < 18) e.c_maior18 = 'Pela data de nascimento ela tem menos de 18 anos.';
+    if (!f.resultado) e.resultado = 'Escolha o resultado.';
+    else if (!R.resultadosPossiveis(f).includes(f.resultado)) e.resultado = 'Resultado incompatível com os critérios marcados.';
+    if (f.resultado === 'lista_espera' && !(f.posicao_espera >= 1)) e.posicao_espera = 'Informe a posição na lista.';
+    if (f.resultado === 'sem_agua' && (!f.encaminhada_para || f.encaminhada_para.trim().length < 3)) e.encaminhada_para = 'Para onde ela foi encaminhada (programa de cisternas, órgão)?';
+    if (!f.data_ficha) e.data_ficha = 'Informe a data.';
+    else if (f.data_ficha > R.hoje()) e.data_ficha = 'Data no futuro.';
+    if (!f.tem_foto_termo) e.foto_termo = 'Fotografe o termo de consentimento assinado.';
+    if (!f.tem_foto_ficha) e.foto_ficha = 'Fotografe a ficha em papel assinada.';
+    return e;
+  };
+  const antigo = R.mensagemErro;
+  R.mensagemErro = function (err) {
+    const s = String((err && (err.message || err.details)) || err || '');
+    if (/fichas_cpf_unico/.test(s)) return 'Esta mulher (CPF) já tem ficha no projeto, possivelmente em outro estado. Fale com a coordenação técnica.';
+    if (/criterios_para_selecao/.test(s)) return 'Selecionada ou lista de espera só com todos os critérios obrigatórios e a autodeclaração assinada.';
+    if (/sem_agua_encaminhada/.test(s)) return 'Informe para onde ela foi encaminhada por falta de água.';
+    if (/idade_minima/.test(s)) return 'Ela tem menos de 18 anos na data da ficha.';
+    if (/consent_dados/.test(s)) return 'Sem a autorização de uso dos dados, a ficha não pode ser registrada.';
+    return antigo(err);
+  };
+})();

@@ -6,7 +6,7 @@
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const nomeUF = uf => (MQ.UFS.find(x => x.uf === uf) || {}).nome || uf;
 
-  const S = { api: null, eu: null, equipe: [], aud: [], painel: null, enviado: null };
+  const S = { api: null, eu: null, equipe: [], aud: [], fichas: [], fila: [], painel: null, enviado: null };
 
   /* ---------- início ---------- */
   async function boot() {
@@ -19,17 +19,41 @@
     S.api = producao ? MQ.apiSupabase : MQ.apiDemo;
     try {
       S.eu = await S.api.iniciar();
-      if (S.eu) await carregar();
+      if (S.eu) { await carregar(); setTimeout(() => sincronizar(false), 500); }
     } catch (e) { toast(e.message); }
     render();
     if ('serviceWorker' in navigator && location.protocol === 'https:' && !MQ.CONFIG.semServiceWorker) {
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
   }
+  const chaveCache = () => 'mq-cache-' + (S.eu && S.eu.id);
   async function carregar() {
-    S.equipe = await S.api.listarEquipe();
-    S.aud = /^coord/.test(S.eu.papel) ? await S.api.auditoria() : [];
+    try {
+      S.equipe = await S.api.listarEquipe();
+      S.fichas = await S.api.listarFichas();
+      S.aud = /^coord/.test(S.eu.papel) ? await S.api.auditoria() : [];
+      S.semRede = false;
+      try { localStorage.setItem(chaveCache(), JSON.stringify({ equipe: S.equipe, fichas: S.fichas, aud: S.aud, em: Date.now() })); } catch (e) {}
+    } catch (e) {
+      if (!e.semRede) throw e;
+      // Sem internet: mostra a última cópia guardada no aparelho
+      S.semRede = true;
+      try { const c = JSON.parse(localStorage.getItem(chaveCache()) || 'null'); if (c) { S.equipe = c.equipe; S.fichas = c.fichas; S.aud = c.aud; S.cacheEm = c.em; } } catch (x) {}
+      if (!S.equipe.length) S.equipe = [S.eu];
+    }
+    S.fila = await MQ.fila.listar(S.eu.id);
   }
+  async function sincronizar(avisar) {
+    if (!S.eu || !R.ehBolsista(S.eu.papel) || !navigator.onLine) return;
+    const antes = (await MQ.fila.listar(S.eu.id)).length; if (!antes) return;
+    const r = await MQ.fila.sincronizar(S.api, S.eu.id);
+    try { await carregar(); } catch (e) {}
+    render();
+    if (r.enviados && avisar !== false) toast(r.enviados + (r.enviados > 1 ? ' fichas enviadas.' : ' ficha enviada.'));
+  }
+  MQ.ui = { S, esc, nomeUF, toast: m => toast(m), render: () => render(), abrirPainel: p => abrirPainel(p), fecharPainel: () => fecharPainel(),
+    mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), sincronizar: a => sincronizar(a),
+    porId: id => porId(id) };
 
   /* ---------- consultas ---------- */
   const ativos = () => S.equipe.filter(m => m.status === 'ativa');
@@ -46,6 +70,8 @@
     const app = $('#app');
     const modoDemo = S.api.modo === 'demo';
     let h = barra() + (modoDemo ? faixaDemo() : '');
+    if (S.eu && (S.semRede || S.api.offline || !navigator.onLine))
+      h += `<div class="demo" role="status"><div class="demo-in"><span><b>Sem internet.</b> O que você preencher fica guardado neste aparelho e é enviado quando a conexão voltar.${S.cacheEm ? ' Dados de ' + new Date(S.cacheEm).toLocaleString('pt-BR') + '.' : ''}</span></div></div>`;
     if (!S.eu) h += modoDemo ? '<main class="wrap"><p class="carregando">Carregando…</p></main>' : (S.api.temSessao ? semCadastro() : login());
     else if (/^coord/.test(S.eu.papel)) h += telaCoordenacao();
     else h += telaBolsista();
@@ -109,6 +135,8 @@
         <div class="secao-cab"><h2 id="t-b">Bolsistas por estado</h2><p>1 de articulação e 1 de apoio por estado · cadastradas pela coordenação técnica · meta de 40 quintais por estado</p></div>
         ${quadroTabela()}${quadroCartoes()}
       </section>
+
+      ${MQ.fichasUI ? MQ.fichasUI.secaoCoord() : ''}
 
       <section class="secao" aria-labelledby="t-h">
         <h2 id="t-h">Histórico de alterações</h2>
@@ -200,9 +228,10 @@
         <div><span class="v num">${m.meta_diagnosticos}</span><span class="l">diagnósticos (Meta 2)</span></div>
         <div><span class="v num">${m.meta_quintais}</span><span class="l">quintais implantados (Meta 3)</span></div>
         <div><span class="v num">${m.meta_visitas}</span><span class="l">visitas de acompanhamento (Meta 4)</span></div></div></div>` : ''}
-      <section class="secao"><div class="secao-cab"><h2>Formulários de campo</h2><span class="chip pend">Em preparação</span></div>
-        <p class="small muted">Os modelos versão 2 viram formulários neste sistema, com funcionamento sem internet. Até lá, use os modelos em papel.</p>
-        <ul class="forms">${MQ.FORMULARIOS.map(f => `<li><span class="n">${f.n}</span><b>${esc(f.nome)}</b><span class="small muted">${esc(f.quando)}</span></li>`).join('')}</ul></section>
+      ${MQ.fichasUI ? MQ.fichasUI.secaoBolsista() : ''}
+      <section class="secao"><div class="secao-cab"><h2>Próximos formulários</h2><span class="chip pend">Em preparação</span></div>
+        <p class="small muted">Até entrarem no sistema, use os modelos em papel (versão 2).</p>
+        <ul class="forms">${MQ.FORMULARIOS.filter(f => f.n > 2).map(f => `<li><span class="n">${f.n}</span><b>${esc(f.nome)}</b><span class="small muted">${esc(f.quando)}</span></li>`).join('')}</ul></section>
       <div class="bloco"><h2>Meus dados</h2>${dadosDL(m)}<p class="small muted">Algum dado errado? Fale com a coordenação técnica, que corrige o cadastro.</p></div>
     </main>`;
   }
@@ -238,7 +267,7 @@
     let el = $('#painel');
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
     const p = S.painel;
-    const corpo = p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
+    const corpo = /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
     el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel" role="dialog" aria-modal="true" aria-labelledby="painel-t">${corpo}</aside>`;
     const foco = el.querySelector('[autofocus]') || el.querySelector('.fechar');
     if (foco) foco.focus();
@@ -372,7 +401,7 @@
       const inp = form.querySelector(`[name="${k}"]`);
       if (!inp) return;
       if (inp.type === 'checkbox') { inp.closest('.check').classList.add('tem-erro'); return; }
-      const c = inp.closest('.campo'); c.classList.add('tem-erro');
+      const c = inp.closest('.campo'); if (!c) return; c.classList.add('tem-erro');
       const s = document.createElement('span'); s.className = 'erro'; s.textContent = msg; c.appendChild(s);
     });
     const lista = Object.values(erros || {});
@@ -397,6 +426,7 @@
       else if (a === 'modo-login') { S.modoLogin = el.dataset.m; render(); const f = $('#l-email'); if (f) f.focus(); }
       else if (a === 'sair') { await S.api.sair(); S.eu = null; S.equipe = []; render(); }
       else if (a === 'fechar') fecharPainel();
+      else if (/^ficha/.test(a) && MQ.fichasUI) { S.voltarFoco = el; await MQ.fichasUI.clique(a, el); }
       else if (a === 'ver') { S.voltarFoco = el; abrirPainel({ tipo: 'detalhe', id: el.dataset.id }); }
       else if (a === 'novo') { S.voltarFoco = el; abrirPainel({ tipo: 'cadastro', papel: el.dataset.papel, uf: el.dataset.uf, subst: el.dataset.subst }); }
       else if (a === 'editar') abrirPainel({ tipo: 'cadastro', id: el.dataset.id });
@@ -406,6 +436,8 @@
   });
 
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && S.painel) fecharPainel(); });
+  window.addEventListener('online', () => { if (S.eu) sincronizar(); });
+  window.addEventListener('offline', () => { if (S.eu) render(); });
 
   document.addEventListener('input', ev => {
     const t = ev.target;
@@ -430,10 +462,11 @@
         if (Object.keys(erros).length) return mostrarErros(form, erros);
         await ocupado(form, async () => {
           S.eu = S.modoLogin === 'primeiro' ? await S.api.criarSenha(email, senha) : await S.api.entrarSenha(email, senha);
-          if (S.eu) await carregar();
+          if (S.eu) { await carregar(); setTimeout(() => sincronizar(false), 500); }
           render();
         });
       }
+      if (/^ficha/.test(tipo) && MQ.fichasUI) await MQ.fichasUI.enviar(tipo, form, fd);
       if (tipo === 'cadastro') {
         const p = S.painel;
         const base = p.id ? porId(p.id) : { papel: p.papel, uf: p.uf || null, substitui_id: p.subst || null };

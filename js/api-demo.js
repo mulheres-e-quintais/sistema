@@ -2,7 +2,7 @@
    as mesmas regras do banco. Os dados são de exemplo. */
 (function () {
   const R = MQ.regras;
-  const CHAVE = 'mq-demo-v1';
+  const CHAVE = 'mq-demo-v2';
   let mem = null;
 
   function gerarCPF(seed) {
@@ -51,8 +51,41 @@
     const lu = lista[lista.length - 1];
     aud.push({ id: k++, tabela: 'equipe', registro_id: lu.id, acao: 'UPDATE', por: ct.id, em: '2026-09-27T15:30:00.000Z',
       antes: Object.assign({}, lu, { status: 'ativa' }), depois: lu });
-    return { equipe: lista, auditoria: aud, eu: { coord_geral: cg.id, coord_tecnico: ct.id, bolsista: lista[2].id }, perfil: 'coord_geral' };
+    const ana = lista[2], maria = lista[4];
+    const fichas = fichasExemplo(ana, maria, ct, gerarCPF);
+    fichas.forEach(f => aud.push({ id: k++, tabela: 'fichas', registro_id: f.id, acao: 'INSERT', por: f.bolsista_id, em: f.criado_em, antes: null, depois: f }));
+    return { equipe: lista, fichas, auditoria: aud, eu: { coord_geral: cg.id, coord_tecnico: ct.id, bolsista: ana.id }, perfil: 'coord_geral' };
   }
+
+  function fichasExemplo(ana, maria, ct, gerarCPF) {
+    const tudoSim = {}; MQ.CRITERIOS.forEach(([c]) => { tudoSim[c] = true; });
+    const f = (n, o) => Object.assign({
+      id: 'f' + n + 'x' + Math.random().toString(36).slice(2, 8), uf: 'PI', municipio: 'Paulistana', comunidade: 'Comunidade Lagoa do Mato',
+      nome: '', cpf: gerarCPF(700000000 + n * 7919), data_nascimento: '1979-03-12', celular: '(89) 99' + String(4000000 + n).slice(-7),
+      endereco: 'Sítio Lagoa do Mato, ' + (10 + n), ponto_referencia: '', nis: null, caf: null, pessoas_familia: 4, indicada_por: 'Associação de Mulheres da Lagoa',
+      autodeclaracao: true, p_sustento: false, p_cadunico: true, p_sem_ater: true, p_raca_povo: false, p_jovem: false, p_grupo: true, p_caf: false,
+      consent_dados: true, consent_imagem: true, consent_criancas: false, assinatura: 'assinatura', testemunha_nome: null, testemunha_cpf: null,
+      resultado: 'selecionada', posicao_espera: null, encaminhada_para: null, justificativa: '',
+      foto_ficha_path: 'exemplo', foto_termo_path: 'exemplo', latitude: null, longitude: null,
+      situacao: 'aprovada', aprovada_por: ct.id, aprovada_em: '2026-10-22T14:00:00.000Z', obs_coordenacao: null,
+      bolsista_id: ana.id, data_ficha: '2026-10-20', criado_em: '2026-10-20T13:00:00.000Z', atualizado_em: '2026-10-22T14:00:00.000Z', exemplo: true
+    }, tudoSim, o);
+    const lista = [
+      f(1, { nome: 'Francisca Alves de Sousa (exemplo)', p_sustento: true }),
+      f(2, { nome: 'Raimunda Nonata Ribeiro (exemplo)', comunidade: 'Assentamento Novo Horizonte', endereco: 'Rua do Açude, 3', p_raca_povo: true }),
+      f(3, { nome: 'Antônia Pereira Lima (exemplo)', municipio: 'Pio IX', comunidade: 'Comunidade Barra', endereco: 'Sítio Barra, s/n', data_nascimento: '1998-07-02', p_jovem: true, bolsista_id: null }),
+      f(4, { nome: 'Josefa Maria da Conceição (exemplo)', situacao: 'aguardando', aprovada_por: null, aprovada_em: null, data_ficha: '2026-10-24', criado_em: '2026-10-24T12:00:00.000Z' }),
+      f(5, { nome: 'Luzia Gomes Ferreira (exemplo)', situacao: 'aguardando', aprovada_por: null, aprovada_em: null, endereco: 'Sitio Lagoa do Mato 11', data_ficha: '2026-10-24', criado_em: '2026-10-24T12:30:00.000Z' }),
+      f(6, { nome: 'Maria do Socorro Silva (exemplo)', resultado: 'lista_espera', posicao_espera: 1, p_cadunico: false, p_sem_ater: false }),
+      f(7, { nome: 'Cícera Rodrigues Nunes (exemplo)', resultado: 'sem_agua', c_agua: false, encaminhada_para: 'Programa Cisternas (ASA) – Paulistana', justificativa: 'Só tem cisterna de consumo; na seca usa carro-pipa.' }),
+      f(8, { nome: 'Ivonete Barbosa (exemplo)', situacao: 'devolvida', aprovada_por: null, aprovada_em: null, obs_coordenacao: 'A foto do termo está cortada: falta a assinatura. Fotografe de novo.' }),
+      f(9, { uf: 'BA', municipio: 'Itiúba', comunidade: 'Comunidade Caldeirão', nome: 'Edilene Santos Reis (exemplo)', bolsista_id: maria.id, situacao: 'aguardando', aprovada_por: null, aprovada_em: null }),
+      f(10, { uf: 'BA', municipio: 'Itiúba', comunidade: 'Comunidade Caldeirão', nome: 'Rosângela Oliveira (exemplo)', bolsista_id: maria.id })
+    ];
+    lista.forEach(x => { x.pontos = MQ.regras.pontosFicha(x); });
+    return lista;
+  }
+  const fotosMemoria = new Map();
 
   function ler() {
     if (mem) return mem;
@@ -135,6 +168,52 @@
       d.equipe[i] = depois; auditar('UPDATE', antes, depois); gravar();
       return copia(depois);
     },
+
+    /* ---------- Fichas de indicação (mesmas regras do 02_fichas.sql) ---------- */
+    async listarFichas() {
+      const d = ler(); d.fichas = d.fichas || []; const eu = euMesmo(); if (!eu) return [];
+      if (/^coord/.test(eu.papel)) return copia(d.fichas);
+      return copia(d.fichas.filter(f => f.uf === eu.uf));
+    },
+    async salvarFicha(dados, fotos) {
+      const d = ler(); d.fichas = d.fichas || []; const eu = euMesmo();
+      if (!eu || !R.ehBolsista(eu.papel) || dados.uf !== eu.uf) throw falha('Seu perfil não tem permissão para esta ação.');
+      const i = d.fichas.findIndex(x => x.id === dados.id);
+      const antes = i >= 0 ? d.fichas[i] : null;
+      if (antes && antes.situacao === 'aprovada') throw falha('Ficha já aprovada pela coordenação técnica. Para corrigir, peça que ela devolva a ficha.');
+      if (d.fichas.some(x => x.id !== dados.id && x.cpf === R.soDigitos(dados.cpf))) throw falha(R.mensagemErro('fichas_cpf_unico'));
+      if (!dados.consent_dados) throw falha(R.mensagemErro('consent_dados'));
+      if (['selecionada', 'lista_espera'].includes(dados.resultado) && !(R.criteriosOk(dados) && dados.autodeclaracao)) throw falha(R.mensagemErro('criterios_para_selecao'));
+      const f = Object.assign({}, antes || {}, dados);
+      Object.entries(fotos || {}).forEach(([campo, blob]) => {
+        if (!blob) return; const path = f.uf + '/' + f.id + '/' + campo; fotosMemoria.set(path, URL.createObjectURL(blob)); f['foto_' + campo + '_path'] = path;
+      });
+      delete f.tem_foto_ficha; delete f.tem_foto_termo;
+      const agora = new Date().toISOString();
+      Object.assign(f, { cpf: R.soDigitos(f.cpf), pontos: R.pontosFicha(f), situacao: 'aguardando', bolsista_id: antes ? antes.bolsista_id : eu.id,
+        criado_em: antes ? antes.criado_em : agora, atualizado_em: agora, aprovada_por: antes ? antes.aprovada_por : null, aprovada_em: antes ? antes.aprovada_em : null,
+        obs_coordenacao: antes ? antes.obs_coordenacao : null });
+      if (i >= 0) d.fichas[i] = f; else d.fichas.unshift(f);
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'fichas', registro_id: f.id, acao: antes ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: antes && copia(antes), depois: copia(f) });
+      gravar(); return copia(f);
+    },
+    async decidirFicha(id, situacao, obs) {
+      const d = ler(); const eu = euMesmo();
+      if (!eu || eu.papel !== 'coord_tecnico') throw falha('Só a coordenação técnica aprova ou devolve fichas.');
+      const i = d.fichas.findIndex(x => x.id === id); if (i < 0) throw falha('Ficha não encontrada.');
+      const antes = d.fichas[i];
+      if (situacao === 'devolvida' && String(obs || '').trim().length < 5) throw falha('Para devolver, escreva o que a bolsista precisa corrigir.');
+      if (situacao === 'aprovada' && antes.resultado === 'selecionada' &&
+          d.fichas.filter(x => x.uf === antes.uf && x.resultado === 'selecionada' && x.situacao === 'aprovada' && x.id !== id).length >= MQ.VAGAS_UF)
+        throw falha('O estado ' + antes.uf + ' já tem 40 selecionadas aprovadas. Esta mulher deve ir para a lista de espera.');
+      const agora = new Date().toISOString();
+      const f = Object.assign({}, antes, { situacao, obs_coordenacao: obs || null, atualizado_em: agora,
+        aprovada_por: situacao === 'aprovada' ? eu.id : null, aprovada_em: situacao === 'aprovada' ? agora : null });
+      d.fichas[i] = f;
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'fichas', registro_id: id, acao: 'UPDATE', por: eu.id, em: agora, antes: copia(antes), depois: copia(f) });
+      gravar(); return copia(f);
+    },
+    async linkFoto(path) { return fotosMemoria.get(path) || null; },
 
     async desligar(id, data_fim, motivo) { return this.atualizar(id, { status: 'desligada', data_fim, motivo_desligamento: motivo }); },
 

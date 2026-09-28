@@ -8,7 +8,13 @@ Sistema web do projeto **Quintais Produtivos para Mulheres Rurais** (TED 7AAEKA,
 - As duas coordenações registram a **habilitação para a bolsa**, seguindo o Guia das bolsistas: matrícula no FIC, documentos na FUNCERN e termo de compromisso.
 - Desligamento com data e motivo, substituta ligada a quem saiu e histórico de todas as alterações.
 
-**Etapa 2 (próxima):** os 5 formulários de campo (modelos v2), com funcionamento sem internet.
+**Etapa 2 (esta versão):** ficha de indicação e seleção + termo de consentimento (modelos 1 e 2, v2).
+- A bolsista preenche no celular, com ou sem internet. Sem sinal, a ficha e as fotos dos papéis assinados ficam no aparelho e são enviadas quando a conexão volta.
+- Substitui a planilha única: o banco impede CPF repetido no projeto inteiro, e a tela avisa quando o endereço é igual ao de outra ficha (mesma casa).
+- Os resultados possíveis seguem os critérios marcados: sem água só permite "sem água: encaminhada" ou "não atende"; sem a autodeclaração, a mulher não pode ser selecionada.
+- A coordenação técnica aprova ou devolve cada ficha, com no máximo 40 selecionadas aprovadas por estado. A coordenação geral acompanha e baixa a planilha (CSV).
+
+**Próximas etapas:** diagnóstico e plano do quintal, relatório de visita técnica, termo de recebimento do kit.
 
 ---
 
@@ -22,6 +28,8 @@ js/dados.js             dados do projeto: estados, municípios, valores de bolsa
 js/regras.js            regras de negócio da tela (CPF, vagas, metas por estado)
 js/api-demo.js          modo demonstração (sem servidor, dados de exemplo)
 js/api-supabase.js      modo produção (Supabase)
+js/fila.js              fila do aparelho (IndexedDB) para trabalhar sem internet
+js/fichas.js            ficha de indicação e termo de consentimento
 js/app.js               telas
 sw.js, manifest         instalação no celular e abertura sem internet
 supabase/schema.sql     banco: tabelas, regras de acesso (RLS), auditoria
@@ -44,10 +52,11 @@ Use o seletor "Ver como" para alternar entre coordenação geral, coordenação 
 
 1. **Criar o projeto no Supabase** (supabase.com, plano gratuito). Escolha a região **South America (São Paulo)** para os dados ficarem no Brasil. Crie a conta com um e-mail institucional, não pessoal, para o projeto não depender de uma pessoa.
 2. **Criar o banco:** em *SQL Editor*, cole e rode todo o `supabase/schema.sql`.
-3. **Cadastrar a coordenação geral:** no fim do `schema.sql` há um `insert` comentado. Preencha com os dados reais e rode só essa parte.
-4. **Login com senha:** em *Authentication > Sign In / Providers > Email*, **desligue "Confirm email"**. Cada pessoa cria a própria senha em "Primeiro acesso", e o banco só aceita e-mails já cadastrados pela coordenação. Assim o sistema não depende de servidor de e-mail. Para "esqueci a senha": a coordenação geral apaga o usuário em *Authentication > Users* e a pessoa faz o primeiro acesso de novo (o cadastro na equipe não é afetado). No painel, cada pessoa mostra se já fez o primeiro acesso: confira logo depois de cadastrar alguém.
-5. **Ligar o sistema ao banco:** em `js/config.js`, preencha `supabaseUrl` e `supabaseAnonKey` (em *Project Settings > API*). A chave anon é pública por desenho; quem protege os dados são as regras do banco.
-6. **Publicar:** suba a pasta para um repositório no GitHub e ative o *GitHub Pages*, ou arraste a pasta para o Vercel/Netlify. Precisa ser **https** para instalar no celular.
+3. **Etapa 2:** rode também o `supabase/02_fichas.sql` (fichas de indicação, fotos e regras).
+4. **Cadastrar a coordenação geral:** no fim do `schema.sql` há um `insert` comentado. Preencha com os dados reais e rode só essa parte.
+5. **Login com senha:** em *Authentication > Sign In / Providers > Email*, **desligue "Confirm email"**. Cada pessoa cria a própria senha em "Primeiro acesso", e o banco só aceita e-mails já cadastrados pela coordenação. Assim o sistema não depende de servidor de e-mail. Para "esqueci a senha": a coordenação geral apaga o usuário em *Authentication > Users* e a pessoa faz o primeiro acesso de novo (o cadastro na equipe não é afetado). No painel, cada pessoa mostra se já fez o primeiro acesso: confira logo depois de cadastrar alguém.
+6. **Ligar o sistema ao banco:** em `js/config.js`, preencha `supabaseUrl` e `supabaseAnonKey` (em *Project Settings > API*). A chave anon é pública por desenho; quem protege os dados são as regras do banco.
+7. **Publicar:** suba a pasta para um repositório no GitHub e ative o *GitHub Pages*, ou arraste a pasta para o Vercel/Netlify. Precisa ser **https** para instalar no celular.
 
 ## Regras garantidas pelo banco (não só pela tela)
 
@@ -72,7 +81,9 @@ Para rodar os testes (PostgreSQL 16 local):
 createdb teste
 psql -d teste -f supabase/tests/stub_supabase.sql
 psql -d teste -f supabase/schema.sql
-psql -d teste -f supabase/tests/test_regras.sql   # 21 casos, com o resultado esperado em cada um
+psql -d teste -f supabase/tests/test_regras.sql   # 21 casos da equipe, com o resultado esperado em cada um
+# etapa 2 (em outro banco): stub, 01_criar_banco.sql com nome/CPF preenchidos, 02_fichas.sql e depois
+psql -d teste2 -f supabase/tests/test_fichas.sql  # 17 casos das fichas
 ```
 
 ## Decisões tomadas
