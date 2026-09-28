@@ -412,8 +412,8 @@
       <div class="ent-fundo" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i></div>
       <section class="ent-hero">
         <div class="ent-marca"><img src="assets/isotipo.svg" alt="" width="34" height="48"><span><b class="serif">Mulheres &amp; Quintais</b><small>Quintais Produtivos para Mulheres Rurais</small></span></div>
-        <h1 class="ent-t serif">Força de mulher<br>que <em>brota</em> no quintal.</h1>
-        <p class="ent-s">200 mulheres rurais em 5 estados do Nordeste plantando comida, renda e autonomia. O projeto chega aonde elas estão.</p>
+        <h1 class="ent-t serif">O quintal<br><em>nunca</em> foi pouco.</h1>
+        <p class="ent-s">É ali que 200 mulheres rurais do Nordeste produzem comida, renda e autonomia. O projeto chega aonde elas estão.</p>
         <ul class="ent-ufs" aria-label="Estados do projeto">${ufs}</ul>
         ${MQ.vitrineUI ? MQ.vitrineUI.entrada() : ''}
         ${broto}
