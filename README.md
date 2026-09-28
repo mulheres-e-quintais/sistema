@@ -45,7 +45,7 @@ Use o seletor "Ver como" para alternar entre coordenação geral, coordenação 
 1. **Criar o projeto no Supabase** (supabase.com, plano gratuito). Escolha a região **South America (São Paulo)** para os dados ficarem no Brasil. Crie a conta com um e-mail institucional, não pessoal, para o projeto não depender de uma pessoa.
 2. **Criar o banco:** em *SQL Editor*, cole e rode todo o `supabase/schema.sql`.
 3. **Cadastrar a coordenação geral:** no fim do `schema.sql` há um `insert` comentado. Preencha com os dados reais e rode só essa parte.
-4. **Login por e-mail:** em *Authentication > URL Configuration*, ponha o endereço onde o sistema vai ficar em *Site URL* e em *Redirect URLs*. Em *Authentication > Emails*, traduza o modelo "Magic Link". O envio de e-mails do plano gratuito tem limite baixo por hora: antes de cadastrar a equipe, configure um SMTP próprio em *Project Settings > Authentication > SMTP* (pode ser o e-mail institucional).
+4. **Login com senha:** em *Authentication > Sign In / Providers > Email*, **desligue "Confirm email"**. Cada pessoa cria a própria senha em "Primeiro acesso", e o banco só aceita e-mails já cadastrados pela coordenação. Assim o sistema não depende de servidor de e-mail. Para "esqueci a senha": a coordenação geral apaga o usuário em *Authentication > Users* e a pessoa faz o primeiro acesso de novo (o cadastro na equipe não é afetado). No painel, cada pessoa mostra se já fez o primeiro acesso: confira logo depois de cadastrar alguém.
 5. **Ligar o sistema ao banco:** em `js/config.js`, preencha `supabaseUrl` e `supabaseAnonKey` (em *Project Settings > API*). A chave anon é pública por desenho; quem protege os dados são as regras do banco.
 6. **Publicar:** suba a pasta para um repositório no GitHub e ative o *GitHub Pages*, ou arraste a pasta para o Vercel/Netlify. Precisa ser **https** para instalar no celular.
 
@@ -78,7 +78,7 @@ psql -d teste -f supabase/tests/test_regras.sql   # 21 casos, com o resultado es
 ## Decisões tomadas
 
 - **Não guarda conta bancária nem Pix.** Esses dados vão direto para a FUNCERN, que paga as bolsas. Menos dado guardado significa menos risco (LGPD, art. 6º, III).
-- **Login sem senha**, por link enviado ao e-mail. As bolsistas não precisam decorar senha, e a conta só é criada se o e-mail já estiver cadastrado.
+- **Login com senha criada no primeiro acesso**, sem depender de envio de e-mail. A conta só é criada se o e-mail já estiver cadastrado pela coordenação. Limite conhecido: ninguém confirma que a pessoa é dona do e-mail, então quem souber o e-mail de uma bolsista recém-cadastrada poderia criar a senha antes dela. Por isso, a coordenação confere no painel se o primeiro acesso foi feito pela própria pessoa. Com um servidor de e-mail funcionando, dá para voltar ao login por link.
 - **Valores de bolsa** vêm do plano de trabalho: coordenação técnica R$ 4.700, articulação R$ 2.200 e apoio R$ 1.600 por mês. Se o plano mudar, altere `js/dados.js`.
 - **Nomes das funções:** o sistema usa "articulação estadual" e "apoio estadual", como no plano de trabalho e no Guia das bolsistas. O modelo de termo de compromisso diz "articulação territorial" e "apoio técnico", e vale uniformizar o modelo.
 - **Modelo de dados alinhado à proposta de sistema nacional ao MDA** (18/07/2026): CPF validado, papéis de agentes de campo, habilitação e bolsa. Assim, os dados podem migrar se a proposta for adotada.

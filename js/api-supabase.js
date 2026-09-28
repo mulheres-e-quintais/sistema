@@ -41,6 +41,34 @@
         throw erro(error);
       }
     },
+    /* Login com senha (não depende de servidor de e-mail).
+       Exige "Confirm email" DESLIGADO no Supabase (Authentication > Sign In / Providers > Email). */
+    async entrarSenha(email, senha) {
+      const { data, error } = await sb.auth.signInWithPassword({ email: email.trim().toLowerCase(), password: senha });
+      if (error) {
+        const msg = String(error.message || '');
+        if (/Invalid login credentials/i.test(msg)) throw erro('E-mail ou senha incorretos. Se é seu primeiro acesso, use "Primeiro acesso".');
+        if (/not confirmed/i.test(msg)) throw erro('Conta ainda não liberada. Avise a coordenação geral (confirmação de e-mail ligada no servidor).');
+        if (error.status === 429) throw erro('Muitas tentativas seguidas. Espere 1 minuto e tente de novo.');
+        throw erro(error);
+      }
+      this.temSessao = !!data.session;
+      return this.eu(true);
+    },
+    async criarSenha(email, senha) {
+      const { data, error } = await sb.auth.signUp({ email: email.trim().toLowerCase(), password: senha });
+      if (error) {
+        const msg = String(error.message || '');
+        if (/não cadastrado|Database error/i.test(msg)) throw erro('Este e-mail não está cadastrado no projeto. Fale com a coordenação.');
+        if (/already registered|already exists/i.test(msg)) throw erro('Este e-mail já tem senha. Use "Entrar". Se esqueceu a senha, peça à coordenação geral para liberar um novo primeiro acesso.');
+        if (/password/i.test(msg)) throw erro('Senha fraca: use pelo menos 8 caracteres, misturando letras e números.');
+        if (error.status === 429) throw erro('Muitas tentativas seguidas. Espere 1 minuto e tente de novo.');
+        throw erro(error);
+      }
+      if (!data.session) throw erro('Senha criada, mas o servidor ainda exige confirmação por e-mail. Avise a coordenação geral.');
+      this.temSessao = true;
+      return this.eu(true);
+    },
     async sair() { euCache = null; this.temSessao = false; await sb.auth.signOut(); },
 
     async listarEquipe() {
