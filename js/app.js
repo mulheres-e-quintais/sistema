@@ -138,7 +138,7 @@
       <div class="resumo" aria-label="Resumo da equipe">
         <div><span class="v num">${ct ? 1 : 0}<small> de 1</small></span><span class="l">coordenação técnica cadastrada</span></div>
         <div><span class="v num">${bols.length}<small> de 10</small></span><span class="l">bolsistas cadastradas</span></div>
-        <div><span class="v num">${aptas}<small> de ${pagaveis.length || 0}</small></span><span class="l">aptas a receber bolsa</span></div>
+        <div><span class="v num">${aptas}<small> de ${pagaveis.length || 0}</small></span><span class="l">habilitadas (FIC, FUNCERN e termo)</span></div>
         <div><span class="v num">${(S.fichas || []).filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada').length}<small> de 200</small></span><span class="l">mulheres selecionadas e aprovadas</span></div>
       </div>
       <section class="secao" aria-labelledby="t-ct">
@@ -189,7 +189,9 @@
     const m = naVaga(papel, uf);
     if (m) {
       const s = R.situacao(m);
-      const plano = m.meta_diagnosticos != null ? `${m.meta_diagnosticos} diag. · ${m.meta_quintais || 0} quintais · ${m.meta_visitas || 0} visitas` : 'Plano individual não preenchido';
+      const nFichas = (S.fichas || []).filter(f => f.bolsista_id === m.id).length;
+      const nVis = (S.visitas || []).filter(v => v.executor_id === m.id && v.situacao === 'realizada').length;
+      const plano = nFichas || nVis ? `${nFichas} ficha${nFichas === 1 ? '' : 's'} lançada${nFichas === 1 ? '' : 's'} · ${nVis} visita${nVis === 1 ? '' : 's'} feita${nVis === 1 ? '' : 's'}` : 'Ainda sem fichas nem visitas';
       return `<button class="vagabtn com-foto" data-acao="ver" data-id="${m.id}">${avatar(m, 56)}<span class="vb-t"><span class="nm">${esc(m.nome)}</span>
         <span><span class="chip ${s.cod}">${esc(s.rot)}</span></span><span class="sub">${esc(plano)}</span></span></button>`;
     }
@@ -223,8 +225,8 @@
   }
 
   function quadroTabela() {
-    return `<div class="quadro-scroll"><table class="quadro"><colgroup><col class="c-uf"><col><col><col class="c-plano"></colgroup><thead><tr><th scope="col">Estado</th><th scope="col">Articulação estadual <span class="muted" style="text-transform:none;letter-spacing:0">· ${R.fmtBRL(P.articulacao.bolsa)}/mês</span></th>
-      <th scope="col">Apoio estadual <span class="muted" style="text-transform:none;letter-spacing:0">· ${R.fmtBRL(P.apoio.bolsa)}/mês</span></th><th scope="col">Seleção no estado</th></tr></thead><tbody>
+    return `<div class="quadro-scroll"><table class="quadro"><colgroup><col class="c-uf"><col><col><col class="c-plano"></colgroup><thead><tr><th scope="col">Estado</th><th scope="col">Articulação estadual</th>
+      <th scope="col">Apoio estadual</th><th scope="col">Seleção no estado</th></tr></thead><tbody>
       ${MQ.UFS.map(u => `<tr><td class="uf"><span class="sigla">${u.uf}</span><span class="nomeuf">${u.nome}</span></td>
         <td>${botaoVaga('articulacao', u.uf)}</td><td>${botaoVaga('apoio', u.uf)}</td><td>${planoUF(u.uf)}</td></tr>`).join('')}
       </tbody></table></div>`;
@@ -321,7 +323,7 @@
       ['CPF', R.fmtCPF(m.cpf)], ['E-mail', m.email], ['Celular', m.telefone], ['Município', m.municipio],
       ['Organização', m.organizacao], ['Início da bolsa', R.fmtData(m.data_inicio)],
       m.status === 'ativa' && S.api.modo === 'supabase' ? ['Acesso ao sistema', m.user_id ? 'Já criou a senha e entrou' : 'Ainda não fez o primeiro acesso'] : null,
-      m.papel === 'agente' ? ['Pagamento', 'Ajuda de custo por visita: horas, combustível e refeição (aba Custos)'] : m.papel !== 'coord_geral' ? ['Bolsa mensal', R.fmtBRL(P[m.papel].bolsa) + ' (plano de trabalho)'] : null,
+      m.papel === 'agente' ? ['Pagamento', 'Ajuda de custo por visita (aba Custos)'] : null,
       subst ? ['Substitui', subst.nome] : null,
       m.status === 'desligada' ? ['Desligada em', R.fmtData(m.data_fim)] : null,
       m.status === 'desligada' ? ['Motivo', m.motivo_desligamento] : null
@@ -363,7 +365,7 @@
 
         ${plano}
 
-        <div class="bloco"><h3>Habilitação para receber bolsa</h3>${m.papel === 'coord_geral' ? '<p class="small muted">Não se aplica.</p>' : passos(m)}
+        <div class="bloco"><h3>Habilitação</h3>${m.papel === 'coord_geral' ? '<p class="small muted">Não se aplica.</p>' : passos(m)}
           ${editaHab && m.papel !== 'coord_geral' ? formHabilitacao(m) : ''}</div>
       </div>`;
   }
@@ -400,7 +402,7 @@
         <h2 id="painel-t">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(nomeUF(m.uf)) : ''}</h2></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo"><form class="f" data-form="cadastro" novalidate>
-        <div class="fixo">${m.papel === 'agente' ? '<span class="small muted">Pagamento</span><b>Ajuda de custo por visita</b>' : `<span class="small muted">Bolsa mensal prevista no plano de trabalho</span><b class="num">${R.fmtBRL(P[m.papel].bolsa)}</b>`}
+        <div class="fixo">${m.papel === 'agente' ? '<span class="small muted">Pagamento</span><b>Ajuda de custo por visita</b>' : `<span class="small muted">Função</span><b>${esc(P[m.papel].nome)}</b>`}
           <span class="small">${P[m.papel].faz ? esc(P[m.papel].faz) : 'Planeja, coordena e acompanha a execução técnica nos 5 estados.'}</span>
           ${m.papel === 'agente' ? '<span class="small">Precisa estar matriculada no FIC e cadastrada na FUNCERN antes da primeira visita paga. Vê só os quintais atribuídos a ela.</span>' : ''}</div>
         ${subst ? `<div class="aviso">Substitui <b>${esc(subst.nome)}</b>, desligada em ${R.fmtData(subst.data_fim)}. O histórico liga as duas.</div>` : ''}
@@ -589,7 +591,7 @@
           if (arq && arq.size) patch.termo_path = await S.api.enviarTermo(id, arq);
           if (!Object.keys(patch).length) { toast('Nada mudou.'); return; }
           await S.api.atualizar(id, patch); await recarregar(); abrirPainel({ tipo: 'detalhe', id });
-          const n = porId(id); toast(R.situacao(n).cod === 'ok' ? n.nome.split(' ')[0] + ' está apta a receber a bolsa.' : 'Habilitação atualizada.');
+          const n = porId(id); toast(R.situacao(n).cod === 'ok' ? n.nome.split(' ')[0] + ' está habilitada: todos os passos concluídos.' : 'Habilitação atualizada.');
         });
       }
       if (tipo === 'desligar') {
