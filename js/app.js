@@ -117,16 +117,13 @@
       else if (S.eu.papel === 'auxiliar_adm') h += telaAuxiliar();
       else h += telaBolsista();
     }
-    h += gaveta();
     app.innerHTML = h;
     if (S.painel) desenharPainel();
     else if (S.eu && !S.verEntrada && MQ.pendUI) MQ.pendUI.cobrar();
   }
 
   function barra(publica) {
-    const menuBtn = !publica && S.eu && !S.verEntrada ? `${!/^coord/.test(S.eu.papel) ? '' : (() => { const n = abasCoord().reduce((t, x) => t + x[2], 0);
-          return `<button class="btn-menu" data-acao="menu-abrir" aria-label="Abrir menu${n ? ', ' + n + ' pendências' : ''}"><span aria-hidden="true">☰</span>${n ? `<i class="btn-menu-n">${n}</i>` : ''}</button>`; })()}` : '';
-    return `<header class="barra"><div class="barra-in">${menuBtn}
+    return `<header class="barra"><div class="barra-in">
       <div class="marca"><img class="emb" src="assets/isotipo.svg" alt="" width="36" height="52"><img src="assets/logo-claro.svg" alt="Mulheres &amp; Quintais" width="112" height="36"><span class="sep" aria-hidden="true"></span>
         <span class="sis"><b>Sistema do projeto</b>Quintais Produtivos para Mulheres Rurais</span></div>
       ${publica ? `<a class="btn-barra" href="#">${S.eu ? 'Voltar ao sistema' : 'Entrar'}</a>` : S.eu && !S.verEntrada ? `<div class="quem"><button class="btn-ajuda" data-acao="ajuda" title="Ajuda desta tela" aria-label="Ajuda desta tela">?</button><button class="btn-meus" data-acao="meus-dados" title="Meus dados" aria-label="Meus dados e conta bancária">${avatar(Object.assign({}, S.eu, porId(S.eu.id) || {}), 34)}</button><span><span class="nome">${esc(S.eu.nome)}</span><br><span class="papel">${esc(P[S.eu.papel].nome)}${S.eu.uf ? ' · ' + esc(S.eu.uf) : ''}</span></span>
@@ -167,21 +164,6 @@
       ['pagamentos', 'Pagamentos', aval], ['custos', 'Custos', 0], ['historico', 'Histórico', 0]].filter(([id]) => pode.includes(id));
   }
   function abaAtual() { const pode = ABAS_PAPEL[S.eu.papel] || ABAS_PAPEL.coord_tecnico; return pode.includes(S.aba) ? S.aba : pode[0]; }
-  /* gaveta lateral do celular */
-  function gaveta() {
-    if (!S.menuAberto || !S.eu) return '';
-    const coord = /^coord/.test(S.eu.papel); const aba = coord ? abaAtual() : null;
-    const m = Object.assign({}, S.eu, porId(S.eu.id) || {});
-    return `<div class="gaveta-fundo" data-acao="menu-fechar"></div>
-      <nav class="gaveta" aria-label="Menu">
-        <div class="gaveta-cab">${avatar(m, 44)}<span><b>${esc(nomeDe(m))}</b><small>${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(m.uf) : ''}</small></span>
-          <button class="fechar" data-acao="menu-fechar" aria-label="Fechar menu">×</button></div>
-        ${coord ? `<div class="gaveta-lista">${abasCoord().map(([id, t, n]) => `<button type="button" data-acao="aba" data-aba="${id}" ${aba === id ? 'aria-current="page"' : ''}><span>${t}</span>${n ? `<span class="conta">${n}</span>` : ''}</button>`).join('')}</div>` : ''}
-        <div class="gaveta-lista gaveta-pe"><button type="button" data-acao="ajuda"><span>Ajuda desta tela</span></button><button type="button" data-acao="meus-dados"><span>Meus dados e conta</span></button>
-          ${S.api.modo === 'supabase' ? '<button type="button" data-acao="sair"><span>Sair</span></button>' : ''}</div>
-      </nav>`;
-  }
-
   function telaCoordenacao() {
     const souGeral = S.eu.papel === 'coord_geral';
     const ct = naVaga('coord_tecnico');
@@ -192,7 +174,8 @@
     const aba = pode.includes(S.aba) ? S.aba : pode[0];
     const abas = abasCoord().map(([id, t, n]) => [id, t + (n ? ` <span class="conta">${n}</span>` : '')]);
     const nav = `<nav class="abas" aria-label="Seções">${abas.map(([id, t]) => `<button type="button" data-acao="aba" data-aba="${id}" ${aba === id ? 'aria-current="page"' : ''}>${t}</button>`).join('')}</nav>
-      <button type="button" class="aba-atual-m" data-acao="menu-abrir" aria-label="Seção atual: ${abasCoord().find(([id]) => id === aba)[1]}. Abrir menu"><span aria-hidden="true">☰</span> ${abasCoord().find(([id]) => id === aba)[1]}</button>`;
+      <details class="abas-m"><summary><span class="small muted">Seção</span> <b>${(abas.find(([id]) => id === aba) || abas[0])[1]}</b><span class="abas-m-seta" aria-hidden="true">▾</span></summary>
+        <div class="abas-m-grade">${abas.map(([id, t]) => `<button type="button" data-acao="aba" data-aba="${id}" ${aba === id ? 'aria-current="page"' : ''}>${t}</button>`).join('')}</div></details>`;
     const intro = souGeral
       ? 'Você cadastra a coordenação técnica indicada pelo MPA, os professores do curso FIC e o auxiliar administrativo, e tem acesso a tudo: também pode cadastrar, editar e desligar bolsistas e agentes, registrar a habilitação e matricular no FIC.'
       : 'Cadastre as bolsistas indicadas pelo MPA: uma de articulação estadual e uma de apoio estadual por estado.';
@@ -706,8 +689,6 @@
       else if (a === 'recomecar') { S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.recomecar(); await carregar(); render(); toast('Demonstração recomeçada com os dados de exemplo.'); }
       else if (a === 'cad-modo') { abrirPainel(Object.assign({}, S.painel, { modo: el.dataset.m || undefined })); }
       else if (a === 'ajuda') { if (S.menuAberto) { S.menuAberto = false; render(); } S.voltarFoco = el; abrirPainel({ tipo: 'ajuda', k: el.dataset.k }); }
-      else if (a === 'menu-abrir') { S.menuAberto = true; render(); const g = $('.gaveta button'); if (g) g.focus(); }
-      else if (a === 'menu-fechar') { S.menuAberto = false; render(); }
       else if (a === 'meus-dados') { if (S.menuAberto) { S.menuAberto = false; render(); } S.voltarFoco = el; abrirPainel({ tipo: 'meus-dados' }); }
       else if (a === 'copiar-texto') { const t = el.closest('.bloco').querySelector('textarea'); try { await navigator.clipboard.writeText(t.value); toast('Mensagem copiada.'); } catch (e) { t.select(); toast('Selecione e copie a mensagem.'); } }
       else if (a === 'modo-login') { S.modoLogin = el.dataset.m; render(); const f = $('#l-email'); if (f) f.focus(); }
