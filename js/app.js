@@ -160,7 +160,7 @@
       : 'Cadastre as bolsistas indicadas pelo MPA: uma de articulação estadual e uma de apoio estadual por estado.';
     let corpo = '';
     if (aba === 'visao') corpo = MQ.painelUI ? MQ.painelUI.visaoGeral(S) : '';
-    else if (aba === 'equipe') corpo = (MQ.convitesUI ? MQ.convitesUI.secaoPendentes() : '') + (MQ.bancoUI ? MQ.bancoUI.blocoExportar() : '') + `
+    else if (aba === 'equipe') corpo = (MQ.convitesUI ? MQ.convitesUI.secaoPendentes() : '') + `
       <div class="cab"><div><span class="eyebrow">Equipe do projeto · processo ${esc(MQ.PROJETO.processo)}</span><h1>Coordenação e bolsistas</h1><p>${intro}</p></div>${prazoChip()}</div>
       <div class="resumo" aria-label="Resumo da equipe">
         <div><span class="v num">${ct ? 1 : 0}<small> de 1</small></span><span class="l">coordenação técnica cadastrada</span></div>
@@ -277,6 +277,7 @@
         <div><span class="v num">${semTermo.length}</span><span class="l">no Arlo, falta o termo</span></div>
         <div><span class="v num">${ok.length}</span><span class="l">Arlo e termo registrados</span></div></div>
       <p class="small muted">Abra a pessoa, veja os dados (e a conta, se precisar), cadastre no Arlo e registre a data em <b>Registrar passos da habilitação</b>. Cada consulta de conta bancária fica no histórico.</p>
+      ${MQ.bancoUI ? MQ.bancoUI.blocoSituacao() : ''}
       ${MQ.pagUI ? MQ.pagUI.secaoAuxiliar() : ''}
       ${grupo('Falta cadastrar no Arlo', semArlo, 'Todos já estão no Arlo.')}
       ${grupo('No Arlo, falta registrar o termo', semTermo, 'Nenhum termo pendente.')}

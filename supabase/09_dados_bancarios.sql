@@ -7,8 +7,8 @@
 --   * quem preenche e altera é só a própria pessoa, depois de entrar no sistema
 --     (não passa pelo link de cadastro nem pelas mãos de outra pessoa);
 --   * as coordenações veem apenas se a conta foi informada, nunca os números;
---   * só a coordenação geral gera a planilha para a FUNCERN, e cada geração fica registrada
---     no histórico (quem, quando, quantas pessoas);
+--   * não há planilha com todas as contas: o auxiliar administrativo vê a conta de uma pessoa por vez
+--     para o cadastro no Arlo, e cada consulta fica no histórico (11_fic.sql);
 --   * nada disso entra nos dados de exemplo nem na cópia que o celular guarda para trabalhar sem internet.
 -- =====================================================================
 
@@ -59,25 +59,11 @@ language sql stable security definer set search_path = public as $$
    where coalesce(public.meu_papel(), '') in ('coord_geral','coord_tecnico') and e.status = 'ativa' and e.papel <> 'coord_geral';
 $$;
 
--- coordenação geral: planilha para a FUNCERN (cada geração vai para o histórico)
-create or replace function public.exportar_dados_bancarios() returns table (
-  nome text, cpf text, papel text, uf text, email text, telefone text,
-  banco_codigo text, banco_nome text, agencia text, agencia_dv text, conta text, conta_dv text, tipo_conta text, pix_tipo text, pix_chave text, atualizado_em timestamptz)
-language plpgsql security definer set search_path = public as $$
-declare n int;
-begin
-  if coalesce(public.meu_papel(), '') <> 'coord_geral' then raise exception 'Só a coordenação geral gera a planilha bancária para a FUNCERN.'; end if;
-  select count(*) into n from public.equipe_bancario b join public.equipe e on e.id = b.equipe_id where e.status = 'ativa';
-  insert into public.auditoria (tabela, registro_id, acao, por, antes, depois)
-    values ('equipe_bancario', null, 'EXPORT', public.meu_id(), null, jsonb_build_object('aviso', 'planilha bancária gerada para a FUNCERN', 'pessoas', n));
-  return query
-    select e.nome, e.cpf, e.papel, e.uf::text, e.email::text, e.telefone, b.banco_codigo, b.banco_nome, b.agencia, b.agencia_dv, b.conta, b.conta_dv,
-           b.tipo_conta, b.pix_tipo, b.pix_chave, b.atualizado_em
-      from public.equipe_bancario b join public.equipe e on e.id = b.equipe_id
-     where e.status = 'ativa' order by e.papel, e.uf, e.nome;
-end $$;
+-- (a planilha com todas as contas foi retirada: quem cadastra no Arlo é o auxiliar administrativo,
+--  vendo a conta de uma pessoa por vez, com registro no histórico — ver 11_fic.sql)
+drop function if exists public.exportar_dados_bancarios();
 
-revoke all on function public.salvar_meus_dados_bancarios(jsonb), public.meus_dados_bancarios(), public.situacao_bancaria(), public.exportar_dados_bancarios() from public, anon;
-grant execute on function public.salvar_meus_dados_bancarios(jsonb), public.meus_dados_bancarios(), public.situacao_bancaria(), public.exportar_dados_bancarios() to authenticated;
+revoke all on function public.salvar_meus_dados_bancarios(jsonb), public.meus_dados_bancarios(), public.situacao_bancaria() from public, anon;
+grant execute on function public.salvar_meus_dados_bancarios(jsonb), public.meus_dados_bancarios(), public.situacao_bancaria() to authenticated;
 
 select 'Etapa 9 instalada' as resultado, (select count(*) from public.equipe_bancario) as contas_informadas;

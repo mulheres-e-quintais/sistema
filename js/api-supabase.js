@@ -228,7 +228,6 @@
     },
     async verContaArlo(id) { const { data, error } = await sb.rpc('ver_conta_para_arlo', { p_equipe: id }); if (error) throw erro(error); return data; },
     async situacaoBancaria() { const { data, error } = await sb.rpc('situacao_bancaria'); if (error) throw erro(error); return data; },
-    async exportarDadosBancarios() { const { data, error } = await sb.rpc('exportar_dados_bancarios'); if (error) throw erro(error); return data; },
     async listarAPL() {
       const { data, error } = await sb.from('apl_municipios').select('*'); if (error) throw erro(error); return data;
     },
