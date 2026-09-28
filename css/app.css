@@ -789,3 +789,11 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 /* botão "Meus dados" (foto) na barra */
 .btn-meus { background: none; border: 2px solid rgba(246, 237, 228, .45); border-radius: 50%; padding: 0; cursor: pointer; line-height: 0; flex: none; }
 .btn-meus:hover, .btn-meus:focus-visible { border-color: var(--barra-ink); outline: none; }
+.rot-acoes { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; min-width: 170px; }
+.fazer { list-style: none; margin: 0; padding: 0; display: grid; }
+.fazer li { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.fazer li:first-child { border-top: 0; }
+.fazer li > div { flex: 1 1 220px; min-width: 0; }
+.dobra { margin-top: 14px; }
+.dobra-in { padding: 0 14px 14px; display: grid; gap: 12px; }
+.dobra-in > .bloco.roteiro { border: 0; padding: 0; box-shadow: none; background: none; }

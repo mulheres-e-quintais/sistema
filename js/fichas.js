@@ -56,12 +56,12 @@
     const c = contar(lista, uf);
     const filaF = S.fila.filter(i => !i.tipo || i.tipo === 'ficha'); const pend = filaF.length, comErro = filaF.filter(i => i.erro).length;
     const busca = filtro.busca.trim().toLowerCase();
-    const vis = lista.filter(f => !busca || f.nome.toLowerCase().includes(busca) || f.cpf.includes(R.soDigitos(busca) || '#'));
+    const vis = lista;
     const devolvidas = vis.filter(f => f.situacao === 'devolvida' || f._erro);
     const resto = vis.filter(f => !(f.situacao === 'devolvida' || f._erro));
     return `<section class="secao" aria-labelledby="t-fichas">
-      <div class="secao-cab"><div><h2 id="t-fichas">Fichas de indicação · ${E(U().nomeUF(uf))}</h2>
-        <p>Uma ficha por mulher, com o termo de consentimento. A coordenação técnica aprova antes do diagnóstico.</p></div>
+      <div class="secao-cab"><div><h2 id="t-fichas">Seleção das mulheres · ${E(U().nomeUF(uf))}</h2>
+        <p>Para cada mulher indicada pela comunidade você preenche uma <b>ficha de indicação</b>: dados dela, critérios do edital e o termo de consentimento assinado. A coordenação técnica aprova; as ${MQ.VAGAS_UF} primeiras aprovadas recebem o quintal e as outras ficam na lista de espera.</p></div>
         <button class="btn pri" data-acao="ficha-nova">+ Nova ficha</button></div>
       <div class="resumo">
         <div><span class="v num">${c.aprovadas}<small> de ${MQ.VAGAS_UF}</small></span><span class="l">selecionadas aprovadas no estado</span></div>
@@ -72,9 +72,10 @@
       ${pend ? `<div class="aviso${comErro ? ' erro' : ''}" style="display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap">
         <span><b>${pend} ficha${pend > 1 ? 's' : ''} guardada${pend > 1 ? 's' : ''} neste aparelho</b>${comErro ? `, ${comErro} com problema para corrigir` : ', aguardando internet para enviar'}.</span>
         ${navigator.onLine ? '<button class="btn peq" data-acao="ficha-enviar">Enviar agora</button>' : ''}</div>` : ''}
-      ${lista.length > 8 ? `<div class="campo"><label for="f-busca">Procurar por nome ou CPF</label><input id="f-busca" data-filtro="busca" value="${E(filtro.busca)}" autocomplete="off"></div>` : ''}
-      ${devolvidas.length ? `<div class="bloco" style="border-color:var(--crit)"><h3>Para corrigir</h3><div class="lista-fichas">${devolvidas.map(f => linhaFicha(f)).join('')}</div></div>` : ''}
-      ${resto.length ? `<div class="lista-fichas">${resto.map(f => linhaFicha(f)).join('')}</div>`
+      ${devolvidas.length ? `<div class="bloco" style="border-color:var(--crit)"><h3>Para corrigir (${devolvidas.length})</h3><div class="lista-fichas">${devolvidas.map(f => linhaFicha(f)).join('')}</div></div>` : ''}
+      ${resto.length ? U().dobra('fichas-todas', `<span><b>Ver as ${resto.length} fichas</b> <span class="small muted">· procurar por nome ou CPF</span></span>`,
+          `${resto.length > 6 ? `<div class="campo"><label for="f-busca">Procurar por nome ou CPF</label><input id="f-busca" data-procura="lista-fichas-uf" autocomplete="off"></div>` : ''}
+           <div class="lista-fichas" id="lista-fichas-uf">${resto.map(f => linhaFicha(f)).join('')}</div>`)
         : (lista.length ? '' : '<div class="vazio"><span>Nenhuma ficha ainda. Toque em <b>+ Nova ficha</b> quando estiver com a mulher indicada.</span></div>')}
     </section>`;
   }

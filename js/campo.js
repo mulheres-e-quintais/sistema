@@ -65,14 +65,19 @@
       <div class="secao-cab"><h3>Roteiro de campo · ${nomeMes(m)}</h3>
         <span class="seg"><button type="button" data-acao="campo-mes" data-n="-1" aria-label="Mês anterior">‹</button><button type="button" data-acao="campo-mes" data-n="0">Este mês</button><button type="button" data-acao="campo-mes" data-n="1" aria-label="Próximo mês">›</button></span></div>
       <p class="small muted">Cada visita a um quintal é 1 dia de campo de quem visita, e é a base da ajuda de custo. O roteiro do mês seguinte fica fechado até o dia 20.</p>
-      ${vs.length ? `<div class="quadro-scroll" style="display:block"><table class="quadro tab-rot"><thead><tr><th>Data</th>${uf ? '' : '<th>UF</th>'}<th>Mulher</th><th>Etapa</th><th>Quem visita</th><th>Situação</th></tr></thead><tbody>
+      ${vs.length ? `<div class="quadro-scroll" style="display:block"><table class="quadro tab-rot"><thead><tr><th>Data</th>${uf ? '' : '<th>UF</th>'}<th>Mulher</th><th>Etapa</th><th>Quem visita</th><th>Situação</th><th>O que fazer</th></tr></thead><tbody>
         ${vs.map(v => { const f = ficha(v.ficha_id) || {}; const q = pessoa(v.executor_id) || {};
+          const feita = v.situacao === 'realizada'; const temDg = diagnosticos().some(d => d.ficha_id === v.ficha_id);
+          const b = (acao, txt, pri, extra) => `<button class="btn peq${pri ? ' pri' : ''}" data-acao="${acao}" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}" data-id="${E(v.id)}"${extra || ''}>${txt}</button>`;
+          const acoes = v._fila ? '<span class="small muted">Aguardando internet</span>'
+            : v.etapa === 'avaliacao' ? (feita ? b('aval-ver', 'Ver avaliação') : podeMudar ? b('aval-novo', 'Registrar avaliação', true) : '')
+            : v.etapa === 'diagnostico' ? (temDg ? b('campo-diag-ver', 'Ver diagnóstico') : podeMudar ? b('campo-diag-novo', 'Registrar diagnóstico', true) : '')
+            : feita ? (v.relato ? `<span class="small muted" title="${E(v.relato)}">${E(String(v.relato).slice(0, 60))}${String(v.relato).length > 60 ? '…' : ''}</span>` : '')
+            : podeMudar ? b('campo-feita', 'Registrar visita feita', true) : '';
           return `<tr><td class="num">${R.fmtData(v.data_realizada || v.data_prevista)}</td>${uf ? '' : `<td>${E(v.uf)}</td>`}<td>${E(f.nome || '—')}<br><span class="small muted">${E(f.municipio || '')}</span></td>
             <td>${E(MQ.ETAPAS[v.etapa].nome)}</td><td>${E(q.nome || '—')}<br><span class="small muted">${E((MQ.PAPEIS[q.papel] || {}).curto || '')}</span></td>
-            <td>${v.situacao === 'realizada' ? '<span class="chip ok">Feita</span>' : v._fila ? '<span class="chip pend">No aparelho</span>' : '<span class="chip pend">Prevista</span>'}
-              ${podeMudar && v.situacao === 'prevista' ? ` <button class="link small" data-acao="campo-visita-editar" data-id="${E(v.id)}">Mudar</button>` : ''}
-              ${podeMudar && v.situacao === 'prevista' && ['implantacao', 'acompanhamento'].includes(v.etapa) && !v._fila ? ` <button class="link small" data-acao="campo-feita" data-id="${E(v.id)}">Registrar feita</button>` : ''}
-              ${podeMudar && v.etapa === 'avaliacao' && !v._fila ? ` <button class="link small" data-acao="${v.situacao === 'realizada' ? 'aval-ver' : 'aval-novo'}" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}">${v.situacao === 'realizada' ? 'Ver avaliação' : 'Registrar avaliação'}</button>` : ''}</td></tr>`; }).join('')}
+            <td>${feita ? '<span class="chip ok">Feita</span>' : v._fila ? '<span class="chip pend">No aparelho</span>' : v.data_prevista < R.hoje() ? '<span class="chip crit">Atrasada</span>' : '<span class="chip pend">Prevista</span>'}</td>
+            <td><div class="rot-acoes">${acoes}${podeMudar && v.situacao === 'prevista' && !v._fila ? `<button class="link small" data-acao="campo-visita-editar" data-id="${E(v.id)}">Mudar data ou pessoa</button>` : ''}</div></td></tr>`; }).join('')}
         </tbody></table></div>
         <div class="dias-pessoa">${Object.entries(porPessoa).map(([id, c]) => `<span><b>${E(primeiroNome((pessoa(id) || {}).nome))}</b> ${c.feitas + c.prev} dia${c.feitas + c.prev > 1 ? 's' : ''} <span class="muted">(${c.feitas} feita${c.feitas === 1 ? '' : 's'})</span></span>`).join('')}</div>`
         : '<p class="muted">Nenhuma visita neste mês.</p>'}
@@ -81,6 +86,28 @@
 
   /* ---------- tela da bolsista: trabalho de campo do estado ---------- */
   const semBanco = () => `<section class="secao"><div class="secao-cab"><h2>Trabalho de campo</h2></div><div class="aviso"><b>Ainda não instalado no servidor.</b> A coordenação geral precisa rodar o arquivo 03_campo.sql no Supabase. Até lá, use os modelos em papel.</div></section>`;
+  /* o que precisa de ação agora: atrasadas, próximos 7 dias, planos devolvidos e quintais sem diagnóstico agendado */
+  function paraFazer(uf, sel) {
+    const hoje = R.hoje(); const em7 = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+    const itens = [];
+    diagnosticos().filter(d => d.uf === uf && d.situacao === 'devolvido').forEach(d => { const f = ficha(d.ficha_id) || {};
+      itens.push({ o: 0, t: `<b>${E(f.nome || '—')}</b> · plano devolvido pela coordenação`, sub: E(d.obs_coordenacao || ''), b: `<button class="btn peq pri" data-acao="campo-diag-ver" data-ficha="${E(d.ficha_id)}">Corrigir</button>` }); });
+    visitas().filter(v => v.uf === uf && v.situacao === 'prevista' && v.data_prevista <= em7).sort((a, b) => a.data_prevista.localeCompare(b.data_prevista)).forEach(v => {
+      const f = ficha(v.ficha_id) || {}; const atras = v.data_prevista < hoje;
+      const acao = v.etapa === 'diagnostico' ? `<button class="btn peq pri" data-acao="campo-diag-novo" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}">Registrar diagnóstico</button>`
+        : v.etapa === 'avaliacao' ? `<button class="btn peq pri" data-acao="aval-novo" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}">Registrar avaliação</button>`
+        : `<button class="btn peq pri" data-acao="campo-feita" data-id="${E(v.id)}">Registrar visita feita</button>`;
+      itens.push({ o: atras ? 1 : 2, t: `<b>${E(f.nome || '—')}</b> · ${E(MQ.ETAPAS[v.etapa].nome)} ${atras ? `<span class="chip crit">atrasada desde ${R.fmtData(v.data_prevista)}</span>` : 'em ' + R.fmtData(v.data_prevista)}`,
+        sub: E(((pessoa(v.executor_id) || {}).nome || '')), b: acao }); });
+    const semAgenda = sel.filter(f => !diagnosticos().some(d => d.ficha_id === f.id) && !ativasDe(f.id, 'diagnostico').length);
+    if (semAgenda.length) itens.push({ o: 3, t: `<b>${semAgenda.length} quintal${semAgenda.length > 1 ? 'is' : ''} sem diagnóstico agendado</b>`, sub: semAgenda.slice(0, 3).map(f => E(f.nome)).join(', ') + (semAgenda.length > 3 ? '…' : ''), b: '<button class="btn peq pri" data-acao="campo-visita-nova">Agendar</button>' });
+    itens.sort((a, b) => a.o - b.o);
+    const mostra = itens.slice(0, 8);
+    return `<div class="bloco"><h3>Para fazer agora${itens.length ? ` (${itens.length})` : ''}</h3>
+      ${mostra.length ? `<ul class="fazer">${mostra.map(i => `<li><div>${i.t}${i.sub ? `<br><span class="small muted">${i.sub}</span>` : ''}</div>${i.b}</li>`).join('')}</ul>
+        ${itens.length > mostra.length ? `<p class="small muted">E mais ${itens.length - mostra.length}. Veja tudo no roteiro abaixo.</p>` : ''}` : '<p class="muted">Nada pendente para os próximos 7 dias.</p>'}</div>`;
+  }
+
   function secaoBolsista() {
     if (S().campoSemBanco) return semBanco();
     const uf = S().eu.uf;
@@ -100,14 +127,16 @@
       </div>
       ${pend.length ? `<div class="aviso${pend.some(i => i.erro) ? ' erro' : ''}"><b>${pend.length} registro${pend.length > 1 ? 's' : ''} de campo neste aparelho</b>${pend.some(i => i.erro) ? ': ' + E(pend.find(i => i.erro).erro) : ', aguardando internet para enviar.'}
         ${navigator.onLine ? ' <button class="link" data-acao="ficha-enviar">Enviar agora</button>' : ''}</div>` : ''}
-      ${sel.length ? `<div class="lista-fichas">${sel.map(f => {
+      ${sel.length ? paraFazer(uf, sel) : '<div class="vazio"><span>As visitas começam quando a coordenação técnica aprovar as primeiras fichas como "selecionada".</span></div>'}
+      ${U().dobra('campo-roteiro', '<span><b>Roteiro do mês</b> <span class="small muted">· todas as visitas e o que falta registrar</span></span>', roteiro(uf, true))}
+      ${sel.length ? U().dobra('campo-quintais', `<span><b>Ver os ${sel.length} quintais</b> <span class="small muted">· etapa de cada um</span></span>`,
+        `${sel.length > 6 ? '<div class="campo"><label for="q-busca">Procurar pelo nome</label><input id="q-busca" data-procura="lista-quintais" autocomplete="off"></div>' : ''}
+        <div class="lista-fichas" id="lista-quintais">${sel.map(f => {
           const temDiag = diagnosticos().some(d => d.ficha_id === f.id);
           return `<div class="quintal"><div><b>${E(f.nome)}</b><br><span class="small muted">${E(f.municipio)} · ${E(f.comunidade)} · ${codigoQuintal(f)}</span></div>
             ${pilulas(f)}
             <div class="acoes">${temDiag ? `<button class="btn peq" data-acao="campo-diag-ver" data-ficha="${E(f.id)}">Ver diagnóstico</button>`
-              : `<button class="btn peq pri" data-acao="campo-diag-novo" data-ficha="${E(f.id)}">Registrar diagnóstico</button>`}</div></div>`; }).join('')}</div>`
-        : '<div class="vazio"><span>As visitas começam quando a coordenação técnica aprovar as primeiras fichas como "selecionada".</span></div>'}
-      ${roteiro(uf, true)}
+              : `<button class="btn peq pri" data-acao="campo-diag-novo" data-ficha="${E(f.id)}">Registrar diagnóstico</button>`}</div></div>`; }).join('')}</div>`) : ''}
     </section>`;
   }
 
