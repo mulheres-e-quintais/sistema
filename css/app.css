@@ -518,3 +518,9 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 
 .pessoa.com-foto { grid-template-columns: auto minmax(0, 1fr) auto; }
 @media (max-width: 600px) { .pessoa.com-foto { grid-template-columns: auto minmax(0, 1fr); } .pessoa.com-foto .acts { grid-column: 1 / -1; } }
+.q-num { fill: #fff; font-family: var(--sans); font-weight: 700; pointer-events: none; paint-order: stroke; stroke: rgba(0, 0, 0, .25); stroke-width: .15px; }
+.q-grupo { cursor: zoom-in; }
+.q-grupo:hover { filter: brightness(1.1); }
+.mun-lista { display: grid; gap: 4px; font-size: 13px; }
+.mun-lista .link { text-align: left; text-decoration: none; color: var(--ink-2); display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; border-bottom: 1px dotted var(--line); }
+.mun-lista .link:hover { color: var(--accent); }

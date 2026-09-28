@@ -131,55 +131,89 @@
     return [x0 - m, y0 - m, x1 - x0 + 2 * m, y1 - y0 + 2 * m];
   }
   function mapa(S, d) {
+    /* 3 níveis: 5 estados (um círculo por município) → estado (círculo por município) → município (cada quintal) */
     const foco = S.mapaUF || '';
+    const focoMun = foco && S.mapaMun && S.mapaMun.startsWith(foco + '|') ? S.mapaMun : '';
     const ufsProj = MQ.UFS.map(u => u.uf);
-    const vb = caixa(foco ? [foco] : ufsProj);
+    const todos = d.fichas.map(f => ({ f, cat: catDe(f), p: pontoDaFicha(f) })).filter(x => x.cat && x.p && (!foco || x.f.uf === foco));
+    const pts = focoMun ? todos.filter(x => x.f.uf + '|' + norm(x.f.municipio) === focoMun) : todos;
+    let vb;
+    if (focoMun && pts.length) {
+      const xs = pts.map(x => x.p.xy[0]), ys = pts.map(x => x.p.xy[1]);
+      const lado = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), 0.12) * 1.35;
+      const cx = (Math.max(...xs) + Math.min(...xs)) / 2, cy = (Math.max(...ys) + Math.min(...ys)) / 2;
+      vb = [cx - lado / 2, cy - lado / 2, lado, lado];
+    } else vb = caixa(foco ? [foco] : ufsProj);
     const esc = Math.max(vb[2], vb[3]) / 100;                // unidade de desenho proporcional ao zoom
-    const pts = d.fichas.map(f => ({ f, cat: catDe(f), p: pontoDaFicha(f) })).filter(x => x.cat && x.p && (!foco || x.f.uf === foco));
     const exatos = pts.filter(x => x.p.exato).length;
     const ordem = ['sem_agua', 'aguardando', 'espera', 'aprovada'];
     pts.sort((a, b) => ordem.indexOf(a.cat) - ordem.indexOf(b.cat));
-    const path = anel => 'M' + anel.map(p => px(p).map(v => v.toFixed(3)).join(',')).join('L') + 'Z';
-    const estados = Object.entries(MQ.GEO.uf).map(([uf, g]) => {
-      const proj = ufsProj.includes(uf);
-      const destaque = foco ? uf === foco : proj;
-      return `<path d="${g.r.map(path).join('')}" class="${destaque ? 'uf-proj' : 'uf-viz'}${proj ? ' uf-clic' : ''}" ${proj ? `data-acao="mapa-uf" data-uf="${uf}"` : ''} stroke-width="${esc * 0.25}"><title>${uf}</title></path>`;
+    const path = anel => 'M' + anel.map(p => px(p).map(v => v.toFixed(4)).join(',')).join('L') + 'Z';
+    const estados = Object.entries(MQ.GEO.uf).filter(([uf]) => ufsProj.includes(uf)).map(([uf, g]) => {
+      const destaque = foco ? uf === foco : true;
+      return `<path d="${g.r.map(path).join('')}" class="${destaque ? 'uf-proj' : 'uf-viz'} uf-clic" data-acao="mapa-uf" data-uf="${uf}" stroke-width="${esc * 0.25}"><title>${U.nomeUF(uf)}</title></path>`;
     }).join('');
-    const rotulos = Object.entries(MQ.GEO.uf).filter(([uf]) => ufsProj.includes(uf) && !foco).map(([uf, g]) => {
+    const rotulos = foco ? '' : Object.entries(MQ.GEO.uf).filter(([uf]) => ufsProj.includes(uf)).map(([uf, g]) => {
       const [x, y] = px(g.c); return `<text x="${x}" y="${y}" class="uf-rot" font-size="${esc * 3.2}" text-anchor="middle">${uf}</text>`;
     }).join('');
-    // municípios do projeto: ponto sempre; nome só onde há ficha (evita nomes sobrepostos)
-    const comFicha = new Set(d.fichas.filter(f => f.uf === foco).map(f => norm(f.municipio)));
-    const muns = foco ? Object.entries(MQ.GEO.mun[foco] || {}).map(([n, c]) => { const [x, y] = px(c);
-      return `<circle cx="${x}" cy="${y}" r="${esc * 0.35}" class="mun-pt"><title>${E(n)}</title></circle>${comFicha.has(norm(n)) ? `<text x="${x + esc * 2.6}" y="${y + esc * 0.6}" class="mun-rot" font-size="${esc * 1.8}">${E(n)}</text>` : ''}`; }).join('') : '';
-    const r = esc * (foco ? 1.25 : 1.0);
-    const bolas = pts.map(({ f, cat, p }) => {
-      const c = CATS.find(k => k.id === cat).cor; const [x, y] = p.xy;
-      const txt = `${f.municipio}/${f.uf} · ${(MQ.RESULTADOS[f.resultado] || {}).nome}${f.situacao !== 'aprovada' ? ' (' + (MQ.SITUACOES[f.situacao] || {}).nome + ')' : ''}${p.exato ? '' : ' · posição aproximada'} · clique para abrir a ficha`;
-      return p.exato
-        ? `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="var(--surface)" stroke-width="${r * 0.45}" class="q-pt" data-acao="ficha-ver" data-id="${E(f.id)}" data-dica="${E(txt)}"><title>${E(txt)}</title></circle>`
-        : `<circle cx="${x}" cy="${y}" r="${r * 0.85}" fill="var(--surface)" stroke="${c}" stroke-width="${r * 0.55}" class="q-pt" data-acao="ficha-ver" data-id="${E(f.id)}" data-dica="${E(txt)}"><title>${E(txt)}</title></circle>`;
-    }).join('');
+    // agrupa por município (evita pontos empilhados)
+    const grupos = {};
+    todos.forEach(x => { const k = x.f.uf + '|' + norm(x.f.municipio); (grupos[k] = grupos[k] || { k, uf: x.f.uf, mun: x.f.municipio, itens: [] }).itens.push(x); });
+    const lista = Object.values(grupos).sort((a, b) => b.itens.length - a.itens.length);
+    const baseDe = g => { const muns = MQ.GEO.mun[g.uf] || {}; const chave = Object.keys(muns).find(m => norm(m) === norm(g.mun));
+      return { base: chave ? muns[chave] : (MQ.GEO.uf[g.uf] || {}).c, nome: chave || g.mun }; };
+    const resumo = g => ordem.slice().reverse().map(id => [id, g.itens.filter(x => x.cat === id).length]).filter(([, q]) => q);
+    let marcas;
+    if (!focoMun) {
+      marcas = lista.map(g => {
+        const { base, nome } = baseDe(g); if (!base) return '';
+        const [cx, cy] = px(base); const n = g.itens.length; const R = esc * ((foco ? 0.9 : 0.6) + (foco ? 0.38 : 0.33) * Math.sqrt(n));
+        const por = resumo(g);
+        let ang = -Math.PI / 2; const fatias = por.length === 1
+          ? `<circle cx="${cx}" cy="${cy}" r="${R}" fill="${CATS.find(k => k.id === por[0][0]).cor}"/>`
+          : por.map(([id, q]) => { const a0 = ang, a1 = ang + 2 * Math.PI * q / n; ang = a1;
+              const p0 = [cx + R * Math.cos(a0), cy + R * Math.sin(a0)], p1 = [cx + R * Math.cos(a1), cy + R * Math.sin(a1)];
+              return `<path d="M${cx},${cy}L${p0[0]},${p0[1]}A${R},${R} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${p1[0]},${p1[1]}Z" fill="${CATS.find(k => k.id === id).cor}"/>`; }).join('');
+        const txt = `${nome}/${g.uf} · ${n} mulher${n > 1 ? 'es' : ''} com ficha: ${por.map(([id, q]) => q + ' ' + CATS.find(k => k.id === id).nome.toLowerCase()).join(', ')} · clique para ver ${foco ? 'cada quintal' : 'o estado'}`;
+        return `<g class="q-pt q-grupo" data-acao="mapa-mun" data-uf="${g.uf}" data-mun="${E(g.k)}" data-dica="${E(txt)}">${fatias}<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--surface)" stroke-width="${esc * 0.3}"/>
+          ${n > 1 ? `<text x="${cx}" y="${cy + R * 0.34}" text-anchor="middle" font-size="${Math.min(R * 1.05, esc * 3)}" class="q-num">${n}</text>` : ''}<title>${E(txt)}</title></g>`;
+      }).join('');
+    } else {
+      const r = esc * 1.4;
+      marcas = pts.map(({ f, cat, p }) => {
+        const c = CATS.find(k => k.id === cat).cor; const [x, y] = p.xy;
+        const txt = `${f.municipio}/${f.uf} · ${(MQ.RESULTADOS[f.resultado] || {}).nome}${f.situacao !== 'aprovada' ? ' (' + (MQ.SITUACOES[f.situacao] || {}).nome + ')' : ''}${p.exato ? '' : ' · posição aproximada'} · clique para abrir a ficha`;
+        return p.exato
+          ? `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="var(--surface)" stroke-width="${r * 0.45}" class="q-pt" data-acao="ficha-ver" data-id="${E(f.id)}" data-dica="${E(txt)}"><title>${E(txt)}</title></circle>`
+          : `<circle cx="${x}" cy="${y}" r="${r * 0.85}" fill="var(--surface)" stroke="${c}" stroke-width="${r * 0.55}" class="q-pt" data-acao="ficha-ver" data-id="${E(f.id)}" data-dica="${E(txt)}"><title>${E(txt)}</title></circle>`;
+      }).join('');
+    }
     const cont = {}; pts.forEach(x => { cont[x.cat] = (cont[x.cat] || 0) + 1; });
-    const naoAtende = d.fichas.filter(f => f.resultado === 'nao_atende' && (!foco || f.uf === foco)).length;
-    const btn = (uf, t) => `<button type="button" data-acao="mapa-uf" data-uf="${uf}" aria-pressed="${foco === uf}">${t}</button>`;
+    const naoAtende = d.fichas.filter(f => f.resultado === 'nao_atende' && (!foco || f.uf === foco) && (!focoMun || f.uf + '|' + norm(f.municipio) === focoMun)).length;
+    const btn = (uf, t) => `<button type="button" data-acao="mapa-uf" data-uf="${uf}" aria-pressed="${foco === uf && !focoMun}">${t}</button>`;
+    const nomeMun = focoMun && grupos[focoMun] ? baseDe(grupos[focoMun]).nome : '';
+    const onde = focoMun ? E(nomeMun) + '/' + foco : foco ? E(U.nomeUF(foco)) : 'nos 5 estados';
+    const munLista = !focoMun && lista.length ? `<div class="mun-lista"><span class="small muted">${foco ? 'Municípios' : 'Municípios com mais fichas'}</span>
+        ${lista.slice(0, foco ? 20 : 8).map(g => `<button type="button" class="link" data-acao="mapa-mun" data-uf="${g.uf}" data-mun="${E(g.k)}">${E(baseDe(g).nome)}${foco ? '' : '/' + g.uf} <b class="num">${g.itens.length}</b></button>`).join('')}</div>` : '';
     return `<section class="secao" aria-labelledby="t-mapa">
       <div class="secao-cab"><div><h2 id="t-mapa">Quintais no mapa</h2>
-        <p>${pts.length ? `${pts.length} mulher${pts.length > 1 ? 'es' : ''} com ficha${foco ? ' em ' + E(U.nomeUF(foco)) : ''} · ${exatos} com localização do GPS, ${pts.length - exatos} no município (aproximada)` : 'Cada ficha lançada aparece aqui.'}</p></div>
+        <p>${pts.length ? `${pts.length} mulher${pts.length > 1 ? 'es' : ''} com ficha ${onde}${focoMun ? ` · ${exatos} com localização do GPS, ${pts.length - exatos} aproximada${pts.length - exatos === 1 ? '' : 's'}` : ' · círculo = município, número = fichas; clique para aproximar'}` : 'Cada ficha lançada aparece aqui.'}</p></div>
         <span class="seg" role="group" aria-label="Estado no mapa">${btn('', 'Todos')}${MQ.UFS.map(u => btn(u.uf, u.uf)).join('')}</span></div>
+      ${focoMun ? `<button type="button" class="link" data-acao="mapa-uf" data-uf="${foco}" style="justify-self:start">← Voltar para ${E(U.nomeUF(foco))}</button>` : ''}
       <div class="mapa-caixa">
-        <svg class="mapa" viewBox="${vb.join(' ')}" role="img" aria-label="Mapa com ${pts.length} quintais${foco ? ' em ' + foco : ' nos 5 estados'}" preserveAspectRatio="xMidYMid meet">
-          ${estados}${rotulos}${muns}${bolas}
+        <svg class="mapa" viewBox="${vb.join(' ')}" role="img" aria-label="Mapa com ${pts.length} quintais ${onde}" preserveAspectRatio="xMidYMid meet">
+          ${estados}${rotulos}${marcas}
         </svg>
         <div class="mapa-dica" id="mapa-dica" hidden></div>
+        <div style="display:grid;gap:14px;align-content:start">
         <ul class="legenda">${CATS.map(k => `<li><span class="lg-pt" style="background:${k.cor}"></span>${E(k.nome)} <b class="num">${cont[k.id] || 0}</b></li>`).join('')}
-          <li><span class="lg-pt oco"></span>Contorno vazio: posição aproximada (sem GPS)</li>
+          ${focoMun ? '<li><span class="lg-pt oco"></span>Contorno vazio: posição aproximada (sem GPS)</li>' : ''}
           ${naoAtende ? `<li class="muted">${naoAtende} que não atende${naoAtende > 1 ? 'm' : ''} aos critérios fica${naoAtende > 1 ? 'm' : ''} fora do mapa</li>` : ''}</ul>
+        ${munLista}</div>
       </div>
       <p class="nota">O mapa mostra onde moram as mulheres: use só dentro do sistema. Em relatórios e divulgação, mostre números por município.</p>
     </section>`;
   }
-
 
   /* ---------- perfil das mulheres (recorte) e linha de base de renda ---------- */
   function perfil(S, d) {
@@ -295,8 +329,10 @@
   }
 
   document.addEventListener('click', ev => {
+    const m = ev.target.closest('[data-acao="mapa-mun"]');
+    if (m) { const S = MQ.ui.S; S.mapaUF = m.dataset.uf; S.mapaMun = m.dataset.mun; MQ.ui.render(); const t = document.getElementById('t-mapa'); if (t) t.scrollIntoView({ block: 'start' }); return; }
     const b = ev.target.closest('[data-acao="mapa-uf"]'); if (!b) return;
-    const S = MQ.ui.S; S.mapaUF = S.mapaUF === b.dataset.uf && b.tagName !== 'BUTTON' ? '' : b.dataset.uf; MQ.ui.render();
+    const S = MQ.ui.S; S.mapaMun = ''; S.mapaUF = S.mapaUF === b.dataset.uf && b.tagName === 'path' ? '' : b.dataset.uf; MQ.ui.render();
   });
   document.addEventListener('pointerover', ev => {
     const pt = ev.target.closest && ev.target.closest('.q-pt'); const dica = document.getElementById('mapa-dica');
@@ -315,8 +351,8 @@
     const max = Math.max(1, ...ufsProj.map(u => valores[u] || 0));
     const tom = v => !v ? 'var(--mapa-0)' : `color-mix(in oklab, var(--mapa-1) ${Math.round(25 + 75 * v / max)}%, var(--mapa-0))`;
     const path = anel => 'M' + anel.map(p => px(p).map(v => v.toFixed(3)).join(',')).join('L') + 'Z';
-    const estados = Object.entries(MQ.GEO.uf).map(([uf, g]) => {
-      const proj = ufsProj.includes(uf);
+    const estados = Object.entries(MQ.GEO.uf).filter(([uf]) => ufsProj.includes(uf)).map(([uf, g]) => {
+      const proj = true;
       return `<path d="${g.r.map(path).join('')}" class="${proj ? 'uf-pub' : 'uf-viz'}" ${proj ? `style="fill:${tom(valores[uf])}"` : ''} stroke-width="${esc * 0.25}"><title>${proj ? `${U.nomeUF(uf)}: ${valores[uf] || 0} ${rotulo}` : uf}</title></path>`;
     }).join('');
     const ordem = ufsProj.slice().sort((x, y) => (valores[y] || 0) - (valores[x] || 0) || x.localeCompare(y));
