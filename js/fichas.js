@@ -81,7 +81,7 @@
 
   /* ---------- tela da coordenação ---------- */
   function secaoCoord() {
-    const S = U().S; const souTec = S.eu.papel === 'coord_tecnico';
+    const S = U().S; const souTec = R.decideCampo(S.eu.papel);
     const lista = todas();
     const tot = contar(lista);
     const linha = (uf, nome) => {
@@ -279,7 +279,7 @@
   function painelVer(p) {
     const S = U().S;
     const f = todas().find(x => x.id === p.id); if (!f) return '<div class="painel-corpo"><p>Ficha não encontrada.</p></div>';
-    const souTec = S.eu.papel === 'coord_tecnico';
+    const souTec = R.decideCampo(S.eu.papel);
     const souBolsista = R.ehBolsista(S.eu.papel);
     const bolsista = f.bolsista_id && U().porId(f.bolsista_id);
     const aprovador = f.aprovada_por && U().porId(f.aprovada_por);
@@ -317,7 +317,7 @@
           <div class="acoes">${f.foto_termo_path ? `<button class="btn peq" data-acao="ficha-foto" data-path="${E(f.foto_termo_path)}">Ver termo assinado</button>` : ''}
             ${f.foto_ficha_path ? `<button class="btn peq" data-acao="ficha-foto" data-path="${E(f.foto_ficha_path)}">Ver ficha em papel</button>` : ''}</div>
           <div id="fi-foto-vista"></div></div>
-        ${podeDecidir ? `<form class="bloco" data-form="ficha-decisao" data-id="${E(f.id)}" novalidate><h3>Decisão da coordenação técnica</h3>
+        ${podeDecidir ? `<form class="bloco" data-form="ficha-decisao" data-id="${E(f.id)}" novalidate><h3>Decisão da coordenação</h3>
           <p class="small muted">Aprove se os papéis fotografados conferem com a ficha e os critérios foram aplicados como aprovado em ata. Para devolver, diga o que corrigir.</p>
           <div class="campo"><label for="fd-obs">Observação para a bolsista</label><textarea id="fd-obs" name="obs">${E(f.obs_coordenacao || '')}</textarea></div>
           <div class="aviso erro" data-erro hidden></div>

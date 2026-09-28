@@ -276,7 +276,7 @@
     },
     async salvarTurma(t) {
       const d = ler(); const eu = euMesmo();
-      if (!eu || eu.papel !== 'professor_fic') throw falha('Só os professores do FIC criam turmas.');
+      if (!eu || !R.podeMatricular(eu.papel)) throw falha('Só os professores do FIC criam turmas.');
       if (!d.equipe.some(m => m.id === t.professor_id && m.papel === 'professor_fic' && m.status === 'ativa')) throw falha('A turma precisa de um(a) professor(a) do FIC ativo(a).');
       if (String(t.nome || '').trim().length < 3) throw falha('Dê um nome à turma.');
       if (t.inicio && t.fim && t.fim < t.inicio) throw falha('O fim da turma é antes do início.');
@@ -288,7 +288,7 @@
     async matricular(turma_id, equipe_id, numero, data) {
       const d = ler(); const eu = euMesmo(); const t = (d.turmas || []).find(x => x.id === turma_id);
       if (!t) throw falha('Turma não encontrada.');
-      if (!eu || eu.papel !== 'professor_fic') throw falha('A matrícula no FIC é feita pelos professores do curso.');
+      if (!eu || !R.podeMatricular(eu.papel)) throw falha('A matrícula no FIC é feita pelos professores do curso.');
       const p = d.equipe.find(m => m.id === equipe_id);
       if (!p || p.status !== 'ativa' || !R.ehCampo(p.papel)) throw falha('Só bolsistas e agentes de campo ativas são matriculadas no FIC.');
       if (t.uf && p.uf !== t.uf) throw falha('Esta turma é de ' + t.uf + '; ' + p.nome + ' é de ' + p.uf + '.');
@@ -305,7 +305,7 @@
       const d = ler(); const eu = euMesmo(); const m = (d.matriculas || []).find(x => x.id === id && !x.cancelada_em);
       if (!m) throw falha('Matrícula não encontrada ou já cancelada.');
       const t = (d.turmas || []).find(x => x.id === m.turma_id);
-      if (!eu || eu.papel !== 'professor_fic' || !t) throw falha('A matrícula no FIC é cancelada pelos professores do curso.');
+      if (!eu || !R.podeMatricular(eu.papel) || !t) throw falha('A matrícula no FIC é cancelada pelos professores do curso.');
       if (String(motivo || '').trim().length < 5) throw falha('Escreva o motivo do cancelamento.');
       if ((d.visitas || []).some(v => v.executor_id === m.equipe_id && v.situacao !== 'cancelada'))
         throw falha('Esta pessoa já tem visita no roteiro de campo, que depende da matrícula. Para corrigir número ou data, matricule de novo na mesma turma.');
@@ -395,7 +395,7 @@
     },
     async decidirFicha(id, situacao, obs) {
       const d = ler(); const eu = euMesmo();
-      if (!eu || eu.papel !== 'coord_tecnico') throw falha('Só a coordenação técnica aprova ou devolve fichas.');
+      if (!eu || !R.decideCampo(eu.papel)) throw falha('Só a coordenação aprova ou devolve fichas.');
       const i = d.fichas.findIndex(x => x.id === id); if (i < 0) throw falha('Ficha não encontrada.');
       const antes = d.fichas[i];
       if (situacao === 'devolvida' && String(obs || '').trim().length < 5) throw falha('Para devolver, escreva o que a bolsista precisa corrigir.');
@@ -424,7 +424,7 @@
       const i = d.visitas.findIndex(x => x.id === v.id); const antes = i >= 0 ? d.visitas[i] : null;
       const f = d.fichas.find(x => x.id === v.ficha_id);
       if (!f) throw falha('Ficha não encontrada.');
-      if (!eu || !(eu.papel === 'coord_tecnico' || (R.ehBolsista(eu.papel) && f.uf === eu.uf) || (antes && antes.executor_id === eu.id))) throw falha('Seu perfil não tem permissão para esta ação.');
+      if (!eu || !(R.decideCampo(eu.papel) || (R.ehBolsista(eu.papel) && f.uf === eu.uf) || (antes && antes.executor_id === eu.id))) throw falha('Seu perfil não tem permissão para esta ação.');
       if (eu.papel === 'agente' && antes && (v.executor_id !== antes.executor_id || v.data_prevista !== antes.data_prevista || v.situacao === 'cancelada')) throw falha('O agente de campo não reagenda nem cancela visitas. Fale com a bolsista do estado.');
       if (!(f.resultado === 'selecionada' && f.situacao === 'aprovada')) throw falha('Só há visita para mulher selecionada e aprovada pela coordenação técnica.');
       const ex = d.equipe.find(x => x.id === v.executor_id);
@@ -502,7 +502,7 @@
     },
     async decidirDiagnostico(id, situacao, obs) {
       const d = ler(); const eu = euMesmo();
-      if (!eu || eu.papel !== 'coord_tecnico') throw falha('Só a coordenação técnica aprova ou devolve o plano.');
+      if (!eu || !R.decideCampo(eu.papel)) throw falha('Só a coordenação aprova ou devolve o plano.');
       const i = d.diagnosticos.findIndex(x => x.id === id); if (i < 0) throw falha('Diagnóstico não encontrado.');
       if (situacao === 'devolvido' && String(obs || '').trim().length < 5) throw falha('Para devolver, escreva o que precisa ser corrigido.');
       const agora = new Date().toISOString(); const antes = d.diagnosticos[i];

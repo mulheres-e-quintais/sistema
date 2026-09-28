@@ -166,7 +166,7 @@
       ['pagamentos', 'Pagamentos' + ((n => n ? ` <span class="conta">${n}</span>` : '')(MQ.pagUI ? MQ.pagUI.contaAval() : 0))], ['custos', 'Custos'], ['historico', 'Histórico']].filter(([id]) => pode.includes(id));
     const nav = `<nav class="abas" aria-label="Seções">${abas.map(([id, t]) => `<button type="button" data-acao="aba" data-aba="${id}" ${aba === id ? 'aria-current="page"' : ''}>${t}</button>`).join('')}</nav>`;
     const intro = souGeral
-      ? 'Você cadastra a coordenação técnica indicada pelo MPA, os professores do curso FIC e os auxiliares administrativos. O auxiliar cadastra a equipe no Arlo (FUNCERN) e registra isso e o termo na habilitação; a matrícula no FIC é dos professores.'
+      ? 'Você cadastra a coordenação técnica indicada pelo MPA, os professores do curso FIC e o auxiliar administrativo, e tem acesso a tudo: também pode cadastrar, editar e desligar bolsistas e agentes, registrar a habilitação e matricular no FIC.'
       : 'Cadastre as bolsistas indicadas pelo MPA: uma de articulação estadual e uma de apoio estadual por estado.';
     let corpo = '';
     if (aba === 'visao') corpo = MQ.painelUI ? MQ.painelUI.visaoGeral(S) : '';
@@ -238,14 +238,14 @@
         <span><span class="chip ${s.cod}">${esc(s.rot)}</span></span><span class="sub">${esc(plano)}</span></span></button>`;
     }
     const ant = ultimaDesligada(papel, uf);
-    const posso = S.eu.papel === 'coord_tecnico';
+    const posso = R.podeCadastrar(S.eu.papel, papel);
     const quem = ant ? `Substituta de ${esc(ant.nome)}, desligada em ${R.fmtData(ant.data_fim)}` : 'Aguardando indicação do MPA';
     return `<button class="vagabtn livre" ${posso ? `data-acao="novo" data-papel="${papel}" data-uf="${uf}" ${ant ? `data-subst="${ant.id}"` : ''}` : 'disabled'}>
       <span class="add">${posso ? '+ Cadastrar ' + (ant ? 'substituta' : P[papel].curto.toLowerCase()) : 'Vaga aberta'}</span><span class="sub">${quem}</span></button>`;
   }
 
   function secaoAgentes() {
-    const podeCad = S.eu.papel === 'coord_tecnico';
+    const podeCad = R.podeCadastrar(S.eu.papel, 'agente');
     const ag = ativos().filter(m => m.papel === 'agente');
     return `<section class="secao" aria-labelledby="t-ag">
       <div class="secao-cab"><div><h2 id="t-ag">Agentes de campo</h2><p>Alunas do FIC que fazem visitas por ajuda de custo · sem limite por estado · cadastradas pela coordenação técnica · veem só os quintais atribuídos</p></div></div>
@@ -450,7 +450,7 @@
       <div class="painel-corpo">
         <div class="bloco"><h3>Dados</h3>${dadosDL(m)}
           ${editaDados ? `<div class="acoes"><button class="btn" data-acao="editar" data-id="${m.id}">Editar dados</button><button class="btn perigo" data-acao="desligar-abrir">Desligar</button></div>` : ''}
-          ${m.status === 'ativa' && !editaDados && R.ehBolsista(m.papel) && S.eu.papel === 'coord_geral' ? '<p class="nota">Dados pessoais e desligamento são da coordenação técnica.</p>' : ''}</div>
+          </div>
 
         <form class="bloco" data-form="desligar" data-id="${m.id}" hidden novalidate>
           <h3>Desligar ${esc(nomeDe(m).split(' ')[0])}</h3>
