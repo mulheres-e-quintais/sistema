@@ -601,3 +601,19 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .migalha button:hover, .migalha button:focus-visible { border-color: var(--accent); background: var(--surface-2); }
 .migalha button svg { width: 14px; height: 14px; }
 .migalha b { color: var(--ink); font-weight: 600; }
+.tab-rot { table-layout: auto; }
+.tab-rot td, .tab-rot th { white-space: normal; }
+.tab-rot th, .tab-rot td:first-child { white-space: nowrap; }
+.tab-rot td { overflow-wrap: anywhere; }
+.quadro-sel { table-layout: auto; }
+.quadro-sel th { white-space: normal; letter-spacing: .04em; }
+@media (max-width: 640px) {
+  .tab-rot { min-width: 0; }
+  .tab-rot thead { display: none; }
+  .tab-rot, .tab-rot tbody { display: block; }
+  .tab-rot tr { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  .tab-rot td { display: block; border: 0; padding: 0; }
+  .tab-rot td:first-child { font-weight: 600; }
+  .tab-rot td:last-child { grid-column: 2; grid-row: 1 / span 2; align-self: start; text-align: right; }
+  .tab-rot td:not(:first-child):not(:last-child) { grid-column: 1; }
+}
