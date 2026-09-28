@@ -62,7 +62,7 @@
         catch (e) { if (e.semRede || !semFic(e)) throw e; S.pagSemBanco = true; S.solic = []; S.solicVis = {}; }
       }
       // valor do kit por quintal (para a projeção do investimento no diagnóstico)
-      try { const k = S.api.lerParametros ? await S.api.lerParametros('kit') : null; S.kitPar = k && k.valor_quintal ? k : { valor_quintal: MQ.KIT_QUINTAL }; } catch (e) { if (e.semRede) throw e; S.kitPar = { valor_quintal: MQ.KIT_QUINTAL }; }
+      S.kitPar = { valor_quintal: MQ.KIT_QUINTAL };   // R$ 4.500 por quintal, fixado no plano de trabalho
       S.pre = /^coord/.test(S.eu.papel) && S.api.listarPreCadastros ? await opcional(S.api.listarPreCadastros) : [];
       S.exemplo = /^coord/.test(S.eu.papel) && S.api.contarExemplo ? await opcional(async () => [await S.api.contarExemplo()]).then(r => r[0] || 0) : 0;
       S.semRede = false;
@@ -350,7 +350,48 @@
     if (a.tabela === 'equipe_bancario' && a.acao === 'VIEW') return `<b>${esc(quem)}</b> consultou a conta bancária de <b>${esc((porId(a.registro_id) || {}).nome || 'uma pessoa')}</b> para o cadastro no Arlo.`;
     if (a.tabela === 'equipe_bancario' && a.acao === 'EXPORT') return `<b>${esc(quem)}</b> gerou a planilha bancária para a FUNCERN.`;
     if (a.tabela === 'equipe_bancario') return `<b>${esc(quem)}</b> informou ou alterou a própria conta bancária.`;
-    if (a.acao === 'INSERT') return `<b>${esc(quem)}</b> cadastrou <b>${esc(alvo.nome)}</b> (${esc(papel)})${alvo.substitui_id ? ' como substituta' : ''}.`;
+    if (a.tabela === 'acesso_codigos') { const n = esc((porId(a.registro_id) || {}).nome || 'uma pessoa');
+      return a.acao === 'NOVO_ACESSO' ? `<b>${esc(quem)}</b> liberou um novo primeiro acesso para <b>${n}</b> (a senha anterior foi apagada).` : `<b>${esc(quem)}</b> gerou o código de acesso de <b>${n}</b>.`; }
+    const Q = `<b>${esc(quem)}</b>`, A0 = a.antes || {}, D0 = a.depois || {};
+    const mulher = id => { const f = (S.fichas || []).find(x => x.id === id); return f ? `<b>${esc(f.nome)}</b>` : 'uma agricultora'; };
+    const pessoa = id => { const m = porId(id); return m ? `<b>${esc(nomeDe(m))}</b>` : 'uma pessoa'; };
+    const mudou = A0.situacao !== D0.situacao && a.acao === 'UPDATE' ? D0.situacao : null;
+    const ETAPA = { diagnostico: 'de diagnóstico', implantacao: 'de implantação', acompanhamento: 'de acompanhamento', avaliacao: 'de avaliação final' };
+    if (a.tabela === 'fichas') {
+      if (a.acao === 'INSERT') return `${Q} registrou a ficha de indicação de ${mulher(alvo.id) === 'uma agricultora' ? `<b>${esc(alvo.nome || '')}</b>` : mulher(alvo.id)}${alvo.uf ? ' (' + esc(alvo.uf) + ')' : ''}.`;
+      if (mudou === 'aprovada') return `${Q} aprovou a ficha de ${mulher(a.registro_id)}.`;
+      if (mudou === 'devolvida') return `${Q} devolveu para correção a ficha de ${mulher(a.registro_id)}.`;
+      if (A0.resultado !== D0.resultado && MQ.RESULTADOS[D0.resultado]) return `${Q} marcou ${mulher(a.registro_id)} como <b>${esc(MQ.RESULTADOS[D0.resultado].nome.toLowerCase())}</b>.`;
+      return `${Q} atualizou a ficha de ${mulher(a.registro_id)}.`;
+    }
+    if (a.tabela === 'visitas') {
+      const et = ETAPA[alvo.etapa] || '';
+      if (a.acao === 'INSERT') return `${Q} agendou a visita ${et} ao quintal de ${mulher(alvo.ficha_id)}${alvo.data_prevista ? ' para ' + R.fmtData(alvo.data_prevista) : ''}.`;
+      if (mudou === 'realizada') return `${Q} registrou a visita ${et} ao quintal de ${mulher(alvo.ficha_id)} como feita.`;
+      if (mudou === 'cancelada') return `${Q} cancelou a visita ${et} ao quintal de ${mulher(alvo.ficha_id)}.`;
+      return `${Q} atualizou a visita ${et} ao quintal de ${mulher(alvo.ficha_id)}.`;
+    }
+    if (a.tabela === 'diagnosticos') {
+      if (a.acao === 'INSERT') return `${Q} enviou o diagnóstico e o plano do quintal de ${mulher(alvo.ficha_id)}.`;
+      if (mudou === 'aprovado' || mudou === 'aprovada') return `${Q} aprovou o diagnóstico de ${mulher(alvo.ficha_id)}.`;
+      if (mudou === 'devolvido' || mudou === 'devolvida') return `${Q} devolveu para correção o diagnóstico de ${mulher(alvo.ficha_id)}.`;
+      return `${Q} atualizou o diagnóstico de ${mulher(alvo.ficha_id)}.`;
+    }
+    if (a.tabela === 'avaliacoes') return `${Q} ${a.acao === 'INSERT' ? 'registrou' : 'atualizou'} a avaliação final do quintal de ${mulher(alvo.ficha_id)}.`;
+    if (a.tabela === 'custos_visita') return `${Q} definiu a distância (ajuda de custo) de uma visita${alvo.km_ida != null ? ': ' + esc(alvo.km_ida) + ' km de ida' : ''}.`;
+    if (a.tabela === 'solicitacoes_pagamento') {
+      const tipo = alvo.tipo === 'ajuda_custo' ? 'ajuda de custo' : 'bolsa';
+      if (a.acao === 'INSERT' || mudou === 'solicitada') return `${pessoa(alvo.equipe_id)} pediu o pagamento da ${tipo}.`;
+      if (mudou === 'avalizada') return `${Q} avalizou o pagamento da ${tipo} de ${pessoa(alvo.equipe_id)}.`;
+      if (mudou === 'lancada') return `${Q} lançou no Arlo o pagamento da ${tipo} de ${pessoa(alvo.equipe_id)}.`;
+      if (mudou === 'devolvida') return `${Q} devolveu o pedido de ${tipo} de ${pessoa(alvo.equipe_id)}.`;
+      return `${Q} atualizou o pedido de ${tipo} de ${pessoa(alvo.equipe_id)}.`;
+    }
+    if (a.tabela === 'turmas_fic') return `${Q} ${a.acao === 'INSERT' ? 'criou' : a.acao === 'DELETE' ? 'removeu' : 'atualizou'} a turma do FIC <b>${esc(alvo.nome || '')}</b>.`;
+    if (a.tabela === 'matriculas_fic') return alvo.cancelada_em ? `${Q} cancelou a matrícula no FIC de ${pessoa(alvo.equipe_id)}.` : `${Q} matriculou ${pessoa(alvo.equipe_id)} no curso FIC.`;
+    if (a.tabela === 'vitrine_fotos') return `${Q} ${a.acao === 'DELETE' ? 'tirou uma foto da' : 'publicou uma foto na'} vitrine${alvo.uf ? ' (' + esc(alvo.uf) + ')' : ''}.`;
+    if (a.tabela && a.tabela !== 'equipe') return `${Q} alterou um registro (${esc(a.tabela.replace(/_/g, ' '))}).`;
+    if (a.acao === 'INSERT') return `${Q} cadastrou <b>${esc(alvo.nome)}</b>${papel ? ' (' + esc(papel) + ')' : ''}${alvo.substitui_id ? ' como substituta' : ''}.`;
     const A = a.antes || {}, D = a.depois || {};
     if (A.status === 'ativa' && D.status === 'desligada') return `<b>${esc(quem)}</b> desligou <b>${esc(D.nome)}</b> (${esc(papel)}): ${esc(D.motivo_desligamento)}`;
     const partes = [];
@@ -362,10 +403,19 @@
     return `<b>${esc(quem)}</b> atualizou o cadastro de <b>${esc(D.nome)}</b>.`;
   }
   function historico() {
-    if (!S.aud.length) return '<p class="muted">Nada registrado ainda.</p>';
-    const fmt = t => { const d = new Date(t); return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
-    return `<details class="hist"><summary>${S.aud.length} registros · o mais recente: ${fmt(S.aud[0].em)}</summary>
-      <ul class="linha-tempo">${S.aud.slice(0, 60).map(a => `<li><time datetime="${esc(a.em)}">${fmt(a.em)}</time><span>${descreverAud(a)}</span></li>`).join('')}</ul></details>`;
+    if (!S.aud.length) return `<div class="vazio-hist"><p><b>Nada registrado ainda.</b></p>
+      <p class="small muted">Aqui aparece, com data, hora e autor, tudo o que muda na equipe: cadastros, códigos de acesso, habilitação (FIC, Arlo e termo), consultas à conta bancária, desligamentos e o primeiro acesso de cada pessoa.</p></div>`;
+    const fmtH = t => new Date(t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const dia = t => { const d = new Date(t), h = new Date(); const ontem = new Date(h); ontem.setDate(h.getDate() - 1);
+      const k = x => x.toLocaleDateString('pt-BR'); return k(d) === k(h) ? 'Hoje' : k(d) === k(ontem) ? 'Ontem' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }); };
+    const lista = arr => { let ult = ''; return arr.map(a => { const d = dia(a.em); const cab = d !== ult ? `<li class="hist-dia">${esc(d)}</li>` : ''; ult = d;
+      return cab + `<li><time datetime="${esc(a.em)}">${fmtH(a.em)}</time><span>${descreverAud(a)}</span></li>`; }).join(''); };
+    const semana = S.aud.filter(a => Date.now() - new Date(a.em) < 7 * 864e5).length;
+    const ord = S.aud.slice().sort((x, y) => String(y.em).localeCompare(String(x.em)));
+    const N = 12, rec = ord.slice(0, N), resto = ord.slice(N, 200);
+    return `<p class="small muted">${S.aud.length} registro${S.aud.length > 1 ? 's' : ''} · ${semana} nos últimos 7 dias</p>
+      <ul class="linha-tempo lt-hora">${lista(rec)}</ul>
+      ${resto.length ? dobra('hist-antigos', `Ver ${resto.length} registro${resto.length > 1 ? 's' : ''} anterior${resto.length > 1 ? 'es' : ''}`, `<ul class="linha-tempo lt-hora">${lista(resto)}</ul>`) : ''}`;
   }
 
   /* "Meus dados": abre pelo botão com a foto, no alto, ao lado de Sair */
@@ -445,6 +495,7 @@
             <p class="muted">${primeiro ? 'Crie a sua senha com o e-mail que a coordenação cadastrou.' : 'Entre com o e-mail cadastrado pela coordenação.'}</p></div>
           <span class="seg ent-seg" role="group" aria-label="Tipo de acesso">${aba('entrar', 'Já tenho senha')}${aba('primeiro', 'Primeiro acesso')}</span>
           <div class="campo"><label for="l-email">E-mail</label><input id="l-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="seu@email.com" required></div>
+          ${primeiro ? '<div class="campo"><label for="l-cod">Código de acesso</label><input id="l-cod" name="codigo" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="ABCD-2345" required><span class="dica">Vem na mensagem que a coordenação mandou. Vale 7 dias.</span></div>' : ''}
           <div class="campo"><label for="l-senha">${primeiro ? 'Crie uma senha' : 'Senha'}</label><input id="l-senha" name="senha" type="password" autocomplete="${primeiro ? 'new-password' : 'current-password'}" minlength="8" required>
             ${primeiro ? '<span class="dica">Pelo menos 8 caracteres, com letras e números.</span>' : ''}</div>
           ${primeiro ? '<div class="campo"><label for="l-senha2">Repita a senha</label><input id="l-senha2" name="senha2" type="password" autocomplete="new-password" required></div>' : ''}
@@ -555,14 +606,30 @@
 
   /* a pessoa só entra no sistema quando alguém avisa: o sistema não manda e-mail */
   function avisoAcesso(m, pode) {
-    if (!pode || m.status !== 'ativa' || m.user_id || m.id === S.eu.id) return '';
+    if (!pode || m.status !== 'ativa' || m.id === S.eu.id) return '';
+    const gera = R.podeCadastrar(S.eu.papel, m.papel);
+    if (m.user_id) {   // já tem senha: só a coordenação geral libera um novo primeiro acesso (esqueceu a senha)
+      if (S.eu.papel !== 'coord_geral' || !gera) return '';
+      const conf = S.confirmaAcesso === m.id;
+      return `<div class="bloco aviso-acesso"><h3>Esqueceu a senha?</h3>
+        <p class="small muted">Libere um novo primeiro acesso: a senha atual deixa de valer e sai um código novo para ${esc(nomeDe(m).split(' ')[0])} criar outra senha. Os dados dela não mudam.</p>
+        <div class="acoes"><button class="btn${conf ? ' pri' : ''}" type="button" data-acao="gerar-codigo" data-id="${esc(m.id)}"${conf ? ' data-ok="1"' : ''}>${conf ? 'Confirmar: apagar a senha atual' : 'Liberar novo primeiro acesso'}</button>
+        ${conf ? '<button class="btn" type="button" data-acao="gerar-codigo-nao">Cancelar</button>' : ''}</div></div>`;
+    }
+    const cod = (S.codigos || {})[m.id];
+    if (!cod) return `<div class="bloco aviso-acesso"><h3>Avisar o acesso</h3>
+      <p class="small muted">Ela ainda não entrou. Para criar a senha, ela precisa de um <b>código de acesso</b> junto com o e-mail. É isso que impede outra pessoa de entrar no lugar dela.</p>
+      ${gera ? `<div class="acoes"><button class="btn pri" type="button" data-acao="gerar-codigo" data-id="${esc(m.id)}">Gerar código de acesso</button></div>
+      <p class="small muted">O código vale 7 dias e uma vez só. Se ela perder, gere outro (o anterior deixa de valer).</p>`
+      : '<p class="small muted">Quem cadastrou esta pessoa gera o código na ficha dela.</p>'}</div>`;
     const url = location.origin + location.pathname;
-    const msg = `Olá, ${nomeDe(m).split(' ')[0]}! Seu cadastro foi feito no sistema do projeto Mulheres & Quintais (${P[m.papel].nome}${m.uf ? ' · ' + m.uf : ''}).\n\nPara entrar:\n1) Abra ${url}\n2) Toque em "Primeiro acesso"\n3) Use este e-mail: ${m.email}\n4) Crie uma senha com pelo menos 8 caracteres, misturando letras e números.\n\nDepois é só entrar com esse e-mail e essa senha.`;
+    const msg = `Olá, ${nomeDe(m).split(' ')[0]}! Seu cadastro foi feito no sistema do projeto Mulheres & Quintais (${P[m.papel].nome}${m.uf ? ' · ' + m.uf : ''}).\n\nPara entrar:\n1) Abra ${url}\n2) Toque em "Primeiro acesso"\n3) E-mail: ${m.email}\n4) Código de acesso: ${cod}\n5) Crie a sua senha\n\nO código vale 7 dias e só pode ser usado uma vez. Não passe para ninguém.`;
     const fone = String(m.telefone || '').replace(/\D/g, '');
     const wa = 'https://wa.me/' + (fone.length >= 10 ? '55' + fone : '') + '?text=' + encodeURIComponent(msg);
     return `<div class="bloco aviso-acesso"><h3>Avisar o acesso</h3>
-      <p class="small muted">Ela ainda não entrou. O sistema não manda e-mail: envie esta mensagem por WhatsApp ou e-mail. Ela entra com o e-mail cadastrado e cria a própria senha em "Primeiro acesso".</p>
-      <textarea readonly rows="7" aria-label="Mensagem de acesso" onclick="this.select()">${esc(msg)}</textarea>
+      <div class="cod-acesso"><span class="small muted">Código de acesso</span><b class="num">${esc(cod)}</b><span class="small muted">vale 7 dias · aparece só agora</span></div>
+      <p class="small muted">O sistema não manda e-mail: envie esta mensagem por WhatsApp. Mande só para ela.</p>
+      <textarea readonly rows="8" aria-label="Mensagem de acesso" onclick="this.select()">${esc(msg)}</textarea>
       <div class="acoes"><a class="btn pri" target="_blank" rel="noopener" href="${esc(wa)}">Mandar por WhatsApp</a>
         <a class="btn" href="mailto:${esc(m.email)}?subject=${encodeURIComponent('Acesso ao sistema Mulheres & Quintais')}&body=${encodeURIComponent(msg)}">Mandar por e-mail</a>
         <button class="btn" type="button" data-acao="copiar-texto">Copiar</button></div></div>`;
@@ -698,6 +765,18 @@
       if (a === 'perfil' && el.dataset.p === 'entrada') { S.verEntrada = true; S.painel = null; render(); window.scrollTo(0, 0); }
       else if (a === 'perfil') { S.verEntrada = false; S.aba = null; lembrarAba(); S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.trocarPerfil(el.dataset.p); await carregar(); render(); }
       else if (a === 'recomecar') { S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.recomecar(); await carregar(); render(); toast('Demonstração recomeçada com os dados de exemplo.'); }
+      else if (a === 'gerar-codigo-nao') { S.confirmaAcesso = null; abrirPainel(S.painel); }
+      else if (a === 'gerar-codigo') {
+        const m = porId(el.dataset.id); if (!m) return;
+        if (m.user_id && !el.dataset.ok) { S.confirmaAcesso = m.id; abrirPainel(S.painel); return; }
+        el.disabled = true;
+        try {
+          const c = await S.api.gerarCodigoAcesso(m.id);
+          S.codigos = Object.assign({}, S.codigos, { [m.id]: c }); S.confirmaAcesso = null;
+          if (m.user_id) { m.user_id = null; toast('Senha antiga apagada. Mande o código novo para ' + nomeDe(m).split(' ')[0] + '.'); }
+          abrirPainel(S.painel);
+        } catch (e) { el.disabled = false; toast(e.message || String(e)); }
+      }
       else if (a === 'data-hoje') { const i = document.getElementById(el.dataset.alvo); if (i) { i.value = R.hoje(); i.dispatchEvent(new Event('input', { bubbles: true })); } }
       else if (a === 'cad-modo') {
         const p = Object.assign({}, S.painel, { modo: el.dataset.m || undefined }); abrirPainel(p);
@@ -783,9 +862,11 @@
         if (senha.length < 8) erros.senha = 'A senha tem pelo menos 8 caracteres.';
         else if (S.modoLogin === 'primeiro' && !(/[a-zA-Z]/.test(senha) && /\d/.test(senha))) erros.senha = 'Misture letras e números.';
         if (S.modoLogin === 'primeiro' && senha !== String(fd.get('senha2') || '')) erros.senha2 = 'As duas senhas não são iguais.';
+        const codigo = String(fd.get('codigo') || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (S.modoLogin === 'primeiro' && codigo.length !== 8) erros.codigo = 'O código tem 8 letras e números (ex.: ABCD-2345).';
         if (Object.keys(erros).length) return mostrarErros(form, erros);
         await ocupado(form, async () => {
-          S.eu = S.modoLogin === 'primeiro' ? await S.api.criarSenha(email, senha) : await S.api.entrarSenha(email, senha);
+          S.eu = S.modoLogin === 'primeiro' ? await S.api.criarSenha(email, senha, codigo) : await S.api.entrarSenha(email, senha);
           if (S.eu) { await carregar(); setTimeout(() => sincronizar(false), 500); }
           render();
         });

@@ -248,12 +248,10 @@
     const planos = diagnosticos().filter(d => !d.sem_agua && d.situacao !== 'devolvido');
     const tots = planos.map(d => totalKit(d.dados && d.dados.kit)).filter(v => v > 0);
     const soma = tots.reduce((a, b) => a + b, 0); const acima = lim ? tots.filter(v => v > lim).length : 0;
-    return `<form class="bloco kit-par" data-form="diag-kitpar" novalidate><div><h3>Investimento nos quintais (kits)</h3>
+    return `<div class="bloco kit-par"><div><h3>Investimento nos quintais (kits)</h3>
+        <p class="kit-valor"><span class="small muted">Valor do kit por quintal</span><b class="num">${brl(lim)}</b><span class="small muted">definido no plano de trabalho · ${brl(lim * 200)} para os 200 quintais</span></p>
         <p class="small muted">${tots.length ? `${tots.length} plano${tots.length > 1 ? 's' : ''} com valores: <b>${brl(soma)}</b> projetados · média ${brl(soma / tots.length)} por quintal${acima ? ` · <b style="color:var(--crit)">${acima} acima do valor por quintal</b>` : ''}.` : 'Nenhum plano com valores ainda.'}
-        Quem faz o diagnóstico vê a projeção do kit e o quanto falta ou passa deste valor.</p></div>
-      <div class="campos"><div class="campo"><label for="kp-v">Valor do kit por quintal (R$)</label><input id="kp-v" name="valor_quintal" inputmode="decimal" value="${lim ? String(lim).replace('.', ',') : ''}" placeholder="4500" ${/^coord/.test(S().eu.papel) ? '' : 'disabled'}></div></div>
-      <div class="aviso erro" data-erro hidden></div>
-      ${/^coord/.test(S().eu.papel) ? '<div class="acoes"><button class="btn" type="submit">Salvar valor</button></div>' : ''}</form>`;
+        Quem faz o diagnóstico vê a projeção do kit e o quanto falta ou passa deste valor.</p></div></div>`;
   }
   /* projeção do investimento no quintal: soma de quantidade × valor estimado de cada item */
   const numBR = t => { const m = String(t == null ? '' : t).replace(/\./g, '').replace(',', '.').match(/-?\d+(\.\d+)?/); return m ? +m[0] : null; };
@@ -547,12 +545,6 @@
 
   async function enviar(tipo, form, fd) {
     const eu = S().eu;
-    if (tipo === 'diag-kitpar') {
-      const v = numBR(fd.get('valor_quintal'));
-      if (!(v >= 100 && v <= 100000)) return U().mostrarErros(form, { valor_quintal: 'Informe um valor entre R$ 100 e R$ 100.000.' });
-      await U().ocupado(form, async () => { S().kitPar = await S().api.salvarParametros('kit', { valor_quintal: v }) || { valor_quintal: v }; U().render(); U().toast('Valor por quintal salvo.'); });
-      return;
-    }
     if (tipo === 'visita') {
       const v0 = visitas().find(x => x.id === form.dataset.id);
       const v = Object.assign({}, v0 || { id: form.dataset.id, situacao: 'prevista' }, {

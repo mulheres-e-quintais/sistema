@@ -1018,3 +1018,12 @@ input.invalido { border-color: var(--crit) !important; box-shadow: 0 0 0 3px col
 
 .data-hoje { display: flex; gap: 8px; align-items: center; }
 .data-hoje input { flex: 1; min-width: 0; }
+.cod-acesso { display: grid; justify-items: start; gap: 2px; padding: 12px 14px; margin: 4px 0 10px; border-radius: 12px; background: var(--surface-2); border: 1px dashed var(--line-2); }
+.cod-acesso b { font-size: 26px; letter-spacing: .12em; color: var(--ink); }
+.kit-valor { display: grid; gap: 2px; margin: 6px 0 10px; }
+.kit-valor b { font-size: 26px; color: var(--ink); }
+.linha-tempo .hist-dia { display: block; margin-top: 10px; padding: 0; font-size: 13px; font-weight: 700; color: var(--ink-2); border: 0; }
+.linha-tempo .hist-dia::before { display: none; }
+.vazio-hist { padding: 16px; border: 1px dashed var(--line-2); border-radius: 12px; }
+.linha-tempo.lt-hora { padding: 0; }
+.linha-tempo.lt-hora li:not(.hist-dia) { grid-template-columns: 52px minmax(0, 1fr); }

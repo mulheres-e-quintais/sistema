@@ -8,7 +8,7 @@
       t: 'Como entrar no sistema',
       intro: 'O sistema é usado pela equipe do projeto. Só entra quem foi cadastrado pela coordenação, com o e-mail que ela registrou.',
       passos: [
-        'Na primeira vez, toque em <b>Primeiro acesso</b>, use o e-mail cadastrado e crie uma senha com pelo menos 8 caracteres, misturando letras e números.',
+        'Na primeira vez, toque em <b>Primeiro acesso</b>, use o e-mail cadastrado e o <b>código de acesso</b> que veio na mensagem da coordenação, e crie uma senha com pelo menos 8 caracteres, misturando letras e números.',
         'Das próximas vezes, use <b>Já tenho senha</b> com o mesmo e-mail e a senha que você criou.',
         'Abra o sistema no <b>Chrome</b> (Android) ou no <b>Safari</b> (iPhone). Dentro do WhatsApp ou do Instagram algumas funções, como a localização, não funcionam.',
         'Para usar como aplicativo: no menu do navegador, toque em <b>Adicionar à tela inicial</b>.'
@@ -16,7 +16,8 @@
       duvidas: [
         ['Aparece "Este e-mail não está cadastrado no projeto".', 'O e-mail digitado é diferente do que a coordenação cadastrou. Confira letras, pontos e o final (@gmail.com, @ifrn.edu.br…). Se estiver certo, fale com quem fez o seu cadastro.'],
         ['Aparece "Este e-mail já tem senha".', 'Você já fez o primeiro acesso. Use "Já tenho senha".'],
-        ['Esqueci a senha.', 'Peça à coordenação geral para liberar um novo primeiro acesso. Depois, entre em "Primeiro acesso" e crie outra senha.'],
+        ['Esqueci a senha.', 'Peça à coordenação geral para liberar um novo primeiro acesso. Ela manda um código novo; entre em "Primeiro acesso" e crie outra senha.'],
+        ['O código não funciona.', 'O código vale 7 dias e uma vez só. Confira o e-mail (tem de ser o mesmo do cadastro). Se venceu ou perdeu, peça um novo a quem cadastrou você.'],
         ['Não recebi e-mail do sistema.', 'O sistema não manda e-mail. Quem cadastrou você manda o aviso de acesso por WhatsApp ou e-mail; basta seguir os passos acima.']
       ]
     },
@@ -72,7 +73,7 @@
       passos: [
         'A tabela mostra, por estado, os dias de campo usados, diagnósticos, planos aprovados, casos sem água e agentes.',
         'Em <b>Planos para aprovar</b>, abra o diagnóstico, confira o kit (itens da lista aprovada, até o valor por quintal) e o cronograma, e <b>aprove</b> ou <b>devolva</b>.',
-        'Em <b>Investimento nos quintais</b> fica o valor do kit por quintal (R$ 4.500) e a soma projetada pelos planos.',
+        'Em <b>Investimento nos quintais</b> fica o valor do kit por quintal (R$ 4.500,00, fixado no plano de trabalho) e a soma projetada pelos planos.',
         'O <b>roteiro do mês</b> lista cada visita: data, quem vai e a situação. Visitas vencidas aparecem como atrasadas.',
         '<b>Impacto: antes × depois</b> compara o diagnóstico com a avaliação final de cada quintal.'
       ],

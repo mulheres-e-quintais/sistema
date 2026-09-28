@@ -2,7 +2,7 @@
 -- Mulheres & Quintais — Etapa 16: POPULAR o banco para testar TODAS as funções
 -- Só para teste. Nomes, CPFs e endereços são inventados.
 --
--- Ordem: 14_zerar_para_teste.sql (com ZERAR)  →  05_dados_exemplo.sql  →  este arquivo.
+-- Ordem: 18_codigo_primeiro_acesso.sql (uma vez)  →  14_zerar_para_teste.sql (com ZERAR)  →  05_dados_exemplo.sql  →  este arquivo.
 -- Antes de rodar, troque SEU_EMAIL@gmail.com pelo seu e-mail na linha "meu_email".
 --
 -- O que este script faz (em cima dos dados do 05):
@@ -58,6 +58,9 @@ declare
 begin
   if meu_email like 'SEU_EMAIL%' or meu_email !~ '^[^@\s+]+@[^@\s]+\.[^@\s]+$' then
     raise exception 'Troque SEU_EMAIL@gmail.com pelo seu e-mail (sem +) na linha "meu_email". Nada foi feito.';
+  end if;
+  if to_regclass('public.acesso_codigos') is null then
+    raise exception 'Rode antes o 18_codigo_primeiro_acesso.sql. Nada foi feito.';
   end if;
   if to_regclass('public.exemplo') is null or not exists (select 1 from public.exemplo) then
     raise exception 'Rode antes o 05_dados_exemplo.sql (depois de zerar com o 14). Nada foi feito.';
@@ -253,10 +256,11 @@ end $$;
 
 commit;
 
--- Seus logins de teste (entre em "Primeiro acesso" com cada e-mail e crie uma senha)
+-- Seus logins de teste: entre em "Primeiro acesso" com cada e-mail e o código ao lado (vale 7 dias) e crie uma senha
 select case papel when 'coord_tecnico' then '1 Coordenação técnica' when 'articulacao' then '2 Bolsista de articulação (PI)' when 'apoio' then '3 Bolsista de apoio (PI)'
          when 'agente' then '4 Agente de campo (PI)' when 'professor_fic' then '5 Professor do FIC' when 'auxiliar_adm' then '6 Auxiliar administrativo' end as perfil,
-       nome, email
+       nome, email, case when user_id is null then public.novo_codigo_acesso(id) else 'já tem senha' end as codigo_de_acesso
   from public.equipe where email like '%+%@%' and status = 'ativa'
-union all select '0 Coordenação geral (você)', nome, email from public.equipe where papel = 'coord_geral' and status = 'ativa'
+union all select '0 Coordenação geral (você)', nome, email, case when user_id is null then 'crie a senha sem código' else 'já tem senha' end
+  from public.equipe where papel = 'coord_geral' and status = 'ativa'
 order by 1;

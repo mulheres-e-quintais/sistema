@@ -195,7 +195,7 @@
         <ol class="conv-passos">
           <li><span>Abra o sistema pelo botão abaixo (no Chrome ou no Safari).</span></li>
           <li><span>Toque em <b>Primeiro acesso</b>.</span></li>
-          <li><span>Use o e-mail que você informou e crie a sua senha.</span></li>
+          <li><span>Use o e-mail que você informou e o <b>código de acesso</b> que a coordenação vai mandar pelo WhatsApp, e crie a sua senha.</span></li>
         </ol>
         <a class="btn pri ent-btn" href="${E(location.origin + location.pathname)}">Ir para o sistema <span aria-hidden="true">→</span></a>
         <p class="small muted">Guarde este endereço: <b>${E(location.host + location.pathname)}</b>. Se tiver dúvida, fale com quem mandou o link.</p></div>`;
