@@ -377,6 +377,7 @@
           <h3 style="margin-top:8px">Kit</h3>${tab(['Item', 'Qtd.', 'Para quê'], (d.kit || []).map(x => [x.item, x.qtd, x.para]))}
           <h3 style="margin-top:8px">Cronograma</h3>${tab(['O que', 'Início', 'Fim', 'Quem'], (d.cronograma || []).map(x => [x.oque, x.inicio, x.fim, x.quem]))}</div>`}
         <div class="bloco"><h3>Fotos</h3><div class="acoes">${(dg.fotos || []).map((x, i) => `<button class="btn peq" data-acao="ficha-foto" data-path="${E(x)}">${x === 'exemplo' ? 'Foto de exemplo' : 'Foto ' + (i + 1)}</button>`).join('') || '<span class="muted small">Sem fotos enviadas.</span>'}</div><div id="fi-foto-vista"></div></div>
+        ${MQ.vitrineUI && !dg._fila ? MQ.vitrineUI.blocoPublicar(f, dg) : ''}
         ${souTec && !dg._fila ? `<form class="bloco" data-form="diag-decisao" data-id="${E(dg.id)}" novalidate><h3>Decisão da coordenação técnica</h3>
           <p class="small muted">${dg.sem_agua ? 'Confirme o encaminhamento por falta de água.' : 'Aprove se o kit está na lista aprovada e cabe no valor por quintal, e se o cronograma é viável.'}</p>
           <div class="campo"><label for="dd-obs">Observação</label><textarea id="dd-obs" name="obs">${E(dg.obs_coordenacao || '')}</textarea></div>
