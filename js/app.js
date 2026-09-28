@@ -399,13 +399,15 @@
     const aba = (id, t) => `<button type="button" data-acao="modo-login" data-m="${id}" aria-pressed="${(S.modoLogin || 'entrar') === id}">${t}</button>`;
     const ufs = MQ.UFS.map((u, i) => `<li style="--i:${i}"><b>${u.uf}</b><span>${esc(u.nome)}</span></li>`).join('');
     // broto desenhado (decorativo): o caule cresce e as folhas abrem
-    const broto = `<svg class="ent-broto" viewBox="0 0 220 260" aria-hidden="true" focusable="false">
+    const broto = `<svg class="ent-broto" viewBox="0 -8 220 268" aria-hidden="true" focusable="false">
       <path class="caule" d="M110 250 C 108 200, 118 170, 104 128 S 96 70, 112 30" />
       <path class="folha f1" d="M106 150 C 70 150, 46 124, 44 96 C 76 98, 100 118, 106 150 Z" />
       <path class="folha f2" d="M108 108 C 140 104, 166 80, 170 52 C 136 56, 112 78, 108 108 Z" />
-      <path class="folha f3" d="M110 62 C 92 52, 84 32, 88 12 C 106 24, 114 42, 110 62 Z" />
+      <g class="flor"><ellipse cx="112" cy="14" rx="9" ry="15" transform="rotate(0 112 30)" /><ellipse cx="112" cy="14" rx="9" ry="15" transform="rotate(72 112 30)" /><ellipse cx="112" cy="14" rx="9" ry="15" transform="rotate(144 112 30)" /><ellipse cx="112" cy="14" rx="9" ry="15" transform="rotate(216 112 30)" /><ellipse cx="112" cy="14" rx="9" ry="15" transform="rotate(288 112 30)" /><circle class="miolo" cx="112" cy="30" r="7" /></g>
       <path class="chao" d="M40 252 Q 110 236 180 252" /></svg>`;
-    const anim = !S.entAnimou; S.entAnimou = true;   // a entrada anima só na primeira vez (trocar de aba não repete)
+    const anim = !S.entAnimou; S.entAnimou = true;
+    requestAnimationFrame(() => { ajustarBroto(); const h = document.querySelector('.ent-hero');   // os números entram depois: reajusta
+      if (h && window.ResizeObserver && !h._ro) { h._ro = new ResizeObserver(() => ajustarBroto()); h._ro.observe(h); } });   // a entrada anima só na primeira vez (trocar de aba não repete)
     return `<main class="ent${anim ? ' anim' : ''}">
       <div class="ent-fundo" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i></div>
       <section class="ent-hero">
@@ -433,6 +435,16 @@
       </section>
     </main>`;
   }
+  /* a flor ocupa o espaço que sobra abaixo dos estados, sem ser cortada no pé da tela */
+  function ajustarBroto() {
+    const b = document.querySelector('.ent-broto'), h = document.querySelector('.ent-hero'); if (!b || !h) return;
+    b.style.display = ''; if (getComputedStyle(b).display === 'none') return;   // no celular a flor fica escondida pelo CSS
+    const livre = window.innerHeight - h.getBoundingClientRect().bottom - 14;
+    const alt = Math.min(280, livre);
+    b.style.display = alt < 100 ? 'none' : ''; b.style.height = alt + 'px'; b.style.width = 'auto';
+  }
+  window.addEventListener('resize', () => requestAnimationFrame(ajustarBroto));
+
   function semCadastro() {
     return `<main class="wrap"><div class="login"><h1>Acesso não liberado</h1><p>Este e-mail não está ativo na equipe do projeto. Se você foi desligada ou trocou de e-mail, fale com a coordenação técnica.</p>
       <button class="btn" data-acao="sair">Sair</button></div></main>`;
