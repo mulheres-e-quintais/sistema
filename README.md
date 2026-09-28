@@ -1,0 +1,90 @@
+# Mulheres & Quintais: sistema do projeto
+
+Sistema web do projeto **Quintais Produtivos para Mulheres Rurais** (TED 7AAEKA, processo SUAP 23136.001052.2026-19).
+
+**Etapa 1 (esta versão):** cadastro da equipe.
+- A **coordenação geral** cadastra a **coordenação técnica** (indicada pelo MPA).
+- A **coordenação técnica** cadastra as **10 bolsistas**: 1 de articulação estadual e 1 de apoio estadual em cada estado (AL, BA, PE, PI, SE), com o plano de trabalho individual de cada uma.
+- As duas coordenações registram a **habilitação para a bolsa**, seguindo o Guia das bolsistas: matrícula no FIC, documentos na FUNCERN e termo de compromisso.
+- Desligamento com data e motivo, substituta ligada a quem saiu e histórico de todas as alterações.
+
+**Etapa 2 (próxima):** os 5 formulários de campo (modelos v2), com funcionamento sem internet.
+
+---
+
+## Como está organizado
+
+```
+index.html              página única (PWA)
+css/app.css             visual (identidade Mulheres & Quintais)
+js/config.js            URL e chave do Supabase (vazio = modo demonstração)
+js/dados.js             dados do projeto: estados, municípios, valores de bolsa, metas
+js/regras.js            regras de negócio da tela (CPF, vagas, metas por estado)
+js/api-demo.js          modo demonstração (sem servidor, dados de exemplo)
+js/api-supabase.js      modo produção (Supabase)
+js/app.js               telas
+sw.js, manifest         instalação no celular e abertura sem internet
+supabase/schema.sql     banco: tabelas, regras de acesso (RLS), auditoria
+supabase/tests/         testes das regras do banco
+```
+
+O código não tem etapa de build nem dependências para instalar: é HTML, CSS e JavaScript puros. Qualquer pessoa com noção de web consegue manter.
+
+## Testar no computador (modo demonstração)
+
+```bash
+cd quintais-app
+python3 -m http.server 8000
+# abra http://localhost:8000
+```
+
+Use o seletor "Ver como" para alternar entre coordenação geral, coordenação técnica e bolsista.
+
+## Colocar em produção (cerca de 1 hora)
+
+1. **Criar o projeto no Supabase** (supabase.com, plano gratuito). Escolha a região **South America (São Paulo)** para os dados ficarem no Brasil. Crie a conta com um e-mail institucional, não pessoal, para o projeto não depender de uma pessoa.
+2. **Criar o banco:** em *SQL Editor*, cole e rode todo o `supabase/schema.sql`.
+3. **Cadastrar a coordenação geral:** no fim do `schema.sql` há um `insert` comentado. Preencha com os dados reais e rode só essa parte.
+4. **Login por e-mail:** em *Authentication > URL Configuration*, ponha o endereço onde o sistema vai ficar em *Site URL* e em *Redirect URLs*. Em *Authentication > Emails*, traduza o modelo "Magic Link". O envio de e-mails do plano gratuito tem limite baixo por hora: antes de cadastrar a equipe, configure um SMTP próprio em *Project Settings > Authentication > SMTP* (pode ser o e-mail institucional).
+5. **Ligar o sistema ao banco:** em `js/config.js`, preencha `supabaseUrl` e `supabaseAnonKey` (em *Project Settings > API*). A chave anon é pública por desenho; quem protege os dados são as regras do banco.
+6. **Publicar:** suba a pasta para um repositório no GitHub e ative o *GitHub Pages*, ou arraste a pasta para o Vercel/Netlify. Precisa ser **https** para instalar no celular.
+
+## Regras garantidas pelo banco (não só pela tela)
+
+| Regra | Onde |
+|---|---|
+| 1 coordenação geral e 1 coordenação técnica ativas | índice único `equipe_uma_coordenacao` |
+| 1 bolsista de articulação e 1 de apoio ativas por estado | índice único `equipe_uma_bolsista_por_uf` |
+| Só a coordenação geral cadastra a coordenação técnica | política RLS `equipe_incluir` |
+| Só a coordenação técnica cadastra bolsistas | política RLS `equipe_incluir` |
+| A coordenação geral só altera a habilitação das bolsistas | gatilho `equipe_antes` |
+| Papel, estado e CPF não mudam; quem foi desligada não volta | gatilho `equipe_antes` |
+| Desligamento exige data e motivo | restrição `desligamento_completo` |
+| Plano individual das 2 bolsistas não passa de 40 diagnósticos, 40 quintais e 80 visitas por estado | gatilho `checar_meta_estado` |
+| Bolsista vê só o próprio cadastro | política RLS `equipe_ler` |
+| Ninguém apaga registros | sem política de DELETE |
+| Toda inclusão e alteração fica registrada | gatilho `auditar` |
+| Só entra quem foi cadastrado | gatilho em `auth.users` |
+
+Para rodar os testes (PostgreSQL 16 local):
+
+```bash
+createdb teste
+psql -d teste -f supabase/tests/stub_supabase.sql
+psql -d teste -f supabase/schema.sql
+psql -d teste -f supabase/tests/test_regras.sql   # 21 casos, com o resultado esperado em cada um
+```
+
+## Decisões tomadas
+
+- **Não guarda conta bancária nem Pix.** Esses dados vão direto para a FUNCERN, que paga as bolsas. Menos dado guardado significa menos risco (LGPD, art. 6º, III).
+- **Login sem senha**, por link enviado ao e-mail. As bolsistas não precisam decorar senha, e a conta só é criada se o e-mail já estiver cadastrado.
+- **Valores de bolsa** vêm do plano de trabalho: coordenação técnica R$ 4.700, articulação R$ 2.200 e apoio R$ 1.600 por mês. Se o plano mudar, altere `js/dados.js`.
+- **Nomes das funções:** o sistema usa "articulação estadual" e "apoio estadual", como no plano de trabalho e no Guia das bolsistas. O modelo de termo de compromisso diz "articulação territorial" e "apoio técnico", e vale uniformizar o modelo.
+- **Modelo de dados alinhado à proposta de sistema nacional ao MDA** (18/07/2026): CPF validado, papéis de agentes de campo, habilitação e bolsa. Assim, os dados podem migrar se a proposta for adotada.
+
+## Próximos passos
+
+1. Formulários de campo (ficha de indicação, termo de consentimento, diagnóstico e plano, termo do kit, visita), com GPS, fotos e fila offline.
+2. Painel de acompanhamento por estado (fichas, selecionadas, lista de espera, sem água), substituindo a planilha única.
+3. Relatório mensal da bolsista gerado a partir dos formulários do mês.
