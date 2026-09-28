@@ -80,7 +80,7 @@
     render();
     if (r.enviados && avisar !== false) toast(r.enviados + (r.enviados > 1 ? ' registros enviados.' : ' registro enviado.'));
   }
-  MQ.ui = { S, esc, meuCadastro: (m, n) => meuCadastro(m, n), nomeUF, toast: m => toast(m), render: () => render(), abrirPainel: p => abrirPainel(p), fecharPainel: () => fecharPainel(),
+  MQ.ui = { S, esc, nomeUF, toast: m => toast(m), render: () => render(), abrirPainel: p => abrirPainel(p), fecharPainel: () => fecharPainel(),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), sincronizar: a => sincronizar(a),
     porId: id => porId(id), avatar: (m, t) => avatar(m, t), passos: m => passos(m), dadosDL: m => dadosDL(m), botaoFoto: m => botaoFoto(m), cartaoPessoa: m => cartaoPessoa(m) };
 
@@ -125,7 +125,7 @@
     return `<header class="barra"><div class="barra-in">
       <div class="marca"><img class="emb" src="assets/isotipo.svg" alt="" width="36" height="52"><img src="assets/logo-claro.svg" alt="Mulheres &amp; Quintais" width="112" height="36"><span class="sep" aria-hidden="true"></span>
         <span class="sis"><b>Sistema do projeto</b>Quintais Produtivos para Mulheres Rurais</span></div>
-      ${publica ? `<a class="btn-barra" href="#">${S.eu ? 'Voltar ao sistema' : 'Entrar'}</a>` : S.eu && !S.verEntrada ? `<div class="quem"><span><span class="nome">${esc(S.eu.nome)}</span><br><span class="papel">${esc(P[S.eu.papel].nome)}${S.eu.uf ? ' · ' + esc(S.eu.uf) : ''}</span></span>
+      ${publica ? `<a class="btn-barra" href="#">${S.eu ? 'Voltar ao sistema' : 'Entrar'}</a>` : S.eu && !S.verEntrada ? `<div class="quem"><button class="btn-meus" data-acao="meus-dados" title="Meus dados" aria-label="Meus dados e conta bancária">${avatar(Object.assign({}, S.eu, porId(S.eu.id) || {}), 34)}</button><span><span class="nome">${esc(S.eu.nome)}</span><br><span class="papel">${esc(P[S.eu.papel].nome)}${S.eu.uf ? ' · ' + esc(S.eu.uf) : ''}</span></span>
         ${S.api.modo === 'supabase' ? '<button class="btn-barra" data-acao="sair">Sair</button>' : ''}</div>` : ''}
     </div></header>`;
   }
@@ -296,7 +296,6 @@
       <details class="hist"><summary>Arlo e termo registrados (${ok.length})</summary><div style="padding:0 18px 16px">${ok.length ? `<div class="grade-prof">${ok.map(linha).join('')}</div>` : '<p class="muted">Ninguém ainda.</p>'}</div></details>
       <div class="bloco"><h2>Sua habilitação</h2><p class="small muted">A sua é registrada pela coordenação geral.</p>${passos(eu)}</div>
       ${MQ.pagUI ? MQ.pagUI.secaoMinha() : ''}
-      ${meuCadastro(eu, 'Algum dado errado? Fale com a coordenação geral.')}
     </main>`;
   }
 
@@ -347,13 +346,18 @@
       <ul class="linha-tempo">${S.aud.slice(0, 60).map(a => `<li><time datetime="${esc(a.em)}">${fmt(a.em)}</time><span>${descreverAud(a)}</span></li>`).join('')}</ul></details>`;
   }
 
-  /* dados da própria pessoa e conta: fechados por padrão (o que falta é cobrado no quadro de pendências) */
-  function meuCadastro(m, nota) {
-    return `<details class="hist meu-cad" ${S.meuCadAberto ? 'open' : ''} data-meu-cad><summary><span><b>Meus dados e conta bancária</b><span class="small muted"> · foto, contato e conta para a FUNCERN</span></span></summary>
-      <div class="meu-cad-in"><div class="bloco"><div class="cab-av">${avatar(m, 96)}<div style="display:grid;gap:6px"><h2>Meus dados</h2>${botaoFoto(m)}</div></div>${dadosDL(m)}<p class="small muted">${esc(nota)}</p></div>
-      ${MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}</div></details>`;
+  /* "Meus dados": abre pelo botão com a foto, no alto, ao lado de Sair */
+  const NOTA_DADOS = { coord_tecnico: 'a coordenação geral', professor_fic: 'a coordenação geral', auxiliar_adm: 'a coordenação geral',
+    articulacao: 'a coordenação técnica', apoio: 'a coordenação técnica', agente: 'a bolsista do estado ou a coordenação técnica' };
+  function painelMeusDados() {
+    const m = Object.assign({}, S.eu, porId(S.eu.id) || {});
+    return `<div class="painel-cab"><div class="t"><span class="eyebrow">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(nomeUF(m.uf)) : ''}</span><h2 id="painel-t">Meus dados</h2></div>
+        <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
+      <div class="painel-corpo"><div class="bloco"><div class="cab-av">${avatar(m, 96)}<div style="display:grid;gap:6px"><h3>${esc(nomeDe(m))}</h3>${botaoFoto(m)}</div></div>${dadosDL(m)}
+        ${NOTA_DADOS[m.papel] ? `<p class="small muted">Algum dado errado? Fale com ${NOTA_DADOS[m.papel]}, que corrige o cadastro.</p>` : ''}</div>
+        ${m.papel !== 'coord_geral' && MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
+        ${S.api.modo === 'supabase' ? '<div class="acoes"><button class="btn" data-acao="sair">Sair do sistema</button></div>' : ''}</div>`;
   }
-  document.addEventListener('toggle', ev => { if (ev.target.matches && ev.target.matches('[data-meu-cad]')) S.meuCadAberto = ev.target.open; }, true);
 
   function telaBolsista() {
     const m = Object.assign({}, S.eu, porId(S.eu.id) || {});   // inclui o link da foto
@@ -372,7 +376,6 @@
       <section class="secao"><div class="secao-cab"><h2>Próximos formulários</h2><span class="chip pend">Em preparação</span></div>
         <p class="small muted">Até entrarem no sistema, use os modelos em papel (versão 2).</p>
         <ul class="forms">${MQ.FORMULARIOS.filter(f => f.n === 4).map(f => `<li><span class="n">${f.n}</span><b>${esc(f.nome)}</b><span class="small muted">${esc(f.quando)}</span></li>`).join('')}</ul></section>
-      ${meuCadastro(m, 'Algum dado errado? Fale com a coordenação técnica, que corrige o cadastro.')}
     </main>`;
   }
 
@@ -411,7 +414,7 @@
     let el = $('#painel');
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
     const p = S.painel;
-    const corpo = /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
+    const corpo = p.tipo === 'meus-dados' ? painelMeusDados() : /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
     el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel" role="dialog" aria-modal="true" aria-labelledby="painel-t">${corpo}</aside>`;
     const foco = el.querySelector('[autofocus]') || el.querySelector('.fechar');
     if (foco) foco.focus();
@@ -630,6 +633,7 @@
       else if (a === 'perfil') { S.verEntrada = false; S.aba = null; S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.trocarPerfil(el.dataset.p); await carregar(); render(); }
       else if (a === 'recomecar') { S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.recomecar(); await carregar(); render(); toast('Demonstração recomeçada com os dados de exemplo.'); }
       else if (a === 'cad-modo') { abrirPainel(Object.assign({}, S.painel, { modo: el.dataset.m || undefined })); }
+      else if (a === 'meus-dados') { S.voltarFoco = el; abrirPainel({ tipo: 'meus-dados' }); }
       else if (a === 'copiar-texto') { const t = el.closest('.bloco').querySelector('textarea'); try { await navigator.clipboard.writeText(t.value); toast('Mensagem copiada.'); } catch (e) { t.select(); toast('Selecione e copie a mensagem.'); } }
       else if (a === 'modo-login') { S.modoLogin = el.dataset.m; render(); const f = $('#l-email'); if (f) f.focus(); }
       else if (a === 'sair') { if (MQ.bancoUI) MQ.bancoUI.limpar(); try { Object.keys(sessionStorage).filter(k => /^mq-pend-visto-/.test(k)).forEach(k => sessionStorage.removeItem(k)); } catch (e) {} S.pendVisto = false; await S.api.sair(); S.eu = null; S.equipe = []; render(); }

@@ -81,7 +81,6 @@
       ${aba()}
       <div class="bloco"><h2>Habilitação para receber a bolsa</h2><p class="small muted">A FUNCERN paga a bolsa depois destes passos. Documentos, conta ou Pix: apoio administrativo.</p>${U().passos(eu)}</div>
       ${MQ.pagUI ? MQ.pagUI.secaoMinha() : ''}
-      ${U().meuCadastro(eu, 'Algum dado errado? Fale com a coordenação geral, que corrige o cadastro.')}
     </main>`;
   }
 
