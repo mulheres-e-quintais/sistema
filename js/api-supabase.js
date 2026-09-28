@@ -201,6 +201,7 @@
       const { error } = await sb.rpc('salvar_meus_dados_bancarios', { p: d });
       if (error) throw erro(/salvar_meus_dados_bancarios|PGRST202/.test(error.message) ? 'Os dados bancários ainda não foram instalados no servidor: a coordenação geral precisa rodar o arquivo 09_dados_bancarios.sql.' : error);
     },
+    async verContaArlo(id) { const { data, error } = await sb.rpc('ver_conta_para_arlo', { p_equipe: id }); if (error) throw erro(error); return data; },
     async situacaoBancaria() { const { data, error } = await sb.rpc('situacao_bancaria'); if (error) throw erro(error); return data; },
     async exportarDadosBancarios() { const { data, error } = await sb.rpc('exportar_dados_bancarios'); if (error) throw erro(error); return data; },
     async listarAPL() {

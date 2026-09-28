@@ -96,3 +96,44 @@ select nome, matricula_fic_em from public.equipe_para_fic() where nome = 'Ana Bo
 reset role;
 \echo '== 22. auditoria registrou turma e matrículas (>= 3)'
 select count(*) from public.auditoria where tabela in ('turmas_fic','matriculas_fic');
+
+-- ===================== auxiliar administrativo =====================
+select pg_temp.como('tec@x.org'); set role authenticated; select (public.vincular_conta()).papel;
+\echo '== A1. coordenação técnica cadastra auxiliar (ERRO)'
+insert into public.equipe (papel, nome, cpf, email, data_inicio, consentimento_lgpd) values ('auxiliar_adm','Aux Errado','77777777777','aux@ifrn.edu.br','2026-10-01',true);
+reset role;
+select pg_temp.como('cleone.lima@ifrn.edu.br'); set role authenticated; select (public.vincular_conta()).papel;
+\echo '== A2. coordenação geral cadastra dois auxiliares (OK) e gera convite de auxiliar (t)'
+insert into public.equipe (papel, nome, cpf, email, data_inicio, consentimento_lgpd) values ('auxiliar_adm','Auxiliar Um','77777777777','aux@ifrn.edu.br','2026-10-01',true);
+insert into public.equipe (papel, nome, cpf, email, data_inicio, consentimento_lgpd) values ('auxiliar_adm','Auxiliar Dois','88888888888','aux2@ifrn.edu.br','2026-10-01',true);
+select length(public.criar_convite('auxiliar_adm')) > 10 as convite_ok;
+reset role;
+insert into auth.users(email) values ('aux@ifrn.edu.br'),('aux2@ifrn.edu.br');
+select pg_temp.como('aux@ifrn.edu.br'); set role authenticated; select (public.vincular_conta()).papel;
+\echo '== A3. auxiliar vê a equipe toda (8: geral, técnica, Ana, Bia, 2 professores, 2 auxiliares)'
+select count(*) from public.equipe;
+\echo '== A4. auxiliar registra Arlo e termo da Ana (OK: 1 linha)'
+update public.equipe set docs_funcern_em = current_date - 1, termo_assinado_em = current_date - 1 where email = 'ana@x.org' returning nome, docs_funcern_em is not null as arlo;
+\echo '== A5. auxiliar muda o telefone da Ana (ERRO)'
+update public.equipe set telefone = '(84) 90000-0000' where email = 'ana@x.org';
+\echo '== A6. auxiliar registra a própria habilitação (ERRO)'
+update public.equipe set docs_funcern_em = current_date - 1 where email = 'aux@ifrn.edu.br';
+\echo '== A7. auxiliar mexe na coordenação geral (0 linhas)'
+update public.equipe set docs_funcern_em = current_date - 1 where papel = 'coord_geral' returning id;
+\echo '== A8. auxiliar lança matrícula FIC (ERRO)'
+update public.equipe set matricula_fic_em = current_date - 1 where email = 'bia@x.org';
+\echo '== A9. auxiliar desliga alguém (ERRO)'
+update public.equipe set status = 'desligada', data_fim = current_date, motivo_desligamento = 'teste de desligamento' where email = 'bia@x.org';
+\echo '== A10. auxiliar vê a conta da Ana (vazia: null) e a consulta fica no histórico (1)'
+select public.ver_conta_para_arlo((select id from public.equipe where email = 'ana@x.org')) is null as sem_conta;
+reset role;
+select count(*) as consultas from public.auditoria where tabela = 'equipe_bancario' and acao = 'VIEW';
+select pg_temp.como('aux2@ifrn.edu.br'); set role authenticated; select (public.vincular_conta()).papel;
+\echo '== A11. o outro auxiliar registra a habilitação do primeiro (OK) e ele fica habilitado sem FIC (t)'
+update public.equipe set docs_funcern_em = current_date - 1, termo_assinado_em = current_date - 1 where email = 'aux@ifrn.edu.br';
+reset role;
+select public.habilitado(e) from public.equipe e where email = 'aux@ifrn.edu.br';
+select pg_temp.como('ana@x.org'); set role authenticated; select (public.vincular_conta()).papel;
+\echo '== A12. bolsista tenta ver conta de outra pessoa (ERRO)'
+select public.ver_conta_para_arlo((select (public.vincular_conta()).id));
+reset role;

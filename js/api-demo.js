@@ -139,6 +139,15 @@
         .map(m => ({ id: uid(), turma_id: tu.id, equipe_id: m.id, numero: m.matricula_fic_numero, matriculado_em: m.matricula_fic_em, criado_por: p1.id, criado_em: t0, cancelada_em: null }));
       mem.fic = true;
     }
+    if (!mem.aux) {   // auxiliar administrativo de exemplo
+      const cg = mem.equipe.find(m => m.papel === 'coord_geral'); const t0 = '2026-09-27T12:00:00.000Z';
+      const ax = { id: uid(), user_id: null, papel: 'auxiliar_adm', uf: null, nome: 'Rosa Maria Dantas (exemplo)', cpf: gerarCPF(934567812), email: 'rosa.exemplo@ifrn.edu.br',
+        telefone: '(84) 99833-1083', municipio: 'Apodi/RN', organizacao: 'IFRN Campus Apodi', data_inicio: MQ.PROJETO.inicioBolsas, data_fim: null, motivo_desligamento: null,
+        meta_diagnosticos: null, meta_quintais: null, meta_visitas: null, matricula_fic_em: null, matricula_fic_numero: null, docs_funcern_em: null, termo_path: null,
+        termo_assinado_em: null, obs_habilitacao: null, consentimento_lgpd: true, status: 'ativa', substitui_id: null, criado_por: cg && cg.id, criado_em: t0, atualizado_em: t0,
+        exemplo: true, foto_path: 'exemplo', foto_url: 'assets/exemplo/pessoa-15.svg' };
+      mem.equipe.push(ax); mem.eu.auxiliar = ax.id; mem.aux = true;
+    }
     if (!mem.vitrine) {   // duas fotos de exemplo aprovadas pela coordenação (ilustrações)
       const [a, b] = mem.fichas.filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada' && f.consent_imagem);
       mem.vitrine = [a && { id: 'vit-1', path: 'exemplo-1.jpg', ficha_id: a.id, uf: a.uf, legenda: 'Canteiros de hortaliças no sertão do Piauí', sem_criancas: true, publicada_em: '2026-11-10T12:00:00Z' },
@@ -246,7 +255,7 @@
 
     async listarEquipe() {
       const d = ler(); const eu = euMesmo(); if (!eu) return [];
-      if (eu.papel === 'coord_geral' || eu.papel === 'coord_tecnico') return copia(d.equipe);
+      if (eu.papel === 'coord_geral' || eu.papel === 'coord_tecnico' || eu.papel === 'auxiliar_adm') return copia(d.equipe);
       if (R.ehBolsista(eu.papel)) return copia(d.equipe.filter(x => x.id === eu.id || x.uf === eu.uf));
       return copia(d.equipe.filter(x => x.id === eu.id));
     },
@@ -272,6 +281,10 @@
       const i = d.equipe.findIndex(x => x.id === id); if (i < 0) throw falha('Registro não encontrado.');
       const antes = d.equipe[i];
       const soHab = Object.keys(patch).every(k => CAMPOS_HAB.includes(k));
+      if (eu && eu.papel === 'auxiliar_adm') {
+        if (antes.id === eu.id) throw falha('A sua própria habilitação é registrada pelo outro auxiliar ou pela coordenação geral.');
+        if (!Object.keys(patch).every(k => ['docs_funcern_em', 'termo_path', 'termo_assinado_em', 'obs_habilitacao'].includes(k))) throw falha('O auxiliar administrativo só registra o cadastro no Arlo e o termo. Dados pessoais são de quem cadastrou a pessoa.');
+      }
       const pode = R.podeEditarDados(eu && eu.papel, antes.papel) || (soHab && R.podeEditarHabilitacao(eu && eu.papel, antes.papel));
       if (!pode) throw falha(eu && eu.papel === 'coord_geral' && R.ehBolsista(antes.papel)
         ? 'A coordenação geral só altera a habilitação das bolsistas. Dados pessoais e desligamento são da coordenação técnica.'
@@ -437,7 +450,7 @@
       c.usado_em = new Date().toISOString(); gravar();
     },
     async lerPrivado(id) {
-      const d = ler(); const eu = euMesmo(); if (!eu || !(eu.id === id || /^coord/.test(eu.papel))) return null;
+      const d = ler(); const eu = euMesmo(); if (!eu || !(eu.id === id || /^coord|auxiliar_adm/.test(eu.papel))) return null;
       return copia((d.privado || {})[id] || null);
     },
     async salvarPrivado(id, dados) {
@@ -448,8 +461,13 @@
     async meusDadosBancarios() { const eu = euMesmo(); return eu ? copia((bancoMem[eu.id]) || null) : null; },
     async salvarMeusDadosBancarios(dd) { const eu = euMesmo(); if (!eu) throw falha('Entre no sistema.'); bancoMem[eu.id] = Object.assign({}, dd, { atualizado_em: new Date().toISOString() }); },
     async situacaoBancaria() {
-      const eu = euMesmo(); if (!eu || !/^coord/.test(eu.papel)) return [];
+      const eu = euMesmo(); if (!eu || !/^coord|auxiliar_adm/.test(eu.papel)) return [];
       return ler().equipe.filter(m => m.status === 'ativa' && m.papel !== 'coord_geral').map(m => ({ equipe_id: m.id, informado: !!bancoMem[m.id], atualizado_em: (bancoMem[m.id] || {}).atualizado_em || null }));
+    },
+    async verContaArlo(id) {
+      const eu = euMesmo(); if (!eu || !['auxiliar_adm', 'coord_geral'].includes(eu.papel)) throw falha('Só o auxiliar administrativo e a coordenação geral veem a conta para o cadastro no Arlo.');
+      const d = ler(); d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'equipe_bancario', registro_id: id, acao: 'VIEW', por: eu.id, em: new Date().toISOString(), antes: null, depois: { aviso: 'conta consultada para o cadastro no Arlo' } }); gravar();
+      return copia(bancoMem[id] || null);
     },
     async exportarDadosBancarios() {
       const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral gera a planilha bancária para a FUNCERN.');
