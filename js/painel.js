@@ -20,7 +20,7 @@
 
   function dados(S) {
     const ativos = S.equipe.filter(m => m.status === 'ativa');
-    const pagaveis = ativos.filter(m => m.papel !== 'coord_geral');
+    const pagaveis = ativos.filter(m => m.papel === 'coord_tecnico' || MQ.regras.ehBolsista(m.papel));
     const bols = ativos.filter(m => R.ehBolsista(m.papel));
     const fichas = S.fichas || [];
     const selAprov = fichas.filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada');
@@ -308,5 +308,21 @@
     dica.style.top = (r.top - caixa.top) + 'px';
   });
 
-  MQ.painelUI = { visaoGeral, mesDoProjeto };
+  /* Mapa público: só os 5 estados pintados pelo total (sem nenhum ponto de quintal) */
+  function mapaUFs(valores, rotulo) {
+    const ufsProj = MQ.UFS.map(u => u.uf);
+    const vb = caixa(ufsProj); const esc = Math.max(vb[2], vb[3]) / 100;
+    const max = Math.max(1, ...ufsProj.map(u => valores[u] || 0));
+    const tom = v => !v ? 'var(--mapa-0)' : `color-mix(in oklab, var(--mapa-1) ${Math.round(25 + 75 * v / max)}%, var(--mapa-0))`;
+    const path = anel => 'M' + anel.map(p => px(p).map(v => v.toFixed(3)).join(',')).join('L') + 'Z';
+    const estados = Object.entries(MQ.GEO.uf).map(([uf, g]) => {
+      const proj = ufsProj.includes(uf);
+      return `<path d="${g.r.map(path).join('')}" class="${proj ? 'uf-pub' : 'uf-viz'}" ${proj ? `style="fill:${tom(valores[uf])}"` : ''} stroke-width="${esc * 0.25}"><title>${proj ? `${U.nomeUF(uf)}: ${valores[uf] || 0} ${rotulo}` : uf}</title></path>`;
+    }).join('');
+    const ordem = ufsProj.slice().sort((x, y) => (valores[y] || 0) - (valores[x] || 0) || x.localeCompare(y));
+    return `<svg class="mapa mapa-pub" viewBox="${vb.join(' ')}" role="img" aria-label="${E(rotulo)} por estado: ${ufsProj.map(u => u + ' ' + (valores[u] || 0)).join(', ')}" preserveAspectRatio="xMidYMid meet">${estados}</svg>
+      <ul class="mapa-lista">${ordem.map(uf => `<li><span class="lg-q" style="background:${tom(valores[uf])}"></span>${uf} <b class="num">${valores[uf] || 0}</b></li>`).join('')}</ul>`;
+  }
+
+  MQ.painelUI = { visaoGeral, mesDoProjeto, mapaUFs };
 })();

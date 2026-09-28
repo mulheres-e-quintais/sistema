@@ -325,6 +325,8 @@
     else if (a === 'ficha-ver') U().abrirPainel({ tipo: 'ficha-ver', id: el.dataset.id });
     else if (a === 'ficha-corrigir') {
       fotosTemp.ficha = fotosTemp.termo = null;
+      const naFila = (S.fila || []).find(it => it.id === el.dataset.id && (!it.tipo || it.tipo === 'ficha'));
+      if (naFila && naFila.fotos) Object.assign(fotosTemp, naFila.fotos);   // não obriga a fotografar de novo
       const f = todas().find(x => x.id === el.dataset.id);
       U().abrirPainel({ tipo: 'ficha-form', dados: f }); setTimeout(() => { const fm = $('form[data-form=ficha]'); if (fm) atualizarForm(fm); }, 0);
     }
