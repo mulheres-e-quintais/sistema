@@ -346,3 +346,4 @@ fieldset > .fixo { margin: 0; }
 .pf-bar { height: 10px; border-radius: 5px; background: var(--surface-2); position: relative; }
 .pf-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--marrom-2); border-radius: 5px; }
 .pf-v { text-align: right; white-space: nowrap; }
+.grade-uf { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
