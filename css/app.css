@@ -926,3 +926,21 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 @media (max-width: 640px) { .barra-in > .btn-menu { order: -1; } .barra-in .marca { flex: 1; min-width: 0; } }
 .gaveta-cab .av { flex: none; }
 @media (max-width: 640px) { .marca .sis { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .marca { min-width: 0; } }
+
+/* ---------- ajuda ---------- */
+.btn-ajuda { width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(246, 237, 228, .45); background: transparent; color: var(--barra-ink); font: 700 15px var(--sans); cursor: pointer; flex: none; }
+.btn-ajuda:hover, .btn-ajuda:focus-visible { background: rgba(246, 237, 228, .12); outline: none; }
+.ajuda { display: grid; gap: 12px; }
+.ajuda h3 { margin: 6px 0 0; }
+.ajuda-intro { margin: 0; font-size: 15.5px; line-height: 1.55; color: var(--ink); }
+.ajuda-passos { margin: 0; padding-left: 20px; display: grid; gap: 8px; line-height: 1.5; color: var(--ink-2); }
+.ajuda-passos b { color: var(--ink); }
+.ajuda-duvidas { display: grid; gap: 6px; }
+.ajuda-duvidas details { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.ajuda-duvidas summary { cursor: pointer; padding: 10px 12px; font-weight: 600; list-style: none; }
+.ajuda-duvidas summary::-webkit-details-marker { display: none; }
+.ajuda-duvidas summary::before { content: "+ "; color: var(--accent); }
+.ajuda-duvidas details[open] summary::before { content: "− "; }
+.ajuda-duvidas p { margin: 0; padding: 0 12px 12px; color: var(--ink-2); line-height: 1.5; }
+.ajuda-outros { display: flex; flex-wrap: wrap; gap: 6px; }
+.ent-ajuda { justify-self: center; font-size: 14px; }
