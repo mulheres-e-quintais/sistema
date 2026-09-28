@@ -27,7 +27,7 @@ alter table public.visitas add column if not exists fotos text[] not null defaul
 create or replace function public.visitas_feita() returns trigger
 language plpgsql as $$
 begin
-  if new.situacao = 'realizada' and old.situacao is distinct from 'realizada' and new.etapa <> 'diagnostico' then
+  if new.situacao = 'realizada' and old.situacao is distinct from 'realizada' and new.etapa in ('implantacao','acompanhamento') then
     if new.data_realizada is null or new.data_realizada > current_date then
       raise exception 'Informe a data em que a visita foi feita (não pode ser no futuro).';
     end if;
@@ -182,7 +182,7 @@ begin
   select * into s from public.solicitacoes_pagamento where id = p_id for update;
   if s.id is null then raise exception 'Solicitação não encontrada.'; end if;
   if s.situacao <> 'avalizada' then raise exception 'Só solicitação com aval vai para o Arlo.'; end if;
-  if s.equipe_id = public.meu_id() then raise exception 'O seu próprio pagamento é lançado pelo outro auxiliar ou pela coordenação geral.'; end if;
+  if s.equipe_id = public.meu_id() then raise exception 'O seu próprio pagamento é lançado pela coordenação geral.'; end if;
   update public.solicitacoes_pagamento set situacao = 'lancada', arlo_por = public.meu_id(), arlo_em = now(), arlo_protocolo = nullif(trim(p_protocolo), '') where id = p_id;
 end $$;
 

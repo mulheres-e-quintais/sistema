@@ -51,7 +51,7 @@
     const ac = ativasDe(f.id, 'acompanhamento');
     return `<span class="pils">${p('Diagnóstico', ativasDe(f.id, 'diagnostico'))}
       ${dg ? `<span class="pil ${dg.sem_agua ? 'crit' : dg.situacao === 'aprovado' ? 'feito' : dg.situacao === 'devolvido' ? 'crit' : 'prev'}">${dg.sem_agua ? 'Sem água' : 'Plano ' + (dg.situacao === 'aprovado' ? 'aprovado' : dg.situacao === 'devolvido' ? 'devolvido' : 'em análise')}</span>` : ''}
-      ${p('Implantação', ativasDe(f.id, 'implantacao'))}${p('Acomp. 1', ac.slice(0, 1))}${p('Acomp. 2', ac.slice(1, 2))}</span>`;
+      ${p('Implantação', ativasDe(f.id, 'implantacao'))}${p('Acomp. 1', ac.slice(0, 1))}${p('Acomp. 2', ac.slice(1, 2))}${p('Avaliação', ativasDe(f.id, 'avaliacao'))}</span>`;
   }
 
   /* ---------- roteiro do mês (é o pedido de ajuda de custo) ---------- */
@@ -71,7 +71,8 @@
             <td>${E(MQ.ETAPAS[v.etapa].nome)}</td><td>${E(q.nome || '—')}<br><span class="small muted">${E((MQ.PAPEIS[q.papel] || {}).curto || '')}</span></td>
             <td>${v.situacao === 'realizada' ? '<span class="chip ok">Feita</span>' : v._fila ? '<span class="chip pend">No aparelho</span>' : '<span class="chip pend">Prevista</span>'}
               ${podeMudar && v.situacao === 'prevista' ? ` <button class="link small" data-acao="campo-visita-editar" data-id="${E(v.id)}">Mudar</button>` : ''}
-              ${podeMudar && v.situacao === 'prevista' && v.etapa !== 'diagnostico' && !v._fila ? ` <button class="link small" data-acao="campo-feita" data-id="${E(v.id)}">Registrar feita</button>` : ''}</td></tr>`; }).join('')}
+              ${podeMudar && v.situacao === 'prevista' && ['implantacao', 'acompanhamento'].includes(v.etapa) && !v._fila ? ` <button class="link small" data-acao="campo-feita" data-id="${E(v.id)}">Registrar feita</button>` : ''}
+              ${podeMudar && v.etapa === 'avaliacao' && !v._fila ? ` <button class="link small" data-acao="${v.situacao === 'realizada' ? 'aval-ver' : 'aval-novo'}" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}">${v.situacao === 'realizada' ? 'Ver avaliação' : 'Registrar avaliação'}</button>` : ''}</td></tr>`; }).join('')}
         </tbody></table></div>
         <div class="dias-pessoa">${Object.entries(porPessoa).map(([id, c]) => `<span><b>${E(primeiroNome((pessoa(id) || {}).nome))}</b> ${c.feitas + c.prev} dia${c.feitas + c.prev > 1 ? 's' : ''} <span class="muted">(${c.feitas} feita${c.feitas === 1 ? '' : 's'})</span></span>`).join('')}</div>`
         : '<p class="muted">Nenhuma visita neste mês.</p>'}
@@ -122,6 +123,8 @@
           ${dg && dg.situacao === 'devolvido' ? '<span class="pil crit">Devolvido para corrigir</span>' : ''}</span>
         <div class="acoes">${v.etapa === 'diagnostico' ? (dg ? `<button class="btn peq" data-acao="campo-diag-ver" data-ficha="${E(v.ficha_id)}">Ver diagnóstico</button>`
           : `<button class="btn peq pri" data-acao="campo-diag-novo" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}">Registrar diagnóstico</button>`)
+          : v.etapa === 'avaliacao' ? (v.situacao === 'realizada' ? `<button class="btn peq" data-acao="aval-ver" data-ficha="${E(v.ficha_id)}">Ver avaliação</button>`
+            : `<button class="btn peq pri" data-acao="aval-novo" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}">Registrar avaliação</button>`)
           : v.situacao === 'realizada' ? `<span class="small muted">${E(String(v.relato || '').slice(0, 90))}${String(v.relato || '').length > 90 ? '…' : ''}</span>`
           : `<button class="btn peq pri" data-acao="campo-feita" data-id="${E(v.id)}">Registrar visita feita</button>`}</div></div>`; };
     const porMes = {}; feitas.forEach(v => { const m = String(v.data_realizada).slice(0, 7); porMes[m] = (porMes[m] || 0) + 1; });
@@ -156,10 +159,11 @@
         <td class="num c">${d.length} <span class="muted">de 40</span></td><td class="num c">${d.filter(x => x.situacao === 'aprovado').length}</td><td class="num c">${(n => n ? `<b style="color:var(--crit)">${n}</b>` : 0)(d.filter(x => x.sem_agua).length)}</td>
         <td class="num c">${pessoasCampo(u.uf).filter(p => p.papel === 'agente').length}</td></tr>`; };
     return `<div class="cab"><div><span class="eyebrow">Trabalho de campo</span><h1 style="font-size:24px">Visitas, diagnósticos e planos</h1>
-        <p>${souTec ? 'Você aprova ou devolve o plano de cada quintal antes da compra do kit.' : 'A aprovação dos planos é da coordenação técnica.'} Dias de campo: 160 por estado (40 quintais × 4 visitas).</p></div></div>
+        <p>${souTec ? 'Você aprova ou devolve o plano de cada quintal antes da compra do kit.' : 'A aprovação dos planos é da coordenação técnica.'} Dias de campo: ${MQ.DIAS_CAMPO_UF} por estado (40 quintais × 5 visitas: diagnóstico, implantação, 2 acompanhamentos e avaliação final).</p></div></div>
       <div class="quadro-scroll" style="display:block"><table class="quadro tab-campo-uf"><thead><tr><th>Estado</th><th>Dias de campo</th><th class="c">Diagnósticos</th><th class="c">Planos aprovados</th><th class="c">Sem água na seca</th><th class="c">Agentes de campo</th></tr></thead>
         <tbody>${MQ.UFS.map(linhaUF).join('')}</tbody></table></div>
       <p class="small muted" style="margin:6px 2px 0"><b>Sem água na seca:</b> diagnósticos em que a água não dura no período seco. Essa mulher não recebe o kit (é encaminhada a programa de cisternas) e a vaga dela precisa ser preenchida pela lista de espera. Acima de 30% no estado é sinal de alerta.</p><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p>
+      ${MQ.impactoUI ? MQ.impactoUI.secaoCoord() : ''}
       ${aguard.length ? `<div class="bloco"><h3>${souTec ? 'Planos para você aprovar' : 'Planos aguardando a coordenação técnica'} (${aguard.length})</h3><div class="lista-fichas">
         ${aguard.map(d => { const f = ficha(d.ficha_id) || {}; return `<button class="vagabtn ficha-linha" data-acao="campo-diag-ver" data-ficha="${E(d.ficha_id)}"><span class="nm">${E(f.nome || '—')}</span>
           <span style="display:flex;gap:6px;flex-wrap:wrap">${d.sem_agua ? '<span class="chip crit">Sem água: sem plano</span>' : `<span class="chip pend">Lote ${d.lote}</span>`}<span class="chip off">${E((d.dados && d.dados.kit || []).filter(k => k.item).length)} itens no kit</span></span>
@@ -266,6 +270,8 @@
           <div class="campo"><label for="dg-rq">Quanto ganha com vendas do quintal por mês (R$)</label><input id="dg-rq" name="renda_quintal" type="number" min="0" step="10" inputmode="numeric" value="${v('renda_quintal')}"><span class="dica">Zero se não vende. É a linha de base: a visita final vai perguntar a mesma coisa.</span></div>
         </fieldset>
 
+        ${MQ.impactoUI ? MQ.impactoUI.bloco(d.impacto, '4b. Medidas para comparar no fim (linha de base)', MQ.impactoUI.menorDaFamilia(d.familia)) : ''}
+
         <fieldset><legend>5 e 6. Práticas, trabalho e organização</legend>
           ${chk('praticas', MQ.DIAG.praticas, d.praticas)}
           <div class="campos"><div class="campo"><label for="dg-horas">Horas por dia no quintal</label><input id="dg-horas" name="horas_dia" type="number" min="0" max="16" step="0.5" inputmode="decimal" value="${v('horas_dia')}"></div></div>
@@ -331,7 +337,8 @@
       objetivos: todos('objetivos'), frase_objetivo: txt('frase_objetivo'),
       kit: linhas('kit', [['item', 'kit_item'], ['qtd', 'kit_qtd'], ['para', 'kit_para']]).filter(x => x.item),
       cronograma: linhas('cron', [['oque', 'cr_oque'], ['inicio', 'cr_ini'], ['fim', 'cr_fim'], ['quem', 'cr_quem']]).filter(x => x.oque),
-      lote: num('lote'), mes_implantacao: txt('mes_implantacao'), compromissos: !!fd.get('compromissos')
+      lote: num('lote'), mes_implantacao: txt('mes_implantacao'), compromissos: !!fd.get('compromissos'),
+      impacto: MQ.impactoUI && form.querySelector('fieldset.impacto') ? MQ.impactoUI.ler(form) : undefined
     };
     const existentes = String(fd.get('fotos_existentes') || '').split('|').filter(Boolean);
     d.fotos_ok = ['geral', 'agua', 'plantio'].filter(k => fotosTemp[k] || existentes.some(x => new RegExp('diag_' + k).test(x)) || existentes.includes('exemplo')).length;
@@ -490,7 +497,8 @@
       if (!v0 && v.ficha_id) {
         if (ativasDe(v.ficha_id, v.etapa).length >= MQ.ETAPAS[v.etapa].max) e.etapa = v.etapa === 'acompanhamento' ? 'Este quintal já tem as 2 visitas de acompanhamento.' : 'Este quintal já tem essa visita agendada ou feita.';
         else if (v.etapa !== 'diagnostico' && !ativasDe(v.ficha_id, 'diagnostico').some(x => x.situacao === 'realizada')) e.etapa = 'Primeiro o diagnóstico.';
-        const f = ficha(v.ficha_id); if (f && diasUsados(f.uf) >= MQ.DIAS_CAMPO_UF) e.ficha_id = 'O estado já usou os 160 dias de campo.';
+        const f = ficha(v.ficha_id); if (f && diasUsados(f.uf) >= MQ.DIAS_CAMPO_UF) e.ficha_id = 'O estado já usou os ' + MQ.DIAS_CAMPO_UF + ' dias de campo.';
+        if (v.etapa === 'avaliacao' && !ativasDe(v.ficha_id, 'implantacao').some(x => x.situacao === 'realizada')) e.etapa = 'A avaliação é feita depois da implantação.';
       }
       if (Object.keys(e).length) return U().mostrarErros(form, e);
       await U().ocupado(form, async () => {
@@ -578,5 +586,5 @@
     const b = ev.target.closest('form[data-form=diag-decisao] button[name=decisao]'); if (b) b.form.dataset.decisao = b.value;
   }, true);
 
-  MQ.campoUI = { secaoBolsista, telaAgente, abaCoord, painel, clique, enviar, diagnosticos, visitas };
+  MQ.campoUI = { secaoBolsista, telaAgente, abaCoord, painel, clique, enviar, diagnosticos, visitas, guardar };
 })();

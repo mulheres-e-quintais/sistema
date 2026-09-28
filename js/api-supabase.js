@@ -12,7 +12,7 @@
   const lerEuGuardado = () => { try { return JSON.parse(localStorage.getItem('mq-eu') || 'null'); } catch (e) { return null; } };
   const CAMPOS = ['papel', 'uf', 'nome', 'cpf', 'email', 'telefone', 'municipio', 'organizacao', 'data_inicio',
     'meta_diagnosticos', 'meta_quintais', 'meta_visitas', 'matricula_fic_em', 'matricula_fic_numero', 'docs_funcern_em',
-    'termo_path', 'termo_assinado_em', 'obs_habilitacao', 'foto_path', 'nome_social', 'cadastro_arlo', 'consentimento_lgpd', 'substitui_id', 'status', 'data_fim', 'motivo_desligamento'];
+    'termo_path', 'termo_assinado_em', 'obs_habilitacao', 'foto_path', 'nome_social', 'cadastro_arlo', 'siape', 'consentimento_lgpd', 'substitui_id', 'status', 'data_fim', 'motivo_desligamento'];
   const limpar = o => { const r = {}; CAMPOS.forEach(k => { if (k in o) r[k] = o[k] === '' ? null : o[k]; }); return r; };
 
   /* Grava com UPDATE quando o registro já existe e INSERT só quando é novo.
@@ -170,12 +170,27 @@
       ['situacao', 'aprovado_por', 'aprovado_em', 'obs_coordenacao', 'executor_id', 'criado_em', 'atualizado_em'].forEach(k => delete d[k]);
       return gravar('diagnosticos', d);
     },
+    async listarAvaliacoes() {
+      const { data, error } = await sb.from('avaliacoes').select('*').order('data_visita', { ascending: false }); if (error) throw erro(error); return data;
+    },
+    async salvarAvaliacao(dados, fotos) {
+      const d = Object.assign({}, dados); const caminhos = new Set(d.fotos || []);
+      for (const [k, blob] of Object.entries(fotos || {})) {
+        if (!blob) continue;
+        const path = d.uf + '/' + d.ficha_id + '/aval_' + k + '.jpg';
+        const { error } = await sb.storage.from('campo').upload(path, blob, { upsert: true, contentType: blob.type || 'image/jpeg' });
+        if (error) throw erro(error);
+        caminhos.add(path);
+      }
+      d.fotos = [...caminhos]; ['executor_id', 'criado_em', 'atualizado_em'].forEach(k => delete d[k]);
+      return gravar('avaliacoes', d);
+    },
     async decidirDiagnostico(id, situacao, obs) {
       const { data, error } = await sb.from('diagnosticos').update({ situacao, obs_coordenacao: obs || null }).eq('id', id).select().single();
       if (error) throw erro(error); return data;
     },
     async linkFoto(path) {
-      const balde = /\/(diag_|visita_)/.test(path) ? 'campo' : 'fichas';
+      const balde = /\/(diag_|visita_|aval_)/.test(path) ? 'campo' : 'fichas';
       const { data, error } = await sb.storage.from(balde).createSignedUrl(path, 600);
       if (error) throw erro(error);
       return data.signedUrl;

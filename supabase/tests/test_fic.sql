@@ -103,14 +103,15 @@ select pg_temp.como('tec@x.org'); set role authenticated; select (public.vincula
 insert into public.equipe (papel, nome, cpf, email, data_inicio, consentimento_lgpd) values ('auxiliar_adm','Aux Errado','77777777777','aux@ifrn.edu.br','2026-10-01',true);
 reset role;
 select pg_temp.como('cleone.lima@ifrn.edu.br'); set role authenticated; select (public.vincular_conta()).papel;
-\echo '== A2. coordenação geral cadastra dois auxiliares (OK) e gera convite de auxiliar (t)'
+\echo '== A2. coordenação geral gera convite de auxiliar (t), cadastra um (OK); o segundo (ERRO) e novo convite (ERRO): é um só'
+select length(public.criar_convite('auxiliar_adm')) > 10 as convite_ok;
 insert into public.equipe (papel, nome, cpf, email, data_inicio, consentimento_lgpd) values ('auxiliar_adm','Auxiliar Um','77777777777','aux@ifrn.edu.br','2026-10-01',true);
 insert into public.equipe (papel, nome, cpf, email, data_inicio, consentimento_lgpd) values ('auxiliar_adm','Auxiliar Dois','88888888888','aux2@ifrn.edu.br','2026-10-01',true);
-select length(public.criar_convite('auxiliar_adm')) > 10 as convite_ok;
+select public.criar_convite('auxiliar_adm');
 reset role;
-insert into auth.users(email) values ('aux@ifrn.edu.br'),('aux2@ifrn.edu.br');
+insert into auth.users(email) values ('aux@ifrn.edu.br');
 select pg_temp.como('aux@ifrn.edu.br'); set role authenticated; select (public.vincular_conta()).papel;
-\echo '== A3. auxiliar vê a equipe toda (8: geral, técnica, Ana, Bia, 2 professores, 2 auxiliares)'
+\echo '== A3. auxiliar vê a equipe toda (7: geral, técnica, Ana, Bia, 2 professores, auxiliar)'
 select count(*) from public.equipe;
 \echo '== A4. auxiliar registra Arlo e termo da Ana (OK: 1 linha)'
 update public.equipe set docs_funcern_em = current_date - 1, termo_assinado_em = current_date - 1 where email = 'ana@x.org' returning nome, docs_funcern_em is not null as arlo;
@@ -128,8 +129,8 @@ update public.equipe set status = 'desligada', data_fim = current_date, motivo_d
 select public.ver_conta_para_arlo((select id from public.equipe where email = 'ana@x.org')) is null as sem_conta;
 reset role;
 select count(*) as consultas from public.auditoria where tabela = 'equipe_bancario' and acao = 'VIEW';
-select pg_temp.como('aux2@ifrn.edu.br'); set role authenticated; select (public.vincular_conta()).papel;
-\echo '== A11. o outro auxiliar registra a habilitação do primeiro (OK) e ele fica habilitado sem FIC (t)'
+select pg_temp.como('cleone.lima@ifrn.edu.br'); set role authenticated; select (public.vincular_conta()).papel;
+\echo '== A11. a coordenação geral registra a habilitação do auxiliar (OK) e ele fica habilitado sem FIC (t)'
 update public.equipe set docs_funcern_em = current_date - 1, termo_assinado_em = current_date - 1 where email = 'aux@ifrn.edu.br';
 reset role;
 select public.habilitado(e) from public.equipe e where email = 'aux@ifrn.edu.br';

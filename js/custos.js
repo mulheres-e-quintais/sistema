@@ -100,7 +100,7 @@
         </section>
         <aside class="secao">
           <form class="bloco" data-form="custo-sim" novalidate><h2>Simular uma visita</h2>
-            <div class="campos"><div class="campo"><label for="cs-e">Tipo</label><select id="cs-e" name="etapa">${Object.entries(MQ.ETAPAS_CUSTO).map(([k, t]) => `<option value="${k}">${t} (${p.horas[k]} h)${k === 'avaliacao' ? ' · ainda não agendável' : ''}</option>`).join('')}</select></div>
+            <div class="campos"><div class="campo"><label for="cs-e">Tipo</label><select id="cs-e" name="etapa">${Object.entries(MQ.ETAPAS_CUSTO).map(([k, t]) => `<option value="${k}">${t} (${p.horas[k]} h)</option>`).join('')}</select></div>
               <div class="campo"><label for="cs-k">Km só de ida</label><input id="cs-k" name="km" type="number" min="0" max="999" inputmode="decimal" value="30"></div></div>
             <div id="cs-res">${quadro(calcular('diagnostico', 30))}</div></form>
           <form class="bloco" data-form="custo-par" novalidate><h2>Valores usados</h2>
@@ -194,8 +194,8 @@
      3. Compara com fazer cada visita numa viagem separada.
      ===================================================================== */
   const JORNADA_H = 8, KMH = 50;
-  const ETAPAS_PLANO = [['diagnostico', 1], ['implantacao', 1], ['acompanhamento', 2]];
-  const JANELA = { diagnostico: [2, 5], implantacao: [5, 10], acompanhamento: [6, 12] };   // meses do projeto (1 = set/26), como nas metas
+  const ETAPAS_PLANO = [['diagnostico', 1], ['implantacao', 1], ['acompanhamento', 2], ['avaliacao', 1]];
+  const JANELA = { diagnostico: [2, 5], implantacao: [5, 10], acompanhamento: [6, 12], avaliacao: [11, 13] };   // meses do projeto (1 = set/26), como nas metas
   const MESES_PROJ = ['set/26', 'out/26', 'nov/26', 'dez/26', 'jan/27', 'fev/27', 'mar/27', 'abr/27', 'mai/27', 'jun/27', 'jul/27', 'ago/27', 'set/27'];
   function origemDe(p) { return coordMun(p.uf, p.municipio); }
   const dist = (a, b) => linhaReta(a, b) * C.par.fator_estrada;
@@ -285,7 +285,7 @@
       ${r.semLocal ? `<div class="aviso">${r.semLocal} quintal(is) sem localização (nem GPS, nem município do mapa) ficaram fora.</div>` : ''}
       <div class="escolha" role="group" aria-label="O que calcular">
         <button type="button" data-acao="custo-plano-tudo" data-v="0" aria-pressed="${!C.planoTudo}"><b>Só o que falta agendar</b><span>Visitas que ainda não estão no roteiro de campo. Quem já visita um quintal continua com ele.</span></button>
-        <button type="button" data-acao="custo-plano-tudo" data-v="1" aria-pressed="${!!C.planoTudo}"><b>Projeto inteiro</b><span>As 4 visitas de todos os quintais aprovados, do zero: o custo total planejado.</span></button>
+        <button type="button" data-acao="custo-plano-tudo" data-v="1" aria-pressed="${!!C.planoTudo}"><b>Projeto inteiro</b><span>As 5 visitas de todos os quintais aprovados (com a avaliação final), do zero: o custo total planejado.</span></button>
       </div>
       ${(() => { if (!C.planoTudo) return ''; const at = C.planoAtual || (C.planoAtual = planejar({ tudo: true, cont: true }));
         const va = Object.values(at.ufs).reduce((s, u) => s + (u.prop.total || 0), 0); const n = Object.values(at.ufs).reduce((s, u) => s + (u.continua || 0), 0);
@@ -308,7 +308,7 @@
         <tr class="tot"><td><b>Total</b></td><td>${nQ}</td><td>${nV}</td><td>${nT}</td><td>${fmtN(ufs.reduce((s, u) => s + u.prop.km, 0))}</td>
           <td>${brl(ufs.reduce((s, u) => s + u.prop.comb, 0))}</td><td>${brl(ufs.reduce((s, u) => s + u.prop.ref, 0))}</td><td>${brl(ufs.reduce((s, u) => s + u.prop.horas, 0) * C.par.valor_hora)}</td>
           <td><b>${brl(prop)}</b></td><td class="muted">${brl(base)}</td></tr></tbody></table></div><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p></section>
-      <section class="secao"><h2>Por mês</h2><p class="small muted">As viagens de cada etapa espalhadas pelo período das metas: diagnóstico out–jan, implantação jan–jun, acompanhamentos fev–set.</p>
+      <section class="secao"><h2>Por mês</h2><p class="small muted">As viagens de cada etapa espalhadas pelo período das metas: diagnóstico out–jan, implantação jan–jun, acompanhamentos fev–ago, avaliação final jul–set.</p>
         <div class="barras-mes">${MESES_PROJ.map((nm, i) => { const v = meses[i + 1] || 0; return `<div class="bm"><span class="bm-v num">${v ? brl(v).replace(',00', '') : ''}</span><span class="bm-b"><i style="height:${Math.round(v / maxMes * 100)}%"></i></span><span class="bm-l">${nm}</span></div>`; }).join('')}</div></section>
       <section class="secao"><div class="secao-cab"><h2>${E(U().nomeUF(uf))}: quem visita e as viagens</h2>
           <span class="seg" role="group">${MQ.UFS.map(u => `<button type="button" data-acao="custo-plano-uf" data-uf="${u.uf}" aria-pressed="${u.uf === uf}">${u.uf}</button>`).join('')}</span></div>

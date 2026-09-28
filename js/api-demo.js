@@ -254,7 +254,7 @@
       if (!eu || !['auxiliar_adm', 'coord_geral'].includes(eu.papel)) throw falha('Quem lança o pagamento no Arlo é o auxiliar administrativo.');
       if (!s) throw falha('Solicitação não encontrada.');
       if (s.situacao !== 'avalizada') throw falha('Só solicitação com aval vai para o Arlo.');
-      if (s.equipe_id === eu.id) throw falha('O seu próprio pagamento é lançado pelo outro auxiliar ou pela coordenação geral.');
+      if (s.equipe_id === eu.id) throw falha('O seu próprio pagamento é lançado pela coordenação geral.');
       const agora = new Date().toISOString();
       Object.assign(s, { situacao: 'lancada', arlo_por: eu.id, arlo_em: agora, arlo_protocolo: protocolo || null });
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: s.id, acao: 'UPDATE', por: eu.id, em: agora, antes: null, depois: copia(s) });
@@ -343,7 +343,7 @@
       const antes = d.equipe[i];
       const soHab = Object.keys(patch).every(k => CAMPOS_HAB.includes(k));
       if (eu && eu.papel === 'auxiliar_adm') {
-        if (antes.id === eu.id) throw falha('A sua própria habilitação é registrada pelo outro auxiliar ou pela coordenação geral.');
+        if (antes.id === eu.id) throw falha('A sua própria habilitação é registrada pela coordenação geral.');
         if (!Object.keys(patch).every(k => ['docs_funcern_em', 'termo_path', 'termo_assinado_em', 'obs_habilitacao'].includes(k))) throw falha('O auxiliar administrativo só registra o cadastro no Arlo e o termo. Dados pessoais são de quem cadastrou a pessoa.');
       }
       const pode = R.podeEditarDados(eu && eu.papel, antes.papel) || (soHab && R.podeEditarHabilitacao(eu && eu.papel, antes.papel));
@@ -434,10 +434,11 @@
       if (!antes) {
         const mesmas = d.visitas.filter(x => x.ficha_id === v.ficha_id && x.etapa === v.etapa && x.situacao !== 'cancelada').length;
         if (mesmas >= MQ.ETAPAS[v.etapa].max) throw falha(v.etapa === 'acompanhamento' ? 'Este quintal já tem as 2 visitas de acompanhamento.' : 'Este quintal já tem essa visita agendada ou feita.');
-        if (v.etapa !== 'diagnostico' && !d.visitas.some(x => x.ficha_id === v.ficha_id && x.etapa === 'diagnostico' && x.situacao === 'realizada')) throw falha('Primeiro o diagnóstico: implantação e acompanhamento só depois dele.');
-        if (d.visitas.filter(x => x.uf === f.uf && x.situacao !== 'cancelada').length >= MQ.DIAS_CAMPO_UF) throw falha('O estado ' + f.uf + ' já usou os 160 dias de campo previstos.');
+        if (v.etapa !== 'diagnostico' && !d.visitas.some(x => x.ficha_id === v.ficha_id && x.etapa === 'diagnostico' && x.situacao === 'realizada')) throw falha('Primeiro o diagnóstico: implantação, acompanhamento e avaliação só depois dele.');
+        if (v.etapa === 'avaliacao' && !d.visitas.some(x => x.ficha_id === v.ficha_id && x.etapa === 'implantacao' && x.situacao === 'realizada')) throw falha('A avaliação é feita depois da implantação do quintal.');
+        if (d.visitas.filter(x => x.uf === f.uf && x.situacao !== 'cancelada').length >= MQ.DIAS_CAMPO_UF) throw falha('O estado ' + f.uf + ' já usou os ' + MQ.DIAS_CAMPO_UF + ' dias de campo previstos.');
       }
-      if (v.situacao === 'realizada' && (!antes || antes.situacao !== 'realizada') && v.etapa !== 'diagnostico') {
+      if (v.situacao === 'realizada' && (!antes || antes.situacao !== 'realizada') && ['implantacao', 'acompanhamento'].includes(v.etapa)) {
         if (!v.data_realizada || v.data_realizada > R.hoje()) throw falha('Informe a data em que a visita foi feita (não pode ser no futuro).');
         if (String(v.relato || '').trim().length < 20) throw falha('Conte em poucas linhas o que foi feito na visita (pelo menos 20 letras).');
       }
@@ -449,6 +450,28 @@
       if (!n.situacao) n.situacao = 'prevista';
       if (i >= 0) d.visitas[i] = n; else d.visitas.push(n);
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'visitas', registro_id: n.id, acao: antes ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: antes && copia(antes), depois: copia(n) });
+      gravar(); return copia(n);
+    },
+    async listarAvaliacoes() {
+      const d = ler(); const eu = euMesmo(); if (!eu) return [];
+      const l = d.avaliacoes || [];
+      if (/^coord/.test(eu.papel)) return copia(l);
+      if (R.ehBolsista(eu.papel)) return copia(l.filter(a => a.uf === eu.uf));
+      return copia(l.filter(a => a.executor_id === eu.id));
+    },
+    async salvarAvaliacao(dados, fotos) {
+      const d = ler(); const eu = euMesmo(); d.avaliacoes = d.avaliacoes || [];
+      const v = (d.visitas || []).find(x => x.id === dados.visita_id);
+      if (!v || v.etapa !== 'avaliacao' || v.ficha_id !== dados.ficha_id) throw falha('A avaliação precisa estar ligada à visita de avaliação desta mulher.');
+      if (v.situacao === 'cancelada') throw falha('A visita de avaliação foi cancelada.');
+      if (!eu || !((R.ehBolsista(eu.papel) && eu.uf === v.uf) || v.executor_id === eu.id)) throw falha('Seu perfil não tem permissão para esta ação.');
+      if (dados.data_visita > R.hoje()) throw falha('A data da avaliação não pode ser no futuro.');
+      if (dados.latitude == null && String(dados.sem_gps_motivo || '').trim().length < 5) throw falha('Registre a localização ou explique por que não foi possível.');
+      const fts = Object.keys(fotos || {}).filter(k => fotos[k]).map(k => v.uf + '/' + v.ficha_id + '/aval_' + k + '.jpg');
+      const i = d.avaliacoes.findIndex(a => a.id === dados.id); const agora = new Date().toISOString();
+      const n = Object.assign({}, i >= 0 ? d.avaliacoes[i] : { criado_em: agora }, dados, { uf: v.uf, executor_id: v.executor_id, atualizado_em: agora, fotos: [...new Set([...(dados.fotos || []), ...fts])] });
+      if (i >= 0) d.avaliacoes[i] = n; else d.avaliacoes.push(n);
+      Object.assign(v, { situacao: 'realizada', data_realizada: dados.data_visita, atualizado_em: agora });
       gravar(); return copia(n);
     },
     async listarDiagnosticos() {
@@ -495,8 +518,9 @@
       if (!eu || !R.podeCadastrar(eu.papel, papel)) throw falha('Seu perfil não pode cadastrar esta função.');
       const ativa = d.equipe.find(m => m.status === 'ativa' && m.papel === papel && (papel === 'coord_tecnico' || (R.ehBolsista(papel) && m.uf === uf)));
       if (ativa && papel !== 'agente') throw falha(papel === 'coord_tecnico' ? 'Já há coordenação técnica ativa. Desligue antes de convidar outra.' : 'Esta vaga já está ocupada no estado.');
+      if (papel === 'auxiliar_adm' && d.equipe.some(m => m.status === 'ativa' && m.papel === 'auxiliar_adm')) throw falha('Já há auxiliar administrativo ativo. Desligue antes de convidar outro.');
       const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-      d.convites = (d.convites || []).concat([{ id: uid(), token, papel, uf: papel === 'coord_tecnico' ? null : uf, substitui_id: subst || null, criado_por: eu.id,
+      d.convites = (d.convites || []).concat([{ id: uid(), token, papel, uf: ['coord_tecnico', 'professor_fic', 'auxiliar_adm'].includes(papel) ? null : uf, substitui_id: subst || null, criado_por: eu.id,
         criado_em: new Date().toISOString(), expira_em: new Date(Date.now() + 7 * 864e5).toISOString(), usado_em: null }]);
       gravar(); return token;
     },
@@ -510,11 +534,12 @@
       const d = ler(); const c = (d.convites || []).find(x => x.token === token);
       if (!c || c.usado_em || new Date(c.expira_em) <= new Date()) throw falha('Este link não vale mais. Peça um novo à coordenação.');
       if (!dados.consentimento_lgpd) throw falha('É preciso aceitar o uso dos dados para o cadastro.');
+      if (!dados.cadastro_arlo && !dados.data_nascimento) throw falha('Informe a data de nascimento.');
       const cpf = R.soDigitos(dados.cpf), email = String(dados.email || '').trim().toLowerCase();
       if (d.equipe.some(m => m.status === 'ativa' && (m.cpf === cpf || String(m.email).toLowerCase() === email))) throw falha('Já existe pessoa ativa na equipe com este CPF ou e-mail. Fale com a coordenação.');
       d.pre_cadastros = (d.pre_cadastros || []).concat([{ id: uid(), convite_id: c.id, papel: c.papel, uf: c.uf, substitui_id: c.substitui_id,
         nome: String(dados.nome).trim(), cpf, email, telefone: dados.telefone || null, municipio: dados.municipio || null, organizacao: dados.organizacao || null,
-        cadastro_arlo: !!dados.cadastro_arlo, nome_social: dados.nome_social || null, data_nascimento: dados.data_nascimento || null, nis: dados.nis || null, endereco: dados.endereco || {}, socioeconomico: dados.socioeconomico || null,
+        cadastro_arlo: !!dados.cadastro_arlo, siape: dados.siape || null, nome_social: dados.nome_social || null, data_nascimento: dados.data_nascimento || null, nis: dados.nis || null, endereco: dados.endereco || {}, socioeconomico: dados.socioeconomico || null,
         consentimento_lgpd: true, enviado_em: new Date().toISOString(), situacao: 'aguardando' }]);
       c.usado_em = new Date().toISOString(); gravar();
     },

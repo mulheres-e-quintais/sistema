@@ -127,11 +127,12 @@ MQ.MARCOS = [
 MQ.PAINEL_FINANCEIRO = 'https://claude.ai/artifact/TMjzFNUUaKkgwk7RKFrXgm';
 
 /* ---------- Trabalho de campo (Guia de viagens e ajuda de custo) ---------- */
-MQ.DIAS_CAMPO_UF = 160;            // 40 quintais x 4 visitas
+MQ.DIAS_CAMPO_UF = 200;            // 40 quintais x 5 visitas (diagnóstico, implantação, 2 acompanhamentos, avaliação)
 MQ.ETAPAS = {
   diagnostico:    { nome: 'Diagnóstico e plano', curto: 'Diagnóstico', max: 1 },
   implantacao:    { nome: 'Implantação', curto: 'Implantação', max: 1 },
-  acompanhamento: { nome: 'Acompanhamento', curto: 'Acomp.', max: 2 }
+  acompanhamento: { nome: 'Acompanhamento', curto: 'Acomp.', max: 2 },
+  avaliacao:      { nome: 'Avaliação final', curto: 'Avaliação', max: 1 }
 };
 MQ.DIAG = {
   parentesco: ['Ela mesma', 'Cônjuge/companheiro', 'Filho(a)', 'Neto(a)', 'Pai/mãe', 'Irmão(ã)', 'Outro'],
