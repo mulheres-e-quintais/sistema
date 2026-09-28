@@ -130,6 +130,7 @@
     const m = Math.max(x1 - x0, y1 - y0) * 0.06;
     return [x0 - m, y0 - m, x1 - x0 + 2 * m, y1 - y0 + 2 * m];
   }
+  const ULTIMO = { grupos: {}, foco: '' };
   function mapa(S, d) {
     /* 3 níveis: 5 estados (um círculo por município) → estado (círculo por município) → município (cada quintal) */
     const foco = S.mapaUF || '';
@@ -160,6 +161,7 @@
     const grupos = {};
     todos.forEach(x => { const k = x.f.uf + '|' + norm(x.f.municipio); (grupos[k] = grupos[k] || { k, uf: x.f.uf, mun: x.f.municipio, itens: [] }).itens.push(x); });
     const lista = Object.values(grupos).sort((a, b) => b.itens.length - a.itens.length);
+    ULTIMO.grupos = grupos; ULTIMO.foco = foco;
     const baseDe = g => { const muns = MQ.GEO.mun[g.uf] || {}; const chave = Object.keys(muns).find(m => norm(m) === norm(g.mun));
       return { base: chave ? muns[chave] : (MQ.GEO.uf[g.uf] || {}).c, nome: chave || g.mun }; };
     const resumo = g => ordem.slice().reverse().map(id => [id, g.itens.filter(x => x.cat === id).length]).filter(([, q]) => q);
@@ -175,7 +177,7 @@
               const p0 = [cx + R * Math.cos(a0), cy + R * Math.sin(a0)], p1 = [cx + R * Math.cos(a1), cy + R * Math.sin(a1)];
               return `<path d="M${cx},${cy}L${p0[0]},${p0[1]}A${R},${R} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${p1[0]},${p1[1]}Z" fill="${CATS.find(k => k.id === id).cor}"/>`; }).join('');
         const txt = `${nome}/${g.uf} · ${n} mulher${n > 1 ? 'es' : ''} com ficha: ${por.map(([id, q]) => q + ' ' + CATS.find(k => k.id === id).nome.toLowerCase()).join(', ')} · clique para ver ${foco ? 'cada quintal' : 'o estado'}`;
-        return `<g class="q-pt q-grupo" data-acao="mapa-mun" data-uf="${g.uf}" data-mun="${E(g.k)}" data-dica="${E(txt)}">${fatias}<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--surface)" stroke-width="${esc * 0.3}"/>
+        return `<g class="q-pt q-grupo" data-acao="mapa-info" data-uf="${g.uf}" data-mun="${E(g.k)}" data-dica="${E(txt)}">${fatias}<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--surface)" stroke-width="${esc * 0.3}"/>
           ${n > 1 ? `<text x="${cx}" y="${cy + R * 0.34}" text-anchor="middle" font-size="${Math.min(R * 1.05, esc * 3)}" class="q-num">${n}</text>` : ''}<title>${E(txt)}</title></g>`;
       }).join('');
     } else {
@@ -184,8 +186,8 @@
         const c = CATS.find(k => k.id === cat).cor; const [x, y] = p.xy;
         const txt = `${f.municipio}/${f.uf} · ${(MQ.RESULTADOS[f.resultado] || {}).nome}${f.situacao !== 'aprovada' ? ' (' + (MQ.SITUACOES[f.situacao] || {}).nome + ')' : ''}${p.exato ? '' : ' · posição aproximada'} · clique para abrir a ficha`;
         return p.exato
-          ? `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="var(--surface)" stroke-width="${r * 0.45}" class="q-pt" data-acao="ficha-ver" data-id="${E(f.id)}" data-dica="${E(txt)}"><title>${E(txt)}</title></circle>`
-          : `<circle cx="${x}" cy="${y}" r="${r * 0.85}" fill="var(--surface)" stroke="${c}" stroke-width="${r * 0.55}" class="q-pt" data-acao="ficha-ver" data-id="${E(f.id)}" data-dica="${E(txt)}"><title>${E(txt)}</title></circle>`;
+          ? `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="var(--surface)" stroke-width="${r * 0.45}" class="q-pt" data-acao="mapa-info" data-id="${E(f.id)}" data-dica="${E(txt)}"><title>${E(txt)}</title></circle>`
+          : `<circle cx="${x}" cy="${y}" r="${r * 0.85}" fill="var(--surface)" stroke="${c}" stroke-width="${r * 0.55}" class="q-pt" data-acao="mapa-info" data-id="${E(f.id)}" data-dica="${E(txt)}"><title>${E(txt)}</title></circle>`;
       }).join('');
     }
     const cont = {}; pts.forEach(x => { cont[x.cat] = (cont[x.cat] || 0) + 1; });
@@ -205,6 +207,7 @@
           ${estados}${rotulos}${marcas}
         </svg>
         <div class="mapa-dica" id="mapa-dica" hidden></div>
+        <div class="mapa-cartao" id="mapa-cartao" role="dialog" aria-label="Informações do ponto" hidden></div>
         <div style="display:grid;gap:14px;align-content:start">
         <ul class="legenda">${CATS.map(k => `<li><span class="lg-pt" style="background:${k.cor}"></span>${E(k.nome)} <b class="num">${cont[k.id] || 0}</b></li>`).join('')}
           ${focoMun ? '<li><span class="lg-pt oco"></span>Contorno vazio: posição aproximada (sem GPS)</li>' : ''}
@@ -334,6 +337,50 @@
     const b = ev.target.closest('[data-acao="mapa-uf"]'); if (!b) return;
     const S = MQ.ui.S; S.mapaMun = ''; S.mapaUF = S.mapaUF === b.dataset.uf && b.tagName === 'path' ? '' : b.dataset.uf; MQ.ui.render();
   });
+  /* clique num círculo ou ponto: cartão com as informações e o que dá para fazer */
+  function cartaoMapa(el) {
+    const box = document.getElementById('mapa-cartao'); if (!box) return;
+    const S = MQ.ui.S; const ordem = ['aprovada', 'espera', 'aguardando', 'sem_agua'];
+    let html;
+    if (el.dataset.mun) {
+      const g = ULTIMO.grupos[el.dataset.mun]; if (!g) return;
+      const muns = MQ.GEO.mun[g.uf] || {}; const nome = Object.keys(muns).find(m => norm(m) === norm(g.mun)) || g.mun;
+      const por = ordem.map(id => [CATS.find(k => k.id === id), g.itens.filter(x => x.cat === id).length]).filter(([, q]) => q);
+      const gps = g.itens.filter(x => x.p.exato).length;
+      html = `<div class="mc-cab"><b>${E(nome)}/${g.uf}</b><button class="fechar" data-acao="mapa-cartao-fechar" aria-label="Fechar">×</button></div>
+        <p class="small muted">${g.itens.length} mulher${g.itens.length > 1 ? 'es' : ''} com ficha · ${gps} com GPS</p>
+        <ul class="mc-lista">${por.map(([k, q]) => `<li><span class="lg-pt" style="background:${k.cor}"></span>${E(k.nome)}<b class="num">${q}</b></li>`).join('')}</ul>
+        <div class="acoes"><button class="btn peq pri" data-acao="mapa-mun" data-uf="${g.uf}" data-mun="${E(g.k)}">Ver cada quintal</button>
+          ${ULTIMO.foco ? '' : `<button class="btn peq" data-acao="mapa-uf" data-uf="${g.uf}">Ver o estado</button>`}</div>`;
+    } else {
+      const f = (S.fichas || []).find(x => x.id === el.dataset.id); if (!f) return;
+      const b = MQ.ui.porId(f.bolsista_id);
+      const dg = (S.diagnosticos || []).find(x => x.ficha_id === f.id);
+      const vs = (S.visitas || []).filter(v => v.ficha_id === f.id && v.situacao === 'realizada').length;
+      const lin = [['Situação', (MQ.RESULTADOS[f.resultado] || {}).nome + (f.situacao !== 'aprovada' ? ' · ' + (MQ.SITUACOES[f.situacao] || {}).nome : '')],
+        ['Comunidade', f.comunidade], ['Prioridade', (f.pontos ?? '—') + ' pontos'], ['Indicada por', b ? b.nome_social || b.nome : null],
+        ['Diagnóstico', dg ? (dg.situacao === 'aprovado' ? 'plano aprovado' : 'feito, ' + (dg.situacao === 'devolvido' ? 'devolvido' : 'aguardando aprovação')) : 'ainda não'],
+        ['Visitas feitas', String(vs)], ['Local', el.getAttribute('fill') === 'var(--surface)' ? 'aproximado (sem GPS)' : 'GPS']].filter(l => l[1]);
+      html = `<div class="mc-cab"><b>Quintal em ${E(f.municipio)}/${f.uf}</b><button class="fechar" data-acao="mapa-cartao-fechar" aria-label="Fechar">×</button></div>
+        <dl class="dl mc-dl">${lin.map(([k, v]) => `<dt>${k}</dt><dd>${E(v)}</dd>`).join('')}</dl>
+        <div class="acoes"><button class="btn peq pri" data-acao="ficha-ver" data-id="${E(f.id)}">Abrir a ficha</button></div>`;
+    }
+    box.innerHTML = html; box.hidden = false;
+    const caixa = box.parentElement.getBoundingClientRect(), r = el.getBoundingClientRect();
+    const w = Math.min(300, caixa.width - 16); box.style.width = w + 'px';
+    let left = r.left - caixa.left + r.width / 2 - w / 2; left = Math.max(8, Math.min(left, caixa.width - w - 8));
+    box.style.left = left + 'px'; box.style.top = (r.bottom - caixa.top + 8) + 'px';
+    const dica = document.getElementById('mapa-dica'); if (dica) dica.hidden = true;
+    const bb = box.getBoundingClientRect(); if (bb.bottom > innerHeight) box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+  document.addEventListener('click', ev => {
+    const el = ev.target.closest('[data-acao="mapa-info"]');
+    if (el) { ev.stopPropagation(); cartaoMapa(el); return; }
+    const box = document.getElementById('mapa-cartao');
+    if (box && !box.hidden && (ev.target.closest('[data-acao="mapa-cartao-fechar"]') || !ev.target.closest('#mapa-cartao'))) box.hidden = true;
+  }, true);
+  document.addEventListener('keydown', ev => { const box = document.getElementById('mapa-cartao'); if (ev.key === 'Escape' && box && !box.hidden) { box.hidden = true; ev.stopPropagation(); } }, true);
+
   document.addEventListener('pointerover', ev => {
     const pt = ev.target.closest && ev.target.closest('.q-pt'); const dica = document.getElementById('mapa-dica');
     if (!dica) return;

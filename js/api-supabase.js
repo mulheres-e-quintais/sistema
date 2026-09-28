@@ -195,6 +195,14 @@
       const { error } = await sb.from('equipe_privado').upsert(reg, { onConflict: 'equipe_id' });
       if (error) throw erro(/equipe_privado|PGRST205/.test(error.message) ? 'Os dados pessoais complementares ainda não foram instalados no servidor: rode o arquivo 08_convites.sql no Supabase.' : error);
     },
+    /* ---------- Dados bancários (só por funções do banco; nunca entram no cache do aparelho) ---------- */
+    async meusDadosBancarios() { const { data, error } = await sb.rpc('meus_dados_bancarios'); if (error) throw erro(error); return data; },
+    async salvarMeusDadosBancarios(d) {
+      const { error } = await sb.rpc('salvar_meus_dados_bancarios', { p: d });
+      if (error) throw erro(/salvar_meus_dados_bancarios|PGRST202/.test(error.message) ? 'Os dados bancários ainda não foram instalados no servidor: a coordenação geral precisa rodar o arquivo 09_dados_bancarios.sql.' : error);
+    },
+    async situacaoBancaria() { const { data, error } = await sb.rpc('situacao_bancaria'); if (error) throw erro(error); return data; },
+    async exportarDadosBancarios() { const { data, error } = await sb.rpc('exportar_dados_bancarios'); if (error) throw erro(error); return data; },
     async listarPreCadastros() {
       const { data, error } = await sb.from('pre_cadastros').select('*').eq('situacao', 'aguardando').order('enviado_em');
       if (error) throw erro(error); return data;
