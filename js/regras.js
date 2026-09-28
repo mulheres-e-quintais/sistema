@@ -71,12 +71,15 @@
     if (!R.emailValido(m.email)) e.email = 'E-mail inválido. É por ele que a pessoa entra no sistema.';
     if (R.soDigitos(m.telefone).length < 10) e.telefone = 'Informe o celular com DDD.';
     if (!m.data_inicio) e.data_inicio = 'Informe a data de início.';
+    if (m.siape && !/^\d{5,8}$/.test(m.siape)) e.siape = 'A matrícula SIAPE tem de 5 a 8 números.';
     if (!m.consentimento_lgpd) e.consentimento_lgpd = 'Sem a ciência da pessoa sobre o uso dos dados, o cadastro não pode ser salvo.';
     const ativos = equipe.filter(x => x.status === 'ativa' && x.id !== m.id);
     const cpf = R.soDigitos(m.cpf);
     if (!e.cpf && ativos.some(x => x.cpf === cpf)) e.cpf = 'Esta pessoa já ocupa outra vaga ativa no projeto.';
     const em = String(m.email || '').trim().toLowerCase();
     if (!e.email && ativos.some(x => String(x.email).toLowerCase() === em)) e.email = 'Este e-mail já está em uso por outra pessoa ativa.';
+    if (m.papel === 'auxiliar_adm' && !m.id && ativos.some(x => x.papel === 'auxiliar_adm'))
+      e.papel = 'Já existe auxiliar administrativo ativo. Desligue antes de cadastrar outro.';
     if (R.ehBolsista(m.papel)) {
       if (!m.id && ativos.some(x => x.papel === m.papel && x.uf === m.uf))
         e.papel = 'Já existe ' + MQ.PAPEIS[m.papel].nome.toLowerCase() + ' ativa em ' + m.uf + '. Desligue antes de cadastrar outra.';
@@ -189,6 +192,7 @@
     if (!(d.fontes_agua || []).length) e.fontes_agua = 'Marque as fontes de água.';
     if (d.area_m2 != null && !(d.area_m2 > 0)) e.area_m2 = 'Área inválida.';
     if ((d.fotos_ok || 0) < 3) e.fotos = 'Faça pelo menos 3 fotos: visão geral, fonte de água e área de plantio.';
+    if (d.impacto !== undefined && MQ.impactoUI) Object.assign(e, MQ.impactoUI.validar(d.impacto));   // linha de base para medir o impacto
     if (!R.semAgua(d)) {
       if (!(d.objetivos || []).length) e.objetivos = 'Marque o objetivo do quintal.';
       if (!(d.kit || []).some(x => String(x.item || '').trim())) e.kit = 'Escolha pelo menos um item do kit.';

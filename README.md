@@ -56,9 +56,10 @@ supabase/07_fotos_equipe.sql     etapa 7: foto da equipe (sem foto, mostra as in
 supabase/08_convites.sql         etapa 8: link de cadastro, dados pessoais complementares, desligar só sem pendência
 supabase/09_dados_bancarios.sql  etapa 9: conta e Pix para a FUNCERN (só a pessoa vê; exportação registrada)
 supabase/10_apl.sql              etapa 10: arranjo produtivo local por município (usado na proposta sugerida do quintal)
-supabase/11_fic.sql              etapa 11: professores do curso FIC, turmas e matrículas (a matrícula preenche a habilitação)
+supabase/11_fic.sql              etapa 11: professores do FIC, turmas e matrículas; cadastro no Arlo e SIAPE; auxiliar administrativo (um só)
+supabase/12_pagamentos.sql       etapa 12: visita feita (implantação/acompanhamento) e solicitação de pagamento: solicita → aval → auxiliar lança no Arlo
+supabase/13_avaliacao.sql        etapa 13: visita de avaliação (5ª visita, 200 dias de campo por estado) e medidas de impacto antes × depois
 supabase/06_apagar_exemplo.sql   apaga os dados inventados
-supabase/schema.sql              versão antiga da etapa 1 (não usar; mantida para histórico)
 supabase/tests/         testes das regras do banco
 ```
 
@@ -77,7 +78,7 @@ Use o seletor "Ver como" para alternar entre coordenação geral, coordenação 
 ## Colocar em produção (cerca de 1 hora)
 
 1. **Criar o projeto no Supabase** (supabase.com, plano gratuito). Escolha a região **South America (São Paulo)** para os dados ficarem no Brasil. Crie a conta com um e-mail institucional, não pessoal, para o projeto não depender de uma pessoa.
-2. **Criar o banco:** em *SQL Editor*, rode em ordem, cada um inteiro: `01_criar_banco.sql`, `02_fichas.sql`, `03_campo.sql`, `04_vitrine_e_custos.sql`, `07_fotos_equipe.sql`, `08_convites.sql`, `09_dados_bancarios.sql`, `10_apl.sql`, `11_fic.sql`. O 02, o 03 e o 04 podem ser rodados de novo sem estragar dados. Enquanto uma etapa não for rodada, o sistema funciona e mostra "Ainda não instalado no servidor" na parte correspondente.
+2. **Criar o banco:** em *SQL Editor*, rode em ordem, cada um inteiro: `01_criar_banco.sql`, `02_fichas.sql`, `03_campo.sql`, `04_vitrine_e_custos.sql`, `07_fotos_equipe.sql`, `08_convites.sql`, `09_dados_bancarios.sql`, `10_apl.sql`, `11_fic.sql`, `12_pagamentos.sql`, `13_avaliacao.sql`. O 02, o 03 e o 04 podem ser rodados de novo sem estragar dados. Enquanto uma etapa não for rodada, o sistema funciona e mostra "Ainda não instalado no servidor" na parte correspondente.
 3. **Cadastrar a coordenação geral:** o fim do `01_criar_banco.sql` tem um `insert` com os dados da coordenação geral. Confira nome, CPF, e-mail e telefone antes de rodar.
 4. **Login com senha:** em *Authentication > Sign In / Providers > Email*, **desligue "Confirm email"**. Cada pessoa cria a própria senha em "Primeiro acesso", e o banco só aceita e-mails já cadastrados pela coordenação. Assim o sistema não depende de servidor de e-mail. Para "esqueci a senha": a coordenação geral apaga o usuário em *Authentication > Users* e a pessoa faz o primeiro acesso de novo (o cadastro na equipe não é afetado). No painel, cada pessoa mostra se já fez o primeiro acesso: confira logo depois de cadastrar alguém.
 5. **Ligar o sistema ao banco:** em `js/config.js`, preencha `supabaseUrl` e `supabaseAnonKey` (em *Project Settings > API*). A chave anon é pública por desenho; quem protege os dados são as regras do banco.
@@ -116,7 +117,7 @@ Para rodar os testes (PostgreSQL 16 local):
 ```bash
 createdb teste
 psql -d teste -f supabase/tests/stub_supabase.sql
-psql -d teste -f supabase/schema.sql
+psql -d teste -f supabase/tests/schema_antigo_teste.sql   # só para este teste antigo; nunca no Supabase
 psql -d teste -f supabase/tests/test_regras.sql   # 21 casos da equipe, com o resultado esperado em cada um
 # etapa 2 (em outro banco): stub, 01_criar_banco.sql com nome/CPF preenchidos, 02_fichas.sql e depois
 psql -d teste2 -f supabase/tests/test_fichas.sql  # 17 casos das fichas

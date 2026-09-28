@@ -137,7 +137,7 @@
   function painel(p) {
     const x = (S().pre || []).find(y => y.id === p.id); if (!x) return '<div class="painel-corpo"><p>Pré-cadastro não encontrado.</p></div>';
     const dl = [['Nome', x.nome], ['CPF', R.fmtCPF(x.cpf)], ['E-mail', x.email], ['Celular', x.telefone], ['Município', x.municipio], ['Organização', x.organizacao],
-      ['Cadastro no Arlo', x.cadastro_arlo ? 'Sim: dados completos e conta no Arlo' : 'Não'], ['Nome social', x.nome_social], ['Nascimento', x.data_nascimento && R.fmtData(x.data_nascimento)], ['PIS/NIS', x.nis],
+      ['Cadastro no Arlo', x.cadastro_arlo ? 'Sim: dados completos e conta no Arlo' : 'Não'], ['Matrícula SIAPE', x.siape], ['Nome social', x.nome_social], ['Nascimento', x.data_nascimento && R.fmtData(x.data_nascimento)], ['PIS/NIS', x.nis],
       ['Endereço', textoEndereco(x.endereco)], ['Socioeconômico', x.socioeconomico ? 'Respondido' : 'Não respondeu'],
       ['Termo de dados (LGPD)', 'Aceito por ela no envio'], ['Enviado em', new Date(x.enviado_em).toLocaleString('pt-BR')]].filter(l => l[1]);
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">Cadastro enviado pelo link</span><h2 id="painel-t">${E(x.nome)}</h2>
@@ -160,7 +160,7 @@
   // dados do pré-cadastro para preencher o formulário de cadastro
   function dadosPre(id) {
     const x = (S().pre || []).find(y => y.id === id); if (!x) return null;
-    return { nome: x.nome, nome_social: x.nome_social, cpf: x.cpf, email: x.email, telefone: x.telefone, municipio: x.municipio || (x.endereco || {}).cidade, organizacao: x.organizacao,
+    return { nome: x.nome, nome_social: x.nome_social, siape: x.siape || null, cpf: x.cpf, email: x.email, telefone: x.telefone, municipio: x.municipio || (x.endereco || {}).cidade, organizacao: x.organizacao,
       consentimento_lgpd: true, _pre: x, cadastro_arlo: !!x.cadastro_arlo, _priv: { cadastro_arlo: !!x.cadastro_arlo, data_nascimento: x.data_nascimento, nis: x.nis, endereco: x.endereco || {}, socioeconomico: x.socioeconomico } };
   }
 
@@ -193,7 +193,8 @@
       <div class="campo"><label for="cv-email">E-mail</label><input id="cv-email" name="email" type="email" autocomplete="email" required>
         <span class="dica">É com este e-mail que você vai entrar no sistema. Use um que você acessa sempre.</span></div>
       <div class="campos">
-        <div class="campo inteiro"><label for="cv-org">Organização ou movimento</label><input id="cv-org" name="organizacao" placeholder="Ex.: MPA, associação, sindicato"></div></div>
+        <div class="campo"><label for="cv-org">Organização ou movimento</label><input id="cv-org" name="organizacao" placeholder="Ex.: MPA, associação, sindicato"></div>
+        <div class="campo"><label for="cv-siape">Matrícula SIAPE <span class="muted">(só se for servidor(a) federal)</span></label><input id="cv-siape" name="siape" inputmode="numeric" placeholder="Deixe vazio se não for"></div></div>
       ${camposPessoais({}, true, c.papel)}
       <label class="check"><input type="checkbox" name="consentimento_lgpd"> <span>Autorizo o projeto (IFRN, MDA, MPA e FUNCERN) a usar estes dados para o meu cadastro na equipe, o pagamento e a prestação de contas, conforme a Lei nº 13.709/2018. Posso pedir correção a qualquer momento.</span></label>
       <div class="aviso erro" data-erro hidden></div>
@@ -220,7 +221,7 @@
     if (tipo === 'conv-enviar') {
       const d = { nome: String(fd.get('nome') || '').trim().replace(/\s+/g, ' '), cpf: R.soDigitos(fd.get('cpf')), email: String(fd.get('email') || '').trim().toLowerCase(),
         telefone: String(fd.get('telefone') || '').trim(), municipio: String(fd.get('municipio') || '').trim(), organizacao: String(fd.get('organizacao') || '').trim(),
-        consentimento_lgpd: !!fd.get('consentimento_lgpd') };
+        consentimento_lgpd: !!fd.get('consentimento_lgpd'), siape: R.soDigitos(fd.get('siape')) || null };
       Object.assign(d, lerPessoais(fd)); d.municipio = d.endereco.cidade || '';
       d._campo = R.ehCampo(PUB.conv && PUB.conv.papel);
       const erros = validarPessoais(d, true); delete d._arlo_resp; delete d._campo;
@@ -228,6 +229,7 @@
       if (!R.cpfValido(d.cpf)) erros.cpf = 'CPF inválido. Confira os números.';
       if (!R.emailValido(d.email)) erros.email = 'E-mail inválido.';
       if (!d.consentimento_lgpd) erros.consentimento_lgpd = 'É preciso autorizar para enviar.';
+      if (d.siape && !/^\d{5,8}$/.test(d.siape)) erros.siape = 'A matrícula SIAPE tem de 5 a 8 números.';
       if (Object.keys(erros).length) return U().mostrarErros(form, erros);
       await U().ocupado(form, async () => { await S().api.enviarPreCadastro(PUB.token, d); PUB.enviado = true; desenhar(); window.scrollTo(0, 0); });
     } else if (tipo === 'conv-recusar') {

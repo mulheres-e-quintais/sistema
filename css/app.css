@@ -713,3 +713,11 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 @media (max-width: 640px) { .pag-l { grid-template-columns: auto minmax(0, 1fr); } .pag-l > span:last-child { grid-column: 2; } }
 .pag-l { align-items: center; border-color: var(--line); background: var(--surface); }
 .pag-c > .btn { justify-self: start; }
+/* ---------- impacto: antes × depois ---------- */
+.tab-imp { min-width: 0; table-layout: auto; }
+.tab-imp td:first-child { width: 55%; }
+.tab-imp td:not(:first-child), .tab-imp th:not(:first-child) { text-align: center; white-space: nowrap; }
+.imp-bom { color: var(--ok); font-weight: 700; }
+.imp-ruim { color: var(--crit); font-weight: 700; }
+.impacto .ebia { display: grid; gap: 6px; }
+.impacto .ebia .criterio span:first-child { line-height: 1.35; }

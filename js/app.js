@@ -45,6 +45,11 @@
       const opcional = async fn => { try { return fn ? await fn.call(S.api) : []; } catch (e) { if (semTabela(e)) { S.campoSemBanco = true; return []; } throw e; } };
       S.visitas = await opcional(S.api.listarVisitas);
       S.diagnosticos = await opcional(S.api.listarDiagnosticos);
+      // avaliação final (13_avaliacao.sql); sem o script, o resto continua
+      S.avalSemBanco = false; S.avaliacoes = [];
+      if (S.api.listarAvaliacoes && !['professor_fic', 'auxiliar_adm'].includes(S.eu.papel)) {
+        try { S.avaliacoes = await S.api.listarAvaliacoes(); } catch (e) { if (e.semRede || !semFic(e)) throw e; S.avalSemBanco = true; }
+      }
       S.aud = /^coord/.test(S.eu.papel) ? await S.api.auditoria() : [];
       // solicitações de pagamento (12_pagamentos.sql); sem o script, o resto continua
       S.pagSemBanco = false;
@@ -167,8 +172,8 @@
         <div class="secao-cab"><h2 id="t-ct">Coordenação técnica</h2><p>Uma para os 5 estados · indicada pelo MPA · cadastrada pela coordenação geral</p></div>
         ${ct ? cartaoPessoa(ct) : vagaCoordTecnica(souGeral)}
       </section>
-      ${MQ.ficUI && !S.ficSemBanco ? MQ.ficUI.secaoEquipe() : ''}
       ${secaoAuxiliares(souGeral)}
+      ${MQ.ficUI && !S.ficSemBanco ? MQ.ficUI.secaoEquipe() : ''}
       <section class="secao" aria-labelledby="t-b">
         <div class="secao-cab"><h2 id="t-b">Bolsistas por estado</h2><p>1 de articulação e 1 de apoio por estado · cadastradas pela coordenação técnica · meta de 40 quintais por estado</p></div>
         ${quadroTabela()}${quadroCartoes()}
@@ -244,13 +249,12 @@
 
   /* ---------- auxiliar administrativo ---------- */
   function secaoAuxiliares(souGeral) {
-    const l = ativos().filter(m => m.papel === 'auxiliar_adm');
+    const aux = naVaga('auxiliar_adm'); const ant = ultimaDesligada('auxiliar_adm');
     return `<section class="secao" aria-labelledby="t-aux">
-      <div class="secao-cab"><h2 id="t-aux">Auxiliares administrativos</h2><p>IFRN · cadastrados pela coordenação geral · cadastram a equipe no Arlo e registram o Arlo e o termo</p></div>
-      ${l.map(cartaoPessoa).join('')}
-      <div class="vazio"><div>${l.length ? `<b>${l.length} auxiliar${l.length > 1 ? 'es' : ''} cadastrado${l.length > 1 ? 's' : ''}.</b> Pode cadastrar mais, se precisar.` : '<b>Nenhum auxiliar administrativo cadastrado.</b> Cadastre à mão ou gere um link para ele preencher.'}
+      <div class="secao-cab"><h2 id="t-aux">Auxiliar administrativo</h2><p>Um para o projeto · IFRN · cadastrado pela coordenação geral · cadastra a equipe no Arlo, registra o Arlo e o termo e lança os pagamentos</p></div>
+      ${aux ? cartaoPessoa(aux) : `<div class="vazio"><div><b>Vaga aberta.</b> ${ant ? `O anterior, ${esc(ant.nome)}, foi desligado em ${R.fmtData(ant.data_fim)}.` : 'Cadastre à mão ou gere um link para ele preencher.'}
         ${souGeral ? '' : '<br><span class="small">Só a coordenação geral pode fazer este cadastro.</span>'}</div>
-        ${souGeral ? '<button class="btn pri" data-acao="novo" data-papel="auxiliar_adm">Cadastrar auxiliar administrativo</button>' : ''}</div>
+        ${souGeral ? `<button class="btn pri" data-acao="novo" data-papel="auxiliar_adm" ${ant ? `data-subst="${ant.id}"` : ''}>Cadastrar auxiliar administrativo</button>` : ''}</div>`}
     </section>`;
   }
   function telaAuxiliar() {
@@ -277,7 +281,7 @@
       ${grupo('Falta cadastrar no Arlo', semArlo, 'Todos já estão no Arlo.')}
       ${grupo('No Arlo, falta registrar o termo', semTermo, 'Nenhum termo pendente.')}
       <details class="hist"><summary>Arlo e termo registrados (${ok.length})</summary><div style="padding:0 18px 16px">${ok.length ? `<div class="grade-prof">${ok.map(linha).join('')}</div>` : '<p class="muted">Ninguém ainda.</p>'}</div></details>
-      <div class="bloco"><h2>Sua habilitação</h2><p class="small muted">A sua é registrada pelo outro auxiliar ou pela coordenação geral.</p>${passos(eu)}</div>
+      <div class="bloco"><h2>Sua habilitação</h2><p class="small muted">A sua é registrada pela coordenação geral.</p>${passos(eu)}</div>
       ${MQ.pagUI ? MQ.pagUI.secaoMinha() : ''}
       <div class="bloco"><div class="cab-av">${avatar(eu, 96)}<div style="display:grid;gap:6px"><h2>Meus dados</h2>${botaoFoto(eu)}</div></div>${dadosDL(eu)}<p class="small muted">Algum dado errado? Fale com a coordenação geral.</p></div>
       ${MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
@@ -386,7 +390,7 @@
     let el = $('#painel');
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
     const p = S.painel;
-    const corpo = /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
+    const corpo = /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
     el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel" role="dialog" aria-modal="true" aria-labelledby="painel-t">${corpo}</aside>`;
     const foco = el.querySelector('[autofocus]') || el.querySelector('.fechar');
     if (foco) foco.focus();
@@ -396,7 +400,7 @@
     const subst = m.substitui_id && porId(m.substitui_id);
     const linhas = [
       m.nome_social ? ['Nome civil', m.nome] : null, m.cadastro_arlo ? ['Cadastro no Arlo', 'Sim: dados completos e conta estão no Arlo'] : null, ['CPF', R.fmtCPF(m.cpf)], ['E-mail', m.email], ['Celular', m.telefone], ['Município', m.municipio],
-      ['Organização', m.organizacao], ['Início da bolsa', R.fmtData(m.data_inicio)],
+      ['Organização', m.organizacao], m.siape ? ['Matrícula SIAPE', m.siape] : null, ['Início da bolsa', R.fmtData(m.data_inicio)],
       m.status === 'ativa' && S.api.modo === 'supabase' ? ['Acesso ao sistema', m.user_id ? 'Já criou a senha e entrou' : 'Ainda não fez o primeiro acesso'] : null,
       m.papel === 'agente' ? ['Pagamento', 'Ajuda de custo por visita (aba Custos)'] : null,
       subst ? ['Substitui', subst.nome] : null,
@@ -511,6 +515,7 @@
             <span class="dica">É o login no sistema. Ela recebe um link de acesso neste e-mail.</span></div>
           <div class="campo"><label for="c-mun">Município onde mora</label><input id="c-mun" name="municipio" value="${v('municipio')}" ${bols ? 'list="lista-mun"' : 'placeholder="Município/UF"'}>
             ${bols ? `<datalist id="lista-mun">${munis.map(x => `<option value="${esc(x)}">`).join('')}</datalist><span class="dica">A lista traz os municípios do projeto técnico em ${esc(m.uf)}.</span>` : ''}</div>
+          <div class="campo"><label for="c-siape">Matrícula SIAPE <span class="muted">(só se for servidor(a) público(a) federal)</span></label><input id="c-siape" name="siape" inputmode="numeric" value="${v('siape')}" placeholder="Deixe vazio se não for"></div>
           <div class="campo"><label for="c-org">Organização ou movimento</label><input id="c-org" name="organizacao" value="${v('organizacao')}" placeholder="${bols ? 'Ex.: MPA, associação, sindicato' : ['professor_fic', 'auxiliar_adm'].includes(m.papel) ? 'Ex.: IFRN Campus Apodi' : 'Ex.: MPA'}"></div>
         </div></fieldset>
         ${MQ.convitesUI ? (priv === undefined ? '<p class="small muted">Carregando os dados pessoais…</p>' : MQ.convitesUI.camposPessoais(Object.assign({ nome_social: m.nome_social, cadastro_arlo: p.id ? !!m.cadastro_arlo : m.cadastro_arlo }, priv || {}), false, m.papel)) : ''}
@@ -583,6 +588,7 @@
       else if (/^custo-/.test(a) && MQ.custosUI) await MQ.custosUI.clique(a, el);
       else if (/^fic-/.test(a) && MQ.ficUI) { S.voltarFoco = el; await MQ.ficUI.clique(a, el); }
       else if (/^pag-/.test(a) && MQ.pagUI) { S.voltarFoco = el; await MQ.pagUI.clique(a, el); }
+      else if (/^(aval|imp)-/.test(a) && MQ.impactoUI) { S.voltarFoco = el; await MQ.impactoUI.clique(a, el); }
       else if (/^vit-/.test(a) && MQ.vitrineUI) await MQ.vitrineUI.clique(a, el);
       else if (/^campo-/.test(a) && MQ.campoUI) { S.voltarFoco = el; await MQ.campoUI.clique(a, el); }
       else if (a === 'ver') { S.voltarFoco = el; abrirPainel({ tipo: 'detalhe', id: el.dataset.id }); }
@@ -657,6 +663,7 @@
       if (/^custo-/.test(tipo) && MQ.custosUI) await MQ.custosUI.enviar(tipo, form, fd);
       if (/^fic-/.test(tipo) && MQ.ficUI) await MQ.ficUI.enviar(tipo, form, fd);
       if (/^pag-/.test(tipo) && MQ.pagUI) await MQ.pagUI.enviar(tipo, form, fd);
+      if (tipo === 'aval' && MQ.impactoUI) await MQ.impactoUI.enviar(tipo, form, fd);
       if (/^conv-/.test(tipo) && MQ.convitesUI) await MQ.convitesUI.enviar(tipo, form, fd);
       if (tipo === 'banco' && MQ.bancoUI) await MQ.bancoUI.enviar(tipo, form, fd);
       if (tipo === 'apl' && MQ.sugestaoUI) await MQ.sugestaoUI.enviar(tipo, form, fd);
@@ -668,7 +675,7 @@
           nome: String(fd.get('nome') || '').trim().replace(/\s+/g, ' '),
           cpf: R.soDigitos(fd.get('cpf') || base.cpf), email: String(fd.get('email') || '').trim(),
           telefone: String(fd.get('telefone') || ''), municipio: String(fd.get('municipio') || '').trim(),
-          organizacao: String(fd.get('organizacao') || '').trim(), data_inicio: String(fd.get('data_inicio') || ''),
+          organizacao: String(fd.get('organizacao') || '').trim(), data_inicio: String(fd.get('data_inicio') || ''), siape: R.soDigitos(fd.get('siape')) || null,
           consentimento_lgpd: !!fd.get('consentimento_lgpd')
         });
         const temPriv = MQ.convitesUI && form.querySelector('[name=data_nascimento]');
@@ -681,7 +688,7 @@
         if (Object.keys(erros).length) return mostrarErros(form, erros);
         await ocupado(form, async () => {
           if (p.id) {
-            const patch = {}; ['nome', 'nome_social', 'cadastro_arlo', 'email', 'telefone', 'municipio', 'organizacao', 'data_inicio', 'consentimento_lgpd', 'meta_diagnosticos', 'meta_quintais', 'meta_visitas']
+            const patch = {}; ['nome', 'nome_social', 'cadastro_arlo', 'siape', 'email', 'telefone', 'municipio', 'organizacao', 'data_inicio', 'consentimento_lgpd', 'meta_diagnosticos', 'meta_quintais', 'meta_visitas']
               .forEach(k => { if (k in m && (m[k] || null) !== (base[k] || null)) patch[k] = m[k]; });
             if (priv) { await S.api.salvarPrivado(p.id, priv); MQ.convitesUI.esquecerPrivado(p.id); }
             if (!Object.keys(patch).length) { await recarregar(); abrirPainel({ tipo: 'detalhe', id: p.id }); toast('Dados salvos.'); return; }

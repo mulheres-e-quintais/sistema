@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Mulheres & Quintais — sistema do projeto Quintais Produtivos
--- Esquema do banco (Supabase / PostgreSQL)
--- Rode este arquivo inteiro no SQL Editor do Supabase, uma única vez.
+-- VERSÃO ANTIGA, SÓ PARA O TESTE test_regras.sql. NÃO RODE NO SUPABASE:
+-- o banco de verdade é montado com 01, 02, 03, 04, 07, 08, 09, 10, 11, 12 e 13.
 -- =====================================================================
 -- Regras que o BANCO garante (não só a tela):
 --   * Só há 1 coordenação geral e 1 coordenação técnica ativas.

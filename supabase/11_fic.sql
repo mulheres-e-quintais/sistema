@@ -16,7 +16,7 @@
 --   * Matrícula de quem já tem visita no roteiro não é cancelada (a visita depende dela).
 --   * Quem já tem cadastro no Arlo informa só os dados básicos (nome, CPF, e-mail, celular, município);
 --     nascimento, NIS, endereço completo e dados bancários ficam no Arlo.
---   * Novo perfil: auxiliar administrativo (IFRN, sem estado), cadastrado só pela coordenação geral.
+--   * Novo perfil: auxiliar administrativo (IFRN, sem estado; um só no projeto), cadastrado só pela coordenação geral.
 --     Cadastra a equipe no Arlo (FUNCERN) e registra isso no sistema: o passo da habilitação
 --     "Cadastro no Arlo (FUNCERN)" (antes "documentos na FUNCERN") e o termo assinado.
 --     Vê os dados pessoais e, pessoa por pessoa, a conta bancária; cada consulta da conta vai
@@ -68,6 +68,9 @@ begin
   end if;
   if p_papel in ('articulacao','apoio') and exists (select 1 from public.equipe where papel = p_papel and uf = upper(p_uf) and status = 'ativa') then
     raise exception 'Esta vaga já está ocupada no estado.';
+  end if;
+  if p_papel = 'auxiliar_adm' and exists (select 1 from public.equipe where papel = 'auxiliar_adm' and status = 'ativa') then
+    raise exception 'Já há auxiliar administrativo ativo. Desligue antes de convidar outro.';
   end if;
   t := translate(encode(gen_random_bytes(18), 'base64'), '+/=', '-_');
   insert into public.convites (token, papel, uf, substitui_id, criado_por)
@@ -238,6 +241,11 @@ grant execute on function public.equipe_para_fic() to authenticated;
 -- ---------------------------------------------------------------------
 alter table public.equipe add column if not exists cadastro_arlo boolean not null default false;
 alter table public.pre_cadastros add column if not exists cadastro_arlo boolean not null default false;
+-- matrícula SIAPE (só para quem é servidor público federal; opcional)
+alter table public.equipe add column if not exists siape text;
+alter table public.pre_cadastros add column if not exists siape text;
+alter table public.equipe drop constraint if exists siape_ok;
+alter table public.equipe add constraint siape_ok check (siape is null or siape ~ '^[0-9]{5,8}$');
 
 create or replace function public.enviar_pre_cadastro(p_token text, p_dados jsonb) returns void
 language plpgsql security definer set search_path = public as $$
@@ -255,20 +263,22 @@ begin
     raise exception 'Já existe pessoa ativa na equipe com este CPF ou e-mail. Fale com a coordenação.';
   end if;
   insert into public.pre_cadastros (convite_id, papel, uf, substitui_id, nome, cpf, email, telefone, municipio, organizacao,
-                                    nome_social, data_nascimento, nis, endereco, socioeconomico, consentimento_lgpd, cadastro_arlo)
+                                    nome_social, data_nascimento, nis, endereco, socioeconomico, consentimento_lgpd, cadastro_arlo, siape)
     values (c.id, c.papel, c.uf, c.substitui_id, trim(p_dados->>'nome'), v_cpf, v_email,
             nullif(trim(p_dados->>'telefone'), ''), nullif(trim(p_dados->>'municipio'), ''), nullif(trim(p_dados->>'organizacao'), ''),
             nullif(trim(p_dados->>'nome_social'), ''), nullif(p_dados->>'data_nascimento', '')::date,
             nullif(regexp_replace(coalesce(p_dados->>'nis', ''), '\D', '', 'g'), ''),
-            coalesce(p_dados->'endereco', '{}'::jsonb), p_dados->'socioeconomico', true, v_arlo);
+            coalesce(p_dados->'endereco', '{}'::jsonb), p_dados->'socioeconomico', true, v_arlo,
+            nullif(regexp_replace(coalesce(p_dados->>'siape', ''), '\D', '', 'g'), ''));
   update public.convites set usado_em = now() where id = c.id;
 end $$;
 revoke all on function public.enviar_pre_cadastro(text, jsonb) from public;
 grant execute on function public.enviar_pre_cadastro(text, jsonb) to anon, authenticated;
 
 -- ---------------------------------------------------------------------
--- 4. Auxiliar administrativo: cadastra no Arlo e registra a habilitação
+-- 4. Auxiliar administrativo: um só; cadastra no Arlo e registra a habilitação
 -- ---------------------------------------------------------------------
+create unique index if not exists equipe_um_auxiliar on public.equipe (papel) where papel = 'auxiliar_adm' and status = 'ativa';
 create or replace function public.equipe_antes() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare so_hab text[] := array['docs_funcern_em','termo_path','termo_assinado_em','obs_habilitacao','atualizado_em'];
@@ -299,7 +309,7 @@ begin
       if old.id = public.meu_id() then
         -- no próprio cadastro só mudam o vínculo do login e a foto (pelas funções do sistema)
         if (to_jsonb(new) - array['user_id','foto_path','atualizado_em']) is distinct from (to_jsonb(old) - array['user_id','foto_path','atualizado_em']) then
-          raise exception 'A sua própria habilitação e os seus dados são registrados pelo outro auxiliar ou pela coordenação geral.';
+          raise exception 'A sua própria habilitação e os seus dados são registrados pela coordenação geral.';
         end if;
       elsif (to_jsonb(new) - so_hab) is distinct from (to_jsonb(old) - so_hab) then
         raise exception 'O auxiliar administrativo só registra o cadastro no Arlo e o termo. Dados pessoais são de quem cadastrou a pessoa.';
