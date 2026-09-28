@@ -37,6 +37,7 @@
       S.visitas = await opcional(S.api.listarVisitas);
       S.diagnosticos = await opcional(S.api.listarDiagnosticos);
       S.aud = /^coord/.test(S.eu.papel) ? await S.api.auditoria() : [];
+      S.exemplo = /^coord/.test(S.eu.papel) && S.api.contarExemplo ? await opcional(async () => [await S.api.contarExemplo()]).then(r => r[0] || 0) : 0;
       S.semRede = false;
       try { localStorage.setItem(chaveCache(), JSON.stringify({ equipe: S.equipe, fichas: S.fichas, visitas: S.visitas, diagnosticos: S.diagnosticos, aud: S.aud, em: Date.now() })); } catch (e) {}
     } catch (e) {
@@ -153,7 +154,8 @@
     else if (aba === 'custos') corpo = MQ.custosUI ? MQ.custosUI.aba() : '';
     else if (aba === 'campo') corpo = (MQ.campoUI ? MQ.campoUI.abaCoord() : '') + (MQ.vitrineUI && !S.campoSemBanco ? MQ.vitrineUI.secaoCoord() : '');
     else corpo = `<section class="secao" aria-labelledby="t-h"><h2 id="t-h">Histórico de alterações</h2>${historico()}</section>`;
-    return `<main class="wrap" id="principal">${nav}${corpo}</main>`;
+    const avisoEx = S.exemplo ? `<div class="aviso erro" role="status"><b>Este sistema está com dados de exemplo (${S.exemplo} registros inventados).</b> Servem para testar; não aparecem na vitrine pública. Antes de cadastrar a equipe e as fichas de verdade, a coordenação geral roda o arquivo 06_apagar_exemplo.sql no Supabase.</div>` : '';
+    return `<main class="wrap" id="principal">${avisoEx}${nav}${corpo}</main>`;
   }
 
 

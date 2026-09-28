@@ -163,20 +163,46 @@ create policy vitrine_arq_enviar on storage.objects for insert to authenticated
 create policy vitrine_arq_apagar on storage.objects for delete to authenticated
   using (bucket_id = 'vitrine' and public.meu_papel() in ('coord_geral','coord_tecnico'));
 
+-- >>> dados de exemplo (este bloco também vai no 05_dados_exemplo.sql)
+-- Registros fictícios de teste ficam listados aqui: somem da vitrine pública e saem com 06_apagar_exemplo.sql
+create table if not exists public.exemplo (
+  tabela  text not null,
+  id      uuid not null,
+  primary key (tabela, id)
+);
+create index if not exists exemplo_id on public.exemplo (id);
+alter table public.exemplo enable row level security;
+drop policy if exists exemplo_ler on public.exemplo;
+create policy exemplo_ler on public.exemplo for select to authenticated
+  using (public.meu_papel() in ('coord_geral','coord_tecnico'));
+grant select on public.exemplo to authenticated;
+
+-- ninguém cria login com e-mail de pessoa de exemplo
+create or replace function public.bloquear_conta_nao_cadastrada() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if not exists (select 1 from public.equipe e where lower(e.email::text) = lower(new.email::text) and e.status = 'ativa'
+                   and not exists (select 1 from public.exemplo x where x.id = e.id)) then
+    raise exception 'E-mail não cadastrado no projeto.';
+  end if;
+  return new;
+end $$;
+
 -- ---------------------------------------------------------------------
--- Números públicos: só totais. Uma função, sem acesso às tabelas.
+-- Números públicos: só totais. Uma função, sem acesso às tabelas. Dados de exemplo não entram.
 -- ---------------------------------------------------------------------
 create or replace function public.vitrine() returns jsonb
 language sql stable security definer set search_path = public as $$
   with ufs(uf) as (values ('AL'),('BA'),('PE'),('PI'),('SE')),
-  sel as (select uf, count(*) n from fichas where resultado = 'selecionada' and situacao = 'aprovada' group by uf),
-  fic as (select uf, count(*) n from fichas group by uf),
-  dg  as (select uf, count(*) n, count(*) filter (where situacao = 'aprovado') aprov from diagnosticos group by uf),
-  imp as (select uf, count(*) n from visitas where etapa = 'implantacao' and situacao = 'realizada' group by uf),
-  aco as (select uf, count(*) n from visitas where etapa = 'acompanhamento' and situacao = 'realizada' group by uf),
+  ex as (select id from exemplo),
+  sel as (select uf, count(*) n from fichas where resultado = 'selecionada' and situacao = 'aprovada' and id not in (select id from ex) group by uf),
+  fic as (select uf, count(*) n from fichas where id not in (select id from ex) group by uf),
+  dg  as (select uf, count(*) n, count(*) filter (where situacao = 'aprovado') aprov from diagnosticos where id not in (select id from ex) group by uf),
+  imp as (select uf, count(*) n from visitas where etapa = 'implantacao' and situacao = 'realizada' and id not in (select id from ex) group by uf),
+  aco as (select uf, count(*) n from visitas where etapa = 'acompanhamento' and situacao = 'realizada' and id not in (select id from ex) group by uf),
   eq  as (select count(*) filter (where papel in ('articulacao','apoio')) bolsistas,
                  count(*) filter (where papel = 'agente') agentes
-            from equipe where status = 'ativa'),
+            from equipe where status = 'ativa' and id not in (select id from ex)),
   por_uf as (
     select jsonb_agg(jsonb_build_object(
              'uf', u.uf,
@@ -193,7 +219,7 @@ language sql stable security definer set search_path = public as $$
     select coalesce(jsonb_agg(jsonb_build_object('path', v.path, 'legenda', v.legenda, 'uf', v.uf)
                               order by v.publicada_em desc), '[]'::jsonb) j
       from (select vf.* from vitrine_fotos vf join fichas f on f.id = vf.ficha_id
-             where f.consent_imagem and (f.consent_criancas or vf.sem_criancas)
+             where f.consent_imagem and (f.consent_criancas or vf.sem_criancas) and f.id not in (select id from ex)
              order by vf.publicada_em desc limit 24) v)
   select jsonb_build_object(
     'atualizado_em', now(),
@@ -201,6 +227,7 @@ language sql stable security definer set search_path = public as $$
     'equipe', (select to_jsonb(eq) from eq),
     'fotos', (select j from fotos));
 $$;
+-- <<< dados de exemplo
 
 revoke all on function public.vitrine() from public;
 grant execute on function public.vitrine() to anon, authenticated;
