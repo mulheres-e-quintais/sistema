@@ -786,3 +786,5 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
   .kit-cab { display: none; }
 }
 .kit-proj.passou .bar i { background: var(--crit); }
+.meu-cad summary b { font-weight: 600; }
+.meu-cad-in { display: grid; gap: 14px; padding: 0 14px 14px; }

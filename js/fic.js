@@ -81,8 +81,7 @@
       ${aba()}
       <div class="bloco"><h2>Habilitação para receber a bolsa</h2><p class="small muted">A FUNCERN paga a bolsa depois destes passos. Documentos, conta ou Pix: apoio administrativo.</p>${U().passos(eu)}</div>
       ${MQ.pagUI ? MQ.pagUI.secaoMinha() : ''}
-      <div class="bloco"><div class="cab-av">${U().avatar(eu, 96)}<div style="display:grid;gap:6px"><h2>Meus dados</h2>${U().botaoFoto(eu)}</div></div>${U().dadosDL(eu)}<p class="small muted">Algum dado errado? Fale com a coordenação geral, que corrige o cadastro.</p></div>
-      ${MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
+      ${U().meuCadastro(eu, 'Algum dado errado? Fale com a coordenação geral, que corrige o cadastro.')}
     </main>`;
   }
 
