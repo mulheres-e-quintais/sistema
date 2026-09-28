@@ -39,11 +39,11 @@
   /* Quem pode fazer o quê (espelha pode_gerenciar() no banco) */
   R.podeCadastrar = (meuPapel, papelAlvo) =>
     (papelAlvo === 'coord_tecnico' && meuPapel === 'coord_geral') ||
-    (R.ehBolsista(papelAlvo) && meuPapel === 'coord_tecnico');
+    ((R.ehBolsista(papelAlvo) || papelAlvo === 'agente') && meuPapel === 'coord_tecnico');
   R.podeEditarDados = R.podeCadastrar;
   R.podeEditarHabilitacao = (meuPapel, papelAlvo) =>
-    (meuPapel === 'coord_geral' && (papelAlvo === 'coord_tecnico' || R.ehBolsista(papelAlvo))) ||
-    (meuPapel === 'coord_tecnico' && R.ehBolsista(papelAlvo));
+    (meuPapel === 'coord_geral' && (papelAlvo === 'coord_tecnico' || R.ehBolsista(papelAlvo) || papelAlvo === 'agente')) ||
+    (meuPapel === 'coord_tecnico' && (R.ehBolsista(papelAlvo) || papelAlvo === 'agente'));
 
   /* Habilitação para receber bolsa: passo a passo do Guia das bolsistas */
   R.passosHabilitacao = m => [
@@ -57,7 +57,7 @@
     if (m.papel === 'coord_geral') return { cod: 'ok', rot: 'Ativa' };
     const p = R.passosHabilitacao(m);
     const faltam = p.filter(x => !x.feito).length;
-    return faltam === 0 ? { cod: 'ok', rot: 'Apta a receber bolsa' } : { cod: 'pend', rot: 'Habilitação: falta' + (faltam > 1 ? 'm ' : ' ') + faltam };
+    return faltam === 0 ? { cod: 'ok', rot: m.papel === 'agente' ? 'Apta para visitas' : 'Apta a receber bolsa' } : { cod: 'pend', rot: 'Habilitação: falta' + (faltam > 1 ? 'm ' : ' ') + faltam };
   };
 
   /* Validação do formulário. Devolve {campo: mensagem}. */
@@ -165,6 +165,41 @@
     if (/sem_agua_encaminhada/.test(s)) return 'Informe para onde ela foi encaminhada por falta de água.';
     if (/idade_minima/.test(s)) return 'Ela tem menos de 18 anos na data da ficha.';
     if (/consent_dados/.test(s)) return 'Sem a autorização de uso dos dados, a ficha não pode ser registrada.';
+    return antigo(err);
+  };
+})();
+
+/* ---------- Regras do trabalho de campo ---------- */
+(function () {
+  const R = MQ.regras;
+  R.ehCampo = p => p === 'articulacao' || p === 'apoio' || p === 'agente';
+  R.habilitado = m => !!(m && m.status === 'ativa' && m.matricula_fic_em && m.docs_funcern_em && m.termo_assinado_em);
+  /* sem água na seca (ou só carro-pipa): a visita para na Parte A */
+  R.semAgua = d => d.agua_seca === 'nao' || (Array.isArray(d.fontes_agua) && d.fontes_agua.length > 0 && d.fontes_agua.every(f => f === 'carro_pipa'));
+  R.validarDiagnostico = function (d) {
+    const e = {};
+    if (!d.data_visita) e.data_visita = 'Informe a data da visita.'; else if (d.data_visita > R.hoje()) e.data_visita = 'Data no futuro.';
+    if (d.latitude == null && String(d.sem_gps_motivo || '').trim().length < 5) e.sem_gps_motivo = 'Registre a localização ou explique por que não foi possível.';
+    if (!(d.familia || []).some(x => String(x.nome || '').trim())) e.familia = 'Registre pelo menos a própria mulher na família.';
+    if (!d.agua_seca) e.agua_seca = 'Informe se a água dá para o quintal no período seco.';
+    if (!(d.fontes_agua || []).length) e.fontes_agua = 'Marque as fontes de água.';
+    if (d.area_m2 != null && !(d.area_m2 > 0)) e.area_m2 = 'Área inválida.';
+    if ((d.fotos_ok || 0) < 3) e.fotos = 'Faça pelo menos 3 fotos: visão geral, fonte de água e área de plantio.';
+    if (!R.semAgua(d)) {
+      if (!(d.objetivos || []).length) e.objetivos = 'Marque o objetivo do quintal.';
+      if (!(d.kit || []).some(x => String(x.item || '').trim())) e.kit = 'Escolha pelo menos um item do kit.';
+      if (!d.lote) e.lote = 'Escolha o lote de implantação.';
+      if (!d.compromissos) e.compromissos = 'A beneficiária precisa concordar com os compromissos.';
+    }
+    return e;
+  };
+  const antigo = R.mensagemErro;
+  R.mensagemErro = function (err) {
+    const s = String((err && (err.message || err.details)) || err || '');
+    if (/visitas_etapa_unica/.test(s)) return 'Este quintal já tem essa visita agendada ou feita.';
+    if (/diagnosticos_ficha_id_key|diagnosticos_visita_id_key/.test(s)) return 'Este quintal já tem diagnóstico registrado.';
+    if (/gps_ou_motivo/.test(s)) return 'Registre a localização ou explique por que não foi possível.';
+    if (/sem_agua_sem_plano|com_agua_com_lote/.test(s)) return 'Sem água na seca, não há plano nem lote; com água, escolha o lote.';
     return antigo(err);
   };
 })();
