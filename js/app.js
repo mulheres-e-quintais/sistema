@@ -362,7 +362,9 @@
     const primeiro = S.modoLogin === 'primeiro';
     const aba = (id, t) => `<button type="button" data-acao="modo-login" data-m="${id}" aria-pressed="${(S.modoLogin || 'entrar') === id}">${t}</button>`;
     return `<main class="wrap entrada"><form class="login" data-form="login" novalidate>
-      <div class="login-marca"><img src="assets/isotipo.svg" alt="" width="40" height="58"><span class="eyebrow">Sistema do projeto</span></div>
+      <div class="login-marca"><img src="assets/isotipo.svg" alt="" width="40" height="58"><span class="eyebrow">Mulheres &amp; Quintais</span></div>
+      <div class="lema"><p class="lema-t serif">Força de mulher que brota no quintal.</p>
+        <p class="lema-s">200 mulheres rurais em 5 estados do Nordeste plantando comida, renda e autonomia. O projeto chega aonde elas estão.</p></div>
       <div><h1>${primeiro ? 'Primeiro acesso' : 'Entrar'}</h1><p class="muted" style="margin-top:6px">${primeiro
         ? 'Crie a sua senha. Só funciona com o e-mail que a coordenação cadastrou no projeto.'
         : 'Use o e-mail que a coordenação cadastrou e a senha que você criou no primeiro acesso.'}</p></div>

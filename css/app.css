@@ -411,6 +411,9 @@ form[data-form=diag] fieldset + fieldset { margin-top: 20px; padding-top: 18px; 
 .wrap.entrada .login { margin: 0; }
 .login-marca { display: flex; align-items: center; gap: 12px; }
 .login-marca img { height: 44px; width: auto; }
+.lema { border-left: 3px solid var(--accent, #b5562b); padding: 2px 0 2px 14px; display: grid; gap: 6px; }
+.lema-t { font-size: 1.45rem; line-height: 1.2; margin: 0; color: var(--ink); }
+.lema-s { font-size: .92rem; line-height: 1.45; margin: 0; color: var(--ink-2); }
 @media (max-width: 900px) { .wrap.entrada { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-top: 20px; } .wrap.entrada .login { margin: 0 auto; } }
 .vitrine { display: grid; gap: 16px; align-content: start; min-width: 0; }
 .vitrine h2 { font-size: clamp(26px, 3.2vw, 34px); }
