@@ -955,3 +955,5 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
   .conv-etapas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
   .conv-etapas li { flex-direction: column; justify-content: center; text-align: center; gap: 4px; padding: 8px 6px; border-radius: 12px; font-size: 11.5px; line-height: 1.25; }
 }
+.modo-cad { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+.modo-cad .seg button { padding: 6px 14px; }
