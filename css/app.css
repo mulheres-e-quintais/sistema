@@ -750,3 +750,15 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .tab-plano td, .tab-plano th { padding: 10px 9px; }
 
 .aviso-acesso textarea { width: 100%; font: 14px/1.45 var(--sans); padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); color: var(--ink); resize: vertical; }
+
+/* pendências do próprio cadastro */
+.pend-faixa { background: color-mix(in srgb, var(--accent) 10%, var(--surface)); border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); }
+.pend-in { max-width: 1120px; margin: 0 auto; padding: 12px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 14px; line-height: 1.4; }
+.pend-in > span:nth-child(2) { flex: 1 1 260px; }
+.pend-ic { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-weight: 700; flex: none; }
+.pend-cons { color: var(--ink-2); }
+.pend-lista { list-style: none; padding: 0; margin: 0 0 18px; display: grid; gap: 10px; }
+.pend-item { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.pend-item.seu { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.pend-item p { margin: 4px 0 0; color: var(--ink-2); }
+.pend-item > div { flex: 1 1 220px; }
