@@ -72,7 +72,7 @@ begin
   if p_papel = 'auxiliar_adm' and exists (select 1 from public.equipe where papel = 'auxiliar_adm' and status = 'ativa') then
     raise exception 'Já há auxiliar administrativo ativo. Desligue antes de convidar outro.';
   end if;
-  t := translate(encode(gen_random_bytes(18), 'base64'), '+/=', '-_');
+  t := replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');   -- sem pgcrypto (no Supabase ela fica em outro schema)
   insert into public.convites (token, papel, uf, substitui_id, criado_por)
     values (t, p_papel, case when p_papel in ('coord_tecnico','professor_fic','auxiliar_adm') then null else upper(p_uf) end, p_substitui, public.meu_id());
   return t;
