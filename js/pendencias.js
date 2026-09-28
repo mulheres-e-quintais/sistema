@@ -87,8 +87,8 @@
     const l = lista() || { itens: [] };
     const cab = t => `<div class="painel-cab"><div class="t"><span class="eyebrow">Seu cadastro</span><h2 id="painel-t">${t}</h2></div>
       <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>`;
-    if (p.tipo === 'pend-banco') return cab('Conta bancária') + `<div class="painel-corpo">${MQ.bancoUI.secaoMinha()}
-      <div class="acoes"><button class="btn" data-acao="pend-ver">Voltar às pendências</button></div></div>`;
+    if (p.tipo === 'pend-banco') return cab('Conta bancária') + `<div class="painel-corpo">${MQ.bancoUI.secaoMinha(true)}
+      <div class="acoes"><button class="btn" type="button" data-acao="pend-ver">Voltar</button></div></div>`;
     if (p.tipo === 'pend-dados') return cab(l.m && l.m.cadastro_arlo ? 'Cidade onde mora' : 'Dados pessoais') + `<div class="painel-corpo">${formDados(l.m)}</div>`;
     if (!l.itens.length) return cab('Tudo em dia') + `<div class="painel-corpo"><p>Nenhuma pendência no seu cadastro.</p>
       <div class="acoes"><button class="btn pri" data-acao="fechar">Fechar</button></div></div>`;
@@ -154,12 +154,7 @@
   async function clique(a) {
     if (a === 'pend-ver') U().abrirPainel({ tipo: 'pend' });
     else if (a === 'pend-dados') U().abrirPainel({ tipo: 'pend-dados' });
-    else if (a === 'pend-banco') {
-      // a tela da pessoa já tem o bloco da conta: vai direto a ele (evita dois formulários iguais)
-      const sec = document.querySelector('main #banco-meu');
-      if (sec) { U().fecharPainel(); sec.scrollIntoView({ block: 'start', behavior: 'smooth' }); const f = sec.querySelector('select, input, button'); if (f) f.focus({ preventScroll: true }); }
-      else U().abrirPainel({ tipo: 'pend-banco' });
-    }
+    else if (a === 'pend-banco') U().abrirPainel({ tipo: 'pend-banco' });
   }
 
   MQ.pendUI = { lista, faixa, cobrar, painel, clique, enviar };

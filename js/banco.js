@@ -19,14 +19,20 @@
   }
   /* para o aviso de pendências: null = carregando, false = não informou, objeto = informou */
   function estado() { carregarMeus(); return B.meus; }
-  function secaoMinha() {
+  /* noPainel: versão do quadro de pendências (sem título próprio, ids diferentes dos da tela) */
+  function secaoMinha(noPainel) {
     carregarMeus();
-    return `<section class="bloco banco" id="banco-meu" aria-labelledby="t-banco">${corpoMinha()}</section>`;
+    return noPainel ? `<div class="banco banco-painel" data-banco-meu="painel">${corpoMinha(true)}</div>`
+      : `<section class="bloco banco" id="banco-meu" data-banco-meu="tela" aria-labelledby="t-banco">${corpoMinha()}</section>`;
   }
-  function desenhar() { const el = $('#banco-meu'); if (el) el.innerHTML = corpoMinha(); }
-  function corpoMinha() {
+  function desenhar() { document.querySelectorAll('[data-banco-meu]').forEach(el => { el.innerHTML = corpoMinha(el.dataset.bancoMeu === 'painel'); }); }
+  function corpoMinha(noPainel) {
+    const h = corpoTela(noPainel);
+    return noPainel ? h.replace(/(id|for|aria-labelledby)="(bk-|t-banco)/g, '$1="p$2') : h;
+  }
+  function corpoTela(noPainel) {
     const arlo = !!(S().eu && S().eu.cadastro_arlo); const tem = B.meus && !B.meus.erro;
-    const cab = `<div class="banco-cab"><h2 id="t-banco">Dados bancários para a FUNCERN</h2><span class="chip ${tem || arlo ? 'ok' : 'pend'}">${tem ? 'Informados' : arlo ? 'No Arlo' : 'Faltam'}</span></div>
+    const cab = noPainel ? `<p class="small muted">Preencha uma vez. Só você vê estes números; o auxiliar administrativo usa a conta para o seu cadastro no Arlo (FUNCERN), que paga ${S().eu && S().eu.papel === 'agente' ? 'a ajuda de custo' : 'a bolsa'}.</p>` : `<div class="banco-cab"><h2 id="t-banco">Dados bancários para a FUNCERN</h2><span class="chip ${tem || arlo ? 'ok' : 'pend'}">${tem ? 'Informados' : arlo ? 'No Arlo' : 'Faltam'}</span></div>
       ${arlo && !tem ? '<p class="small">Você informou que já tem cadastro no Arlo: a conta que está lá vale. Só preencha aqui se ela mudou.</p>' : ''}
       <p class="small muted">Só você vê estes números. A coordenação vê apenas se foram informados. O auxiliar administrativo usa a conta para o seu cadastro no Arlo (FUNCERN), que paga a bolsa ou a ajuda de custo.</p>`;
     if (B.meus === null) return cab + '<p class="muted">Carregando…</p>';
@@ -117,7 +123,9 @@
     if (d.pix_tipo === 'cpf' || d.pix_tipo === 'celular') d.pix_chave = R.soDigitos(d.pix_chave);
     await U().ocupado(form, async () => {
       await S().api.salvarMeusDadosBancarios(d);
-      B.meus = Object.assign({}, d, { atualizado_em: new Date().toISOString() }); B.editando = false; B.situacao = null; desenhar(); U().render(); U().toast('Dados bancários salvos.');
+      B.meus = Object.assign({}, d, { atualizado_em: new Date().toISOString() }); B.editando = false; B.situacao = null; desenhar();
+      if (S().painel && S().painel.tipo === 'pend-banco') U().abrirPainel({ tipo: 'pend' });   // veio do quadro de pendências: volta a ele
+      U().render(); U().toast('Dados bancários salvos.');
     });
   }
   document.addEventListener('change', ev => {
