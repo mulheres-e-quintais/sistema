@@ -68,6 +68,9 @@
   function aba() {
     if (!C.carregado) { setTimeout(async () => { await carregar(); U().render(); }, 0); return '<p class="carregando">Carregando…</p>'; }
     const souCoord = /^coord/.test(S().eu.papel);
+    const vis = C.visao || 'mes';
+    const nav = `<div class="seg custo-nav" role="tablist" aria-label="Visão"><button type="button" role="tab" data-acao="custo-visao" data-v="mes" aria-pressed="${vis === 'mes'}">Pagamento do mês</button><button type="button" role="tab" data-acao="custo-visao" data-v="plano" aria-pressed="${vis === 'plano'}">Proposta de roteiro</button></div>`;
+    if (vis === 'plano') return nav + planoHTML();
     C.mes = C.mes || mesHoje();
     const vs = (S().visitas || []).filter(v => v.situacao !== 'cancelada' && mesDe(v.data_realizada || v.data_prevista) === C.mes)
       .sort((a, b) => String(a.data_realizada || a.data_prevista).localeCompare(String(b.data_realizada || b.data_prevista)));
@@ -77,7 +80,7 @@
     const porPessoa = {}; feitas.forEach(l => { const id = l.v.executor_id; (porPessoa[id] = porPessoa[id] || { p: l.p, n: 0, total: 0, falta: 0 }); porPessoa[id].n++; porPessoa[id].total += l.c.total; if (!l.c.completo) porPessoa[id].falta++; });
     const semKm = feitas.filter(l => !l.c.completo).length;
     const p = C.par;
-    return `<div class="cab"><div><span class="eyebrow">Ajuda de custo</span><h1>Custo das visitas</h1>
+    return nav + `<div class="cab"><div><span class="eyebrow">Ajuda de custo</span><h1>Custo das visitas</h1>
         <p>Cada visita paga as horas de trabalho, o combustível de ida e volta e uma refeição. Confira o km de cada visita antes de pagar: sem km conferido o sistema usa uma estimativa.</p></div>
         <span class="seg" role="group" aria-label="Mês"><button type="button" data-acao="custo-mes" data-n="-1" aria-label="Mês anterior">‹</button><button type="button" aria-pressed="true">${nomeMes(C.mes)}</button><button type="button" data-acao="custo-mes" data-n="1" aria-label="Próximo mês">›</button></span></div>
       ${C.erro ? `<div class="aviso">${E(C.erro)}</div>` : ''}
@@ -144,6 +147,10 @@
   }
 
   async function clique(a, el) {
+    if (a === 'custo-visao') { C.visao = el.dataset.v; C.plano = null; U().render(); return; }
+    if (a === 'custo-plano-uf') { C.planoUF = el.dataset.uf; U().render(); return; }
+    if (a === 'custo-plano-regra') { C.refeicaoDia = !C.refeicaoDia; C.plano = null; U().render(); return; }
+    if (a === 'custo-plano-csv') { csvPlano(); return; }
     if (a === 'custo-mes') { C.mes = somaMes(C.mes || mesHoje(), +el.dataset.n); U().render(); }
     else if (a === 'custo-csv') csv();
   }
@@ -156,7 +163,7 @@
       [['valor_hora', 0, 500], ['refeicao', 0, 200], ['km_por_litro', 1, 60], ['preco_litro', 1, 20], ['fator_estrada', 1, 2]].forEach(([k, a, b]) => { if (!(novo[k] >= a && novo[k] <= b)) erros[k] = `Entre ${a} e ${b}.`; });
       Object.keys(novo.horas).forEach(k => { if (!(novo.horas[k] > 0 && novo.horas[k] <= 12)) erros['h_' + k] = 'Entre 0,5 e 12 horas.'; });
       if (Object.keys(erros).length) return U().mostrarErros(form, erros);
-      await U().ocupado(form, async () => { C.par = Object.assign({}, MQ.CUSTO_PADRAO, await S().api.salvarParametros('custo_visita', novo)); U().render(); U().toast('Valores salvos.'); });
+      await U().ocupado(form, async () => { C.par = Object.assign({}, MQ.CUSTO_PADRAO, await S().api.salvarParametros('custo_visita', novo)); C.plano = null; U().render(); U().toast('Valores salvos.'); });
     }
   }
   // simulação e km: reagem ao digitar, sem recarregar a tela
@@ -175,6 +182,138 @@
       U().toast(km == null ? 'Km apagado: volta a estimativa.' : 'Km conferido salvo.');
     } catch (e) { U().toast(e.message); }
   });
+
+
+  /* =====================================================================
+     Proposta de roteiro: quem visita cada quintal e em que viagens, para gastar menos.
+     1. Cada quintal fica com a pessoa habilitada do estado que mora mais perto (com limite de carga,
+        para ninguém ficar com o estado inteiro).
+     2. As visitas da mesma etapa são agrupadas em viagens de um dia: sai de casa, passa por
+        quintais vizinhos e volta, sem passar de 8 horas (visitas + deslocamento a 50 km/h).
+     3. Compara com fazer cada visita numa viagem separada.
+     ===================================================================== */
+  const JORNADA_H = 8, KMH = 50;
+  const ETAPAS_PLANO = [['diagnostico', 1], ['implantacao', 1], ['acompanhamento', 2]];
+  const JANELA = { diagnostico: [2, 5], implantacao: [5, 10], acompanhamento: [6, 12] };   // meses do projeto (1 = set/26), como nas metas
+  const MESES_PROJ = ['set/26', 'out/26', 'nov/26', 'dez/26', 'jan/27', 'fev/27', 'mar/27', 'abr/27', 'mai/27', 'jun/27', 'jul/27', 'ago/27', 'set/27'];
+  function origemDe(p) { return coordMun(p.uf, p.municipio); }
+  const dist = (a, b) => linhaReta(a, b) * C.par.fator_estrada;
+
+  function planejar() {
+    const par = C.par; const fichas = S().fichas || []; const equipe = (S().equipe || []).filter(m => m.status === 'ativa' && R.habilitado(m) && R.ehCampo(m.papel));
+    const feitas = new Set((S().visitas || []).filter(v => v.situacao === 'realizada').map(v => v.ficha_id + '|' + v.etapa + '|' + v.id));
+    const contaFeitas = (fid, et) => (S().visitas || []).filter(v => v.ficha_id === fid && v.etapa === et && v.situacao === 'realizada').length;
+    const res = { ufs: {}, semOrigem: [], semLocal: 0 };
+    for (const { uf } of MQ.UFS) {
+      const pessoas = equipe.filter(m => m.uf === uf).map(m => ({ m, o: origemDe(m), carga: 0 })).filter(x => { if (!x.o) res.semOrigem.push(x.m); return !!x.o; });
+      const quintais = fichas.filter(f => f.uf === uf && f.resultado === 'selecionada' && f.situacao === 'aprovada').map(f => ({ f, d: destino({ ficha_id: f.id }) })).filter(q => { if (!q.d) res.semLocal++; return !!q.d; });
+      const R0 = { uf, pessoas, quintais: quintais.length, viagens: [], visitas: 0, base: { km: 0, comb: 0, ref: 0, horas: 0 }, prop: { km: 0, comb: 0, ref: 0, horas: 0 }, porMes: {}, porPessoa: {} };
+      res.ufs[uf] = R0;
+      if (!pessoas.length || !quintais.length) continue;
+      // 1. atribuição: mais perto, com teto de carga
+      const teto = Math.ceil(quintais.length / pessoas.length * 1.6);
+      const pares = []; quintais.forEach((q, qi) => pessoas.forEach((p, pi) => pares.push([dist(p.o, q.d), qi, pi])));
+      pares.sort((a, b) => a[0] - b[0]); const dono = {};
+      for (const [, qi, pi] of pares) { if (dono[qi] != null || pessoas[pi].carga >= teto) continue; dono[qi] = pi; pessoas[pi].carga++; }
+      R0.longe = {};   // municípios cujos quintais ficam longe de quem visita
+      quintais.forEach((q, qi) => { if (dono[qi] == null) return; const km = dist(pessoas[dono[qi]].o, q.d); const k = q.f.municipio;
+        (R0.longe[k] = R0.longe[k] || { mun: k, n: 0, km: 0 }); R0.longe[k].n++; R0.longe[k].km += km; });
+      // 2. viagens por pessoa e etapa
+      pessoas.forEach((p, pi) => {
+        const meus = quintais.filter((q, qi) => dono[qi] === pi);
+        R0.porPessoa[p.m.id] = { m: p.m, quintais: meus.length, viagens: 0, total: 0 };
+        for (const [et, vezes] of ETAPAS_PLANO) for (let k = 0; k < vezes; k++) {
+          let pend = meus.filter(q => contaFeitas(q.f.id, et) <= k);
+          const h = +(par.horas[et] || 2);
+          // linha de base: uma viagem por visita
+          pend.forEach(q => { const km = 2 * dist(p.o, q.d); R0.base.km += km; R0.base.comb += km / par.km_por_litro * par.preco_litro; R0.base.ref += +par.refeicao; R0.base.horas += h; });
+          // proposta: vizinho mais próximo, enquanto couber no dia
+          while (pend.length) {
+            let atual = p.o, horasDia = 0, kmDia = 0; const parada = [];
+            while (pend.length) {
+              let mi = 0, md = Infinity; pend.forEach((q, i) => { const dd = dist(atual, q.d); if (dd < md) { md = dd; mi = i; } });
+              const volta = dist(pend[mi].d, p.o);
+              const horasSe = horasDia + h + (kmDia + md + volta) / KMH;
+              if (parada.length && horasSe > JORNADA_H) break;
+              kmDia += md; horasDia += h; atual = pend[mi].d; parada.push(pend[mi]); pend.splice(mi, 1);
+            }
+            kmDia += dist(atual, p.o);
+            const comb = kmDia / par.km_por_litro * par.preco_litro;
+            const ref = C.refeicaoDia ? +par.refeicao : +par.refeicao * parada.length;
+            const horasPag = parada.length * h;
+            const v = { uf, pessoa: p.m, etapa: et, n: parada.length, quintais: parada.map(q => q.f), km: kmDia, comb, ref, horas: horasPag, total: comb + ref + horasPag * par.valor_hora };
+            R0.viagens.push(v); R0.visitas += parada.length;
+            R0.prop.km += kmDia; R0.prop.comb += comb; R0.prop.ref += ref; R0.prop.horas += horasPag;
+            R0.porPessoa[p.m.id].viagens++; R0.porPessoa[p.m.id].total += v.total;
+          }
+        }
+      });
+      // 3. meses: espalha as viagens de cada etapa pela janela prevista nas metas
+      for (const [et] of ETAPAS_PLANO) {
+        const vs = R0.viagens.filter(v => v.etapa === et); const [ini, fim] = JANELA[et]; const nM = fim - ini + 1;
+        vs.forEach((v, i) => { const mes = ini + Math.floor(i * nM / vs.length); v.mes = mes; R0.porMes[mes] = (R0.porMes[mes] || 0) + v.total; });
+      }
+      R0.base.total = R0.base.comb + R0.base.ref + R0.base.horas * par.valor_hora;
+      R0.prop.total = R0.prop.comb + R0.prop.ref + R0.prop.horas * par.valor_hora;
+    }
+    return res;
+  }
+
+  function planoHTML() {
+    if (!C.par) return '<p class="carregando">Carregando…</p>';
+    const r = C.plano || (C.plano = planejar());
+    const ufs = Object.values(r.ufs);
+    const tot = k => ufs.reduce((s, u) => s + (u[k] ? u[k].total : 0), 0);
+    const base = tot('base'), prop = tot('prop'), eco = base - prop;
+    const nQ = ufs.reduce((s, u) => s + u.quintais, 0), nV = ufs.reduce((s, u) => s + u.visitas, 0), nT = ufs.reduce((s, u) => s + u.viagens.length, 0);
+    const meses = {}; ufs.forEach(u => Object.entries(u.porMes).forEach(([m, v]) => { meses[m] = (meses[m] || 0) + v; }));
+    const maxMes = Math.max(1, ...Object.values(meses));
+    const uf = C.planoUF || (ufs.find(u => u.viagens.length) || {}).uf || 'PI'; const U0 = r.ufs[uf];
+    return `<div class="cab"><div><span class="eyebrow">Planejamento</span><h1>Proposta de roteiro</h1>
+        <p>Cada quintal fica com a pessoa habilitada do estado que mora mais perto, e as visitas da mesma etapa são juntadas em viagens de um dia (até ${JORNADA_H} horas contando o deslocamento). É uma proposta: a bolsista ajusta ao agendar.</p></div></div>
+      ${r.semOrigem.length ? `<div class="aviso">Sem município de moradia conhecido, fora do cálculo: ${r.semOrigem.map(m => E(m.nome_social || m.nome)).join(', ')}. Corrija o município no cadastro.</div>` : ''}
+      ${r.semLocal ? `<div class="aviso">${r.semLocal} quintal(is) sem localização (nem GPS, nem município do mapa) ficaram fora.</div>` : ''}
+      <div class="resumo">
+        <div><span class="v num">${brl(prop)}</span><span class="l">custo previsto com a proposta (${nV} visitas em ${nT} viagens)</span></div>
+        <div><span class="v num">${brl(base)}</span><span class="l">se cada visita fosse uma viagem</span></div>
+        <div><span class="v num" style="color:var(--ok)">${brl(eco)}</span><span class="l">economia (${base ? Math.round(eco / base * 100) : 0}%)</span></div>
+        <div><span class="v num">${nQ ? brl(prop / nQ) : '—'}</span><span class="l">por quintal, nas ${ETAPAS_PLANO.reduce((s, e) => s + e[1], 0)} visitas</span></div></div>
+      <div class="acoes"><button class="btn peq" data-acao="custo-plano-regra">${C.refeicaoDia ? '✓ ' : ''}Pagar 1 refeição por dia de viagem (em vez de 1 por visita)</button>
+        <button class="btn peq" data-acao="custo-plano-csv">Baixar a proposta (CSV)</button></div>
+      ${C.refeicaoDia ? '<p class="small muted">Simulação: a regra atual paga 1 refeição por visita. Para valer, a coordenação precisa mudar a regra e combinar com a equipe.</p>' : ''}
+      <section class="secao"><h2>Por estado</h2><div class="quadro-scroll" style="display:block"><table class="quadro tab-plano"><thead><tr>
+          <th>Estado</th><th>Quintais</th><th>Visitas</th><th>Viagens</th><th>Km</th><th>Combustível</th><th>Refeição</th><th>Horas</th><th>Total</th><th>Sem agrupar</th></tr></thead><tbody>
+        ${ufs.map(u => `<tr><td><button class="link" data-acao="custo-plano-uf" data-uf="${u.uf}">${E(U().nomeUF(u.uf))}</button></td><td class="num">${u.quintais}</td><td class="num">${u.visitas}</td><td class="num">${u.viagens.length}</td>
+          <td class="num">${fmtN(u.prop.km)}</td><td class="num">${brl(u.prop.comb)}</td><td class="num">${brl(u.prop.ref)}</td><td class="num">${brl(u.prop.horas * C.par.valor_hora)}</td>
+          <td class="num"><b>${brl(u.prop.total || 0)}</b></td><td class="num muted">${brl(u.base.total || 0)}</td></tr>`).join('')}
+        <tr class="tot"><td><b>Total</b></td><td class="num">${nQ}</td><td class="num">${nV}</td><td class="num">${nT}</td><td class="num">${fmtN(ufs.reduce((s, u) => s + u.prop.km, 0))}</td>
+          <td class="num">${brl(ufs.reduce((s, u) => s + u.prop.comb, 0))}</td><td class="num">${brl(ufs.reduce((s, u) => s + u.prop.ref, 0))}</td><td class="num">${brl(ufs.reduce((s, u) => s + u.prop.horas, 0) * C.par.valor_hora)}</td>
+          <td class="num"><b>${brl(prop)}</b></td><td class="num muted">${brl(base)}</td></tr></tbody></table></div></section>
+      <section class="secao"><h2>Por mês</h2><p class="small muted">As viagens de cada etapa espalhadas pelo período das metas: diagnóstico out–jan, implantação jan–jun, acompanhamentos fev–set.</p>
+        <div class="barras-mes">${MESES_PROJ.map((nm, i) => { const v = meses[i + 1] || 0; return `<div class="bm"><span class="bm-v num">${v ? brl(v).replace(',00', '') : ''}</span><span class="bm-b"><i style="height:${Math.round(v / maxMes * 100)}%"></i></span><span class="bm-l">${nm}</span></div>`; }).join('')}</div></section>
+      <section class="secao"><div class="secao-cab"><h2>${E(U().nomeUF(uf))}: quem visita e as viagens</h2>
+          <span class="seg" role="group">${MQ.UFS.map(u => `<button type="button" data-acao="custo-plano-uf" data-uf="${u.uf}" aria-pressed="${u.uf === uf}">${u.uf}</button>`).join('')}</span></div>
+        ${U0 && U0.pessoas.length ? `<div class="grade-uf">${Object.values(U0.porPessoa).map(x => `<div class="bloco"><b>${E(x.m.nome_social || x.m.nome)}</b>
+            <span class="small muted">${E((MQ.PAPEIS[x.m.papel] || {}).nome)} · mora em ${E(x.m.municipio || '—')}</span>
+            <span>${x.quintais} quintais · ${x.viagens} viagens · <b>${brl(x.total)}</b></span></div>`).join('')}</div>
+          ${(() => { const l = Object.values(U0.longe || {}).map(x => Object.assign(x, { med: x.km / x.n })).filter(x => x.med > 50).sort((a, b) => b.med - a.med);
+              return l.length ? `<div class="aviso"><b>Onde vale ter alguém morando perto:</b> ${l.map(x => `${E(x.mun)} (${x.n} quintais, ${fmtN(x.med)} km de quem visita)`).join(' · ')}.
+                Cada ida e volta a mais de 50 km custa, por visita, cerca de ${brl(2 * 50 / C.par.km_por_litro * C.par.preco_litro)} ou mais só de combustível. Uma agente de campo desses municípios reduziria o custo.</div>` : ''; })()}
+          <details class="hist"><summary>Ver as ${U0.viagens.length} viagens</summary><ol class="viagens">${U0.viagens.slice().sort((a, b) => a.mes - b.mes).map(v =>
+            `<li><span class="small muted">${MESES_PROJ[v.mes - 1]} · ${E(MQ.ETAPAS_CUSTO[v.etapa])}</span><b>${E(v.pessoa.nome_social || v.pessoa.nome)}</b>: ${v.n} quinta${v.n > 1 ? 'is' : 'l'} (${E([...new Set(v.quintais.map(f => f.municipio))].join(', '))}) · ${fmtN(v.km)} km · ${brl(v.total)}</li>`).join('')}</ol></details>`
+          : '<p class="muted">Sem pessoas habilitadas com município conhecido, ou sem quintais selecionados neste estado.</p>'}</section>
+      <p class="nota">Estimativa: distância em linha reta × ${String(C.par.fator_estrada).replace('.', ',')} a partir do município onde a pessoa mora (o endereço completo ainda não entra no cálculo), ${KMH} km/h de média, carro a ${String(C.par.km_por_litro).replace('.', ',')} km/L e gasolina a ${brl(C.par.preco_litro)}. Horas pagas iguais nas duas contas; o deslocamento não é pago como hora.</p>`;
+  }
+  const fmtN = n => Math.round(n).toLocaleString('pt-BR');
+  function csvPlano() {
+    const r = C.plano || (C.plano = planejar());
+    const q = x => '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"'; const n = x => String(Math.round(x * 100) / 100).replace('.', ',');
+    const cab = ['Estado', 'Mês', 'Etapa', 'Pessoa', 'Função', 'Quintais na viagem', 'Municípios', 'Km', 'Combustível (R$)', 'Refeição (R$)', 'Horas (R$)', 'Total (R$)'];
+    const linhas = Object.values(r.ufs).flatMap(u => u.viagens.map(v => [u.uf, MESES_PROJ[v.mes - 1], MQ.ETAPAS_CUSTO[v.etapa], v.pessoa.nome, (MQ.PAPEIS[v.pessoa.papel] || {}).nome, v.n,
+      [...new Set(v.quintais.map(f => f.municipio))].join(', '), n(v.km), n(v.comb), n(v.ref), n(v.horas * C.par.valor_hora), n(v.total)].map(q).join(';')));
+    const blob = new Blob(['﻿' + [cab.map(q).join(';')].concat(linhas).join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'proposta-roteiro.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
 
   MQ.custosUI = { aba, clique, enviar, calcular: (etapa, km) => { C.par = C.par || Object.assign({}, MQ.CUSTO_PADRAO); return calcular(etapa, km); } };
 })();
