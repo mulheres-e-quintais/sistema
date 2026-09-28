@@ -139,7 +139,6 @@
       <section class="secao"><div class="secao-cab"><h2>Visitas feitas</h2><span class="small">${Object.entries(porMes).map(([m, n]) => `<b>${nomeMes(m)}</b>: ${n} dia${n > 1 ? 's' : ''} de campo`).join(' · ') || ''}</span></div>
         ${feitas.length ? `<div class="lista-fichas">${feitas.map(linha).join('')}</div>` : '<p class="muted">Nenhuma ainda.</p>'}</section>
       ${MQ.pagUI ? MQ.pagUI.secaoMinha() : ''}
-      ${U().meuCadastro(Object.assign({}, S().eu, (S().equipe || []).find(x => x.id === S().eu.id) || {}), 'Algum dado errado? Fale com a bolsista do estado ou a coordenação técnica.')}
       <p class="nota">Você vê apenas as mulheres das visitas atribuídas a você. Os dados delas são protegidos pela LGPD: não fotografe telas nem repasse informações.</p>
     </main>`;
   }

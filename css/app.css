@@ -786,5 +786,6 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
   .kit-cab { display: none; }
 }
 .kit-proj.passou .bar i { background: var(--crit); }
-.meu-cad summary b { font-weight: 600; }
-.meu-cad-in { display: grid; gap: 14px; padding: 0 14px 14px; }
+/* botão "Meus dados" (foto) na barra */
+.btn-meus { background: none; border: 2px solid rgba(246, 237, 228, .45); border-radius: 50%; padding: 0; cursor: pointer; line-height: 0; flex: none; }
+.btn-meus:hover, .btn-meus:focus-visible { border-color: var(--barra-ink); outline: none; }
