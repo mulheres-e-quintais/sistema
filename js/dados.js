@@ -156,7 +156,8 @@ MQ.CUSTO_PADRAO = {
   km_por_litro: 10,        // carro
   preco_litro: 6.50,       // gasolina, média ANP set/2026 ~R$ 6,52 (conferir no mês do pagamento)
   refeicao: 25,            // 1 refeição por visita
-  fator_estrada: 1.3       // linha reta × 1,3 ≈ distância pela estrada (estimativa)
+  fator_estrada: 1.3,      // linha reta × 1,3 ≈ distância pela estrada (estimativa)
+  teto: 180000             // orçamento das ajudas de custo de campo no projeto inteiro (R$)
 };
 MQ.ETAPAS_CUSTO = { diagnostico: 'Diagnóstico', implantacao: 'Implantação', acompanhamento: 'Acompanhamento', avaliacao: 'Avaliação' };
 

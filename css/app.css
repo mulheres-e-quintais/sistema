@@ -579,7 +579,7 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 
 /* ---------- proposta de roteiro ---------- */
 .custo-nav { justify-self: start; }
-.tab-plano { min-width: 980px; table-layout: auto; }
+.tab-plano { min-width: 900px; table-layout: auto; }
 .tab-plano td, .tab-plano th { padding: 11px 14px; white-space: nowrap; }
 .tab-plano th { font-size: 11px; letter-spacing: .05em; }
 .tab-plano th:not(:first-child), .tab-plano td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
@@ -726,3 +726,22 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .pp li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .pp li:last-child { border-bottom: 0; }
 .pp-d { color: var(--ok); min-width: 56px; text-align: right; }
+/* proposta: nomes dos estados sem cara de link, letra menor */
+.tab-plano td, .tab-plano th { font-size: 14px; }
+.tab-plano th { font-size: 11px; }
+.tab-plano .link { text-decoration: none; color: var(--ink); font-weight: 600; }
+.tab-plano .link:hover, .tab-plano .link:focus-visible { color: var(--accent); text-decoration: underline; }
+/* caber no orçamento */
+.teto { display: grid; gap: 10px; }
+.teto-cab { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.teto-cab h3 { margin: 0; }
+.teto-v { display: grid; gap: 4px; justify-items: end; }
+.teto-v .num { font: 700 26px/1 var(--serif, inherit); color: var(--accent); }
+.teto-med { display: grid; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.tm { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.tm:last-child { border-bottom: 0; }
+.tm > span:nth-child(2) { display: grid; gap: 2px; }
+.tm input { width: 18px; height: 18px; accent-color: var(--accent); }
+.tm-v { color: var(--ok); font-weight: 700; white-space: nowrap; }
+@media (max-width: 640px) { .teto-v { justify-items: start; } .tm { grid-template-columns: auto minmax(0, 1fr); } .tm-v { grid-column: 2; } }
+.tab-plano td, .tab-plano th { padding: 10px 9px; }
