@@ -30,7 +30,9 @@ MQ.PAPEIS = {
   articulacao:   { nome: 'Articulação estadual', curto: 'Articulação',    bolsa: 132000 / 5 / 12, org: 'MPA',
                    faz: 'Mobiliza as comunidades, organiza as atividades, acompanha as metas e elabora registros e relatórios.' },
   apoio:         { nome: 'Apoio estadual',       curto: 'Apoio',          bolsa: 96000 / 5 / 12, org: 'MPA',
-                   faz: 'Cuida da logística, da coleta e organização das informações, dos registros das ações e do monitoramento.' }
+                   faz: 'Cuida da logística, da coleta e organização das informações, dos registros das ações e do monitoramento.' },
+  agente:        { nome: 'Agente de campo',      curto: 'Agente',         bolsa: null, org: 'MPA',
+                   faz: 'Faz as visitas de diagnóstico, implantação e acompanhamento nos quintais atribuídos a ela, com ajuda de custo por dia de campo.' }
 };
 
 /* Motivos de cancelamento previstos no item 5 do termo de compromisso */
@@ -119,3 +121,25 @@ MQ.MARCOS = [
   { d: '2027-09-30', t: 'Fim da vigência do TED' }
 ];
 MQ.PAINEL_FINANCEIRO = 'https://claude.ai/artifact/TMjzFNUUaKkgwk7RKFrXgm';
+
+/* ---------- Trabalho de campo (Guia de viagens e ajuda de custo) ---------- */
+MQ.DIAS_CAMPO_UF = 160;            // 40 quintais x 4 visitas
+MQ.ETAPAS = {
+  diagnostico:    { nome: 'Diagnóstico e plano', curto: 'Diagnóstico', max: 1 },
+  implantacao:    { nome: 'Implantação', curto: 'Implantação', max: 1 },
+  acompanhamento: { nome: 'Acompanhamento', curto: 'Acomp.', max: 2 }
+};
+MQ.DIAG = {
+  parentesco: ['Ela mesma', 'Cônjuge/companheiro', 'Filho(a)', 'Neto(a)', 'Pai/mãe', 'Irmão(ã)', 'Outro'],
+  politicas: [['bolsa_familia', 'Bolsa Família'], ['aposentadoria', 'Aposentadoria / pensão'], ['bpc', 'BPC'], ['garantia_safra', 'Garantia-Safra'],
+              ['paa', 'PAA'], ['pnae', 'PNAE'], ['pronaf', 'Crédito Pronaf'], ['ater', 'Assistência técnica (ATER)']],
+  fontes_agua: [['cisterna_consumo', 'Cisterna de consumo'], ['cisterna_producao', 'Cisterna de produção'], ['poco', 'Poço'],
+                ['acude', 'Açude / barreiro'], ['rede', 'Rede'], ['carro_pipa', 'Carro-pipa']],
+  producao: [['hortalicas', 'Hortaliças'], ['frutiferas', 'Frutíferas'], ['medicinais', 'Plantas medicinais'], ['graos', 'Grãos / feijão / milho'],
+             ['galinhas', 'Galinhas'], ['animais', 'Porcos / cabras / ovelhas'], ['outros', 'Outros']],
+  praticas: [['compostagem', 'Faz compostagem / adubo orgânico'], ['esterco', 'Usa esterco'], ['sementes', 'Guarda sementes crioulas'],
+             ['veneno', 'Usa veneno / agrotóxico'], ['adubo_quimico', 'Usa adubo químico'], ['cobertura', 'Faz cobertura do solo']],
+  participa: [['associacao', 'Associação'], ['sindicato', 'Sindicato'], ['grupo_mulheres', 'Grupo de mulheres'], ['mpa', 'MPA'], ['cooperativa', 'Cooperativa']],
+  objetivos: [['alimentacao', 'Alimentação da família'], ['venda', 'Venda do excedente'], ['animais', 'Criação de pequenos animais'], ['medicinais', 'Plantas medicinais']],
+  fotos: [['geral', 'Visão geral do quintal'], ['agua', 'Fonte de água'], ['plantio', 'Área de plantio'], ['croqui', 'Croqui desenhado (casa, água, canteiros, árvores, animais, cerca, norte)']]
+};

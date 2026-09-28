@@ -2,7 +2,7 @@
    as mesmas regras do banco. Os dados são de exemplo. */
 (function () {
   const R = MQ.regras;
-  const CHAVE = 'mq-demo-v3';
+  const CHAVE = 'mq-demo-v4';
   let mem = null;
 
   function gerarCPF(seed) {
@@ -52,9 +52,35 @@
     aud.push({ id: k++, tabela: 'equipe', registro_id: lu.id, acao: 'UPDATE', por: ct.id, em: '2026-09-27T15:30:00.000Z',
       antes: Object.assign({}, lu, { status: 'ativa' }), depois: lu });
     const ana = lista[2], maria = lista[4];
+    const gil = b({ papel: 'agente', uf: 'PI', nome: 'Gilvânia Rocha (exemplo)', cpf: gerarCPF(812345671), email: 'gilvania.exemplo@gmail.com',
+      telefone: '(89) 99421-0077', municipio: 'Paulistana', organizacao: 'MPA – Regional Sertão do Piauí',
+      matricula_fic_em: '2026-10-02', matricula_fic_numero: '20261FIC0011', docs_funcern_em: '2026-10-03', termo_assinado_em: '2026-10-03', termo_path: 'termo_gil.pdf' });
+    const lia = b({ papel: 'agente', uf: 'PI', nome: 'Lia Moura (exemplo)', cpf: gerarCPF(823456712), email: 'lia.exemplo@gmail.com',
+      telefone: '(89) 99421-0088', municipio: 'Pio IX', organizacao: 'Sindicato de Pio IX', matricula_fic_em: '2026-10-02', matricula_fic_numero: '20261FIC0012' });
+    lista.push(gil, lia);
+    aud.push({ id: k++, tabela: 'equipe', registro_id: gil.id, acao: 'INSERT', por: ct.id, em: gil.criado_em, antes: null, depois: gil });
     const fichas = fichasExemplo(ana, maria, ct, gerarCPF);
     fichas.forEach(f => aud.push({ id: k++, tabela: 'fichas', registro_id: f.id, acao: 'INSERT', por: f.bolsista_id, em: f.criado_em, antes: null, depois: f }));
-    return { equipe: lista, fichas, auditoria: aud, eu: { coord_geral: cg.id, coord_tecnico: ct.id, bolsista: ana.id }, perfil: 'coord_geral' };
+    const aprov = fichas.filter(f => f.uf === 'PI' && f.resultado === 'selecionada' && f.situacao === 'aprovada');
+    const vis = (f, ex, data, o) => Object.assign({ id: uid(), ficha_id: f.id, uf: f.uf, etapa: 'diagnostico', executor_id: ex.id, data_prevista: data,
+      data_realizada: null, situacao: 'prevista', obs: null, criado_por: ana.id, criado_em: '2026-10-22T15:00:00.000Z', atualizado_em: '2026-10-22T15:00:00.000Z' }, o);
+    const v1 = vis(aprov[0], ana, '2026-10-26', { situacao: 'realizada', data_realizada: '2026-10-26' });
+    const v2 = vis(aprov[1], gil, '2026-10-28');
+    const v3 = vis(aprov[2], gil, '2026-11-04');
+    const diag = { id: uid(), ficha_id: aprov[0].id, visita_id: v1.id, uf: 'PI', executor_id: ana.id, data_visita: '2026-10-26', codigo_quintal: 'PI-' + aprov[0].id.slice(1, 5).toUpperCase(),
+      latitude: aprov[0].latitude, longitude: aprov[0].longitude, sem_gps_motivo: null, area_m2: 300, renda_familiar: 900, renda_quintal: 150,
+      agua_seca: 'sim', sem_agua: false, lote: 1, mes_implantacao: 'fevereiro', situacao: 'aguardando', aprovado_por: null, aprovado_em: null, obs_coordenacao: null,
+      fotos: ['exemplo'], criado_em: '2026-10-26T20:00:00.000Z', atualizado_em: '2026-10-26T20:00:00.000Z', exemplo: true,
+      dados: { familia: [{ nome: 'Francisca', idade: 46, parentesco: 'Ela mesma', ocupacao: 'Agricultora', ajuda: true }, { nome: 'José', idade: 50, parentesco: 'Cônjuge/companheiro', ocupacao: 'Agricultor', ajuda: true }, { nome: 'Ana', idade: 14, parentesco: 'Filho(a)', ocupacao: 'Estuda', ajuda: false }],
+        politicas: ['bolsa_familia', 'garantia_safra'], fonte_renda: 'Bolsa Família e venda de galinhas', terra: 'propria', cercado: 'em_parte',
+        fontes_agua: ['cisterna_consumo', 'cisterna_producao'], capacidade_litros: 52000, meses_seca: 6, distancia_m: 20, reuso: true, irrigacao: 'regador', meses_chuva: 'janeiro a abril', solo: 'arenoso',
+        producao: { hortalicas: { qtd: '4 canteiros', consumo: true, venda: true, onde: 'Feira de Paulistana' }, galinhas: { qtd: '25 cabeças', consumo: true, venda: true, onde: 'Na comunidade' } },
+        praticas: ['esterco', 'sementes'], horas_dia: 3, participa: ['associacao', 'mpa'], dificuldades: 'Falta de água em setembro e outubro; bicho come as mudas.', sonhos: 'Vender mais hortaliças na feira e ter um galinheiro fechado.',
+        objetivos: ['alimentacao', 'venda'], frase_objetivo: 'Ter verdura o ano todo e vender na feira toda semana.',
+        kit: [{ item: 'Caixa d’água 1.000 L', qtd: '1', para: 'Guardar água da cisterna para o quintal' }, { item: 'Kit de gotejamento', qtd: '1', para: 'Economizar água' }, { item: 'Tela para canteiro', qtd: '20 m', para: 'Proteger das galinhas' }],
+        cronograma: [{ oque: 'Preparar canteiros e composto', inicio: 'jan', fim: 'fev', quem: 'Francisca e José' }], compromissos: true } };
+    return { equipe: lista, fichas, visitas: [v1, v2, v3], diagnosticos: [diag], auditoria: aud,
+      eu: { coord_geral: cg.id, coord_tecnico: ct.id, bolsista: ana.id, agente: gil.id }, perfil: 'coord_geral' };
   }
 
   function fichasExemplo(ana, maria, ct, gerarCPF) {
@@ -99,7 +125,7 @@
 
   function euMesmo() {
     const d = ler();
-    const id = d.perfil === 'bolsista' ? d.eu.bolsista : d.eu[d.perfil];
+    const id = d.eu[d.perfil];
     return d.equipe.find(x => x.id === id && x.status === 'ativa') || null;
   }
   function auditar(acao, antes, depois) {
@@ -127,6 +153,7 @@
     async listarEquipe() {
       const d = ler(); const eu = euMesmo(); if (!eu) return [];
       if (eu.papel === 'coord_geral' || eu.papel === 'coord_tecnico') return copia(d.equipe);
+      if (R.ehBolsista(eu.papel)) return copia(d.equipe.filter(x => x.id === eu.id || x.uf === eu.uf));
       return copia(d.equipe.filter(x => x.id === eu.id));
     },
     async auditoria() {
@@ -173,6 +200,7 @@
     async listarFichas() {
       const d = ler(); d.fichas = d.fichas || []; const eu = euMesmo(); if (!eu) return [];
       if (/^coord/.test(eu.papel)) return copia(d.fichas);
+      if (eu.papel === 'agente') { const ids = new Set((d.visitas || []).filter(v => v.executor_id === eu.id && v.situacao !== 'cancelada').map(v => v.ficha_id)); return copia(d.fichas.filter(f => ids.has(f.id))); }
       return copia(d.fichas.filter(f => f.uf === eu.uf));
     },
     async salvarFicha(dados, fotos) {
@@ -214,6 +242,76 @@
       gravar(); return copia(f);
     },
     async linkFoto(path) { return fotosMemoria.get(path) || null; },
+
+    /* ---------- Visitas e diagnósticos (mesmas regras do 03_campo.sql) ---------- */
+    async listarVisitas() {
+      const d = ler(); d.visitas = d.visitas || []; const eu = euMesmo(); if (!eu) return [];
+      if (/^coord/.test(eu.papel)) return copia(d.visitas);
+      if (R.ehBolsista(eu.papel)) return copia(d.visitas.filter(v => v.uf === eu.uf));
+      return copia(d.visitas.filter(v => v.executor_id === eu.id));
+    },
+    async salvarVisita(v) {
+      const d = ler(); d.visitas = d.visitas || []; const eu = euMesmo();
+      const i = d.visitas.findIndex(x => x.id === v.id); const antes = i >= 0 ? d.visitas[i] : null;
+      const f = d.fichas.find(x => x.id === v.ficha_id);
+      if (!f) throw falha('Ficha não encontrada.');
+      if (!eu || !(eu.papel === 'coord_tecnico' || (R.ehBolsista(eu.papel) && f.uf === eu.uf) || (antes && antes.executor_id === eu.id))) throw falha('Seu perfil não tem permissão para esta ação.');
+      if (eu.papel === 'agente' && antes && (v.executor_id !== antes.executor_id || v.data_prevista !== antes.data_prevista || v.situacao === 'cancelada')) throw falha('O agente de campo não reagenda nem cancela visitas. Fale com a bolsista do estado.');
+      if (!(f.resultado === 'selecionada' && f.situacao === 'aprovada')) throw falha('Só há visita para mulher selecionada e aprovada pela coordenação técnica.');
+      const ex = d.equipe.find(x => x.id === v.executor_id);
+      if (!ex || ex.status !== 'ativa' || !R.ehCampo(ex.papel)) throw falha('Quem faz a visita precisa ser bolsista ou agente de campo ativa.');
+      if (ex.uf !== f.uf) throw falha('Quem faz a visita precisa ser do mesmo estado do quintal.');
+      if (v.situacao !== 'cancelada' && !R.habilitado(ex)) throw falha(ex.nome + ' ainda não está habilitada (FIC, FUNCERN e termo): a visita não poderia ser paga.');
+      if (!antes) {
+        const mesmas = d.visitas.filter(x => x.ficha_id === v.ficha_id && x.etapa === v.etapa && x.situacao !== 'cancelada').length;
+        if (mesmas >= MQ.ETAPAS[v.etapa].max) throw falha(v.etapa === 'acompanhamento' ? 'Este quintal já tem as 2 visitas de acompanhamento.' : 'Este quintal já tem essa visita agendada ou feita.');
+        if (v.etapa !== 'diagnostico' && !d.visitas.some(x => x.ficha_id === v.ficha_id && x.etapa === 'diagnostico' && x.situacao === 'realizada')) throw falha('Primeiro o diagnóstico: implantação e acompanhamento só depois dele.');
+        if (d.visitas.filter(x => x.uf === f.uf && x.situacao !== 'cancelada').length >= MQ.DIAS_CAMPO_UF) throw falha('O estado ' + f.uf + ' já usou os 160 dias de campo previstos.');
+      }
+      const agora = new Date().toISOString();
+      const n = Object.assign({}, antes || {}, v, { uf: f.uf, atualizado_em: agora, criado_em: antes ? antes.criado_em : agora, criado_por: antes ? antes.criado_por : eu.id });
+      if (!n.situacao) n.situacao = 'prevista';
+      if (i >= 0) d.visitas[i] = n; else d.visitas.push(n);
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'visitas', registro_id: n.id, acao: antes ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: antes && copia(antes), depois: copia(n) });
+      gravar(); return copia(n);
+    },
+    async listarDiagnosticos() {
+      const d = ler(); d.diagnosticos = d.diagnosticos || []; const eu = euMesmo(); if (!eu) return [];
+      if (/^coord/.test(eu.papel)) return copia(d.diagnosticos);
+      if (R.ehBolsista(eu.papel)) return copia(d.diagnosticos.filter(x => x.uf === eu.uf));
+      return copia(d.diagnosticos.filter(x => x.executor_id === eu.id));
+    },
+    async salvarDiagnostico(dados, fotos) {
+      const d = ler(); d.diagnosticos = d.diagnosticos || []; const eu = euMesmo();
+      const v = (d.visitas || []).find(x => x.id === dados.visita_id);
+      if (!v || v.etapa !== 'diagnostico' || v.ficha_id !== dados.ficha_id) throw falha('O diagnóstico precisa estar ligado à visita de diagnóstico desta mulher.');
+      if (!eu || !((R.ehBolsista(eu.papel) && v.uf === eu.uf) || v.executor_id === eu.id)) throw falha('Seu perfil não tem permissão para esta ação.');
+      const i = d.diagnosticos.findIndex(x => x.id === dados.id); const antes = i >= 0 ? d.diagnosticos[i] : null;
+      if (!antes && d.diagnosticos.some(x => x.ficha_id === dados.ficha_id)) throw falha('Este quintal já tem diagnóstico registrado.');
+      if (antes && antes.situacao === 'aprovado') throw falha('Plano já aprovado pela coordenação técnica. Peça que ela devolva para corrigir.');
+      if (dados.latitude == null && String(dados.sem_gps_motivo || '').trim().length < 5) throw falha('Registre a localização ou explique por que não foi possível.');
+      const caminhos = new Set(dados.fotos || (antes && antes.fotos) || []);
+      Object.entries(fotos || {}).forEach(([campo, blob]) => { if (!blob) return; const path = v.uf + '/' + v.ficha_id + '/diag_' + campo; fotosMemoria.set(path, URL.createObjectURL(blob)); caminhos.add(path); });
+      const agora = new Date().toISOString();
+      const n = Object.assign({}, antes || {}, dados, { uf: v.uf, executor_id: v.executor_id, fotos: [...caminhos], situacao: 'aguardando',
+        aprovado_por: antes ? antes.aprovado_por : null, aprovado_em: antes ? antes.aprovado_em : null, obs_coordenacao: antes ? antes.obs_coordenacao : null,
+        criado_em: antes ? antes.criado_em : agora, atualizado_em: agora });
+      if (i >= 0) d.diagnosticos[i] = n; else d.diagnosticos.push(n);
+      Object.assign(v, { situacao: 'realizada', data_realizada: n.data_visita, atualizado_em: agora });
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'diagnosticos', registro_id: n.id, acao: antes ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: antes && copia(antes), depois: copia(n) });
+      gravar(); return copia(n);
+    },
+    async decidirDiagnostico(id, situacao, obs) {
+      const d = ler(); const eu = euMesmo();
+      if (!eu || eu.papel !== 'coord_tecnico') throw falha('Só a coordenação técnica aprova ou devolve o plano.');
+      const i = d.diagnosticos.findIndex(x => x.id === id); if (i < 0) throw falha('Diagnóstico não encontrado.');
+      if (situacao === 'devolvido' && String(obs || '').trim().length < 5) throw falha('Para devolver, escreva o que precisa ser corrigido.');
+      const agora = new Date().toISOString(); const antes = d.diagnosticos[i];
+      d.diagnosticos[i] = Object.assign({}, antes, { situacao, obs_coordenacao: obs || null, atualizado_em: agora,
+        aprovado_por: situacao === 'aprovado' ? eu.id : null, aprovado_em: situacao === 'aprovado' ? agora : null });
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'diagnosticos', registro_id: id, acao: 'UPDATE', por: eu.id, em: agora, antes: copia(antes), depois: copia(d.diagnosticos[i]) });
+      gravar(); return copia(d.diagnosticos[i]);
+    },
 
     async desligar(id, data_fim, motivo) { return this.atualizar(id, { status: 'desligada', data_fim, motivo_desligamento: motivo }); },
 

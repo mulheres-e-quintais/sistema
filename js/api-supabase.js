@@ -110,8 +110,42 @@
       if (error) throw erro(error);
       return data;
     },
+    /* ---------- Visitas e diagnósticos ---------- */
+    async listarVisitas() {
+      const { data, error } = await sb.from('visitas').select('*').order('data_prevista');
+      if (error) throw erro(error); return data;
+    },
+    async salvarVisita(v) {
+      const r = Object.assign({}, v); ['criado_por', 'criado_em', 'atualizado_em'].forEach(k => delete r[k]);
+      const { data, error } = await sb.from('visitas').upsert(r, { onConflict: 'id' }).select().single();
+      if (error) throw erro(error); return data;
+    },
+    async listarDiagnosticos() {
+      const { data, error } = await sb.from('diagnosticos').select('*').order('data_visita', { ascending: false });
+      if (error) throw erro(error); return data;
+    },
+    async salvarDiagnostico(dados, fotos) {
+      const d = Object.assign({}, dados);
+      const caminhos = new Set(d.fotos || []);
+      for (const [campo, blob] of Object.entries(fotos || {})) {
+        if (!blob) continue;
+        const path = d.uf + '/' + d.ficha_id + '/diag_' + campo + '.jpg';
+        const { error } = await sb.storage.from('campo').upload(path, blob, { upsert: true, contentType: blob.type || 'image/jpeg' });
+        if (error) throw erro(error);
+        caminhos.add(path);
+      }
+      d.fotos = [...caminhos];
+      ['situacao', 'aprovado_por', 'aprovado_em', 'obs_coordenacao', 'executor_id', 'criado_em', 'atualizado_em'].forEach(k => delete d[k]);
+      const { data, error } = await sb.from('diagnosticos').upsert(d, { onConflict: 'id' }).select().single();
+      if (error) throw erro(error); return data;
+    },
+    async decidirDiagnostico(id, situacao, obs) {
+      const { data, error } = await sb.from('diagnosticos').update({ situacao, obs_coordenacao: obs || null }).eq('id', id).select().single();
+      if (error) throw erro(error); return data;
+    },
     async linkFoto(path) {
-      const { data, error } = await sb.storage.from('fichas').createSignedUrl(path, 600);
+      const balde = /\/diag_/.test(path) ? 'campo' : 'fichas';
+      const { data, error } = await sb.storage.from(balde).createSignedUrl(path, 600);
       if (error) throw erro(error);
       return data.signedUrl;
     },
