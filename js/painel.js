@@ -271,7 +271,8 @@
       <div class="cab"><div><span class="eyebrow">Visão geral · processo ${E(MQ.PROJETO.processo)}</span><h1>Mulheres &amp; Quintais</h1>
         <p>Mês <b class="num">${mes}</b> de 13 · vigência até ${R.fmtData(MQ.PROJETO.vigencia.fim)} (${diasFim > 0 ? 'faltam ' + diasFim + ' dias' : 'encerrada'}).</p></div>
         <div class="cab-lado">
-          <div class="linha-tempo-mini" aria-label="Meses do projeto">${MESES.map((m, i) => `<span class="${i + 1 < mes ? 'passou' : i + 1 === mes ? 'agora' : ''}" title="${m}"></span>`).join('')}</div>
+          <div class="ltm"><span class="small muted"><b>Mês ${Math.min(Math.max(mes, 1), MESES.length)} de ${MESES.length}</b> do projeto (${MESES[Math.min(Math.max(mes, 1), MESES.length) - 1]})</span>
+          <div class="linha-tempo-mini" role="img" aria-label="Mês ${mes} de ${MESES.length} do projeto">${MESES.map((m, i) => `<span class="${i + 1 < mes ? 'passou' : i + 1 === mes ? 'agora' : ''}" title="${m}"></span>`).join('')}</div></div>
           <a class="atalho" href="${E(MQ.PAINEL_FINANCEIRO)}" target="_blank" rel="noopener">
             <span class="atalho-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
             <span><b>Financeiro e entregas</b><span class="small muted">Recursos, rubricas e metas físicas</span></span>
