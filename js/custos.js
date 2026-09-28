@@ -110,7 +110,7 @@
               ${num('h_diagnostico', 'Horas · diagnóstico', p.horas.diagnostico, 0.5)}${num('h_implantacao', 'Horas · implantação', p.horas.implantacao, 0.5)}
               ${num('h_acompanhamento', 'Horas · acompanhamento', p.horas.acompanhamento, 0.5)}${num('h_avaliacao', 'Horas · avaliação', p.horas.avaliacao, 0.5)}
               ${num('km_por_litro', 'Carro: km por litro', p.km_por_litro, 0.5)}${num('preco_litro', 'Gasolina: R$ por litro', p.preco_litro, 0.01)}
-              ${num('fator_estrada', 'Fator estrada (sobre a linha reta)', p.fator_estrada, 0.05)}</div>
+              ${num('fator_estrada', 'Fator estrada (sobre a linha reta)', p.fator_estrada, 0.05)}${num('teto', 'Teto das ajudas de custo no projeto (R$)', p.teto || MQ.CUSTO_PADRAO.teto, 100)}</div>
             <p class="nota">Preço de referência: média da gasolina no país em set/2026 ficou perto de R$ 6,52 (ANP). Confira o preço do mês no estado.</p>
             <div class="aviso erro" data-erro hidden></div>
             ${souCoord ? '<div class="acoes"><button class="btn pri" type="submit">Salvar valores</button></div>' : ''}</form>
@@ -150,7 +150,9 @@
     if (a === 'custo-visao') { C.visao = el.dataset.v; C.plano = null; C.planoAtual = null; U().render(); return; }
     if (a === 'custo-plano-uf') { C.planoUF = el.dataset.uf; U().render(); return; }
     if (a === 'custo-plano-tudo') { C.planoTudo = el.dataset.v === '1'; C.plano = null; C.planoAtual = null; U().render(); return; }
-    if (a === 'custo-plano-regra') { C.refeicaoDia = !C.refeicaoDia; C.plano = null; C.planoAtual = null; U().render(); return; }
+    if (a === 'custo-medida') { C.medidas = Object.assign({}, C.medidas); const k = el.dataset.m;
+      if (k === 'locais') C.medidas.locais = C.medidas.locais ? null : (C.teto && C.teto.longe); else C.medidas[k] = !C.medidas[k];
+      C.plano = null; C.planoAtual = null; C.teto = null; U().render(); return; }
     if (a === 'custo-plano-csv') { csvPlano(); return; }
     if (a === 'custo-mes') { C.mes = somaMes(C.mes || mesHoje(), +el.dataset.n); U().render(); }
     else if (a === 'custo-csv') csv();
@@ -158,13 +160,13 @@
   async function enviar(tipo, form, fd) {
     if (tipo === 'custo-par') {
       const v = k => Number(String(fd.get(k)).replace(',', '.'));
-      const novo = { valor_hora: v('valor_hora'), refeicao: v('refeicao'), km_por_litro: v('km_por_litro'), preco_litro: v('preco_litro'), fator_estrada: v('fator_estrada'),
+      const novo = { valor_hora: v('valor_hora'), refeicao: v('refeicao'), km_por_litro: v('km_por_litro'), preco_litro: v('preco_litro'), fator_estrada: v('fator_estrada'), teto: v('teto'),
         horas: { diagnostico: v('h_diagnostico'), implantacao: v('h_implantacao'), acompanhamento: v('h_acompanhamento'), avaliacao: v('h_avaliacao') } };
       const erros = {};
-      [['valor_hora', 0, 500], ['refeicao', 0, 200], ['km_por_litro', 1, 60], ['preco_litro', 1, 20], ['fator_estrada', 1, 2]].forEach(([k, a, b]) => { if (!(novo[k] >= a && novo[k] <= b)) erros[k] = `Entre ${a} e ${b}.`; });
+      [['valor_hora', 0, 500], ['refeicao', 0, 200], ['km_por_litro', 1, 60], ['preco_litro', 1, 20], ['fator_estrada', 1, 2], ['teto', 1000, 10000000]].forEach(([k, a, b]) => { if (!(novo[k] >= a && novo[k] <= b)) erros[k] = `Entre ${a} e ${b}.`; });
       Object.keys(novo.horas).forEach(k => { if (!(novo.horas[k] > 0 && novo.horas[k] <= 12)) erros['h_' + k] = 'Entre 0,5 e 12 horas.'; });
       if (Object.keys(erros).length) return U().mostrarErros(form, erros);
-      await U().ocupado(form, async () => { C.par = Object.assign({}, MQ.CUSTO_PADRAO, await S().api.salvarParametros('custo_visita', novo)); C.plano = null; C.planoAtual = null; U().render(); U().toast('Valores salvos.'); });
+      await U().ocupado(form, async () => { C.par = Object.assign({}, MQ.CUSTO_PADRAO, await S().api.salvarParametros('custo_visita', novo)); C.plano = null; C.planoAtual = null; C.teto = null; U().render(); U().toast('Valores salvos.'); });
     }
   }
   // simulação e km: reagem ao digitar, sem recarregar a tela
@@ -199,9 +201,15 @@
   const MESES_PROJ = ['set/26', 'out/26', 'nov/26', 'dez/26', 'jan/27', 'fev/27', 'mar/27', 'abr/27', 'mai/27', 'jun/27', 'jul/27', 'ago/27', 'set/27'];
   function origemDe(p) { return coordMun(p.uf, p.municipio); }
   const dist = (a, b) => linhaReta(a, b) * C.par.fator_estrada;
+  // agente a contratar (simulação): mora na sede do município, mas as comunidades ficam longe dela; pelo menos 15 km por trecho
+  const KM_MIN_LOCAL = 15;
+  const dp = (p, x) => p.virtual ? Math.max(KM_MIN_LOCAL, dist(p.o, x)) : dist(p.o, x);
 
+  /* medidas para caber no teto: 1 refeição por dia, avaliação com 1 hora, agente morando nos municípios distantes */
+  C.medidas = C.medidas || {};
   function planejar(op) {
     op = op || { tudo: !!C.planoTudo, cont: !C.planoTudo };
+    const med = op.medidas || C.medidas;
     const par = C.par; const fichas = S().fichas || []; const equipe = (S().equipe || []).filter(m => m.status === 'ativa' && R.habilitado(m) && R.ehCampo(m.papel));
     // feitas ou já marcadas no roteiro de campo: não entram de novo na proposta
     const contaFeitas = (fid, et) => op.tudo ? 0 : (S().visitas || []).filter(v => v.ficha_id === fid && v.etapa === et && v.situacao !== 'cancelada').length;
@@ -210,13 +218,16 @@
     const res = { ufs: {}, semOrigem: [], semLocal: 0 };
     for (const { uf } of MQ.UFS) {
       const pessoas = equipe.filter(m => m.uf === uf).map(m => ({ m, o: origemDe(m), carga: 0 })).filter(x => { if (!x.o) res.semOrigem.push(x.m); return !!x.o; });
+      // simulação: uma agente a contratar morando em cada município distante
+      if (med.locais && med.locais[uf]) med.locais[uf].forEach(mun => { const o = coordMun(uf, mun);
+        if (o) pessoas.push({ m: { id: 'local-' + uf + '-' + mun, nome: 'Agente a contratar em ' + mun, papel: 'agente', uf, municipio: mun }, o, carga: 0, virtual: true }); });
       const quintais = fichas.filter(f => f.uf === uf && f.resultado === 'selecionada' && f.situacao === 'aprovada').map(f => ({ f, d: destino({ ficha_id: f.id }) })).filter(q => { if (!q.d) res.semLocal++; return !!q.d; });
       const R0 = { uf, pessoas, quintais: quintais.length, viagens: [], visitas: 0, base: { km: 0, comb: 0, ref: 0, horas: 0 }, prop: { km: 0, comb: 0, ref: 0, horas: 0 }, porMes: {}, porPessoa: {} };
       res.ufs[uf] = R0;
       if (!pessoas.length || !quintais.length) continue;
       // 1. atribuição: mais perto, com teto de carga
       const teto = Math.ceil(quintais.length / pessoas.length * 1.6);
-      const pares = []; quintais.forEach((q, qi) => pessoas.forEach((p, pi) => pares.push([dist(p.o, q.d), qi, pi])));
+      const pares = []; quintais.forEach((q, qi) => pessoas.forEach((p, pi) => pares.push([dp(p, q.d), qi, pi])));
       pares.sort((a, b) => a[0] - b[0]); const dono = {};
       // quem já visitou (ou já tem visita marcada) continua com o mesmo quintal: a mulher conhece a pessoa
       if (op.cont) quintais.forEach((q, qi) => { const ult = (S().visitas || []).filter(v => v.ficha_id === q.f.id && v.situacao !== 'cancelada' && v.executor_id)
@@ -225,7 +236,7 @@
         if (pi >= 0) { dono[qi] = pi; pessoas[pi].carga++; R0.continua = (R0.continua || 0) + 1; } });
       for (const [, qi, pi] of pares) { if (dono[qi] != null || pessoas[pi].carga >= teto) continue; dono[qi] = pi; pessoas[pi].carga++; }
       R0.longe = {};   // municípios cujos quintais ficam longe de quem visita
-      quintais.forEach((q, qi) => { if (dono[qi] == null) return; const km = dist(pessoas[dono[qi]].o, q.d); const k = q.f.municipio;
+      quintais.forEach((q, qi) => { if (dono[qi] == null) return; const km = dp(pessoas[dono[qi]], q.d); const k = q.f.municipio;
         (R0.longe[k] = R0.longe[k] || { mun: k, n: 0, km: 0 }); R0.longe[k].n++; R0.longe[k].km += km; });
       // 2. viagens por pessoa e etapa
       pessoas.forEach((p, pi) => {
@@ -233,22 +244,22 @@
         R0.porPessoa[p.m.id] = { m: p.m, quintais: meus.length, viagens: 0, total: 0 };
         for (const [et, vezes] of ETAPAS_PLANO) for (let k = 0; k < vezes; k++) {
           let pend = meus.filter(q => contaFeitas(q.f.id, et) <= k && !(et !== 'diagnostico' && semAgua.has(q.f.id)));
-          const h = +(par.horas[et] || 2);
+          const h = et === 'avaliacao' && med.avalUmaHora ? 1 : +(par.horas[et] || 2);
           // linha de base: uma viagem por visita
-          pend.forEach(q => { const km = 2 * dist(p.o, q.d); R0.base.km += km; R0.base.comb += km / par.km_por_litro * par.preco_litro; R0.base.ref += +par.refeicao; R0.base.horas += h; });
+          pend.forEach(q => { const km = 2 * dp(p, q.d); R0.base.km += km; R0.base.comb += km / par.km_por_litro * par.preco_litro; R0.base.ref += +par.refeicao; R0.base.horas += h; });
           // proposta: vizinho mais próximo, enquanto couber no dia
           while (pend.length) {
             let atual = p.o, horasDia = 0, kmDia = 0; const parada = [];
             while (pend.length) {
-              let mi = 0, md = Infinity; pend.forEach((q, i) => { const dd = dist(atual, q.d); if (dd < md) { md = dd; mi = i; } });
-              const volta = dist(pend[mi].d, p.o);
+              let mi = 0, md = Infinity; pend.forEach((q, i) => { const dd = parada.length ? dist(atual, q.d) : dp(p, q.d); if (dd < md) { md = dd; mi = i; } });
+              const volta = dp(p, pend[mi].d);
               const horasSe = horasDia + h + (kmDia + md + volta) / KMH;
               if (parada.length && horasSe > JORNADA_H) break;
               kmDia += md; horasDia += h; atual = pend[mi].d; parada.push(pend[mi]); pend.splice(mi, 1);
             }
-            kmDia += dist(atual, p.o);
+            kmDia += dp(p, atual);
             const comb = kmDia / par.km_por_litro * par.preco_litro;
-            const ref = C.refeicaoDia ? +par.refeicao : +par.refeicao * parada.length;
+            const ref = med.refeicaoDia ? +par.refeicao : +par.refeicao * parada.length;
             const horasPag = parada.length * h;
             const v = { uf, pessoa: p.m, etapa: et, n: parada.length, quintais: parada.map(q => q.f), km: kmDia, comb, ref, horas: horasPag, total: comb + ref + horasPag * par.valor_hora };
             R0.viagens.push(v); R0.visitas += parada.length;
@@ -297,9 +308,8 @@
         <div><span class="v num">${brl(base)}</span><span class="l">se cada visita fosse uma viagem</span></div>
         <div><span class="v num" style="color:var(--ok)">${brl(eco)}</span><span class="l">economia (${base ? Math.round(eco / base * 100) : 0}%)</span></div>
         <div><span class="v num">${nQ ? brl(prop / nQ) : '—'}</span><span class="l">por quintal, nas ${ETAPAS_PLANO.reduce((s, e) => s + e[1], 0)} visitas</span></div></div>
-      <div class="acoes"><button class="btn peq" data-acao="custo-plano-regra">${C.refeicaoDia ? '✓ ' : ''}Pagar 1 refeição por dia de viagem (em vez de 1 por visita)</button>
-        <button class="btn peq" data-acao="custo-plano-csv">Baixar a proposta (CSV)</button></div>
-      ${C.refeicaoDia ? '<p class="small muted">Simulação: a regra atual paga 1 refeição por visita. Para valer, a coordenação precisa mudar a regra e combinar com a equipe.</p>' : ''}
+      ${blocoTeto()}
+      <div class="acoes">        <button class="btn peq" data-acao="custo-plano-csv">Baixar a proposta (CSV)</button></div>
       <section class="secao"><h2>Por estado</h2><div class="quadro-scroll" style="display:block"><table class="quadro tab-plano"><thead><tr>
           <th>Estado</th><th>Quintais</th><th>Visitas</th><th>Viagens</th><th>Km</th><th>Combustível</th><th>Refeição</th><th>Horas pagas</th><th>Total</th><th>Sem agrupar</th></tr></thead><tbody>
         ${ufs.map(u => `<tr class="${u.visitas ? '' : 'vazia'}"><td><button class="link" data-acao="custo-plano-uf" data-uf="${u.uf}"><span class="so-largo">${E(U().nomeUF(u.uf))}</span><span class="so-cel">${u.uf}</span></button></td><td>${u.quintais}</td><td>${u.visitas}</td><td>${u.viagens.length}</td>
@@ -324,6 +334,36 @@
       <p class="nota">Estimativa: distância em linha reta × ${String(C.par.fator_estrada).replace('.', ',')} a partir do município onde a pessoa mora (o endereço completo ainda não entra no cálculo), ${KMH} km/h de média, carro a ${String(C.par.km_por_litro).replace('.', ',')} km/L e gasolina a ${brl(C.par.preco_litro)}. Horas pagas iguais nas duas contas; o deslocamento não é pago como hora.</p>`;
   }
   const fmtN = n => Math.round(n).toLocaleString('pt-BR');
+  /* ---------- caber no teto do orçamento (sempre sobre o projeto inteiro) ---------- */
+  function blocoTeto() {
+    const teto = +(C.par.teto || MQ.CUSTO_PADRAO.teto);
+    const tot = r => Object.values(r.ufs).reduce((s, u) => s + ((u.prop && u.prop.total) || 0), 0);
+    if (!C.teto) {
+      const base = planejar({ tudo: true, cont: false, medidas: {} });
+      const longe = {}; Object.values(base.ufs).forEach(u => { const l = Object.values(u.longe || {}).filter(x => x.km / x.n > 50).map(x => x.mun); if (l.length) longe[u.uf] = l; });
+      const nLonge = Object.values(longe).reduce((s, l) => s + l.length, 0);
+      const com = m => tot(planejar({ tudo: true, cont: false, medidas: m }));
+      const t0 = tot(base);
+      const escolha = { refeicaoDia: !!C.medidas.refeicaoDia, avalUmaHora: !!C.medidas.avalUmaHora, locais: C.medidas.locais ? longe : null };
+      C.teto = { t0, longe, nLonge,
+        med: [['refeicaoDia', 'Pagar 1 refeição por dia de viagem, não por visita', com({ refeicaoDia: true }), 'Muda a regra de pagamento: combinar com a equipe antes.'],
+          ['avalUmaHora', 'Avaliação final com 1 hora, não 2', com({ avalUmaHora: true }), 'O questionário leva cerca de 1 hora com a equipe treinada.'],
+          ['locais', `Agente de campo morando nos ${nLonge} município${nLonge === 1 ? '' : 's'} mais distante${nLonge === 1 ? '' : 's'}`, nLonge ? com({ locais: longe }) : t0,
+            nLonge ? 'Conta com pelo menos 15 km por trecho até a comunidade. Recrutar e formar no FIC agentes em: ' + Object.entries(longe).map(([uf, l]) => l.join(', ') + ' (' + uf + ')').join('; ') + '.' : 'Nenhum município com quintais a mais de 50 km de quem visita.']],
+        todas: com({ refeicaoDia: true, avalUmaHora: true, locais: nLonge ? longe : null }),
+        escolhidas: Object.values(escolha).some(Boolean) ? com(escolha) : t0 };
+    }
+    const T = C.teto; const ok = v => v <= teto;
+    const st = v => ok(v) ? `<span class="chip ok">dentro do teto · sobram ${brl(teto - v)}</span>` : `<span class="chip crit">acima do teto em ${brl(v - teto)}</span>`;
+    return `<div class="bloco teto"><div class="teto-cab"><div><h3>Caber no orçamento</h3><p class="small muted">Projeto inteiro (5 visitas por quintal). Teto: <b>${brl(teto)}</b>, ajustável em Pagamento do mês → Valores usados.</p></div>
+        <div class="teto-v"><span class="num">${brl(T.escolhidas)}</span>${st(T.escolhidas)}</div></div>
+      <p class="small">Sem nenhuma medida: <b>${brl(T.t0)}</b>. Marque as medidas para ver o efeito (a proposta abaixo passa a usá-las):</p>
+      <div class="teto-med">${T.med.map(([k, t, v, obs]) => `<label class="tm"><input type="checkbox" data-acao="custo-medida" data-m="${k}" ${C.medidas[k] ? 'checked' : ''} ${k === 'locais' && !T.nLonge ? 'disabled' : ''}>
+          <span><b>${E(t)}</b><span class="small muted">${E(obs)}</span></span><span class="num tm-v">− ${brl(Math.max(0, T.t0 - v))}</span></label>`).join('')}</div>
+      <p class="small">As três juntas: <b>${brl(T.todas)}</b> ${st(T.todas)}</p>
+      <p class="nota">Distâncias estimadas pelo município de quem visita. Com a equipe real cadastrada (cidade de cada uma), o valor muda: refaça a conta depois dos cadastros.</p></div>`;
+  }
+
   function csvPlano() {
     const r = C.plano || (C.plano = planejar());
     const q = x => '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"'; const n = x => String(Math.round(x * 100) / 100).replace('.', ',');
