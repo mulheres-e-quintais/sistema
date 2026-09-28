@@ -11,8 +11,16 @@
   const TIPOS_CONTA = [['corrente', 'Conta corrente'], ['poupanca', 'Poupança'], ['pagamento', 'Conta de pagamento (digital)']];
 
   /* ---------- a própria pessoa ---------- */
+  function carregarMeus() {
+    if (B.meus !== undefined) return;
+    if (!S().api.meusDadosBancarios) { B.meus = { erro: 'indisponível' }; return; }
+    B.meus = null;
+    S().api.meusDadosBancarios().then(d => { B.meus = d || false; desenhar(); U().render(); }).catch(e => { B.meus = { erro: e.message }; desenhar(); });
+  }
+  /* para o aviso de pendências: null = carregando, false = não informou, objeto = informou */
+  function estado() { carregarMeus(); return B.meus; }
   function secaoMinha() {
-    if (B.meus === undefined) { B.meus = null; S().api.meusDadosBancarios && S().api.meusDadosBancarios().then(d => { B.meus = d || false; desenhar(); }).catch(e => { B.meus = { erro: e.message }; desenhar(); }); }
+    carregarMeus();
     return `<section class="bloco banco" id="banco-meu" aria-labelledby="t-banco">${corpoMinha()}</section>`;
   }
   function desenhar() { const el = $('#banco-meu'); if (el) el.innerHTML = corpoMinha(); }
@@ -20,7 +28,7 @@
     const arlo = !!(S().eu && S().eu.cadastro_arlo); const tem = B.meus && !B.meus.erro;
     const cab = `<div class="banco-cab"><h2 id="t-banco">Dados bancários para a FUNCERN</h2><span class="chip ${tem || arlo ? 'ok' : 'pend'}">${tem ? 'Informados' : arlo ? 'No Arlo' : 'Faltam'}</span></div>
       ${arlo && !tem ? '<p class="small">Você informou que já tem cadastro no Arlo: a conta que está lá vale. Só preencha aqui se ela mudou.</p>' : ''}
-      <p class="small muted">Só você vê estes números. A coordenação vê apenas se foram informados, e a coordenação geral repassa à FUNCERN, que paga a bolsa ou a ajuda de custo.</p>`;
+      <p class="small muted">Só você vê estes números. A coordenação vê apenas se foram informados. O auxiliar administrativo usa a conta para o seu cadastro no Arlo (FUNCERN), que paga a bolsa ou a ajuda de custo.</p>`;
     if (B.meus === null) return cab + '<p class="muted">Carregando…</p>';
     if (B.meus && B.meus.erro) return cab + `<div class="aviso">${/09_dados|PGRST202|meus_dados/.test(B.meus.erro) ? 'Ainda não instalado no servidor (arquivo 09_dados_bancarios.sql).' : E(B.meus.erro)}</div>`;
     const d = B.meus || {};
@@ -109,7 +117,7 @@
     if (d.pix_tipo === 'cpf' || d.pix_tipo === 'celular') d.pix_chave = R.soDigitos(d.pix_chave);
     await U().ocupado(form, async () => {
       await S().api.salvarMeusDadosBancarios(d);
-      B.meus = Object.assign({}, d, { atualizado_em: new Date().toISOString() }); B.editando = false; B.situacao = null; desenhar(); U().toast('Dados bancários salvos.');
+      B.meus = Object.assign({}, d, { atualizado_em: new Date().toISOString() }); B.editando = false; B.situacao = null; desenhar(); U().render(); U().toast('Dados bancários salvos.');
     });
   }
   document.addEventListener('change', ev => {
@@ -119,5 +127,5 @@
   // ao sair ou trocar de perfil, esquece o que carregou
   const limpar = () => { B.meus = undefined; B.editando = false; B.situacao = null; };
 
-  MQ.bancoUI = { secaoMinha, blocoSituacao, blocoContaArlo, informou, clique, enviar, limpar };
+  MQ.bancoUI = { estado, secaoMinha, blocoSituacao, blocoContaArlo, informou, clique, enviar, limpar };
 })();

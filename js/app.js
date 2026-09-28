@@ -106,13 +106,17 @@
       h += `<div class="demo" role="status"><div class="demo-in"><span><b>Sem internet.</b> O que você preencher fica guardado neste aparelho e é enviado quando a conexão voltar.${S.cacheEm ? ' Dados de ' + new Date(S.cacheEm).toLocaleString('pt-BR') + '.' : ''}</span></div></div>`;
     if (modoDemo && S.verEntrada) h += login();
     else if (!S.eu) h += modoDemo ? '<main class="wrap"><p class="carregando">Carregando…</p></main>' : (S.api.temSessao ? semCadastro() : login());
-    else if (/^coord/.test(S.eu.papel)) h += telaCoordenacao();
-    else if (S.eu.papel === 'agente' && MQ.campoUI) h += MQ.campoUI.telaAgente();
-    else if (S.eu.papel === 'professor_fic' && MQ.ficUI) h += MQ.ficUI.telaProfessor();
-    else if (S.eu.papel === 'auxiliar_adm') h += telaAuxiliar();
-    else h += telaBolsista();
+    else {
+      if (MQ.pendUI) h += MQ.pendUI.faixa();   // pendências do próprio cadastro, em todas as telas
+      if (/^coord/.test(S.eu.papel)) h += telaCoordenacao();
+      else if (S.eu.papel === 'agente' && MQ.campoUI) h += MQ.campoUI.telaAgente();
+      else if (S.eu.papel === 'professor_fic' && MQ.ficUI) h += MQ.ficUI.telaProfessor();
+      else if (S.eu.papel === 'auxiliar_adm') h += telaAuxiliar();
+      else h += telaBolsista();
+    }
     app.innerHTML = h;
     if (S.painel) desenharPainel();
+    else if (S.eu && !S.verEntrada && MQ.pendUI) MQ.pendUI.cobrar();
   }
 
   function barra(publica) {
@@ -142,18 +146,24 @@
     return `<span class="prazo ${d <= 3 ? 'crit' : ''}">Indicação do MPA até ${R.fmtData(MQ.PROJETO.prazoIndicacao)} · ${quando} · ${vagas}</span>`;
   }
 
+  /* cada coordenação só vê os módulos do seu papel (o banco também limita o que cada uma lê e grava) */
+  const ABAS_PAPEL = {
+    coord_geral:   ['visao', 'equipe', 'selecao', 'campo', 'fic', 'pagamentos', 'custos', 'historico'],
+    coord_tecnico: ['selecao', 'equipe', 'campo', 'pagamentos', 'custos']
+  };
   function telaCoordenacao() {
     const souGeral = S.eu.papel === 'coord_geral';
     const ct = naVaga('coord_tecnico');
     const bols = ativos().filter(m => R.ehBolsista(m.papel));
     const pagaveis = ativos().filter(m => m.papel === 'coord_tecnico' || R.ehBolsista(m.papel));
     const aptas = pagaveis.filter(m => R.situacao(m).cod === 'ok').length;
-    const aba = S.aba || (souGeral ? 'visao' : 'selecao');
+    const pode = ABAS_PAPEL[S.eu.papel] || ABAS_PAPEL.coord_tecnico;
+    const aba = pode.includes(S.aba) ? S.aba : pode[0];
     const aguard = (S.fichas || []).filter(f => f.situacao === 'aguardando').length;
     const diagAguard = (S.diagnosticos || []).filter(x => x.situacao === 'aguardando').length;
     const abas = [['visao', 'Visão geral'], ['equipe', 'Equipe'], ['selecao', 'Seleção' + (aguard ? ` <span class="conta">${aguard}</span>` : '')],
       ['campo', 'Campo' + (diagAguard ? ` <span class="conta">${diagAguard}</span>` : '')], ['fic', 'Curso FIC'],
-      ['pagamentos', 'Pagamentos' + ((n => n ? ` <span class="conta">${n}</span>` : '')(MQ.pagUI ? MQ.pagUI.contaAval() : 0))], ['custos', 'Custos'], ['historico', 'Histórico']];
+      ['pagamentos', 'Pagamentos' + ((n => n ? ` <span class="conta">${n}</span>` : '')(MQ.pagUI ? MQ.pagUI.contaAval() : 0))], ['custos', 'Custos'], ['historico', 'Histórico']].filter(([id]) => pode.includes(id));
     const nav = `<nav class="abas" aria-label="Seções">${abas.map(([id, t]) => `<button type="button" data-acao="aba" data-aba="${id}" ${aba === id ? 'aria-current="page"' : ''}>${t}</button>`).join('')}</nav>`;
     const intro = souGeral
       ? 'Você cadastra a coordenação técnica indicada pelo MPA, os professores do curso FIC e os auxiliares administrativos. O auxiliar cadastra a equipe no Arlo (FUNCERN) e registra isso e o termo na habilitação; a matrícula no FIC é dos professores.'
@@ -393,7 +403,7 @@
     let el = $('#painel');
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
     const p = S.painel;
-    const corpo = /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
+    const corpo = /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
     el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel" role="dialog" aria-modal="true" aria-labelledby="painel-t">${corpo}</aside>`;
     const foco = el.querySelector('[autofocus]') || el.querySelector('.fechar');
     if (foco) foco.focus();
@@ -598,12 +608,13 @@
       else if (a === 'recomecar') { S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.recomecar(); await carregar(); render(); toast('Demonstração recomeçada com os dados de exemplo.'); }
       else if (a === 'copiar-texto') { const t = el.closest('.bloco').querySelector('textarea'); try { await navigator.clipboard.writeText(t.value); toast('Mensagem copiada.'); } catch (e) { t.select(); toast('Selecione e copie a mensagem.'); } }
       else if (a === 'modo-login') { S.modoLogin = el.dataset.m; render(); const f = $('#l-email'); if (f) f.focus(); }
-      else if (a === 'sair') { if (MQ.bancoUI) MQ.bancoUI.limpar(); await S.api.sair(); S.eu = null; S.equipe = []; render(); }
+      else if (a === 'sair') { if (MQ.bancoUI) MQ.bancoUI.limpar(); try { Object.keys(sessionStorage).filter(k => /^mq-pend-visto-/.test(k)).forEach(k => sessionStorage.removeItem(k)); } catch (e) {} S.pendVisto = false; await S.api.sair(); S.eu = null; S.equipe = []; render(); }
       else if (a === 'fechar') fecharPainel();
       else if (a === 'aba') { S.aba = el.dataset.aba; render(); window.scrollTo(0, 0); }
       else if (/^ficha/.test(a) && MQ.fichasUI) { S.voltarFoco = el; await MQ.fichasUI.clique(a, el); }
       else if (/^apl-/.test(a) && MQ.sugestaoUI) await MQ.sugestaoUI.clique(a, el);
       else if (/^banco-/.test(a) && MQ.bancoUI) await MQ.bancoUI.clique(a, el);
+      else if (/^pend-/.test(a) && MQ.pendUI) { S.voltarFoco = el; await MQ.pendUI.clique(a, el); }
       else if (/^conv-/.test(a) && MQ.convitesUI) await MQ.convitesUI.clique(a, el);
       else if (/^custo-/.test(a) && MQ.custosUI) await MQ.custosUI.clique(a, el);
       else if (/^fic-/.test(a) && MQ.ficUI) { S.voltarFoco = el; await MQ.ficUI.clique(a, el); }
@@ -678,6 +689,7 @@
         });
       }
       if (/^ficha/.test(tipo) && MQ.fichasUI) await MQ.fichasUI.enviar(tipo, form, fd);
+      if (/^pend-/.test(tipo) && MQ.pendUI) await MQ.pendUI.enviar(tipo, form, fd);
       if (/^(visita|diag)/.test(tipo) && MQ.campoUI) await MQ.campoUI.enviar(tipo, form, fd);
       if (/^vit-/.test(tipo) && MQ.vitrineUI) await MQ.vitrineUI.enviar(tipo, form, fd);
       if (/^custo-/.test(tipo) && MQ.custosUI) await MQ.custosUI.enviar(tipo, form, fd);

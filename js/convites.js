@@ -105,7 +105,7 @@
   function privado(id) {
     if (id in privCache) return privCache[id];
     privCache[id] = undefined;
-    if (S().api.lerPrivado) S().api.lerPrivado(id).then(d => { privCache[id] = d || null; if (S().painel) U().render(); }).catch(() => { privCache[id] = null; });
+    if (S().api.lerPrivado) S().api.lerPrivado(id).then(d => { privCache[id] = d || null; U().render(); }).catch(() => { privCache[id] = null; });
     return undefined;
   }
   const esquecerPrivado = id => { delete privCache[id]; };
