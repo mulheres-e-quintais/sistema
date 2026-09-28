@@ -354,7 +354,7 @@ fieldset > .fixo { margin: 0; }
 .pf-bar { height: 10px; border-radius: 5px; background: var(--surface-2); position: relative; }
 .pf-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--verde-2); border-radius: 5px; }
 .pf-v { text-align: right; white-space: nowrap; }
-.grade-uf { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.grade-uf { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
 
 /* ---------- Trabalho de campo ---------- */
 .pils { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -524,3 +524,5 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .mun-lista { display: grid; gap: 4px; font-size: 13px; }
 .mun-lista .link { text-align: left; text-decoration: none; color: var(--ink-2); display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; border-bottom: 1px dotted var(--line); }
 .mun-lista .link:hover { color: var(--accent); }
+.vagabtn .chip { white-space: normal; }
+.grade-uf .vagabtn.com-foto { min-height: 0; padding: 8px 10px; }
