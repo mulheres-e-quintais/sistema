@@ -1,6 +1,6 @@
 /* Guarda o sistema no aparelho para abrir e preencher fichas sem internet.
    Os dados vão para o servidor pela fila do próprio app quando a conexão volta. */
-const VERSAO = 'mq-v19';
+const VERSAO = 'mq-v20';
 const ARQUIVOS = ['./', 'index.html', 'css/app.css', 'js/config.js', 'js/dados.js', 'js/regras.js',
   'js/api-demo.js', 'js/api-supabase.js', 'js/fila.js', 'js/fichas.js', 'js/geo.js', 'js/painel.js', 'js/campo.js', 'js/vitrine.js', 'js/custos.js', 'js/convites.js', 'js/banco.js', 'js/app.js',
   'assets/logo-claro.svg', 'assets/isotipo.svg', 'assets/icon-192.png', 'manifest.webmanifest'];

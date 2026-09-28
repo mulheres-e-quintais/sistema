@@ -556,3 +556,7 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .al-ir { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2); border-radius: 999px; padding: 6px 10px 6px 12px; font: 500 13px var(--sans); cursor: pointer; white-space: nowrap; transition: background .15s, color .15s, border-color .15s; }
 .al-ir:hover, .al-ir:focus-visible { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 @media (max-width: 520px) { .al-ir span { display: none; } .al-ir { padding: 8px; } }
+.mc-muns { gap: 2px; }
+.mc-mun { width: 100%; display: grid; grid-template-columns: 34px minmax(0, 1fr) auto 10px; gap: 10px; align-items: center; border: 0; background: transparent; padding: 7px 6px; border-radius: 8px; font: 14px var(--sans); color: var(--ink); text-align: left; cursor: pointer; }
+.mc-mun:hover { background: var(--surface-2); }
+.mc-barra { display: flex; height: 8px; border-radius: 4px; overflow: hidden; }

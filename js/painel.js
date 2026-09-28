@@ -161,7 +161,7 @@
     const grupos = {};
     todos.forEach(x => { const k = x.f.uf + '|' + norm(x.f.municipio); (grupos[k] = grupos[k] || { k, uf: x.f.uf, mun: x.f.municipio, itens: [] }).itens.push(x); });
     const lista = Object.values(grupos).sort((a, b) => b.itens.length - a.itens.length);
-    ULTIMO.grupos = grupos; ULTIMO.foco = foco;
+    ULTIMO.grupos = grupos; ULTIMO.foco = foco; ULTIMO.geo = {};
     const baseDe = g => { const muns = MQ.GEO.mun[g.uf] || {}; const chave = Object.keys(muns).find(m => norm(m) === norm(g.mun));
       return { base: chave ? muns[chave] : (MQ.GEO.uf[g.uf] || {}).c, nome: chave || g.mun }; };
     const resumo = g => ordem.slice().reverse().map(id => [id, g.itens.filter(x => x.cat === id).length]).filter(([, q]) => q);
@@ -170,6 +170,7 @@
       marcas = lista.map(g => {
         const { base, nome } = baseDe(g); if (!base) return '';
         const [cx, cy] = px(base); const n = g.itens.length; const R = esc * ((foco ? 0.9 : 0.6) + (foco ? 0.38 : 0.33) * Math.sqrt(n));
+        ULTIMO.geo[g.k] = { cx, cy, R };
         const por = resumo(g);
         let ang = -Math.PI / 2; const fatias = por.length === 1
           ? `<circle cx="${cx}" cy="${cy}" r="${R}" fill="${CATS.find(k => k.id === por[0][0]).cor}"/>`
@@ -346,11 +347,26 @@
     const S = MQ.ui.S; S.mapaMun = ''; S.mapaUF = S.mapaUF === b.dataset.uf && b.tagName === 'path' ? '' : b.dataset.uf; MQ.ui.render();
   });
   /* clique num círculo ou ponto: cartão com as informações e o que dá para fazer */
-  function cartaoMapa(el) {
+  function cartaoMapa(el, ev) {
     const box = document.getElementById('mapa-cartao'); if (!box) return;
     const S = MQ.ui.S; const ordem = ['aprovada', 'espera', 'aguardando', 'sem_agua'];
     let html;
-    if (el.dataset.mun) {
+    // círculos sobrepostos: lista todos os municípios que estão debaixo do clique
+    let juntos = [];
+    if (el.dataset.mun && ev && el.ownerSVGElement) {
+      const svg = el.ownerSVGElement; const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+      const q = pt.matrixTransform(svg.getScreenCTM().inverse());
+      juntos = Object.entries(ULTIMO.geo || {}).filter(([, g]) => Math.hypot(q.x - g.cx, q.y - g.cy) <= g.R * 1.05).map(([k]) => k);
+    }
+    if (juntos.length > 1) {
+      const nomeDe = g => { const muns = MQ.GEO.mun[g.uf] || {}; return Object.keys(muns).find(m => norm(m) === norm(g.mun)) || g.mun; };
+      html = `<div class="mc-cab"><b>${juntos.length} municípios neste ponto</b><button class="fechar" data-acao="mapa-cartao-fechar" aria-label="Fechar">×</button></div>
+        <p class="small muted">Os círculos se sobrepõem. Escolha o município:</p>
+        <ul class="mc-lista mc-muns">${juntos.map(k => ULTIMO.grupos[k]).filter(Boolean).sort((a, b) => b.itens.length - a.itens.length).map(g => {
+          const por = ordem.map(id => [CATS.find(c => c.id === id), g.itens.filter(x => x.cat === id).length]).filter(([, q]) => q);
+          return `<li><button class="mc-mun" data-acao="mapa-mun" data-uf="${g.uf}" data-mun="${E(g.k)}"><span class="mc-barra">${por.map(([c, q]) => `<i style="background:${c.cor};flex:${q}"></i>`).join('')}</span>
+            <span>${E(nomeDe(g))}/${g.uf}</span><b class="num">${g.itens.length}</b><span aria-hidden="true">›</span></button></li>`; }).join('')}</ul>`;
+    } else if (el.dataset.mun) {
       const g = ULTIMO.grupos[el.dataset.mun]; if (!g) return;
       const muns = MQ.GEO.mun[g.uf] || {}; const nome = Object.keys(muns).find(m => norm(m) === norm(g.mun)) || g.mun;
       const por = ordem.map(id => [CATS.find(k => k.id === id), g.itens.filter(x => x.cat === id).length]).filter(([, q]) => q);
@@ -383,7 +399,7 @@
   }
   document.addEventListener('click', ev => {
     const el = ev.target.closest('[data-acao="mapa-info"]');
-    if (el) { ev.stopPropagation(); cartaoMapa(el); return; }
+    if (el) { ev.stopPropagation(); cartaoMapa(el, ev); return; }
     const box = document.getElementById('mapa-cartao');
     if (box && !box.hidden && (ev.target.closest('[data-acao="mapa-cartao-fechar"]') || !ev.target.closest('#mapa-cartao'))) box.hidden = true;
   }, true);
