@@ -6,7 +6,7 @@
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const nomeUF = uf => (MQ.UFS.find(x => x.uf === uf) || {}).nome || uf;
 
-  const S = { api: null, eu: null, equipe: [], aud: [], fichas: [], fila: [], painel: null, enviado: null };
+  const S = { api: null, eu: null, equipe: [], aud: [], fichas: [], visitas: [], diagnosticos: [], fila: [], painel: null, enviado: null };
 
   /* ---------- início ---------- */
   async function boot() {
@@ -31,25 +31,30 @@
     try {
       S.equipe = await S.api.listarEquipe();
       S.fichas = await S.api.listarFichas();
+      // se o banco ainda não tiver as tabelas de campo (03_campo.sql), o resto do sistema continua funcionando
+      const semTabela = e => !e.semRede && /PGRST205|42P01|does not exist|Could not find the table|schema cache/i.test(String((e.original && (e.original.code + ' ' + e.original.message)) || e.message));
+      const opcional = async fn => { try { return fn ? await fn.call(S.api) : []; } catch (e) { if (semTabela(e)) { S.campoSemBanco = true; return []; } throw e; } };
+      S.visitas = await opcional(S.api.listarVisitas);
+      S.diagnosticos = await opcional(S.api.listarDiagnosticos);
       S.aud = /^coord/.test(S.eu.papel) ? await S.api.auditoria() : [];
       S.semRede = false;
-      try { localStorage.setItem(chaveCache(), JSON.stringify({ equipe: S.equipe, fichas: S.fichas, aud: S.aud, em: Date.now() })); } catch (e) {}
+      try { localStorage.setItem(chaveCache(), JSON.stringify({ equipe: S.equipe, fichas: S.fichas, visitas: S.visitas, diagnosticos: S.diagnosticos, aud: S.aud, em: Date.now() })); } catch (e) {}
     } catch (e) {
       if (!e.semRede) throw e;
       // Sem internet: mostra a última cópia guardada no aparelho
       S.semRede = true;
-      try { const c = JSON.parse(localStorage.getItem(chaveCache()) || 'null'); if (c) { S.equipe = c.equipe; S.fichas = c.fichas; S.aud = c.aud; S.cacheEm = c.em; } } catch (x) {}
+      try { const c = JSON.parse(localStorage.getItem(chaveCache()) || 'null'); if (c) { S.equipe = c.equipe; S.fichas = c.fichas; S.visitas = c.visitas || []; S.diagnosticos = c.diagnosticos || []; S.aud = c.aud; S.cacheEm = c.em; } } catch (x) {}
       if (!S.equipe.length) S.equipe = [S.eu];
     }
     S.fila = await MQ.fila.listar(S.eu.id);
   }
   async function sincronizar(avisar) {
-    if (!S.eu || !R.ehBolsista(S.eu.papel) || !navigator.onLine) return;
+    if (!S.eu || !R.ehCampo(S.eu.papel) || !navigator.onLine) return;
     const antes = (await MQ.fila.listar(S.eu.id)).length; if (!antes) return;
     const r = await MQ.fila.sincronizar(S.api, S.eu.id);
     try { await carregar(); } catch (e) {}
     render();
-    if (r.enviados && avisar !== false) toast(r.enviados + (r.enviados > 1 ? ' fichas enviadas.' : ' ficha enviada.'));
+    if (r.enviados && avisar !== false) toast(r.enviados + (r.enviados > 1 ? ' registros enviados.' : ' registro enviado.'));
   }
   MQ.ui = { S, esc, nomeUF, toast: m => toast(m), render: () => render(), abrirPainel: p => abrirPainel(p), fecharPainel: () => fecharPainel(),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), sincronizar: a => sincronizar(a),
@@ -74,6 +79,7 @@
       h += `<div class="demo" role="status"><div class="demo-in"><span><b>Sem internet.</b> O que você preencher fica guardado neste aparelho e é enviado quando a conexão voltar.${S.cacheEm ? ' Dados de ' + new Date(S.cacheEm).toLocaleString('pt-BR') + '.' : ''}</span></div></div>`;
     if (!S.eu) h += modoDemo ? '<main class="wrap"><p class="carregando">Carregando…</p></main>' : (S.api.temSessao ? semCadastro() : login());
     else if (/^coord/.test(S.eu.papel)) h += telaCoordenacao();
+    else if (S.eu.papel === 'agente' && MQ.campoUI) h += MQ.campoUI.telaAgente();
     else h += telaBolsista();
     app.innerHTML = h;
     if (S.painel) desenharPainel();
@@ -92,7 +98,7 @@
     const p = S.api.perfisDemo();
     const b = (id, t) => `<button type="button" data-acao="perfil" data-p="${id}" aria-pressed="${p === id}">${t}</button>`;
     return `<div class="demo"><div class="demo-in"><span><b>Demonstração</b> com dados de exemplo, gravados só neste navegador.</span>
-      <span>Ver como: <span class="seg" role="group" aria-label="Perfil">${b('coord_geral', 'Coordenação geral')}${b('coord_tecnico', 'Coordenação técnica')}${b('bolsista', 'Bolsista')}</span></span>
+      <span>Ver como: <span class="seg" role="group" aria-label="Perfil">${b('coord_geral', 'Coordenação geral')}${b('coord_tecnico', 'Coordenação técnica')}${b('bolsista', 'Bolsista')}${b('agente', 'Agente de campo')}</span></span>
       <button class="link" data-acao="recomecar">Recomeçar demonstração</button></div></div>`;
   }
 
@@ -114,7 +120,9 @@
     const aptas = pagaveis.filter(m => R.situacao(m).cod === 'ok').length;
     const aba = S.aba || (souGeral ? 'visao' : 'selecao');
     const aguard = (S.fichas || []).filter(f => f.situacao === 'aguardando').length;
-    const abas = [['visao', 'Visão geral'], ['equipe', 'Equipe'], ['selecao', 'Seleção' + (aguard ? ` <span class="conta">${aguard}</span>` : '')], ['historico', 'Histórico']];
+    const diagAguard = (S.diagnosticos || []).filter(x => x.situacao === 'aguardando').length;
+    const abas = [['visao', 'Visão geral'], ['equipe', 'Equipe'], ['selecao', 'Seleção' + (aguard ? ` <span class="conta">${aguard}</span>` : '')],
+      ['campo', 'Campo' + (diagAguard ? ` <span class="conta">${diagAguard}</span>` : '')], ['historico', 'Histórico']];
     const nav = `<nav class="abas" aria-label="Seções">${abas.map(([id, t]) => `<button type="button" data-acao="aba" data-aba="${id}" ${aba === id ? 'aria-current="page"' : ''}>${t}</button>`).join('')}</nav>`;
     const intro = souGeral
       ? 'Você cadastra a coordenação técnica indicada pelo MPA e registra a habilitação de cada bolsista: matrícula no curso FIC, documentos na FUNCERN e termo de compromisso.'
@@ -136,8 +144,10 @@
       <section class="secao" aria-labelledby="t-b">
         <div class="secao-cab"><h2 id="t-b">Bolsistas por estado</h2><p>1 de articulação e 1 de apoio por estado · cadastradas pela coordenação técnica · meta de 40 quintais por estado</p></div>
         ${quadroTabela()}${quadroCartoes()}
-      </section>`;
+      </section>
+      ${secaoAgentes()}`;
     else if (aba === 'selecao') corpo = MQ.fichasUI ? MQ.fichasUI.secaoCoord() : '';
+    else if (aba === 'campo') corpo = MQ.campoUI ? MQ.campoUI.abaCoord() : '';
     else corpo = `<section class="secao" aria-labelledby="t-h"><h2 id="t-h">Histórico de alterações</h2>${historico()}</section>`;
     return `<main class="wrap" id="principal">${nav}${corpo}</main>`;
   }
@@ -171,6 +181,18 @@
     const quem = ant ? `Substituta de ${esc(ant.nome)}, desligada em ${R.fmtData(ant.data_fim)}` : 'Aguardando indicação do MPA';
     return `<button class="vagabtn livre" ${posso ? `data-acao="novo" data-papel="${papel}" data-uf="${uf}" ${ant ? `data-subst="${ant.id}"` : ''}` : 'disabled'}>
       <span class="add">${posso ? '+ Cadastrar ' + (ant ? 'substituta' : P[papel].curto.toLowerCase()) : 'Vaga aberta'}</span><span class="sub">${quem}</span></button>`;
+  }
+
+  function secaoAgentes() {
+    const podeCad = S.eu.papel === 'coord_tecnico';
+    const ag = ativos().filter(m => m.papel === 'agente');
+    return `<section class="secao" aria-labelledby="t-ag">
+      <div class="secao-cab"><div><h2 id="t-ag">Agentes de campo</h2><p>Alunas do FIC que fazem visitas por ajuda de custo · sem limite por estado · cadastradas pela coordenação técnica · veem só os quintais atribuídos</p></div></div>
+      <div class="grade-uf">${MQ.UFS.map(u => { const l = ag.filter(m => m.uf === u.uf);
+        return `<div class="cartao"><div class="cab-uf"><span class="uf"><span class="sigla">${u.uf}</span></span><span class="nomeuf muted">${u.nome}</span></div>
+          ${l.map(m => { const s = R.situacao(m); return `<button class="vagabtn" data-acao="ver" data-id="${m.id}"><span class="nm">${esc(m.nome)}</span><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span></button>`; }).join('') || '<p class="small muted" style="padding:4px">Nenhuma agente.</p>'}
+          ${podeCad ? `<button class="btn peq" data-acao="novo" data-papel="agente" data-uf="${u.uf}">+ Agente em ${u.uf}</button>` : ''}</div>`; }).join('')}</div>
+    </section>`;
   }
 
   function planoUF(uf) {
@@ -223,15 +245,16 @@
     return `<main class="wrap" id="principal">
       <div class="cab"><div><span class="eyebrow">${esc(P[m.papel].nome)} · ${esc(nomeUF(m.uf))}</span><h1>Olá, ${esc(m.nome.split(' ')[0])}</h1>
         <p>${esc(P[m.papel].faz)}</p></div><span class="chip ${s.cod}" style="font-size:13px;padding:4px 12px">${esc(s.rot)}</span></div>
-      <div class="bloco"><h2>Habilitação para receber a bolsa</h2><p class="small muted">A bolsa de ${R.fmtBRL(P[m.papel].bolsa)} por mês só é paga pela FUNCERN depois destes 4 passos. Dúvidas sobre matrícula e AVA: professores do curso FIC. Documentos, conta ou Pix: apoio administrativo.</p>${passos(m)}</div>
-      ${m.meta_diagnosticos != null ? `<div class="bloco"><h2>Sua previsão de atividades</h2><p class="small muted">Previsão do termo de compromisso. O trabalho de campo do estado pode ser dividido de outro jeito, combinado com a coordenação técnica.</p><div class="resumo" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+      <div class="bloco"><h2>Habilitação para receber a bolsa</h2><p class="small muted">A bolsa de ${R.fmtBRL(P[m.papel].bolsa || 0)} por mês só é paga pela FUNCERN depois destes 4 passos. Dúvidas sobre matrícula e AVA: professores do curso FIC. Documentos, conta ou Pix: apoio administrativo.</p>${passos(m)}</div>
+      ${m.meta_diagnosticos != null ? `<div class="bloco"><h2>Sua previsão de atividades</h2><p class="small muted">Previsão do termo de compromisso. O trabalho de campo do estado pode ser dividido de outro jeito, combinado com a coordenação técnica.</p><div class="resumo r3">
         <div><span class="v num">${m.meta_diagnosticos}</span><span class="l">diagnósticos (Meta 2)</span></div>
         <div><span class="v num">${m.meta_quintais}</span><span class="l">quintais implantados (Meta 3)</span></div>
         <div><span class="v num">${m.meta_visitas}</span><span class="l">visitas de acompanhamento (Meta 4)</span></div></div></div>` : ''}
       ${MQ.fichasUI ? MQ.fichasUI.secaoBolsista() : ''}
+      ${MQ.campoUI ? MQ.campoUI.secaoBolsista() : ''}
       <section class="secao"><div class="secao-cab"><h2>Próximos formulários</h2><span class="chip pend">Em preparação</span></div>
         <p class="small muted">Até entrarem no sistema, use os modelos em papel (versão 2).</p>
-        <ul class="forms">${MQ.FORMULARIOS.filter(f => f.n > 2).map(f => `<li><span class="n">${f.n}</span><b>${esc(f.nome)}</b><span class="small muted">${esc(f.quando)}</span></li>`).join('')}</ul></section>
+        <ul class="forms">${MQ.FORMULARIOS.filter(f => f.n > 3).map(f => `<li><span class="n">${f.n}</span><b>${esc(f.nome)}</b><span class="small muted">${esc(f.quando)}</span></li>`).join('')}</ul></section>
       <div class="bloco"><h2>Meus dados</h2>${dadosDL(m)}<p class="small muted">Algum dado errado? Fale com a coordenação técnica, que corrige o cadastro.</p></div>
     </main>`;
   }
@@ -267,7 +290,7 @@
     let el = $('#painel');
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
     const p = S.painel;
-    const corpo = /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
+    const corpo = /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
     el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel" role="dialog" aria-modal="true" aria-labelledby="painel-t">${corpo}</aside>`;
     const foco = el.querySelector('[autofocus]') || el.querySelector('.fechar');
     if (foco) foco.focus();
@@ -279,7 +302,7 @@
       ['CPF', R.fmtCPF(m.cpf)], ['E-mail', m.email], ['Celular', m.telefone], ['Município', m.municipio],
       ['Organização', m.organizacao], ['Início da bolsa', R.fmtData(m.data_inicio)],
       m.status === 'ativa' && S.api.modo === 'supabase' ? ['Acesso ao sistema', m.user_id ? 'Já criou a senha e entrou' : 'Ainda não fez o primeiro acesso'] : null,
-      m.papel !== 'coord_geral' ? ['Bolsa mensal', R.fmtBRL(P[m.papel].bolsa) + ' (plano de trabalho)'] : null,
+      m.papel === 'agente' ? ['Pagamento', 'Ajuda de custo por dia de campo (1 visita = 1 dia)'] : m.papel !== 'coord_geral' ? ['Bolsa mensal', R.fmtBRL(P[m.papel].bolsa) + ' (plano de trabalho)'] : null,
       subst ? ['Substitui', subst.nome] : null,
       m.status === 'desligada' ? ['Desligada em', R.fmtData(m.data_fim)] : null,
       m.status === 'desligada' ? ['Motivo', m.motivo_desligamento] : null
@@ -353,8 +376,9 @@
         <h2 id="painel-t">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(nomeUF(m.uf)) : ''}</h2></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo"><form class="f" data-form="cadastro" novalidate>
-        <div class="fixo"><span class="small muted">Bolsa mensal prevista no plano de trabalho</span><b class="num">${R.fmtBRL(P[m.papel].bolsa)}</b>
-          <span class="small">${bols ? esc(P[m.papel].faz) : 'Planeja, coordena e acompanha a execução técnica nos 5 estados.'}</span></div>
+        <div class="fixo">${m.papel === 'agente' ? '<span class="small muted">Pagamento</span><b>Ajuda de custo por dia de campo</b>' : `<span class="small muted">Bolsa mensal prevista no plano de trabalho</span><b class="num">${R.fmtBRL(P[m.papel].bolsa)}</b>`}
+          <span class="small">${P[m.papel].faz ? esc(P[m.papel].faz) : 'Planeja, coordena e acompanha a execução técnica nos 5 estados.'}</span>
+          ${m.papel === 'agente' ? '<span class="small">Precisa estar matriculada no FIC e cadastrada na FUNCERN antes da primeira visita paga. Vê só os quintais atribuídos a ela.</span>' : ''}</div>
         ${subst ? `<div class="aviso">Substitui <b>${esc(subst.nome)}</b>, desligada em ${R.fmtData(subst.data_fim)}. O histórico liga as duas.</div>` : ''}
         <fieldset><legend>Dados pessoais</legend><div class="campos">
           <div class="campo inteiro"><label for="c-nome">Nome completo</label><input id="c-nome" name="nome" autocomplete="name" value="${v('nome')}" ${edit ? '' : 'autofocus'} required></div>
@@ -426,6 +450,7 @@
       else if (a === 'fechar') fecharPainel();
       else if (a === 'aba') { S.aba = el.dataset.aba; render(); window.scrollTo(0, 0); }
       else if (/^ficha/.test(a) && MQ.fichasUI) { S.voltarFoco = el; await MQ.fichasUI.clique(a, el); }
+      else if (/^campo-/.test(a) && MQ.campoUI) { S.voltarFoco = el; await MQ.campoUI.clique(a, el); }
       else if (a === 'ver') { S.voltarFoco = el; abrirPainel({ tipo: 'detalhe', id: el.dataset.id }); }
       else if (a === 'novo') { S.voltarFoco = el; abrirPainel({ tipo: 'cadastro', papel: el.dataset.papel, uf: el.dataset.uf, subst: el.dataset.subst }); }
       else if (a === 'editar') abrirPainel({ tipo: 'cadastro', id: el.dataset.id });
@@ -466,6 +491,7 @@
         });
       }
       if (/^ficha/.test(tipo) && MQ.fichasUI) await MQ.fichasUI.enviar(tipo, form, fd);
+      if (/^(visita|diag)/.test(tipo) && MQ.campoUI) await MQ.campoUI.enviar(tipo, form, fd);
       if (tipo === 'cadastro') {
         const p = S.painel;
         const base = p.id ? porId(p.id) : { papel: p.papel, uf: p.uf || null, substitui_id: p.subst || null };

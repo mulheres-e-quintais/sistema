@@ -13,7 +13,7 @@
   function todas() {
     const S = U().S;
     const porId = new Map(S.fichas.map(f => [f.id, Object.assign({}, f)]));
-    S.fila.forEach(it => {
+    S.fila.filter(it => !it.tipo || it.tipo === 'ficha').forEach(it => {
       const base = porId.get(it.id) || {};
       porId.set(it.id, Object.assign({}, base, it.dados, { _fila: true, _erro: it.erro || null, situacao: base.situacao || 'aguardando' }));
     });
@@ -51,7 +51,7 @@
     const S = U().S; const uf = S.eu.uf;
     const lista = todas().filter(f => f.uf === uf);
     const c = contar(lista, uf);
-    const pend = S.fila.length, comErro = S.fila.filter(i => i.erro).length;
+    const filaF = S.fila.filter(i => !i.tipo || i.tipo === 'ficha'); const pend = filaF.length, comErro = filaF.filter(i => i.erro).length;
     const busca = filtro.busca.trim().toLowerCase();
     const vis = lista.filter(f => !busca || f.nome.toLowerCase().includes(busca) || f.cpf.includes(R.soDigitos(busca) || '#'));
     const devolvidas = vis.filter(f => f.situacao === 'devolvida' || f._erro);

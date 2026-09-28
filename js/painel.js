@@ -65,6 +65,17 @@
     if (meta.fonte === 'equipe') {
       atual = d.aptas.length; alvo = 11; un = 'pessoas aptas a receber bolsa';
       nota = `${d.pagaveis.length} de 11 cadastradas (1 coordenação técnica e 10 bolsistas). Meta: ${meta.alvo} ${meta.un}.`;
+    } else if (meta.fonte === 'diagnostico') {
+      const dg = S.diagnosticos || [];
+      atual = dg.length;
+      const aprov = dg.filter(x => x.situacao === 'aprovado').length, seca = dg.filter(x => x.sem_agua).length;
+      nota = `${aprov} com plano aprovado pela coordenação técnica${seca ? ` · ${seca} sem água na seca (encaminhadas, sem kit)` : ''}.`;
+    } else if (meta.fonte === 'implantacao' || meta.fonte === 'visitas') {
+      const etapa = meta.fonte === 'implantacao' ? 'implantacao' : 'acompanhamento';
+      const vs = (S.visitas || []).filter(v => v.etapa === etapa);
+      atual = vs.filter(v => v.situacao === 'realizada').length;
+      const prevs = vs.filter(v => v.situacao === 'prevista').length;
+      nota = `Visitas de ${etapa === 'implantacao' ? 'implantação' : 'acompanhamento'} marcadas como feitas no roteiro${prevs ? ` · ${prevs} agendada${prevs > 1 ? 's' : ''}` : ''}. O relatório de visita ainda é em papel.`;
     } else if (meta.fonte) {
       nota = 'O formulário desta etapa ainda não está no sistema. Por enquanto o registro é em papel.';
     } else {
@@ -75,6 +86,9 @@
     let st;
     if (atual == null) st = mes - 1 < meta.ini ? { cls: 'off', t: 'Começa em ' + MESES[meta.ini - 1] } : { cls: 'off', t: 'Sem registro no sistema' };
     else if (meta.fonte === 'equipe') st = atual >= 11 ? { cls: 'ok', t: 'Completa' } : mes >= 2 ? { cls: 'crit', t: 'Incompleta' } : { cls: 'pend', t: 'Montando' };
+    else if (atual >= alvo) st = { cls: 'ok', t: 'Concluída' };
+    else if (mes - 1 < meta.ini) st = { cls: 'off', t: atual ? 'Adiantada' : 'Começa em ' + MESES[meta.ini - 1] };
+    else st = atual >= prev ? { cls: 'ok', t: 'No ritmo' } : { cls: 'crit', t: 'Abaixo do previsto' };
     return `<div class="meta-linha">
       <div class="meta-cab"><span class="meta-id">${meta.id}</span><span class="meta-nome">${E(meta.nome)}</span><span class="chip ${st.cls}">${E(st.t)}</span></div>
       <div class="medidor" role="img" aria-label="${atual == null ? 'sem registro' : atual + ' de ' + alvo}${pctPrev != null ? ', previsto até agora ' + prev : ''}">
@@ -100,6 +114,8 @@
   const K = Math.cos(9.5 * Math.PI / 180);                 // latitude média da área
   const px = ([lon, lat]) => [lon * K, -lat];
   function pontoDaFicha(f) {
+    const dg = (MQ.ui && MQ.ui.S.diagnosticos || []).find(x => x.ficha_id === f.id && x.latitude != null);
+    if (dg) return { xy: px([+dg.longitude, +dg.latitude]), exato: true };   // GPS tirado no próprio quintal
     if (f.latitude != null && f.longitude != null) return { xy: px([+f.longitude, +f.latitude]), exato: true };
     const muns = (MQ.GEO.mun[f.uf]) || {};
     const chave = Object.keys(muns).find(m => norm(m) === norm(f.municipio));
@@ -184,11 +200,11 @@
     const semRenda = diags.filter(x => !(+x.renda_quintal > 0)).length;
     return `<section class="secao" aria-labelledby="t-perfil">
       <div class="secao-cab"><div><h2 id="t-perfil">Quem são as mulheres</h2><p>${base.length ? 'Percentual ' + rotBase + ', pelos critérios de prioridade da ficha.' : 'Aparece quando houver mulheres selecionadas.'}</p></div></div>
-      <div class="duas-col" style="grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)">
+      <div class="duas-col perfil-cols">
         <div class="bloco">${base.length ? `<ul class="perfil">${barras}</ul>
           <p class="nota">"Negra, indígena, quilombola ou de comunidade tradicional" é um único campo na ficha v2: não dá para separar quilombolas.</p>` : '<p class="muted">Sem dados ainda.</p>'}</div>
         <div class="bloco"><h3>Renda com o quintal: linha de base</h3>
-          ${diags.length ? `<div class="resumo" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+          ${diags.length ? `<div class="resumo r2">
               <div><span class="v num">${R.fmtBRL(mq || 0).replace(',00', '')}</span><span class="l">mediana por mês com vendas do quintal</span></div>
               <div><span class="v num">${R.fmtBRL(mf || 0).replace(',00', '')}</span><span class="l">mediana da renda familiar por mês</span></div></div>
             <p class="small">${semRenda} de ${diags.length} mulheres (${Math.round(semRenda / diags.length * 100)}%) não tinham renda de vendas do quintal no diagnóstico.</p>`
