@@ -721,3 +721,4 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .imp-ruim { color: var(--crit); font-weight: 700; }
 .impacto .ebia { display: grid; gap: 6px; }
 .impacto .ebia .criterio span:first-child { line-height: 1.35; }
+.ltm { display: grid; gap: 4px; }
