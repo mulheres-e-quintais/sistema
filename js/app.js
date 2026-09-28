@@ -103,7 +103,8 @@
     if (conv && MQ.convitesUI) { app.innerHTML = barra(true) + MQ.convitesUI.pagina(conv[1]); document.title = 'Cadastro · Mulheres & Quintais'; return; }
     if (location.hash === '#numeros' && MQ.vitrineUI) { app.innerHTML = barra(true) + MQ.vitrineUI.pagina(); document.title = 'O projeto em números · Mulheres & Quintais'; return; }
     document.title = 'Mulheres & Quintais';
-    let h = barra() + (modoDemo ? faixaDemo() : '');
+    const telaEntrada = (modoDemo && S.verEntrada) || (!S.eu && !modoDemo && !S.api.temSessao);
+    let h = (telaEntrada ? '' : barra()) + (modoDemo ? faixaDemo() : '');
     if (S.eu && (S.semRede || S.api.offline || !navigator.onLine))
       h += `<div class="demo" role="status"><div class="demo-in"><span><b>Sem internet.</b> O que você preencher fica guardado neste aparelho e é enviado quando a conexão voltar.${S.cacheEm ? ' Dados de ' + new Date(S.cacheEm).toLocaleString('pt-BR') + '.' : ''}</span></div></div>`;
     if (modoDemo && S.verEntrada) h += login();
@@ -396,22 +397,41 @@
   function login() {
     const primeiro = S.modoLogin === 'primeiro';
     const aba = (id, t) => `<button type="button" data-acao="modo-login" data-m="${id}" aria-pressed="${(S.modoLogin || 'entrar') === id}">${t}</button>`;
-    return `<main class="wrap entrada"><form class="login" data-form="login" novalidate>
-      <div class="login-marca"><img src="assets/isotipo.svg" alt="" width="40" height="58"><span class="eyebrow">Mulheres &amp; Quintais</span></div>
-      <div><h1>${primeiro ? 'Primeiro acesso' : 'Entrar'}</h1><p class="muted" style="margin-top:6px">${primeiro
-        ? 'Crie a sua senha. Só funciona com o e-mail que a coordenação cadastrou no projeto.'
-        : 'Use o e-mail que a coordenação cadastrou e a senha que você criou no primeiro acesso.'}</p></div>
-      <span class="seg" role="group" aria-label="Tipo de acesso" style="justify-self:start">${aba('entrar', 'Já tenho senha')}${aba('primeiro', 'Primeiro acesso')}</span>
-      <div class="campo"><label for="l-email">E-mail</label><input id="l-email" name="email" type="email" autocomplete="username" required></div>
-      <div class="campo"><label for="l-senha">${primeiro ? 'Crie uma senha' : 'Senha'}</label><input id="l-senha" name="senha" type="password" autocomplete="${primeiro ? 'new-password' : 'current-password'}" minlength="8" required>
-        ${primeiro ? '<span class="dica">Pelo menos 8 caracteres, com letras e números. Não use a mesma senha de outros sites.</span>' : ''}</div>
-      ${primeiro ? '<div class="campo"><label for="l-senha2">Repita a senha</label><input id="l-senha2" name="senha2" type="password" autocomplete="new-password" required></div>' : ''}
-      <div class="aviso erro" data-erro hidden></div>
-      <button class="btn pri" type="submit">${primeiro ? 'Criar senha e entrar' : 'Entrar'}</button>
-      ${primeiro ? '' : '<p class="nota">Esqueceu a senha? Peça à coordenação geral para liberar um novo primeiro acesso.</p>'}</form>
-      <div class="lado-entrada"><div class="lema"><p class="lema-t serif">Força de mulher que brota no quintal.</p>
-        <p class="lema-s">200 mulheres rurais em 5 estados do Nordeste plantando comida, renda e autonomia. O projeto chega aonde elas estão.</p></div>
-        ${MQ.vitrineUI ? MQ.vitrineUI.entrada() : ''}</div></main>`;
+    const ufs = MQ.UFS.map((u, i) => `<li style="--i:${i}"><b>${u.uf}</b><span>${esc(u.nome)}</span></li>`).join('');
+    // broto desenhado (decorativo): o caule cresce e as folhas abrem
+    const broto = `<svg class="ent-broto" viewBox="0 0 220 260" aria-hidden="true" focusable="false">
+      <path class="caule" d="M110 250 C 108 200, 118 170, 104 128 S 96 70, 112 30" />
+      <path class="folha f1" d="M106 150 C 70 150, 46 124, 44 96 C 76 98, 100 118, 106 150 Z" />
+      <path class="folha f2" d="M108 108 C 140 104, 166 80, 170 52 C 136 56, 112 78, 108 108 Z" />
+      <path class="folha f3" d="M110 62 C 92 52, 84 32, 88 12 C 106 24, 114 42, 110 62 Z" />
+      <path class="chao" d="M40 252 Q 110 236 180 252" /></svg>`;
+    const anim = !S.entAnimou; S.entAnimou = true;   // a entrada anima só na primeira vez (trocar de aba não repete)
+    return `<main class="ent${anim ? ' anim' : ''}">
+      <div class="ent-fundo" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i></div>
+      <section class="ent-hero">
+        <div class="ent-marca"><img src="assets/isotipo.svg" alt="" width="34" height="48"><span><b class="serif">Mulheres &amp; Quintais</b><small>Quintais Produtivos para Mulheres Rurais</small></span></div>
+        <h1 class="ent-t serif">Força de mulher<br>que <em>brota</em> no quintal.</h1>
+        <p class="ent-s">200 mulheres rurais em 5 estados do Nordeste plantando comida, renda e autonomia. O projeto chega aonde elas estão.</p>
+        <ul class="ent-ufs" aria-label="Estados do projeto">${ufs}</ul>
+        ${MQ.vitrineUI ? MQ.vitrineUI.entrada() : ''}
+        ${broto}
+      </section>
+      <section class="ent-acesso">
+        <form class="login ent-card" data-form="login" novalidate>
+          <div><span class="eyebrow">Sistema do projeto</span><h2 class="serif">${primeiro ? 'Primeiro acesso' : 'Que bom ver você'}</h2>
+            <p class="muted">${primeiro ? 'Crie a sua senha com o e-mail que a coordenação cadastrou.' : 'Entre com o e-mail cadastrado pela coordenação.'}</p></div>
+          <span class="seg ent-seg" role="group" aria-label="Tipo de acesso">${aba('entrar', 'Já tenho senha')}${aba('primeiro', 'Primeiro acesso')}</span>
+          <div class="campo"><label for="l-email">E-mail</label><input id="l-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="seu@email.com" required></div>
+          <div class="campo"><label for="l-senha">${primeiro ? 'Crie uma senha' : 'Senha'}</label><input id="l-senha" name="senha" type="password" autocomplete="${primeiro ? 'new-password' : 'current-password'}" minlength="8" required>
+            ${primeiro ? '<span class="dica">Pelo menos 8 caracteres, com letras e números.</span>' : ''}</div>
+          ${primeiro ? '<div class="campo"><label for="l-senha2">Repita a senha</label><input id="l-senha2" name="senha2" type="password" autocomplete="new-password" required></div>' : ''}
+          <div class="aviso erro" data-erro hidden></div>
+          <button class="btn pri ent-btn" type="submit">${primeiro ? 'Criar senha e entrar' : 'Entrar'} <span aria-hidden="true">→</span></button>
+          ${primeiro ? '' : '<p class="nota">Esqueceu a senha? A coordenação geral libera um novo primeiro acesso.</p>'}
+        </form>
+        <p class="ent-rodape">IFRN Campus Apodi · MPA · FUNCERN</p>
+      </section>
+    </main>`;
   }
   function semCadastro() {
     return `<main class="wrap"><div class="login"><h1>Acesso não liberado</h1><p>Este e-mail não está ativo na equipe do projeto. Se você foi desligada ou trocou de e-mail, fale com a coordenação técnica.</p>
