@@ -63,4 +63,15 @@ create policy equipe_foto_trocar on storage.objects for update to authenticated
   using (bucket_id = 'equipe' and (public.meu_papel() in ('coord_geral','coord_tecnico')
          or (storage.foldername(name))[1] = public.meu_id()::text));
 
+-- dados de exemplo (se existirem): ilustrações de pessoas, não fotos de gente de verdade
+do $$ begin
+  if to_regclass('public.exemplo') is not null then
+    update public.equipe e set foto_path = 'exemplo:' || (array[1,2,3,4,5,7,8,9,10,11,13,14,15,16,17])[1 + (abs(hashtext(e.id::text)) % 15)]
+     where e.id in (select id from public.exemplo where tabela = 'equipe') and e.foto_path is null
+       and split_part(e.nome, ' ', 1) not in ('José','Antônio','Francisco','João','Raimundo','Pedro','Luiz','Manoel','Cícero','Sebastião','Geraldo');
+    update public.equipe e set foto_path = 'exemplo:' || (array[6,12,18])[1 + (abs(hashtext(e.id::text)) % 3)]
+     where e.id in (select id from public.exemplo where tabela = 'equipe') and e.foto_path is null;
+  end if;
+end $$;
+
 select 'Etapa 7 instalada' as resultado, count(*) filter (where foto_path is not null) as com_foto from public.equipe;

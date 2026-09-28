@@ -252,6 +252,15 @@ for t, lst in por_tab.items():
     for k in range(0, len(lst), 200):
         out.append(f"insert into public.exemplo (tabela, id) values " + ', '.join(f"('{t}', '{i}')" for i in lst[k:k + 200]) + ';')
 out.append("""
+do $$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'equipe' and column_name = 'foto_path') then
+    execute $q$update public.equipe e set foto_path = 'exemplo:' || case
+        when split_part(e.nome, ' ', 1) in ('José','Antônio','Francisco','João','Raimundo','Pedro','Luiz','Manoel','Cícero','Sebastião','Geraldo')
+        then (array[6,12,18])[1 + (abs(hashtext(e.id::text)) % 3)]
+        else (array[1,2,3,4,5,7,8,9,10,11,13,14,15,16,17])[1 + (abs(hashtext(e.id::text)) % 15)] end
+      where e.id in (select id from public.exemplo where tabela = 'equipe')$q$;
+  end if;
+end $$;
 alter table public.equipe enable trigger user;
 alter table public.fichas enable trigger user;
 alter table public.visitas enable trigger user;
