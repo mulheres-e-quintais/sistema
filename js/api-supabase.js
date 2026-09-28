@@ -150,6 +150,57 @@
       return data.signedUrl;
     },
 
+    /* ---------- Ajuda de custo por visita ---------- */
+    async lerParametros(chave) {
+      const { data, error } = await sb.from('parametros').select('valor, atualizado_em').eq('chave', chave).maybeSingle();
+      if (error) throw erro(error); return data ? data.valor : null;
+    },
+    async salvarParametros(chave, valor) {
+      const { data, error } = await sb.from('parametros').upsert({ chave, valor }, { onConflict: 'chave' }).select('valor').single();
+      if (error) throw erro(error); return data.valor;
+    },
+    async listarCustos() {
+      const { data, error } = await sb.from('custos_visita').select('visita_id, km_ida, obs, definido_em');
+      if (error) throw erro(error); return data;
+    },
+    async salvarKm(visita_id, km_ida) {
+      if (km_ida == null) { const { error } = await sb.from('custos_visita').delete().eq('visita_id', visita_id); if (error) throw erro(error); return null; }
+      const { data, error } = await sb.from('custos_visita').upsert({ visita_id, km_ida }, { onConflict: 'visita_id' }).select().single();
+      if (error) throw erro(error); return data;
+    },
+
+    /* ---------- Vitrine pública (só totais e fotos aprovadas; funciona sem login) ---------- */
+    async vitrine() {
+      if (!sb) sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, { auth: { persistSession: true } });
+      const { data, error } = await sb.rpc('vitrine');
+      if (error) throw erro(error);
+      (data.fotos || []).forEach(f => { f.url = sb.storage.from('vitrine').getPublicUrl(f.path).data.publicUrl; });
+      return data;
+    },
+    async listarVitrine() {
+      const { data, error } = await sb.from('vitrine_fotos').select('*').order('publicada_em', { ascending: false });
+      if (error) throw erro(error);
+      data.forEach(f => { f.url = sb.storage.from('vitrine').getPublicUrl(f.path).data.publicUrl; });
+      return data;
+    },
+    /* Copia uma foto de campo (privada) para o bucket público, com nome aleatório, e registra.
+       O banco confere a autorização de imagem, crianças e nome na legenda. */
+    async publicarFoto({ ficha_id, origem, legenda, sem_criancas }) {
+      const { data: blob, error: e1 } = await sb.storage.from(/\/diag_/.test(origem) ? 'campo' : 'fichas').download(origem);
+      if (e1) throw erro(e1);
+      const path = MQ.novoId() + '.jpg';
+      const { error: e2 } = await sb.storage.from('vitrine').upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+      if (e2) throw erro(e2);
+      const { data, error } = await sb.from('vitrine_fotos').insert({ path, ficha_id, uf: 'XX', legenda, sem_criancas: !!sem_criancas }).select().single();
+      if (error) { await sb.storage.from('vitrine').remove([path]); throw erro(error); }
+      return data;
+    },
+    async retirarFoto(id, path) {
+      const { error } = await sb.from('vitrine_fotos').delete().eq('id', id);
+      if (error) throw erro(error);
+      await sb.storage.from('vitrine').remove([path]);
+    },
+
     async sair() { euCache = null; this.temSessao = false; try { localStorage.removeItem('mq-eu'); } catch (e) {} await sb.auth.signOut(); },
 
     async listarEquipe() {

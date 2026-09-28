@@ -117,7 +117,25 @@
     if (mem) return mem;
     try { const s = localStorage.getItem(CHAVE); if (s) mem = JSON.parse(s); } catch (e) { /* sem armazenamento */ }
     if (!mem) mem = semente();
+    if (!mem.vitrine) {   // duas fotos de exemplo aprovadas pela coordenação (ilustrações)
+      const [a, b] = mem.fichas.filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada' && f.consent_imagem);
+      mem.vitrine = [a && { id: 'vit-1', path: 'exemplo-1.jpg', ficha_id: a.id, uf: a.uf, legenda: 'Canteiros de hortaliças no sertão do Piauí', sem_criancas: true, publicada_em: '2026-11-10T12:00:00Z' },
+        b && { id: 'vit-2', path: 'exemplo-2.jpg', ficha_id: b.id, uf: b.uf, legenda: 'Preparo da área para o quintal, Paulistana (PI)', sem_criancas: true, publicada_em: '2026-11-05T12:00:00Z' }].filter(Boolean);
+    }
     return mem;
+  }
+  /* Demonstração não tem fotos reais: desenha uma ilustração de canteiros (claramente não é foto de ninguém) */
+  function ilustracao(seed) {
+    let h = 0; for (const c of String(seed)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    const verdes = ['#2E6B45', '#3C7D4F', '#4F8F5A', '#6A9F5E'], terra = ['#B98B5E', '#A87B50', '#C69C6D'];
+    let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260"><rect width="400" height="260" fill="#E9E2CF"/><rect y="0" width="400" height="70" fill="#DCE7D6"/>`;
+    for (let i = 0; i < 5; i++) {
+      const y = 80 + i * 36, t = terra[(h + i) % 3];
+      s += `<rect x="${20 + (h + i) % 20}" y="${y}" width="${330 - (h >> i) % 60}" height="24" rx="6" fill="${t}"/>`;
+      for (let j = 0; j < 9; j++) s += `<circle cx="${40 + j * 34 + (h >> j) % 8}" cy="${y + 8 + (j % 2) * 6}" r="${7 + (h >> (i + j)) % 5}" fill="${verdes[(h + i + j) % 4]}"/>`;
+    }
+    s += `<circle cx="${320 + h % 40}" cy="36" r="18" fill="#E7B04A"/></svg>`;
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
   }
   function gravar() { try { localStorage.setItem(CHAVE, JSON.stringify(mem)); } catch (e) { /* segue só em memória */ } }
   const copia = o => JSON.parse(JSON.stringify(o));
@@ -311,6 +329,57 @@
         aprovado_por: situacao === 'aprovado' ? eu.id : null, aprovado_em: situacao === 'aprovado' ? agora : null });
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'diagnosticos', registro_id: id, acao: 'UPDATE', por: eu.id, em: agora, antes: copia(antes), depois: copia(d.diagnosticos[i]) });
       gravar(); return copia(d.diagnosticos[i]);
+    },
+
+    /* ---------- Ajuda de custo por visita (mesmas regras do 04_vitrine_e_custos.sql) ---------- */
+    async lerParametros(chave) { const d = ler(); return copia((d.parametros || {})[chave] || MQ.CUSTO_PADRAO); },
+    async salvarParametros(chave, valor) {
+      const eu = euMesmo(); if (!eu || !/^coord/.test(eu.papel)) throw falha('Só a coordenação altera valores de pagamento.');
+      const d = ler(); d.parametros = d.parametros || {}; d.parametros[chave] = copia(valor); gravar(); return copia(valor);
+    },
+    async listarCustos() { return copia(ler().custos || []); },
+    async salvarKm(visita_id, km_ida) {
+      const eu = euMesmo(); if (!eu || !/^coord/.test(eu.papel)) throw falha('Só a coordenação altera valores de pagamento.');
+      if (km_ida != null && !(km_ida >= 0 && km_ida < 1000)) throw falha('Distância inválida (0 a 999 km).');
+      const d = ler(); d.custos = (d.custos || []).filter(c => c.visita_id !== visita_id);
+      if (km_ida != null) d.custos.push({ visita_id, km_ida, definido_em: new Date().toISOString() });
+      gravar(); return km_ida;
+    },
+
+    /* ---------- Vitrine pública: mesmas regras do 04_vitrine_e_custos.sql ---------- */
+    async vitrine() {
+      const d = ler(); const n = (arr, fn) => arr.filter(fn).length;
+      const por_uf = MQ.UFS.map(({ uf }) => ({ uf,
+        fichas: n(d.fichas, f => f.uf === uf),
+        selecionadas: n(d.fichas, f => f.uf === uf && f.resultado === 'selecionada' && f.situacao === 'aprovada'),
+        diagnosticos: n(d.diagnosticos || [], x => x.uf === uf),
+        planos: n(d.diagnosticos || [], x => x.uf === uf && x.situacao === 'aprovado'),
+        implantados: n(d.visitas || [], v => v.uf === uf && v.etapa === 'implantacao' && v.situacao === 'realizada'),
+        acompanhamentos: n(d.visitas || [], v => v.uf === uf && v.etapa === 'acompanhamento' && v.situacao === 'realizada') }));
+      const ativos = d.equipe.filter(m => m.status === 'ativa');
+      const fotos = (d.vitrine || []).filter(v => { const f = d.fichas.find(x => x.id === v.ficha_id); return f && f.consent_imagem && (f.consent_criancas || v.sem_criancas); })
+        .slice(0, 24).map(v => ({ path: v.path, legenda: v.legenda, uf: v.uf, url: ilustracao(v.path) }));
+      return { atualizado_em: new Date().toISOString(), por_uf, fotos,
+        equipe: { bolsistas: n(ativos, m => R.ehBolsista(m.papel)), agentes: n(ativos, m => m.papel === 'agente') } };
+    },
+    async listarVitrine() { return copia(ler().vitrine || []).map(v => Object.assign(v, { url: ilustracao(v.path) })); },
+    async publicarFoto({ ficha_id, origem, legenda, sem_criancas }) {
+      const d = ler(); const eu = euMesmo();
+      if (!eu || !/^coord/.test(eu.papel)) throw falha('Só a coordenação publica fotos na vitrine.');
+      const f = d.fichas.find(x => x.id === ficha_id); if (!f) throw falha('Ficha não encontrada.');
+      if (!f.consent_imagem) throw falha('Esta mulher não autorizou uso de imagem. A foto não pode ser publicada.');
+      if (!f.consent_criancas && !sem_criancas) throw falha('A autorização não inclui crianças: confirme que nenhuma criança aparece na foto.');
+      const leg = String(legenda || '').trim();
+      if (leg.length < 5 || leg.length > 140) throw falha('Escreva uma legenda de 5 a 140 caracteres.');
+      const pn = String(f.nome || '').split(' ')[0];
+      if (pn.length >= 3 && new RegExp('(^|[^\\p{L}])' + pn + '($|[^\\p{L}])', 'iu').test(leg)) throw falha('A legenda não pode trazer o nome da mulher.');
+      const v = { id: MQ.novoId(), path: MQ.novoId() + '.jpg', ficha_id, uf: f.uf, legenda: leg, sem_criancas: !!sem_criancas, publicada_por: eu.id, publicada_em: new Date().toISOString(), origem };
+      d.vitrine = [v].concat(d.vitrine || []); gravar(); return copia(v);
+    },
+    async retirarFoto(id) {
+      const d = ler(); const eu = euMesmo();
+      if (!eu || !/^coord/.test(eu.papel)) throw falha('Só a coordenação retira fotos da vitrine.');
+      d.vitrine = (d.vitrine || []).filter(v => v.id !== id); gravar();
     },
 
     async desligar(id, data_fim, motivo) { return this.atualizar(id, { status: 'desligada', data_fim, motivo_desligamento: motivo }); },

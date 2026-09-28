@@ -74,10 +74,13 @@
   function render() {
     const app = $('#app');
     const modoDemo = S.api.modo === 'demo';
+    if (location.hash === '#numeros' && MQ.vitrineUI) { app.innerHTML = barra(true) + MQ.vitrineUI.pagina(); document.title = 'O projeto em números · Mulheres & Quintais'; return; }
+    document.title = 'Mulheres & Quintais';
     let h = barra() + (modoDemo ? faixaDemo() : '');
     if (S.eu && (S.semRede || S.api.offline || !navigator.onLine))
       h += `<div class="demo" role="status"><div class="demo-in"><span><b>Sem internet.</b> O que você preencher fica guardado neste aparelho e é enviado quando a conexão voltar.${S.cacheEm ? ' Dados de ' + new Date(S.cacheEm).toLocaleString('pt-BR') + '.' : ''}</span></div></div>`;
-    if (!S.eu) h += modoDemo ? '<main class="wrap"><p class="carregando">Carregando…</p></main>' : (S.api.temSessao ? semCadastro() : login());
+    if (modoDemo && S.verEntrada) h += login();
+    else if (!S.eu) h += modoDemo ? '<main class="wrap"><p class="carregando">Carregando…</p></main>' : (S.api.temSessao ? semCadastro() : login());
     else if (/^coord/.test(S.eu.papel)) h += telaCoordenacao();
     else if (S.eu.papel === 'agente' && MQ.campoUI) h += MQ.campoUI.telaAgente();
     else h += telaBolsista();
@@ -85,20 +88,20 @@
     if (S.painel) desenharPainel();
   }
 
-  function barra() {
+  function barra(publica) {
     return `<header class="barra"><div class="barra-in">
       <div class="marca"><img class="emb" src="assets/isotipo.svg" alt="" width="36" height="52"><img src="assets/logo-claro.svg" alt="Mulheres &amp; Quintais" width="112" height="36"><span class="sep" aria-hidden="true"></span>
         <span class="sis"><b>Sistema do projeto</b>Quintais Produtivos para Mulheres Rurais</span></div>
-      ${S.eu ? `<div class="quem"><span><span class="nome">${esc(S.eu.nome)}</span><br><span class="papel">${esc(P[S.eu.papel].nome)}${S.eu.uf ? ' · ' + esc(S.eu.uf) : ''}</span></span>
+      ${publica ? `<a class="btn-barra" href="#">${S.eu ? 'Voltar ao sistema' : 'Entrar'}</a>` : S.eu && !S.verEntrada ? `<div class="quem"><span><span class="nome">${esc(S.eu.nome)}</span><br><span class="papel">${esc(P[S.eu.papel].nome)}${S.eu.uf ? ' · ' + esc(S.eu.uf) : ''}</span></span>
         ${S.api.modo === 'supabase' ? '<button class="btn-barra" data-acao="sair">Sair</button>' : ''}</div>` : ''}
     </div></header>`;
   }
 
   function faixaDemo() {
     const p = S.api.perfisDemo();
-    const b = (id, t) => `<button type="button" data-acao="perfil" data-p="${id}" aria-pressed="${p === id}">${t}</button>`;
+    const b = (id, t) => `<button type="button" data-acao="perfil" data-p="${id}" aria-pressed="${S.verEntrada ? id === 'entrada' : p === id}">${t}</button>`;
     return `<div class="demo"><div class="demo-in"><span><b>Demonstração</b> com dados de exemplo, gravados só neste navegador.</span>
-      <span>Ver como: <span class="seg" role="group" aria-label="Perfil">${b('coord_geral', 'Coordenação geral')}${b('coord_tecnico', 'Coordenação técnica')}${b('bolsista', 'Bolsista')}${b('agente', 'Agente de campo')}</span></span>
+      <span>Ver como: <span class="seg" role="group" aria-label="Perfil">${b('coord_geral', 'Coordenação geral')}${b('coord_tecnico', 'Coordenação técnica')}${b('bolsista', 'Bolsista')}${b('agente', 'Agente de campo')}${b('entrada', 'Tela de entrada')}</span></span>
       <button class="link" data-acao="recomecar">Recomeçar demonstração</button></div></div>`;
   }
 
@@ -122,7 +125,7 @@
     const aguard = (S.fichas || []).filter(f => f.situacao === 'aguardando').length;
     const diagAguard = (S.diagnosticos || []).filter(x => x.situacao === 'aguardando').length;
     const abas = [['visao', 'Visão geral'], ['equipe', 'Equipe'], ['selecao', 'Seleção' + (aguard ? ` <span class="conta">${aguard}</span>` : '')],
-      ['campo', 'Campo' + (diagAguard ? ` <span class="conta">${diagAguard}</span>` : '')], ['historico', 'Histórico']];
+      ['campo', 'Campo' + (diagAguard ? ` <span class="conta">${diagAguard}</span>` : '')], ['custos', 'Custos'], ['historico', 'Histórico']];
     const nav = `<nav class="abas" aria-label="Seções">${abas.map(([id, t]) => `<button type="button" data-acao="aba" data-aba="${id}" ${aba === id ? 'aria-current="page"' : ''}>${t}</button>`).join('')}</nav>`;
     const intro = souGeral
       ? 'Você cadastra a coordenação técnica indicada pelo MPA e registra a habilitação de cada bolsista: matrícula no curso FIC, documentos na FUNCERN e termo de compromisso.'
@@ -147,7 +150,8 @@
       </section>
       ${secaoAgentes()}`;
     else if (aba === 'selecao') corpo = MQ.fichasUI ? MQ.fichasUI.secaoCoord() : '';
-    else if (aba === 'campo') corpo = MQ.campoUI ? MQ.campoUI.abaCoord() : '';
+    else if (aba === 'custos') corpo = MQ.custosUI ? MQ.custosUI.aba() : '';
+    else if (aba === 'campo') corpo = (MQ.campoUI ? MQ.campoUI.abaCoord() : '') + (MQ.vitrineUI && !S.campoSemBanco ? MQ.vitrineUI.secaoCoord() : '');
     else corpo = `<section class="secao" aria-labelledby="t-h"><h2 id="t-h">Histórico de alterações</h2>${historico()}</section>`;
     return `<main class="wrap" id="principal">${nav}${corpo}</main>`;
   }
@@ -262,7 +266,8 @@
   function login() {
     const primeiro = S.modoLogin === 'primeiro';
     const aba = (id, t) => `<button type="button" data-acao="modo-login" data-m="${id}" aria-pressed="${(S.modoLogin || 'entrar') === id}">${t}</button>`;
-    return `<main class="wrap"><form class="login" data-form="login" novalidate>
+    return `<main class="wrap entrada"><form class="login" data-form="login" novalidate>
+      <div class="login-marca"><img src="assets/isotipo.svg" alt="" width="40" height="58"><span class="eyebrow">Sistema do projeto</span></div>
       <div><h1>${primeiro ? 'Primeiro acesso' : 'Entrar'}</h1><p class="muted" style="margin-top:6px">${primeiro
         ? 'Crie a sua senha. Só funciona com o e-mail que a coordenação cadastrou no projeto.'
         : 'Use o e-mail que a coordenação cadastrou e a senha que você criou no primeiro acesso.'}</p></div>
@@ -273,7 +278,8 @@
       ${primeiro ? '<div class="campo"><label for="l-senha2">Repita a senha</label><input id="l-senha2" name="senha2" type="password" autocomplete="new-password" required></div>' : ''}
       <div class="aviso erro" data-erro hidden></div>
       <button class="btn pri" type="submit">${primeiro ? 'Criar senha e entrar' : 'Entrar'}</button>
-      ${primeiro ? '' : '<p class="nota">Esqueceu a senha? Peça à coordenação geral para liberar um novo primeiro acesso.</p>'}</form></main>`;
+      ${primeiro ? '' : '<p class="nota">Esqueceu a senha? Peça à coordenação geral para liberar um novo primeiro acesso.</p>'}</form>
+      ${MQ.vitrineUI ? MQ.vitrineUI.entrada() : ''}</main>`;
   }
   function semCadastro() {
     return `<main class="wrap"><div class="login"><h1>Acesso não liberado</h1><p>Este e-mail não está ativo na equipe do projeto. Se você foi desligada ou trocou de e-mail, fale com a coordenação técnica.</p>
@@ -443,13 +449,16 @@
     const el = ev.target.closest('[data-acao]'); if (!el) return;
     const a = el.dataset.acao;
     try {
-      if (a === 'perfil') { S.aba = null; S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.trocarPerfil(el.dataset.p); await carregar(); render(); }
+      if (a === 'perfil' && el.dataset.p === 'entrada') { S.verEntrada = true; S.painel = null; render(); window.scrollTo(0, 0); }
+      else if (a === 'perfil') { S.verEntrada = false; S.aba = null; S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.trocarPerfil(el.dataset.p); await carregar(); render(); }
       else if (a === 'recomecar') { S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.recomecar(); await carregar(); render(); toast('Demonstração recomeçada com os dados de exemplo.'); }
       else if (a === 'modo-login') { S.modoLogin = el.dataset.m; render(); const f = $('#l-email'); if (f) f.focus(); }
       else if (a === 'sair') { await S.api.sair(); S.eu = null; S.equipe = []; render(); }
       else if (a === 'fechar') fecharPainel();
       else if (a === 'aba') { S.aba = el.dataset.aba; render(); window.scrollTo(0, 0); }
       else if (/^ficha/.test(a) && MQ.fichasUI) { S.voltarFoco = el; await MQ.fichasUI.clique(a, el); }
+      else if (/^custo-/.test(a) && MQ.custosUI) await MQ.custosUI.clique(a, el);
+      else if (/^vit-/.test(a) && MQ.vitrineUI) await MQ.vitrineUI.clique(a, el);
       else if (/^campo-/.test(a) && MQ.campoUI) { S.voltarFoco = el; await MQ.campoUI.clique(a, el); }
       else if (a === 'ver') { S.voltarFoco = el; abrirPainel({ tipo: 'detalhe', id: el.dataset.id }); }
       else if (a === 'novo') { S.voltarFoco = el; abrirPainel({ tipo: 'cadastro', papel: el.dataset.papel, uf: el.dataset.uf, subst: el.dataset.subst }); }
@@ -460,6 +469,7 @@
   });
 
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && S.painel) fecharPainel(); });
+  window.addEventListener('hashchange', () => { if (location.hash === '#numeros' || location.hash === '' || location.hash === '#') { render(); window.scrollTo(0, 0); } });
   window.addEventListener('online', () => { if (S.eu) sincronizar(); });
   window.addEventListener('offline', () => { if (S.eu) render(); });
 
@@ -492,6 +502,8 @@
       }
       if (/^ficha/.test(tipo) && MQ.fichasUI) await MQ.fichasUI.enviar(tipo, form, fd);
       if (/^(visita|diag)/.test(tipo) && MQ.campoUI) await MQ.campoUI.enviar(tipo, form, fd);
+      if (/^vit-/.test(tipo) && MQ.vitrineUI) await MQ.vitrineUI.enviar(tipo, form, fd);
+      if (/^custo-/.test(tipo) && MQ.custosUI) await MQ.custosUI.enviar(tipo, form, fd);
       if (tipo === 'cadastro') {
         const p = S.painel;
         const base = p.id ? porId(p.id) : { papel: p.papel, uf: p.uf || null, substitui_id: p.subst || null };
