@@ -163,4 +163,10 @@ create policy aval_alterar on public.avaliacoes for update to authenticated
 revoke all on public.avaliacoes from anon;
 grant select, insert, update on public.avaliacoes to authenticated;
 
+-- ---------------------------------------------------------------------
+-- 3. Retira a planilha com todas as contas bancárias (quem cadastra no Arlo é o auxiliar,
+--    uma pessoa por vez, com registro no histórico)
+-- ---------------------------------------------------------------------
+drop function if exists public.exportar_dados_bancarios();
+
 select 'Etapa 13 instalada' as resultado, (select count(*) from public.avaliacoes) as avaliacoes;

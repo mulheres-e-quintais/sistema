@@ -563,10 +563,6 @@
       const d = ler(); d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'equipe_bancario', registro_id: id, acao: 'VIEW', por: eu.id, em: new Date().toISOString(), antes: null, depois: { aviso: 'conta consultada para o cadastro no Arlo' } }); gravar();
       return copia(bancoMem[id] || null);
     },
-    async exportarDadosBancarios() {
-      const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral gera a planilha bancária para a FUNCERN.');
-      return ler().equipe.filter(m => m.status === 'ativa' && bancoMem[m.id]).map(m => Object.assign({ nome: m.nome, cpf: m.cpf, papel: m.papel, uf: m.uf, email: m.email, telefone: m.telefone }, bancoMem[m.id]));
-    },
     async listarAPL() {
       const d = ler(); if (!d.apl) d.apl = [{ uf: 'PI', municipio: 'Paulistana', apls: ['apicultura (exemplo)', 'caprinocultura (exemplo)'], obs: 'Exemplo: feira livre aos sábados; associação entrega ao PNAE.' }];
       return copia(d.apl);

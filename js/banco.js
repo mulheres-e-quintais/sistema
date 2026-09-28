@@ -1,6 +1,6 @@
 /* Mulheres & Quintais — dados bancários para a FUNCERN.
-   Só a própria pessoa preenche e vê os números; as coordenações veem apenas "informado"; a coordenação geral
-   gera a planilha para a FUNCERN (cada geração fica no histórico). Nada disso vai para o cache do aparelho. */
+   Só a própria pessoa preenche e vê os números; as coordenações veem apenas "informado"; o auxiliar administrativo
+   vê a conta de uma pessoa por vez para o cadastro no Arlo (cada consulta fica no histórico). Nada disso vai para o cache do aparelho. */
 (function () {
   const U = () => MQ.ui; const S = () => MQ.ui.S; const E = s => MQ.ui.esc(s);
   const R = MQ.regras;
@@ -63,11 +63,13 @@
       <div class="acoes"><button class="btn" data-acao="banco-ver-arlo" data-id="${E(m.id)}">Ver conta e Pix</button></div></div>`;
   }
   const informou = id => { carregarSituacao(); const x = (B.situacao || {})[id]; return x ? (x.informado ? { ok: true, em: x.atualizado_em } : { ok: false }) : null; };
-  function blocoExportar() {
-    if (!S().eu || S().eu.papel !== 'coord_geral') return '';
-    carregarSituacao(); const l = Object.values(B.situacao || {}); const n = l.filter(x => x.informado).length;
-    return `<div class="bloco banco-exp"><div><b>Planilha bancária para a FUNCERN</b><p class="small muted">${l.length ? `${n} de ${l.length} pessoas já informaram a conta.` : ''} Os números só aparecem na planilha, e cada geração fica registrada no histórico. Mande direto à FUNCERN e apague o arquivo do computador depois.</p></div>
-      <div class="acoes"><button class="btn" data-acao="banco-exportar">Gerar planilha (CSV)</button></div></div>`;
+  /* auxiliar administrativo: quantas pessoas já informaram a conta (sem números) */
+  function blocoSituacao() {
+    if (!S().eu || !['auxiliar_adm', 'coord_geral'].includes(S().eu.papel)) return '';
+    carregarSituacao(); const l = Object.values(B.situacao || {}); if (!l.length) return '';
+    const n = l.filter(x => x.informado).length;
+    const arlo = (S().equipe || []).filter(m => m.status === 'ativa' && m.cadastro_arlo && !(B.situacao[m.id] || {}).informado).length;
+    return `<p class="small muted">Conta bancária no sistema: <b>${n} de ${l.length}</b> pessoas já informaram${arlo ? ` · ${arlo} disseram que a conta já está no Arlo` : ''}. Para ver a de alguém, abra a pessoa e use "Ver conta e Pix".</p>`;
   }
 
   async function clique(a, el) {
@@ -82,18 +84,6 @@
     }
     if (a === 'banco-editar') { B.editando = true; desenhar(); }
     else if (a === 'banco-cancelar') { B.editando = false; desenhar(); }
-    else if (a === 'banco-exportar') {
-      if (!el.dataset.conf) { el.dataset.conf = '1'; el.textContent = 'Confirmar: gerar e baixar'; return; }
-      const l = await S().api.exportarDadosBancarios();
-      const q = x => '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"';
-      const cab = ['Nome', 'CPF', 'Função', 'UF', 'E-mail', 'Celular', 'Código do banco', 'Banco', 'Agência', 'DV agência', 'Conta', 'DV conta', 'Tipo de conta', 'Tipo Pix', 'Chave Pix', 'Atualizado em'];
-      const linhas = (l || []).map(x => [x.nome, R.fmtCPF(x.cpf || ''), (MQ.PAPEIS[x.papel] || {}).nome, x.uf, x.email, x.telefone, x.banco_codigo, x.banco_nome, x.agencia, x.agencia_dv,
-        x.conta, x.conta_dv, x.tipo_conta, x.pix_tipo, x.pix_chave, x.atualizado_em ? new Date(x.atualizado_em).toLocaleDateString('pt-BR') : ''].map(q).join(';'));
-      const blob = new Blob(['﻿' + [cab.map(q).join(';')].concat(linhas).join('\r\n')], { type: 'text/csv;charset=utf-8' });
-      const a2 = document.createElement('a'); a2.href = URL.createObjectURL(blob); a2.download = 'dados-bancarios-FUNCERN-' + R.hoje() + '.csv'; a2.click();
-      setTimeout(() => URL.revokeObjectURL(a2.href), 2000);
-      el.dataset.conf = ''; el.textContent = 'Gerar planilha (CSV)'; U().toast((l || []).length + ' pessoa(s) na planilha. A geração ficou registrada no histórico.');
-    }
   }
   async function enviar(tipo, form, fd) {
     if (tipo !== 'banco') return;
@@ -129,5 +119,5 @@
   // ao sair ou trocar de perfil, esquece o que carregou
   const limpar = () => { B.meus = undefined; B.editando = false; B.situacao = null; };
 
-  MQ.bancoUI = { secaoMinha, blocoExportar, blocoContaArlo, informou, clique, enviar, limpar };
+  MQ.bancoUI = { secaoMinha, blocoSituacao, blocoContaArlo, informou, clique, enviar, limpar };
 })();
