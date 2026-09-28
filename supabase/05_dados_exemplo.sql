@@ -11,6 +11,11 @@
 -- Por segurança, este script para se já houver equipe ou fichas reais no banco.
 -- =====================================================================
 begin;
+do $$ begin
+  if to_regclass('public.vitrine_fotos') is null or to_regclass('public.custos_visita') is null or to_regclass('public.visitas') is null then
+    raise exception 'Falta instalar as etapas anteriores: rode antes o 03_campo.sql e o 04_vitrine_e_custos.sql (nada mudou).';
+  end if;
+end $$;
 -- >>> dados de exemplo (este bloco também vai no 05_dados_exemplo.sql)
 -- Registros fictícios de teste ficam listados aqui: somem da vitrine pública e saem com 06_apagar_exemplo.sql
 create table if not exists public.exemplo (

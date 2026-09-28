@@ -223,6 +223,11 @@ out = [f"""-- ==================================================================
 -- Por segurança, este script para se já houver equipe ou fichas reais no banco.
 -- =====================================================================
 begin;
+do $$ begin
+  if to_regclass('public.vitrine_fotos') is null or to_regclass('public.custos_visita') is null or to_regclass('public.visitas') is null then
+    raise exception 'Falta instalar as etapas anteriores: rode antes o 03_campo.sql e o 04_vitrine_e_custos.sql (nada mudou).';
+  end if;
+end $$;
 {bloco}
 do $$ begin
   if exists (select 1 from public.equipe where papel <> 'coord_geral' and id not in (select id from public.exemplo)) then
