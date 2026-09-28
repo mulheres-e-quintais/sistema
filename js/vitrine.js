@@ -84,11 +84,15 @@
       </div>
       <p class="vit-rodape"><a href="#numeros" class="vit-link">Ver o projeto em números →</a><span>Totais sem nomes nem endereços${quando() ? ' · atualizado ' + quando() : ''}</span></p>`;
   }
-  function desenharEntrada() { const el = $('#vitrine'); if (el && V.dados) { el.innerHTML = corpoEntrada(V.dados); girar(); } }
+  function desenharEntrada() {
+    const el = $('#vitrine'); if (!el) return;
+    if (V.dados) { el.innerHTML = corpoEntrada(V.dados); girar(); }
+    else { const m = el.parentElement; el.remove(); if (m) m.classList.remove('entrada'); }   // sem números (servidor sem a etapa 4 ou sem internet): só o login
+  }
 
   /* ---------- página pública "O projeto em números" ---------- */
   function pagina() {
-    setTimeout(async () => { await buscar(true); const el = $('#numeros'); if (el && V.dados) el.innerHTML = corpoPagina(V.dados); }, 0);
+    setTimeout(async () => { await buscar(true); const el = $('#numeros'); if (el) el.innerHTML = V.dados ? corpoPagina(V.dados) : '<div class="login"><h1>Números indisponíveis</h1><p class="muted">Não foi possível carregar os números agora. Tente mais tarde.</p><a class="btn" href="#">Voltar</a></div>'; }, 0);
     return `<main class="wrap publico" id="numeros">${V.dados ? corpoPagina(V.dados) : '<p class="carregando">Carregando os números…</p>'}</main>`;
   }
   function corpoPagina(d) {
@@ -138,7 +142,7 @@
   }
   function secaoCoord() {
     setTimeout(async () => {
-      try { V.lista = await S().api.listarVitrine(); } catch (e) { V.lista = V.lista || []; V.erroLista = e.message; }
+      try { if (S().api.limparVitrinePendente) await S().api.limparVitrinePendente(); V.lista = await S().api.listarVitrine(); } catch (e) { V.lista = V.lista || []; V.erroLista = e.message; }
       const el = $('#vit-coord'); if (el) el.innerHTML = corpoCoord();
     }, 0);
     return `<section class="secao" aria-labelledby="t-vit"><div class="secao-cab"><div><h2 id="t-vit">Vitrine pública</h2>
@@ -147,7 +151,7 @@
   }
   function corpoCoord() {
     if (V.erroLista && /vitrine_fotos|PGRST205|does not exist|schema cache/i.test(V.erroLista))
-      return '<div class="aviso">A vitrine ainda não foi instalada no servidor: a coordenação geral precisa rodar o arquivo 04_vitrine.sql no Supabase.</div>';
+      return '<div class="aviso">A vitrine ainda não foi instalada no servidor: a coordenação geral precisa rodar o arquivo 04_vitrine_e_custos.sql no Supabase.</div>';
     if (!V.lista.length) return '<p class="muted">Nenhuma foto publicada.</p>';
     return `<div class="galeria">${V.lista.map(v => `<figure class="gal-item"><img src="${E(v.url)}" alt="${E(v.legenda)}" loading="lazy">
       <figcaption>${E(v.legenda)} <span>· ${E(v.uf)} · ${R.fmtData(String(v.publicada_em).slice(0, 10))}</span>
@@ -171,7 +175,7 @@
     if (cc && !cc.checked) erros.sem_criancas = 'Confira a foto e marque.';
     if (Object.keys(erros).length) return U().mostrarErros(form, erros);
     await U().ocupado(form, async () => {
-      await S().api.publicarFoto({ ficha_id: form.dataset.ficha, origem: String(fd.get('origem')), legenda: leg, sem_criancas: !cc || cc.checked });
+      await S().api.publicarFoto({ ficha_id: form.dataset.ficha, origem: String(fd.get('origem')), legenda: leg, sem_criancas: cc ? cc.checked : false });
       V.lista = null; V.em = 0;
       form.outerHTML = '<div class="aviso ok">Foto publicada na vitrine. Para retirar, use a seção Vitrine pública na aba Campo.</div>';
       U().toast('Foto publicada na vitrine.');

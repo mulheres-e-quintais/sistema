@@ -41,7 +41,7 @@ reset role;
 \echo '== 9. anônimo vê a foto na vitrine (espera 1, uf PI mesmo tendo enviado BA)'
 set role anon; select jsonb_array_length(public.vitrine()->'fotos') n, public.vitrine()->'fotos'->0->>'uf' uf; reset role;
 \echo '== 10. mulher retira autorização de imagem: foto some da vitrine (espera 0)'
-set session_replication_role = replica; update public.fichas set consent_imagem = false where id='10000000-0000-0000-0000-000000000001'; set session_replication_role = origin;
+alter table public.fichas disable trigger fichas_antes; update public.fichas set consent_imagem = false where id='10000000-0000-0000-0000-000000000001'; alter table public.fichas enable trigger fichas_antes;
 set role anon; select jsonb_array_length(public.vitrine()->'fotos') n; reset role;
 
 \echo '== 11. bolsista lê parâmetros (OK: valor_hora 50) e não altera (ERRO)'
@@ -56,3 +56,5 @@ select valor->>'preco_litro' preco, atualizado_por is not null com_autor from pu
 reset role;
 \echo '== 13. anônimo não lê parâmetros (0 linhas ou ERRO)'
 set role anon; select count(*) from public.parametros; reset role;
+\echo '== 14. retirada da autorização manda o arquivo para a lista de remoção (espera 1)'
+select count(*) from public.vitrine_remover;

@@ -10,6 +10,58 @@
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
+-- Correção da regra de visitas (mesma função do 03_campo.sql, já corrigida lá):
+--   * editar ou cancelar uma visita não esbarra mais nas travas de inclusão;
+--   * cancelar sempre pode, mesmo se a ficha foi devolvida depois.
+-- ---------------------------------------------------------------------
+create or replace function public.visitas_antes() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare f public.fichas; ex public.equipe; papel text := public.meu_papel(); n int;
+begin
+  new.atualizado_em := now();
+  if tg_op = 'UPDATE' then
+    if new.ficha_id <> old.ficha_id or new.uf <> old.uf or new.etapa <> old.etapa or new.criado_em <> old.criado_em then
+      raise exception 'Quintal e etapa da visita não mudam. Cancele e agende outra.';
+    end if;
+    if old.situacao = 'cancelada' and new.situacao <> 'cancelada' then raise exception 'Visita cancelada não volta. Agende outra.'; end if;
+    if papel = 'agente' and (new.executor_id <> old.executor_id or new.data_prevista <> old.data_prevista or new.situacao = 'cancelada') then
+      raise exception 'O agente de campo não reagenda nem cancela visitas. Fale com a bolsista do estado.';
+    end if;
+    if new.executor_id = old.executor_id and new.situacao = old.situacao then return new; end if;
+    -- cancelar sempre pode (libera o dia de campo), mesmo se a ficha foi devolvida depois
+    if new.situacao = 'cancelada' then return new; end if;
+  end if;
+  select * into f from public.fichas where id = new.ficha_id;
+  if f.id is null then raise exception 'Ficha não encontrada.'; end if;
+  new.uf := f.uf;
+  if not (f.resultado = 'selecionada' and f.situacao = 'aprovada') then
+    raise exception 'Só há visita para mulher selecionada e aprovada pela coordenação técnica.';
+  end if;
+  select * into ex from public.equipe where id = new.executor_id;
+  if ex.id is null or ex.status <> 'ativa' or ex.papel not in ('articulacao','apoio','agente') then
+    raise exception 'Quem faz a visita precisa ser bolsista ou agente de campo ativa.';
+  end if;
+  if ex.uf <> f.uf then raise exception 'Quem faz a visita precisa ser do mesmo estado do quintal.'; end if;
+  if not public.habilitado(ex) and new.situacao <> 'cancelada' then
+    raise exception '% ainda não está habilitada (FIC, FUNCERN e termo): a visita não poderia ser paga.', ex.nome;
+  end if;
+  if tg_op = 'INSERT' and not exists (select 1 from public.visitas where id = new.id) then
+    new.criado_por := public.meu_id(); new.criado_em := now();
+    if new.etapa = 'acompanhamento' then
+      select count(*) into n from public.visitas where ficha_id = new.ficha_id and etapa = 'acompanhamento' and situacao <> 'cancelada';
+      if n >= 2 then raise exception 'Este quintal já tem as 2 visitas de acompanhamento.'; end if;
+    end if;
+    if new.etapa <> 'diagnostico' and not exists (select 1 from public.visitas where ficha_id = new.ficha_id and etapa = 'diagnostico' and situacao = 'realizada') then
+      raise exception 'Primeiro o diagnóstico: implantação e acompanhamento só depois dele.';
+    end if;
+    select count(*) into n from public.visitas where uf = new.uf and situacao <> 'cancelada';
+    if n >= 160 then raise exception 'O estado % já usou os 160 dias de campo previstos.', new.uf; end if;
+  end if;
+  return new;
+end $$;
+
+
+-- ---------------------------------------------------------------------
 -- Fotos aprovadas para divulgação
 -- ---------------------------------------------------------------------
 create table if not exists public.vitrine_fotos (
@@ -67,14 +119,45 @@ create policy vitrine_fotos_apagar on public.vitrine_fotos for delete to authent
   using (public.meu_papel() in ('coord_geral','coord_tecnico'));
 grant select, insert, delete on public.vitrine_fotos to authenticated;
 
+-- Se a mulher retirar a autorização de imagem, a foto sai da vitrine na hora
+-- e o arquivo público entra numa lista para o sistema apagar (o banco não apaga arquivos do Storage)
+create table if not exists public.vitrine_remover (
+  path  text primary key,
+  em    timestamptz not null default now()
+);
+alter table public.vitrine_remover enable row level security;
+drop policy if exists vitrine_remover_coord on public.vitrine_remover;
+create policy vitrine_remover_coord on public.vitrine_remover for all to authenticated
+  using (public.meu_papel() in ('coord_geral','coord_tecnico')) with check (public.meu_papel() in ('coord_geral','coord_tecnico'));
+grant select, delete on public.vitrine_remover to authenticated;
+
+create or replace function public.vitrine_consentimento() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if (old.consent_imagem and not new.consent_imagem) or (old.consent_criancas and not new.consent_criancas) then
+    insert into public.vitrine_remover (path)
+      select path from public.vitrine_fotos
+       where ficha_id = new.id and (not new.consent_imagem or (not new.consent_criancas and not sem_criancas))
+      on conflict do nothing;
+    delete from public.vitrine_fotos
+     where ficha_id = new.id and (not new.consent_imagem or (not new.consent_criancas and not sem_criancas));
+  end if;
+  return new;
+end $$;
+drop trigger if exists fichas_vitrine_consentimento on public.fichas;
+create trigger fichas_vitrine_consentimento after update of consent_imagem, consent_criancas on public.fichas
+  for each row execute function public.vitrine_consentimento();
+
 -- Bucket público só com as cópias aprovadas (as fotos originais continuam no bucket privado "campo")
 insert into storage.buckets (id, name, public) values ('vitrine', 'vitrine', true)
   on conflict (id) do update set public = true;
 drop policy if exists vitrine_arq_ler on storage.objects;
 drop policy if exists vitrine_arq_enviar on storage.objects;
 drop policy if exists vitrine_arq_apagar on storage.objects;
-create policy vitrine_arq_ler on storage.objects for select to anon, authenticated
-  using (bucket_id = 'vitrine');
+-- bucket público: as fotos abrem pelo endereço público, sem precisar de permissão de leitura;
+-- a listagem do bucket fica só para a coordenação (ninguém de fora lista os arquivos)
+create policy vitrine_arq_ler on storage.objects for select to authenticated
+  using (bucket_id = 'vitrine' and public.meu_papel() in ('coord_geral','coord_tecnico'));
 create policy vitrine_arq_enviar on storage.objects for insert to authenticated
   with check (bucket_id = 'vitrine' and public.meu_papel() in ('coord_geral','coord_tecnico'));
 create policy vitrine_arq_apagar on storage.objects for delete to authenticated
@@ -192,6 +275,9 @@ create policy custos_ler on public.custos_visita for select to authenticated
 create policy custos_gravar on public.custos_visita for insert to authenticated with check (public.meu_papel() in ('coord_geral','coord_tecnico'));
 create policy custos_alterar on public.custos_visita for update to authenticated
   using (public.meu_papel() in ('coord_geral','coord_tecnico')) with check (public.meu_papel() in ('coord_geral','coord_tecnico'));
+drop policy if exists custos_apagar on public.custos_visita;
+create policy custos_apagar on public.custos_visita for delete to authenticated using (public.meu_papel() in ('coord_geral','coord_tecnico'));
 grant select, insert, update on public.parametros, public.custos_visita to authenticated;
+grant delete on public.custos_visita to authenticated;
 
 select 'Etapa 4 instalada' as resultado, jsonb_array_length(public.vitrine()->'por_uf') as estados;

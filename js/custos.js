@@ -9,7 +9,7 @@
   const brl = v => (Math.round((+v || 0) * 100) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const norm = t => String(t || '').split('/')[0].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
   const mesDe = d => String(d || '').slice(0, 7);
-  const mesHoje = () => new Date().toISOString().slice(0, 7);
+  const mesHoje = () => R.hoje().slice(0, 7);
   const nomeMes = m => { const [a, b] = m.split('-'); return ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][+b - 1] + '/' + a; };
   const somaMes = (m, n) => { const [a, b] = m.split('-').map(Number); const d = new Date(a, b - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
 
@@ -97,7 +97,7 @@
         </section>
         <aside class="secao">
           <form class="bloco" data-form="custo-sim" novalidate><h2>Simular uma visita</h2>
-            <div class="campos"><div class="campo"><label for="cs-e">Tipo</label><select id="cs-e" name="etapa">${Object.entries(MQ.ETAPAS_CUSTO).map(([k, t]) => `<option value="${k}">${t} (${p.horas[k]} h)</option>`).join('')}</select></div>
+            <div class="campos"><div class="campo"><label for="cs-e">Tipo</label><select id="cs-e" name="etapa">${Object.entries(MQ.ETAPAS_CUSTO).map(([k, t]) => `<option value="${k}">${t} (${p.horas[k]} h)${k === 'avaliacao' ? ' · ainda não agendável' : ''}</option>`).join('')}</select></div>
               <div class="campo"><label for="cs-k">Km só de ida</label><input id="cs-k" name="km" type="number" min="0" max="999" inputmode="decimal" value="30"></div></div>
             <div id="cs-res">${quadro(calcular('diagnostico', 30))}</div></form>
           <form class="bloco" data-form="custo-par" novalidate><h2>Valores usados</h2>

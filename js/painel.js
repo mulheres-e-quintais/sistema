@@ -20,7 +20,7 @@
 
   function dados(S) {
     const ativos = S.equipe.filter(m => m.status === 'ativa');
-    const pagaveis = ativos.filter(m => m.papel !== 'coord_geral');
+    const pagaveis = ativos.filter(m => m.papel === 'coord_tecnico' || MQ.regras.ehBolsista(m.papel));
     const bols = ativos.filter(m => R.ehBolsista(m.papel));
     const fichas = S.fichas || [];
     const selAprov = fichas.filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada');

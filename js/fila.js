@@ -18,7 +18,7 @@
   }
   async function tx(modo, fn) {
     const db = await abrir();
-    if (!db) return fn(null);
+    if (!db) { const r = fn(null); return r && typeof r === 'object' && 'result' in r ? r.result : r; }
     return new Promise((res, rej) => {
       const t = db.transaction(LOJA, modo); const loja = t.objectStore(LOJA);
       const r = fn(loja);

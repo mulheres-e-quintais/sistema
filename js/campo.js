@@ -403,6 +403,8 @@
     else if (a === 'campo-diag-ver') U().abrirPainel({ tipo: 'diag-ver', ficha: el.dataset.ficha });
     else if (a === 'campo-diag-novo') {
       Object.keys(fotosTemp).forEach(k => delete fotosTemp[k]);
+      const naFila = (S().fila || []).find(it => it.tipo === 'diagnostico' && it.dados && it.dados.ficha_id === el.dataset.ficha);
+      if (naFila && naFila.fotos) Object.assign(fotosTemp, naFila.fotos);   // correção de item não enviado mantém as fotos
       const vid = el.dataset.visita || (ativasDe(el.dataset.ficha, 'diagnostico')[0] || {}).id || '';
       U().abrirPainel({ tipo: 'diag-form', ficha: el.dataset.ficha, visita: vid });
       setTimeout(() => { const fm = $('form[data-form=diag]'); if (fm) atualizarDiag(fm); }, 0);

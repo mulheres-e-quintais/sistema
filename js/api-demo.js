@@ -326,7 +326,7 @@
       if (situacao === 'devolvido' && String(obs || '').trim().length < 5) throw falha('Para devolver, escreva o que precisa ser corrigido.');
       const agora = new Date().toISOString(); const antes = d.diagnosticos[i];
       d.diagnosticos[i] = Object.assign({}, antes, { situacao, obs_coordenacao: obs || null, atualizado_em: agora,
-        aprovado_por: situacao === 'aprovado' ? eu.id : null, aprovado_em: situacao === 'aprovado' ? agora : null });
+        aprovado_por: situacao === 'aprovado' ? eu.id : antes.aprovado_por, aprovado_em: situacao === 'aprovado' ? agora : antes.aprovado_em });
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'diagnosticos', registro_id: id, acao: 'UPDATE', por: eu.id, em: agora, antes: copia(antes), depois: copia(d.diagnosticos[i]) });
       gravar(); return copia(d.diagnosticos[i]);
     },
@@ -337,7 +337,12 @@
       const eu = euMesmo(); if (!eu || !/^coord/.test(eu.papel)) throw falha('Só a coordenação altera valores de pagamento.');
       const d = ler(); d.parametros = d.parametros || {}; d.parametros[chave] = copia(valor); gravar(); return copia(valor);
     },
-    async listarCustos() { return copia(ler().custos || []); },
+    async listarCustos() {
+      const d = ler(); const eu = euMesmo(); if (!eu) return [];
+      if (/^coord/.test(eu.papel)) return copia(d.custos || []);
+      const minhas = new Set((d.visitas || []).filter(v => v.executor_id === eu.id).map(v => v.id));
+      return copia((d.custos || []).filter(c => minhas.has(c.visita_id)));
+    },
     async salvarKm(visita_id, km_ida) {
       const eu = euMesmo(); if (!eu || !/^coord/.test(eu.papel)) throw falha('Só a coordenação altera valores de pagamento.');
       if (km_ida != null && !(km_ida >= 0 && km_ida < 1000)) throw falha('Distância inválida (0 a 999 km).');
