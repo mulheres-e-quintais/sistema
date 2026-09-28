@@ -38,20 +38,21 @@
 
   /* Quem pode fazer o quê (espelha pode_gerenciar() no banco) */
   R.podeCadastrar = (meuPapel, papelAlvo) =>
-    ((papelAlvo === 'coord_tecnico' || papelAlvo === 'professor_fic') && meuPapel === 'coord_geral') ||
+    ((papelAlvo === 'coord_tecnico' || papelAlvo === 'professor_fic' || papelAlvo === 'auxiliar_adm') && meuPapel === 'coord_geral') ||
     ((R.ehBolsista(papelAlvo) || papelAlvo === 'agente') && meuPapel === 'coord_tecnico');
   R.podeEditarDados = R.podeCadastrar;
   R.podeEditarHabilitacao = (meuPapel, papelAlvo) =>
-    (meuPapel === 'coord_geral' && (papelAlvo === 'coord_tecnico' || papelAlvo === 'professor_fic' || R.ehBolsista(papelAlvo) || papelAlvo === 'agente')) ||
+    (meuPapel === 'coord_geral' && papelAlvo !== 'coord_geral') ||
+    (meuPapel === 'auxiliar_adm' && papelAlvo !== 'coord_geral') ||   // cadastro no Arlo e termo (a própria habilitação não: a tela e o banco barram)
     (meuPapel === 'coord_tecnico' && (R.ehBolsista(papelAlvo) || papelAlvo === 'agente'));
 
   /* Habilitação para receber bolsa: passo a passo do Guia das bolsistas */
   /* professor do FIC não se matricula no curso: habilita com FUNCERN e termo */
-  R.fazFIC = papel => papel !== 'professor_fic' && papel !== 'coord_geral';
+  R.fazFIC = papel => !['professor_fic', 'auxiliar_adm', 'coord_geral'].includes(papel);
   R.passosHabilitacao = m => [
-    { id: 'dados',     nome: m.papel === 'professor_fic' || m.papel === 'coord_tecnico' ? 'Dados cadastrados pela coordenação geral' : 'Dados enviados pela coordenação técnica', feito: true, quando: m.criado_em && m.criado_em.slice(0, 10) },
+    { id: 'dados',     nome: ['professor_fic', 'auxiliar_adm', 'coord_tecnico'].includes(m.papel) ? 'Dados cadastrados pela coordenação geral' : 'Dados enviados pela coordenação técnica', feito: true, quando: m.criado_em && m.criado_em.slice(0, 10) },
     R.fazFIC(m.papel) ? { id: 'fic', nome: 'Matrícula no curso FIC (IFRN)', feito: !!m.matricula_fic_em, quando: m.matricula_fic_em, extra: m.matricula_fic_numero } : null,
-    { id: 'funcern',   nome: 'Documentos e conta/Pix entregues à FUNCERN', feito: !!m.docs_funcern_em, quando: m.docs_funcern_em },
+    { id: 'funcern',   nome: 'Cadastro no Arlo (FUNCERN)', feito: !!m.docs_funcern_em, quando: m.docs_funcern_em },
     { id: 'termo',     nome: 'Termo de compromisso assinado', feito: !!m.termo_assinado_em, quando: m.termo_assinado_em, extra: m.termo_path }
   ].filter(Boolean);
   R.situacao = m => {

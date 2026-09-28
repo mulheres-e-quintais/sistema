@@ -55,6 +55,13 @@
     B.situacao = {};
     S().api.situacaoBancaria().then(l => { B.situacao = Object.fromEntries((l || []).map(x => [x.equipe_id, x])); U().render(); }).catch(() => { B.situacao = {}; });
   }
+  /* auxiliar administrativo (e coordenação geral): a conta de UMA pessoa para digitar no Arlo; cada consulta fica no histórico */
+  function blocoContaArlo(m) {
+    if (!S().eu || !['auxiliar_adm', 'coord_geral'].includes(S().eu.papel) || m.papel === 'coord_geral' || m.status !== 'ativa') return '';
+    return `<div class="bloco" id="conta-arlo"><h3>Conta para o cadastro no Arlo</h3>
+      <p class="small muted">Os números só aparecem quando você pede, e cada consulta fica registrada no histórico (quem viu, de quem, quando). Não copie para outro lugar além do Arlo.</p>
+      <div class="acoes"><button class="btn" data-acao="banco-ver-arlo" data-id="${E(m.id)}">Ver conta e Pix</button></div></div>`;
+  }
   const informou = id => { carregarSituacao(); const x = (B.situacao || {})[id]; return x ? (x.informado ? { ok: true, em: x.atualizado_em } : { ok: false }) : null; };
   function blocoExportar() {
     if (!S().eu || S().eu.papel !== 'coord_geral') return '';
@@ -64,6 +71,15 @@
   }
 
   async function clique(a, el) {
+    if (a === 'banco-ver-arlo') {
+      const d = await S().api.verContaArlo(el.dataset.id); const box = document.getElementById('conta-arlo'); if (!box) return;
+      const TIPO = { corrente: 'Corrente', poupanca: 'Poupança', pagamento: 'Pagamento' };
+      box.innerHTML = '<h3>Conta para o cadastro no Arlo</h3>' + (d ? `<dl class="dl"><dt>Banco</dt><dd>${E(d.banco_codigo)} · ${E(d.banco_nome)}</dd><dt>Agência</dt><dd class="num">${E(d.agencia)}${d.agencia_dv ? '-' + E(d.agencia_dv) : ''}</dd>
+          <dt>Conta</dt><dd class="num">${E(d.conta)}-${E(d.conta_dv)} (${E(TIPO[d.tipo_conta] || d.tipo_conta)})</dd>${d.pix_tipo ? `<dt>Pix</dt><dd>${E(d.pix_tipo)}: ${E(d.pix_chave)}</dd>` : ''}
+          <dt>Informada em</dt><dd>${d.atualizado_em ? new Date(d.atualizado_em).toLocaleDateString('pt-BR') : ''}</dd></dl><p class="small muted">Consulta registrada no histórico. Feche este painel quando terminar.</p>`
+        : '<p>Esta pessoa ainda não informou a conta no sistema. Peça que ela entre e preencha em "Dados bancários para a FUNCERN".</p>');
+      return;
+    }
     if (a === 'banco-editar') { B.editando = true; desenhar(); }
     else if (a === 'banco-cancelar') { B.editando = false; desenhar(); }
     else if (a === 'banco-exportar') {
@@ -113,5 +129,5 @@
   // ao sair ou trocar de perfil, esquece o que carregou
   const limpar = () => { B.meus = undefined; B.editando = false; B.situacao = null; };
 
-  MQ.bancoUI = { secaoMinha, blocoExportar, informou, clique, enviar, limpar };
+  MQ.bancoUI = { secaoMinha, blocoExportar, blocoContaArlo, informou, clique, enviar, limpar };
 })();

@@ -39,7 +39,7 @@
           if (S.eu.papel === 'professor_fic') { const outros = await S.api.listarEquipeFic(); S.equipe = S.equipe.concat(outros.filter(o => !S.equipe.some(m => m.id === o.id))); }
         } catch (e) { if (e.semRede || !semFic(e)) throw e; S.ficSemBanco = true; S.turmas = []; S.matriculas = []; }
       } else { S.turmas = []; S.matriculas = []; }
-      S.fichas = S.eu.papel === 'professor_fic' ? [] : await S.api.listarFichas();
+      S.fichas = ['professor_fic', 'auxiliar_adm'].includes(S.eu.papel) ? [] : await S.api.listarFichas();
       // se o banco ainda não tiver as tabelas de campo (03_campo.sql), o resto do sistema continua funcionando
       const semTabela = e => !e.semRede && /PGRST205|42P01|does not exist|Could not find the table|schema cache/i.test(String((e.original && (e.original.code + ' ' + e.original.message)) || e.message));
       const opcional = async fn => { try { return fn ? await fn.call(S.api) : []; } catch (e) { if (semTabela(e)) { S.campoSemBanco = true; return []; } throw e; } };
@@ -98,6 +98,7 @@
     else if (/^coord/.test(S.eu.papel)) h += telaCoordenacao();
     else if (S.eu.papel === 'agente' && MQ.campoUI) h += MQ.campoUI.telaAgente();
     else if (S.eu.papel === 'professor_fic' && MQ.ficUI) h += MQ.ficUI.telaProfessor();
+    else if (S.eu.papel === 'auxiliar_adm') h += telaAuxiliar();
     else h += telaBolsista();
     app.innerHTML = h;
     if (S.painel) desenharPainel();
@@ -116,7 +117,7 @@
     const p = S.api.perfisDemo();
     const b = (id, t) => `<button type="button" data-acao="perfil" data-p="${id}" aria-pressed="${S.verEntrada ? id === 'entrada' : p === id}">${t}</button>`;
     return `<div class="demo"><div class="demo-in"><span><b>Demonstração</b> com dados de exemplo, gravados só neste navegador.</span>
-      <span>Ver como: <span class="seg" role="group" aria-label="Perfil">${b('coord_geral', 'Coordenação geral')}${b('coord_tecnico', 'Coordenação técnica')}${b('bolsista', 'Bolsista')}${b('agente', 'Agente de campo')}${b('professor', 'Professor FIC')}${b('entrada', 'Tela de entrada')}</span></span>
+      <span>Ver como: <span class="seg" role="group" aria-label="Perfil">${b('coord_geral', 'Coordenação geral')}${b('coord_tecnico', 'Coordenação técnica')}${b('bolsista', 'Bolsista')}${b('agente', 'Agente de campo')}${b('professor', 'Professor FIC')}${b('auxiliar', 'Auxiliar adm.')}${b('entrada', 'Tela de entrada')}</span></span>
       <button class="link" data-acao="recomecar">Recomeçar demonstração</button></div></div>`;
   }
 
@@ -143,7 +144,7 @@
       ['campo', 'Campo' + (diagAguard ? ` <span class="conta">${diagAguard}</span>` : '')], ['fic', 'Curso FIC'], ['custos', 'Custos'], ['historico', 'Histórico']];
     const nav = `<nav class="abas" aria-label="Seções">${abas.map(([id, t]) => `<button type="button" data-acao="aba" data-aba="${id}" ${aba === id ? 'aria-current="page"' : ''}>${t}</button>`).join('')}</nav>`;
     const intro = souGeral
-      ? 'Você cadastra a coordenação técnica indicada pelo MPA e os professores do curso FIC, e registra a habilitação de cada bolsista: documentos na FUNCERN e termo de compromisso. A matrícula no FIC é registrada pelo professor, na aba Curso FIC.'
+      ? 'Você cadastra a coordenação técnica indicada pelo MPA, os professores do curso FIC e os auxiliares administrativos. O auxiliar cadastra a equipe no Arlo (FUNCERN) e registra isso e o termo na habilitação; a matrícula no FIC é dos professores.'
       : 'Cadastre as bolsistas indicadas pelo MPA: uma de articulação estadual e uma de apoio estadual por estado.';
     let corpo = '';
     if (aba === 'visao') corpo = MQ.painelUI ? MQ.painelUI.visaoGeral(S) : '';
@@ -160,6 +161,7 @@
         ${ct ? cartaoPessoa(ct) : vagaCoordTecnica(souGeral)}
       </section>
       ${MQ.ficUI && !S.ficSemBanco ? MQ.ficUI.secaoEquipe() : ''}
+      ${secaoAuxiliares(souGeral)}
       <section class="secao" aria-labelledby="t-b">
         <div class="secao-cab"><h2 id="t-b">Bolsistas por estado</h2><p>1 de articulação e 1 de apoio por estado · cadastradas pela coordenação técnica · meta de 40 quintais por estado</p></div>
         ${quadroTabela()}${quadroCartoes()}
@@ -232,6 +234,46 @@
     </section>`;
   }
 
+  /* ---------- auxiliar administrativo ---------- */
+  function secaoAuxiliares(souGeral) {
+    const l = ativos().filter(m => m.papel === 'auxiliar_adm');
+    return `<section class="secao" aria-labelledby="t-aux">
+      <div class="secao-cab"><h2 id="t-aux">Auxiliares administrativos</h2><p>IFRN · cadastrados pela coordenação geral · cadastram a equipe no Arlo e registram o Arlo e o termo</p></div>
+      ${l.map(cartaoPessoa).join('')}
+      <div class="vazio"><div>${l.length ? `<b>${l.length} auxiliar${l.length > 1 ? 'es' : ''} cadastrado${l.length > 1 ? 's' : ''}.</b> Pode cadastrar mais, se precisar.` : '<b>Nenhum auxiliar administrativo cadastrado.</b> Cadastre à mão ou gere um link para ele preencher.'}
+        ${souGeral ? '' : '<br><span class="small">Só a coordenação geral pode fazer este cadastro.</span>'}</div>
+        ${souGeral ? '<button class="btn pri" data-acao="novo" data-papel="auxiliar_adm">Cadastrar auxiliar administrativo</button>' : ''}</div>
+    </section>`;
+  }
+  function telaAuxiliar() {
+    const eu = Object.assign({}, S.eu, porId(S.eu.id) || {}); const s = R.situacao(eu);
+    const ordem = ['coord_tecnico', 'professor_fic', 'auxiliar_adm', 'articulacao', 'apoio', 'agente'];
+    const pessoas = ativos().filter(m => m.papel !== 'coord_geral' && m.id !== eu.id)
+      .sort((a, b) => ordem.indexOf(a.papel) - ordem.indexOf(b.papel) || String(a.uf || '').localeCompare(String(b.uf || '')) || nomeDe(a).localeCompare(nomeDe(b)));
+    const semArlo = pessoas.filter(m => !m.docs_funcern_em), semTermo = pessoas.filter(m => m.docs_funcern_em && !m.termo_assinado_em);
+    const ok = pessoas.filter(m => m.docs_funcern_em && m.termo_assinado_em);
+    const linha = m => `<button class="vagabtn com-foto" data-acao="ver" data-id="${m.id}">${avatar(m, 44)}<span class="vb-t"><span class="nm">${esc(nomeDe(m))}</span>
+        <span class="sub">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(m.uf) : ''}${!m.docs_funcern_em && m.cadastro_arlo ? ' · <b>diz que já tem Arlo: confira e registre</b>' : ''}</span></span></button>`;
+    const grupo = (t, l, vazio) => `<section class="secao"><div class="secao-cab"><h2>${t} <span class="conta-t">${l.length}</span></h2></div>
+      ${l.length ? `<div class="grade-prof">${l.map(linha).join('')}</div>` : `<p class="muted">${vazio}</p>`}</section>`;
+    return `<main class="wrap" id="principal">
+      <div class="cab"><div><span class="eyebrow">${esc(P.auxiliar_adm.nome)}</span><h1>Olá, ${esc(nomeDe(eu).split(' ')[0])}</h1><p>${esc(P.auxiliar_adm.faz)}</p></div>
+        <span class="chip ${s.cod}" style="font-size:13px;padding:4px 12px">${esc(s.rot)}</span></div>
+      <div class="resumo">
+        <div><span class="v num">${pessoas.length}</span><span class="l">pessoas na equipe</span></div>
+        <div><span class="v num" ${semArlo.length ? 'style="color:var(--crit)"' : ''}>${semArlo.length}</span><span class="l">falta cadastrar no Arlo</span></div>
+        <div><span class="v num">${semTermo.length}</span><span class="l">no Arlo, falta o termo</span></div>
+        <div><span class="v num">${ok.length}</span><span class="l">Arlo e termo registrados</span></div></div>
+      <p class="small muted">Abra a pessoa, veja os dados (e a conta, se precisar), cadastre no Arlo e registre a data em <b>Registrar passos da habilitação</b>. Cada consulta de conta bancária fica no histórico.</p>
+      ${grupo('Falta cadastrar no Arlo', semArlo, 'Todos já estão no Arlo.')}
+      ${grupo('No Arlo, falta registrar o termo', semTermo, 'Nenhum termo pendente.')}
+      <details class="hist"><summary>Arlo e termo registrados (${ok.length})</summary><div style="padding:0 18px 16px">${ok.length ? `<div class="grade-prof">${ok.map(linha).join('')}</div>` : '<p class="muted">Ninguém ainda.</p>'}</div></details>
+      <div class="bloco"><h2>Sua habilitação</h2><p class="small muted">A sua é registrada pelo outro auxiliar ou pela coordenação geral.</p>${passos(eu)}</div>
+      <div class="bloco"><div class="cab-av">${avatar(eu, 96)}<div style="display:grid;gap:6px"><h2>Meus dados</h2>${botaoFoto(eu)}</div></div>${dadosDL(eu)}<p class="small muted">Algum dado errado? Fale com a coordenação geral.</p></div>
+      ${MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
+    </main>`;
+  }
+
   function planoUF(uf) {
     // andamento da seleção (fichas) no estado: quem faz o trabalho de campo pode variar
     const fs = (S.fichas || []).filter(f => f.uf === uf);
@@ -258,6 +300,9 @@
     const quem = a.por ? (porId(a.por) || {}).nome || 'Alguém' : 'Sistema';
     const alvo = a.depois || a.antes || {};
     const papel = P[alvo.papel] ? P[alvo.papel].nome.toLowerCase() + (alvo.uf ? ' ' + alvo.uf : '') : '';
+    if (a.tabela === 'equipe_bancario' && a.acao === 'VIEW') return `<b>${esc(quem)}</b> consultou a conta bancária de <b>${esc((porId(a.registro_id) || {}).nome || 'uma pessoa')}</b> para o cadastro no Arlo.`;
+    if (a.tabela === 'equipe_bancario' && a.acao === 'EXPORT') return `<b>${esc(quem)}</b> gerou a planilha bancária para a FUNCERN.`;
+    if (a.tabela === 'equipe_bancario') return `<b>${esc(quem)}</b> informou ou alterou a própria conta bancária.`;
     if (a.acao === 'INSERT') return `<b>${esc(quem)}</b> cadastrou <b>${esc(alvo.nome)}</b> (${esc(papel)})${alvo.substitui_id ? ' como substituta' : ''}.`;
     const A = a.antes || {}, D = a.depois || {};
     if (A.status === 'ativa' && D.status === 'desligada') return `<b>${esc(quem)}</b> desligou <b>${esc(D.nome)}</b> (${esc(papel)}): ${esc(D.motivo_desligamento)}`;
@@ -347,8 +392,9 @@
       m.status === 'desligada' ? ['Desligada em', R.fmtData(m.data_fim)] : null,
       m.status === 'desligada' ? ['Motivo', m.motivo_desligamento] : null
     ].filter(Boolean).filter(l => l[1]);
-    const pv = MQ.convitesUI && (S.eu.id === m.id || /^coord/.test(S.eu.papel)) ? MQ.convitesUI.privado(m.id) : null;
-    if (MQ.bancoUI && /^coord/.test(S.eu.papel) && m.status === 'ativa' && m.papel !== 'coord_geral') {
+    const gestao = /^coord|auxiliar_adm/.test(S.eu.papel);
+    const pv = MQ.convitesUI && (S.eu.id === m.id || gestao) ? MQ.convitesUI.privado(m.id) : null;
+    if (MQ.bancoUI && gestao && m.status === 'ativa' && m.papel !== 'coord_geral') {
       const b = MQ.bancoUI.informou(m.id); if (b) linhas.push(['Conta para a FUNCERN', b.ok ? 'Informada por ela' + (b.em ? ' em ' + new Date(b.em).toLocaleDateString('pt-BR') : '') : m.cadastro_arlo ? 'No Arlo' : 'Ainda não informou']);
     }
     if (pv) linhas.push(['Nascimento', pv.data_nascimento && R.fmtData(pv.data_nascimento)], ['PIS/NIS', pv.nis], ['Endereço', MQ.convitesUI.textoEndereco(pv.endereco)],
@@ -365,7 +411,7 @@
     const m = porId(p.id); if (!m) return '';
     const s = R.situacao(m);
     const editaDados = m.status === 'ativa' && R.podeEditarDados(S.eu.papel, m.papel);
-    const editaHab = m.status === 'ativa' && R.podeEditarHabilitacao(S.eu.papel, m.papel);
+    const editaHab = m.status === 'ativa' && R.podeEditarHabilitacao(S.eu.papel, m.papel) && !(S.eu.papel === 'auxiliar_adm' && m.id === S.eu.id);
     const plano = R.ehBolsista(m.papel) ? `<div class="bloco"><h3>Previsão de atividades (plano individual)</h3>
       ${m.meta_diagnosticos != null ? `<dl class="dl"><dt>Diagnósticos</dt><dd class="num">${m.meta_diagnosticos ?? '—'}</dd><dt>Quintais</dt><dd class="num">${m.meta_quintais ?? '—'}</dd><dt>Visitas</dt><dd class="num">${m.meta_visitas ?? '—'}</dd></dl>` : '<p class="muted small">Não preenchido.</p>'}</div>` : '';
     const hoje = R.hoje() > m.data_inicio ? R.hoje() : m.data_inicio;
@@ -393,6 +439,7 @@
 
         ${plano}
         ${m.id === S.eu.id && m.papel !== 'coord_geral' && MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
+        ${m.id !== S.eu.id && MQ.bancoUI ? MQ.bancoUI.blocoContaArlo(m) : ''}
 
         <div class="bloco"><h3>Habilitação</h3>${m.papel === 'coord_geral' ? '<p class="small muted">Não se aplica.</p>' : passos(m)}
           ${editaHab && m.papel !== 'coord_geral' ? formHabilitacao(m) : ''}</div>
@@ -406,13 +453,13 @@
     const mt = (S.matriculas || []).find(x => x.equipe_id === m.id); const turma = mt && (S.turmas || []).find(t => t.id === mt.turma_id);
     return `<details class="hab${feitos === total ? ' completa' : ''}" ${feitos === total ? '' : 'open'}><summary class="hab-sum">
         <span class="hab-ic" aria-hidden="true">${feitos === total ? '✓' : feitos + '/' + total}</span>
-        <span class="hab-t"><b>${feitos === total ? 'Datas da habilitação' : 'Registrar passos da habilitação'}</b><span class="small muted">${feitos === total ? 'Os ' + total + ' passos estão registrados · abra para ver ou corrigir uma data' : (fic ? 'Documentos na FUNCERN e termo assinado (a matrícula no FIC é dos professores do curso)' : 'Documentos na FUNCERN e termo assinado')}</span></span>
+        <span class="hab-t"><b>${feitos === total ? 'Datas da habilitação' : 'Registrar passos da habilitação'}</b><span class="small muted">${feitos === total ? 'Os ' + total + ' passos estão registrados · abra para ver ou corrigir uma data' : (fic ? 'Cadastro no Arlo e termo assinado (a matrícula no FIC é dos professores do curso)' : 'Cadastro no Arlo e termo assinado')}</span></span>
         <span class="hab-seta" aria-hidden="true"></span></summary>
       <form class="f" data-form="hab" data-id="${m.id}" style="margin-top:12px" novalidate>
       <div class="campos">
         ${!fic ? '' : `<div class="campo inteiro"><span class="dica" style="font-size:14px">${turma ? `Matrícula no FIC registrada pelo professor na turma <b>${esc(turma.nome)}</b> (nº ${esc(mt.numero)}, ${R.fmtData(mt.matriculado_em)}).`
           : m.matricula_fic_em ? `Matrícula no FIC registrada em ${R.fmtData(m.matricula_fic_em)} (nº ${esc(m.matricula_fic_numero || '')}), ainda sem turma no sistema.` : '<b>Matrícula no FIC: aguardando.</b>'} A matrícula é registrada só pelos professores do curso, na aba Curso FIC.</span></div>`}
-        <div class="campo"><label for="h-fun">Documentos entregues à FUNCERN em</label><input id="h-fun" name="docs_funcern_em" type="date" value="${esc(m.docs_funcern_em || '')}"></div>
+        <div class="campo"><label for="h-fun">Cadastrado no Arlo (FUNCERN) em</label><input id="h-fun" name="docs_funcern_em" type="date" value="${esc(m.docs_funcern_em || '')}"></div>
         <div class="campo"><label for="h-ter">Termo de compromisso assinado em</label><input id="h-ter" name="termo_assinado_em" type="date" value="${esc(m.termo_assinado_em || '')}"></div>
         <div class="campo inteiro"><label for="h-arq">Termo assinado (PDF ou foto)</label><input id="h-arq" name="termo" type="file" accept="application/pdf,image/*">
           <span class="dica">${m.termo_path ? 'Já enviado: ' + esc(String(m.termo_path).split('/').pop()) + '. Enviar outro substitui o link.' : 'Com assinaturas da bolsista, da coordenação técnica e da coordenação geral.'}</span></div>
@@ -438,7 +485,7 @@
       <div class="painel-corpo"><form class="f" data-form="cadastro" novalidate>
         <div class="fixo">${m.papel === 'agente' ? '<span class="small muted">Pagamento</span><b>Ajuda de custo por visita</b>' : `<span class="small muted">Função</span><b>${esc(P[m.papel].nome)}</b>`}
           <span class="small">${P[m.papel].faz ? esc(P[m.papel].faz) : 'Planeja, coordena e acompanha a execução técnica nos 5 estados.'}</span>
-          ${m.papel === 'professor_fic' ? '<span class="small">Habilitação: documentos na FUNCERN e termo de compromisso (não se matricula no FIC).</span>' : ''}
+          ${['professor_fic', 'auxiliar_adm'].includes(m.papel) ? '<span class="small">Habilitação: cadastro no Arlo (FUNCERN) e termo de compromisso (não se matricula no FIC).</span>' : ''}
           ${m.papel === 'agente' ? '<span class="small">Precisa estar matriculada no FIC e cadastrada na FUNCERN antes da primeira visita paga. Vê só os quintais atribuídos a ela.</span>' : ''}</div>
         ${!edit && !pre && MQ.convitesUI ? MQ.convitesUI.blocoLink(p) : ''}
         ${pre ? `<div class="aviso">Dados enviados por ela pelo link em ${R.fmtData(String(pre._pre.enviado_em).slice(0, 10))}. Confira, complete o que falta e salve: ao salvar, o cadastro é aprovado.</div>` : ''}
@@ -452,9 +499,9 @@
             <span class="dica">É o login no sistema. Ela recebe um link de acesso neste e-mail.</span></div>
           <div class="campo"><label for="c-mun">Município onde mora</label><input id="c-mun" name="municipio" value="${v('municipio')}" ${bols ? 'list="lista-mun"' : 'placeholder="Município/UF"'}>
             ${bols ? `<datalist id="lista-mun">${munis.map(x => `<option value="${esc(x)}">`).join('')}</datalist><span class="dica">A lista traz os municípios do projeto técnico em ${esc(m.uf)}.</span>` : ''}</div>
-          <div class="campo"><label for="c-org">Organização ou movimento</label><input id="c-org" name="organizacao" value="${v('organizacao')}" placeholder="${bols ? 'Ex.: MPA, associação, sindicato' : m.papel === 'professor_fic' ? 'Ex.: IFRN Campus Apodi' : 'Ex.: MPA'}"></div>
+          <div class="campo"><label for="c-org">Organização ou movimento</label><input id="c-org" name="organizacao" value="${v('organizacao')}" placeholder="${bols ? 'Ex.: MPA, associação, sindicato' : ['professor_fic', 'auxiliar_adm'].includes(m.papel) ? 'Ex.: IFRN Campus Apodi' : 'Ex.: MPA'}"></div>
         </div></fieldset>
-        ${MQ.convitesUI ? (priv === undefined ? '<p class="small muted">Carregando os dados pessoais…</p>' : MQ.convitesUI.camposPessoais(Object.assign({ nome_social: m.nome_social, cadastro_arlo: p.id ? !!m.cadastro_arlo : m.cadastro_arlo }, priv || {}), false)) : ''}
+        ${MQ.convitesUI ? (priv === undefined ? '<p class="small muted">Carregando os dados pessoais…</p>' : MQ.convitesUI.camposPessoais(Object.assign({ nome_social: m.nome_social, cadastro_arlo: p.id ? !!m.cadastro_arlo : m.cadastro_arlo }, priv || {}), false, m.papel)) : ''}
         <fieldset><legend>Bolsa</legend><div class="campos">
           <div class="campo"><label for="c-ini">Início da bolsa</label><input id="c-ini" name="data_inicio" type="date" value="${v('data_inicio')}" min="${MQ.PROJETO.vigencia.inicio}" max="${MQ.PROJETO.vigencia.fim}" required></div>
         </div></fieldset>
@@ -630,7 +677,7 @@
             if (temAlgo) await S.api.salvarPrivado(novo.id, priv);
             if (p.pre) await S.api.decidirPreCadastro(p.pre, 'aprovado', null, novo.id);
             await recarregar(); abrirPainel({ tipo: 'detalhe', id: novo.id });
-            toast(nomeDe(m).split(' ')[0] + (m.papel === 'professor_fic' ? ' cadastrado(a). Próximo passo: documentos na FUNCERN e termo.' : ' cadastrada. Próximo passo: matrícula no curso FIC.'));
+            toast(nomeDe(m).split(' ')[0] + (['professor_fic', 'auxiliar_adm'].includes(m.papel) ? ' cadastrado(a). Próximo passo: cadastro no Arlo e termo.' : ' cadastrada. Próximo passo: matrícula no curso FIC.'));
           }
         });
       }

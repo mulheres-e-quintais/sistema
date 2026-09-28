@@ -1,5 +1,6 @@
 -- =====================================================================
--- Mulheres & Quintais — Etapa 11: professores do curso FIC, turmas e matrículas; cadastro no Arlo
+-- Mulheres & Quintais — Etapa 11: professores do curso FIC, turmas e matrículas; cadastro no Arlo;
+--                                  auxiliar administrativo
 -- Supabase > SQL Editor > New query > cole este arquivo inteiro > Run.
 -- Rodar depois de 01 a 10. Pode rodar de novo sem estragar nada.
 -- =====================================================================
@@ -15,6 +16,11 @@
 --   * Matrícula de quem já tem visita no roteiro não é cancelada (a visita depende dela).
 --   * Quem já tem cadastro no Arlo informa só os dados básicos (nome, CPF, e-mail, celular, município);
 --     nascimento, NIS, endereço completo e dados bancários ficam no Arlo.
+--   * Novo perfil: auxiliar administrativo (IFRN, sem estado), cadastrado só pela coordenação geral.
+--     Cadastra a equipe no Arlo (FUNCERN) e registra isso no sistema: o passo da habilitação
+--     "Cadastro no Arlo (FUNCERN)" (antes "documentos na FUNCERN") e o termo assinado.
+--     Vê os dados pessoais e, pessoa por pessoa, a conta bancária; cada consulta da conta vai
+--     para o histórico. Não altera dados pessoais, não desliga ninguém e não mexe na própria habilitação.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -22,35 +28,35 @@
 -- ---------------------------------------------------------------------
 alter table public.equipe drop constraint if exists equipe_papel_check;
 alter table public.equipe add constraint equipe_papel_check
-  check (papel in ('coord_geral','coord_tecnico','articulacao','apoio','agente','professor_fic'));
+  check (papel in ('coord_geral','coord_tecnico','articulacao','apoio','agente','professor_fic','auxiliar_adm'));
 alter table public.equipe drop constraint if exists uf_por_papel;
 alter table public.equipe add constraint uf_por_papel check (
   (papel in ('articulacao','apoio','agente') and uf is not null) or
-  (papel in ('coord_geral','coord_tecnico','professor_fic') and uf is null));
+  (papel in ('coord_geral','coord_tecnico','professor_fic','auxiliar_adm') and uf is null));
 
 create or replace function public.pode_gerenciar(p_papel text) returns boolean
 language sql stable as $$
   select case
-    when p_papel in ('coord_tecnico','professor_fic')  then public.meu_papel() = 'coord_geral'
+    when p_papel in ('coord_tecnico','professor_fic','auxiliar_adm') then public.meu_papel() = 'coord_geral'
     when p_papel in ('articulacao','apoio','agente')   then public.meu_papel() = 'coord_tecnico'
     else false
   end
 $$;
 
--- professor não se matricula no FIC: habilita com FUNCERN e termo
+-- professor e auxiliar não se matriculam no FIC: habilitam com Arlo (FUNCERN) e termo
 create or replace function public.habilitado(p equipe) returns boolean
 language sql immutable as $$
-  select p.status = 'ativa' and (p.papel = 'professor_fic' or p.matricula_fic_em is not null)
+  select p.status = 'ativa' and (p.papel in ('professor_fic','auxiliar_adm') or p.matricula_fic_em is not null)
      and p.docs_funcern_em is not null and p.termo_assinado_em is not null
 $$;
 
 -- convites também para professor (sem estado)
 alter table public.convites drop constraint if exists convites_papel_check;
 alter table public.convites add constraint convites_papel_check
-  check (papel in ('coord_tecnico','articulacao','apoio','agente','professor_fic'));
+  check (papel in ('coord_tecnico','articulacao','apoio','agente','professor_fic','auxiliar_adm'));
 alter table public.convites drop constraint if exists uf_do_convite;
 alter table public.convites add constraint uf_do_convite check (
-  (papel in ('coord_tecnico','professor_fic') and uf is null) or (papel not in ('coord_tecnico','professor_fic') and uf is not null));
+  (papel in ('coord_tecnico','professor_fic','auxiliar_adm') and uf is null) or (papel not in ('coord_tecnico','professor_fic','auxiliar_adm') and uf is not null));
 
 create or replace function public.criar_convite(p_papel text, p_uf text default null, p_substitui uuid default null) returns text
 language plpgsql security definer set search_path = public as $$
@@ -65,7 +71,7 @@ begin
   end if;
   t := translate(encode(gen_random_bytes(18), 'base64'), '+/=', '-_');
   insert into public.convites (token, papel, uf, substitui_id, criado_por)
-    values (t, p_papel, case when p_papel in ('coord_tecnico','professor_fic') then null else upper(p_uf) end, p_substitui, public.meu_id());
+    values (t, p_papel, case when p_papel in ('coord_tecnico','professor_fic','auxiliar_adm') then null else upper(p_uf) end, p_substitui, public.meu_id());
   return t;
 end $$;
 revoke all on function public.criar_convite(text, text, uuid) from public;
@@ -260,9 +266,103 @@ end $$;
 revoke all on function public.enviar_pre_cadastro(text, jsonb) from public;
 grant execute on function public.enviar_pre_cadastro(text, jsonb) to anon, authenticated;
 
+-- ---------------------------------------------------------------------
+-- 4. Auxiliar administrativo: cadastra no Arlo e registra a habilitação
+-- ---------------------------------------------------------------------
+create or replace function public.equipe_antes() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare so_hab text[] := array['docs_funcern_em','termo_path','termo_assinado_em','obs_habilitacao','atualizado_em'];
+begin
+  if tg_op = 'INSERT' then
+    new.criado_por := public.meu_id();
+    new.status := 'ativa'; new.data_fim := null; new.motivo_desligamento := null; new.user_id := null;
+  else
+    if new.papel is distinct from old.papel or new.uf is distinct from old.uf
+       or new.cpf is distinct from old.cpf or new.criado_por is distinct from old.criado_por
+       or new.criado_em is distinct from old.criado_em then
+      raise exception 'Papel, estado e CPF não podem ser alterados. Desligue e cadastre novamente.';
+    end if;
+    if old.status = 'desligada' and new.status = 'ativa' then
+      raise exception 'Registro desligado não pode ser reativado. Faça um novo cadastro.';
+    end if;
+    if new.email is distinct from old.email then new.user_id := null; end if;
+    if public.meu_papel() = 'coord_geral' and old.papel in ('articulacao','apoio','agente') then
+      if (to_jsonb(new) - array['matricula_fic_em','matricula_fic_numero','docs_funcern_em',
+            'termo_path','termo_assinado_em','obs_habilitacao','atualizado_em','foto_path'])
+         is distinct from
+         (to_jsonb(old) - array['matricula_fic_em','matricula_fic_numero','docs_funcern_em',
+            'termo_path','termo_assinado_em','obs_habilitacao','atualizado_em','foto_path']) then
+        raise exception 'A coordenação geral só altera a habilitação. Dados pessoais e desligamento são da coordenação técnica.';
+      end if;
+    end if;
+    if public.meu_papel() = 'auxiliar_adm' and auth.uid() is not null then
+      if old.id = public.meu_id() then
+        raise exception 'A sua própria habilitação é registrada pelo outro auxiliar ou pela coordenação geral.';
+      end if;
+      if (to_jsonb(new) - so_hab) is distinct from (to_jsonb(old) - so_hab) then
+        raise exception 'O auxiliar administrativo só registra o cadastro no Arlo e o termo. Dados pessoais são de quem cadastrou a pessoa.';
+      end if;
+    end if;
+    if new.status = 'desligada' then new.user_id := null; end if;
+    new.atualizado_em := now();
+  end if;
+  return new;
+end $$;
+
+drop policy if exists equipe_ler on public.equipe;
+create policy equipe_ler on public.equipe for select to authenticated
+  using (public.meu_papel() in ('coord_geral','coord_tecnico','auxiliar_adm') or user_id = auth.uid()
+         or (public.meu_papel() in ('articulacao','apoio') and uf = public.minha_uf()));
+drop policy if exists equipe_alterar on public.equipe;
+create policy equipe_alterar on public.equipe for update to authenticated
+  using (public.pode_gerenciar(papel)
+         or (public.meu_papel() = 'coord_geral' and papel in ('articulacao','apoio','agente'))
+         or (public.meu_papel() = 'auxiliar_adm' and papel <> 'coord_geral'))
+  with check (public.pode_gerenciar(papel)
+         or (public.meu_papel() = 'coord_geral' and papel in ('articulacao','apoio','agente'))
+         or (public.meu_papel() = 'auxiliar_adm' and papel <> 'coord_geral'));
+
+-- dados pessoais complementares e termos: o auxiliar precisa deles para o cadastro no Arlo
+drop policy if exists privado_ler on public.equipe_privado;
+create policy privado_ler on public.equipe_privado for select to authenticated
+  using (equipe_id = public.meu_id() or public.meu_papel() in ('coord_geral','coord_tecnico','auxiliar_adm'));
+drop policy if exists termos_ler on storage.objects;
+drop policy if exists termos_enviar on storage.objects;
+create policy termos_ler on storage.objects for select to authenticated
+  using (bucket_id = 'termos' and public.meu_papel() in ('coord_geral','coord_tecnico','auxiliar_adm'));
+create policy termos_enviar on storage.objects for insert to authenticated
+  with check (bucket_id = 'termos' and public.meu_papel() in ('coord_geral','coord_tecnico','auxiliar_adm'));
+
+-- situação da conta (sem números) também para o auxiliar
+create or replace function public.situacao_bancaria() returns table (equipe_id uuid, informado boolean, atualizado_em timestamptz)
+language sql stable security definer set search_path = public as $$
+  select e.id, b.equipe_id is not null, b.atualizado_em
+    from public.equipe e left join public.equipe_bancario b on b.equipe_id = e.id
+   where coalesce(public.meu_papel(), '') in ('coord_geral','coord_tecnico','auxiliar_adm') and e.status = 'ativa' and e.papel <> 'coord_geral';
+$$;
+
+-- a conta de UMA pessoa, para digitar no Arlo. Cada consulta fica no histórico (quem viu, de quem, quando).
+create or replace function public.ver_conta_para_arlo(p_equipe uuid) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare r jsonb;
+begin
+  if coalesce(public.meu_papel(), '') not in ('auxiliar_adm','coord_geral') then
+    raise exception 'Só o auxiliar administrativo e a coordenação geral veem a conta para o cadastro no Arlo.';
+  end if;
+  select to_jsonb(b) - 'equipe_id' into r from public.equipe_bancario b join public.equipe e on e.id = b.equipe_id
+   where b.equipe_id = p_equipe and e.status = 'ativa';
+  insert into public.auditoria (tabela, registro_id, acao, por, antes, depois)
+    values ('equipe_bancario', p_equipe, 'VIEW', public.meu_id(), null,
+            jsonb_build_object('aviso', 'conta consultada para o cadastro no Arlo', 'encontrada', r is not null));
+  return r;
+end $$;
+revoke all on function public.situacao_bancaria(), public.ver_conta_para_arlo(uuid) from public, anon;
+grant execute on function public.situacao_bancaria(), public.ver_conta_para_arlo(uuid) to authenticated;
+
 -- matrículas que já existiam na habilitação (registradas à mão pela coordenação) continuam valendo;
 -- aparecem na tela como "registrada pela coordenação, sem turma".
 
 select 'Etapa 11 instalada' as resultado,
        (select count(*) from public.turmas_fic) as turmas,
-       (select count(*) from public.equipe where papel = 'professor_fic' and status = 'ativa') as professores;
+       (select count(*) from public.equipe where papel = 'professor_fic' and status = 'ativa') as professores,
+       (select count(*) from public.equipe where papel = 'auxiliar_adm' and status = 'ativa') as auxiliares;
