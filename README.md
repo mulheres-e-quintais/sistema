@@ -49,6 +49,8 @@ supabase/01_criar_banco.sql      etapa 1: equipe, regras de acesso (RLS), audito
 supabase/02_fichas.sql           etapa 2: fichas de indicação e termo
 supabase/03_campo.sql            etapa 3: visitas, agentes de campo, diagnóstico
 supabase/04_vitrine_e_custos.sql etapa 4: vitrine pública e custo das visitas
+supabase/05_dados_exemplo.sql    dados inventados para testar (opcional)
+supabase/06_apagar_exemplo.sql   apaga os dados inventados
 supabase/schema.sql              versão antiga da etapa 1 (não usar; mantida para histórico)
 supabase/tests/         testes das regras do banco
 ```
@@ -73,6 +75,14 @@ Use o seletor "Ver como" para alternar entre coordenação geral, coordenação 
 4. **Login com senha:** em *Authentication > Sign In / Providers > Email*, **desligue "Confirm email"**. Cada pessoa cria a própria senha em "Primeiro acesso", e o banco só aceita e-mails já cadastrados pela coordenação. Assim o sistema não depende de servidor de e-mail. Para "esqueci a senha": a coordenação geral apaga o usuário em *Authentication > Users* e a pessoa faz o primeiro acesso de novo (o cadastro na equipe não é afetado). No painel, cada pessoa mostra se já fez o primeiro acesso: confira logo depois de cadastrar alguém.
 5. **Ligar o sistema ao banco:** em `js/config.js`, preencha `supabaseUrl` e `supabaseAnonKey` (em *Project Settings > API*). A chave anon é pública por desenho; quem protege os dados são as regras do banco.
 6. **Publicar:** suba a pasta para um repositório no GitHub e ative o *GitHub Pages*, ou arraste a pasta para o Vercel/Netlify. Precisa ser **https** para instalar no celular.
+
+## Dados de exemplo (para testar com o sistema cheio)
+
+- `supabase/05_dados_exemplo.sql` coloca o projeto inteiro com dados **inventados**: coordenação técnica, 10 bolsistas, 10 agentes de campo, 279 fichas (200 selecionadas e aprovadas, lista de espera, sem água, não atende, aguardando e devolvida), 800 visitas feitas e 200 diagnósticos com plano aprovado.
+- Tudo fica anotado na tabela `exemplo`: não aparece na vitrine pública, ninguém consegue criar login com os e-mails de exemplo (`@exemplo.invalid`) e a coordenação vê um aviso no topo enquanto eles existirem.
+- `supabase/06_apagar_exemplo.sql` apaga só os dados de exemplo. **Rode antes de cadastrar a equipe e as fichas de verdade** (a vaga de coordenação técnica e as 10 vagas de bolsista estão ocupadas pelos exemplos).
+- O 05 se recusa a rodar se já houver equipe ou fichas reais.
+- Para gerar de novo (mesmo conteúdo): `python3 supabase/exemplo/gerar.py`.
 
 ## Regras garantidas pelo banco (não só pela tela)
 

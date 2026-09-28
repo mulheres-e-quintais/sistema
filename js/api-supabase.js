@@ -171,6 +171,10 @@
       return data.signedUrl;
     },
 
+    async contarExemplo() {
+      const { count, error } = await sb.from('exemplo').select('id', { count: 'exact', head: true });
+      if (error) throw erro(error); return count || 0;
+    },
     /* ---------- Ajuda de custo por visita ---------- */
     async lerParametros(chave) {
       const { data, error } = await sb.from('parametros').select('valor, atualizado_em').eq('chave', chave).maybeSingle();
