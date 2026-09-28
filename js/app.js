@@ -31,8 +31,11 @@
     try {
       S.equipe = await S.api.listarEquipe();
       S.fichas = await S.api.listarFichas();
-      S.visitas = S.api.listarVisitas ? await S.api.listarVisitas() : [];
-      S.diagnosticos = S.api.listarDiagnosticos ? await S.api.listarDiagnosticos() : [];
+      // se o banco ainda não tiver as tabelas de campo (03_campo.sql), o resto do sistema continua funcionando
+      const semTabela = e => !e.semRede && /PGRST205|42P01|does not exist|Could not find the table|schema cache/i.test(String((e.original && (e.original.code + ' ' + e.original.message)) || e.message));
+      const opcional = async fn => { try { return fn ? await fn.call(S.api) : []; } catch (e) { if (semTabela(e)) { S.campoSemBanco = true; return []; } throw e; } };
+      S.visitas = await opcional(S.api.listarVisitas);
+      S.diagnosticos = await opcional(S.api.listarDiagnosticos);
       S.aud = /^coord/.test(S.eu.papel) ? await S.api.auditoria() : [];
       S.semRede = false;
       try { localStorage.setItem(chaveCache(), JSON.stringify({ equipe: S.equipe, fichas: S.fichas, visitas: S.visitas, diagnosticos: S.diagnosticos, aud: S.aud, em: Date.now() })); } catch (e) {}
@@ -243,7 +246,7 @@
       <div class="cab"><div><span class="eyebrow">${esc(P[m.papel].nome)} · ${esc(nomeUF(m.uf))}</span><h1>Olá, ${esc(m.nome.split(' ')[0])}</h1>
         <p>${esc(P[m.papel].faz)}</p></div><span class="chip ${s.cod}" style="font-size:13px;padding:4px 12px">${esc(s.rot)}</span></div>
       <div class="bloco"><h2>Habilitação para receber a bolsa</h2><p class="small muted">A bolsa de ${R.fmtBRL(P[m.papel].bolsa || 0)} por mês só é paga pela FUNCERN depois destes 4 passos. Dúvidas sobre matrícula e AVA: professores do curso FIC. Documentos, conta ou Pix: apoio administrativo.</p>${passos(m)}</div>
-      ${m.meta_diagnosticos != null ? `<div class="bloco"><h2>Sua previsão de atividades</h2><p class="small muted">Previsão do termo de compromisso. O trabalho de campo do estado pode ser dividido de outro jeito, combinado com a coordenação técnica.</p><div class="resumo" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+      ${m.meta_diagnosticos != null ? `<div class="bloco"><h2>Sua previsão de atividades</h2><p class="small muted">Previsão do termo de compromisso. O trabalho de campo do estado pode ser dividido de outro jeito, combinado com a coordenação técnica.</p><div class="resumo r3">
         <div><span class="v num">${m.meta_diagnosticos}</span><span class="l">diagnósticos (Meta 2)</span></div>
         <div><span class="v num">${m.meta_quintais}</span><span class="l">quintais implantados (Meta 3)</span></div>
         <div><span class="v num">${m.meta_visitas}</span><span class="l">visitas de acompanhamento (Meta 4)</span></div></div></div>` : ''}
@@ -251,7 +254,7 @@
       ${MQ.campoUI ? MQ.campoUI.secaoBolsista() : ''}
       <section class="secao"><div class="secao-cab"><h2>Próximos formulários</h2><span class="chip pend">Em preparação</span></div>
         <p class="small muted">Até entrarem no sistema, use os modelos em papel (versão 2).</p>
-        <ul class="forms">${MQ.FORMULARIOS.filter(f => f.n > 2).map(f => `<li><span class="n">${f.n}</span><b>${esc(f.nome)}</b><span class="small muted">${esc(f.quando)}</span></li>`).join('')}</ul></section>
+        <ul class="forms">${MQ.FORMULARIOS.filter(f => f.n > 3).map(f => `<li><span class="n">${f.n}</span><b>${esc(f.nome)}</b><span class="small muted">${esc(f.quando)}</span></li>`).join('')}</ul></section>
       <div class="bloco"><h2>Meus dados</h2>${dadosDL(m)}<p class="small muted">Algum dado errado? Fale com a coordenação técnica, que corrige o cadastro.</p></div>
     </main>`;
   }
@@ -287,7 +290,7 @@
     let el = $('#painel');
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
     const p = S.painel;
-    const corpo = /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
+    const corpo = /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
     el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel" role="dialog" aria-modal="true" aria-labelledby="painel-t">${corpo}</aside>`;
     const foco = el.querySelector('[autofocus]') || el.querySelector('.fechar');
     if (foco) foco.focus();
@@ -447,6 +450,7 @@
       else if (a === 'fechar') fecharPainel();
       else if (a === 'aba') { S.aba = el.dataset.aba; render(); window.scrollTo(0, 0); }
       else if (/^ficha/.test(a) && MQ.fichasUI) { S.voltarFoco = el; await MQ.fichasUI.clique(a, el); }
+      else if (/^campo-/.test(a) && MQ.campoUI) { S.voltarFoco = el; await MQ.campoUI.clique(a, el); }
       else if (a === 'ver') { S.voltarFoco = el; abrirPainel({ tipo: 'detalhe', id: el.dataset.id }); }
       else if (a === 'novo') { S.voltarFoco = el; abrirPainel({ tipo: 'cadastro', papel: el.dataset.papel, uf: el.dataset.uf, subst: el.dataset.subst }); }
       else if (a === 'editar') abrirPainel({ tipo: 'cadastro', id: el.dataset.id });
@@ -487,6 +491,7 @@
         });
       }
       if (/^ficha/.test(tipo) && MQ.fichasUI) await MQ.fichasUI.enviar(tipo, form, fd);
+      if (/^(visita|diag)/.test(tipo) && MQ.campoUI) await MQ.campoUI.enviar(tipo, form, fd);
       if (tipo === 'cadastro') {
         const p = S.painel;
         const base = p.id ? porId(p.id) : { papel: p.papel, uf: p.uf || null, substitui_id: p.subst || null };

@@ -57,6 +57,7 @@ Use o seletor "Ver como" para alternar entre coordenação geral, coordenação 
 1. **Criar o projeto no Supabase** (supabase.com, plano gratuito). Escolha a região **South America (São Paulo)** para os dados ficarem no Brasil. Crie a conta com um e-mail institucional, não pessoal, para o projeto não depender de uma pessoa.
 2. **Criar o banco:** em *SQL Editor*, cole e rode todo o `supabase/schema.sql`.
 3. **Etapa 2:** rode também o `supabase/02_fichas.sql` (fichas de indicação, fotos e regras).
+   **Etapa 3:** rode o `supabase/03_campo.sql` (agentes de campo, roteiro de visitas, diagnóstico e plano do quintal, fotos de campo). Pode rodar de novo sem estragar nada. Enquanto não for rodado, o sistema funciona e mostra "Ainda não instalado no servidor" no trabalho de campo.
 4. **Cadastrar a coordenação geral:** no fim do `schema.sql` há um `insert` comentado. Preencha com os dados reais e rode só essa parte.
 5. **Login com senha:** em *Authentication > Sign In / Providers > Email*, **desligue "Confirm email"**. Cada pessoa cria a própria senha em "Primeiro acesso", e o banco só aceita e-mails já cadastrados pela coordenação. Assim o sistema não depende de servidor de e-mail. Para "esqueci a senha": a coordenação geral apaga o usuário em *Authentication > Users* e a pessoa faz o primeiro acesso de novo (o cadastro na equipe não é afetado). No painel, cada pessoa mostra se já fez o primeiro acesso: confira logo depois de cadastrar alguém.
 6. **Ligar o sistema ao banco:** em `js/config.js`, preencha `supabaseUrl` e `supabaseAnonKey` (em *Project Settings > API*). A chave anon é pública por desenho; quem protege os dados são as regras do banco.
@@ -88,6 +89,8 @@ psql -d teste -f supabase/schema.sql
 psql -d teste -f supabase/tests/test_regras.sql   # 21 casos da equipe, com o resultado esperado em cada um
 # etapa 2 (em outro banco): stub, 01_criar_banco.sql com nome/CPF preenchidos, 02_fichas.sql e depois
 psql -d teste2 -f supabase/tests/test_fichas.sql  # 17 casos das fichas
+# etapa 3 (em outro banco): stub, 01 (CPF preenchido), 02, 03 e depois
+psql -d teste3 -f supabase/tests/test_campo.sql   # 17 casos de visitas e diagnóstico
 ```
 
 ## Decisões tomadas
@@ -100,6 +103,8 @@ psql -d teste2 -f supabase/tests/test_fichas.sql  # 17 casos das fichas
 
 ## Próximos passos
 
-1. Formulários de campo (ficha de indicação, termo de consentimento, diagnóstico e plano, termo do kit, visita), com GPS, fotos e fila offline.
-2. Painel de acompanhamento por estado (fichas, selecionadas, lista de espera, sem água), substituindo a planilha única.
-3. Relatório mensal da bolsista gerado a partir dos formulários do mês.
+1. Backup semanal do banco (o plano gratuito do Supabase não guarda cópias) — antes do diagnóstico ir a campo.
+2. Visual novo no estilo da proposta ao MDA.
+3. Relatório de visita técnica (implantação e acompanhamentos; a visita final repete a pergunta de renda da linha de base).
+4. Termo de recebimento do kit (depende da lista do kit aprovada).
+5. Relatório mensal da bolsista gerado a partir dos registros do mês.

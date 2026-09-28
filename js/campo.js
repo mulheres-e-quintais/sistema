@@ -78,7 +78,9 @@
   }
 
   /* ---------- tela da bolsista: trabalho de campo do estado ---------- */
+  const semBanco = () => `<section class="secao"><div class="secao-cab"><h2>Trabalho de campo</h2></div><div class="aviso"><b>Ainda não instalado no servidor.</b> A coordenação geral precisa rodar o arquivo 03_campo.sql no Supabase. Até lá, use os modelos em papel.</div></section>`;
   function secaoBolsista() {
+    if (S().campoSemBanco) return semBanco();
     const uf = S().eu.uf;
     const sel = selecionadas(uf);
     const dg = diagnosticos().filter(d => d.uf === uf);
@@ -137,6 +139,7 @@
 
   /* ---------- aba "Campo" da coordenação ---------- */
   function abaCoord() {
+    if (S().campoSemBanco) return semBanco();
     const souTec = S().eu.papel === 'coord_tecnico';
     const dgs = diagnosticos();
     const aguard = dgs.filter(d => d.situacao === 'aguardando').sort((a, b) => String(a.criado_em).localeCompare(String(b.criado_em)));
