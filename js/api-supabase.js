@@ -94,11 +94,11 @@
       this.temSessao = !!data.session;
       return this.eu(true);
     },
-    async criarSenha(email, senha) {
-      const { data, error } = await sb.auth.signUp({ email: email.trim().toLowerCase(), password: senha });
+    async criarSenha(email, senha, codigo) {
+      const { data, error } = await sb.auth.signUp({ email: email.trim().toLowerCase(), password: senha, options: { data: { codigo: codigo || '' } } });
       if (error) {
         const msg = String(error.message || '');
-        if (/não cadastrado|Database error/i.test(msg)) throw erro('Este e-mail não está cadastrado no projeto. Fale com a coordenação.');
+        if (/não cadastrado|Database error|código/i.test(msg)) throw erro('Não deu certo: confira o e-mail e o código de acesso. O código vale 7 dias e uma vez só; se venceu, peça um novo a quem cadastrou você.');
         if (/already registered|already exists/i.test(msg)) throw erro('Este e-mail já tem senha. Use "Entrar". Se esqueceu a senha, peça à coordenação geral para liberar um novo primeiro acesso.');
         if (/password/i.test(msg)) throw erro('Senha fraca: use pelo menos 8 caracteres, misturando letras e números.');
         if (error.status === 429) throw erro('Muitas tentativas seguidas. Espere 1 minuto e tente de novo.');
@@ -108,6 +108,7 @@
       this.temSessao = true;
       return this.eu(true);
     },
+    async gerarCodigoAcesso(id) { const { data, error } = await sb.rpc('gerar_codigo_acesso', { p_equipe: id }); if (error) throw erro(error); return data; },
     /* ---------- Fichas de indicação ---------- */
     async listarFichas() {
       const { data, error } = await sb.from('fichas').select('*').order('criado_em', { ascending: false });

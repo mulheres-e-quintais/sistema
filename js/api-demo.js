@@ -314,6 +314,16 @@
       Object.assign(p, { matricula_fic_em: null, matricula_fic_numero: null }); auditar('UPDATE', antes, p); gravar();
     },
 
+    /* demonstração: gera um código para mostrar a tela (não há login de verdade aqui) */
+    async gerarCodigoAcesso(id) {
+      const d = ler(); const eu = euMesmo(); const m = d.equipe.find(x => x.id === id);
+      if (!m || m.status !== 'ativa') throw falha('Cadastro não encontrado ou desligado.');
+      if (!eu || !R.podeCadastrar(eu.papel, m.papel)) throw falha('Você não pode gerar o acesso desta pessoa.');
+      if (m.user_id && eu.papel !== 'coord_geral') throw falha('Esta pessoa já tem senha. Só a coordenação geral libera um novo primeiro acesso.');
+      if (m.user_id) { m.user_id = null; gravar(); }
+      const a = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; const r = new Uint8Array(8); crypto.getRandomValues(r);
+      const c = Array.from(r, x => a[x % a.length]).join(''); return c.slice(0, 4) + '-' + c.slice(4);
+    },
     async listarEquipe() {
       const d = ler(); const eu = euMesmo(); if (!eu) return [];
       if (eu.papel === 'coord_geral' || eu.papel === 'coord_tecnico' || eu.papel === 'auxiliar_adm') return copia(d.equipe);
