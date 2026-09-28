@@ -12,7 +12,7 @@
   const matriculas = () => S().matriculas || [];
   const souProf = () => S().eu.papel === 'professor_fic';
   const podeCriarTurma = () => R.podeMatricular(S().eu.papel);
-  const podeNaTurma = t => S().eu.papel === 'coord_geral' || (souProf() && t.professor_id === S().eu.id);
+  const podeNaTurma = t => souProf();   // qualquer professor do FIC, em qualquer turma (ninguém trava na ausência do outro)
   const deCampo = () => (S().equipe || []).filter(m => m.status === 'ativa' && R.ehCampo(m.papel));
   const professores = () => (S().equipe || []).filter(m => m.status === 'ativa' && m.papel === 'professor_fic');
   const matDe = id => matriculas().find(x => x.equipe_id === id);
@@ -29,11 +29,11 @@
     const pessoas = deCampo(); const comMat = pessoas.filter(m => m.matricula_fic_em);
     const sem = pessoas.filter(m => !m.matricula_fic_em);
     const minhas = souProf() ? turmas().filter(t => t.professor_id === S().eu.id) : turmas();
-    const outras = souProf() ? turmas().filter(t => t.professor_id !== S().eu.id) : [];
+    const outras = souProf() ? turmas().filter(t => t.professor_id !== S().eu.id) : [];   // o professor também matricula nas turmas do colega
     const avulsas = comMat.filter(m => !matDe(m.id));   // matrícula registrada à mão na habilitação, sem turma no sistema
     const h = souProf() ? 'h2' : 'h1';
     return `<div class="cab${souProf() ? ' cab-sub' : ''}"><div><span class="eyebrow">Curso FIC · IFRN</span><${h}>Turmas e matrículas</${h}>
-        <p>${souProf() ? 'Crie a sua turma e matricule as bolsistas e agentes de campo.' : 'O professor do FIC cria a turma e matricula as bolsistas e agentes de campo.'} A matrícula registrada aqui conta como o passo <b>matrícula no FIC</b> da habilitação: sem ela, a pessoa não recebe bolsa nem faz visita paga.</p></div>
+        <p>${souProf() ? 'Crie a sua turma e matricule as bolsistas e agentes de campo. Você também pode matricular nas turmas do outro professor.' : 'Só os professores do FIC criam turmas e matriculam as bolsistas e agentes de campo; aqui a coordenação acompanha.'} A matrícula registrada aqui conta como o passo <b>matrícula no FIC</b> da habilitação: sem ela, a pessoa não recebe bolsa nem faz visita paga.</p></div>
         ${podeCriarTurma() ? '<button class="btn pri" data-acao="fic-turma-nova">+ Nova turma</button>' : ''}</div>
       <div class="resumo">
         <div><span class="v num">${turmas().length}</span><span class="l">turma${turmas().length === 1 ? '' : 's'}</span></div>
@@ -44,7 +44,7 @@
       ${sem.length ? blocoSem(sem) : pessoas.length ? '<div class="aviso ok-aviso">Todas as bolsistas e agentes ativas estão matriculadas no FIC.</div>' : ''}
       <section class="secao"><div class="secao-cab"><h2>${souProf() ? 'Suas turmas' : 'Turmas'}</h2></div>
         ${minhas.length ? minhas.map(cartaoTurma).join('') : `<div class="vazio"><span>${souProf() ? 'Você ainda não criou turma. Toque em <b>+ Nova turma</b>.' : 'Nenhuma turma cadastrada ainda.'}</span></div>`}</section>
-      ${outras.length ? `<section class="secao"><div class="secao-cab"><h2>Turmas de outros professores</h2><p>Só para consulta.</p></div>${outras.map(cartaoTurma).join('')}</section>` : ''}
+      ${outras.length ? `<section class="secao"><div class="secao-cab"><h2>Turmas de outros professores</h2><p>Você também pode matricular nelas.</p></div>${outras.map(cartaoTurma).join('')}</section>` : ''}
       ${avulsas.length ? `<section class="secao"><div class="secao-cab"><div><h2>Matrícula registrada sem turma</h2><p>Lançadas à mão na habilitação, antes das turmas existirem no sistema. Para organizar, matricule a pessoa numa turma (o número e a data vêm preenchidos).</p></div></div>
         <div class="fic-lista">${avulsas.map(m => linhaPessoa(m, `<span class="small muted num">${E(m.matricula_fic_numero || '')} · ${R.fmtData(m.matricula_fic_em)}</span>`)).join('')}</div></section>` : ''}`;
   }
@@ -120,7 +120,7 @@
         <div class="campo"><label for="ft-mun">Município (polo)</label><input id="ft-mun" name="municipio" value="${v('municipio')}" placeholder="Opcional"></div>
         <div class="campo"><label for="ft-ini">Início</label><input id="ft-ini" name="inicio" type="date" value="${v('inicio')}"></div>
         <div class="campo"><label for="ft-fim">Fim</label><input id="ft-fim" name="fim" type="date" value="${v('fim')}"></div>
-        ${S().eu.papel === 'coord_geral' ? `<div class="campo inteiro"><label for="ft-prof">Professor(a)</label><select id="ft-prof" name="professor_id" required>${op('', 'Escolha', t.professor_id)}${professores().map(m => op(m.id, nomeDe(m), t.professor_id)).join('')}</select>
+        ${false ? `<div class="campo inteiro"><label for="ft-prof">Professor(a)</label><select id="ft-prof" name="professor_id" required>${op('', 'Escolha', t.professor_id)}${professores().map(m => op(m.id, nomeDe(m), t.professor_id)).join('')}</select>
           ${professores().length ? '' : '<span class="dica">Cadastre antes o professor na aba Equipe.</span>'}</div>` : ''}
         <div class="campo inteiro"><label for="ft-obs">Observações</label><textarea id="ft-obs" name="obs" placeholder="Ex.: aulas quinzenais no sindicato; AVA no Moodle do IFRN.">${v('obs')}</textarea></div>
       </div>
@@ -172,7 +172,7 @@
     if (tipo === 'fic-turma') {
       const id = form.dataset.id || null; const antes = id ? turmas().find(x => x.id === id) : null;
       const t = { id, nome: txt('nome'), uf: txt('uf') || null, municipio: txt('municipio') || null, inicio: txt('inicio') || null, fim: txt('fim') || null, obs: txt('obs') || null,
-        professor_id: S().eu.papel === 'coord_geral' ? txt('professor_id') : (antes ? antes.professor_id : S().eu.id) };
+        professor_id: antes ? antes.professor_id : S().eu.id };
       const e = {};
       if (t.nome.length < 3) e.nome = 'Dê um nome à turma.';
       if (!t.professor_id) e.professor_id = 'Escolha o professor.';

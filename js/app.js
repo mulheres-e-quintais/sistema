@@ -339,7 +339,7 @@
   function dadosDL(m) {
     const subst = m.substitui_id && porId(m.substitui_id);
     const linhas = [
-      m.nome_social ? ['Nome civil', m.nome] : null, ['CPF', R.fmtCPF(m.cpf)], ['E-mail', m.email], ['Celular', m.telefone], ['Município', m.municipio],
+      m.nome_social ? ['Nome civil', m.nome] : null, m.cadastro_arlo ? ['Cadastro no Arlo', 'Sim: dados completos e conta estão no Arlo'] : null, ['CPF', R.fmtCPF(m.cpf)], ['E-mail', m.email], ['Celular', m.telefone], ['Município', m.municipio],
       ['Organização', m.organizacao], ['Início da bolsa', R.fmtData(m.data_inicio)],
       m.status === 'ativa' && S.api.modo === 'supabase' ? ['Acesso ao sistema', m.user_id ? 'Já criou a senha e entrou' : 'Ainda não fez o primeiro acesso'] : null,
       m.papel === 'agente' ? ['Pagamento', 'Ajuda de custo por visita (aba Custos)'] : null,
@@ -349,7 +349,7 @@
     ].filter(Boolean).filter(l => l[1]);
     const pv = MQ.convitesUI && (S.eu.id === m.id || /^coord/.test(S.eu.papel)) ? MQ.convitesUI.privado(m.id) : null;
     if (MQ.bancoUI && /^coord/.test(S.eu.papel) && m.status === 'ativa' && m.papel !== 'coord_geral') {
-      const b = MQ.bancoUI.informou(m.id); if (b) linhas.push(['Conta para a FUNCERN', b.ok ? 'Informada por ela' + (b.em ? ' em ' + new Date(b.em).toLocaleDateString('pt-BR') : '') : 'Ainda não informou']);
+      const b = MQ.bancoUI.informou(m.id); if (b) linhas.push(['Conta para a FUNCERN', b.ok ? 'Informada por ela' + (b.em ? ' em ' + new Date(b.em).toLocaleDateString('pt-BR') : '') : m.cadastro_arlo ? 'No Arlo' : 'Ainda não informou']);
     }
     if (pv) linhas.push(['Nascimento', pv.data_nascimento && R.fmtData(pv.data_nascimento)], ['PIS/NIS', pv.nis], ['Endereço', MQ.convitesUI.textoEndereco(pv.endereco)],
       ['Socioeconômico', pv.socioeconomico ? 'Respondido' : null]);
@@ -406,14 +406,12 @@
     const mt = (S.matriculas || []).find(x => x.equipe_id === m.id); const turma = mt && (S.turmas || []).find(t => t.id === mt.turma_id);
     return `<details class="hab${feitos === total ? ' completa' : ''}" ${feitos === total ? '' : 'open'}><summary class="hab-sum">
         <span class="hab-ic" aria-hidden="true">${feitos === total ? '✓' : feitos + '/' + total}</span>
-        <span class="hab-t"><b>${feitos === total ? 'Datas da habilitação' : 'Registrar passos da habilitação'}</b><span class="small muted">${feitos === total ? 'Os ' + total + ' passos estão registrados · abra para ver ou corrigir uma data' : (fic ? 'Matrícula no FIC, documentos na FUNCERN e termo assinado' : 'Documentos na FUNCERN e termo assinado')}</span></span>
+        <span class="hab-t"><b>${feitos === total ? 'Datas da habilitação' : 'Registrar passos da habilitação'}</b><span class="small muted">${feitos === total ? 'Os ' + total + ' passos estão registrados · abra para ver ou corrigir uma data' : (fic ? 'Documentos na FUNCERN e termo assinado (a matrícula no FIC é dos professores do curso)' : 'Documentos na FUNCERN e termo assinado')}</span></span>
         <span class="hab-seta" aria-hidden="true"></span></summary>
       <form class="f" data-form="hab" data-id="${m.id}" style="margin-top:12px" novalidate>
       <div class="campos">
-        ${!fic ? '' : turma ? `<div class="campo inteiro"><span class="dica" style="font-size:14px">Matrícula no FIC registrada pelo professor na turma <b>${esc(turma.nome)}</b> (nº ${esc(mt.numero)}, ${R.fmtData(mt.matriculado_em)}). Para corrigir, use a aba Curso FIC.</span></div>` : `
-        <div class="campo"><label for="h-fic">Matrícula no FIC em</label><input id="h-fic" name="matricula_fic_em" type="date" value="${esc(m.matricula_fic_em || '')}"></div>
-        <div class="campo"><label for="h-ficn">Nº da matrícula</label><input id="h-ficn" name="matricula_fic_numero" value="${esc(m.matricula_fic_numero || '')}" placeholder="Conforme o SUAP">
-          <span class="dica">O mais comum é o professor registrar na aba Curso FIC.</span></div>`}
+        ${!fic ? '' : `<div class="campo inteiro"><span class="dica" style="font-size:14px">${turma ? `Matrícula no FIC registrada pelo professor na turma <b>${esc(turma.nome)}</b> (nº ${esc(mt.numero)}, ${R.fmtData(mt.matriculado_em)}).`
+          : m.matricula_fic_em ? `Matrícula no FIC registrada em ${R.fmtData(m.matricula_fic_em)} (nº ${esc(m.matricula_fic_numero || '')}), ainda sem turma no sistema.` : '<b>Matrícula no FIC: aguardando.</b>'} A matrícula é registrada só pelos professores do curso, na aba Curso FIC.</span></div>`}
         <div class="campo"><label for="h-fun">Documentos entregues à FUNCERN em</label><input id="h-fun" name="docs_funcern_em" type="date" value="${esc(m.docs_funcern_em || '')}"></div>
         <div class="campo"><label for="h-ter">Termo de compromisso assinado em</label><input id="h-ter" name="termo_assinado_em" type="date" value="${esc(m.termo_assinado_em || '')}"></div>
         <div class="campo inteiro"><label for="h-arq">Termo assinado (PDF ou foto)</label><input id="h-arq" name="termo" type="file" accept="application/pdf,image/*">
@@ -456,7 +454,7 @@
             ${bols ? `<datalist id="lista-mun">${munis.map(x => `<option value="${esc(x)}">`).join('')}</datalist><span class="dica">A lista traz os municípios do projeto técnico em ${esc(m.uf)}.</span>` : ''}</div>
           <div class="campo"><label for="c-org">Organização ou movimento</label><input id="c-org" name="organizacao" value="${v('organizacao')}" placeholder="${bols ? 'Ex.: MPA, associação, sindicato' : m.papel === 'professor_fic' ? 'Ex.: IFRN Campus Apodi' : 'Ex.: MPA'}"></div>
         </div></fieldset>
-        ${MQ.convitesUI ? (priv === undefined ? '<p class="small muted">Carregando os dados pessoais…</p>' : MQ.convitesUI.camposPessoais(Object.assign({ nome_social: m.nome_social }, priv || {}), false)) : ''}
+        ${MQ.convitesUI ? (priv === undefined ? '<p class="small muted">Carregando os dados pessoais…</p>' : MQ.convitesUI.camposPessoais(Object.assign({ nome_social: m.nome_social, cadastro_arlo: p.id ? !!m.cadastro_arlo : m.cadastro_arlo }, priv || {}), false)) : ''}
         <fieldset><legend>Bolsa</legend><div class="campos">
           <div class="campo"><label for="c-ini">Início da bolsa</label><input id="c-ini" name="data_inicio" type="date" value="${v('data_inicio')}" min="${MQ.PROJETO.vigencia.inicio}" max="${MQ.PROJETO.vigencia.fim}" required></div>
         </div></fieldset>
@@ -483,12 +481,13 @@
   }
   function mostrarErros(form, erros, geral) {
     form.querySelectorAll('.tem-erro').forEach(x => x.classList.remove('tem-erro'));
-    form.querySelectorAll('.campo .erro').forEach(x => x.remove());
+    form.querySelectorAll('.campo .erro, .criterio .erro').forEach(x => x.remove());
     const box = form.querySelector('[data-erro]');
     Object.entries(erros || {}).forEach(([k, msg]) => {
       const inp = form.querySelector(`[name="${k}"]`);
       if (!inp) return;
       if (inp.type === 'checkbox') { inp.closest('.check').classList.add('tem-erro'); return; }
+      if (inp.type === 'radio' && inp.closest('.criterio')) { const w = inp.closest('.criterio'); w.classList.add('tem-erro'); const s = document.createElement('span'); s.className = 'erro'; s.textContent = msg; w.appendChild(s); return; }
       const c = inp.closest('.campo'); if (!c) return; c.classList.add('tem-erro');
       const s = document.createElement('span'); s.className = 'erro'; s.textContent = msg; c.appendChild(s);
     });
@@ -566,7 +565,7 @@
     const t = ev.target;
     if (t.name === 'cpf' && !t.readOnly) t.value = R.fmtCPF(t.value);
     if (t.name === 'telefone') t.value = R.fmtFone(t.value);
-    const c = t.closest && t.closest('.campo.tem-erro, .check.tem-erro');   // some o aviso do campo assim que a pessoa corrige
+    const c = t.closest && t.closest('.campo.tem-erro, .check.tem-erro, .criterio.tem-erro');   // some o aviso do campo assim que a pessoa corrige
     if (c) { c.classList.remove('tem-erro'); const e = c.querySelector('.erro'); if (e) e.remove(); }
   });
 
@@ -612,7 +611,7 @@
         });
         const temPriv = MQ.convitesUI && form.querySelector('[name=data_nascimento]');
         const priv = temPriv ? MQ.convitesUI.lerPessoais(fd) : null;
-        if (priv) m.nome_social = priv.nome_social;
+        if (priv) { m.nome_social = priv.nome_social; m.cadastro_arlo = !!priv.cadastro_arlo; }
         if (R.ehBolsista(m.papel)) Object.assign(m, { meta_diagnosticos: num('meta_diagnosticos'), meta_quintais: num('meta_quintais'), meta_visitas: num('meta_visitas') });
         const erros = R.validar(m, S.equipe);
         if (p.id) delete erros.papel;
@@ -620,7 +619,7 @@
         if (Object.keys(erros).length) return mostrarErros(form, erros);
         await ocupado(form, async () => {
           if (p.id) {
-            const patch = {}; ['nome', 'nome_social', 'email', 'telefone', 'municipio', 'organizacao', 'data_inicio', 'consentimento_lgpd', 'meta_diagnosticos', 'meta_quintais', 'meta_visitas']
+            const patch = {}; ['nome', 'nome_social', 'cadastro_arlo', 'email', 'telefone', 'municipio', 'organizacao', 'data_inicio', 'consentimento_lgpd', 'meta_diagnosticos', 'meta_quintais', 'meta_visitas']
               .forEach(k => { if (k in m && (m[k] || null) !== (base[k] || null)) patch[k] = m[k]; });
             if (priv) { await S.api.salvarPrivado(p.id, priv); MQ.convitesUI.esquecerPrivado(p.id); }
             if (!Object.keys(patch).length) { await recarregar(); abrirPainel({ tipo: 'detalhe', id: p.id }); toast('Dados salvos.'); return; }

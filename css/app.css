@@ -696,3 +696,4 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 @media (max-width: 640px) { .escolha { grid-template-columns: 1fr; } }
 .quadro-sel td, .tab-campo-uf td { vertical-align: middle; }
 .quadro-sel .bar { width: 100%; }
+.criterio .erro { grid-column: 1 / -1; }
