@@ -317,3 +317,26 @@ fieldset > .fixo { margin: 0; }
 .marcos li:first-child { border-top: 0; }
 .marcos time { font-variant-numeric: tabular-nums; color: var(--ink-2); font-weight: 500; }
 .crit-txt { color: var(--crit); } .pend-txt { color: var(--pend); }
+
+/* ---------- mapa dos quintais ---------- */
+:root { --m-ok: #2F7D32; --m-espera: #2A6FB5; --m-aguarda: #C98A0B; --m-agua: #B23A2E; --m-uf: #EFE4D6; --m-uf-viz: #F7F0E8; --m-borda: #CDB79D; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --m-ok: #3F9A44; --m-espera: #4A8FD6; --m-aguarda: #C08410; --m-agua: #E0607A; --m-uf: #2E2520; --m-uf-viz: #1B1512; --m-borda: #54453B; } }
+:root[data-theme="dark"] { --m-ok: #3F9A44; --m-espera: #4A8FD6; --m-aguarda: #C08410; --m-agua: #E0607A; --m-uf: #2E2520; --m-uf-viz: #1B1512; --m-borda: #54453B; }
+.mapa-caixa { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 16px; align-items: start; }
+@media (max-width: 760px) { .mapa-caixa { grid-template-columns: 1fr; } }
+.mapa { width: 100%; height: auto; max-height: 520px; display: block; }
+.uf-proj { fill: var(--m-uf); stroke: var(--m-borda); }
+.uf-clic { cursor: pointer; }
+.uf-clic:hover { fill: var(--surface-2); }
+.uf-viz { fill: var(--m-uf-viz); stroke: var(--line); }
+.uf-rot { fill: var(--muted); font-family: var(--cond); font-weight: 700; pointer-events: none; letter-spacing: .05em; }
+.mun-pt { fill: var(--muted); pointer-events: none; }
+.mun-rot { fill: var(--ink-2); font-family: var(--sans); pointer-events: none; }
+.q-pt { cursor: pointer; }
+.q-pt:hover { filter: brightness(1.15); }
+.mapa-dica { position: absolute; transform: translate(-50%, calc(-100% - 8px)); background: var(--ink); color: var(--bg); font-size: 13px; padding: 6px 10px; border-radius: 6px; max-width: 280px; pointer-events: none; z-index: 2; box-shadow: var(--shadow); }
+.legenda { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 13px; color: var(--ink-2); }
+.legenda li { display: flex; gap: 8px; align-items: center; }
+.legenda b { margin-left: auto; color: var(--ink); }
+.lg-pt { width: 12px; height: 12px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2px var(--surface); }
+.lg-pt.oco { background: var(--surface); border: 2.5px solid var(--muted); box-shadow: none; }

@@ -3,6 +3,7 @@
 (function () {
   const R = MQ.regras;
   const E = s => MQ.ui.esc(s);
+  const U = { nomeUF: uf => MQ.ui.nomeUF(uf) };
 
   const mesDoProjeto = (d = new Date()) => {
     const m = (d.getFullYear() - 2026) * 12 + (d.getMonth() - 8) + 1;
@@ -84,6 +85,85 @@
     </div>`;
   }
 
+
+  /* ---------- mapa dos quintais (SVG próprio: funciona sem internet e sem serviço de mapas) ---------- */
+  const CATS = [
+    { id: 'aprovada', nome: 'Selecionada e aprovada', cor: 'var(--m-ok)' },
+    { id: 'espera', nome: 'Lista de espera', cor: 'var(--m-espera)' },
+    { id: 'aguardando', nome: 'Aguardando aprovação ou devolvida', cor: 'var(--m-aguarda)' },
+    { id: 'sem_agua', nome: 'Sem água: encaminhada', cor: 'var(--m-agua)' }
+  ];
+  const catDe = f => f.resultado === 'sem_agua' ? 'sem_agua' : f.resultado === 'nao_atende' ? null
+    : f.situacao !== 'aprovada' ? 'aguardando' : f.resultado === 'lista_espera' ? 'espera' : 'aprovada';
+  const hash = t => { let h = 2166136261; for (const c of String(t)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; };
+  const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  const K = Math.cos(9.5 * Math.PI / 180);                 // latitude média da área
+  const px = ([lon, lat]) => [lon * K, -lat];
+  function pontoDaFicha(f) {
+    if (f.latitude != null && f.longitude != null) return { xy: px([+f.longitude, +f.latitude]), exato: true };
+    const muns = (MQ.GEO.mun[f.uf]) || {};
+    const chave = Object.keys(muns).find(m => norm(m) === norm(f.municipio));
+    const base = chave ? muns[chave] : (MQ.GEO.uf[f.uf] || {}).c;
+    if (!base) return null;
+    const a = hash(f.id) * 2 * Math.PI, r = 0.04 + hash(f.id + 'r') * (chave ? 0.10 : 0.35);
+    return { xy: px([base[0] + Math.cos(a) * r, base[1] + Math.sin(a) * r]), exato: false };
+  }
+  function caixa(ufs) {
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    ufs.forEach(u => MQ.GEO.uf[u].r.forEach(anel => anel.forEach(p => { const [x, y] = px(p); x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); })));
+    const m = Math.max(x1 - x0, y1 - y0) * 0.06;
+    return [x0 - m, y0 - m, x1 - x0 + 2 * m, y1 - y0 + 2 * m];
+  }
+  function mapa(S, d) {
+    const foco = S.mapaUF || '';
+    const ufsProj = MQ.UFS.map(u => u.uf);
+    const vb = caixa(foco ? [foco] : ufsProj);
+    const esc = Math.max(vb[2], vb[3]) / 100;                // unidade de desenho proporcional ao zoom
+    const pts = d.fichas.map(f => ({ f, cat: catDe(f), p: pontoDaFicha(f) })).filter(x => x.cat && x.p && (!foco || x.f.uf === foco));
+    const exatos = pts.filter(x => x.p.exato).length;
+    const ordem = ['sem_agua', 'aguardando', 'espera', 'aprovada'];
+    pts.sort((a, b) => ordem.indexOf(a.cat) - ordem.indexOf(b.cat));
+    const path = anel => 'M' + anel.map(p => px(p).map(v => v.toFixed(3)).join(',')).join('L') + 'Z';
+    const estados = Object.entries(MQ.GEO.uf).map(([uf, g]) => {
+      const proj = ufsProj.includes(uf);
+      const destaque = foco ? uf === foco : proj;
+      return `<path d="${g.r.map(path).join('')}" class="${destaque ? 'uf-proj' : 'uf-viz'}${proj ? ' uf-clic' : ''}" ${proj ? `data-acao="mapa-uf" data-uf="${uf}"` : ''} stroke-width="${esc * 0.25}"><title>${uf}</title></path>`;
+    }).join('');
+    const rotulos = Object.entries(MQ.GEO.uf).filter(([uf]) => ufsProj.includes(uf) && !foco).map(([uf, g]) => {
+      const [x, y] = px(g.c); return `<text x="${x}" y="${y}" class="uf-rot" font-size="${esc * 3.2}" text-anchor="middle">${uf}</text>`;
+    }).join('');
+    // municípios do projeto: ponto sempre; nome só onde há ficha (evita nomes sobrepostos)
+    const comFicha = new Set(d.fichas.filter(f => f.uf === foco).map(f => norm(f.municipio)));
+    const muns = foco ? Object.entries(MQ.GEO.mun[foco] || {}).map(([n, c]) => { const [x, y] = px(c);
+      return `<circle cx="${x}" cy="${y}" r="${esc * 0.35}" class="mun-pt"><title>${E(n)}</title></circle>${comFicha.has(norm(n)) ? `<text x="${x + esc * 2.6}" y="${y + esc * 0.6}" class="mun-rot" font-size="${esc * 1.8}">${E(n)}</text>` : ''}`; }).join('') : '';
+    const r = esc * (foco ? 1.25 : 1.0);
+    const bolas = pts.map(({ f, cat, p }) => {
+      const c = CATS.find(k => k.id === cat).cor; const [x, y] = p.xy;
+      const txt = `${f.nome} · ${f.municipio}/${f.uf} · ${(MQ.RESULTADOS[f.resultado] || {}).nome}${f.situacao !== 'aprovada' ? ' (' + (MQ.SITUACOES[f.situacao] || {}).nome + ')' : ''}${p.exato ? '' : ' · posição aproximada (município)'}`;
+      return p.exato
+        ? `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="var(--surface)" stroke-width="${r * 0.45}" class="q-pt" data-acao="ficha-ver" data-id="${E(f.id)}" data-dica="${E(txt)}"><title>${E(txt)}</title></circle>`
+        : `<circle cx="${x}" cy="${y}" r="${r * 0.85}" fill="var(--surface)" stroke="${c}" stroke-width="${r * 0.55}" class="q-pt" data-acao="ficha-ver" data-id="${E(f.id)}" data-dica="${E(txt)}"><title>${E(txt)}</title></circle>`;
+    }).join('');
+    const cont = {}; pts.forEach(x => { cont[x.cat] = (cont[x.cat] || 0) + 1; });
+    const naoAtende = d.fichas.filter(f => f.resultado === 'nao_atende' && (!foco || f.uf === foco)).length;
+    const btn = (uf, t) => `<button type="button" data-acao="mapa-uf" data-uf="${uf}" aria-pressed="${foco === uf}">${t}</button>`;
+    return `<section class="secao" aria-labelledby="t-mapa">
+      <div class="secao-cab"><div><h2 id="t-mapa">Quintais no mapa</h2>
+        <p>${pts.length ? `${pts.length} mulher${pts.length > 1 ? 'es' : ''} com ficha${foco ? ' em ' + E(U.nomeUF(foco)) : ''} · ${exatos} com localização do GPS, ${pts.length - exatos} no município (aproximada)` : 'Cada ficha lançada aparece aqui.'}</p></div>
+        <span class="seg" role="group" aria-label="Estado no mapa">${btn('', 'Todos')}${MQ.UFS.map(u => btn(u.uf, u.uf)).join('')}</span></div>
+      <div class="mapa-caixa">
+        <svg class="mapa" viewBox="${vb.join(' ')}" role="img" aria-label="Mapa com ${pts.length} quintais${foco ? ' em ' + foco : ' nos 5 estados'}" preserveAspectRatio="xMidYMid meet">
+          ${estados}${rotulos}${muns}${bolas}
+        </svg>
+        <div class="mapa-dica" id="mapa-dica" hidden></div>
+        <ul class="legenda">${CATS.map(k => `<li><span class="lg-pt" style="background:${k.cor}"></span>${E(k.nome)} <b class="num">${cont[k.id] || 0}</b></li>`).join('')}
+          <li><span class="lg-pt oco"></span>Contorno vazio: posição aproximada (sem GPS)</li>
+          ${naoAtende ? `<li class="muted">${naoAtende} que não atende${naoAtende > 1 ? 'm' : ''} aos critérios fica${naoAtende > 1 ? 'm' : ''} fora do mapa</li>` : ''}</ul>
+      </div>
+      <p class="nota">O mapa mostra onde moram as mulheres: use só dentro do sistema. Em relatórios e divulgação, mostre números por município.</p>
+    </section>`;
+  }
+
   function visaoGeral(S) {
     const d = dados(S);
     const mes = mesDoProjeto();
@@ -106,6 +186,8 @@
         <div><span class="v num">${d.fichas.length}</span><span class="l">fichas de indicação lançadas${aguard ? ` · <b>${aguard}</b> aguardando` : ''}</span></div>
         <div><span class="v num">${d.selAprov.length}<small> de 200</small></span><span class="l">mulheres selecionadas e aprovadas</span></div>
       </div>
+
+      ${MQ.GEO ? mapa(S, d) : ''}
 
       <section class="secao" aria-labelledby="t-alertas">
         <h2 id="t-alertas">O que pede atenção</h2>
@@ -160,6 +242,20 @@
         </div>
       </div>`;
   }
+
+  document.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-acao="mapa-uf"]'); if (!b) return;
+    const S = MQ.ui.S; S.mapaUF = S.mapaUF === b.dataset.uf && b.tagName !== 'BUTTON' ? '' : b.dataset.uf; MQ.ui.render();
+  });
+  document.addEventListener('pointerover', ev => {
+    const pt = ev.target.closest && ev.target.closest('.q-pt'); const dica = document.getElementById('mapa-dica');
+    if (!dica) return;
+    if (!pt) { dica.hidden = true; return; }
+    const caixa = pt.closest('.mapa-caixa').getBoundingClientRect(), r = pt.getBoundingClientRect();
+    dica.textContent = pt.dataset.dica; dica.hidden = false;
+    dica.style.left = Math.min(r.left - caixa.left + r.width / 2, caixa.width - 12) + 'px';
+    dica.style.top = (r.top - caixa.top) + 'px';
+  });
 
   MQ.painelUI = { visaoGeral, mesDoProjeto };
 })();
