@@ -697,3 +697,19 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .quadro-sel td, .tab-campo-uf td { vertical-align: middle; }
 .quadro-sel .bar { width: 100%; }
 .criterio .erro { grid-column: 1 / -1; }
+/* ---------- solicitação de pagamento ---------- */
+.pag-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; align-items: start; }
+.pag-c { display: grid; gap: 10px; }
+.pag-c h3 { margin: 0; }
+.pag-vis { display: grid; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.pv { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.pv:last-child { border-bottom: 0; }
+.pv input { width: 18px; height: 18px; accent-color: var(--accent); }
+.pag-total { display: flex; justify-content: space-between; align-items: baseline; margin: 0; padding: 4px 2px; border-top: 2px solid var(--line-2); }
+.pag-total b { font-size: 20px; }
+.pag-lista { display: grid; gap: 8px; }
+.pag-l { grid-template-columns: auto minmax(0, 1fr) auto; }
+.pag-l .vb-t { min-width: 0; }
+@media (max-width: 640px) { .pag-l { grid-template-columns: auto minmax(0, 1fr); } .pag-l > span:last-child { grid-column: 2; } }
+.pag-l { align-items: center; border-color: var(--line); background: var(--surface); }
+.pag-c > .btn { justify-self: start; }

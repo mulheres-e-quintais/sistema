@@ -49,7 +49,7 @@
         for (const it of await F.listar(dono)) {
           if (it.erro && !it.reenviar) continue;
           try {
-            if (it.tipo === 'visita') await api.salvarVisita(it.dados);
+            if (it.tipo === 'visita') await api.salvarVisita(it.dados, it.fotos || {});
             else if (it.tipo === 'diagnostico') await api.salvarDiagnostico(it.dados, it.fotos || {});
             else await api.salvarFicha(it.dados, it.fotos || {});
             await F.remover(it.id); enviados++;

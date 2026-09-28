@@ -297,9 +297,11 @@ begin
     end if;
     if public.meu_papel() = 'auxiliar_adm' and auth.uid() is not null then
       if old.id = public.meu_id() then
-        raise exception 'A sua própria habilitação é registrada pelo outro auxiliar ou pela coordenação geral.';
-      end if;
-      if (to_jsonb(new) - so_hab) is distinct from (to_jsonb(old) - so_hab) then
+        -- no próprio cadastro só mudam o vínculo do login e a foto (pelas funções do sistema)
+        if (to_jsonb(new) - array['user_id','foto_path','atualizado_em']) is distinct from (to_jsonb(old) - array['user_id','foto_path','atualizado_em']) then
+          raise exception 'A sua própria habilitação e os seus dados são registrados pelo outro auxiliar ou pela coordenação geral.';
+        end if;
+      elsif (to_jsonb(new) - so_hab) is distinct from (to_jsonb(old) - so_hab) then
         raise exception 'O auxiliar administrativo só registra o cadastro no Arlo e o termo. Dados pessoais são de quem cadastrou a pessoa.';
       end if;
     end if;

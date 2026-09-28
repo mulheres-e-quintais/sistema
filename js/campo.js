@@ -70,7 +70,8 @@
           return `<tr><td class="num">${R.fmtData(v.data_realizada || v.data_prevista)}</td>${uf ? '' : `<td>${E(v.uf)}</td>`}<td>${E(f.nome || '—')}<br><span class="small muted">${E(f.municipio || '')}</span></td>
             <td>${E(MQ.ETAPAS[v.etapa].nome)}</td><td>${E(q.nome || '—')}<br><span class="small muted">${E((MQ.PAPEIS[q.papel] || {}).curto || '')}</span></td>
             <td>${v.situacao === 'realizada' ? '<span class="chip ok">Feita</span>' : v._fila ? '<span class="chip pend">No aparelho</span>' : '<span class="chip pend">Prevista</span>'}
-              ${podeMudar && v.situacao === 'prevista' ? ` <button class="link small" data-acao="campo-visita-editar" data-id="${E(v.id)}">Mudar</button>` : ''}</td></tr>`; }).join('')}
+              ${podeMudar && v.situacao === 'prevista' ? ` <button class="link small" data-acao="campo-visita-editar" data-id="${E(v.id)}">Mudar</button>` : ''}
+              ${podeMudar && v.situacao === 'prevista' && v.etapa !== 'diagnostico' && !v._fila ? ` <button class="link small" data-acao="campo-feita" data-id="${E(v.id)}">Registrar feita</button>` : ''}</td></tr>`; }).join('')}
         </tbody></table></div>
         <div class="dias-pessoa">${Object.entries(porPessoa).map(([id, c]) => `<span><b>${E(primeiroNome((pessoa(id) || {}).nome))}</b> ${c.feitas + c.prev} dia${c.feitas + c.prev > 1 ? 's' : ''} <span class="muted">(${c.feitas} feita${c.feitas === 1 ? '' : 's'})</span></span>`).join('')}</div>`
         : '<p class="muted">Nenhuma visita neste mês.</p>'}
@@ -121,7 +122,8 @@
           ${dg && dg.situacao === 'devolvido' ? '<span class="pil crit">Devolvido para corrigir</span>' : ''}</span>
         <div class="acoes">${v.etapa === 'diagnostico' ? (dg ? `<button class="btn peq" data-acao="campo-diag-ver" data-ficha="${E(v.ficha_id)}">Ver diagnóstico</button>`
           : `<button class="btn peq pri" data-acao="campo-diag-novo" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}">Registrar diagnóstico</button>`)
-          : '<span class="small muted">Formulário desta etapa em preparação: use o modelo em papel.</span>'}</div></div>`; };
+          : v.situacao === 'realizada' ? `<span class="small muted">${E(String(v.relato || '').slice(0, 90))}${String(v.relato || '').length > 90 ? '…' : ''}</span>`
+          : `<button class="btn peq pri" data-acao="campo-feita" data-id="${E(v.id)}">Registrar visita feita</button>`}</div></div>`; };
     const porMes = {}; feitas.forEach(v => { const m = String(v.data_realizada).slice(0, 7); porMes[m] = (porMes[m] || 0) + 1; });
     const pend = S().fila.filter(i => i.tipo === 'diagnostico');
     return `<main class="wrap" id="principal">
@@ -133,6 +135,7 @@
         ${prox.length ? `<div class="lista-fichas">${prox.map(linha).join('')}</div>` : '<div class="vazio"><span>Nenhuma visita atribuída a você. Quem agenda é a bolsista do estado ou a coordenação técnica.</span></div>'}</section>
       <section class="secao"><div class="secao-cab"><h2>Visitas feitas</h2><span class="small">${Object.entries(porMes).map(([m, n]) => `<b>${nomeMes(m)}</b>: ${n} dia${n > 1 ? 's' : ''} de campo`).join(' · ') || ''}</span></div>
         ${feitas.length ? `<div class="lista-fichas">${feitas.map(linha).join('')}</div>` : '<p class="muted">Nenhuma ainda.</p>'}</section>
+      ${MQ.pagUI ? MQ.pagUI.secaoMinha() : ''}
       ${MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
       <p class="nota">Você vê apenas as mulheres das visitas atribuídas a você. Os dados delas são protegidos pela LGPD: não fotografe telas nem repasse informações.</p>
     </main>`;
@@ -390,7 +393,33 @@
       </div>`;
   }
 
+  /* ---------- implantação e acompanhamento: registrar a visita feita ---------- */
+  const fotosVis = {};
+  function painelFeita(p) {
+    const v = visitas().find(x => x.id === p.id); if (!v) return '';
+    const f = ficha(v.ficha_id) || {}; const q = pessoa(v.executor_id) || {};
+    const foto = n => `<div class="campo"><label for="vf-f${n}">Foto ${n}${n === 1 ? '' : ' <span class="muted">(opcional)</span>'}</label><input id="vf-f${n}" type="file" accept="image/*" capture="environment" data-foto-vis="${n}"><span class="dica" id="vf-f${n}-dica">${fotosVis[n] ? 'Foto pronta.' : n === 1 ? 'Do que foi feito no quintal.' : ''}</span></div>`;
+    return `<div class="painel-cab"><div class="t"><span class="eyebrow">${E(MQ.ETAPAS[v.etapa].nome)} · prevista para ${R.fmtData(v.data_prevista)}</span><h2 id="painel-t">${E(f.nome || 'Quintal')}</h2>
+        <span class="small muted">${E(f.municipio || '')} · quem visita: ${E(q.nome || '—')}</span></div><button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
+      <div class="painel-corpo"><form class="f" data-form="visita-feita" data-id="${E(v.id)}" novalidate>
+        <p class="small muted">Registrar a visita feita é o que permite solicitar a ajuda de custo dela. Depois de solicitada, ela não muda mais.</p>
+        <div class="campos">
+          <div class="campo"><label for="vf-data">Dia em que foi feita</label><input id="vf-data" name="data_realizada" type="date" max="${R.hoje()}" value="${v.data_prevista <= R.hoje() ? v.data_prevista : R.hoje()}" required></div>
+          <div class="campo inteiro"><label for="vf-rel">O que foi feito</label><textarea id="vf-rel" name="relato" rows="4" placeholder="${v.etapa === 'implantacao' ? 'Ex.: entregue a caixa d’água e o kit de gotejamento; montados 3 canteiros com a família; combinada a próxima visita.' : 'Ex.: canteiros produzindo alface e coentro; gotejamento com vazamento consertado; orientei a compostagem.'}">${E(v.relato || '')}</textarea></div>
+          ${foto(1)}${foto(2)}${foto(3)}
+        </div>
+        <div class="aviso erro" data-erro hidden></div>
+        <div class="acoes"><button class="btn pri" type="submit">Registrar visita feita</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div></form></div>`;
+  }
+  document.addEventListener('change', async ev => {
+    const inp = ev.target.closest && ev.target.closest('input[data-foto-vis]'); if (!inp || !inp.files[0]) return;
+    const n = inp.dataset.fotoVis; const dica = document.getElementById('vf-f' + n + '-dica');
+    if (inp.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; inp.value = ''; return; }
+    dica.textContent = 'Preparando foto…'; fotosVis[n] = await MQ.comprimirFoto(inp.files[0]); dica.textContent = 'Foto pronta (' + Math.round(fotosVis[n].size / 1024) + ' KB).';
+  });
+
   function painel(p) {
+    if (p.tipo === 'visita-feita') return painelFeita(p);
     if (p.tipo === 'visita-form') return painelVisita(p);
     if (p.tipo === 'diag-form') return painelDiag(p);
     return painelDiagVer(p);
@@ -401,6 +430,7 @@
     const eu = S().eu;
     if (a === 'campo-visita-nova') U().abrirPainel({ tipo: 'visita-form', uf: eu.uf });
     else if (a === 'campo-visita-editar') U().abrirPainel({ tipo: 'visita-form', id: el.dataset.id });
+    else if (a === 'campo-feita') { Object.keys(fotosVis).forEach(k => delete fotosVis[k]); U().abrirPainel({ tipo: 'visita-feita', id: el.dataset.id }); }
     else if (a === 'campo-mes') { const n = +el.dataset.n; mesRoteiro = n === 0 ? mesAtual() : mesMais(mesRoteiro || mesAtual(), n); U().render(); }
     else if (a === 'campo-uf') { ufRoteiro = el.dataset.uf; U().render(); }
     else if (a === 'campo-diag-ver') U().abrirPainel({ tipo: 'diag-ver', ficha: el.dataset.ficha });
@@ -501,6 +531,22 @@
         Object.keys(fotosTemp).forEach(k => delete fotosTemp[k]);
         U().fecharPainel(); U().render();
         U().toast(enviado ? (sem ? 'Diagnóstico enviado. Sem água: a coordenação técnica foi avisada.' : 'Diagnóstico enviado. O plano vai para aprovação da coordenação técnica.') : 'Diagnóstico guardado no aparelho. Será enviado quando houver internet.');
+      });
+    }
+    if (tipo === 'visita-feita') {
+      const v0 = visitas().find(x => x.id === form.dataset.id);
+      const data = String(fd.get('data_realizada') || ''), relato = String(fd.get('relato') || '').trim();
+      const e = {};
+      if (!data) e.data_realizada = 'Informe o dia.'; else if (data > R.hoje()) e.data_realizada = 'Não pode ser no futuro.';
+      if (relato.length < 20) e.relato = 'Conte em poucas linhas o que foi feito (pelo menos 20 letras).';
+      if (!fotosVis[1]) e.foto = 'Faça pelo menos 1 foto do que foi feito.';
+      if (Object.keys(e).length) { const geral = e.foto; delete e.foto; return U().mostrarErros(form, e, geral && !Object.keys(e).length ? geral : undefined); }
+      await U().ocupado(form, async () => {
+        const v = Object.assign({}, v0, { situacao: 'realizada', data_realizada: data, relato });
+        const enviado = await guardar('visita', v, Object.assign({}, fotosVis));
+        Object.keys(fotosVis).forEach(k => delete fotosVis[k]);
+        U().fecharPainel(); U().render();
+        U().toast(enviado ? 'Visita registrada como feita. Já pode entrar na solicitação de ajuda de custo do mês.' : 'Visita guardada no aparelho. Será enviada quando houver internet.');
       });
     }
     if (tipo === 'diag-decisao') {

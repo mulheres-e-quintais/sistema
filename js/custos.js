@@ -334,5 +334,9 @@
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'proposta-roteiro.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
 
-  MQ.custosUI = { aba, clique, enviar, calcular: (etapa, km) => { C.par = C.par || Object.assign({}, MQ.CUSTO_PADRAO); return calcular(etapa, km); } };
+  MQ.custosUI = { aba, clique, enviar, calcular: (etapa, km) => { C.par = C.par || Object.assign({}, MQ.CUSTO_PADRAO); return calcular(etapa, km); },
+    // usados na solicitação de pagamento (mesmo cálculo do Pagamento do mês)
+    garantir: async () => { if (!C.carregado) await carregar(); },
+    pronto: () => C.carregado,
+    custoVisita: v => { C.par = C.par || Object.assign({}, MQ.CUSTO_PADRAO); C.km = C.km || {}; const k = kmIda(v); return Object.assign(calcular(v.etapa, k.km), { km: k.km, fonte: k.fonte }); } };
 })();
