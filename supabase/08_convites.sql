@@ -17,7 +17,7 @@ create extension if not exists pgcrypto;
 -- Dados pessoais complementares da equipe (nascimento, NIS, endereço, questionário socioeconômico).
 -- Ficam numa tabela à parte porque só a própria pessoa e as coordenações podem ver
 -- (as bolsistas enxergam o cadastro básico da equipe do estado, mas não isto).
--- Conta bancária e Pix NÃO são guardados aqui: vão direto para a FUNCERN.
+-- Conta bancária e Pix não ficam aqui: estão no 09_dados_bancarios.sql, com proteção ainda maior.
 -- ---------------------------------------------------------------------
 alter table public.equipe add column if not exists nome_social text;   -- como a pessoa quer ser chamada (aparece nas telas)
 
