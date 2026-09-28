@@ -512,3 +512,9 @@ details.hab.completa .hab-ic { background: var(--ok); color: #fff; }
 .hab-seta { width: 10px; height: 10px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform .15s; margin-right: 4px; }
 details.hab[open] .hab-seta { transform: rotate(-135deg); }
 details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
+.vagabtn.com-foto { grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 12px; }
+.vb-t { display: grid; gap: 4px; min-width: 0; }
+.vb-t .nm { overflow-wrap: anywhere; }
+
+.pessoa.com-foto { grid-template-columns: auto minmax(0, 1fr) auto; }
+@media (max-width: 600px) { .pessoa.com-foto { grid-template-columns: auto minmax(0, 1fr); } .pessoa.com-foto .acts { grid-column: 1 / -1; } }
