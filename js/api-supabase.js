@@ -30,7 +30,7 @@
     },
     async entrar(email) {
       const { error } = await sb.auth.signInWithOtp({
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         options: { emailRedirectTo: location.origin + location.pathname }
       });
       if (error) throw erro(/não cadastrado|Database error/i.test(error.message)
@@ -49,7 +49,7 @@
       return data;
     },
     async criar(m) {
-      const r = limpar(Object.assign({}, m, { cpf: R.soDigitos(m.cpf), email: m.email.trim() }));
+      const r = limpar(Object.assign({}, m, { cpf: R.soDigitos(m.cpf), email: m.email.trim().toLowerCase() }));
       delete r.status;
       const { data, error } = await sb.from('equipe').insert(r).select().single();
       if (error) throw erro(error);

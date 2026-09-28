@@ -128,7 +128,7 @@ language plpgsql security definer set search_path = public as $$
 declare r public.equipe;
 begin
   update public.equipe set user_id = auth.uid()
-   where email = (auth.jwt() ->> 'email') and status = 'ativa'
+   where lower(email::text) = lower(auth.jwt() ->> 'email') and status = 'ativa'
      and (user_id is null or user_id = auth.uid())
   returning * into r;
   return r;
@@ -216,7 +216,7 @@ create trigger equipe_auditoria after insert or update or delete on public.equip
 create or replace function public.bloquear_conta_nao_cadastrada() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  if not exists (select 1 from public.equipe where email = new.email and status = 'ativa') then
+  if not exists (select 1 from public.equipe where lower(email::text) = lower(new.email::text) and status = 'ativa') then
     raise exception 'E-mail não cadastrado no projeto.';
   end if;
   return new;
