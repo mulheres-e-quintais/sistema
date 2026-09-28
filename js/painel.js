@@ -239,18 +239,44 @@
     const mediana = arr => { const a = arr.filter(v => v != null && !isNaN(v)).map(Number).sort((x, y) => x - y); if (!a.length) return null; const m = Math.floor(a.length / 2); return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; };
     const mq = mediana(diags.map(x => x.renda_quintal)), mf = mediana(diags.map(x => x.renda_familiar));
     const semRenda = diags.filter(x => !(+x.renda_quintal > 0)).length;
+    // linha de base (bloco 4b do diagnóstico) e, quando houver, a avaliação final
+    // com avaliações, as duas colunas usam só os quintais medidos duas vezes (comparar grupos diferentes engana)
+    const avs = S.avaliacoes || [];
+    const pares = avs.map(a => { const dg = (S.diagnosticos || []).find(x => x.ficha_id === a.ficha_id); const i0 = dg && dg.dados && dg.dados.impacto, i1 = a.dados && a.dados.impacto;
+      return i0 && i1 && i0.ebia_nivel && i1.ebia_nivel ? [i0, i1] : null; }).filter(Boolean);
+    const temDepois = pares.length > 0;
+    const imps = temDepois ? pares.map(x => x[0]) : (S.diagnosticos || []).map(x => x.dados && x.dados.impacto).filter(x => x && x.ebia_nivel);
+    const impsD = pares.map(x => x[1]);
+    const nImp = imps.length, nAv = pares.length;
+    const pc = (l, fn) => l.length ? Math.round(l.filter(fn).length / l.length * 100) + '%' : null;
+    const md = (l, k) => { const v = l.map(x => x[k]).filter(x => x != null); return v.length ? (Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10).toLocaleString('pt-BR') : null; };
+    const avPar = avs.filter(a => (S.diagnosticos || []).some(x => x.ficha_id === a.ficha_id && x.renda_quintal != null) && a.dados && a.dados.renda_quintal != null);
+    const mqD = avPar.length ? mediana(avPar.map(a => a.dados.renda_quintal)) : null;
+    const mqA = avPar.length ? mediana(avPar.map(a => (S.diagnosticos.find(x => x.ficha_id === a.ficha_id) || {}).renda_quintal)) : null;
+    const razoes = diags.filter(x => +x.renda_familiar > 0 && x.renda_quintal != null).map(x => x.renda_quintal / x.renda_familiar);
+    const pesoQ = razoes.length ? Math.round(mediana(razoes) * 100) : null;
+    const semAgua = (S.diagnosticos || []).length ? Math.round((S.diagnosticos || []).filter(x => x.sem_agua).length / S.diagnosticos.length * 100) + '%' : null;
+    const linhasPP = [
+      nImp ? ['Em insegurança alimentar (EBIA)', pc(imps, x => x.ebia_nivel !== 'seguranca'), pc(impsD, x => x.ebia_nivel !== 'seguranca')] : null,
+      nImp ? ['Com fome (insegurança moderada ou grave)', pc(imps, x => ['moderada', 'grave'].includes(x.ebia_nivel)), pc(impsD, x => ['moderada', 'grave'].includes(x.ebia_nivel))] : null,
+      nImp ? ['Dias por semana comendo do quintal', md(imps, 'dias_consumo'), md(impsD, 'dias_consumo')] : null,
+      nImp ? ['Vendem ou trocam o que produzem', pc(imps, x => x.vende), pc(impsD, x => x.vende)] : null,
+      nImp ? ['Decidem sobre o dinheiro da venda', pc(imps, x => ['ela', 'ela_e_outro'].includes(x.decide)), pc(impsD, x => ['ela', 'ela_e_outro'].includes(x.decide))] : null,
+      semAgua ? ['Sem água que dure na seca (demanda de cisterna)', semAgua, null] : null
+    ].filter(Boolean);
     return `<section class="secao" aria-labelledby="t-perfil">
       <div class="secao-cab"><div><h2 id="t-perfil">Quem são as mulheres</h2><p>${base.length ? 'Percentual ' + rotBase + ', pelos critérios de prioridade da ficha.' : 'Aparece quando houver mulheres selecionadas.'}</p></div></div>
       <div class="duas-col perfil-cols">
         <div class="bloco">${base.length ? `<ul class="perfil">${barras}</ul>
           <p class="nota">"Negra, indígena, quilombola ou de comunidade tradicional" é um único campo na ficha v2: não dá para separar quilombolas.</p>` : '<p class="muted">Sem dados ainda.</p>'}</div>
-        <div class="bloco"><h3>Renda com o quintal: linha de base</h3>
+        <div class="bloco"><h3>Ponto de partida${temDepois ? ' e hoje' : ''}</h3>
           ${diags.length ? `<div class="resumo r2">
-              <div><span class="v num">${R.fmtBRL(mq || 0).replace(',00', '')}</span><span class="l">mediana por mês com vendas do quintal</span></div>
-              <div><span class="v num">${R.fmtBRL(mf || 0).replace(',00', '')}</span><span class="l">mediana da renda familiar por mês</span></div></div>
-            <p class="small">${semRenda} de ${diags.length} mulheres (${Math.round(semRenda / diags.length * 100)}%) não tinham renda de vendas do quintal no diagnóstico.</p>`
-            : '<p class="small muted">Vem do diagnóstico (1ª visita). Quando os diagnósticos forem registrados, aparecem aqui a mediana de renda do quintal e da família.</p>'}
-          <p class="nota">O "depois" só será comparável se a visita final perguntar a mesma coisa, do mesmo jeito. Sem isso, não há "renda antes × depois".</p></div>
+              <div><span class="v num">${R.fmtBRL(mq || 0).replace(',00', '')}</span><span class="l">mediana por mês com vendas do quintal${mqD != null ? ` · nos ${avPar.length} avaliados: ${R.fmtBRL(mqA || 0).replace(',00', '')} → <b>${R.fmtBRL(mqD).replace(',00', '')}</b>` : ''}</span></div>
+              <div><span class="v num">${R.fmtBRL(mf || 0).replace(',00', '')}</span><span class="l">mediana da renda familiar por mês${pesoQ != null ? ` · o quintal é ${pesoQ}% dela` : ''}</span></div></div>
+            <ul class="pp">${linhasPP.map(([t, a1, d1]) => `<li><span>${E(t)}</span><b class="num">${a1}</b>${temDepois ? `<span class="num pp-d">${d1 == null ? '—' : '→ ' + d1}</span>` : ''}</li>`).join('')}</ul>
+            <p class="nota">${temDepois ? `Início → hoje nos ${nAv} quinta${nAv > 1 ? 'is' : 'l'} já avaliado${nAv > 1 ? 's' : ''} (os mesmos nas duas colunas). Detalhe por estado na aba Campo.`
+              : nImp ? `Linha de base de ${nImp} diagnóstico${nImp > 1 ? 's' : ''}. O "hoje" aparece quando as avaliações finais (5ª visita) forem registradas.` : 'As medidas de fome, consumo e autonomia aparecem quando os diagnósticos tiverem o bloco "4b".'}</p>`
+            : '<p class="small muted">Vem do diagnóstico (1ª visita): renda, fome (EBIA), consumo do quintal, venda e água. Aparece quando os diagnósticos forem registrados.</p>'}</div>
       </div></section>`;
   }
 
