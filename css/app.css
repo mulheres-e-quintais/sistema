@@ -594,3 +594,5 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .viagens li span.small { display: block; }
 .secao-cab > * { min-width: 0; } .custo-nav { max-width: 100%; }
 @media (max-width: 420px) { .resumo .v { font-size: 23px; } .resumo > div { padding: 12px 14px; } }
+.quadro-sel .grupo th { font-size: 11px; text-align: center; border-bottom: 1px solid var(--line-2); padding-bottom: 4px; }
+.quadro-sel .sep { border-left: 2px solid var(--line-2); }

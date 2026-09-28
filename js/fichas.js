@@ -22,13 +22,16 @@
   const contar = (lista, uf) => {
     const l = lista.filter(f => !uf || f.uf === uf);
     const c = { total: l.length, aprovadas: 0, aguardando: 0, devolvidas: 0, espera: 0, sem_agua: 0, nao_atende: 0, selecionadas: 0 };
+    /* Cada ficha cai em UMA coluna só, para a linha somar o total:
+       primeiro a situação (ainda com a coordenação técnica?), depois o resultado das já aprovadas. */
     l.forEach(f => {
-      if (f.resultado === 'selecionada') { c.selecionadas++; if (f.situacao === 'aprovada') c.aprovadas++; }
+      if (f.resultado === 'selecionada') c.selecionadas++;
       if (f.situacao === 'aguardando') c.aguardando++;
-      if (f.situacao === 'devolvida') c.devolvidas++;
-      if (f.resultado === 'lista_espera') c.espera++;
-      if (f.resultado === 'sem_agua') c.sem_agua++;
-      if (f.resultado === 'nao_atende') c.nao_atende++;
+      else if (f.situacao === 'devolvida') c.devolvidas++;
+      else if (f.resultado === 'selecionada') c.aprovadas++;
+      else if (f.resultado === 'lista_espera') c.espera++;
+      else if (f.resultado === 'sem_agua') c.sem_agua++;
+      else if (f.resultado === 'nao_atende') c.nao_atende++;
     });
     return c;
   };
@@ -87,8 +90,8 @@
       return `<tr><td class="uf"><span class="sigla">${uf}</span><span class="nomeuf">${E(nome)}</span></td>
         <td class="num">${c.total}</td>
         <td><div style="display:grid;gap:4px"><span class="num"><b>${c.aprovadas}</b> de ${MQ.VAGAS_UF}</span><span class="bar"><i class="${c.aprovadas >= MQ.VAGAS_UF ? 'cheio' : ''}" style="width:${pct}%"></i></span></div></td>
-        <td class="num">${c.aguardando ? `<b>${c.aguardando}</b>` : 0}</td><td class="num">${c.devolvidas}</td>
-        <td class="num">${c.espera}</td><td class="num">${c.sem_agua}</td><td class="num">${c.nao_atende}</td></tr>`;
+        <td class="num">${c.espera}</td><td class="num">${c.sem_agua}</td><td class="num">${c.nao_atende}</td>
+        <td class="num sep">${c.aguardando ? `<b>${c.aguardando}</b>` : 0}</td><td class="num">${c.devolvidas}</td></tr>`;
     };
     const aguardando = lista.filter(f => f.situacao === 'aguardando').sort((a, b) => String(a.criado_em).localeCompare(String(b.criado_em)));
     const busca = filtro.busca.trim().toLowerCase();
@@ -99,10 +102,12 @@
       <div class="secao-cab"><div><h1 id="t-sel" style="font-size:24px">Seleção das beneficiárias</h1>
         <p>Fichas de indicação dos 5 estados. ${souTec ? 'Você aprova ou devolve cada ficha antes do diagnóstico.' : 'A aprovação é da coordenação técnica.'} O sistema impede CPF repetido e mais de ${MQ.VAGAS_UF} selecionadas aprovadas por estado.</p></div>
         <button class="btn" data-acao="ficha-csv">Baixar planilha (CSV)</button></div>
-      <div class="quadro-scroll" style="display:block"><table class="quadro" style="min-width:720px"><thead><tr>
-        <th>Estado</th><th>Fichas</th><th>Selecionadas aprovadas</th><th>Aguardando</th><th>Devolvidas</th><th>Lista de espera</th><th>Sem água</th><th>Não atendem</th></tr></thead>
+      <p class="muted" style="margin:0">Cada ficha aparece em uma coluna só: <b>Fichas = soma das colunas ao lado</b>. As quatro primeiras já foram decididas pela coordenação técnica; as duas últimas ainda estão com ela.</p>
+      <div class="quadro-scroll" style="display:block"><table class="quadro quadro-sel" style="min-width:820px"><thead>
+        <tr class="grupo"><th></th><th></th><th colspan="4">Já decididas pela coordenação técnica</th><th colspan="2" class="sep">Ainda com a coordenação técnica</th></tr>
+        <tr><th>Estado</th><th>Fichas</th><th>Selecionadas</th><th>Lista de espera</th><th>Sem água</th><th>Não atendem</th><th class="sep">Para aprovar</th><th>Devolvidas</th></tr></thead>
         <tbody>${MQ.UFS.map(u => linha(u.uf, u.nome)).join('')}
-        <tr><td class="uf"><b>Total</b></td><td class="num"><b>${tot.total}</b></td><td class="num"><b>${tot.aprovadas}</b> de ${MQ.VAGAS_UF * 5}</td><td class="num"><b>${tot.aguardando}</b></td><td class="num">${tot.devolvidas}</td><td class="num">${tot.espera}</td><td class="num">${tot.sem_agua}</td><td class="num">${tot.nao_atende}</td></tr>
+        <tr><td class="uf"><b>Total</b></td><td class="num"><b>${tot.total}</b></td><td class="num"><b>${tot.aprovadas}</b> de ${MQ.VAGAS_UF * 5}</td><td class="num">${tot.espera}</td><td class="num">${tot.sem_agua}</td><td class="num">${tot.nao_atende}</td><td class="num sep"><b>${tot.aguardando}</b></td><td class="num">${tot.devolvidas}</td></tr>
         </tbody></table></div>
       ${aguardando.length ? `<div class="bloco"><h3>${souTec ? 'Para você aprovar' : 'Aguardando a coordenação técnica'} (${aguardando.length})</h3>
         <div class="lista-fichas">${aguardando.slice(0, 30).map(f => linhaFicha(f, true)).join('')}</div></div>` : ''}
