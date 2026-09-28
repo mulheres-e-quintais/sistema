@@ -386,6 +386,14 @@
       const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral gera a planilha bancária para a FUNCERN.');
       return ler().equipe.filter(m => m.status === 'ativa' && bancoMem[m.id]).map(m => Object.assign({ nome: m.nome, cpf: m.cpf, papel: m.papel, uf: m.uf, email: m.email, telefone: m.telefone }, bancoMem[m.id]));
     },
+    async listarAPL() {
+      const d = ler(); if (!d.apl) d.apl = [{ uf: 'PI', municipio: 'Paulistana', apls: ['apicultura (exemplo)', 'caprinocultura (exemplo)'], obs: 'Exemplo: feira livre aos sábados; associação entrega ao PNAE.' }];
+      return copia(d.apl);
+    },
+    async salvarAPL(uf, municipio, apls, obs) {
+      const eu = euMesmo(); if (!eu || !/^coord/.test(eu.papel)) throw falha('Só a coordenação cadastra APL.');
+      const d = ler(); d.apl = (d.apl || []).filter(x => !(x.uf === uf && x.municipio === municipio)).concat([{ uf, municipio, apls, obs }]); gravar();
+    },
     async listarPreCadastros() {
       const eu = euMesmo(); if (!eu) return [];
       return copia((ler().pre_cadastros || []).filter(x => x.situacao === 'aguardando' && R.podeCadastrar(eu.papel, x.papel)));

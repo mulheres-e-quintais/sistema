@@ -176,7 +176,7 @@ def diagnostico(f, v, quem, dia):
                  terra=rnd.choice(['propria', 'propria', 'cedida', 'outra']), cercado=rnd.choice(['sim', 'nao', 'em_parte']),
                  fontes_agua=rnd.sample(['cisterna_consumo', 'cisterna_producao', 'poco', 'acude', 'rede', 'carro_pipa'], rnd.randint(1, 3)),
                  capacidade_litros=rnd.choice([16000, 16000, 52000, 30000]), meses_seca=rnd.randint(3, 8), distancia_m=rnd.randint(5, 150),
-                 irrigacao=rnd.choice(['nao_tem', 'regador', 'regador', 'gotejamento']), solo=rnd.choice(['arenoso', 'argiloso', 'pedregoso', 'nao_sabe']),
+                 irrigacao=rnd.choice(['nao', 'regador', 'regador', 'gotejamento']), solo=rnd.choice(['arenoso', 'argiloso', 'pedregoso', 'nao_sabe']),
                  meses_chuva=rnd.choice(['janeiro a abril', 'fevereiro a maio', 'dezembro a março', 'março a junho']),
                  producao=prod, praticas=rnd.sample(['compostagem', 'esterco', 'sementes', 'veneno', 'adubo_quimico', 'cobertura'], rnd.randint(1, 3)),
                  horas_dia=rnd.choice([1, 2, 2, 3, 4]), participa=rnd.sample(['associacao', 'sindicato', 'grupo_mulheres', 'mpa', 'cooperativa'], rnd.randint(0, 2)),
