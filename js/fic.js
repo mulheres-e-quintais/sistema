@@ -89,14 +89,13 @@
   function secaoEquipe() {
     const souGeral = S().eu.papel === 'coord_geral';
     const l = professores();
+    // mesmo desenho da coordenação técnica: cartão da pessoa e, embaixo, a vaga para cadastrar
     return `<section class="secao" aria-labelledby="t-prof">
-      <div class="secao-cab"><div><h2 id="t-prof">Professores do curso FIC</h2><p>IFRN · cadastrados pela coordenação geral · criam as turmas e matriculam bolsistas e agentes</p></div>
-        ${souGeral ? '<button class="btn" data-acao="novo" data-papel="professor_fic">+ Professor(a) do FIC</button>' : ''}</div>
-      ${l.length ? `<div class="grade-prof">${l.map(m => { const s = R.situacao(m); const nt = turmas().filter(t => t.professor_id === m.id);
-          const nm = matriculas().filter(x => nt.some(t => t.id === x.turma_id)).length;
-          return `<button class="vagabtn com-foto" data-acao="ver" data-id="${E(m.id)}">${U().avatar(m, 56)}<span class="vb-t"><span class="nm">${E(nomeDe(m))}</span><span><span class="chip ${s.cod}">${E(s.rot)}</span></span>
-            <span class="sub">${nt.length} turma${nt.length === 1 ? '' : 's'} · ${nm} matrícula${nm === 1 ? '' : 's'}</span></span></button>`; }).join('')}</div>`
-        : `<div class="vazio"><span>Nenhum professor do FIC cadastrado.${souGeral ? ' Cadastre à mão ou gere um link para ele preencher.' : ''}</span></div>`}
+      <div class="secao-cab"><h2 id="t-prof">Professores do curso FIC</h2><p>IFRN · cadastrados pela coordenação geral · criam as turmas e matriculam bolsistas e agentes</p></div>
+      ${l.map(m => U().cartaoPessoa(m)).join('')}
+      <div class="vazio"><div>${l.length ? `<b>${l.length} professor${l.length > 1 ? 'es' : ''} cadastrado${l.length > 1 ? 's' : ''}.</b> Pode cadastrar mais, se o curso tiver outro professor.` : '<b>Nenhum professor do FIC cadastrado.</b> Cadastre à mão ou gere um link para ele preencher.'}
+        ${souGeral ? '' : '<br><span class="small">Só a coordenação geral pode fazer este cadastro.</span>'}</div>
+        ${souGeral ? '<button class="btn pri" data-acao="novo" data-papel="professor_fic">Cadastrar professor(a) do FIC</button>' : ''}</div>
     </section>`;
   }
 
