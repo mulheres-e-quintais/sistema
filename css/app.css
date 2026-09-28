@@ -489,3 +489,26 @@ form[data-form=diag] fieldset + fieldset { margin-top: 20px; padding-top: 18px; 
 .conta-dl { grid-template-columns: 110px minmax(0, 1fr); }
 .conta-dl .tot { border-top: 1px solid var(--line); padding-top: 8px; font-size: 16px; }
 .conta-dl dd.tot b { font: 600 22px var(--serif); color: var(--verde); }
+
+/* ---------- foto da equipe ---------- */
+.av { position: relative; flex: none; width: var(--av); height: var(--av); border-radius: 50%; overflow: hidden; display: inline-grid; place-items: center;
+  background: var(--avc); color: #fff; font: 600 calc(var(--av) * .38)/1 var(--sans); letter-spacing: .02em; box-shadow: 0 0 0 2px var(--surface); }
+.av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.nm.com-av { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.nm.com-av > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.cab-av { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.foto-btn { cursor: pointer; }
+.painel-cab .t > span:last-child .foto-btn { margin-top: 6px; }
+
+/* ---------- habilitação (passos) ---------- */
+details.hab { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface-2); }
+details.hab[open] { background: var(--surface); }
+.hab-sum { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r); }
+.hab-sum::-webkit-details-marker { display: none; }
+.hab-sum:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.hab-ic { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); font: 700 13px var(--sans); }
+details.hab.completa .hab-ic { background: var(--ok); color: #fff; }
+.hab-t { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.hab-seta { width: 10px; height: 10px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform .15s; margin-right: 4px; }
+details.hab[open] .hab-seta { transform: rotate(-135deg); }
+details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }

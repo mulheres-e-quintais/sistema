@@ -12,7 +12,7 @@
   const lerEuGuardado = () => { try { return JSON.parse(localStorage.getItem('mq-eu') || 'null'); } catch (e) { return null; } };
   const CAMPOS = ['papel', 'uf', 'nome', 'cpf', 'email', 'telefone', 'municipio', 'organizacao', 'data_inicio',
     'meta_diagnosticos', 'meta_quintais', 'meta_visitas', 'matricula_fic_em', 'matricula_fic_numero', 'docs_funcern_em',
-    'termo_path', 'termo_assinado_em', 'obs_habilitacao', 'consentimento_lgpd', 'substitui_id', 'status', 'data_fim', 'motivo_desligamento'];
+    'termo_path', 'termo_assinado_em', 'obs_habilitacao', 'foto_path', 'consentimento_lgpd', 'substitui_id', 'status', 'data_fim', 'motivo_desligamento'];
   const limpar = o => { const r = {}; CAMPOS.forEach(k => { if (k in o) r[k] = o[k] === '' ? null : o[k]; }); return r; };
 
   /* Grava com UPDATE quando o registro já existe e INSERT só quando é novo.
@@ -249,7 +249,27 @@
     async listarEquipe() {
       const { data, error } = await sb.from('equipe').select('*').order('criado_em');
       if (error) throw erro(error);
+      // fotos: links temporários (1 h) de uma vez só; se a etapa 7 não foi instalada, segue com as iniciais
+      const com = data.filter(m => m.foto_path);
+      if (com.length) {
+        try {
+          const { data: urls } = await sb.storage.from('equipe').createSignedUrls(com.map(m => m.foto_path), 3600);
+          (urls || []).forEach((u, i) => { if (u && u.signedUrl) com[i].foto_url = u.signedUrl; });
+        } catch (e) { /* sem foto */ }
+      }
       return data;
+    },
+    async enviarFotoEquipe(id, blob) {
+      const path = id + '/foto_' + Date.now() + '.jpg';
+      const { error: e1 } = await sb.storage.from('equipe').upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+      if (e1) throw erro(/bucket|not found/i.test(e1.message) ? 'A foto da equipe ainda não foi instalada no servidor: rode o arquivo 07_fotos_equipe.sql no Supabase.' : e1);
+      const souEu = euCache && euCache.id === id;
+      if (souEu && !/^coord/.test(euCache.papel)) {
+        const { error } = await sb.rpc('definir_minha_foto', { p_path: path }); if (error) throw erro(error);
+      } else {
+        const { error } = await sb.from('equipe').update({ foto_path: path }).eq('id', id); if (error) throw erro(error);
+      }
+      return path;
     },
     async auditoria() {
       const { data, error } = await sb.from('auditoria').select('*').order('em', { ascending: false }).limit(200);

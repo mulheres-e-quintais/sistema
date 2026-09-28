@@ -389,6 +389,14 @@
 
     async desligar(id, data_fim, motivo) { return this.atualizar(id, { status: 'desligada', data_fim, motivo_desligamento: motivo }); },
 
+    async enviarFotoEquipe(id, blob) {
+      const d = ler(); const eu = euMesmo(); const m = d.equipe.find(x => x.id === id);
+      if (!m) throw falha('Pessoa não encontrada.');
+      const pode = eu && (eu.id === id || (eu.papel === 'coord_tecnico' && m.papel !== 'coord_geral') || (eu.papel === 'coord_geral' && m.papel !== 'coord_geral'));
+      if (!pode) throw falha('Só a coordenação ou a própria pessoa troca a foto.');
+      const url = await new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(blob); });
+      m.foto_path = 'demo/' + id + '.jpg'; m.foto_url = url; gravar(); return m.foto_path;
+    },
     async enviarTermo(id, arquivo) { return arquivo.name; },   // no demo guarda só o nome
     async linkTermo(path) { return null; },
     async entrar() { throw falha('No modo demonstração não há login: use o seletor de perfil.'); },

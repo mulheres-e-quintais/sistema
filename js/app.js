@@ -159,10 +159,21 @@
   }
 
 
+  /* foto pequena ao lado do nome; sem foto (ou link vencido), mostra as iniciais */
+  const CORES_AV = ['#A44934', '#885B44', '#6B7A3A', '#2F6B66', '#8A5A00', '#6A4E7A', '#4F6A8A'];
+  function avatar(m, tam) {
+    const p = String(m.nome || '?').replace(/\(.*?\)/g, ' ').trim().split(/\s+/).filter(x => x && !/^(d[aeo]s?|e)$/i.test(x));
+    const ini = ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
+    let h = 0; for (const c of String(m.id || m.nome)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    return `<span class="av" style="--av:${tam || 32}px;--avc:${CORES_AV[h % CORES_AV.length]}" aria-hidden="true">${esc(ini)}${m.foto_url ? `<img src="${esc(m.foto_url)}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span>`;
+  }
+  const podeTrocarFoto = m => m.status === 'ativa' && (S.eu.id === m.id || (/^coord/.test(S.eu.papel) && m.papel !== 'coord_geral'));
+  const botaoFoto = m => podeTrocarFoto(m) ? `<label class="btn peq foto-btn">${m.foto_url ? 'Trocar foto' : 'Adicionar foto'}<input type="file" accept="image/*" data-foto-equipe="${m.id}" hidden></label>` : '';
+
   function cartaoPessoa(m) {
     const s = R.situacao(m);
     return `<div class="pessoa"><div style="display:grid;gap:6px;min-width:0">
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="nm">${esc(m.nome)}</span><span class="chip ${s.cod}">${esc(s.rot)}</span></div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${avatar(m, 44)}<span class="nm">${esc(m.nome)}</span><span class="chip ${s.cod}">${esc(s.rot)}</span></div>
         <div class="dd"><span>${esc(m.email)}</span><span class="num">${esc(m.telefone)}</span>${m.municipio ? `<span>${esc(m.municipio)}</span>` : ''}${m.organizacao ? `<span>${esc(m.organizacao)}</span>` : ''}</div></div>
       <div class="acts"><button class="btn" data-acao="ver" data-id="${m.id}">Ver detalhes</button></div></div>`;
   }
@@ -179,7 +190,7 @@
     if (m) {
       const s = R.situacao(m);
       const plano = m.meta_diagnosticos != null ? `${m.meta_diagnosticos} diag. · ${m.meta_quintais || 0} quintais · ${m.meta_visitas || 0} visitas` : 'Plano individual não preenchido';
-      return `<button class="vagabtn" data-acao="ver" data-id="${m.id}"><span class="nm">${esc(m.nome)}</span>
+      return `<button class="vagabtn" data-acao="ver" data-id="${m.id}"><span class="nm com-av">${avatar(m, 30)}<span>${esc(m.nome)}</span></span>
         <span><span class="chip ${s.cod}">${esc(s.rot)}</span></span><span class="sub">${esc(plano)}</span></button>`;
     }
     const ant = ultimaDesligada(papel, uf);
@@ -196,7 +207,7 @@
       <div class="secao-cab"><div><h2 id="t-ag">Agentes de campo</h2><p>Alunas do FIC que fazem visitas por ajuda de custo · sem limite por estado · cadastradas pela coordenação técnica · veem só os quintais atribuídos</p></div></div>
       <div class="grade-uf">${MQ.UFS.map(u => { const l = ag.filter(m => m.uf === u.uf);
         return `<div class="cartao"><div class="cab-uf"><span class="uf"><span class="sigla">${u.uf}</span></span><span class="nomeuf muted">${u.nome}</span></div>
-          ${l.map(m => { const s = R.situacao(m); return `<button class="vagabtn" data-acao="ver" data-id="${m.id}"><span class="nm">${esc(m.nome)}</span><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span></button>`; }).join('') || '<p class="small muted" style="padding:4px">Nenhuma agente.</p>'}
+          ${l.map(m => { const s = R.situacao(m); return `<button class="vagabtn" data-acao="ver" data-id="${m.id}"><span class="nm com-av">${avatar(m, 30)}<span>${esc(m.nome)}</span></span><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span></button>`; }).join('') || '<p class="small muted" style="padding:4px">Nenhuma agente.</p>'}
           ${podeCad ? `<button class="btn peq" data-acao="novo" data-papel="agente" data-uf="${u.uf}">+ Agente em ${u.uf}</button>` : ''}</div>`; }).join('')}</div>
     </section>`;
   }
@@ -246,7 +257,7 @@
   }
 
   function telaBolsista() {
-    const m = S.eu;
+    const m = Object.assign({}, S.eu, porId(S.eu.id) || {});   // inclui o link da foto
     const s = R.situacao(m);
     return `<main class="wrap" id="principal">
       <div class="cab"><div><span class="eyebrow">${esc(P[m.papel].nome)} · ${esc(nomeUF(m.uf))}</span><h1>Olá, ${esc(m.nome.split(' ')[0])}</h1>
@@ -261,7 +272,7 @@
       <section class="secao"><div class="secao-cab"><h2>Próximos formulários</h2><span class="chip pend">Em preparação</span></div>
         <p class="small muted">Até entrarem no sistema, use os modelos em papel (versão 2).</p>
         <ul class="forms">${MQ.FORMULARIOS.filter(f => f.n > 3).map(f => `<li><span class="n">${f.n}</span><b>${esc(f.nome)}</b><span class="small muted">${esc(f.quando)}</span></li>`).join('')}</ul></section>
-      <div class="bloco"><h2>Meus dados</h2>${dadosDL(m)}<p class="small muted">Algum dado errado? Fale com a coordenação técnica, que corrige o cadastro.</p></div>
+      <div class="bloco"><div class="cab-av">${avatar(m, 56)}<div style="display:grid;gap:6px"><h2>Meus dados</h2>${botaoFoto(m)}</div></div>${dadosDL(m)}<p class="small muted">Algum dado errado? Fale com a coordenação técnica, que corrige o cadastro.</p></div>
     </main>`;
   }
 
@@ -332,7 +343,8 @@
       ${m.meta_diagnosticos != null ? `<dl class="dl"><dt>Diagnósticos</dt><dd class="num">${m.meta_diagnosticos ?? '—'}</dd><dt>Quintais</dt><dd class="num">${m.meta_quintais ?? '—'}</dd><dt>Visitas</dt><dd class="num">${m.meta_visitas ?? '—'}</dd></dl>` : '<p class="muted small">Não preenchido.</p>'}</div>` : '';
     const hoje = R.hoje() > m.data_inicio ? R.hoje() : m.data_inicio;
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(nomeUF(m.uf)) : ''}</span>
-        <h2 id="painel-t">${esc(m.nome)}</h2><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span></div>
+        <div class="cab-av">${avatar(m, 56)}<div style="display:grid;gap:4px"><h2 id="painel-t">${esc(m.nome)}</h2><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span></div></div>
+        ${botaoFoto(m) ? `<span>${botaoFoto(m)}</span>` : ''}</div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo">
         <div class="bloco"><h3>Dados</h3>${dadosDL(m)}
@@ -357,7 +369,11 @@
   }
 
   function formHabilitacao(m) {
-    return `<details ${m.matricula_fic_em && m.docs_funcern_em && m.termo_assinado_em ? '' : 'open'}><summary class="link" style="list-style:none;cursor:pointer">Registrar passos da habilitação</summary>
+    const feitos = [m.matricula_fic_em, m.docs_funcern_em, m.termo_assinado_em].filter(Boolean).length;
+    return `<details class="hab${feitos === 3 ? ' completa' : ''}" ${feitos === 3 ? '' : 'open'}><summary class="hab-sum">
+        <span class="hab-ic" aria-hidden="true">${feitos === 3 ? '✓' : feitos + '/3'}</span>
+        <span class="hab-t"><b>${feitos === 3 ? 'Habilitação completa' : 'Registrar passos da habilitação'}</b><span class="small muted">${feitos === 3 ? 'Clique para ver ou corrigir as datas' : 'Matrícula no FIC, documentos na FUNCERN e termo assinado'}</span></span>
+        <span class="hab-seta" aria-hidden="true"></span></summary>
       <form class="f" data-form="hab" data-id="${m.id}" style="margin-top:12px" novalidate>
       <div class="campos">
         <div class="campo"><label for="h-fic">Matrícula no FIC em</label><input id="h-fic" name="matricula_fic_em" type="date" value="${esc(m.matricula_fic_em || '')}"></div>
@@ -384,7 +400,7 @@
         <h2 id="painel-t">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(nomeUF(m.uf)) : ''}</h2></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo"><form class="f" data-form="cadastro" novalidate>
-        <div class="fixo">${m.papel === 'agente' ? '<span class="small muted">Pagamento</span><b>Ajuda de custo por dia de campo</b>' : `<span class="small muted">Bolsa mensal prevista no plano de trabalho</span><b class="num">${R.fmtBRL(P[m.papel].bolsa)}</b>`}
+        <div class="fixo">${m.papel === 'agente' ? '<span class="small muted">Pagamento</span><b>Ajuda de custo por visita</b>' : `<span class="small muted">Bolsa mensal prevista no plano de trabalho</span><b class="num">${R.fmtBRL(P[m.papel].bolsa)}</b>`}
           <span class="small">${P[m.papel].faz ? esc(P[m.papel].faz) : 'Planeja, coordena e acompanha a execução técnica nos 5 estados.'}</span>
           ${m.papel === 'agente' ? '<span class="small">Precisa estar matriculada no FIC e cadastrada na FUNCERN antes da primeira visita paga. Vê só os quintais atribuídos a ela.</span>' : ''}</div>
         ${subst ? `<div class="aviso">Substitui <b>${esc(subst.nome)}</b>, desligada em ${R.fmtData(subst.data_fim)}. O histórico liga as duas.</div>` : ''}
@@ -471,6 +487,30 @@
   });
 
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && S.painel) fecharPainel(); });
+  // foto da equipe: recorta quadrada, 320 px, JPEG (tira dados do celular, como a localização)
+  function fotoQuadrada(arq, lado = 320) {
+    return new Promise((res, rej) => {
+      const url = URL.createObjectURL(arq); const img = new Image();
+      img.onload = () => {
+        const m = Math.min(img.width, img.height); const c = document.createElement('canvas'); c.width = c.height = lado;
+        c.getContext('2d').drawImage(img, (img.width - m) / 2, (img.height - m) / 2, m, m, 0, 0, lado, lado); URL.revokeObjectURL(url);
+        c.toBlob(b => b ? res(b) : rej(new Error('Não foi possível preparar a foto.')), 'image/jpeg', .85);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Arquivo de imagem inválido.')); };
+      img.src = url;
+    });
+  }
+  document.addEventListener('change', async ev => {
+    const inp = ev.target.closest('input[data-foto-equipe]'); if (!inp || !inp.files[0]) return;
+    const lab = inp.closest('label'); const txt = lab ? lab.firstChild.textContent : '';
+    try {
+      if (lab) lab.firstChild.textContent = 'Enviando…';
+      await S.api.enviarFotoEquipe(inp.dataset.fotoEquipe, await fotoQuadrada(inp.files[0]));
+      S.equipe = await S.api.listarEquipe(); if (S.eu.id === inp.dataset.fotoEquipe) S.eu = Object.assign({}, S.eu, porId(S.eu.id));
+      render(); toast('Foto salva.');
+    } catch (e) { if (lab) lab.firstChild.textContent = txt; toast(e.message); }
+  });
+
   window.addEventListener('hashchange', () => { if (location.hash === '#numeros' || location.hash === '' || location.hash === '#') { render(); window.scrollTo(0, 0); } });
   window.addEventListener('online', () => { if (S.eu) sincronizar(); });
   window.addEventListener('offline', () => { if (S.eu) render(); });
