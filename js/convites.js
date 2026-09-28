@@ -169,23 +169,27 @@
   function pagina(token) {
     if (PUB.token !== token) { PUB.token = token; PUB.conv = null; PUB.enviado = false;
       setTimeout(async () => { try { PUB.conv = await S().api.verConvite(token); } catch (e) { PUB.conv = { valido: false, motivo: 'erro', erro: e.message }; } desenhar(); }, 0); }
-    return `<main class="wrap" id="convite">${corpo()}</main>`;
+    return `<main class="ent ent-conv"><div class="ent-fundo" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i></div>
+      <div class="conv-topo"><div class="ent-marca"><img src="assets/isotipo.svg" alt="" width="34" height="48"><span><b class="serif">Mulheres &amp; Quintais</b><small>Quintais Produtivos para Mulheres Rurais</small></span></div></div>
+      <div id="convite" class="conv-miolo">${corpo()}</div></main>`;
   }
   function desenhar() { const el = $('#convite'); if (el) el.innerHTML = corpo(); }
   function corpo() {
     const c = PUB.conv;
-    if (!c) return '<p class="carregando">Abrindo o link…</p>';
-    if (PUB.enviado) return `<div class="login"><div class="login-marca"><img src="assets/isotipo.svg" alt="" width="40" height="58"><span class="eyebrow">Cadastro recebido</span></div>
-      <h1>Obrigada!</h1><p>Seus dados foram enviados para a coordenação do projeto conferir.</p>
+    if (!c) return '<div class="login ent-card"><p class="carregando">Abrindo o link…</p></div>';
+    if (PUB.enviado) return `<div class="login ent-card"><span class="eyebrow">Cadastro recebido</span>
+      <h2 class="serif">Obrigada!</h2><p>Seus dados foram enviados para a coordenação do projeto conferir.</p>
       <div class="aviso"><b>Próximo passo:</b> quando a coordenação aprovar, entre em <a href="${E(location.origin + location.pathname)}">${E(location.host + location.pathname)}</a>, escolha <b>Primeiro acesso</b> e crie a sua senha com o e-mail que você informou.</div></div>`;
     if (!c.valido) {
       const msg = { usado: 'Este link já foi usado.', vencido: 'Este link venceu (vale 7 dias).', cancelado: 'Este link foi cancelado.', inexistente: 'Link não encontrado. Confira se copiou inteiro.' }[c.motivo] || ('Não foi possível abrir o link. ' + (c.erro || ''));
-      return `<div class="login"><h1>Link sem validade</h1><p>${E(msg)} Peça um novo à coordenação do projeto.</p></div>`;
+      return `<div class="login ent-card"><span class="eyebrow">Cadastro na equipe</span><h2 class="serif">Link sem validade</h2><p>${E(msg)} Peça um novo à coordenação do projeto.</p></div>`;
     }
     const munis = c.uf ? (MQ.MUNICIPIOS[c.uf] || []) : [];
-    return `<form class="login conv-form" data-form="conv-enviar" novalidate>
-      <div class="login-marca"><img src="assets/isotipo.svg" alt="" width="40" height="58"><span class="eyebrow">Cadastro na equipe</span></div>
-      <div><h1>Seus dados</h1><p class="muted" style="margin-top:6px">Você foi indicad${c.papel === 'professor_fic' ? 'o(a)' : 'a'} para <b>${E(funcao(c.papel, c.uf))}</b> no projeto Quintais Produtivos para Mulheres Rurais. Preencha e envie; a coordenação confere antes de liberar o acesso.</p></div>
+    return `<div class="conv-boas"><h1 class="ent-t serif">Boas-vindas <em>à equipe</em>.</h1>
+        <p class="ent-s">Você foi indicad${c.papel === 'professor_fic' ? 'o(a)' : 'a'} para <b>${E(funcao(c.papel, c.uf))}</b>. Preencha seus dados uma vez só; a coordenação confere e libera o seu acesso.</p>
+        <ol class="conv-etapas"><li class="on"><b>1</b> Seus dados</li><li><b>2</b> Coordenação confere</li><li><b>3</b> Você cria a senha</li></ol></div>
+      <form class="login ent-card conv-form" data-form="conv-enviar" novalidate>
+      <div><span class="eyebrow">Cadastro na equipe</span><h2 class="serif">Seus dados</h2></div>
       <div class="campo"><label for="cv-nome">Nome completo</label><input id="cv-nome" name="nome" autocomplete="name" required></div>
       <div class="campos">
         <div class="campo"><label for="cv-cpf">CPF</label><input id="cv-cpf" name="cpf" inputmode="numeric" autocomplete="off" required></div>
@@ -199,7 +203,7 @@
       <label class="check"><input type="checkbox" name="consentimento_lgpd"> <span>Autorizo o projeto (IFRN, MDA, MPA e FUNCERN) a usar estes dados para o meu cadastro na equipe, o pagamento e a prestação de contas, conforme a Lei nº 13.709/2018. Posso pedir correção a qualquer momento.</span></label>
       <div class="aviso erro" data-erro hidden></div>
       <button class="btn pri" type="submit">Enviar meus dados</button>
-      <p class="nota">Não pedimos conta bancária nem Pix aqui: isso é entregue direto à FUNCERN.</p></form>`;
+      <p class="nota">A conta bancária não é pedida aqui: você informa depois, dentro do sistema, com segurança.</p></form>`;
   }
 
   /* ---------- ações ---------- */
