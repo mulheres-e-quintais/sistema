@@ -210,117 +210,21 @@ begin
 end $$;
 
 -- 7. Todas as tabelas: leitura e gravação para a coordenação geral
-do $$ begin
-  if to_regclass('public.equipe') is not null then
-    execute 'drop policy if exists geral_tudo on public.equipe';
-    execute 'create policy geral_tudo on public.equipe for all to authenticated using (public.meu_papel() = ''coord_geral'' and papel <> ''coord_geral'') with check (public.meu_papel() = ''coord_geral'' and papel <> ''coord_geral'')';
-    execute 'grant select, insert, update on public.equipe to authenticated';
-  end if;
-end $$;
-do $$ begin
-  if to_regclass('public.fichas') is not null then
-    execute 'drop policy if exists geral_tudo on public.fichas';
-    execute 'create policy geral_tudo on public.fichas for all to authenticated using (public.meu_papel() = ''coord_geral'') with check (public.meu_papel() = ''coord_geral'')';
-    execute 'grant select, insert, update on public.fichas to authenticated';
-  end if;
-end $$;
-do $$ begin
-  if to_regclass('public.visitas') is not null then
-    execute 'drop policy if exists geral_tudo on public.visitas';
-    execute 'create policy geral_tudo on public.visitas for all to authenticated using (public.meu_papel() = ''coord_geral'') with check (public.meu_papel() = ''coord_geral'')';
-    execute 'grant select, insert, update on public.visitas to authenticated';
-  end if;
-end $$;
-do $$ begin
-  if to_regclass('public.diagnosticos') is not null then
-    execute 'drop policy if exists geral_tudo on public.diagnosticos';
-    execute 'create policy geral_tudo on public.diagnosticos for all to authenticated using (public.meu_papel() = ''coord_geral'') with check (public.meu_papel() = ''coord_geral'')';
-    execute 'grant select, insert, update on public.diagnosticos to authenticated';
-  end if;
-end $$;
-do $$ begin
-  if to_regclass('public.avaliacoes') is not null then
-    execute 'drop policy if exists geral_tudo on public.avaliacoes';
-    execute 'create policy geral_tudo on public.avaliacoes for all to authenticated using (public.meu_papel() = ''coord_geral'') with check (public.meu_papel() = ''coord_geral'')';
-    execute 'grant select, insert, update on public.avaliacoes to authenticated';
-  end if;
-end $$;
-do $$ begin
-  if to_regclass('public.custos_visita') is not null then
-    execute 'drop policy if exists geral_tudo on public.custos_visita';
-    execute 'create policy geral_tudo on public.custos_visita for all to authenticated using (public.meu_papel() = ''coord_geral'') with check (public.meu_papel() = ''coord_geral'')';
-    execute 'grant select, insert, update on public.custos_visita to authenticated';
-  end if;
-end $$;
-do $$ begin
-  if to_regclass('public.vitrine_fotos') is not null then
-    execute 'drop policy if exists geral_tudo on public.vitrine_fotos';
-    execute 'create policy geral_tudo on public.vitrine_fotos for all to authenticated using (public.meu_papel() = ''coord_geral'') with check (public.meu_papel() = ''coord_geral'')';
-    execute 'grant select, insert, update on public.vitrine_fotos to authenticated';
-  end if;
-end $$;
-do $$ begin
-  if to_regclass('public.vitrine_remover') is not null then
-    execute 'drop policy if exists geral_tudo on public.vitrine_remover';
-    execute 'create policy geral_tudo on public.vitrine_remover for all to authenticated using (public.meu_papel() = ''coord_geral'') with check (public.meu_papel() = ''coord_geral'')';
-    execute 'grant select, insert, update on public.vitrine_remover to authenticated';
-  end if;
-end $$;
-do $$ begin
-  if to_regclass('public.parametros') is not null then
-    execute 'drop policy if exists geral_tudo on public.parametros';
-    execute 'create policy geral_tudo on public.parametros for all to authenticated using (public.meu_papel() = ''coord_geral'') with check (public.meu_papel() = ''coord_geral'')';
-    execute 'grant select, insert, update on public.parametros to authenticated';
-  end if;
-end $$;
-do $$ begin
-  if to_regclass('public.apl_municipios') is not null then
-    execute 'drop policy if exists geral_tudo on public.apl_municipios';
-    execute 'create policy geral_tudo on public.apl_municipios for all to authenticated using (public.meu_papel() = ''coord_geral'') with check (public.meu_papel() = ''coord_geral'')';
-    execute 'grant select, insert, update on public.apl_municipios to authenticated';
-  end if;
-end $$;
-do $$ begin
-  if to_regclass('public.convites') is not null then
-    execute 'drop policy if exists geral_tudo on public.convites';
-    execute 'create policy geral_tudo on public.convites for all to authenticated using (public.meu_papel() = ''coord_geral'') with check (public.meu_papel() = ''coord_geral'')';
-    execute 'grant select, insert, update on public.convites to authenticated';
-  end if;
-end $$;
-do $$ begin
-  if to_regclass('public.pre_cadastros') is not null then
-    execute 'drop policy if exists geral_tudo on public.pre_cadastros';
-    execute 'create policy geral_tudo on public.pre_cadastros for all to authenticated using (public.meu_papel() = ''coord_geral'') with check (public.meu_papel() = ''coord_geral'')';
-    execute 'grant select, insert, update on public.pre_cadastros to authenticated';
-  end if;
-end $$;
-do $$ begin
-  if to_regclass('public.equipe_privado') is not null then
-    execute 'drop policy if exists geral_tudo on public.equipe_privado';
-    execute 'create policy geral_tudo on public.equipe_privado for all to authenticated using (public.meu_papel() = ''coord_geral'') with check (public.meu_papel() = ''coord_geral'')';
-    execute 'grant select, insert, update on public.equipe_privado to authenticated';
-  end if;
-end $$;
-do $$ begin
-  if to_regclass('public.turmas_fic') is not null then
-    execute 'drop policy if exists geral_tudo on public.turmas_fic';
-    execute 'create policy geral_tudo on public.turmas_fic for all to authenticated using (public.meu_papel() = ''coord_geral'') with check (public.meu_papel() = ''coord_geral'')';
-    execute 'grant select, insert, update on public.turmas_fic to authenticated';
-  end if;
-end $$;
-do $$ begin
-  if to_regclass('public.solicitacoes_pagamento') is not null then
-    execute 'drop policy if exists geral_tudo on public.solicitacoes_pagamento';
-    execute 'create policy geral_tudo on public.solicitacoes_pagamento for all to authenticated using (public.meu_papel() = ''coord_geral'') with check (public.meu_papel() = ''coord_geral'')';
-    execute 'grant select, insert, update on public.solicitacoes_pagamento to authenticated';
-  end if;
-end $$;
-do $$ begin
-  if to_regclass('public.solicitacao_visitas') is not null then
-    execute 'drop policy if exists geral_tudo on public.solicitacao_visitas';
-    execute 'create policy geral_tudo on public.solicitacao_visitas for all to authenticated using (public.meu_papel() = ''coord_geral'') with check (public.meu_papel() = ''coord_geral'')';
-    execute 'grant select, insert, update on public.solicitacao_visitas to authenticated';
-  end if;
+do $$
+declare t text;
+begin
+  foreach t in array array['fichas','visitas','diagnosticos','avaliacoes','custos_visita','vitrine_fotos','vitrine_remover','parametros',
+    'apl_municipios','convites','pre_cadastros','equipe_privado','turmas_fic','solicitacoes_pagamento','solicitacao_visitas'] loop
+    if to_regclass('public.' || t) is not null then
+      execute format('drop policy if exists geral_tudo on public.%I', t);
+      execute format('create policy geral_tudo on public.%I for all to authenticated using (public.meu_papel() = ''coord_geral'') with check (public.meu_papel() = ''coord_geral'')', t);
+      execute format('grant select, insert, update on public.%I to authenticated', t);
+    end if;
+  end loop;
+  -- na equipe, menos a própria vaga (ninguém se desliga sem querer)
+  drop policy if exists geral_tudo on public.equipe;
+  create policy geral_tudo on public.equipe for all to authenticated
+    using (public.meu_papel() = 'coord_geral' and papel <> 'coord_geral') with check (public.meu_papel() = 'coord_geral' and papel <> 'coord_geral');
 end $$;
 
 -- 8. Arquivos (fotos, fichas digitalizadas, termos): a coordenação geral lê e envia em todas as pastas
