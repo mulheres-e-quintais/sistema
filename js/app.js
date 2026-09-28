@@ -455,6 +455,7 @@
           <div class="acoes"><button class="btn perigo cheio" type="submit">Confirmar desligamento</button><button class="btn" type="button" data-acao="desligar-cancelar">Cancelar</button></div>
         </form>
 
+        ${avisoAcesso(m, editaDados || /^coord|auxiliar_adm/.test(S.eu.papel))}
         ${plano}
         ${m.id === S.eu.id && m.papel !== 'coord_geral' && MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
         ${m.id !== S.eu.id && MQ.bancoUI ? MQ.bancoUI.blocoContaArlo(m) : ''}
@@ -462,6 +463,21 @@
         <div class="bloco"><h3>Habilitação</h3>${m.papel === 'coord_geral' ? '<p class="small muted">Não se aplica.</p>' : passos(m)}
           ${editaHab && m.papel !== 'coord_geral' ? formHabilitacao(m) : ''}</div>
       </div>`;
+  }
+
+  /* a pessoa só entra no sistema quando alguém avisa: o sistema não manda e-mail */
+  function avisoAcesso(m, pode) {
+    if (!pode || m.status !== 'ativa' || m.user_id || m.id === S.eu.id) return '';
+    const url = location.origin + location.pathname;
+    const msg = `Olá, ${nomeDe(m).split(' ')[0]}! Seu cadastro foi feito no sistema do projeto Mulheres & Quintais (${P[m.papel].nome}${m.uf ? ' · ' + m.uf : ''}).\n\nPara entrar:\n1) Abra ${url}\n2) Toque em "Primeiro acesso"\n3) Use este e-mail: ${m.email}\n4) Crie uma senha com pelo menos 8 caracteres, misturando letras e números.\n\nDepois é só entrar com esse e-mail e essa senha.`;
+    const fone = String(m.telefone || '').replace(/\D/g, '');
+    const wa = 'https://wa.me/' + (fone.length >= 10 ? '55' + fone : '') + '?text=' + encodeURIComponent(msg);
+    return `<div class="bloco aviso-acesso"><h3>Avisar o acesso</h3>
+      <p class="small muted">Ela ainda não entrou. O sistema não manda e-mail: envie esta mensagem por WhatsApp ou e-mail. Ela entra com o e-mail cadastrado e cria a própria senha em "Primeiro acesso".</p>
+      <textarea readonly rows="7" aria-label="Mensagem de acesso" onclick="this.select()">${esc(msg)}</textarea>
+      <div class="acoes"><a class="btn pri" target="_blank" rel="noopener" href="${esc(wa)}">Mandar por WhatsApp</a>
+        <a class="btn" href="mailto:${esc(m.email)}?subject=${encodeURIComponent('Acesso ao sistema Mulheres & Quintais')}&body=${encodeURIComponent(msg)}">Mandar por e-mail</a>
+        <button class="btn" type="button" data-acao="copiar-texto">Copiar</button></div></div>`;
   }
 
   function formHabilitacao(m) {
@@ -515,7 +531,7 @@
             ${edit ? '<span class="dica">CPF não muda. Se estiver errado, desligue e cadastre de novo.</span>' : ''}</div>
           <div class="campo"><label for="c-fone">Celular com WhatsApp</label><input id="c-fone" name="telefone" inputmode="tel" autocomplete="tel" value="${v('telefone')}" placeholder="(89) 90000-0000" required></div>
           <div class="campo inteiro"><label for="c-email">E-mail</label><input id="c-email" name="email" type="email" autocomplete="email" value="${v('email')}" required>
-            <span class="dica">É o login no sistema. Ela recebe um link de acesso neste e-mail.</span></div>
+            <span class="dica">É o login no sistema. Nenhum e-mail é enviado: depois de salvar, mande para ela o aviso de acesso (aparece na ficha dela).</span></div>
           <div class="campo"><label for="c-mun">Município onde mora</label><input id="c-mun" name="municipio" value="${v('municipio')}" ${bols ? 'list="lista-mun"' : 'placeholder="Município/UF"'}>
             ${bols ? `<datalist id="lista-mun">${munis.map(x => `<option value="${esc(x)}">`).join('')}</datalist><span class="dica">A lista traz os municípios do projeto técnico em ${esc(m.uf)}.</span>` : ''}</div>
           <div class="campo"><label for="c-siape">Matrícula SIAPE <span class="muted">(só se for servidor(a) público(a) federal)</span></label><input id="c-siape" name="siape" inputmode="numeric" value="${v('siape')}" placeholder="Deixe vazio se não for"></div>
@@ -580,6 +596,7 @@
       if (a === 'perfil' && el.dataset.p === 'entrada') { S.verEntrada = true; S.painel = null; render(); window.scrollTo(0, 0); }
       else if (a === 'perfil') { S.verEntrada = false; S.aba = null; S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.trocarPerfil(el.dataset.p); await carregar(); render(); }
       else if (a === 'recomecar') { S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.recomecar(); await carregar(); render(); toast('Demonstração recomeçada com os dados de exemplo.'); }
+      else if (a === 'copiar-texto') { const t = el.closest('.bloco').querySelector('textarea'); try { await navigator.clipboard.writeText(t.value); toast('Mensagem copiada.'); } catch (e) { t.select(); toast('Selecione e copie a mensagem.'); } }
       else if (a === 'modo-login') { S.modoLogin = el.dataset.m; render(); const f = $('#l-email'); if (f) f.focus(); }
       else if (a === 'sair') { if (MQ.bancoUI) MQ.bancoUI.limpar(); await S.api.sair(); S.eu = null; S.equipe = []; render(); }
       else if (a === 'fechar') fecharPainel();

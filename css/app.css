@@ -748,3 +748,5 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .tm-v { color: var(--ok); font-weight: 700; white-space: nowrap; }
 @media (max-width: 640px) { .teto-v { justify-items: start; } .tm { grid-template-columns: auto minmax(0, 1fr); } .tm-v { grid-column: 2; } }
 .tab-plano td, .tab-plano th { padding: 10px 9px; }
+
+.aviso-acesso textarea { width: 100%; font: 14px/1.45 var(--sans); padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); color: var(--ink); resize: vertical; }
