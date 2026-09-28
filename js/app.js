@@ -208,12 +208,20 @@
   }
 
   function login() {
+    const primeiro = S.modoLogin === 'primeiro';
+    const aba = (id, t) => `<button type="button" data-acao="modo-login" data-m="${id}" aria-pressed="${(S.modoLogin || 'entrar') === id}">${t}</button>`;
     return `<main class="wrap"><form class="login" data-form="login" novalidate>
-      <div><h1>Entrar</h1><p class="muted" style="margin-top:6px">Use o e-mail que a coordenação cadastrou. Você recebe um link de acesso por e-mail; não há senha.</p></div>
-      ${S.enviado ? `<div class="aviso">Link enviado para <b>${esc(S.enviado)}</b>. Abra o e-mail neste aparelho e toque no link.</div>` : ''}
-      <div class="campo"><label for="l-email">E-mail</label><input id="l-email" name="email" type="email" autocomplete="email" required></div>
+      <div><h1>${primeiro ? 'Primeiro acesso' : 'Entrar'}</h1><p class="muted" style="margin-top:6px">${primeiro
+        ? 'Crie a sua senha. Só funciona com o e-mail que a coordenação cadastrou no projeto.'
+        : 'Use o e-mail que a coordenação cadastrou e a senha que você criou no primeiro acesso.'}</p></div>
+      <span class="seg" role="group" aria-label="Tipo de acesso" style="justify-self:start">${aba('entrar', 'Já tenho senha')}${aba('primeiro', 'Primeiro acesso')}</span>
+      <div class="campo"><label for="l-email">E-mail</label><input id="l-email" name="email" type="email" autocomplete="username" required></div>
+      <div class="campo"><label for="l-senha">${primeiro ? 'Crie uma senha' : 'Senha'}</label><input id="l-senha" name="senha" type="password" autocomplete="${primeiro ? 'new-password' : 'current-password'}" minlength="8" required>
+        ${primeiro ? '<span class="dica">Pelo menos 8 caracteres, com letras e números. Não use a mesma senha de outros sites.</span>' : ''}</div>
+      ${primeiro ? '<div class="campo"><label for="l-senha2">Repita a senha</label><input id="l-senha2" name="senha2" type="password" autocomplete="new-password" required></div>' : ''}
       <div class="aviso erro" data-erro hidden></div>
-      <button class="btn pri" type="submit">Receber link de acesso</button></form></main>`;
+      <button class="btn pri" type="submit">${primeiro ? 'Criar senha e entrar' : 'Entrar'}</button>
+      ${primeiro ? '' : '<p class="nota">Esqueceu a senha? Peça à coordenação geral para liberar um novo primeiro acesso.</p>'}</form></main>`;
   }
   function semCadastro() {
     return `<main class="wrap"><div class="login"><h1>Acesso não liberado</h1><p>Este e-mail não está ativo na equipe do projeto. Se você foi desligada ou trocou de e-mail, fale com a coordenação técnica.</p>
@@ -241,6 +249,7 @@
     const linhas = [
       ['CPF', R.fmtCPF(m.cpf)], ['E-mail', m.email], ['Celular', m.telefone], ['Município', m.municipio],
       ['Organização', m.organizacao], ['Início da bolsa', R.fmtData(m.data_inicio)],
+      m.status === 'ativa' && S.api.modo === 'supabase' ? ['Acesso ao sistema', m.user_id ? 'Já criou a senha e entrou' : 'Ainda não fez o primeiro acesso'] : null,
       m.papel !== 'coord_geral' ? ['Bolsa mensal', R.fmtBRL(P[m.papel].bolsa) + ' (plano de trabalho)'] : null,
       subst ? ['Substitui', subst.nome] : null,
       m.status === 'desligada' ? ['Desligada em', R.fmtData(m.data_fim)] : null,
@@ -385,6 +394,7 @@
     try {
       if (a === 'perfil') { S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.trocarPerfil(el.dataset.p); await carregar(); render(); }
       else if (a === 'recomecar') { S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.recomecar(); await carregar(); render(); toast('Demonstração recomeçada com os dados de exemplo.'); }
+      else if (a === 'modo-login') { S.modoLogin = el.dataset.m; render(); const f = $('#l-email'); if (f) f.focus(); }
       else if (a === 'sair') { await S.api.sair(); S.eu = null; S.equipe = []; render(); }
       else if (a === 'fechar') fecharPainel();
       else if (a === 'ver') { S.voltarFoco = el; abrirPainel({ tipo: 'detalhe', id: el.dataset.id }); }
@@ -410,9 +420,19 @@
     const fd = new FormData(form);
     try {
       if (tipo === 'login') {
-        const email = String(fd.get('email') || '');
-        if (!R.emailValido(email)) return mostrarErros(form, {}, 'Digite um e-mail válido.');
-        await ocupado(form, () => S.api.entrar(email)); S.enviado = email; render();
+        const email = String(fd.get('email') || '').trim();
+        const senha = String(fd.get('senha') || '');
+        const erros = {};
+        if (!R.emailValido(email)) erros.email = 'Digite um e-mail válido.';
+        if (senha.length < 8) erros.senha = 'A senha tem pelo menos 8 caracteres.';
+        else if (S.modoLogin === 'primeiro' && !(/[a-zA-Z]/.test(senha) && /\d/.test(senha))) erros.senha = 'Misture letras e números.';
+        if (S.modoLogin === 'primeiro' && senha !== String(fd.get('senha2') || '')) erros.senha2 = 'As duas senhas não são iguais.';
+        if (Object.keys(erros).length) return mostrarErros(form, erros);
+        await ocupado(form, async () => {
+          S.eu = S.modoLogin === 'primeiro' ? await S.api.criarSenha(email, senha) : await S.api.entrarSenha(email, senha);
+          if (S.eu) await carregar();
+          render();
+        });
       }
       if (tipo === 'cadastro') {
         const p = S.painel;
