@@ -722,3 +722,7 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .impacto .ebia { display: grid; gap: 6px; }
 .impacto .ebia .criterio span:first-child { line-height: 1.35; }
 .ltm { display: grid; gap: 4px; }
+.pp { list-style: none; margin: 4px 0 0; padding: 0; display: grid; }
+.pp li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.pp li:last-child { border-bottom: 0; }
+.pp-d { color: var(--ok); min-width: 56px; text-align: right; }
