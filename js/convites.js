@@ -119,18 +119,19 @@
   }
   function blocoLink(p) {
     const tk = C.links[chaveLink(p)];
-    if (!tk) return `<div class="bloco conv-bloco"><p class="carregando">Gerando o link…</p></div>`;
+    if (!tk) return `<div class="cad-modo conv-pronto"><p class="carregando">Gerando o link…</p></div>`;
     const url = endereco(tk);
     const msg = `Olá! Este é o link para você preencher o seu cadastro no sistema do projeto Mulheres & Quintais (${funcao(p.papel, p.uf)}). Vale por 7 dias: ${url}`;
-    return `<div class="bloco conv-bloco ok">
-      <div class="conv-ok"><span class="conv-ok-ic" aria-hidden="true">✓</span><div><b>Link pronto</b>
-        <p class="small muted">Mande para a pessoa. Ela preenche os próprios dados e aceita o termo; o cadastro aparece na aba Equipe em "Cadastros enviados pelo link" para você conferir e aprovar.</p></div></div>
+    return `<div class="cad-modo conv-pronto">
+      <span class="conv-selo"><span aria-hidden="true">✓</span> Link pronto</span>
+      <b>Mande para a pessoa</b>
+      <span>Ela preenche os próprios dados pelo celular e aceita o termo. O cadastro aparece na aba Equipe, em "Cadastros enviados pelo link", para você conferir e aprovar.</span>
       <div class="conv-url"><input readonly value="${E(url)}" aria-label="Link de cadastro" onclick="this.select()"></div>
       <div class="conv-botoes">
         <a class="btn pri" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(msg)}">Enviar pelo WhatsApp</a>
         <button class="btn" type="button" data-acao="conv-copiar" data-url="${E(url)}">Copiar link</button>
       </div>
-      <p class="small muted">Vale 7 dias e só pode ser usado uma vez.</p></div>`;
+      <span class="small muted">Vale 7 dias e só pode ser usado uma vez.</span></div>`;
   }
 
   /* ---------- aba Equipe: pré-cadastros aguardando ---------- */
