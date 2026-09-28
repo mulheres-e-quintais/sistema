@@ -117,6 +117,12 @@
     if (mem) return mem;
     try { const s = localStorage.getItem(CHAVE); if (s) mem = JSON.parse(s); } catch (e) { /* sem armazenamento */ }
     if (!mem) mem = semente();
+    if (!mem.fotosEx) {   // ilustrações de pessoas para a equipe de exemplo (não são fotos de gente de verdade)
+      const homens = /^(José|Antônio|Francisco|João|Raimundo|Pedro|Luiz|Manoel|Cícero|Sebastião|Geraldo)\b/;
+      const mul = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17], hom = [6, 12, 18];
+      mem.equipe.filter(m => m.papel !== 'coord_geral').forEach((m, i) => { if (!m.foto_url) { const l = homens.test(m.nome) ? hom : mul; m.foto_path = 'exemplo'; m.foto_url = 'assets/exemplo/pessoa-' + l[i % l.length] + '.svg'; } });
+      mem.fotosEx = true;
+    }
     if (!mem.vitrine) {   // duas fotos de exemplo aprovadas pela coordenação (ilustrações)
       const [a, b] = mem.fichas.filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada' && f.consent_imagem);
       mem.vitrine = [a && { id: 'vit-1', path: 'exemplo-1.jpg', ficha_id: a.id, uf: a.uf, legenda: 'Canteiros de hortaliças no sertão do Piauí', sem_criancas: true, publicada_em: '2026-11-10T12:00:00Z' },

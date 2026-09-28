@@ -250,7 +250,8 @@
       const { data, error } = await sb.from('equipe').select('*').order('criado_em');
       if (error) throw erro(error);
       // fotos: links temporários (1 h) de uma vez só; se a etapa 7 não foi instalada, segue com as iniciais
-      const com = data.filter(m => m.foto_path);
+      data.forEach(m => { const x = /^exemplo:(\d+)$/.exec(m.foto_path || ''); if (x) m.foto_url = 'assets/exemplo/pessoa-' + x[1] + '.svg'; });   // ilustrações dos dados de exemplo
+      const com = data.filter(m => m.foto_path && !m.foto_url);
       if (com.length) {
         try {
           const { data: urls } = await sb.storage.from('equipe').createSignedUrls(com.map(m => m.foto_path), 3600);
