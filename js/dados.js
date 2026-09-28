@@ -98,3 +98,24 @@ MQ.TERMO = {
   finalidade: 'O Projeto Quintais Produtivos para Mulheres Rurais, executado pelo IFRN com recursos do MDA, em parceria com o MPA e a FUNCERN, vai usar os seus dados só para: fazer o diagnóstico e o plano do seu quintal; comprar e entregar o kit e acompanhar a produção; prestar contas ao MDA e aos órgãos de controle (CGU, TCU); e produzir relatórios sem mostrar o seu nome quando os dados forem divulgados em números.',
   direitos: 'Você pode, a qualquer momento e sem custo, saber quais dados o projeto tem sobre você, pedir correção e retirar este consentimento. A retirada não apaga os registros que o projeto é obrigado a guardar para a prestação de contas. Os dados não serão vendidos nem repassados para outros fins (Lei nº 13.709/2018).'
 };
+
+/* ---------- Metas do plano de trabalho (versão final, 13 meses; mês 1 = set/2026) ---------- */
+MQ.METAS = [
+  { id: 'M1', nome: 'Equipe e coordenação', alvo: 12, un: 'meses com equipe ativa', ini: 1, fim: 13, fonte: 'equipe' },
+  { id: 'M2', nome: 'Diagnósticos socioeconômicos e ambientais', alvo: 200, un: 'diagnósticos', ini: 2, fim: 5, fonte: 'diagnostico' },
+  { id: 'M3', nome: 'Implantação dos quintais', alvo: 200, un: 'quintais implantados', ini: 5, fim: 10, fonte: 'implantacao' },
+  { id: 'M4', nome: 'Visitas de acompanhamento', alvo: 400, un: 'visitas', ini: 5, fim: 12, fonte: 'visitas' },
+  { id: 'M5', nome: 'Eventos de troca de saberes', alvo: 5, un: 'eventos', ini: 6, fim: 11, fonte: null },
+  { id: 'M6', nome: 'Intercâmbio de experiências', alvo: 1, un: 'intercâmbio', ini: 5, fim: 11, fonte: null },
+  { id: 'M7', nome: 'Acompanhamento pedagógico', alvo: 8, un: 'missões', ini: 4, fim: 12, fonte: null },
+  { id: 'M8', nome: 'Relatório final', alvo: 1, un: 'relatório', ini: 13, fim: 13, fonte: null }
+];
+MQ.MARCOS = [
+  { d: '2026-09-30', t: 'MPA indica a coordenação técnica e as 10 bolsistas' },
+  { d: '2026-10-16', t: 'Termo de referência dos kits enviado à FUNCERN' },
+  { d: '2026-10-23', t: 'Ata dos critérios de seleção assinada; início dos diagnósticos' },
+  { d: '2027-01-31', t: 'Fim dos diagnósticos (Meta 2)' },
+  { d: '2027-04-30', t: '2º repasse do MDA previsto' },
+  { d: '2027-09-30', t: 'Fim da vigência do TED' }
+];
+MQ.PAINEL_FINANCEIRO = 'https://claude.ai/artifact/TMjzFNUUaKkgwk7RKFrXgm';

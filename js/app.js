@@ -112,37 +112,36 @@
     const bols = ativos().filter(m => R.ehBolsista(m.papel));
     const pagaveis = ativos().filter(m => m.papel !== 'coord_geral');
     const aptas = pagaveis.filter(m => R.situacao(m).cod === 'ok').length;
+    const aba = S.aba || (souGeral ? 'visao' : 'selecao');
+    const aguard = (S.fichas || []).filter(f => f.situacao === 'aguardando').length;
+    const abas = [['visao', 'Visão geral'], ['equipe', 'Equipe'], ['selecao', 'Seleção' + (aguard ? ` <span class="conta">${aguard}</span>` : '')], ['historico', 'Histórico']];
+    const nav = `<nav class="abas" aria-label="Seções">${abas.map(([id, t]) => `<button type="button" data-acao="aba" data-aba="${id}" ${aba === id ? 'aria-current="page"' : ''}>${t}</button>`).join('')}</nav>`;
     const intro = souGeral
       ? 'Você cadastra a coordenação técnica indicada pelo MPA e registra a habilitação de cada bolsista: matrícula no curso FIC, documentos na FUNCERN e termo de compromisso.'
-      : 'Cadastre as bolsistas indicadas pelo MPA: uma de articulação estadual e uma de apoio estadual por estado, com o plano de trabalho individual de cada uma.';
-    return `<main class="wrap" id="principal">
+      : 'Cadastre as bolsistas indicadas pelo MPA: uma de articulação estadual e uma de apoio estadual por estado.';
+    let corpo = '';
+    if (aba === 'visao') corpo = MQ.painelUI ? MQ.painelUI.visaoGeral(S) : '';
+    else if (aba === 'equipe') corpo = `
       <div class="cab"><div><span class="eyebrow">Equipe do projeto · processo ${esc(MQ.PROJETO.processo)}</span><h1>Coordenação e bolsistas</h1><p>${intro}</p></div>${prazoChip()}</div>
-
       <div class="resumo" aria-label="Resumo da equipe">
         <div><span class="v num">${ct ? 1 : 0}<small> de 1</small></span><span class="l">coordenação técnica cadastrada</span></div>
         <div><span class="v num">${bols.length}<small> de 10</small></span><span class="l">bolsistas cadastradas</span></div>
         <div><span class="v num">${aptas}<small> de ${pagaveis.length || 0}</small></span><span class="l">aptas a receber bolsa</span></div>
         <div><span class="v num">${(S.fichas || []).filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada').length}<small> de 200</small></span><span class="l">mulheres selecionadas e aprovadas</span></div>
       </div>
-
       <section class="secao" aria-labelledby="t-ct">
         <div class="secao-cab"><h2 id="t-ct">Coordenação técnica</h2><p>Uma para os 5 estados · indicada pelo MPA · cadastrada pela coordenação geral</p></div>
         ${ct ? cartaoPessoa(ct) : vagaCoordTecnica(souGeral)}
       </section>
-
       <section class="secao" aria-labelledby="t-b">
         <div class="secao-cab"><h2 id="t-b">Bolsistas por estado</h2><p>1 de articulação e 1 de apoio por estado · cadastradas pela coordenação técnica · meta de 40 quintais por estado</p></div>
         ${quadroTabela()}${quadroCartoes()}
-      </section>
-
-      ${MQ.fichasUI ? MQ.fichasUI.secaoCoord() : ''}
-
-      <section class="secao" aria-labelledby="t-h">
-        <h2 id="t-h">Histórico de alterações</h2>
-        ${historico()}
-      </section>
-    </main>`;
+      </section>`;
+    else if (aba === 'selecao') corpo = MQ.fichasUI ? MQ.fichasUI.secaoCoord() : '';
+    else corpo = `<section class="secao" aria-labelledby="t-h"><h2 id="t-h">Histórico de alterações</h2>${historico()}</section>`;
+    return `<main class="wrap" id="principal">${nav}${corpo}</main>`;
   }
+
 
   function cartaoPessoa(m) {
     const s = R.situacao(m);
@@ -420,11 +419,12 @@
     const el = ev.target.closest('[data-acao]'); if (!el) return;
     const a = el.dataset.acao;
     try {
-      if (a === 'perfil') { S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.trocarPerfil(el.dataset.p); await carregar(); render(); }
+      if (a === 'perfil') { S.aba = null; S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.trocarPerfil(el.dataset.p); await carregar(); render(); }
       else if (a === 'recomecar') { S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.recomecar(); await carregar(); render(); toast('Demonstração recomeçada com os dados de exemplo.'); }
       else if (a === 'modo-login') { S.modoLogin = el.dataset.m; render(); const f = $('#l-email'); if (f) f.focus(); }
       else if (a === 'sair') { await S.api.sair(); S.eu = null; S.equipe = []; render(); }
       else if (a === 'fechar') fecharPainel();
+      else if (a === 'aba') { S.aba = el.dataset.aba; render(); window.scrollTo(0, 0); }
       else if (/^ficha/.test(a) && MQ.fichasUI) { S.voltarFoco = el; await MQ.fichasUI.clique(a, el); }
       else if (a === 'ver') { S.voltarFoco = el; abrirPainel({ tipo: 'detalhe', id: el.dataset.id }); }
       else if (a === 'novo') { S.voltarFoco = el; abrirPainel({ tipo: 'cadastro', papel: el.dataset.papel, uf: el.dataset.uf, subst: el.dataset.subst }); }

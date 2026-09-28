@@ -96,7 +96,7 @@
       && (!busca || f.nome.toLowerCase().includes(busca) || f.cpf.includes(R.soDigitos(busca) || '#')));
     const op = (v, t, atual) => `<option value="${v}" ${v === atual ? 'selected' : ''}>${t}</option>`;
     return `<section class="secao" aria-labelledby="t-sel">
-      <div class="secao-cab"><div><h2 id="t-sel">Seleção das beneficiárias</h2>
+      <div class="secao-cab"><div><h1 id="t-sel" style="font-size:24px">Seleção das beneficiárias</h1>
         <p>Fichas de indicação dos 5 estados. ${souTec ? 'Você aprova ou devolve cada ficha antes do diagnóstico.' : 'A aprovação é da coordenação técnica.'} O sistema impede CPF repetido e mais de ${MQ.VAGAS_UF} selecionadas aprovadas por estado.</p></div>
         <button class="btn" data-acao="ficha-csv">Baixar planilha (CSV)</button></div>
       <div class="quadro-scroll" style="display:block"><table class="quadro" style="min-width:720px"><thead><tr>

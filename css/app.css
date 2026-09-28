@@ -277,3 +277,43 @@ fieldset > .fixo { margin: 0; }
 .seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 @media (max-width: 420px) { .seg button { padding: 5px 9px; font-size: 12px; } }
 .chip.crit { background: var(--crit-bg); color: var(--crit); }
+
+/* ---------- abas e visão geral ---------- */
+.abas { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; margin-bottom: -8px; }
+.abas button { border: 0; background: none; padding: 10px 14px; font: 500 15px var(--sans); color: var(--ink-2); cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
+.abas button:hover { color: var(--ink); }
+.abas button[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+.abas .conta { background: var(--accent); color: var(--accent-ink); border-radius: 999px; font-size: 12px; padding: 0 7px; line-height: 18px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.linha-tempo-mini { display: grid; grid-template-columns: repeat(13, 14px); gap: 3px; align-self: center; }
+.linha-tempo-mini span { height: 14px; border-radius: 3px; background: var(--surface-2); border: 1px solid var(--line); }
+.linha-tempo-mini span.passou { background: var(--marrom-2); border-color: var(--marrom-2); }
+.linha-tempo-mini span.agora { background: var(--accent); border-color: var(--accent); }
+.alertas { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.alertas li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 12px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; font-size: 14px; }
+.al-ic { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font: 700 14px var(--cond); }
+.al-crit { border-left: 4px solid var(--crit) !important; } .al-crit .al-ic { background: var(--crit-bg); color: var(--crit); }
+.al-pend { border-left: 4px solid var(--pend) !important; } .al-pend .al-ic { background: var(--pend-bg); color: var(--pend); }
+.al-info .al-ic { background: var(--off-bg); color: var(--off); }
+.duas-col { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 900px) { .duas-col { grid-template-columns: 1fr; } }
+.metas { gap: 0; padding: 4px 18px; }
+.meta-linha { display: grid; gap: 6px; padding: 14px 0; border-top: 1px solid var(--line); }
+.meta-linha:first-child { border-top: 0; }
+.meta-cab { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.meta-id { font: 700 13px var(--cond); color: var(--marrom-2); min-width: 28px; }
+.meta-nome { font-weight: 500; flex: 1 1 200px; }
+.meta-num { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; }
+.medidor { position: relative; height: 10px; border-radius: 5px; background: var(--surface-2); }
+.medidor i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--marrom-2); border-radius: 5px; }
+.medidor .previsto { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); border-radius: 1px; transform: translateX(-1px); }
+.medidor.fino { height: 6px; flex: 1; }
+.tab-uf { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tab-uf th { text-align: left; font: 600 11px var(--cond); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 8px 6px; }
+.tab-uf td { padding: 8px 6px; border-top: 1px solid var(--line); vertical-align: middle; }
+.mini { display: flex; align-items: center; gap: 8px; }
+.marcos { list-style: none; margin: 0; padding: 0; display: grid; }
+.marcos li { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.marcos li:first-child { border-top: 0; }
+.marcos time { font-variant-numeric: tabular-nums; color: var(--ink-2); font-weight: 500; }
+.crit-txt { color: var(--crit); } .pend-txt { color: var(--pend); }
