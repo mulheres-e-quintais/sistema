@@ -1008,3 +1008,10 @@ input.invalido { border-color: var(--crit) !important; box-shadow: 0 0 0 3px col
 .cad-modo-2 span { grid-column: 1; }
 .cad-modo-2::after { content: "→"; grid-column: 2; grid-row: 1 / 3; color: var(--accent); font-weight: 700; font-size: 18px; }
 .cad-modo-topo { margin: 0 0 4px; }
+.conv-etapas li.feito b { background: var(--ok); color: #fff; }
+.conv-fim { gap: 14px; }
+.conv-passos { margin: 0; padding: 0; list-style: none; counter-reset: p; display: grid; gap: 10px; }
+.conv-passos li { counter-increment: p; display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; line-height: 1.45; color: var(--ink-2); }
+.conv-passos li::before { content: counter(p); display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--surface-2); border: 1px solid var(--line); color: var(--ink); font: 700 12px var(--sans); }
+.conv-passos b { color: var(--ink); }
+.conv-fim .ent-btn { text-decoration: none; }
