@@ -57,7 +57,7 @@
     if (m.papel === 'coord_geral') return { cod: 'ok', rot: 'Ativa' };
     const p = R.passosHabilitacao(m);
     const faltam = p.filter(x => !x.feito).length;
-    return faltam === 0 ? { cod: 'ok', rot: m.papel === 'agente' ? 'Apta para visitas' : 'Apta a receber bolsa' } : { cod: 'pend', rot: 'Habilitação: falta' + (faltam > 1 ? 'm ' : ' ') + faltam };
+    return faltam === 0 ? { cod: 'ok', rot: m.papel === 'agente' ? 'Habilitada para visitas' : 'Habilitada' } : { cod: 'pend', rot: 'Habilitação: falta' + (faltam > 1 ? 'm ' : ' ') + faltam };
   };
 
   /* Validação do formulário. Devolve {campo: mensagem}. */

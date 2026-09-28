@@ -63,7 +63,7 @@
     const prev = previsto(meta, mes);
     let atual = null, rotulo = '', nota = '', alvo = meta.alvo, un = meta.un;
     if (meta.fonte === 'equipe') {
-      atual = d.aptas.length; alvo = 11; un = 'pessoas aptas a receber bolsa';
+      atual = d.aptas.length; alvo = 11; un = 'pessoas habilitadas';
       nota = `${d.pagaveis.length} de 11 cadastradas (1 coordenação técnica e 10 bolsistas). Meta: ${meta.alvo} ${meta.un}.`;
     } else if (meta.fonte === 'diagnostico') {
       const dg = S.diagnosticos || [];
@@ -265,7 +265,7 @@
 
       <div class="resumo" aria-label="Números do projeto">
         <div><span class="v num">${d.pagaveis.length}<small> de 11</small></span><span class="l">na equipe (coordenação técnica e bolsistas)</span></div>
-        <div><span class="v num">${d.aptas.length}<small> de 11</small></span><span class="l">aptas a receber bolsa</span></div>
+        <div><span class="v num">${d.aptas.length}<small> de 11</small></span><span class="l">habilitadas (FIC, FUNCERN e termo)</span></div>
         <div><span class="v num">${d.fichas.length}</span><span class="l">fichas de indicação lançadas${aguard ? ` · <b>${aguard}</b> aguardando` : ''}</span></div>
         <div><span class="v num">${d.selAprov.length}<small> de 200</small></span><span class="l">mulheres selecionadas e aprovadas</span></div>
       </div>
