@@ -110,18 +110,27 @@
   }
   const esquecerPrivado = id => { delete privCache[id]; };
 
-  /* ---------- no formulário de cadastro: gerar o link ---------- */
+  /* ---------- no formulário de cadastro: o link, gerado ao escolher "Gerar link" ---------- */
+  const chaveLink = p => [p.papel, p.uf || '', p.subst || ''].join('|');
+  async function gerarLink(p) {
+    const k = chaveLink(p); if (C.links[k]) return C.links[k];
+    C.links[k] = await S().api.criarConvite(p.papel, p.uf || null, p.subst || null);
+    return C.links[k];
+  }
   function blocoLink(p) {
-    const chave = [p.papel, p.uf || '', p.subst || ''].join('|'); const tk = C.links[chave];
-    if (!tk) return `<div class="bloco conv-bloco"><div><b>Link de cadastro</b>
-        <p class="small muted">Gere um link e mande por WhatsApp ou e-mail. Ela preenche os próprios dados e aceita o termo; você confere, completa e aprova. O link vale 7 dias e só pode ser usado uma vez.</p></div>
-        <div class="acoes"><button class="btn" data-acao="conv-gerar" data-papel="${E(p.papel)}" data-uf="${E(p.uf || '')}" data-subst="${E(p.subst || '')}">Gerar link de cadastro</button></div></div>`;
+    const tk = C.links[chaveLink(p)];
+    if (!tk) return `<div class="bloco conv-bloco"><p class="carregando">Gerando o link…</p></div>`;
     const url = endereco(tk);
     const msg = `Olá! Este é o link para você preencher o seu cadastro no sistema do projeto Mulheres & Quintais (${funcao(p.papel, p.uf)}). Vale por 7 dias: ${url}`;
-    return `<div class="bloco conv-bloco ok"><div><b>Link pronto</b><p class="small muted">Mande para a pessoa. Quando ela enviar, o cadastro aparece na aba Equipe em "Cadastros enviados pelo link".</p></div>
-      <div class="conv-link"><input readonly value="${E(url)}" aria-label="Link de cadastro" onclick="this.select()">
-        <button class="btn peq" data-acao="conv-copiar" data-url="${E(url)}">Copiar</button>
-        <a class="btn peq" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(msg)}">WhatsApp</a></div></div>`;
+    return `<div class="bloco conv-bloco ok">
+      <div class="conv-ok"><span class="conv-ok-ic" aria-hidden="true">✓</span><div><b>Link pronto</b>
+        <p class="small muted">Mande para a pessoa. Ela preenche os próprios dados e aceita o termo; o cadastro aparece na aba Equipe em "Cadastros enviados pelo link" para você conferir e aprovar.</p></div></div>
+      <div class="conv-url"><input readonly value="${E(url)}" aria-label="Link de cadastro" onclick="this.select()"></div>
+      <div class="conv-botoes">
+        <a class="btn pri" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(msg)}">Enviar pelo WhatsApp</a>
+        <button class="btn" type="button" data-acao="conv-copiar" data-url="${E(url)}">Copiar link</button>
+      </div>
+      <p class="small muted">Vale 7 dias e só pode ser usado uma vez.</p></div>`;
   }
 
   /* ---------- aba Equipe: pré-cadastros aguardando ---------- */
@@ -243,5 +252,5 @@
     }
   }
 
-  MQ.convitesUI = { blocoLink, secaoPendentes, painel, dadosPre, pagina, clique, enviar, camposPessoais, lerPessoais, validarPessoais, privado, esquecerPrivado, textoEndereco };
+  MQ.convitesUI = { gerarLink, blocoLink, secaoPendentes, painel, dadosPre, pagina, clique, enviar, camposPessoais, lerPessoais, validarPessoais, privado, esquecerPrivado, textoEndereco };
 })();
