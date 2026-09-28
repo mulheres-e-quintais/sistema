@@ -796,8 +796,8 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 /* =====================================================================
    Tela de entrada: leve, com movimento suave (desliga se a pessoa pedir menos movimento)
    ===================================================================== */
-.ent { position: relative; min-height: 100vh; min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 470px);
-  gap: clamp(28px, 5vw, 72px); align-items: center; padding: clamp(24px, 5vw, 64px) clamp(16px, 5vw, 72px); overflow: hidden; isolation: isolate;
+.ent { position: relative; min-height: 100vh; min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 660px) minmax(0, 470px); justify-content: center;
+  gap: clamp(28px, 7vw, 140px); align-items: center; padding: clamp(24px, 5vw, 64px) clamp(16px, 5vw, 72px); overflow: hidden; isolation: isolate;
   background: linear-gradient(160deg, var(--surface-2) 0%, var(--bg) 55%, color-mix(in srgb, var(--line-2) 30%, var(--bg)) 100%); }
 .ent-fundo { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
 .ent-fundo i { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .55; animation: ent-flutua 22s ease-in-out infinite alternate; }
@@ -806,7 +806,7 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .ent-fundo .b3 { width: 26vmax; height: 26vmax; left: 38%; top: 55%; background: radial-gradient(circle, rgba(232, 176, 74, .5), transparent 65%); animation-duration: 30s; animation-delay: -12s; }
 @keyframes ent-flutua { from { transform: translate(0, 0) scale(1); } to { transform: translate(4vmax, 3vmax) scale(1.08); } }
 
-.ent-hero { position: relative; display: grid; gap: 22px; align-content: center; min-width: 0; }
+.ent-hero { position: relative; z-index: 1; display: grid; gap: 22px; align-content: center; min-width: 0; }
 .ent-marca { display: flex; align-items: center; gap: 12px; animation: ent-sobe .7s ease both; }
 .ent-marca img { height: 48px; width: auto; }
 .ent-marca b { display: block; font-size: 20px; color: var(--ink); font-weight: 600; }
@@ -823,7 +823,8 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .ent-hero .vitrine { background: color-mix(in srgb, var(--surface) 72%, transparent); backdrop-filter: blur(8px); border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
   border-radius: 20px; padding: 18px; animation: ent-sobe .7s .45s ease both; }
 
-.ent-broto { position: absolute; right: -110px; bottom: -150px; width: clamp(120px, 16vw, 210px); height: auto; z-index: -1; opacity: .9; }
+/* o broto nasce logo abaixo dos estados, no espaço livre da coluna da frase */
+.ent-broto { position: absolute; top: calc(100% + 6px); left: 40%; width: clamp(110px, 11vw, 170px); height: auto; z-index: 0; opacity: .9; pointer-events: none; }
 .ent-broto path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .ent-broto .caule { stroke: var(--marrom-2); stroke-width: 4; stroke-dasharray: 320; stroke-dashoffset: 320; animation: ent-cresce 1.8s .3s ease-out forwards; }
 .ent-broto .chao { stroke: var(--line-2); stroke-width: 3; }
@@ -836,7 +837,7 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 @keyframes ent-sobe { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes ent-risco { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
-.ent-acesso { display: grid; gap: 14px; justify-items: stretch; min-width: 0; }
+.ent-acesso { position: relative; z-index: 1; display: grid; gap: 14px; justify-items: stretch; min-width: 0; }
 .ent-card.login { margin: 0; max-width: none; border-radius: 24px; padding: clamp(22px, 3vw, 34px); gap: 18px;
   background: color-mix(in srgb, var(--surface) 86%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
@@ -870,7 +871,7 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
   .ent-acesso { margin-top: 8px; }
 }
 /* depois da primeira vez, a tela aparece pronta (o fundo continua se mexendo) */
-.ent:not(.anim) .ent-hero, .ent:not(.anim) .ent-hero *, .ent:not(.anim) .ent-card { animation-duration: 0s !important; animation-delay: 0s !important; }
+.ent:not(.anim) .ent-hero, .ent:not(.anim) .ent-hero *, .ent:not(.anim) .ent-card, .ent:not(.anim) .ent-broto * { animation-duration: 0s !important; animation-delay: 0s !important; }
 @media (prefers-reduced-motion: reduce) {
   .ent *, .ent-fundo i { animation: none !important; }
   .ent-broto .caule { stroke-dashoffset: 0; }
