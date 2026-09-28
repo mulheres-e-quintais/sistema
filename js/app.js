@@ -100,7 +100,7 @@
     const modoDemo = S.api.modo === 'demo';
     const conv = /^#convite=([\w-]+)/.exec(location.hash);
     if (conv || location.hash === '#numeros') { S.painel = null; const pf = $('#painel'); if (pf) pf.remove(); }
-    if (conv && MQ.convitesUI) { app.innerHTML = barra(true) + MQ.convitesUI.pagina(conv[1]); document.title = 'Cadastro · Mulheres & Quintais'; return; }
+    if (conv && MQ.convitesUI) { app.innerHTML = MQ.convitesUI.pagina(conv[1]); document.title = 'Cadastro · Mulheres & Quintais'; return; }
     if (location.hash === '#numeros' && MQ.vitrineUI) { app.innerHTML = barra(true) + MQ.vitrineUI.pagina(); document.title = 'O projeto em números · Mulheres & Quintais'; return; }
     document.title = 'Mulheres & Quintais';
     const telaEntrada = (modoDemo && S.verEntrada) || (!S.eu && !modoDemo && !S.api.temSessao);
