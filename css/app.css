@@ -1015,3 +1015,6 @@ input.invalido { border-color: var(--crit) !important; box-shadow: 0 0 0 3px col
 .conv-passos li::before { content: counter(p); display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--surface-2); border: 1px solid var(--line); color: var(--ink); font: 700 12px var(--sans); }
 .conv-passos b { color: var(--ink); }
 .conv-fim .ent-btn { text-decoration: none; }
+
+.data-hoje { display: flex; gap: 8px; align-items: center; }
+.data-hoje input { flex: 1; min-width: 0; }

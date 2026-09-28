@@ -581,8 +581,8 @@
       <div class="campos">
         ${!fic ? '' : `<div class="campo inteiro"><span class="dica" style="font-size:14px">${turma ? `Matrícula no FIC registrada pelo professor na turma <b>${esc(turma.nome)}</b> (nº ${esc(mt.numero)}, ${R.fmtData(mt.matriculado_em)}).`
           : m.matricula_fic_em ? `Matrícula no FIC registrada em ${R.fmtData(m.matricula_fic_em)} (nº ${esc(m.matricula_fic_numero || '')}), ainda sem turma no sistema.` : '<b>Matrícula no FIC: aguardando.</b>'} A matrícula é registrada só pelos professores do curso, na aba Curso FIC.</span></div>`}
-        <div class="campo"><label for="h-fun">Cadastrado no Arlo (FUNCERN) em</label><input id="h-fun" name="docs_funcern_em" type="date" value="${esc(m.docs_funcern_em || '')}"></div>
-        <div class="campo"><label for="h-ter">Termo de compromisso assinado em</label><input id="h-ter" name="termo_assinado_em" type="date" value="${esc(m.termo_assinado_em || '')}"></div>
+        <div class="campo"><label for="h-fun">Cadastrado no Arlo (FUNCERN) em</label><div class="data-hoje"><input id="h-fun" name="docs_funcern_em" type="date" max="${R.hoje()}" value="${esc(m.docs_funcern_em || '')}"><button type="button" class="btn peq" data-acao="data-hoje" data-alvo="h-fun">Hoje</button></div></div>
+        <div class="campo"><label for="h-ter">Termo de compromisso assinado em</label><div class="data-hoje"><input id="h-ter" name="termo_assinado_em" type="date" max="${R.hoje()}" value="${esc(m.termo_assinado_em || '')}"><button type="button" class="btn peq" data-acao="data-hoje" data-alvo="h-ter">Hoje</button></div></div>
         <div class="campo inteiro"><label for="h-arq">Termo assinado (PDF ou foto)</label><input id="h-arq" name="termo" type="file" accept="application/pdf,image/*">
           <span class="dica">${m.termo_path ? 'Já enviado: ' + esc(String(m.termo_path).split('/').pop()) + '. Enviar outro substitui o link.' : 'Com assinaturas da bolsista, da coordenação técnica e da coordenação geral.'}</span></div>
         <div class="campo inteiro"><label for="h-obs">Observações</label><textarea id="h-obs" name="obs_habilitacao" placeholder="Ex.: falta comprovante de conta; Pix informado em 02/10.">${esc(m.obs_habilitacao || '')}</textarea></div>
@@ -698,6 +698,7 @@
       if (a === 'perfil' && el.dataset.p === 'entrada') { S.verEntrada = true; S.painel = null; render(); window.scrollTo(0, 0); }
       else if (a === 'perfil') { S.verEntrada = false; S.aba = null; lembrarAba(); S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.trocarPerfil(el.dataset.p); await carregar(); render(); }
       else if (a === 'recomecar') { S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.recomecar(); await carregar(); render(); toast('Demonstração recomeçada com os dados de exemplo.'); }
+      else if (a === 'data-hoje') { const i = document.getElementById(el.dataset.alvo); if (i) { i.value = R.hoje(); i.dispatchEvent(new Event('input', { bubbles: true })); } }
       else if (a === 'cad-modo') {
         const p = Object.assign({}, S.painel, { modo: el.dataset.m || undefined }); abrirPainel(p);
         if (p.modo === 'link' && MQ.convitesUI) {   // o link sai pronto, sem outro clique
