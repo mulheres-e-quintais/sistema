@@ -397,7 +397,7 @@
   function login() {
     const primeiro = S.modoLogin === 'primeiro';
     const aba = (id, t) => `<button type="button" data-acao="modo-login" data-m="${id}" aria-pressed="${(S.modoLogin || 'entrar') === id}">${t}</button>`;
-    const ufs = MQ.UFS.map((u, i) => `<li style="--i:${i}"><b>${u.uf}</b><span>${esc(u.nome)}</span></li>`).join('');
+    const ufs = MQ.UFS.map((u, i) => `<li style="--i:${i}" title="${esc(u.nome)}"><b aria-hidden="true">${u.uf}</b><span>${esc(u.nome)}</span></li>`).join('');
     // broto desenhado (decorativo): o caule cresce e as folhas abrem
     const broto = `<svg class="ent-broto" viewBox="0 -8 220 268" aria-hidden="true" focusable="false">
       <path class="caule" d="M110 250 C 108 200, 118 170, 104 128 S 96 70, 112 30" />
