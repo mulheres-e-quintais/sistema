@@ -600,7 +600,7 @@
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>`;
     // cadastro novo: primeiro escolhe como (link para a pessoa preencher ou à mão)
     if (!edit && !pre && MQ.convitesUI && p.modo !== 'manual') {
-      if (p.modo === 'link') return cabP + `<div class="painel-corpo">${`<div class="modo-cad" role="group" aria-label="Como cadastrar"><span class="small muted">Como cadastrar:</span><span class="seg"><button type="button" data-acao="cad-modo" data-m="link" aria-pressed="true">Gerar link</button><button type="button" data-acao="cad-modo" data-m="manual" aria-pressed="false">À mão</button></span></div>`}${MQ.convitesUI.blocoLink(p)}</div>`;
+      if (p.modo === 'link') return cabP + `<div class="painel-corpo">${MQ.convitesUI.blocoLink(p)}<button type="button" class="link troca-modo" data-acao="cad-modo" data-m="manual">Prefiro cadastrar à mão agora →</button></div>`;
       return cabP + `<div class="painel-corpo"><p class="muted">Como você quer fazer este cadastro?</p>
         <div class="cad-modos">
           <button class="cad-modo" data-acao="cad-modo" data-m="link" autofocus><b>Gerar link de cadastro</b>
@@ -613,7 +613,7 @@
         <h2 id="painel-t">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(nomeUF(m.uf)) : ''}</h2></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo"><form class="f" data-form="cadastro" novalidate>
-        ${!edit && !pre && MQ.convitesUI ? `<div class="modo-cad" role="group" aria-label="Como cadastrar"><span class="small muted">Como cadastrar:</span><span class="seg"><button type="button" data-acao="cad-modo" data-m="link" aria-pressed="false">Gerar link</button><button type="button" data-acao="cad-modo" data-m="manual" aria-pressed="true">À mão</button></span></div>` : ''}
+        ${!edit && !pre && MQ.convitesUI ? `<button type="button" class="link troca-modo" data-acao="cad-modo" data-m="link">← Prefiro gerar um link para a pessoa preencher</button>` : ''}
         <div class="fixo">${m.papel === 'agente' ? '<span class="small muted">Pagamento</span><b>Ajuda de custo por visita</b>' : `<span class="small muted">Função</span><b>${esc(P[m.papel].nome)}</b>`}
           <span class="small">${P[m.papel].faz ? esc(P[m.papel].faz) : 'Planeja, coordena e acompanha a execução técnica nos 5 estados.'}</span>
           ${['professor_fic', 'auxiliar_adm'].includes(m.papel) ? '<span class="small">Habilitação: cadastro no Arlo (FUNCERN) e termo de compromisso (não se matricula no FIC).</span>' : ''}

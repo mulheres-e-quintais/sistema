@@ -968,3 +968,11 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 @media (max-width: 420px) { .conv-botoes { grid-template-columns: 1fr; } }
 input.invalido { border-color: var(--crit) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--crit) 15%, transparent); }
 .campo .dica.dica-email, .dica.dica-email { color: var(--crit); }
+
+/* link pronto: mesmo cartão da escolha "Gerar link" */
+.cad-modo.conv-pronto { cursor: default; gap: 10px; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent); }
+.cad-modo.conv-pronto:hover { border-color: var(--accent); }
+.conv-selo { order: -1; font: 600 11px var(--cond, inherit); letter-spacing: .06em; text-transform: uppercase; color: var(--accent) !important; }
+.conv-pronto .conv-url, .conv-pronto .conv-botoes { margin-top: 4px; }
+.troca-modo { justify-self: start; font-size: 14px; margin: 4px 0 2px; }
+.conv-selo span { color: var(--accent) !important; font-size: 12px; }
