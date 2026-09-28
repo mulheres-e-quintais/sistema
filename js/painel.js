@@ -202,7 +202,10 @@
       <div class="secao-cab"><div><h2 id="t-mapa">Quintais no mapa</h2>
         <p>${pts.length ? `${pts.length} mulher${pts.length > 1 ? 'es' : ''} com ficha ${onde}${focoMun ? ` · ${exatos} com localização do GPS, ${pts.length - exatos} aproximada${pts.length - exatos === 1 ? '' : 's'}` : ' · círculo = município, número = fichas; clique para aproximar'}` : 'Cada ficha lançada aparece aqui.'}</p></div>
         <span class="seg" role="group" aria-label="Estado no mapa">${btn('', 'Todos')}${MQ.UFS.map(u => btn(u.uf, u.uf)).join('')}</span></div>
-      ${focoMun ? `<button type="button" class="link" data-acao="mapa-uf" data-uf="${foco}" style="justify-self:start">← Voltar para ${E(U.nomeUF(foco))}</button>` : ''}
+      ${foco ? `<nav class="migalha" aria-label="Onde você está no mapa">
+        <button type="button" data-acao="mapa-uf" data-uf=""><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>5 estados</button>
+        ${focoMun ? `<span aria-hidden="true">›</span><button type="button" data-acao="mapa-uf" data-uf="${foco}">${E(U.nomeUF(foco))}</button><span aria-hidden="true">›</span><b aria-current="page">${E(nomeMun)}</b>`
+          : `<span aria-hidden="true">›</span><b aria-current="page">${E(U.nomeUF(foco))}</b>`}</nav>` : ''}
       <div class="mapa-caixa">
         <svg class="mapa" viewBox="${vb.join(' ')}" role="img" aria-label="Mapa com ${pts.length} quintais ${onde}" preserveAspectRatio="xMidYMid meet">
           ${estados}${rotulos}${marcas}

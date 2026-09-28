@@ -596,3 +596,8 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 @media (max-width: 420px) { .resumo .v { font-size: 23px; } .resumo > div { padding: 12px 14px; } }
 .quadro-sel .grupo th { font-size: 11px; text-align: center; border-bottom: 1px solid var(--line-2); padding-bottom: 4px; }
 .quadro-sel .sep { border-left: 2px solid var(--line-2); }
+.migalha { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 14px; color: var(--muted); justify-self: start; }
+.migalha button { display: inline-flex; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font: inherit; color: var(--ink); cursor: pointer; transition: border-color .15s, background .15s; }
+.migalha button:hover, .migalha button:focus-visible { border-color: var(--accent); background: var(--surface-2); }
+.migalha button svg { width: 14px; height: 14px; }
+.migalha b { color: var(--ink); font-weight: 600; }
