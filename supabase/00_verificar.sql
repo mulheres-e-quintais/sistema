@@ -50,8 +50,12 @@ chk as (
                    and coalesce((select bool_and(not has_function_privilege('anon', p.oid, 'EXECUTE')) from pg_proc p
                                  where p.proname = 'registrar_acesso' and p.pronamespace = 'public'::regnamespace), false)
   union all select '28_pedido_novo_acesso', to_regclass('public.pedidos_novo_acesso') is not null and exists (select 1 from fn where proname = 'pedir_novo_acesso')
-  union all select '27_seguranca_revisao', not has_table_privilege('authenticated', 'public.solicitacoes_pagamento', 'INSERT')
-                   and not has_function_privilege('anon', 'public.pendencias_campo(uuid)', 'EXECUTE')
+  -- (as checagens de permissão olham o objeto pelo número dele: se a tabela ou a função ainda não existe, dá FALTA e não erro)
+  union all select '27_seguranca_revisao',
+                   coalesce((select not has_table_privilege('authenticated', c.oid, 'INSERT') from pg_class c
+                             where c.relname = 'solicitacoes_pagamento' and c.relnamespace = 'public'::regnamespace), false)
+                   and coalesce((select bool_and(not has_function_privilege('anon', p.oid, 'EXECUTE')) from pg_proc p
+                                 where p.proname = 'pendencias_campo' and p.pronamespace = 'public'::regnamespace), false)
                    and exists (select 1 from pg_proc where proname = 'documentos_antes' and prosrc like '%já está arquivado%')
   union all select '26_conferencia_auxiliar', exists (select 1 from fn where proname = 'quem_confere_pedidos')
   union all select '22_passagens_eventos', to_regclass('public.pedidos_apoio') is not null and exists (select 1 from fn where proname = 'mover_pedido_apoio')
