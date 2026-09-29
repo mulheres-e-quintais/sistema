@@ -17,6 +17,7 @@ describe('cadastro da equipe', () => {
     await como('coord_tecnico');
     const n = await api.criar(novo({ papel: 'agente', uf: 'PE' }));
     assert.equal(n.status, 'ativa'); assert.equal(n.user_id, null);
+    await como('coord_geral');   // o histórico agora é só da coordenação geral (25_historico_e_cadastro.sql)
     const aud = await api.auditoria();
     assert.ok(aud.some(a => a.registro_id === n.id && a.acao === 'INSERT'));
   });
@@ -213,5 +214,30 @@ describe('mesmas regras do banco', () => {
     await como('coord_geral'); const aux = (await api.listarEquipe()).find(m => m.papel === 'auxiliar_adm' && m.status === 'ativa');
     const antes = new Date(aux.data_inicio + 'T12:00:00'); antes.setDate(antes.getDate() - 1);
     await falha(api.desligar(aux.id, antes.toISOString().slice(0, 10), 'Motivo qualquer'), /início/);
+  });
+});
+
+describe('cadastro repetido pelo link (25_historico_e_cadastro.sql)', () => {
+  test('a mesma pessoa não envia por um segundo link enquanto o primeiro espera conferência', async () => {
+    await como('coord_tecnico'); const a = await api.criarConvite('agente', 'PI'); const b = await api.criarConvite('agente', 'PI');
+    const d = { nome: 'Luzia Duas Vezes', cpf: cpfValido(seq++), email: 'duas' + seq + '@gmail.com', telefone: '(89) 99911-2233', consentimento_lgpd: true, cadastro_arlo: true };
+    await api.enviarPreCadastro(a, d);
+    await falha(api.enviarPreCadastro(b, d), /já foram enviados/);
+    await falha(api.enviarPreCadastro(b, Object.assign({}, d, { cpf: cpfValido(seq++) })), /já foram enviados/);   // mesmo e-mail
+  });
+  test('depois de recusado, a pessoa pode enviar de novo por outro link', async () => {
+    await como('coord_tecnico'); const a = await api.criarConvite('agente', 'PI'); const b = await api.criarConvite('agente', 'PI');
+    const d = { nome: 'Luzia Recusada Antes', cpf: cpfValido(seq++), email: 'rec' + seq + '@gmail.com', telefone: '(89) 99911-2233', consentimento_lgpd: true, cadastro_arlo: true };
+    await api.enviarPreCadastro(a, d);
+    const pre = (await api.listarPreCadastros()).find(x => x.nome === d.nome);
+    await api.decidirPreCadastro(pre.id, 'recusado', 'CPF digitado errado');
+    await api.enviarPreCadastro(b, d);
+  });
+});
+
+describe('histórico só da coordenação geral (25_historico_e_cadastro.sql)', () => {
+  test('coordenação geral recebe o histórico; os demais perfis recebem lista vazia', async () => {
+    await como('coord_geral'); assert.ok((await api.auditoria()).length > 0);
+    for (const p of ['coord_tecnico', 'bolsista', 'agente', 'professor', 'auxiliar']) { await como(p); assert.equal((await api.auditoria()).length, 0, p); }
   });
 });
