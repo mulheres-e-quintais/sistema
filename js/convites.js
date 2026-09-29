@@ -18,7 +18,6 @@
     ['agricultora', 'É agricultora? (produz alimento em quintal, roça ou lote)'],
     ['atua_mulheres', 'Atua junto às mulheres rurais do território?'],
     ['mora_rural', 'Mora na zona rural?'],
-    ['movimento', 'Participa de movimento ou organização do campo? (MPA, sindicato, associação…)'],
     ['internet', 'Tem celular com internet?'],
     ['outra_bolsa', 'Recebe hoje outra bolsa, de qualquer instituição?']
   ];
@@ -32,14 +31,13 @@
       ${PERFIL_Q.map(([k, t]) => `<div class="criterio" id="w-pf_${k}"><span>${E(t)}</span><span class="sn-par">${sn(k, true, 'Sim')}${sn(k, false, 'Não')}</span></div>`).join('')}
       <div class="campos"><div class="campo"><label for="pf-exp">Experiência com agricultura familiar ou agroecologia</label>
         <select id="pf-exp" name="pf_experiencia"><option value="">Selecione…</option>${EXPERIENCIA.map(([v, t]) => `<option value="${v}" ${pf.experiencia === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-      <div class="campo"><label for="pf-qual">Qual movimento ou organização? <span class="muted">(se participar)</span></label><input id="pf-qual" name="pf_qual" value="${E(pf.qual || '')}"></div></div>
+</div>
     </fieldset>`;
   }
   function lerPerfil(fd) {
     const pf = {}; let algum = false;
     PERFIL_Q.forEach(([k]) => { const v = fd.get('pf_' + k); if (v) { pf[k] = v === 'sim'; algum = true; } });
     const x = String(fd.get('pf_experiencia') || ''); if (x) { pf.experiencia = x; algum = true; }
-    const q = String(fd.get('pf_qual') || '').trim(); if (q) { pf.qual = q; algum = true; }
     return algum ? pf : null;
   }
   /* resumo curto para a coordenação: "Agricultora · atua com mulheres rurais · MPA · 3 a 5 anos" */
@@ -49,7 +47,6 @@
     if (pf.agricultora === true) p.push('agricultora'); else if (pf.agricultora === false) p.push('não é agricultora');
     if (pf.atua_mulheres === true) p.push('atua com mulheres rurais');
     if (pf.mora_rural === true) p.push('mora na zona rural'); else if (pf.mora_rural === false) p.push('mora na cidade');
-    if (pf.movimento === true) p.push(pf.qual ? 'participa de ' + pf.qual : 'participa de movimento do campo');
     if (pf.experiencia) p.push('experiência: ' + (EXPERIENCIA.find(e => e[0] === pf.experiencia) || [0, pf.experiencia])[1].toLowerCase());
     if (pf.internet === false) p.push('sem celular com internet');
     if (pf.outra_bolsa === true) p.push('já recebe outra bolsa');
