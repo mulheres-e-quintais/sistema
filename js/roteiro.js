@@ -18,7 +18,10 @@
       { t: 'Falar em vez de digitar', p: ['Com internet, abra uma ficha nova e vá até "Justificativa / observações".', 'Toque em "Falar" e diga uma frase. No fim, diga "ponto final".', 'Toque em "Parar".'], v: 'O que você falou aparece escrito no campo.' },
       { t: 'Ver as entregas do mês', p: ['Na sua tela, procure "Entregas do mês".', 'Na linha "Lista de presença", toque em "Entreguei".'], v: 'A lista de presença fica com o sinal ✓.' },
       { t: 'Achar uma visita para fazer', p: ['Procure "Trabalho de campo" e depois "Para fazer agora".', 'Se tiver uma visita, toque no botão dela (por exemplo, "Registrar diagnóstico").'], v: 'Abre o formulário da visita. Se não houver visita marcada, responda "Deu certo" e escreva "sem visita".' },
-      { t: 'Achar ajuda', p: ['Toque no "?" no alto da tela.', 'Procure como pedir o pagamento da bolsa.'], v: 'A ajuda explica onde pedir a bolsa.' }
+      { t: 'Achar ajuda', p: ['Toque no "?" no alto da tela.', 'Procure como pedir o pagamento da bolsa.'], v: 'A ajuda explica onde pedir a bolsa.' },
+      { t: 'Entender os números nos botões', p: ['Em "O que você quer fazer?", veja se algum botão tem um número.'], v: 'O número mostra quantas coisas esperam você ali (ex.: algo devolvido para corrigir).', pergunta: 'Você entendeu o que o número queria dizer?' },
+      { t: 'Pedir uma passagem (só articulação estadual)', p: ['Se você é de apoio, responda "Deu certo" e escreva "sou de apoio".', 'Procure "Passagens aéreas e eventos" e toque em "Pedir passagem aérea".', 'Preencha com dados inventados e envie.'], v: 'O pedido aparece em "Meus pedidos", com a coordenação técnica.' },
+      { t: 'Sair sozinho depois de 15 minutos', p: ['Com internet, deixe o sistema aberto e não toque no celular por 15 minutos.', 'Aos 13 minutos deve aparecer um aviso com contagem e o botão "Continuar usando".'], v: 'Aos 15 minutos o sistema sai e explica por quê. Os dados não se perdem.', pergunta: 'O aviso apareceu antes de sair? Deu tempo de ler?' }
     ] },
     agente: { nome: 'Agente de campo', tarefas: [
       { t: 'Entrar no sistema', p: ['Você já entrou usando o e-mail, o código que chegou pelo WhatsApp e a senha que criou.'], v: 'Você está vendo a sua tela, com o seu nome em cima.', pergunta: 'Foi fácil entrar pela primeira vez?' },
@@ -27,7 +30,9 @@
       { t: 'Registrar um diagnóstico', p: ['Numa visita de diagnóstico, toque em "Registrar diagnóstico".', 'Tire as 3 fotos pedidas (de qualquer coisa, só para testar).', 'Toque em "Registrar localização".', 'Preencha o resto com dados inventados e salve.'], v: 'O diagnóstico é salvo e a visita muda de situação.' },
       { t: 'Registrar sem internet', p: ['Ligue o modo avião.', 'Registre uma visita e salve.', 'Desligue o modo avião e espere um pouco.'], v: 'Sem internet aparece "guardado neste aparelho". Com a internet de volta, sobe sozinho.' },
       { t: 'Falar em vez de digitar', p: ['Com internet, num campo de texto, toque em "Falar" e diga uma frase.', 'Toque em "Parar".'], v: 'O que você falou aparece escrito.' },
-      { t: 'Achar ajuda', p: ['Toque no "?" no alto da tela.', 'Procure como pedir a ajuda de custo.'], v: 'A ajuda explica onde pedir.' }
+      { t: 'Achar ajuda', p: ['Toque no "?" no alto da tela.', 'Procure como pedir a ajuda de custo.'], v: 'A ajuda explica onde pedir.' },
+      { t: 'Entender os números nos botões', p: ['Em "O que você quer fazer?", veja se algum botão tem um número.'], v: 'O número mostra quantas coisas esperam você ali (ex.: visita de hoje ainda não registrada).', pergunta: 'Você entendeu o que o número queria dizer?' },
+      { t: 'Sair sozinho depois de 15 minutos', p: ['Com internet, deixe o sistema aberto e não toque no celular por 15 minutos.', 'Aos 13 minutos deve aparecer um aviso com contagem e o botão "Continuar usando".'], v: 'Aos 15 minutos o sistema sai e explica por quê. Os dados não se perdem.', pergunta: 'O aviso apareceu antes de sair? Deu tempo de ler?' }
     ] },
     professor: { nome: 'Professor(a) do curso FIC', tarefas: [
       { t: 'Entrar no sistema', p: ['Você já entrou usando o e-mail, o código de acesso e a senha que criou.'], v: 'Você está vendo a tela do professor, com a aba do curso FIC.', pergunta: 'Foi fácil entrar pela primeira vez?' },
@@ -44,7 +49,7 @@
       { t: 'Achar ajuda', p: ['Toque no "?" no alto da tela.'], v: 'Abre a ajuda da sua tela.' }
     ] },
     tecnica: { nome: 'Coordenação técnica', tarefas: [
-      { t: 'Entrar no sistema', p: ['Você já entrou usando o e-mail, o código de acesso e a senha que criou.'], v: 'Aparecem 5 abas: Seleção, Equipe, Campo, Pagamentos e Custos.', pergunta: 'Foi fácil entrar pela primeira vez?' },
+      { t: 'Entrar no sistema', p: ['Você já entrou usando o e-mail, o código de acesso e a senha que criou.'], v: 'Aparecem 6 abas: Equipe, Seleção, Campo, Pagamentos, Viagens e eventos e Custos.', pergunta: 'Foi fácil entrar pela primeira vez?' },
       { t: 'Mandar um link de cadastro', p: ['Na aba Equipe, toque numa vaga aberta de bolsista.', 'Toque em "Gerar link de cadastro".', 'Mande o link para o seu próprio WhatsApp.'], v: 'Aparece "Link pronto" e o WhatsApp abre com a mensagem.' },
       { t: 'Preencher o link como se fosse a bolsista', p: ['Abra o link que chegou no seu WhatsApp.', 'Preencha com dados inventados e envie.'], v: 'Aparece "Pronto, recebemos".' },
       { t: 'Aprovar o cadastro recebido', p: ['Na aba Equipe, abra "Cadastros enviados pelo link".', 'Confira e toque em salvar.'], v: 'A pessoa aparece na vaga.' },
@@ -52,13 +57,16 @@
       { t: 'Aprovar ou devolver uma ficha', p: ['Na aba Seleção, abra uma ficha que está aguardando.', 'Devolva dizendo o que corrigir.'], v: 'A ficha fica como devolvida, com o seu motivo.' },
       { t: 'Marcar uma visita', p: ['Na aba Campo, no roteiro, marque uma visita para uma bolsista ou agente.'], v: 'A visita aparece no roteiro com a data.' },
       { t: 'Aprovar um plano de quintal', p: ['Na aba Campo, abra "Planos para você aprovar".', 'Abra um plano e aprove ou devolva.'], v: 'O plano sai da lista de espera. Se não houver plano, responda "Deu certo" e escreva "sem plano".' },
-      { t: 'Achar ajuda', p: ['Toque no "?" no alto da tela.'], v: 'Abre a ajuda da aba em que você está.' }
+      { t: 'Achar ajuda', p: ['Toque no "?" no alto da tela.'], v: 'Abre a ajuda da aba em que você está.' },
+      { t: 'Conferir um pedido de passagem', p: ['Abra a aba "Viagens e eventos" (o número na aba mostra quantos esperam você).', 'Abra o pedido e toque em "Conferido" ou devolva dizendo o que corrigir.'], v: 'O pedido vai para a coordenação geral (ou volta para a bolsista). Se não houver pedido, responda "Deu certo" e escreva "sem pedido".' }
     ] },
     geral: { nome: 'Coordenação geral', tarefas: [
       { t: 'Cadastrar a coordenação técnica', p: ['Na aba Equipe, toque em "Cadastrar coordenação técnica".', 'Toque em "Digitar os dados agora" e preencha com dados inventados.'], v: 'A pessoa aparece na Equipe.' },
       { t: 'Liberar novo acesso (esqueceu a senha)', p: ['Abra a ficha de alguém que já entrou.', 'Toque em "Liberar novo primeiro acesso" e confirme.'], v: 'Aparece um código novo para mandar à pessoa.' },
       { t: 'Ver a equipe na visão geral', p: ['Abra a aba Visão geral e procure "Quem é a equipe de execução".'], v: 'Os números batem com a aba Equipe.' },
-      { t: 'Ver o histórico', p: ['Abra a aba Histórico.'], v: 'Aparecem as ações feitas nos testes, com nome e hora.' }
+      { t: 'Ver o histórico', p: ['Abra a aba Histórico.'], v: 'Aparecem as ações feitas nos testes, com nome e hora.' },
+      { t: 'Atender um "Esqueci a senha"', p: ['Peça para alguém da equipe de teste tocar em "Esqueci a senha" na tela de entrada.', 'Veja o número na aba Equipe e abra "Pedidos de novo acesso".', 'Toque em "Abrir ficha" e em "Liberar novo primeiro acesso".'], v: 'O pedido some da lista e aparece o código para mandar pelo WhatsApp.' },
+      { t: 'Autorizar um pedido de passagem', p: ['Na aba "Viagens e eventos", abra um pedido já conferido.', 'Toque em "Autorizar".'], v: 'O pedido fica "Autorizado" e aparece o texto para mandar à FUNCERN.' }
     ] }
   };
   const grupoDe = papel => ['articulacao', 'apoio'].includes(papel) ? 'bolsista' : papel === 'agente' ? 'agente' : papel === 'professor_fic' ? 'professor'
