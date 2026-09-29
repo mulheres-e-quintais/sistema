@@ -67,6 +67,11 @@
         try { S.entregas = await S.api.listarEntregas(); S.ciencias = await S.api.listarCiencias(); }
         catch (e) { if (e.semRede || !semFic(e)) throw e; S.entregasSemBanco = true; }
       }
+      // perfil no campo da equipe (visão geral da coordenação geral)
+      S.perfisSemBanco = false; S.perfisEquipe = [];
+      if (S.eu.papel === 'coord_geral' && S.api.listarPerfisEquipe) {
+        try { S.perfisEquipe = await S.api.listarPerfisEquipe(); } catch (e) { if (e.semRede) throw e; S.perfisSemBanco = true; }
+      }
       // valor do kit por quintal (para a projeção do investimento no diagnóstico)
       S.kitPar = { valor_quintal: MQ.KIT_QUINTAL };   // R$ 4.500 por quintal, fixado no plano de trabalho
       S.pre = /^coord/.test(S.eu.papel) && S.api.listarPreCadastros ? await opcional(S.api.listarPreCadastros) : [];

@@ -280,6 +280,49 @@
       </div></section>`;
   }
 
+  /* equipe de execução: quem são e de onde partem (perfil no campo do cadastro) */
+  function equipeExec(S) {
+    const P = MQ.PAPEIS;
+    const ativos = (S.equipe || []).filter(m => m.status === 'ativa' && m.papel !== 'coord_geral');
+    const campo = ativos.filter(m => ['coord_tecnico', 'articulacao', 'apoio', 'agente'].includes(m.papel));
+    const conta = p => ativos.filter(m => m.papel === p).length;
+    const bols = conta('articulacao') + conta('apoio');
+    const habil = ativos.filter(m => R.habilitado(m)).length;
+    const perfis = new Map((S.perfisEquipe || []).filter(x => x.perfil).map(x => [x.equipe_id, x.perfil]));
+    const resp = campo.filter(m => perfis.has(m.id)).map(m => perfis.get(m.id));
+    const pc = (fn) => { const v = resp.filter(p => fn(p) != null); return v.length ? Math.round(v.filter(p => fn(p) === true).length / v.length * 100) + '%' : '—'; };
+    const leram = ativos.filter(m => ['articulacao', 'apoio', 'agente'].includes(m.papel));
+    const nLeram = leram.filter(m => (S.ciencias || []).some(c => c.equipe_id === m.id)).length;
+    const linhas = [
+      ['São agricultoras', pc(p => p.agricultora)],
+      ['Atuam junto às mulheres rurais do território', pc(p => p.atua_mulheres)],
+      ['Moram na zona rural', pc(p => p.mora_rural)],
+      ['Mais de 5 anos com agricultura familiar ou agroecologia', pc(p => p.experiencia ? p.experiencia === 'mais5' : null)],
+      ['Têm celular com internet', pc(p => p.internet)],
+      ['Já recebem outra bolsa (conferir acúmulo)', pc(p => p.outra_bolsa)]
+    ];
+    return `<section class="secao" aria-labelledby="t-exec">
+      <div class="secao-cab"><div><h2 id="t-exec">Quem é a equipe de execução</h2><p>Pessoas ativas no projeto, sem a coordenação geral. O perfil no campo vem do cadastro (coordenação técnica, bolsistas e agentes).</p></div></div>
+      <div class="duas-col perfil-cols">
+        <div class="bloco"><h3>Composição</h3>
+          <div class="resumo r2">
+            <div><span class="v num">${ativos.length}</span><span class="l">pessoas na equipe</span></div>
+            <div><span class="v num">${habil}<small> de ${ativos.length}</small></span><span class="l">habilitadas (todas as funções, com agentes e professores)</span></div></div>
+          <ul class="pp">
+            <li><span>Coordenação técnica</span><b class="num">${conta('coord_tecnico')}</b></li>
+            <li><span>Bolsistas (articulação e apoio estadual)</span><b class="num">${bols}<small class="muted"> de 10</small></b></li>
+            <li><span>Agentes de campo</span><b class="num">${conta('agente')}</b></li>
+            <li><span>Professores do FIC</span><b class="num">${conta('professor_fic')}</b></li>
+            <li><span>Auxiliar administrativo</span><b class="num">${conta('auxiliar_adm')}</b></li>
+            ${leram.length ? `<li><span>Bolsistas e agentes que leram o guia</span><b class="num">${nLeram}<small class="muted"> de ${leram.length}</small></b></li>` : ''}
+          </ul></div>
+        <div class="bloco"><h3>Ponto de partida da equipe</h3>
+          ${resp.length ? `<ul class="pp">${linhas.map(([t, v]) => `<li><span>${E(t)}</span><b class="num">${v}</b></li>`).join('')}</ul>
+            <p class="nota">Entre ${resp.length} de ${campo.length} pessoa${campo.length > 1 ? 's' : ''} que responderam o perfil no campo. O Guia pede bolsistas mulheres, de preferência agricultoras ou com atuação junto às mulheres do território.</p>`
+            : `<p class="small muted">${S.perfisSemBanco ? 'O perfil no campo ainda não está instalado no servidor (rode o 19_entregas_do_mes.sql).' : 'Aparece quando a coordenação técnica, as bolsistas e as agentes responderem o perfil no campo no cadastro (pelo link é obrigatório).'}</p>`}</div>
+      </div></section>`;
+  }
+
   function visaoGeral(S) {
     const d = dados(S);
     const mes = mesDoProjeto();
@@ -323,6 +366,7 @@
       ${MQ.GEO ? mapa(S, d) : ''}
 
       ${perfil(S, d)}
+      ${equipeExec(S)}
 
       <div class="duas-col">
         <section class="secao" aria-labelledby="t-metas">

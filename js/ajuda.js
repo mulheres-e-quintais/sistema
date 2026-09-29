@@ -6,19 +6,45 @@
   const A = {
     entrada: {
       t: 'Como entrar no sistema',
-      intro: 'O sistema é usado pela equipe do projeto. Só entra quem foi cadastrado pela coordenação, com o e-mail que ela registrou.',
+      intro: 'Só entra quem foi cadastrado pela coordenação, com o e-mail que ela registrou. O sistema não manda e-mail: as instruções chegam pelo WhatsApp, com um código de acesso.',
       passos: [
-        'Na primeira vez, toque em <b>Primeiro acesso</b>, use o e-mail cadastrado e o <b>código de acesso</b> que veio na mensagem da coordenação, e crie uma senha com pelo menos 8 caracteres, misturando letras e números.',
-        'Das próximas vezes, use <b>Já tenho senha</b> com o mesmo e-mail e a senha que você criou.',
-        'Abra o sistema no <b>Chrome</b> (Android) ou no <b>Safari</b> (iPhone). Dentro do WhatsApp ou do Instagram algumas funções, como a localização, não funcionam.',
-        'Para usar como aplicativo: no menu do navegador, toque em <b>Adicionar à tela inicial</b>.'
+        '<b>Primeira vez:</b> toque em <b>Primeiro acesso</b>, digite o e-mail cadastrado e o <b>código de acesso</b> (8 letras e números, como ABCD-2345) que veio na mensagem da coordenação. Depois crie uma senha com pelo menos 8 caracteres, misturando letras e números.',
+        '<b>Das próximas vezes:</b> use <b>Já tenho senha</b>, com o mesmo e-mail e a senha que você criou.',
+        'Abra no <b>Chrome</b> (Android) ou no <b>Safari</b> (iPhone). Dentro do WhatsApp ou do Instagram algumas funções, como localização e fotos, não funcionam.',
+        'Para usar como aplicativo: no menu do navegador, toque em <b>Adicionar à tela inicial</b>. Assim ele também funciona no campo sem internet.'
       ],
       duvidas: [
-        ['Aparece "Este e-mail não está cadastrado no projeto".', 'O e-mail digitado é diferente do que a coordenação cadastrou. Confira letras, pontos e o final (@gmail.com, @ifrn.edu.br…). Se estiver certo, fale com quem fez o seu cadastro.'],
+        ['Aparece "confira o e-mail e o código de acesso".', 'O e-mail tem de ser exatamente o do cadastro (confira pontos e o final @gmail.com, @ifrn.edu.br…). O código vale 7 dias e uma vez só. Se venceu ou se perdeu, peça um novo a quem cadastrou você.'],
         ['Aparece "Este e-mail já tem senha".', 'Você já fez o primeiro acesso. Use "Já tenho senha".'],
-        ['Esqueci a senha.', 'Peça à coordenação geral para liberar um novo primeiro acesso. Ela manda um código novo; entre em "Primeiro acesso" e crie outra senha.'],
-        ['O código não funciona.', 'O código vale 7 dias e uma vez só. Confira o e-mail (tem de ser o mesmo do cadastro). Se venceu ou perdeu, peça um novo a quem cadastrou você.'],
-        ['Não recebi e-mail do sistema.', 'O sistema não manda e-mail. Quem cadastrou você manda o aviso de acesso por WhatsApp ou e-mail; basta seguir os passos acima.']
+        ['Esqueci a senha.', 'Peça à coordenação geral para liberar um novo primeiro acesso. Ela manda um código novo; entre em "Primeiro acesso" e crie outra senha. Seus dados não se perdem.'],
+        ['Não recebi e-mail do sistema.', 'É normal: o sistema não manda e-mail. Quem cadastrou você manda o aviso de acesso, com o código, pelo WhatsApp.'],
+        ['Por que esse código?', 'Ele garante que só você crie a senha da sua conta. Sem ele, qualquer pessoa que soubesse o seu e-mail poderia entrar no seu lugar.']
+      ]
+    },
+
+    /* ---------- dicas que valem para todo mundo ---------- */
+    geral: {
+      t: 'Dicas para usar o sistema',
+      intro: 'O que funciona igual em todas as telas.',
+      secoes: [
+        ['No alto da tela', [
+          '<b>?</b> abre esta ajuda, sempre sobre a tela em que você está.',
+          'A <b>sua foto</b> (ou suas iniciais) abre <b>Meus dados</b>: celular, endereço e conta bancária para a FUNCERN.',
+          'Se aparecer um aviso de <b>pendências no seu cadastro</b>, resolva primeiro: sem elas, a FUNCERN não paga.']],
+        ['Falar em vez de digitar', [
+          'Nos campos de texto (relato, observações, relatório), toque em <b>Falar</b> e fale normalmente. O texto vai aparecendo; toque em <b>Parar</b> quando terminar e revise antes de salvar.',
+          'Diga "vírgula", "ponto final" ou "nova linha" para pontuar.',
+          'Precisa de internet. Sem sinal, use o microfone do teclado do celular.',
+          'Evite dizer nomes e CPF: o sistema já sabe de quem é a visita.']],
+        ['Sem internet', [
+          'Fichas, diagnósticos, visitas feitas e avaliações podem ser preenchidos sem sinal. Ficam guardados no celular, com as fotos, e sobem sozinhos quando a internet voltar (ou em <b>Enviar agora</b>).',
+          'Antes de ir a campo, abra o sistema com internet para atualizar a lista de visitas.',
+          'Não saia do sistema sem internet: para entrar de novo é preciso conexão.',
+          'Não apague os dados do navegador nem desinstale o aplicativo com registros pendentes: eles se perdem.']],
+        ['Proteção dos dados', [
+          'Os dados das pessoas são protegidos pela LGPD (Lei nº 13.709/2018). Cada perfil vê só o que precisa para o seu trabalho.',
+          'Não fotografe telas nem repasse informações de outras pessoas.',
+          'Tudo o que muda no cadastro da equipe, e cada consulta a conta bancária, fica registrado no histórico.']]
       ]
     },
 
@@ -27,84 +53,94 @@
       t: 'Visão geral',
       intro: 'O retrato do projeto em uma tela: em que mês estamos, como está a equipe, a seleção das mulheres, o campo e os avisos que pedem atenção.',
       passos: [
-        'A linha de 13 quadradinhos mostra os meses do projeto; o quadrado colorido é o mês atual.',
-        'Os <b>avisos</b> vêm por ordem de urgência (crítico, atenção, informação). Toque no aviso para ir à aba que resolve.',
-        'O cartão <b>Ponto de partida e hoje</b> compara a linha de base do diagnóstico com a avaliação final (fome, renda do quintal, consumo, venda, autonomia). Só entra quem já tem as duas medidas.',
+        'A linha de 13 quadradinhos mostra os meses do projeto; o quadrado colorido é o mês atual. Ao lado, quantos dias faltam para o fim da vigência.',
+        'Os <b>avisos</b> vêm por ordem de urgência (crítico, atenção, informação). Toque no aviso para ir direto à aba que resolve.',
+        'O cartão <b>Ponto de partida</b> (e, depois das avaliações, <b>hoje</b>) compara a linha de base do diagnóstico com a avaliação final (fome, renda do quintal, consumo, venda, autonomia). Só entra quem já tem as duas medidas.',
         '<b>Financeiro e entregas</b> abre o painel de recursos, rubricas e metas físicas. Só a coordenação geral vê esse botão.'
       ],
       duvidas: [
-        ['Os números estão zerados.', 'Eles só contam registros reais. Dados de teste (exemplo) ficam de fora da vitrine pública.'],
+        ['Os números estão zerados.', 'Eles só contam registros reais. Dados de teste (exemplo) ficam de fora dos números e da vitrine.'],
         ['Qual a diferença entre "na equipe" e "habilitadas"?', 'Na equipe é quem está cadastrado e ativo. Habilitada é quem completou os passos para receber: matrícula no FIC (bolsistas e agentes), cadastro no Arlo e termo de compromisso.']
       ]
     },
     equipe: {
       t: 'Equipe',
-      intro: 'Cadastro de todas as pessoas do projeto, na ordem: coordenação técnica, auxiliar administrativo, professores do FIC, bolsistas por estado e agentes de campo.',
+      intro: 'Cadastro de todas as pessoas do projeto: coordenação técnica, auxiliar administrativo, professores do FIC, bolsistas por estado e agentes de campo.',
       passos: [
-        'Para cadastrar, toque na vaga ou em <b>Cadastrar</b> e escolha: <b>Gerar link</b> (a pessoa preenche pelo celular e você aprova) ou <b>Digitar os dados agora</b> (você mesmo preenche o formulário).',
-        'Depois de salvar, abra a ficha da pessoa e use <b>Avisar o acesso</b> para mandar por WhatsApp ou e-mail as instruções de entrada. O sistema não manda e-mail sozinho.',
-        'Cadastros enviados pelo link aparecem no topo, em <b>Cadastros enviados pelo link</b>. Confira, complete e salve para aprovar.',
-        'Na ficha da pessoa você vê a <b>habilitação</b> (FIC, Arlo, termo). O auxiliar administrativo registra Arlo e termo; os professores registram a matrícula no FIC.',
+        'Toque na vaga ou em <b>Cadastrar</b> e escolha: <b>Gerar link de cadastro</b> (a pessoa preenche pelo celular e você confere e aprova) ou <b>Digitar os dados agora</b> (você mesmo preenche). O link é o recomendado: menos digitação e a própria pessoa aceita o termo de dados.',
+        'Para bolsistas, antes de salvar aparece o <b>perfil da bolsista</b> do Guia: confira se a indicada atende.',
+        'Para coordenação técnica, bolsistas e agentes há o <b>Perfil no campo</b> (é agricultora, atua com mulheres rurais, experiência…). Pelo link é obrigatório; digitando, marque o que souber.',
+        'Depois de salvar, abra a ficha da pessoa e toque em <b>Gerar código de acesso</b>. Mande a mensagem pronta pelo WhatsApp: ela traz o endereço, o e-mail e o código.',
+        'Cadastros que chegam pelo link aparecem em <b>Cadastros enviados pelo link</b>. Abra, confira, complete e salve: ao salvar, o cadastro é aprovado.',
+        'Na ficha da pessoa ficam a <b>habilitação</b> (FIC, Arlo e termo), a <b>leitura do guia</b> e o <b>perfil no campo</b>. O botão <b>Hoje</b> preenche a data do dia.',
         '<b>Desligar</b> não apaga o cadastro: a vaga fica livre para a substituta e o histórico guarda quem desligou, quando e por quê.'
       ],
       duvidas: [
-        ['Quem cadastra quem?', 'A coordenação geral cadastra a coordenação técnica, os professores do FIC e o auxiliar. A coordenação técnica cadastra bolsistas e agentes. A coordenação geral também pode fazer tudo isso.'],
+        ['Quem cadastra quem?', 'A coordenação geral cadastra a coordenação técnica, os professores do FIC e o auxiliar, e pode cadastrar todos os outros. A coordenação técnica cadastra bolsistas e agentes.'],
+        ['A pessoa perdeu o código ou ele venceu.', 'Abra a ficha dela e gere outro. O anterior deixa de valer na hora.'],
+        ['A pessoa esqueceu a senha.', 'Só a coordenação geral resolve: na ficha dela, "Liberar novo primeiro acesso" (confirme). A senha antiga é apagada e sai um código novo; os dados não mudam.'],
         ['Errei o CPF.', 'CPF e estado não mudam depois de salvos. Desligue o cadastro errado e faça um novo.'],
         ['A pessoa já tem cadastro no Arlo.', 'Marque "Sim" na pergunta do Arlo: só os dados básicos são pedidos (e a cidade, para quem vai a campo).'],
-        ['É servidor federal.', 'Informe a matrícula SIAPE no cadastro.']
+        ['O CEP não preencheu a rua.', 'Em muitas cidades pequenas o CEP é um só para a cidade toda. O sistema preenche cidade e estado; digite a rua, o sítio ou a comunidade.']
       ]
     },
     selecao: {
       t: 'Seleção das mulheres',
       intro: 'Cada mulher indicada pela comunidade tem uma ficha de indicação, preenchida pela bolsista do estado, com os critérios do edital e o termo de consentimento. Aqui a coordenação aprova ou devolve.',
       passos: [
-        'A tabela mostra, por estado, quantas fichas foram lançadas e como estão: <b>selecionadas aprovadas</b> (as que ocupam as 40 vagas), <b>lista de espera</b>, <b>sem água</b> e <b>não atende</b>, e as que ainda <b>aguardam</b> decisão.',
-        'Abra uma ficha aguardando, confira os dados e o termo assinado e escolha <b>Aprovar</b> ou <b>Devolver</b> (dizendo o que corrigir).',
-        'Cada estado tem no máximo 40 selecionadas aprovadas. As demais vão para a lista de espera, por pontuação.'
+        'A tabela mostra, por estado, as fichas lançadas e a situação: <b>selecionadas aprovadas</b> (as que ocupam as 40 vagas), <b>lista de espera</b>, <b>sem água</b>, <b>não atende</b> e as que <b>aguardam</b> decisão.',
+        'Abra uma ficha que aguarda, confira os dados, os critérios e a foto do termo assinado, e escolha <b>Aprovar</b> ou <b>Devolver</b> (dizendo o que corrigir).',
+        'Cada estado tem no máximo 40 selecionadas aprovadas. As demais ficam na lista de espera, pela pontuação de prioridade.'
       ],
       duvidas: [
         ['A soma da linha passa de 40.', 'As 40 são as vagas. Lista de espera, sem água e não atende também são fichas lançadas, mas não ocupam vaga.'],
-        ['O que é "sem água"?', 'A água da casa não dura no período seco. Essa mulher não recebe o kit agora e é encaminhada a programa de cisternas; a vaga vai para a lista de espera.']
+        ['O que é "sem água"?', 'A água da casa não dura no período seco. Essa mulher não recebe o kit agora e é encaminhada a programa de cisternas; a vaga vai para a lista de espera.'],
+        ['O sistema avisou possível duplicidade.', 'Há outra ficha com o mesmo CPF ou o mesmo endereço. Confira antes de aprovar: o critério é uma mulher por casa.']
       ]
     },
     campo: {
-      t: 'Campo',
-      intro: 'Acompanhamento das visitas aos quintais: diagnóstico e plano, implantação, 2 acompanhamentos e avaliação final. São 5 visitas por quintal, até 200 dias de campo por estado.',
+      t: 'Trabalho de campo',
+      intro: 'As 5 visitas de cada quintal: diagnóstico e plano, implantação, 2 acompanhamentos e avaliação final. São até 200 dias de campo por estado.',
       passos: [
-        'A tabela mostra, por estado, os dias de campo usados, diagnósticos, planos aprovados, casos sem água e agentes.',
-        'Em <b>Planos para aprovar</b>, abra o diagnóstico, confira o kit (itens da lista aprovada, até o valor por quintal) e o cronograma, e <b>aprove</b> ou <b>devolva</b>.',
-        'Em <b>Investimento nos quintais</b> fica o valor do kit por quintal (R$ 4.500,00, fixado no plano de trabalho) e a soma projetada pelos planos.',
-        'O <b>roteiro do mês</b> lista cada visita: data, quem vai e a situação. Visitas vencidas aparecem como atrasadas.',
+        'A tabela mostra, por estado, os dias de campo feitos e previstos, diagnósticos, planos aprovados, casos sem água e agentes.',
+        'Em <b>Planos para você aprovar</b>, abra o diagnóstico, confira as fotos, o kit (itens da lista aprovada, com preço, até o valor por quintal) e o cronograma, e <b>aprove</b> ou <b>devolva</b>.',
+        '<b>Investimento nos quintais</b> mostra o valor do kit por quintal (R$ 4.500,00, fixado no plano de trabalho) e a soma projetada pelos planos.',
+        'O <b>roteiro</b> lista cada visita: data, quem vai e a situação, com o botão do que fazer. Visitas vencidas aparecem como atrasadas.',
         '<b>Impacto: antes × depois</b> compara o diagnóstico com a avaliação final de cada quintal.'
       ],
       duvidas: [
-        ['Por que a visita não pode ser agendada para uma agente?', 'Quem visita precisa estar habilitada (FIC, Arlo e termo); senão a visita não poderia ser paga.'],
-        ['O que conta como dia de campo?', 'Cada visita a um quintal é 1 dia de campo de quem visitou, e é a base da ajuda de custo.']
+        ['Por que não consigo agendar a visita para uma agente?', 'Quem visita precisa estar habilitada (FIC, Arlo e termo); senão a visita não pode ser paga.'],
+        ['O que conta como dia de campo?', 'Cada visita feita a um quintal é 1 dia de campo de quem visitou, e é a base da ajuda de custo.'],
+        ['Um plano passou de R$ 4.500.', 'O sistema não deixa salvar acima do valor. Se aparecer acima, devolva pedindo para tirar ou trocar itens.']
       ]
     },
     fic: {
       t: 'Curso FIC',
-      intro: 'Turmas do curso FIC do IFRN e matrículas das bolsistas e agentes. A matrícula registrada aqui é um dos passos da habilitação.',
+      intro: 'Turmas do curso FIC do IFRN, matrículas das bolsistas e agentes e o acesso mensal ao AVA. A matrícula é um dos passos da habilitação; o acesso ao AVA é uma das entregas do mês das bolsistas.',
       passos: [
         'Os professores do FIC criam as turmas e matriculam, em qualquer turma. A coordenação geral também pode.',
-        'Para matricular: abra a turma, escolha a pessoa, informe o número da matrícula (SUAP) e a data.',
-        'Turma de um estado só aceita gente daquele estado. Turma "vários estados" aceita todos.'
+        'Para matricular: abra a turma, toque em <b>+ Matricular</b>, escolha a pessoa, informe o número da matrícula (SUAP) e a data.',
+        'Turma de um estado só aceita gente daquele estado. Turma "vários estados" aceita todos.',
+        'Em <b>Acesso ao AVA no mês</b>, marque quem entrou no curso e fez as atividades. Use ‹ › para mudar o mês.'
       ],
       duvidas: [
         ['Professor e auxiliar se matriculam?', 'Não. A habilitação deles é cadastro no Arlo e termo de compromisso.'],
-        ['Matriculei errado.', 'Para corrigir número ou data, matricule de novo na mesma turma. Para trocar de turma, cancele antes (com motivo).']
+        ['Matriculei errado.', 'Para corrigir número ou data, matricule de novo na mesma turma. Para trocar de turma, cancele antes (com motivo).'],
+        ['Marquei o AVA por engano.', 'Toque de novo para desmarcar. Só professores do FIC e a coordenação geral marcam.']
       ]
     },
     pagamentos: {
       t: 'Pagamentos',
       intro: 'Pedidos de ajuda de custo (visitas de campo) e de bolsa mensal. O caminho é sempre: a pessoa pede → a coordenação dá o aval → o auxiliar lança no Arlo (FUNCERN).',
       passos: [
-        'Em <b>Esperando o seu aval</b>, abra o pedido, confira as visitas ou o relatório do mês e <b>dê o aval</b> ou <b>devolva</b> dizendo o que corrigir.',
+        'Em <b>Esperando o seu aval</b>, abra o pedido e confira: na ajuda de custo, as visitas e o km; na bolsa, o relatório e as <b>entregas do mês</b> (fotos, lista de presença, fichas, AVA e metas).',
+        'Toque em <b>Dar aval</b> ou <b>Devolver</b>, dizendo o que corrigir.',
         'Quem dá o aval: a coordenação técnica, para ajuda de custo e bolsa das bolsistas; a coordenação geral, para a bolsa da coordenação técnica, dos professores e do auxiliar.',
         'Com o aval, o pedido vai para o auxiliar, que lança no Arlo e registra o protocolo.'
       ],
       duvidas: [
         ['Uma visita pode entrar em dois pedidos?', 'Não. Depois de pedida, a visita fica travada (data, pessoa e situação) até o pedido ser devolvido.'],
+        ['A lista de presença está marcada, mas não vi o papel.', 'A marcação é a bolsista quem faz. Confira as listas assinadas antes de dar o aval.'],
         ['Quanto é a ajuda de custo?', 'É calculada na aba Custos: horas da visita, combustível pela distância e refeição.']
       ]
     },
@@ -114,8 +150,8 @@
       passos: [
         'Cada visita vale: horas da etapa × valor da hora + combustível (ida e volta, pela distância até o quintal) + refeição.',
         'Em <b>Valores usados</b> a coordenação ajusta valor da hora, horas por etapa, consumo do carro, preço da gasolina, refeição e o teto do projeto. Toda mudança fica no histórico.',
-        'Onde a distância estimada estiver errada, informe o <b>km conferido</b> da visita.',
-        'A <b>Proposta de roteiro</b> estima quem visita cada quintal e o custo do projeto inteiro; o bloco <b>Caber no orçamento</b> mostra quanto cada medida economiza para ficar dentro do teto.'
+        'Onde a distância estimada estiver errada, informe o <b>km conferido</b> da visita antes de dar o aval.',
+        'A <b>Proposta de roteiro</b> estima quem visita cada quintal e o custo do projeto inteiro; <b>Caber no orçamento</b> mostra quanto cada medida economiza para ficar dentro do teto.'
       ],
       duvidas: [
         ['Por que o custo projetado é alto?', 'Quintais longe de quem visita pesam no combustível. A medida que mais economiza é ter agentes morando nos municípios distantes.']
@@ -123,41 +159,51 @@
     },
     historico: {
       t: 'Histórico',
-      intro: 'Registro de tudo o que foi feito no sistema: quem cadastrou, alterou, aprovou, desligou, consultou conta bancária, e quando.',
-      passos: ['Os registros mais recentes vêm primeiro. Ninguém consegue alterar ou apagar o histórico pelo sistema, nem a coordenação geral.'],
-      duvidas: [['Para que serve?', 'Prestação de contas e auditoria (CGU, TCU): mostra quem fez cada ação e quando.']]
+      intro: 'Registro de tudo o que foi feito no sistema: quem cadastrou, alterou, aprovou, devolveu, desligou, gerou código de acesso, consultou conta bancária, e quando.',
+      passos: [
+        'Os registros aparecem por dia (Hoje, Ontem, datas), do mais recente para o mais antigo. Os 12 últimos ficam à vista; os anteriores, em <b>Ver registros anteriores</b>.',
+        'Ninguém consegue alterar ou apagar o histórico pelo sistema, nem a coordenação geral.'
+      ],
+      duvidas: [
+        ['Para que serve?', 'Prestação de contas e auditoria (CGU, TCU): mostra quem fez cada ação e quando.'],
+        ['Está vazio.', 'Ele começa a encher quando o sistema passa a ser usado: cada cadastro, aprovação ou pagamento vira um registro.']
+      ]
     },
 
     /* ---------- telas individuais ---------- */
     bolsista: {
       t: 'Sua tela (bolsista)',
-      intro: 'Tudo o que você faz no estado: indicar as mulheres, registrar o trabalho de campo e pedir os pagamentos.',
+      intro: 'Tudo o que você faz no estado: indicar as mulheres, registrar o trabalho de campo, acompanhar as entregas do mês e pedir os pagamentos.',
       passos: [
-        'Se aparecer <b>pendências no seu cadastro</b> no topo, resolva primeiro: sem elas a FUNCERN não paga.',
+        'Leia os pontos importantes do Guia e toque em <b>Li e entendi</b> (aparece uma vez só).',
+        'Se aparecer <b>pendências no seu cadastro</b>, resolva primeiro: sem elas a FUNCERN não paga.',
         '<b>Seleção das mulheres:</b> toque em <b>+ Nova ficha</b> quando estiver com a mulher indicada. Fichas devolvidas aparecem em "Para corrigir".',
         '<b>Trabalho de campo:</b> em <b>Para fazer agora</b> estão as visitas atrasadas, as dos próximos 7 dias e os planos devolvidos, cada um com o botão da ação.',
         '<b>Diagnóstico:</b> faça as 3 fotos (visão geral, água e plantio), registre a localização e monte o kit com o preço de cada item, sem passar de R$ 4.500.',
-        '<b>Visita feita:</b> informe a data e conte em poucas linhas o que foi feito.',
+        '<b>Entregas do mês:</b> acompanhe as 6 entregas. Quando entregar as listas de presença, toque em <b>Entreguei</b>. O acesso ao AVA é o professor quem confirma.',
         '<b>Solicitar pagamento:</b> uma vez por mês, peça a ajuda de custo das visitas feitas e a bolsa, com o relatório de atividades.'
       ],
       duvidas: [
-        ['Posso falar em vez de digitar?', 'Sim. Nos campos de texto, toque em Falar e fale; o texto vai aparecendo. Depois, Organizar o texto propõe uma versão mais clara, que você confere antes de usar. Evite dizer nomes e CPF: o sistema já sabe de quem é a visita. Precisa de internet.'],
-        ['Estou sem internet no campo.', 'Pode preencher. O registro fica guardado no aparelho e é enviado quando a internet voltar ("Enviar agora").'],
+        ['Posso falar em vez de digitar?', 'Sim. Nos campos de texto, toque em Falar e fale; o texto vai aparecendo. Revise antes de salvar. Evite dizer nomes e CPF. Precisa de internet.'],
+        ['Estou sem internet no campo.', 'Pode preencher fichas, diagnósticos, visitas e avaliações. Ficam guardados no celular e sobem quando a internet voltar ("Enviar agora"). Não saia do sistema enquanto estiver sem sinal.'],
         ['A localização foi negada.', 'Libere a localização para o site nas permissões do navegador (cadeado ao lado do endereço) e tente de novo. Se não der, explique no campo indicado.'],
-        ['Posso corrigir uma ficha aprovada?', 'Não. Peça à coordenação técnica para devolvê-la.']
+        ['Posso corrigir uma ficha aprovada?', 'Não. Peça à coordenação técnica para devolvê-la.'],
+        ['Uma entrega está com "!".', 'Ainda falta. Veja a linha de baixo: ela diz o que fazer. Sem as entregas, a bolsa do mês não é paga.']
       ]
     },
     agente: {
       t: 'Sua tela (agente de campo)',
       intro: 'As visitas atribuídas a você, os registros de cada uma e o pedido da ajuda de custo.',
       passos: [
+        'Leia como funciona para a agente e toque em <b>Li e entendi</b> (aparece uma vez só).',
         'Em <b>Próximas visitas</b> estão os quintais e as datas. Quem agenda é a bolsista do estado ou a coordenação técnica.',
-        'Na visita, toque no botão da ação: <b>Registrar diagnóstico</b>, <b>Registrar visita feita</b> ou <b>Registrar avaliação</b>.',
+        'Na visita, toque no botão da ação: <b>Registrar diagnóstico</b>, <b>Registrar visita feita</b> ou <b>Registrar avaliação</b>. Registre no mesmo dia, com fotos e localização.',
         'No fim do mês, peça a ajuda de custo das visitas feitas em <b>Solicitar pagamento</b>.'
       ],
       duvidas: [
         ['Não aparece nenhuma visita.', 'Você só vê os quintais atribuídos a você, e só depois de habilitada (FIC, Arlo e termo).'],
         ['Posso mudar a data da visita?', 'Não. Fale com a bolsista do estado para reagendar.'],
+        ['Estou sem internet no quintal.', 'Pode registrar. Fica guardado no celular e sobe quando a internet voltar. Não saia do sistema enquanto estiver sem sinal.'],
         ['Cuidado com os dados.', 'Os dados das mulheres são protegidos pela LGPD: não fotografe telas nem repasse informações.']
       ]
     },
@@ -230,25 +276,30 @@
     },
     professor_fic: {
       t: 'Sua tela (professor do FIC)',
-      intro: 'Turmas do curso FIC e matrículas das bolsistas e agentes de campo.',
+      intro: 'Turmas do curso FIC, matrículas das bolsistas e agentes de campo e a confirmação mensal do acesso ao AVA.',
       passos: [
         'Toque em <b>+ Nova turma</b> para criar a sua turma.',
         'Matricule as pessoas com o número da matrícula no SUAP e a data. Você pode matricular também nas turmas do outro professor.',
-        'A matrícula registrada aqui completa o passo "matrícula no FIC" da habilitação da pessoa.'
+        'A matrícula registrada aqui completa o passo "matrícula no FIC" da habilitação da pessoa.',
+        'Todo mês, em <b>Acesso ao AVA no mês</b>, marque quem entrou no curso e fez as atividades. É uma das entregas que liberam a bolsa das bolsistas.'
       ],
-      duvidas: [['Por que não vejo CPF nem telefone?', 'Você vê só o mínimo para matricular. Os demais dados são protegidos (LGPD).']]
+      duvidas: [
+        ['Por que não vejo CPF nem telefone?', 'Você vê só o mínimo para matricular. Os demais dados são protegidos (LGPD).'],
+        ['Esqueci de marcar o AVA de um mês.', 'Use ‹ para voltar ao mês e marque. Só não dá para marcar meses que ainda não começaram.']
+      ]
     },
     auxiliar_adm: {
       t: 'Sua tela (auxiliar administrativo)',
       intro: 'Cadastro da equipe no Arlo (FUNCERN), registro do termo de compromisso e lançamento dos pagamentos no Arlo.',
       passos: [
-        '<b>Falta cadastrar no Arlo:</b> abra a pessoa, veja os dados (e a conta, se precisar), cadastre no Arlo e registre a data em <b>Registrar passos da habilitação</b>.',
+        '<b>Falta cadastrar no Arlo:</b> abra a pessoa, veja os dados (e a conta, se precisar), cadastre no Arlo e registre a data em <b>Registrar passos da habilitação</b>. O botão <b>Hoje</b> preenche a data do dia.',
         '<b>No Arlo, falta o termo:</b> quando a pessoa entregar o termo assinado, registre a data e anexe o arquivo.',
         '<b>Pagamentos para lançar:</b> pedidos que já têm aval. Lance no Arlo e registre o protocolo.'
       ],
       duvidas: [
         ['A consulta da conta bancária fica registrada?', 'Sim. Cada vez que você abre a conta de alguém, fica no histórico.'],
-        ['Posso mudar dados pessoais de alguém?', 'Não. Isso é de quem cadastrou a pessoa. Você registra só Arlo e termo.']
+        ['Posso mudar dados pessoais de alguém?', 'Não. Isso é de quem cadastrou a pessoa. Você registra só Arlo e termo.'],
+        ['Posso colocar uma data futura?', 'Não. Registre só o que já aconteceu.']
       ]
     }
   };
@@ -280,6 +331,7 @@
         ${(a.secoes || []).map(([h, l]) => `<h3>${E(h)}</h3><ul class="ajuda-lista">${l.map(x => `<li>${x}</li>`).join('')}</ul>`).join('')}
         ${guiaDe(k) ? `<button type="button" class="cad-modo cad-modo-2" data-acao="ajuda" data-k="${guiaDe(k)}"><b>${E(A[guiaDe(k)].t)}</b><span>Pagamento, entregas do mês, o que é importante e com quem falar.</span></button>` : ''}
         ${a.duvidas && a.duvidas.length ? `<h3>Dúvidas comuns</h3><div class="ajuda-duvidas">${a.duvidas.map(([q, r]) => `<details><summary>${E(q)}</summary><p>${E(r)}</p></details>`).join('')}</div>` : ''}
+        ${k !== 'geral' && k !== 'entrada' ? `<button type="button" class="cad-modo cad-modo-2" data-acao="ajuda" data-k="geral"><b>Dicas para usar o sistema</b><span>Falar em vez de digitar, uso sem internet, Meus dados e proteção dos dados.</span></button>` : ''}
         ${outros.length ? `<h3>Ajuda de outras seções</h3><div class="ajuda-outros">${outros.map(x => `<button type="button" class="btn peq" data-acao="ajuda" data-k="${x}">${E(A[x].t)}</button>`).join('')}</div>` : ''}
         ${a.rodape ? `<p class="small muted ajuda-real">${E(a.rodape)}</p>` : ''}
         <p class="small muted">Não achou a resposta? Fale com ${s.eu && ['articulacao', 'apoio', 'agente'].includes(s.eu.papel) ? 'a coordenação técnica' : 'a coordenação geral'}.</p>
