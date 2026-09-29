@@ -1,4 +1,4 @@
--- roda DEPOIS do test_cadastro_equipe.sql e do test_passagens_eventos.sql, na mesma sessão (usa :G, :T, :BB, :X, sp(), mv())
+-- roda POR ÚLTIMO (desliga a coordenação técnica e o auxiliar): depois do test_cadastro_equipe.sql e do test_passagens_eventos.sql, na mesma sessão (usa :G, :T, :BB, :X, sp(), mv())
 -- 26_conferencia_auxiliar.sql: sempre duas pessoas em cada pedido de passagem e evento.
 \set QUIET on
 truncate res;
