@@ -1,0 +1,134 @@
+const { chromium } = require(process.argv[2]);
+const R = []; const ok = (n, c, d = '') => R.push([c ? 'PASSOU' : 'FALHOU', n, d]);
+const dia = n => { const d = new Date(Date.now() + n * 864e5 - new Date().getTimezoneOffset() * 6e4); return d.toISOString().slice(0, 10); };
+(async () => {
+  const b = await chromium.launch();
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'pt-BR' });
+  const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await ctx.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: "window.MQ=window.MQ||{};MQ.CONFIG={supabaseUrl:'',supabaseAnonKey:'',semServiceWorker:true};" }));
+  await ctx.route('**/cdn.jsdelivr.net/**', r => r.abort()); await ctx.route('**/fonts.g*/**', r => r.abort());
+  await p.goto('http://localhost:8766/'); await p.evaluate(() => { localStorage.clear(); sessionStorage.clear(); }); await p.reload(); await p.waitForSelector('.resumo');
+  const como = async papel => { await p.click(`button[data-p=${papel}]`); await p.waitForTimeout(400); await p.evaluate(() => MQ.ui.fecharPainel && MQ.ui.fecharPainel()); await p.waitForTimeout(150); };
+  const aba = async a => { await p.evaluate(a => { const b = document.querySelector(`[data-acao=aba][data-aba=${a}]`); b && b.click(); }, a); await p.waitForTimeout(300); };
+  const toast = () => p.$eval('#toast', t => t.textContent).catch(() => '');
+  const larg = async n => { const w = await p.evaluate(() => document.documentElement.scrollWidth); ok(n + ': sem rolagem para os lados', w <= 390, 'largura ' + w); };
+  const submit = async () => { await p.click('form[data-form=viag-salvar] button[type=submit]'); await p.waitForTimeout(400); };
+  const peds = () => p.evaluate(() => MQ.ui.S.pedidos || []);
+
+  // ===== bolsista de articulação
+  await como('bolsista');
+  ok('Articulação vê a seção "Passagens aéreas e eventos"', !!(await p.$('#t-viag')));
+  const outros = await p.evaluate(() => { const S = MQ.ui.S; const r = {}; for (const pp of ['apoio', 'agente', 'professor_fic', 'auxiliar_adm']) { const o = S.eu.papel; S.eu.papel = pp; r[pp] = MQ.viagUI.secaoBolsista() === '' && !MQ.viagUI.podeVer(pp); S.eu.papel = o; } return r; });
+  ok('Apoio, agente, professor e auxiliar NÃO veem a seção', Object.values(outros).every(Boolean), JSON.stringify(outros));
+  await p.click('[data-acao=viag-nova][data-t=passagem]'); await p.waitForTimeout(300);
+  ok('Abre formulário de passagem', !!(await p.$('form[data-form=viag-salvar][data-t=passagem]')));
+  await larg('Formulário de passagem');
+  await submit();
+  const nErr = await p.$$eval('form[data-form=viag-salvar] .tem-erro', l => l.length);
+  ok('Enviar vazio marca viagem e passageira', nErr >= 10, nErr + ' marcados · ' + await p.textContent('form[data-form=viag-salvar] [data-erro]'));
+  await p.fill('#vg-tit', 'Intercâmbio das agricultoras de Picos em Juazeiro');
+  await p.selectOption('#vg-fin', 'intercambio'); await p.fill('#vg-ori', 'Teresina/PI'); await p.fill('#vg-des', 'Petrolina/PE');
+  await p.fill('#vg-ida', dia(20)); await p.dispatchEvent('#vg-ida', 'change'); await p.waitForTimeout(100);
+  ok('Data com 20 dias avisa "fora do prazo" e FUNCERN 30 dias', /fora do prazo/.test(await p.textContent('[data-prazo]')) && /30 dias/.test(await p.textContent('[data-prazo]')));
+  await p.fill('#vg-vol', dia(18)); await p.selectOption('#vg-bag', 'mao');
+  const bl = '[data-pass]:nth-of-type(1) ';
+  await p.fill(bl + '[name=ps_nome]', 'Maria das Dores Silva'); await p.fill(bl + '[name=ps_cpf]', '52998224725'); await p.fill(bl + '[name=ps_nasc]', '1968-04-04');
+  await p.fill(bl + '[name=ps_rg]', '1234567'); await p.fill(bl + '[name=ps_org]', 'SSP/PI'); await p.selectOption(bl + '[name=ps_sexo]', 'F');
+  await p.fill(bl + '[name=ps_cel]', '89999990000'); await p.fill(bl + '[name=ps_email]', 'dores@gmail.com');
+  ok('CPF da passageira ganha máscara', (await p.inputValue(bl + '[name=ps_cpf]')) === '529.982.247-25');
+  await submit();
+  let campos = await p.$$eval('form[data-form=viag-salvar] .campo.tem-erro input, form[data-form=viag-salvar] .campo.tem-erro textarea', l => l.map(i => i.name));
+  ok('Volta antes da ida recusada', campos.includes('volta'), campos.join(','));
+  ok('Fora do prazo sem justificativa recusado', campos.includes('justificativa'));
+  await p.fill('#vg-vol', dia(25)); await p.fill('#vg-just', 'Convite do encontro regional chegou esta semana.');
+  // segunda passageira
+  await p.click('[data-acao=viag-add-pass]'); await p.waitForTimeout(150);
+  ok('"+ Outra pessoa" adiciona bloco 2', (await p.$$('[data-pass]')).length === 2 && (await p.textContent('[data-pass]:nth-of-type(2) [data-n]')) === '2');
+  await submit();
+  ok('Passageira 2 vazia: marca os campos dela', (await p.$$eval('[data-pass]:nth-of-type(2) .tem-erro', l => l.length)) >= 7);
+  const b2 = '[data-pass]:nth-of-type(2) ';
+  await p.fill(b2 + '[name=ps_nome]', 'Maria das Dores Silva'); await p.fill(b2 + '[name=ps_cpf]', '52998224725'); await p.fill(b2 + '[name=ps_nasc]', '1970-01-01');
+  await p.fill(b2 + '[name=ps_rg]', '7654321'); await p.fill(b2 + '[name=ps_org]', 'SSP/PI'); await p.selectOption(b2 + '[name=ps_sexo]', 'F'); await p.fill(b2 + '[name=ps_cel]', '89988887777'); await p.fill(b2 + '[name=ps_email]', 'x@gmail.com');
+  await submit();
+  ok('Mesma pessoa duas vezes recusado', /duas vezes/.test(await p.textContent('form[data-form=viag-salvar] [data-erro]')), await p.textContent('form[data-form=viag-salvar] [data-erro]') + ' | ' + (await p.$$eval('form .tem-erro input, form .tem-erro select, form .tem-erro textarea', l => l.map(i => i.name + '=' + i.value))).join(','));
+  await p.fill(b2 + '[name=ps_nome]', 'Francisca Rural Lima'); await p.fill(b2 + '[name=ps_cpf]', '15350946056');
+  // terceira e tirar
+  await p.click('[data-acao=viag-add-pass]'); await p.click('[data-pass]:nth-of-type(3) [data-acao=viag-rem-pass]'); await p.waitForTimeout(100);
+  ok('"Tirar esta pessoa" remove o bloco', (await p.$$('[data-pass]')).length === 2);
+  await submit();
+  ok('Passagem enviada', /enviado/.test(await toast()) && (await peds()).length === 1, await toast() + ' ' + await p.textContent('form[data-form=viag-salvar] [data-erro]').catch(() => ''));
+  let pd = (await peds())[0];
+  ok('Guardou 2 passageiras com CPF só números', pd && pd.dados.passageiros.length === 2 && pd.dados.passageiros[0].cpf === '52998224725');
+  ok('Pedido na UF da bolsista (PI)', pd && pd.uf === 'PI');
+  ok('Aparece em "Meus pedidos" com "Com a coordenação técnica"', /Com a coordenação técnica/.test(await p.textContent('#t-viag + *, .viag').catch(() => '')) || /Com a coordenação técnica/.test(await p.textContent('.viag')));
+  // evento
+  await p.click('[data-acao=viag-nova][data-t=evento]'); await p.waitForTimeout(300);
+  await larg('Formulário de evento');
+  await submit();
+  ok('Evento vazio: pede local, hora, participantes, responsável e um item', (await p.$$eval('form .tem-erro', l => l.length)) >= 5 && /Corrija|Marque/.test(await p.textContent('form[data-form=viag-salvar] [data-erro]')), (await p.$$eval('form .tem-erro', l => l.length)) + ' ' + await p.textContent('form[data-form=viag-salvar] [data-erro]'));
+  await p.fill('#vg-tit', 'Encontro de troca de conhecimentos do Piauí'); await p.fill('#vg-dia', dia(60)); await p.fill('#vg-hora', '08:00'); await p.fill('#vg-dur', '8 horas');
+  await p.fill('#vg-loc', 'Sede da associação, Rua A, 10, Picos/PI'); await p.fill('#vg-pm', '60'); await p.fill('#vg-pe', '5');
+  await p.check('[name=est_tenda]'); await p.check('[name=est_som]'); await p.fill('#vg-cad', '65'); await p.fill('#vg-alm', '65');
+  await submit();
+  ok('Almoço sem "entrega ou serviço" recusado', !!(await p.$('#vg-srv')) && /serviço/.test(await p.$eval('#vg-srv', e => e.closest('.campo').textContent)));
+  await p.selectOption('#vg-srv', 'entrega'); await p.fill('#vg-rn', 'Joana Responsável'); await p.fill('#vg-rc', '89977776666'); await submit();
+  ok('Evento enviado no prazo (sem justificativa)', (await peds()).length === 2, await toast());
+
+  // ===== coordenação técnica
+  await como('coord_tecnico');
+  const tabT = await p.$eval('[data-acao=aba][data-aba=viagens]', e => e.textContent).catch(() => '');
+  ok('Coord. técnica tem a aba "Viagens e eventos" com 2 pendentes', /Viagens e eventos/.test(tabT) && /2/.test(tabT), tabT);
+  await aba('viagens'); await larg('Aba Viagens (técnica)');
+  ok('Lista "Esperando a sua conferência" com 2', /Esperando a sua conferência\s*2/.test(await p.textContent('main')));
+  const idP = (await peds()).find(x => x.tipo === 'passagem').id, idE = (await peds()).find(x => x.tipo === 'evento').id;
+  await p.evaluate(id => MQ.ui.abrirPainel({ tipo: 'viag-ver', id }), idP); await p.waitForTimeout(250);
+  ok('Técnica vê CPF e RG das passageiras', /529\.982\.247-25/.test(await p.textContent('.painel-corpo')) && /1234567/.test(await p.textContent('.painel-corpo')));
+  ok('Técnica NÃO tem botão Autorizar', !(await p.$('button[name=acao][value=autorizar]')));
+  await p.click('button[name=acao][value=devolver]'); await p.waitForTimeout(250);
+  ok('Devolver sem motivo não devolve', (await peds()).find(x => x.id === idP).situacao === 'enviado');
+  await p.fill('form[data-form=viag-mover] textarea', 'Confira a data de volta: está no mesmo dia do encontro.'); await p.click('button[name=acao][value=devolver]'); await p.waitForTimeout(400);
+  ok('Devolvido com motivo', (await peds()).find(x => x.id === idP).situacao === 'devolvido', await toast());
+  await p.evaluate(id => MQ.ui.abrirPainel({ tipo: 'viag-ver', id }), idE); await p.waitForTimeout(250);
+  await p.click('button[name=acao][value=conferir]'); await p.waitForTimeout(400);
+  ok('Evento conferido', (await peds()).find(x => x.id === idE).situacao === 'conferido', await toast());
+
+  // ===== bolsista corrige
+  await como('bolsista');
+  ok('Bolsista vê aviso de pedido devolvido', /devolvido para corrigir/i.test(await p.textContent('.viag')));
+  await p.evaluate(id => MQ.ui.abrirPainel({ tipo: 'viag-ver', id }), idP); await p.waitForTimeout(250);
+  ok('Mostra o motivo da devolução', /mesmo dia do encontro/.test(await p.textContent('.painel-corpo')));
+  await p.click('[data-acao=viag-nova][data-id]'); await p.waitForTimeout(300);
+  ok('Corrigir traz tudo preenchido (2 passageiras)', (await p.$$('[data-pass]')).length === 2 && (await p.inputValue('[data-pass]:nth-of-type(2) [name=ps_nome]')) === 'Francisca Rural Lima');
+  await p.fill('#vg-vol', dia(22)); await submit();
+  ok('Reenviado volta para a técnica', (await peds()).find(x => x.id === idP).situacao === 'enviado', await toast());
+
+  // ===== técnica confere, geral autoriza
+  await como('coord_tecnico'); await p.evaluate(id => MQ.ui.abrirPainel({ tipo: 'viag-ver', id }), idP); await p.waitForTimeout(250);
+  await p.click('button[name=acao][value=conferir]'); await p.waitForTimeout(400);
+  await como('coord_geral');
+  const tabG = await p.$eval('[data-acao=aba][data-aba=viagens]', e => e.textContent).catch(() => '');
+  ok('Coord. geral tem a aba com 2 esperando', /Viagens e eventos/.test(tabG) && /2/.test(tabG), tabG);
+  await aba('viagens');
+  await p.evaluate(id => MQ.ui.abrirPainel({ tipo: 'viag-ver', id }), idP); await p.waitForTimeout(250);
+  ok('Geral vê "Texto para mandar à FUNCERN" com os dados', /CPF 529\.982\.247-25/.test(await p.inputValue('.viag-copia')));
+  await p.fill('#vm-prot', 'FUNCERN 45/2026'); await p.click('button[name=acao][value=autorizar]'); await p.waitForTimeout(400);
+  pd = (await peds()).find(x => x.id === idP);
+  ok('Passagem autorizada com protocolo', pd.situacao === 'autorizado' && pd.funcern_protocolo === 'FUNCERN 45/2026', await toast());
+  ok('Contador: 2 de 25 passagens de intercâmbio', /2\s*de 25/.test(await p.textContent('.resumo')));
+  await p.evaluate(id => MQ.ui.abrirPainel({ tipo: 'viag-ver', id }), idE); await p.waitForTimeout(250);
+  await p.click('button[name=acao][value=recusar]'); await p.waitForTimeout(250);
+  ok('Recusar sem motivo não recusa', (await peds()).find(x => x.id === idE).situacao === 'conferido');
+  await p.fill('form[data-form=viag-mover] textarea', 'O evento do Piauí será junto com o de Pernambuco.'); await p.click('button[name=acao][value=recusar]'); await p.waitForTimeout(400);
+  ok('Evento recusado', (await peds()).find(x => x.id === idE).situacao === 'recusado');
+  await aba('historico');
+  const h = await p.textContent('main');
+  ok('Histórico registra pedido, conferência, devolução e autorização', /pediu passagem/.test(h) && /conferiu/.test(h) && /devolveu o pedido/.test(h) && /autorizou o pedido/.test(h));
+  const aud = await p.evaluate(() => JSON.stringify(MQ.ui.S.aud.filter(a => a.tabela === 'pedidos_apoio')));
+  ok('Histórico sem CPF das passageiras', !/52998224725/.test(aud));
+  await aba('viagens'); await larg('Aba Viagens (geral)');
+  await p.screenshot({ path: '/tmp/claude-0/pw/cad/viag-geral.png', fullPage: true });
+  ok('Sem erro de JavaScript', !errs.length, errs.join(' | '));
+  R.forEach((r, i) => console.log(String(i + 1).padStart(2), r[0], '|', r[1], r[0] === 'FALHOU' ? '| ' + r[2] : ''));
+  console.log('TOTAL', R.filter(r => r[0] === 'PASSOU').length, 'passou,', R.filter(r => r[0] === 'FALHOU').length, 'falhou');
+  await b.close();
+})().catch(e => { console.log('ERRO', e.stack.split('\n').slice(0, 3).join(' ')); R.forEach((r, i) => console.log(i + 1, r.join(' | '))); process.exit(1); });

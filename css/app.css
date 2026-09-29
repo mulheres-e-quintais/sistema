@@ -1200,3 +1200,17 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .dica-email .sug-email { margin-top: 6px; display: inline-flex; }
 .conv-email { display: grid; gap: 2px; margin: 4px 0 0; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); overflow-wrap: anywhere; }
 .conv-rasc { margin-bottom: 4px; }
+
+/* passagens aéreas e eventos */
+.viag-botoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin: 6px 0 14px; }
+.viag-botoes .cad-modo { text-align: left; }
+.viag-sub { margin: 14px 0 8px; font-size: var(--t-base); }
+.viag-linha { display: grid; gap: 3px; text-align: left; }
+.viag-pass { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px 14px; margin: 0 0 12px; background: var(--surface); }
+.viag-pass legend { padding: 0 6px; font-weight: 600; }
+.viag-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 12px; margin-bottom: 10px; }
+.viag-prazo { margin: 0 0 12px; }
+.viag-pdl { padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px dashed var(--line); }
+.viag-pdl:last-child { border-bottom: 0; margin-bottom: 0; }
+.viag-txt { white-space: pre-wrap; font: inherit; font-size: var(--t-sm); margin: 0; }
+.viag-copia { width: 100%; font-size: var(--t-sm); }

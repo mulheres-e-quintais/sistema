@@ -200,6 +200,68 @@
     async trocarPerfil(p) { const d = ler(); d.perfil = p; this.perfisDemo(); gravar(); return euMesmo(); },
     async recomecar() { mem = null; try { localStorage.removeItem(CHAVE); } catch (e) {} ler(); gravar(); return euMesmo(); },
 
+    /* ---------- Pedidos de passagem e evento (mesmas regras do 22_passagens_eventos.sql) ---------- */
+    async listarPedidos() {
+      const d = ler(); const eu = euMesmo(); if (!eu) return [];
+      const ve = ['coord_geral', 'coord_tecnico'].includes(eu.papel);
+      return copia((d.pedidos || []).filter(p => ve || p.solicitante_id === eu.id).sort((a, b) => String(b.enviado_em).localeCompare(String(a.enviado_em))));
+    },
+    async salvarPedido(id, tipo, titulo, data, dados, justificativa) {
+      const d = ler(); const eu = euMesmo(); d.pedidos = d.pedidos || [];
+      if (!eu || eu.papel !== 'articulacao') throw falha('Quem pede passagem e estrutura de evento é a bolsista de articulação territorial.');
+      const ant = { passagem: 40, evento: 45 }[tipo]; if (!ant) throw falha('Tipo de pedido inválido.');
+      if (!data || data < R.hoje()) throw falha('Informe uma data que ainda não passou.');
+      if (data > '2027-09-30') throw falha('A data passa do fim do projeto (setembro de 2027).');
+      const dias = Math.round((new Date(data + 'T12:00:00') - new Date(R.hoje() + 'T12:00:00')) / 864e5);
+      if (dias < ant && String(justificativa || '').trim().length < 15) throw falha('Pedido fora do prazo (' + ant + ' dias antes). Escreva a justificativa.');
+      if (tipo === 'passagem' && !((dados && dados.passageiros) || []).length) throw falha('Informe pelo menos uma passageira ou passageiro.');
+      const agora = new Date().toISOString(); let p;
+      if (!id) { p = { id: uid(), tipo, uf: eu.uf, solicitante_id: eu.id, criado_em: agora }; d.pedidos.push(p); }
+      else {
+        p = d.pedidos.find(x => x.id === id);
+        if (!p || p.solicitante_id !== eu.id) throw falha('Pedido não encontrado.');
+        if (p.situacao !== 'devolvido') throw falha('Só dá para corrigir pedido devolvido.');
+      }
+      Object.assign(p, { titulo, data_ref: data, dados: copia(dados), justificativa_prazo: justificativa || null, situacao: 'enviado', enviado_em: agora, conferido_por: null, conferido_em: null, decidido_por: null, decidido_em: null });
+      const aud = Object.assign({}, p); delete aud.dados;
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'pedidos_apoio', registro_id: p.id, acao: id ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: null, depois: aud });
+      gravar(); return p.id;
+    },
+    async moverPedido(id, acao, obs, protocolo) {
+      const d = ler(); const eu = euMesmo(); const p = (d.pedidos || []).find(x => x.id === id);
+      if (!eu || !p) throw falha('Pedido não encontrado.');
+      const papel = eu.papel; const agora = new Date().toISOString(); const o = String(obs || '').trim();
+      if (acao === 'conferir') {
+        if (!['coord_tecnico', 'coord_geral'].includes(papel)) throw falha('Quem confere é a coordenação técnica.');
+        if (p.situacao !== 'enviado') throw falha('Este pedido não está esperando conferência.');
+        Object.assign(p, { situacao: 'conferido', conferido_por: eu.id, conferido_em: agora, obs: null });
+      } else if (acao === 'devolver') {
+        if (!((['coord_tecnico', 'coord_geral'].includes(papel) && p.situacao === 'enviado') || (papel === 'coord_geral' && p.situacao === 'conferido'))) throw falha('Este pedido não pode ser devolvido agora.');
+        if (o.length < 5) throw falha('Para devolver, escreva o que precisa ser corrigido.');
+        Object.assign(p, { situacao: 'devolvido', obs: o, decidido_por: eu.id, decidido_em: agora });
+      } else if (acao === 'autorizar') {
+        if (papel !== 'coord_geral') throw falha('Quem autoriza e manda para a FUNCERN é a coordenação geral.');
+        if (p.situacao !== 'conferido') throw falha('Só pedido conferido pela coordenação técnica pode ser autorizado.');
+        Object.assign(p, { situacao: 'autorizado', decidido_por: eu.id, decidido_em: agora, obs: o || null, funcern_protocolo: String(protocolo || '').trim() || null });
+      } else if (acao === 'recusar') {
+        if (papel !== 'coord_geral') throw falha('Quem recusa é a coordenação geral.');
+        if (!['enviado', 'conferido'].includes(p.situacao)) throw falha('Este pedido não pode ser recusado agora.');
+        if (o.length < 5) throw falha('Escreva o motivo da recusa.');
+        Object.assign(p, { situacao: 'recusado', obs: o, decidido_por: eu.id, decidido_em: agora });
+      } else if (acao === 'cancelar') {
+        if (p.solicitante_id !== eu.id) throw falha('Só quem pediu pode cancelar.');
+        if (!['enviado', 'devolvido'].includes(p.situacao)) throw falha('Depois de conferido, peça à coordenação para cancelar.');
+        Object.assign(p, { situacao: 'cancelado', obs: o || 'Cancelado por quem pediu.', decidido_por: eu.id, decidido_em: agora });
+      } else if (acao === 'protocolo') {
+        if (papel !== 'coord_geral') throw falha('Só a coordenação geral registra o protocolo da FUNCERN.');
+        if (p.situacao !== 'autorizado') throw falha('Só pedido autorizado tem protocolo.');
+        p.funcern_protocolo = String(protocolo || '').trim() || null;
+      } else throw falha('Ação inválida.');
+      const aud = Object.assign({}, p); delete aud.dados;
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'pedidos_apoio', registro_id: p.id, acao: 'UPDATE', por: eu.id, em: agora, antes: null, depois: aud });
+      gravar();
+    },
+
     /* ---------- Solicitação de pagamento (mesmas regras do 12_pagamentos.sql) ---------- */
     async listarSolicitacoes() {
       const d = ler(); const eu = euMesmo(); if (!eu) return { lista: [], vinculos: {} };

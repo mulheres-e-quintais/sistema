@@ -61,6 +61,11 @@
         try { const r = await S.api.listarSolicitacoes(); S.solic = r.lista; S.solicVis = r.vinculos; }
         catch (e) { if (e.semRede || !semFic(e)) throw e; S.pagSemBanco = true; S.solic = []; S.solicVis = {}; }
       }
+      // pedidos de passagem e evento (22_passagens_eventos.sql): só articulação, coordenação técnica e geral
+      S.pedSemBanco = false; S.pedidos = [];
+      if (S.api.listarPedidos && MQ.viagUI && MQ.viagUI.podeVer(S.eu.papel)) {
+        try { S.pedidos = await S.api.listarPedidos(); } catch (e) { if (e.semRede || !semFic(e)) throw e; S.pedSemBanco = true; }
+      }
       // entregas do mês e ciência do guia (19_entregas_do_mes.sql); sem o script, o resto continua
       S.entregasSemBanco = false; S.entregas = []; S.ciencias = [];
       if (S.api.listarEntregas && !['auxiliar_adm'].includes(S.eu.papel)) {
@@ -179,8 +184,8 @@
 
   /* cada coordenação só vê os módulos do seu papel (o banco também limita o que cada uma lê e grava) */
   const ABAS_PAPEL = {
-    coord_geral:   ['visao', 'equipe', 'selecao', 'campo', 'fic', 'pagamentos', 'custos', 'historico'],
-    coord_tecnico: ['selecao', 'equipe', 'campo', 'pagamentos', 'custos']
+    coord_geral:   ['visao', 'equipe', 'selecao', 'campo', 'fic', 'pagamentos', 'viagens', 'custos', 'historico'],
+    coord_tecnico: ['selecao', 'equipe', 'campo', 'pagamentos', 'viagens', 'custos']
   };
   /* seções da coordenação com o número de pendências de cada uma (abas no computador, menu ☰ no celular) */
   function abasCoord() {
@@ -189,7 +194,7 @@
     const diagAguard = (S.diagnosticos || []).filter(x => x.situacao === 'aguardando').length;
     const aval = MQ.pagUI ? MQ.pagUI.contaAval() : 0;
     return [['visao', 'Visão geral', 0], ['equipe', 'Equipe', 0], ['selecao', 'Seleção', aguard], ['campo', 'Campo', diagAguard], ['fic', 'Curso FIC', 0],
-      ['pagamentos', 'Pagamentos', aval], ['custos', 'Custos', 0], ['historico', 'Histórico', 0]].filter(([id]) => pode.includes(id));
+      ['pagamentos', 'Pagamentos', aval], ['viagens', 'Viagens e eventos', MQ.viagUI ? MQ.viagUI.contaMinha() : 0], ['custos', 'Custos', 0], ['historico', 'Histórico', 0]].filter(([id]) => pode.includes(id));
   }
   function abaAtual() { const pode = ABAS_PAPEL[S.eu.papel] || ABAS_PAPEL.coord_tecnico; return pode.includes(S.aba) ? S.aba : pode[0]; }
   function telaCoordenacao() {
@@ -232,6 +237,7 @@
     else if (aba === 'custos') corpo = MQ.custosUI ? MQ.custosUI.aba() : '';
     else if (aba === 'fic') corpo = MQ.ficUI ? MQ.ficUI.aba() : '';
     else if (aba === 'pagamentos') corpo = MQ.pagUI ? MQ.pagUI.abaCoord() : '';
+    else if (aba === 'viagens') corpo = MQ.viagUI ? MQ.viagUI.abaCoord() : '';
     else if (aba === 'campo') corpo = (MQ.campoUI ? MQ.campoUI.abaCoord() : '') + (MQ.vitrineUI && !S.campoSemBanco ? MQ.vitrineUI.secaoCoord() : '');
     else corpo = `<div class="cab"><div><span class="eyebrow">Histórico</span><h1 id="t-h">Histórico de alterações</h1>
         <p>Quem fez o quê, e quando: cadastros, aprovações, pagamentos, códigos de acesso e consultas a dados bancários. Serve para a prestação de contas.</p></div></div>
@@ -404,6 +410,13 @@
       if (mudou === 'devolvida') return `${Q} devolveu o pedido de ${tipo} de ${pessoa(alvo.equipe_id)}.`;
       return `${Q} atualizou o pedido de ${tipo} de ${pessoa(alvo.equipe_id)}.`;
     }
+    if (a.tabela === 'pedidos_apoio') {
+      const tipo = alvo.tipo === 'evento' ? 'estrutura de evento' : 'passagem aérea';
+      const txt = { enviado: `${pessoa(alvo.solicitante_id)} ${a.acao === 'INSERT' ? 'pediu' : 'reenviou o pedido de'} ${tipo}`, conferido: `${Q} conferiu o pedido de ${tipo} de ${pessoa(alvo.solicitante_id)}`,
+        devolvido: `${Q} devolveu o pedido de ${tipo} de ${pessoa(alvo.solicitante_id)}`, autorizado: `${Q} autorizou o pedido de ${tipo} de ${pessoa(alvo.solicitante_id)} e mandou para a FUNCERN`,
+        recusado: `${Q} recusou o pedido de ${tipo} de ${pessoa(alvo.solicitante_id)}`, cancelado: `${Q} cancelou o pedido de ${tipo}` }[alvo.situacao];
+      return (txt || `${Q} atualizou um pedido de ${tipo}`) + (alvo.uf ? ' (' + esc(alvo.uf) + ')' : '') + '.';
+    }
     if (a.tabela === 'turmas_fic') return `${Q} ${a.acao === 'INSERT' ? 'criou' : a.acao === 'DELETE' ? 'removeu' : 'atualizou'} a turma do FIC <b>${esc(alvo.nome || '')}</b>.`;
     if (a.tabela === 'matriculas_fic') return alvo.cancelada_em ? `${Q} cancelou a matrícula no FIC de ${pessoa(alvo.equipe_id)}.` : `${Q} matriculou ${pessoa(alvo.equipe_id)} no curso FIC.`;
     if (a.tabela === 'vitrine_fotos') return `${Q} ${a.acao === 'DELETE' ? 'tirou uma foto da' : 'publicou uma foto na'} vitrine${alvo.uf ? ' (' + esc(alvo.uf) + ')' : ''}.`;
@@ -478,6 +491,7 @@
       ${MQ.fichasUI ? MQ.fichasUI.secaoBolsista() : ''}
       ${MQ.campoUI ? MQ.campoUI.secaoBolsista() : ''}
       ${MQ.pagUI ? MQ.pagUI.secaoMinha() : ''}
+      ${MQ.viagUI ? MQ.viagUI.secaoBolsista() : ''}
       <section class="secao"><div class="secao-cab"><h2>Próximos formulários</h2><span class="chip pend">Em preparação</span></div>
         <p class="small muted">Até entrarem no sistema, use os modelos em papel (versão 2).</p>
         <ul class="forms">${MQ.FORMULARIOS.filter(f => f.n === 4).map(f => `<li><span class="n">${f.n}</span><b>${esc(f.nome)}</b><span class="small muted">${esc(f.quando)}</span></li>`).join('')}</ul></section>
@@ -551,7 +565,7 @@
     let el = $('#painel');
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
     const p = S.painel;
-    const corpo = p.tipo === 'roteiro' && MQ.roteiroUI ? MQ.roteiroUI.painel(p) : p.tipo === 'ajuda' ? MQ.ajudaUI.painel(p) : p.tipo === 'meus-dados' ? painelMeusDados() : /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
+    const corpo = p.tipo === 'roteiro' && MQ.roteiroUI ? MQ.roteiroUI.painel(p) : p.tipo === 'ajuda' ? MQ.ajudaUI.painel(p) : p.tipo === 'meus-dados' ? painelMeusDados() : /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^viag-/.test(p.tipo) && MQ.viagUI ? MQ.viagUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
     el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel" role="dialog" aria-modal="true" aria-labelledby="painel-t">${corpo}</aside>`;
     const foco = el.querySelector('[autofocus]') || el.querySelector('.fechar');
     if (foco) foco.focus();
@@ -831,6 +845,7 @@
       else if (/^custo-/.test(a) && MQ.custosUI) await MQ.custosUI.clique(a, el);
       else if (/^fic-/.test(a) && MQ.ficUI) { S.voltarFoco = el; await MQ.ficUI.clique(a, el); }
       else if (/^pag-/.test(a) && MQ.pagUI) { S.voltarFoco = el; await MQ.pagUI.clique(a, el); }
+      else if (/^viag-/.test(a) && MQ.viagUI) { if (!/pass$/.test(a)) S.voltarFoco = el; await MQ.viagUI.clique(a, el); }
       else if (/^(aval|imp)-/.test(a) && MQ.impactoUI) { S.voltarFoco = el; await MQ.impactoUI.clique(a, el); }
       else if (/^vit-/.test(a) && MQ.vitrineUI) await MQ.vitrineUI.clique(a, el);
       else if (/^ent-/.test(a) && MQ.entregasUI) await MQ.entregasUI.clique(a, el);
@@ -911,6 +926,7 @@
       if (/^custo-/.test(tipo) && MQ.custosUI) await MQ.custosUI.enviar(tipo, form, fd);
       if (/^fic-/.test(tipo) && MQ.ficUI) await MQ.ficUI.enviar(tipo, form, fd);
       if (/^pag-/.test(tipo) && MQ.pagUI) await MQ.pagUI.enviar(tipo, form, fd);
+      if (/^viag-/.test(tipo) && MQ.viagUI) await MQ.viagUI.enviar(tipo, form, fd);
       if (/^rot-/.test(tipo) && MQ.roteiroUI) await MQ.roteiroUI.enviar(tipo, form, fd);
       if (tipo === 'aval' && MQ.impactoUI) await MQ.impactoUI.enviar(tipo, form, fd);
       if (/^conv-/.test(tipo) && MQ.convitesUI) await MQ.convitesUI.enviar(tipo, form, fd);
