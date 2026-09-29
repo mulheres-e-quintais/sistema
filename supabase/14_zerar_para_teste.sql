@@ -7,11 +7,14 @@
 -- 2) Aqui embaixo, troque  'NAO'  por  'ZERAR'  na linha "confirmar". Depois clique em Run.
 --    Sem essa troca, o script não apaga nada.
 --
--- FICA:   você (coordenação geral), o seu login e os seus dados; parâmetros de custo; APLs por município.
+-- FICA:   você (coordenação geral), o seu login e os seus dados; parâmetros de custo; APLs por município;
+--         documentos do projeto (aba Documentos: atas, ofícios). Se anexou documento de teste, arquive na tela.
 -- SAI:    toda a equipe (coordenação técnica, auxiliar, professores, bolsistas, agentes) e os logins dela;
 --         convites e pré-cadastros; contas bancárias; fichas; visitas; diagnósticos; avaliações;
---         custos de visita; turmas e matrículas do FIC; pedidos de pagamento; histórico (auditoria);
---         dados de exemplo; fotos publicadas na vitrine (os arquivos entram na lista de remoção).
+--         custos de visita; turmas e matrículas do FIC; pedidos de pagamento; pedidos de passagem e evento;
+--         pedidos de novo acesso; entregas do mês e ciências; respostas do roteiro de testes; códigos de acesso;
+--         histórico (auditoria); dados de exemplo; fotos publicadas na vitrine (os arquivos entram na lista de remoção).
+-- (atualizado em 29/09/2026 para as tabelas dos scripts 19 a 28)
 -- ARQUIVOS: fotos e termos já enviados continuam no Storage. Para apagá-los, veja o passo 3 no fim.
 -- =====================================================================
 begin;
@@ -37,7 +40,8 @@ begin
   select string_agg(format('public.%I', x), ', ') into lista
     from unnest(array['avaliacoes','solicitacao_visitas','solicitacoes_pagamento','matriculas_fic','turmas_fic',
                       'custos_visita','vitrine_fotos','diagnosticos','visitas','fichas',
-                      'pre_cadastros','convites','equipe_bancario','exemplo','auditoria']) as x
+                      'pre_cadastros','convites','equipe_bancario','exemplo','auditoria',
+                      'pedidos_apoio','pedidos_novo_acesso','entregas_mes','ciencias','testes_resultados','acesso_codigos']) as x
    where to_regclass('public.' || x) is not null;
   execute 'truncate table ' || lista;
 
@@ -47,6 +51,13 @@ begin
   end if;
   if to_regclass('public.apl_municipios') is not null then
     update public.apl_municipios set atualizado_por = null where atualizado_por is distinct from eu;
+  end if;
+  -- documentos do projeto (atas, ofícios) FICAM: são da coordenação geral; só deixam de apontar para quem sai
+  if to_regclass('public.documentos_projeto') is not null then
+    execute 'alter table public.documentos_projeto disable trigger user';
+    execute 'update public.documentos_projeto set arquivado_por = null where arquivado_por is distinct from $1' using eu;
+    execute 'update public.documentos_projeto set enviado_por = null where enviado_por is distinct from $1' using eu;
+    execute 'alter table public.documentos_projeto enable trigger user';
   end if;
 
   -- equipe: fica só a coordenação geral (sem gatilhos, para não gerar histórico nem travas de regra)
