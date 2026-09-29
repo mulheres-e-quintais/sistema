@@ -85,7 +85,7 @@
       ${alunas.length ? `<p class="small muted">${n} de ${alunas.length} confirmada${alunas.length === 1 ? '' : 's'} em ${E(nomeMes(mes).toLowerCase())}.</p>
         <div class="fic-lista">${alunas.map(x => { const k = marcada(x.id, mes, 'ava');
           return `<div class="fic-pessoa">${U().avatar(x, 36)}<span class="fp-t"><b>${E(nomeDe(x))}</b><span class="small muted">${E(P[x.papel].nome)}${x.uf ? ' · ' + E(x.uf) : ''}</span></span>
-            <label class="check ava-check"><input type="checkbox" data-acao="ent-ava" data-id="${E(x.id)}" data-mes="${mes}" ${k ? 'checked' : ''}> <span>${k ? 'Acessou' : 'Não confirmado'}</span></label></div>`; }).join('')}</div>`
+            <label class="check ava-check"><input type="checkbox" data-acao="ent-ava" data-id="${E(x.id)}" data-mes="${mes}" aria-label="${E(nomeDe(x))}: acessou o AVA em ${E(nomeMes(mes).toLowerCase())}" ${k ? 'checked' : ''}> <span>${k ? 'Acessou' : 'Não confirmado'}</span></label></div>`; }).join('')}</div>`
         : '<div class="vazio"><span>Ninguém matriculado no FIC ainda.</span></div>'}</section>`;
   }
 

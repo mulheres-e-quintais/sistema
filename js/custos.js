@@ -68,7 +68,7 @@
   function aba() {
     const souCoord = /^coord/.test(S().eu.papel);
     const vis = C.visao || 'mes';
-    const nav = `<div class="seg custo-nav" role="tablist" aria-label="Visão"><button type="button" role="tab" data-acao="custo-visao" data-v="mes" aria-pressed="${vis === 'mes'}">Pagamento do mês</button><button type="button" role="tab" data-acao="custo-visao" data-v="plano" aria-pressed="${vis === 'plano'}">Proposta de roteiro</button></div>`;
+    const nav = `<div class="seg custo-nav" role="tablist" aria-label="Visão"><button type="button" role="tab" data-acao="custo-visao" data-v="mes" aria-selected="${vis === 'mes'}">Pagamento do mês</button><button type="button" role="tab" data-acao="custo-visao" data-v="plano" aria-selected="${vis === 'plano'}">Proposta de roteiro</button></div>`;
     if (!C.carregado) {
       if (!C.carregando) C.carregando = carregar().then(() => U().render());
       // mesmo cabeçalho da página pronta, para nada pular quando os valores chegarem

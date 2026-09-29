@@ -113,7 +113,7 @@ a { color: var(--accent); }
 .seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 999px; overflow: hidden; background: var(--surface); }
 .seg button { white-space: nowrap; border: 0; background: transparent; padding: 5px 12px; font: 500 var(--t-sm) var(--sans); color: var(--ink-2); cursor: pointer; }
 .seg button + button { border-left: 1px solid var(--line); }
-.seg button[aria-pressed="true"] { background: var(--sel-bg); color: var(--sel-ink); }
+.seg button[aria-pressed="true"], .seg button[aria-selected="true"] { background: var(--sel-bg); color: var(--sel-ink); }
 .link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
 
 .wrap { width: 100%; max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 24px 64px; display: grid; gap: 28px; }
@@ -1273,3 +1273,20 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 /* formulário de campo: "Prefere aplicar no papel? Imprimir em branco" */
 .imp-barra { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 14px; padding: 10px 12px;
   border: 1px dashed var(--line-2); border-radius: 10px; background: var(--surface-2); font-size: var(--t-sm); color: var(--ink-2); }
+
+/* toque no celular: filtros e setas de mês com pelo menos 40 px de altura (antes 24 px) */
+@media (max-width: 700px) {
+  .seg button { min-height: 40px; padding: 8px 12px; }
+  .seg button[aria-label="Mês anterior"], .seg button[aria-label="Próximo mês"] { min-width: 40px; }
+}
+/* telas bem estreitas (320 px): nada escapa para o lado */
+@media (max-width: 359px) {
+  .secao-cab { flex-wrap: wrap; } .secao-cab > * { min-width: 0; }
+  .nm, .vb-t, .vb-t > span, .fp-t, .fp-t > span, .secao-cab h2 { overflow-wrap: anywhere; min-width: 0; }
+  main .bloco, main .secao, main details { min-width: 0; max-width: 100%; }
+  main .bloco table { display: block; overflow-x: auto; max-width: 100%; }   /* tabela larga rola dentro do quadro, não a página */
+  .pessoa > div, .pessoa > div > div { min-width: 0; grid-template-columns: minmax(0, 1fr); }   /* cartão da pessoa: nome e e-mail quebram linha */
+  .pessoa .dd, .pessoa .dd > span { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+}
+/* toque: o "×" que tira uma linha (família, kit, cronograma) com 40 px no celular */
+@media (max-width: 700px) { .linha-din .fechar, .painel-cab .fechar { min-width: 40px; min-height: 40px; } }

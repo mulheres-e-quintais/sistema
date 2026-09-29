@@ -54,6 +54,9 @@
     try { Object.keys(sessionStorage).filter(k => /^mq-pend-visto-/.test(k)).forEach(k => sessionStorage.removeItem(k)); } catch (e) {}
     S.pendVisto = false; S.avisoLogin = aviso || null;
     if (MQ.sessao) MQ.sessao.esquecer();
+    // LGPD: a cópia dos dados (fichas, equipe, histórico) não fica no aparelho depois de sair.
+    // Para entrar de novo é preciso internet, e aí tudo é recarregado. A fila do que não foi enviado fica.
+    try { localStorage.removeItem(chaveCache()); } catch (e) {}
     if (modoDemoAtivo()) { S.verEntrada = true; render(); return; }   // demonstração: volta para a tela de entrada
     try { await S.api.sair(); } catch (e) { /* sem internet: a sessão já foi apagada do aparelho */ }
     S.eu = null; S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.documentos = [];
