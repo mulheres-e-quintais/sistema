@@ -448,7 +448,7 @@
       return copia(d.equipe.filter(x => x.id === eu.id));
     },
     async auditoria() {
-      const eu = euMesmo(); if (!eu || !/^coord/.test(eu.papel)) return [];
+      const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') return [];   // como o banco (25_historico_e_cadastro.sql)
       return copia(ler().auditoria).reverse();
     },
 
@@ -666,6 +666,8 @@
       if (!dados.cadastro_arlo && !dados.data_nascimento) throw falha('Informe a data de nascimento.');
       const cpf = R.soDigitos(dados.cpf), email = String(dados.email || '').trim().toLowerCase();
       if (d.equipe.some(m => m.status === 'ativa' && (m.cpf === cpf || String(m.email).toLowerCase() === email))) throw falha('Já existe pessoa ativa na equipe com este CPF ou e-mail. Fale com a coordenação.');
+      if ((d.pre_cadastros || []).some(x => x.situacao === 'aguardando' && (x.cpf === cpf || String(x.email).toLowerCase() === email)))
+        throw falha('Seus dados já foram enviados e estão com a coordenação para conferir. Não precisa enviar de novo.');
       d.pre_cadastros = (d.pre_cadastros || []).concat([{ id: uid(), convite_id: c.id, papel: c.papel, uf: c.uf, substitui_id: c.substitui_id,
         nome: String(dados.nome).trim(), cpf, email, telefone: dados.telefone || null, municipio: dados.municipio || null, organizacao: dados.organizacao || null,
         cadastro_arlo: !!dados.cadastro_arlo, siape: dados.siape || null, nome_social: dados.nome_social || null, data_nascimento: dados.data_nascimento || null, nis: dados.nis || null, endereco: dados.endereco || {}, socioeconomico: dados.socioeconomico || null, perfil: dados.perfil || null,

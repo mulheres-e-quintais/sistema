@@ -20,12 +20,14 @@
 -- 1. Novo papel na equipe: agente de campo
 -- ---------------------------------------------------------------------
 alter table public.equipe drop constraint if exists equipe_papel_check;
+-- já com os perfis que o 11_fic.sql acrescenta (professor e auxiliar): assim este arquivo pode ser rodado
+-- de novo depois do 11 sem esbarrar nas pessoas já cadastradas nesses perfis
 alter table public.equipe add constraint equipe_papel_check
-  check (papel in ('coord_geral','coord_tecnico','articulacao','apoio','agente'));
+  check (papel in ('coord_geral','coord_tecnico','articulacao','apoio','agente','professor_fic','auxiliar_adm'));
 alter table public.equipe drop constraint if exists uf_por_papel;
 alter table public.equipe add constraint uf_por_papel check (
   (papel in ('articulacao','apoio','agente') and uf is not null) or
-  (papel in ('coord_geral','coord_tecnico') and uf is null));
+  (papel in ('coord_geral','coord_tecnico','professor_fic','auxiliar_adm') and uf is null));
 
 create or replace function public.pode_gerenciar(p_papel text) returns boolean
 language sql stable as $$

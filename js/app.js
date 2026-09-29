@@ -54,7 +54,7 @@
       if (S.api.listarAvaliacoes && !['professor_fic', 'auxiliar_adm'].includes(S.eu.papel)) {
         try { S.avaliacoes = await S.api.listarAvaliacoes(); } catch (e) { if (e.semRede || !semFic(e)) throw e; S.avalSemBanco = true; }
       }
-      S.aud = /^coord/.test(S.eu.papel) ? await S.api.auditoria() : [];
+      S.aud = S.eu.papel === 'coord_geral' ? await S.api.auditoria() : [];   // o histórico é só da coordenação geral
       // solicitações de pagamento (12_pagamentos.sql); sem o script, o resto continua
       S.pagSemBanco = false;
       if (S.api.listarSolicitacoes) {

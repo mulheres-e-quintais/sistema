@@ -183,7 +183,7 @@ select t('T marca pré-cadastro aprovado', :T, $$update public.pre_cadastros set
 select t('T salva perfil da aprovada (equipe_privado)', :T, $$insert into public.equipe_privado(equipe_id, perfil) select id, '{"agricultora":true}' from public.equipe where cpf='47602436000'$$, 'ok');
 -- duas pessoas pela mesma vaga de apoio BA
 select f(null, envia('apBA', replace(replace(replace(:'D','Luzia Rural Silva','Maria Um Bahia'),'476.024.360-00','39053344705'),' Luzia@Gmail.com ','m1@t.com')));
-select f(null, envia('apBA2', replace(replace(replace(:'D','Luzia Rural Silva','Maria Dois Bahia'),'476.024.360-00','86288366757'),' Luzia@Gmail.com ','m2@t.com')));
+select f(null, envia('apBA2', replace(replace(replace(:'D','Luzia Rural Silva','Maria Dois Bahia'),'476.024.360-00','71428793860'),' Luzia@Gmail.com ','m2@t.com')));
 
 -- ===== 9. Desligar e substituir
 select t('T desliga sem motivo bloqueado', :T, $$update public.equipe set status='desligada', data_fim=current_date where email='art.pi@t.com'$$, 'desligamento_completo');
