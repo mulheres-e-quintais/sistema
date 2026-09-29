@@ -95,11 +95,13 @@ describe('Seleção', () => {
     const pn = t.painel({ tipo: 'ficha-ver', id: f.id });
     assert.ok(tem(pn, 'value="aprovada"')); assert.ok(tem(pn, 'value="devolvida"'));
   });
-  test('bolsista: lança nova ficha e vê só as fichas do próprio estado', async () => {
+  test('bolsista: lança ficha só no estado dela e vê só as fichas do estado dela', async () => {
     const t = await montar('bolsista'); const h = t.aba(null);
     assert.ok(botoes(h, 'ficha-nova').length > 0);
-    assert.ok(texto(h).includes('Seleção das mulheres · Piauí'));
-    assert.ok(t.S.fichas.length > 0); t.S.fichas.forEach(f => assert.equal(f.uf, 'PI'));
+    const uf = t.S.eu.uf, nomeUF = t.MQ.ui.nomeUF(uf);
+    assert.ok(texto(h).includes('Seleção das mulheres · ' + nomeUF));
+    assert.ok(t.S.fichas.length > 0); t.S.fichas.forEach(f => assert.equal(f.uf, uf));
+    await assert.rejects(t.api.salvarFicha({ id: 'outra-uf', uf: uf === 'BA' ? 'PI' : 'BA' }, {}), /permissão/);   // outro estado: recusado
   });
   test('bolsista: a ficha nova abre o formulário com critérios e autorização dos dados', async () => {
     const t = await montar('bolsista'); t.aba(null);
@@ -122,9 +124,9 @@ describe('Campo', () => {
   });
   test('bolsista: agenda visitas e registra diagnóstico no próprio estado', async () => {
     const t = await montar('bolsista'); const h = t.aba(null);
-    assert.ok(texto(h).includes('Trabalho de campo · Piauí'));
+    assert.ok(texto(h).includes('Trabalho de campo · ' + t.MQ.ui.nomeUF(t.S.eu.uf)));
     assert.ok(botoes(h, 'campo-visita-nova').length > 0);
-    t.S.visitas.forEach(v => assert.equal(v.uf, 'PI'));
+    t.S.visitas.forEach(v => assert.equal(v.uf, t.S.eu.uf));
   });
   test('agente: vê só as visitas dela e registra; não agenda', async () => {
     const t = await montar('agente'); const h = t.aba(null);
