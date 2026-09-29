@@ -208,7 +208,7 @@
     },
     async salvarPedido(id, tipo, titulo, data, dados, justificativa) {
       const d = ler(); const eu = euMesmo(); d.pedidos = d.pedidos || [];
-      if (!eu || eu.papel !== 'articulacao') throw falha('Quem pede passagem e estrutura de evento é a bolsista de articulação territorial.');
+      if (!eu || eu.papel !== 'articulacao') throw falha('Quem pede passagem e estrutura de evento é a bolsista de articulação estadual.');
       const ant = { passagem: 40, evento: 45 }[tipo]; if (!ant) throw falha('Tipo de pedido inválido.');
       if (!data || data < R.hoje()) throw falha('Informe uma data que ainda não passou.');
       if (data > '2027-09-30') throw falha('A data passa do fim do projeto (setembro de 2027).');
