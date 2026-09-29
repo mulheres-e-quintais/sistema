@@ -94,7 +94,7 @@
       ${l.map(m => U().cartaoPessoa(m)).join('')}
       <div class="vazio"><div>${l.length ? `<b>${l.length} professor${l.length > 1 ? 'es' : ''} cadastrado${l.length > 1 ? 's' : ''}.</b> Pode cadastrar mais, se o curso tiver outro professor.` : '<b>Nenhum professor do FIC cadastrado.</b> Cadastre à mão ou gere um link para ele preencher.'}
         ${souGeral ? '' : '<br><span class="small">Só a coordenação geral pode fazer este cadastro.</span>'}</div>
-        ${souGeral ? '<button class="btn pri" data-acao="novo" data-papel="professor_fic">Cadastrar professor(a) do FIC</button>' : ''}</div>
+        ${souGeral ? '<button class="btn pri btn-cad" data-acao="novo" data-papel="professor_fic">Cadastrar professor(a) do FIC</button>' : ''}</div>
     </section>`;
   }
 

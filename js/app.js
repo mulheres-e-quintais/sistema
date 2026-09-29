@@ -246,9 +246,9 @@
 
   function vagaCoordTecnica(souGeral) {
     const ant = ultimaDesligada('coord_tecnico');
-    return `<div class="vazio"><div><b>Vaga aberta.</b> ${ant ? `A anterior, ${esc(ant.nome)}, foi desligada em ${R.fmtData(ant.data_fim)}.` : 'O MPA ainda não indicou a coordenação técnica.'}
+    return `<div class="vazio"><div><b>Vaga aberta.</b> ${ant ? `A anterior, ${esc(ant.nome)}, foi desligada${ant.data_fim ? " em " + R.fmtData(ant.data_fim) : ""}.` : 'O MPA ainda não indicou a coordenação técnica.'}
       ${souGeral ? '' : '<br><span class="small">Só a coordenação geral pode fazer este cadastro.</span>'}</div>
-      ${souGeral ? `<button class="btn pri" data-acao="novo" data-papel="coord_tecnico" ${ant ? `data-subst="${ant.id}"` : ''}>Cadastrar coordenação técnica</button>` : ''}</div>`;
+      ${souGeral ? `<button class="btn pri btn-cad" data-acao="novo" data-papel="coord_tecnico" ${ant ? `data-subst="${ant.id}"` : ''}>Cadastrar coordenação técnica</button>` : ''}</div>`;
   }
 
   function botaoVaga(papel, uf) {
@@ -277,7 +277,7 @@
         return `<div class="cartao"><div class="cab-uf"><span class="uf"><span class="sigla">${u.uf}</span></span><span class="nomeuf muted">${u.nome}</span></div>
           ${l.map(m => { const s = R.situacao(m); const nv = (S.visitas || []).filter(v => v.executor_id === m.id && v.situacao === 'realizada').length;
             return `<button class="vagabtn com-foto" data-acao="ver" data-id="${m.id}">${avatar(m, 48)}<span class="vb-t"><span class="nm">${esc(nomeDe(m))}</span><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span><span class="sub">${nv ? nv + ' visita' + (nv > 1 ? 's' : '') + ' feita' + (nv > 1 ? 's' : '') : 'Nenhuma visita ainda'}</span></span></button>`; }).join('') || '<p class="small muted" style="padding:4px">Nenhuma agente.</p>'}
-          ${podeCad ? `<button class="btn peq" data-acao="novo" data-papel="agente" data-uf="${u.uf}">+ Agente em ${u.uf}</button>` : ''}</div>`; }).join('')}</div>
+          ${podeCad ? `<button class="btn btn-ag" data-acao="novo" data-papel="agente" data-uf="${u.uf}">+ Agente em ${u.uf}</button>` : ''}</div>`; }).join('')}</div>
     </section>`;
   }
 
@@ -286,9 +286,9 @@
     const aux = naVaga('auxiliar_adm'); const ant = ultimaDesligada('auxiliar_adm');
     return `<section class="secao" aria-labelledby="t-aux">
       <div class="secao-cab"><h2 id="t-aux">Auxiliar administrativo</h2><p>Um para o projeto · IFRN · cadastrado pela coordenação geral · cadastra a equipe no Arlo, registra o Arlo e o termo e lança os pagamentos</p></div>
-      ${aux ? cartaoPessoa(aux) : `<div class="vazio"><div><b>Vaga aberta.</b> ${ant ? `O anterior, ${esc(ant.nome)}, foi desligado em ${R.fmtData(ant.data_fim)}.` : 'Cadastre à mão ou gere um link para ele preencher.'}
+      ${aux ? cartaoPessoa(aux) : `<div class="vazio"><div><b>Vaga aberta.</b> ${ant ? `O anterior, ${esc(ant.nome)}, foi desligado${ant.data_fim ? " em " + R.fmtData(ant.data_fim) : ""}.` : 'Cadastre à mão ou gere um link para ele preencher.'}
         ${souGeral ? '' : '<br><span class="small">Só a coordenação geral pode fazer este cadastro.</span>'}</div>
-        ${souGeral ? `<button class="btn pri" data-acao="novo" data-papel="auxiliar_adm" ${ant ? `data-subst="${ant.id}"` : ''}>Cadastrar auxiliar administrativo</button>` : ''}</div>`}
+        ${souGeral ? `<button class="btn pri btn-cad" data-acao="novo" data-papel="auxiliar_adm" ${ant ? `data-subst="${ant.id}"` : ''}>Cadastrar auxiliar administrativo</button>` : ''}</div>`}
     </section>`;
   }
   function telaAuxiliar() {
