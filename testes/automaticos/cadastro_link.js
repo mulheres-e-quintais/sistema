@@ -134,7 +134,7 @@ const R = []; const ok = (n, c, d='') => R.push([c ? 'PASSOU' : 'FALHOU', n, d])
   for (const k of ['agricultora', 'atua_mulheres', 'mora_rural', 'internet', 'outra_bolsa']) await p.click(`#w-pf_${k} label:has-text("Sim")`);
   await p.selectOption('#pf-exp', 'ate2'); await p.check('[name=consentimento_lgpd]');
   await p.click('form[data-form=conv-enviar] button[type=submit]'); await p.waitForTimeout(300);
-  ok('Arlo = Sim sem cidade: pede a cidade', /cidade/i.test(await p.$eval('#dp-cid', e => e.closest('.campo').textContent)));
+  ok('Arlo = Sim sem cidade: pede o município', /munic[ií]pio onde mora \(usado|cidade onde mora/i.test(await p.$eval('#dp-cid', e => e.closest('.campo').textContent)));
   await p.fill('#dp-cid', 'Juazeiro'); await p.click('form[data-form=conv-enviar] button[type=submit]'); await p.waitForTimeout(500);
   ok('Arlo = Sim envia com dados básicos', !!(await p.$('.conv-fim')));
   await p.screenshot({ path: '/tmp/claude-0/pw/cad/link-fim.png', fullPage: true });

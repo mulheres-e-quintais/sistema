@@ -164,13 +164,45 @@
     render();
     if (r.enviados && avisar !== false) toast(r.enviados + (r.enviados > 1 ? ' registros enviados.' : ' registro enviado.'));
   }
+  /* ---------- dados sempre em dia: o que outra pessoa fez aparece sem recarregar a página ----------
+     Recarrega em segundo plano ao trocar de aba do sistema, ao voltar para a janela ou ao celular,
+     quando a internet volta e a cada 2 minutos com a tela aberta. No máximo uma vez a cada 20 s.
+     Se a pessoa está digitando na página, os números novos aparecem na próxima troca de tela
+     (o que ela digitou não se perde). */
+  const ATUALIZA_MIN = 20000, ATUALIZA_CICLO = 120000;
+  let atualizadoEm = Date.now(), atualizando = false, digitouEm = 0;
+  document.addEventListener('input', ev => { if (ev.target && ev.target.closest && ev.target.closest('#app')) digitouEm = Date.now(); }, true);
+  const digitando = () => { const a = document.activeElement;
+    return (a && a.closest && a.closest('#app') && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) || Date.now() - digitouEm < 60000; };
+  async function atualizarEmSegundoPlano(forcar) {
+    if (!S.eu || S.verEntrada || atualizando || S.semRede || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+    if (!forcar && Date.now() - atualizadoEm < ATUALIZA_MIN) return;
+    atualizando = true;
+    try {
+      const antes = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.solic, S.pedidos, S.pre, S.pedidosAcesso, S.entregas, S.matriculas, S.turmas, S.documentos, S.avaliacoes]);
+      // dados pessoais e conta do próprio cadastro também podem ter sido resolvidos por outra pessoa (pendências)
+      if (!digitando() && !S.painel) { if (MQ.convitesUI) MQ.convitesUI.esquecerPrivado(S.eu.id); if (MQ.bancoUI) MQ.bancoUI.limpar(); }
+      if (S.api.reler) await S.api.reler();   // demonstração: outra aba pode ter mudado os dados guardados
+      await carregar(); atualizadoEm = Date.now();
+      const depois = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.solic, S.pedidos, S.pre, S.pedidosAcesso, S.entregas, S.matriculas, S.turmas, S.documentos, S.avaliacoes]);
+      if (antes !== depois && !digitando()) { const y = window.scrollY; render(); window.scrollTo(0, y); }
+    } catch (e) { /* sem internet ou servidor fora: fica com o que já está na tela */ }
+    finally { atualizando = false; }
+  }
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') atualizarEmSegundoPlano(); });
+    window.addEventListener('focus', () => atualizarEmSegundoPlano());
+    window.addEventListener('online', () => atualizarEmSegundoPlano(true));
+    const ciclo = setInterval(() => atualizarEmSegundoPlano(), ATUALIZA_CICLO); if (ciclo && ciclo.unref) ciclo.unref();
+  }
   /* sem coordenação técnica ativa (vaga aberta, desligada): a coordenação geral assume a vez dela
      nos contadores e listas, para nenhum pedido ficar parado sem aviso. Só vale para quem vê a equipe toda. */
   const semTecnica = () => !!(S.eu && S.eu.papel === 'coord_geral') && !(S.equipe || []).some(m => m.papel === 'coord_tecnico' && m.status === 'ativa');
   MQ.ui = { S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: () => render(), abrirPainel: p => abrirPainel(p), fecharPainel: () => fecharPainel(),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), sincronizar: a => sincronizar(a),
     porId: id => porId(id), avatar: (m, t) => avatar(m, t), passos: m => passos(m), dadosDL: m => dadosDL(m), botaoFoto: m => botaoFoto(m), cartaoPessoa: m => cartaoPessoa(m),
-    aparelho: () => aparelho(), ipCurto: ip => ipCurto(ip), sair: a => sairDoSistema(a) };
+    atualizar: f => atualizarEmSegundoPlano(f), aparelho: () => aparelho(), ipCurto: ip => ipCurto(ip), sair: a => sairDoSistema(a) };
 
   /* ---------- consultas ---------- */
   const ativos = () => S.equipe.filter(m => m.status === 'ativa');
@@ -906,8 +938,12 @@
       <div class="campos">
         ${!fic ? '' : `<div class="campo inteiro"><span class="dica">${turma ? `Matrícula no FIC registrada pelo professor na turma <b>${esc(turma.nome)}</b> (nº ${esc(mt.numero)}, ${R.fmtData(mt.matriculado_em)}).`
           : m.matricula_fic_em ? `Matrícula no FIC registrada em ${R.fmtData(m.matricula_fic_em)} (nº ${esc(m.matricula_fic_numero || '')}), ainda sem turma no sistema.` : '<b>Matrícula no FIC: aguardando.</b>'} A matrícula é registrada só pelos professores do curso, na aba Curso FIC.</span></div>`}
-        <div class="campo"><label for="h-fun">Cadastrado no Arlo (FUNCERN) em</label><div class="data-hoje"><input id="h-fun" name="docs_funcern_em" type="date" max="${R.hoje()}" value="${esc(m.docs_funcern_em || '')}"><button type="button" class="btn peq" data-acao="data-hoje" data-alvo="h-fun">Hoje</button></div></div>
-        <div class="campo"><label for="h-ter">Termo de compromisso assinado em</label><div class="data-hoje"><input id="h-ter" name="termo_assinado_em" type="date" max="${R.hoje()}" value="${esc(m.termo_assinado_em || '')}"><button type="button" class="btn peq" data-acao="data-hoje" data-alvo="h-ter">Hoje</button></div></div>
+        ${[['h-fun', 'docs_funcern_em', 'Cadastrado no Arlo (FUNCERN) em'], ['h-ter', 'termo_assinado_em', 'Termo de compromisso assinado em']].map(([id, k, rot]) => {
+          // sem data registrada: já vem com hoje (o calendário muda); se ainda não aconteceu, "Limpar" deixa em branco
+          const sug = !m[k];
+          return `<div class="campo"><label for="${id}">${rot}</label><div class="data-hoje"><input id="${id}" name="${k}" type="date" max="${R.hoje()}" value="${esc(m[k] || R.hoje())}"${sug ? ' data-sugerido="1"' : ''}>
+            <button type="button" class="btn peq" data-acao="data-limpar" data-alvo="${id}">Limpar</button></div>
+            ${sug ? '<span class="dica">Sugerido: hoje. Mude no calendário se foi outro dia. Se ainda não aconteceu, toque em Limpar.</span>' : ''}</div>`; }).join('')}
         <div class="campo inteiro"><label for="h-arq">Termo assinado (PDF ou foto)</label><input id="h-arq" name="termo" type="file" accept="application/pdf,image/*">
           <span class="dica">${m.termo_path ? 'Já enviado: ' + esc(String(m.termo_path).split('/').pop()) + '. Enviar outro substitui o link.' : 'Com assinaturas da bolsista, da coordenação técnica e da coordenação geral.'}</span></div>
         <div class="campo inteiro"><label for="h-obs">Observações</label><textarea id="h-obs" name="obs_habilitacao" placeholder="Ex.: falta comprovante de conta; Pix informado em 02/10.">${esc(m.obs_habilitacao || '')}</textarea></div>
@@ -959,12 +995,12 @@
           <div class="campo"><label for="c-fone">Celular com WhatsApp</label><input id="c-fone" name="telefone" inputmode="tel" autocomplete="tel" value="${esc(MQ.mascaras ? MQ.mascaras.fmtTel(String(m.telefone || '').replace(/\D/g, '')) : (m.telefone || ''))}" placeholder="(89) 90000-0000" required></div>
           <div class="campo inteiro"><label for="c-email">E-mail</label><input id="c-email" name="email" type="email" autocomplete="email" value="${v('email')}" required>
             <span class="dica">É o login no sistema. Nenhum e-mail é enviado: depois de salvar, mande para ela o aviso de acesso (aparece na ficha dela).</span></div>
-          <div class="campo"><label for="c-mun">Município onde mora</label><input id="c-mun" name="municipio" value="${v('municipio')}" ${bols ? 'list="lista-mun"' : 'placeholder="Município/UF"'}>
-            ${bols ? `<datalist id="lista-mun">${munis.map(x => `<option value="${esc(x)}">`).join('')}</datalist><span class="dica">A lista traz os municípios do projeto técnico em ${esc(m.uf)}.</span>` : ''}</div>
+          ${MQ.convitesUI && priv !== undefined ? '' : `<div class="campo"><label for="c-mun">Município onde mora</label><input id="c-mun" name="municipio" value="${v('municipio')}" ${bols ? 'list="lista-mun"' : 'placeholder="Município/UF"'}>
+            ${bols ? `<datalist id="lista-mun">${munis.map(x => `<option value="${esc(x)}">`).join('')}</datalist><span class="dica">A lista traz os municípios do projeto técnico em ${esc(m.uf)}.</span>` : ''}</div>`}
           <div class="campo"><label for="c-siape">Matrícula SIAPE <span class="muted">(só se for servidor(a) público(a) federal)</span></label><input id="c-siape" name="siape" inputmode="numeric" value="${v('siape')}" placeholder="Deixe vazio se não for"></div>
           <div class="campo"><label for="c-org">Organização ou movimento</label><input id="c-org" name="organizacao" value="${v('organizacao')}" placeholder="${bols ? 'Ex.: MPA, associação, sindicato' : ['professor_fic', 'auxiliar_adm'].includes(m.papel) ? 'Ex.: IFRN Campus Apodi' : 'Ex.: MPA'}"></div>
         </div></fieldset>
-        ${MQ.convitesUI ? (priv === undefined ? '<p class="small muted">Carregando os dados pessoais…</p>' : MQ.convitesUI.camposPessoais(Object.assign({ nome_social: m.nome_social, cadastro_arlo: p.id ? !!m.cadastro_arlo : m.cadastro_arlo }, priv || {}), false, m.papel)) : ''}
+        ${MQ.convitesUI ? (priv === undefined ? '<p class="small muted">Carregando os dados pessoais…</p>' : MQ.convitesUI.camposPessoais(Object.assign({ nome_social: m.nome_social, municipio: m.municipio, cadastro_arlo: p.id ? !!m.cadastro_arlo : m.cadastro_arlo }, priv || {}), false, m.papel, bols ? munis : null)) : ''}
         <fieldset><legend>Bolsa</legend><div class="campos">
           <div class="campo"><label for="c-ini">Início ${m.papel === 'agente' ? 'no projeto' : 'da bolsa'}</label><input id="c-ini" name="data_inicio" type="date" value="${v('data_inicio')}" min="${MQ.PROJETO.vigencia.inicio}" max="${MQ.PROJETO.vigencia.fim}" required>
             ${edit ? '' : '<span class="dica">Sugerimos hoje. Mude se a pessoa começou em outro dia.</span>'}</div>
@@ -1042,6 +1078,7 @@
           abrirPainel(S.painel);
         } catch (e) { el.disabled = false; toast(e.message || String(e)); }
       }
+      else if (a === 'data-limpar') { const i = document.getElementById(el.dataset.alvo); if (i) { i.value = ''; i.dispatchEvent(new Event('input', { bubbles: true })); i.focus(); } }
       else if (a === 'data-hoje') { const i = document.getElementById(el.dataset.alvo); if (i) { i.value = R.hoje(); i.dispatchEvent(new Event('input', { bubbles: true })); } }
       else if (a === 'cad-modo') {
         const p = Object.assign({}, S.painel, { modo: el.dataset.m || undefined }); abrirPainel(p);
@@ -1064,7 +1101,7 @@
       }
       else if (a === 'sair') await sairDoSistema();
       else if (a === 'fechar') fecharPainel();
-      else if (a === 'aba') { S.aba = el.dataset.aba; lembrarAba(); S.menuAberto = false; render(); window.scrollTo(0, 0); }
+      else if (a === 'aba') { S.aba = el.dataset.aba; lembrarAba(); S.menuAberto = false; render(); window.scrollTo(0, 0); digitouEm = 0; atualizarEmSegundoPlano(); }
       else if (/^ficha/.test(a) && MQ.fichasUI) { S.voltarFoco = el; await MQ.fichasUI.clique(a, el); }
       else if (/^apl-/.test(a) && MQ.sugestaoUI) await MQ.sugestaoUI.clique(a, el);
       else if (/^banco-/.test(a) && MQ.bancoUI) await MQ.bancoUI.clique(a, el);
@@ -1192,7 +1229,7 @@
         });
         const temPriv = MQ.convitesUI && form.querySelector('[name=data_nascimento]');
         const priv = temPriv ? MQ.convitesUI.lerPessoais(fd) : null;
-        if (priv) { m.nome_social = priv.nome_social; m.cadastro_arlo = !!priv.cadastro_arlo; }
+        if (priv) { m.nome_social = priv.nome_social; m.cadastro_arlo = !!priv.cadastro_arlo; m.municipio = (priv.endereco || {}).cidade || m.municipio; }   // um campo só: o município do endereço
         if (R.ehBolsista(m.papel)) Object.assign(m, { meta_diagnosticos: num('meta_diagnosticos'), meta_quintais: num('meta_quintais'), meta_visitas: num('meta_visitas') });
         const erros = R.validar(m, S.equipe);
         if (p.id) delete erros.papel;

@@ -122,7 +122,7 @@
         <div class="campo"><label for="ft-uf">Estado</label><select id="ft-uf" name="uf">${op('', 'Vários estados', t.uf)}${MQ.UFS.map(u => op(u.uf, u.nome, t.uf)).join('')}</select>
           <span class="dica">Turma de um estado só aceita gente daquele estado.</span></div>
         <div class="campo"><label for="ft-mun">Município (polo)</label><input id="ft-mun" name="municipio" value="${v('municipio')}" placeholder="Opcional"></div>
-        <div class="campo"><label for="ft-ini">Início</label><input id="ft-ini" name="inicio" type="date" value="${v('inicio')}"></div>
+        <div class="campo"><label for="ft-ini">Início</label><input id="ft-ini" name="inicio" type="date" value="${p.id ? v('inicio') : E(t.inicio || R.hoje())}" min="${E(MQ.PROJETO.vigencia.inicio)}" max="${E(MQ.PROJETO.vigencia.fim)}">${p.id ? '' : '<span class="dica">Sugerido: hoje. Mude no calendário se for outro dia.</span>'}</div>
         <div class="campo"><label for="ft-fim">Fim</label><input id="ft-fim" name="fim" type="date" value="${v('fim')}"></div>
         ${!souProf() ? `<div class="campo inteiro"><label for="ft-prof">Professor(a)</label><select id="ft-prof" name="professor_id" required>${op('', 'Escolha', t.professor_id)}${professores().map(m => op(m.id, nomeDe(m), t.professor_id)).join('')}</select>
           ${professores().length ? '' : '<span class="dica">Cadastre antes o professor na aba Equipe.</span>'}</div>` : ''}

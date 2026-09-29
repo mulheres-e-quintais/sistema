@@ -136,7 +136,9 @@
       duvidas: [
         ['Por que não consigo agendar a visita para uma agente?', 'Quem visita precisa estar habilitada (FIC, Arlo e termo); senão a visita não pode ser paga.'],
         ['O que conta como dia de campo?', 'Cada visita feita a um quintal é 1 dia de campo de quem visitou, e é a base da ajuda de custo.'],
-        ['Um plano passou de R$ 4.500.', 'O sistema não deixa salvar acima do valor. Se aparecer acima, devolva pedindo para tirar ou trocar itens.']
+        ['Um plano passou de R$ 4.500.', 'O sistema não deixa salvar acima do valor. Se aparecer acima, devolva pedindo para tirar ou trocar itens.'],
+        ['Onde a visita foi feita?', 'No diagnóstico, o bloco <b>Onde foi registrado</b> mostra no mapa do estado o ponto do GPS e o centro do município da ficha, com a distância. Mais de 40 km do centro, fora do estado ou sem localização aparece em vermelho: confira antes de aprovar e diga na observação como conferiu.'],
+        ['Por que não aparece o botão Aprovar para mim?', 'Se você (coordenação geral) alterou o diagnóstico, quem aprova é a coordenação técnica. Sem técnica, devolva para quem aplicou corrigir: depois da correção dela, você pode aprovar.']
       ]
     },
     fic: {
@@ -272,13 +274,14 @@
         'Se aparecer <b>pendências no seu cadastro</b>, resolva primeiro: sem elas a FUNCERN não paga.',
         'Os botões de <b>O que você quer fazer?</b>, no topo, levam direto a cada parte da tela.',
         '<b>Diagnóstico:</b> 3 fotos (visão geral, água e plantio), localização e o kit com o preço de cada item, sem passar de R$ 4.500.',
+        '<b>Localização do diagnóstico:</b> registre em pé, no quintal, durante a visita (o ponto da ficha não vale). Sem localização, escolha o motivo e explique com suas palavras: a coordenação só aprova depois de confirmar a visita de outro jeito.',
         'As <b>Entregas do mês</b> (fotos, lista de presença, relatório, fichas, AVA e metas) liberam a bolsa do mês.'
       ],
       duvidas: [
         ['Posso falar em vez de digitar?', 'Sim. Nos campos de texto, toque em Falar e fale; o texto vai aparecendo. Revise antes de salvar. Evite dizer nomes e CPF. Precisa de internet.'],
         ['Prefiro aplicar no papel.', 'Abra o formulário (ficha, diagnóstico, registro de visita ou avaliação) e toque em <b>Imprimir em branco</b>, no alto. A folha sai com o símbolo do projeto e os seus dados de quem aplica já preenchidos. Depois, lance as respostas no sistema: o papel não substitui o registro.'],
         ['Estou sem internet no campo.', 'Pode preencher fichas, diagnósticos, visitas e avaliações. Ficam guardados no celular e sobem quando a internet voltar ("Enviar agora"). Não toque em Sair enquanto estiver sem sinal. Sem internet o sistema não sai sozinho; ele só sai depois de 15 minutos sem uso quando o sinal voltar.'],
-        ['A localização foi negada.', 'Libere a localização para o site nas permissões do navegador (cadeado ao lado do endereço) e tente de novo. Se não der, explique no campo indicado.'],
+        ['A localização foi negada.', 'Libere a localização para o site nas permissões do navegador (cadeado ao lado do endereço) e tente de novo. Se não der, escolha o motivo e explique com suas palavras (pelo menos 15 letras).'],
         ['Posso corrigir uma ficha aprovada?', 'Não. Peça à coordenação técnica para devolvê-la.'],
         ['Uma entrega está com "!".', 'Ainda falta. Veja a linha de baixo: ela diz o que fazer. Sem as entregas, a bolsa do mês não é paga.']
       ]
