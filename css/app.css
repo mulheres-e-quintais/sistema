@@ -855,8 +855,8 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .ent-card .muted { margin: 0; }
 .ent-seg { display: grid !important; grid-template-columns: 1fr 1fr; width: 100%; }
 .ent-seg button { padding: 9px 10px; }
-.ent-card input { height: 48px; border-radius: 12px; font-size: 16px; transition: border-color .15s, box-shadow .15s; }
-.ent-card input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent); outline: none; }
+.ent-card input:not([type=checkbox]):not([type=radio]) { height: 48px; border-radius: 12px; font-size: 16px; transition: border-color .15s, box-shadow .15s; }
+.ent-card input:not([type=checkbox]):not([type=radio]):focus { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent); outline: none; }
 .ent-btn { height: 50px; border-radius: 14px; font-size: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: transform .15s, box-shadow .15s; }
 .ent-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--accent) 70%, transparent); }
 .ent-btn span { transition: transform .2s; }
@@ -1063,3 +1063,4 @@ input.invalido { border-color: var(--crit) !important; box-shadow: 0 0 0 3px col
 @media (max-width: 520px) { .fic-pessoa:has(.ava-check) { grid-template-columns: auto minmax(0, 1fr) auto !important; } .fic-pessoa .ava-check span { display: none; } }
 .perfil-campo .criterio { margin-bottom: 6px; }
 @media (max-width: 520px) { .entm-lista li { grid-template-columns: 30px minmax(0, 1fr); } .entm-lista .btn { grid-column: 2; justify-self: start; } }
+.check input[type=checkbox] { align-self: start; }
