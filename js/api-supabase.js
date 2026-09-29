@@ -387,6 +387,27 @@
     async avalizarPagamento(id, ok, obs, valor) { const { error } = await sb.rpc('avalizar_pagamento', { p_id: id, p_ok: ok, p_obs: obs || null, p_valor: valor }); if (error) throw erro(error); },
     async registrarNoArlo(id, protocolo) { const { error } = await sb.rpc('registrar_no_arlo', { p_id: id, p_protocolo: protocolo || null }); if (error) throw erro(error); },
 
+    /* ---------- Documentos do projeto (24_documentos.sql): só a coordenação geral ---------- */
+    async listarDocumentos() {
+      const { data, error } = await sb.from('documentos_projeto').select('*').order('data_documento', { ascending: false }); if (error) throw erro(error); return data;
+    },
+    async enviarDocumento(d, arquivo) {
+      const limpo = String(arquivo.name).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w.-]+/g, '_').slice(-80);
+      const path = String(d.data_documento).slice(0, 4) + '/' + (crypto.randomUUID ? crypto.randomUUID() : Date.now()) + '_' + limpo;
+      const { error: e1 } = await sb.storage.from('documentos').upload(path, arquivo, { upsert: false, contentType: arquivo.type || undefined });
+      if (e1) throw erro(/Bucket not found|not found/i.test(e1.message) ? 'A pasta de documentos ainda não foi criada: rode o arquivo 24_documentos.sql no Supabase.' : e1);
+      const { data, error } = await sb.from('documentos_projeto').insert({ tipo: d.tipo, titulo: d.titulo, data_documento: d.data_documento, uf: d.uf || null,
+        descricao: d.descricao || null, arquivo_path: path, arquivo_nome: arquivo.name, tamanho: arquivo.size, mime: arquivo.type || null }).select().single();
+      if (error) throw erro(error);   // o arquivo fica na pasta sem registro: não apagamos (a pasta não permite apagar)
+      return data;
+    },
+    async linkDocumento(path) {
+      const { data, error } = await sb.storage.from('documentos').createSignedUrl(path, 300); if (error) throw erro(error); return data.signedUrl;
+    },
+    async arquivarDocumento(id, motivo) {
+      const { error } = await sb.from('documentos_projeto').update({ arquivado_em: new Date().toISOString(), motivo_arquivo: motivo }).eq('id', id); if (error) throw erro(error);
+    },
+
     /* ---------- Pedidos de passagem aérea e de estrutura de evento (22_passagens_eventos.sql) ---------- */
     async listarPedidos() {
       const { data, error } = await sb.from('pedidos_apoio').select('*').order('enviado_em', { ascending: false }); if (error) throw erro(error); return data;

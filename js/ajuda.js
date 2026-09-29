@@ -213,6 +213,25 @@
         ['E depois da viagem ou do evento?', 'Os cartões de embarque, a lista de presença e o relato ou relatório são entregues à coordenação técnica.']
       ]
     },
+    documentos: {
+      t: 'Documentos',
+      intro: 'Pasta de documentos do projeto (atas, ofícios, relatórios, listas de presença) e o relatório da ação, gerado com os dados do sistema. Só a coordenação geral vê esta aba.',
+      tarefas: [
+        ['Anexar um documento', ['Toque em <b>Anexar documento</b>.', 'Escolha o tipo, a data e escreva o título (o estado é opcional).', 'Escolha o arquivo: PDF, Word, planilha ou foto, até 20 MB.', 'Toque em <b>Anexar</b>.']],
+        ['Abrir um documento', ['Toque no documento na lista.', 'Toque em <b>Abrir o arquivo</b>: ele abre numa aba nova por alguns minutos.']],
+        ['Arquivar um documento errado', ['Abra o documento.', 'Em <b>Arquivar</b>, escreva o motivo.', 'Toque em <b>Arquivar documento</b>. Ele sai da lista, mas não é apagado.']],
+        ['Gerar o relatório da ação', ['Toque em <b>Gerar relatório da ação</b>.', 'Escolha o período e, se quiser, um estado; toque em <b>Atualizar o relatório</b>.', 'Toque em <b>Imprimir ou salvar em PDF</b> ou em <b>Baixar para o Word</b>.']]
+      ],
+      passos: [
+        'O relatório junta equipe, seleção, campo, curso FIC, pagamentos, viagens e eventos e a lista de documentos do período, só com números: nenhum nome, CPF ou endereço das mulheres.',
+        'Documento não é apagado: arquivado, continua em <b>Arquivados</b> e no histórico.'
+      ],
+      duvidas: [
+        ['Quem mais vê os documentos?', 'Ninguém. A pasta e a lista são só da coordenação geral, no sistema e no banco.'],
+        ['Anexei o arquivo errado.', 'Arquive com o motivo e anexe o certo. O arquivo de um documento não pode ser trocado.'],
+        ['O relatório está com números zerados.', 'Ele conta só o que foi registrado no sistema dentro do período escolhido. Confira as datas de início e fim.']
+      ]
+    },
     historico: {
       t: 'Histórico',
       intro: 'Registro de tudo o que foi feito no sistema: quem cadastrou, alterou, aprovou, devolveu, desligou, gerou código de acesso, consultou conta bancária, e quando.',
@@ -376,7 +395,7 @@
     }
   };
 
-  const TOPICOS_COORD = ['visao', 'equipe', 'selecao', 'campo', 'fic', 'pagamentos', 'viagens', 'custos', 'historico'];
+  const TOPICOS_COORD = ['visao', 'equipe', 'selecao', 'campo', 'fic', 'pagamentos', 'viagens', 'custos', 'documentos', 'historico'];
 
   function chaveAtual() {
     const s = S();
