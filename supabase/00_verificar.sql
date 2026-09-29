@@ -37,10 +37,11 @@ chk as (
                    and exists (select 1 from pg_proc where proname = 'enviar_pre_cadastro' and prosrc like '%já foram enviados%')
   union all select '24_documentos', to_regclass('public.documentos_projeto') is not null and exists (select 1 from storage.buckets where id = 'documentos')
   union all select '23_fic_coordenacao_tecnica', exists (select 1 from pg_proc where proname = 'matricular_fic' and prosrc like '%coord_tecnico%')
-  -- rodar 01, 03, 07 ou 11 de novo DEPOIS do 15 volta regras antigas da equipe: estes dois itens acusam
-  union all select '15_coord_geral_total (rode de novo se rodou 01/03/07/11 depois dele)',
+  -- rodar 01, 03, 07 ou 11 de novo fora de ordem volta regras antigas da equipe: estes dois itens acusam.
+  -- Conserto: rodar de novo, em ordem, 11, 12, 13, 15, 17, 18, 19, 21, 22, 23, 24, 25, 26 (nunca 05, 06, 14 ou 16).
+  union all select 'regras da equipe (se FALTA: rode de novo, em ordem, do 11 ao 26)',
                    exists (select 1 from pg_proc where proname = 'equipe_antes' and prosrc like '%só registra o cadastro no Arlo%' and prosrc like '%coordenação geral altera%')
-  union all select '11_fic (auxiliar ver e registrar Arlo; rode o 11 e depois o 15 de novo)',
+  union all select 'auxiliar ver e registrar Arlo (se FALTA: rode de novo, em ordem, do 11 ao 26)',
                    exists (select 1 from pg_policy where polname = 'equipe_ler' and pg_get_expr(polqual, polrelid) like '%auxiliar_adm%')
                    and exists (select 1 from pg_policy where polname = 'equipe_alterar' and pg_get_expr(polqual, polrelid) like '%auxiliar_adm%')
   union all select '26_conferencia_auxiliar', exists (select 1 from fn where proname = 'quem_confere_pedidos')
