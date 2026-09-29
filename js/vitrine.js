@@ -70,8 +70,13 @@
     setTimeout(async () => { await buscar(); desenharEntrada(); }, 0);
     return `<aside class="vitrine" id="vitrine" aria-labelledby="vit-t">${V.dados ? corpoEntrada(V.dados) : esqueleto()}</aside>`;
   }
+  /* esqueleto com a MESMA altura do conteúdo final (números, mapa vazio, espaço da foto e rodapé):
+     quando os números chegam, nada na tela de entrada sai do lugar */
   const esqueleto = () => `<span class="eyebrow">O projeto agora</span><h2 id="vit-t" class="serif">Mulheres &amp; Quintais em números</h2>
-    <div class="vts">${'<div class="vt esq"><span class="vt-n">&nbsp;</span><span class="vt-l">&nbsp;</span></div>'.repeat(4)}</div>`;
+    <div class="vts">${'<div class="vt esq"><span class="vt-n">&nbsp;</span><span class="vt-l">&nbsp;</span></div>'.repeat(4)}</div>
+    <div class="vit-duo" aria-hidden="true"><div class="vit-mapa">${MQ.painelUI && MQ.painelUI.mapaUFs ? MQ.painelUI.mapaUFs({}, 'mulheres selecionadas') : ''}<span class="vit-leg">&nbsp;</span></div>
+      <div id="vit-foto"><div class="vit-sem-foto"><span>&nbsp;</span></div></div></div>
+    <p class="vit-rodape"><span>&nbsp;</span></p>`;
   function corpoEntrada(d) {
     const t = totais(d);
     return `<span class="eyebrow">O projeto agora</span>
