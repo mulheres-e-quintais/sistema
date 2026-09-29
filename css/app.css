@@ -1027,3 +1027,8 @@ input.invalido { border-color: var(--crit) !important; box-shadow: 0 0 0 3px col
 .vazio-hist { padding: 16px; border: 1px dashed var(--line-2); border-radius: 12px; }
 .linha-tempo.lt-hora { padding: 0; }
 .linha-tempo.lt-hora li:not(.hist-dia) { grid-template-columns: 52px minmax(0, 1fr); }
+/* botões de cadastro da página Equipe: todos do mesmo tamanho */
+.btn-cad { width: 300px; min-height: 42px; justify-content: center; text-align: center; }
+.grade-uf .cartao { grid-template-rows: auto 1fr auto; align-content: stretch; }
+.btn-ag { align-self: end; min-height: 42px; width: 100%; justify-content: center; }
+@media (max-width: 640px) { .btn-cad { width: 100%; } }
