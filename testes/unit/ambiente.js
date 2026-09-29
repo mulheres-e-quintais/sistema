@@ -27,8 +27,8 @@ class FormDataFalso {
 }
 
 function elementoFalso() {
-  return { style: {}, dataset: {}, classList: { add() {}, remove() {}, toggle() {}, contains: () => false }, setAttribute() {}, appendChild() {},
-    insertAdjacentHTML() {}, querySelector: () => null, querySelectorAll: () => [], closest: () => null, addEventListener() {} };
+  return { style: {}, dataset: {}, innerHTML: '', classList: { add() {}, remove() {}, toggle() {}, contains: () => false }, setAttribute() {}, removeAttribute() {}, appendChild() {},
+    insertAdjacentHTML() {}, querySelector: () => null, querySelectorAll: () => [], closest: () => null, addEventListener() {}, focus() {}, remove() { this.removido = true; } };
 }
 
 /**
@@ -37,10 +37,14 @@ function elementoFalso() {
  */
 function carregar(arquivos, opcoes = {}) {
   const ouvintes = {};
+  // #app e #painel guardam o HTML desenhado, para os testes das telas lerem
+  const app = elementoFalso(); let painel = null;
+  const corpo = Object.assign(elementoFalso(), { appendChild(el) { if (el.id === 'painel') painel = el; }, contains: () => false });
+  const acha = sel => sel === '#app' ? app : sel === '#painel' ? (painel && !painel.removido ? painel : null) : null;
   const documento = {
     addEventListener(tipo, fn) { (ouvintes[tipo] = ouvintes[tipo] || []).push(fn); },
-    removeEventListener() {}, querySelector: () => null, querySelectorAll: () => [], getElementById: () => null,
-    createElement: () => elementoFalso(), body: elementoFalso(), documentElement: elementoFalso(), title: ''
+    removeEventListener() {}, querySelector: acha, querySelectorAll: () => [], getElementById: id => acha('#' + id),
+    createElement: () => elementoFalso(), body: corpo, documentElement: elementoFalso(), title: '', activeElement: null
   };
   const janela = {
     MQ: {}, console, Date, Math, JSON, Promise, Map, Set, Array, Object, String, Number, Boolean, RegExp, Error, Intl, URL,
@@ -50,7 +54,7 @@ function carregar(arquivos, opcoes = {}) {
     document: documento, FormData: FormDataFalso, crypto: globalThis.crypto, fetch: async () => { throw new Error('Failed to fetch'); },
     addEventListener() {}, removeEventListener() {}, matchMedia: () => ({ matches: false, addEventListener() {} }),
     Event: class { constructor(t) { this.type = t; } }, indexedDB: undefined,
-    MutationObserver: class { observe() {} disconnect() {} }
+    MutationObserver: class { observe() {} disconnect() {} }, requestAnimationFrame: fn => setTimeout(fn, 0), scrollTo() {}, scrollY: 0, innerWidth: 390
   };
   janela.window = janela; janela.self = janela; janela.globalThis = janela;
   if (opcoes.ui) janela.MQ.ui = opcoes.ui;
@@ -60,7 +64,7 @@ function carregar(arquivos, opcoes = {}) {
     new vm.Script(fs.readFileSync(arq, 'utf8'), { filename: arq }).runInContext(ctx);
   }
   if (opcoes.ui) janela.MQ.ui = Object.assign(janela.MQ.ui || {}, opcoes.ui);
-  return { MQ: janela.MQ, janela, ouvintes };
+  return { MQ: janela.MQ, janela, ouvintes, app: () => app.innerHTML, painel: () => (painel && !painel.removido ? painel.innerHTML : '') };
 }
 
 /* data relativa a hoje, no formato AAAA-MM-DD (fuso local) */

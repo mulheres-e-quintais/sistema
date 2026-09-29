@@ -67,7 +67,7 @@
       ],
       duvidas: [
         ['Os números estão zerados.', 'Eles só contam registros reais. Dados de teste (exemplo) ficam de fora dos números e da vitrine.'],
-        ['Qual a diferença entre "na equipe" e "habilitadas"?', 'Na equipe é quem está cadastrado e ativo. Habilitada é quem completou os passos para receber: matrícula no FIC (bolsistas e agentes), cadastro no Arlo e termo de compromisso.']
+        ['Qual a diferença entre "na equipe" e "habilitadas"?', 'Na equipe é quem está cadastrado e ativo. Habilitada é quem completou os passos para receber: matrícula no FIC (coordenação técnica, bolsistas e agentes), cadastro no Arlo e termo de compromisso.']
       ]
     },
     equipe: {
@@ -139,7 +139,7 @@
     },
     fic: {
       t: 'Curso FIC',
-      intro: 'Turmas do curso FIC do IFRN, matrículas das bolsistas e agentes e o acesso mensal ao AVA. A matrícula é um dos passos da habilitação; o acesso ao AVA é uma das entregas do mês das bolsistas.',
+      intro: 'Turmas do curso FIC do IFRN, matrículas da coordenação técnica, das bolsistas e das agentes e o acesso mensal ao AVA. A matrícula é um dos passos da habilitação; o acesso ao AVA é uma das entregas do mês das bolsistas.',
       tarefas: [
         ['Criar uma turma', ['Toque em <b>+ Nova turma</b>.', 'Dê o nome, o estado (ou vários estados) e as datas.', 'Toque em <b>Criar turma</b>.']],
         ['Matricular', ['Na turma, toque em <b>+ Matricular</b>.', 'Marque as pessoas e digite o número da matrícula no SUAP de cada uma.', 'Confira a data e toque em <b>Salvar matrículas</b>.']],
@@ -342,7 +342,7 @@
     },
     professor_fic: {
       t: 'Sua tela (professor do FIC)',
-      intro: 'Turmas do curso FIC, matrículas das bolsistas e agentes de campo e a confirmação mensal do acesso ao AVA.',
+      intro: 'Turmas do curso FIC, matrículas da coordenação técnica, das bolsistas e das agentes de campo e a confirmação mensal do acesso ao AVA.',
       tarefas: [
         ['Matricular alunas', ['No topo, toque em <b>Matricular alunas</b>.', 'Na turma, toque em <b>+ Matricular</b> (se não houver turma, crie em <b>+ Nova turma</b>).', 'Marque as pessoas, digite o número do SUAP e toque em <b>Salvar matrículas</b>.']],
         ['Confirmar o AVA do mês', ['No topo, toque em <b>Confirmar acesso ao AVA</b>.', 'Marque quem acessou. Salva na hora.']]

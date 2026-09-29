@@ -215,3 +215,19 @@ describe('datas', () => {
     assert.equal(R.idade(null), null);
   });
 });
+
+describe('curso FIC: quem é matriculado e em que turma (decisão de 29/09/2026)', () => {
+  test('matriculaFIC: coordenação técnica, bolsistas e agentes; não professor, auxiliar nem coordenação geral', () => {
+    ['coord_tecnico', 'articulacao', 'apoio', 'agente'].forEach(p => assert.equal(R.matriculaFIC(p), true, p));
+    ['professor_fic', 'auxiliar_adm', 'coord_geral', undefined, ''].forEach(p => assert.equal(R.matriculaFIC(p), false, String(p)));
+  });
+  test('matriculaFIC coincide com quem precisa do FIC na habilitação', () => {
+    ['coord_geral', 'coord_tecnico', 'articulacao', 'apoio', 'agente', 'professor_fic', 'auxiliar_adm'].forEach(p => assert.equal(R.matriculaFIC(p), R.fazFIC(p), p));
+  });
+  test('cabeNaTurma: turma de vários estados aceita todos; turma de estado aceita o estado e a coordenação técnica', () => {
+    assert.equal(R.cabeNaTurma({ uf: null }, { uf: 'BA' }), true);
+    assert.equal(R.cabeNaTurma({ uf: 'PI' }, { uf: 'PI' }), true);
+    assert.equal(R.cabeNaTurma({ uf: 'PI' }, { uf: 'BA' }), false);
+    assert.equal(R.cabeNaTurma({ uf: 'PI' }, { uf: null }), true);   // coordenação técnica (5 estados)
+  });
+});

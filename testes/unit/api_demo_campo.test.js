@@ -131,14 +131,16 @@ describe('curso FIC', () => {
   test('professor e auxiliar não são matriculados; cancelar exige motivo', async () => {
     await como('professor'); const eu = await api.eu();
     const t = await api.salvarTurma({ nome: 'Turma geral', professor_id: eu.id });
-    await falha(api.matricular(t.id, eu.id, '2026FIC99', diaMais(0)), /Só bolsistas e agentes/);
+    await falha(api.matricular(t.id, eu.id, '2026FIC99', diaMais(0)), /Só a coordenação técnica, bolsistas e agentes/);   // mensagem nova (decisão de 29/09: coordenação técnica faz FIC)
     await falha(api.cancelarMatricula('nao-existe', 'motivo qualquer'), /não encontrada/);
   });
-  test('coordenação técnica precisa de FIC para se habilitar, mas ninguém consegue matriculá-la', { todo: 'regra contraditória: decisão da coordenação (ver relatório)' }, async () => {
+  // era "todo" (regra contraditória); resolvido pela decisão de 29/09/2026: a coordenação técnica faz o curso FIC
+  test('coordenação técnica precisa de FIC para se habilitar e o professor consegue matriculá-la, em qualquer turma', async () => {
     await como('coord_geral'); const ct = await pessoa('coord_tecnico');
-    assert.equal(R.fazFIC('coord_tecnico'), true);   // a habilitação pede matrícula no FIC…
+    assert.equal(R.fazFIC('coord_tecnico'), true);
     await como('professor'); const eu = await api.eu();
-    const t = await api.salvarTurma({ nome: 'Turma geral', professor_id: eu.id });
-    await api.matricular(t.id, ct.id, '2026FIC01', diaMais(0));   // …mas a matrícula recusa a coordenação técnica
+    const t = await api.salvarTurma({ nome: 'Turma Bahia', uf: 'BA', professor_id: eu.id });
+    await api.matricular(t.id, ct.id, '2026FIC01', diaMais(0));
+    await como('coord_geral'); assert.equal((await pessoa('coord_tecnico')).matricula_fic_em, diaMais(0));
   });
 });

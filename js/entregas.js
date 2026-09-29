@@ -76,7 +76,7 @@
   function secaoAva() {
     if (semBanco() || !['professor_fic', 'coord_geral'].includes(S().eu.papel)) return '';
     const mes = G.avaMes || mesAtual();
-    const alunas = (S().equipe || []).filter(x => x.status === 'ativa' && R.ehCampo(x.papel) && x.matricula_fic_em)
+    const alunas = (S().equipe || []).filter(x => x.status === 'ativa' && R.matriculaFIC(x.papel) && x.matricula_fic_em)
       .sort((a, b) => String(a.uf).localeCompare(String(b.uf)) || nomeDe(a).localeCompare(nomeDe(b)));
     const n = alunas.filter(x => marcada(x.id, mes, 'ava')).length;
     return `<section class="secao" aria-labelledby="t-ava"><div class="secao-cab"><div><h2 id="t-ava">Acesso ao AVA no mês</h2>
