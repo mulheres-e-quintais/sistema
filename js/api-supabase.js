@@ -345,7 +345,9 @@
       euCache = null; this.temSessao = false;
       // tira do aparelho a cópia dos dados (nomes, CPF, endereços); o que não foi enviado continua na fila para a próxima entrada
       try { Object.keys(localStorage).filter(k => k === 'mq-eu' || k.startsWith('mq-cache-')).forEach(k => localStorage.removeItem(k)); } catch (e) {}
-      await sb.auth.signOut();
+      try { await sb.auth.signOut(); } catch (e) { /* sem internet */ }
+      // sem internet o signOut pode falhar antes de apagar a sessão: apaga a chave de login do aparelho de qualquer jeito
+      try { Object.keys(localStorage).filter(k => /^sb-.*-auth-token$/.test(k)).forEach(k => localStorage.removeItem(k)); } catch (e) {}
     },
 
     async listarEquipe() {

@@ -1246,3 +1246,8 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .rel th, .rel td { border: 1px solid var(--line); padding: 5px 8px; text-align: left; }
 .rel th { background: var(--surface-2); }
 .rel-sobre, .rel-nota { font-size: var(--t-xs); color: var(--muted); }
+/* aviso de saída por falta de uso (15 minutos) */
+.sessao-aviso { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 90; width: min(560px, calc(100% - 24px)); }
+.sessao-in { display: grid; gap: 8px; padding: 14px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.sessao-in .btn { justify-self: start; }
+.sessao-saiu { margin-bottom: 4px; }
