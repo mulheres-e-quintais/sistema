@@ -136,11 +136,12 @@
     const f = t.form; const dica = document.getElementById('dp-cep-dica');
     try {
       const r = await fetch('https://viacep.com.br/ws/' + cep + '/json/'); const j = await r.json();
-      if (j.erro) { if (dica) dica.textContent = 'CEP não encontrado. Preencha o endereço à mão.'; return; }
+      if (j.erro) { if (dica) dica.textContent = 'CEP não encontrado. Confira os números ou preencha o endereço.'; return; }
       [['logradouro', j.logradouro], ['bairro', j.bairro], ['cidade', j.localidade]].forEach(([k, val]) => { if (val && !f[k].value) f[k].value = val; });
       if (j.uf && f.uf_end) f.uf_end.value = [...f.uf_end.options].some(o => o.value === j.uf) ? j.uf : 'Outro';
-      if (dica) dica.textContent = 'Endereço preenchido pelo CEP. Confira.';
-    } catch (e) { if (dica) dica.textContent = 'Sem internet para buscar o CEP. Preencha à mão.'; }
+      if (dica) dica.textContent = j.logradouro ? 'Endereço preenchido pelo CEP. Confira e informe o número.' : 'Este CEP é da cidade toda: cidade e estado preenchidos. Digite a rua, o sítio ou a comunidade.';
+      const prox = j.logradouro ? f.numero : f.logradouro; if (prox && !prox.value) prox.focus();
+    } catch (e) { if (dica) dica.textContent = 'Sem internet para buscar o CEP. Preencha o endereço.'; }
   });
 
   /* dados pessoais já guardados de alguém da equipe (só coordenação e a própria pessoa conseguem ler) */
