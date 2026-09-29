@@ -140,3 +140,17 @@ describe('sem internet não sai; sai quando o sinal volta', () => {
     });
   }
 });
+
+/* LGPD: ao sair (botão ou 15 minutos), a cópia dos dados some do aparelho; a fila do que não foi enviado fica */
+describe('ao sair, a cópia dos dados não fica no aparelho', () => {
+  test('saída por inatividade apaga a cópia offline de quem saiu', async () => {
+    const a = await abrirComoApp('bolsista', 1 * MIN);
+    try {
+      const chave = 'mq-cache-' + a.S.eu.id;
+      assert.ok(a.janela.localStorage.getItem(chave), 'cópia criada ao entrar');
+      a.janela.localStorage.setItem('mq-ultimo-uso', String(Date.now() - 15 * MIN - 1000));
+      a.MQ.sessao.conferir(); await new Promise(r => setTimeout(r, 20));
+      assert.equal(a.S.verEntrada, true); assert.equal(a.janela.localStorage.getItem(chave), null);
+    } finally { a.MQ.sessao.parar(); }
+  });
+});
