@@ -521,6 +521,15 @@
       <div class="painel-corpo"><div class="bloco"><div class="cab-av">${avatar(m, 96)}<div style="display:grid;gap:6px"><h3>${esc(nomeDe(m))}</h3>${botaoFoto(m)}</div></div>${dadosDL(m)}
         ${NOTA_DADOS[m.papel] ? `<p class="small muted">Algum dado errado? Fale com ${NOTA_DADOS[m.papel]}, que corrige o cadastro.</p>` : ''}</div>
         ${m.papel !== 'coord_geral' && MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
+        <details class="hist trocar-senha"><summary>Trocar minha senha</summary>
+          <form class="f" data-form="trocar-senha" novalidate>
+            <input type="text" name="usuario" autocomplete="username" value="${esc(m.email || '')}" hidden>
+            <div class="campo"><label for="ts-atual">Senha atual</label><input id="ts-atual" name="atual" type="password" autocomplete="current-password" required></div>
+            <div class="campo"><label for="ts-nova">Nova senha</label><input id="ts-nova" name="nova" type="password" autocomplete="new-password" minlength="8" required><span class="dica">Pelo menos 8 caracteres, com letras e números.</span></div>
+            <div class="campo"><label for="ts-nova2">Repita a nova senha</label><input id="ts-nova2" name="nova2" type="password" autocomplete="new-password" required></div>
+            <div class="aviso erro" data-erro hidden></div>
+            <div class="acoes"><button class="btn pri" type="submit">Trocar senha</button></div>
+          </form></details>
         ${S.api.modo === 'supabase' ? '<div class="acoes"><button class="btn" data-acao="sair">Sair do sistema</button></div>' : ''}</div>`;
   }
 
@@ -1043,6 +1052,17 @@
     const tipo = form.dataset.form;
     const fd = new FormData(form);
     try {
+      if (tipo === 'trocar-senha') {
+        const atual = String(fd.get('atual') || ''), nova = String(fd.get('nova') || ''), nova2 = String(fd.get('nova2') || '');
+        const e = {};
+        if (!atual) e.atual = 'Digite a senha que você usa hoje.';
+        if (nova.length < 8) e.nova = 'Pelo menos 8 caracteres.'; else if (!(/[a-zA-Z]/.test(nova) && /\d/.test(nova))) e.nova = 'Misture letras e números.';
+        else if (nova === atual) e.nova = 'A nova senha precisa ser diferente da atual.';
+        if (!e.nova && nova !== nova2) e.nova2 = 'As duas senhas não são iguais.';
+        if (Object.keys(e).length) return mostrarErros(form, e);
+        await ocupado(form, async () => { await S.api.trocarSenha(atual, nova); form.reset(); form.closest('details').open = false; toast('Senha trocada. Use a nova senha na próxima vez que entrar.'); });
+        return;
+      }
       if (tipo === 'esqueci') {
         const email = String(fd.get('email') || '').trim().toLowerCase();
         if (!R.emailValido(email)) return mostrarErros(form, { email: 'Digite o e-mail do seu cadastro.' });

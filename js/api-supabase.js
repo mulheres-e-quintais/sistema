@@ -82,6 +82,14 @@
     },
     /* Login com senha (não depende de servidor de e-mail).
        Exige "Confirm email" DESLIGADO no Supabase (Authentication > Sign In / Providers > Email). */
+    /* troca a própria senha: confere a atual antes (quem pegou o celular desbloqueado não troca sem saber a senha) */
+    async trocarSenha(atual, nova) {
+      const { data: u, error: e0 } = await sb.auth.getUser(); if (e0 || !u || !u.user) throw erro('Entre de novo no sistema para trocar a senha.');
+      const { error: e1 } = await sb.auth.signInWithPassword({ email: u.user.email, password: atual });
+      if (e1) throw erro(/invalid|credentials/i.test(e1.message) ? 'A senha atual não confere.' : e1);
+      const { error: e2 } = await sb.auth.updateUser({ password: nova });
+      if (e2) throw erro(/different|same/i.test(e2.message) ? 'A nova senha precisa ser diferente da atual.' : /weak|short|characters/i.test(e2.message) ? 'Senha fraca: use pelo menos 8 caracteres, com letras e números.' : e2);
+    },
     async entrarSenha(email, senha) {
       const { data, error } = await sb.auth.signInWithPassword({ email: email.trim().toLowerCase(), password: senha });
       if (error) {
