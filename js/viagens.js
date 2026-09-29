@@ -67,7 +67,7 @@
     const dev = l.filter(p => p.situacao === 'devolvido'), aut = l.filter(p => p.situacao === 'autorizado'), fim = l.filter(p => ['recusado', 'cancelado'].includes(p.situacao));
     const usados = f => aut.filter(p => p.tipo === 'passagem' && (p.dados || {}).finalidade === f).reduce((t, p) => t + nPass(p), 0);
     const ufsEvento = new Set(aut.filter(p => p.tipo === 'evento').map(p => p.uf));
-    const bloco = (t, xs, vazio) => `<section class="secao"><div class="secao-cab"><h2>${t} <span class="conta-t">${xs.length}</span></h2></div>
+    const bloco = (t, xs, vazio) => `<section class="secao"><div class="secao-cab"><h2>${t} <span class="conta-t${xs.length ? '' : ' zero'}">${xs.length}</span></h2></div>
       ${xs.length ? `<div class="pag-lista">${xs.map(p => linha(p, true)).join('')}</div>` : `<p class="muted">${vazio}</p>`}</section>`;
     return `<div class="cab"><div><span class="eyebrow">Viagens e eventos</span><h1>Passagens e eventos</h1>
         <p>A bolsista de articulação territorial pede; ${souGeral ? 'a coordenação técnica confere; você autoriza e manda para a FUNCERN, que compra ou contrata.' : 'você confere e manda para a coordenação geral, que autoriza e manda para a FUNCERN.'}

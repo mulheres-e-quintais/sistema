@@ -7,6 +7,10 @@
     entrada: {
       t: 'Como entrar no sistema',
       intro: 'Só entra quem foi cadastrado pela coordenação, com o e-mail que ela registrou. O sistema não manda e-mail: as instruções chegam pelo WhatsApp, com um código de acesso.',
+      tarefas: [
+        ['Entrar pela primeira vez', ['Abra o endereço que veio no WhatsApp (no Chrome ou no Safari).', 'Toque em <b>Primeiro acesso</b>.', 'Digite o e-mail cadastrado e o <b>código de acesso</b> da mensagem.', 'Crie uma senha com pelo menos 8 caracteres, com letras e números, e repita.', 'Toque em <b>Criar senha e entrar</b>.']],
+        ['Entrar nas próximas vezes', ['Toque em <b>Já tenho senha</b>.', 'Digite o e-mail e a senha.', 'Toque em <b>Entrar</b>.']]
+      ],
       passos: [
         '<b>Primeira vez:</b> toque em <b>Primeiro acesso</b>, digite o e-mail cadastrado e o <b>código de acesso</b> (8 letras e números, como ABCD-2345) que veio na mensagem da coordenação. Depois crie uma senha com pelo menos 8 caracteres, misturando letras e números.',
         '<b>Das próximas vezes:</b> use <b>Já tenho senha</b>, com o mesmo e-mail e a senha que você criou.',
@@ -52,6 +56,9 @@
     visao: {
       t: 'Visão geral',
       intro: 'O retrato do projeto em uma tela: em que mês estamos, como está a equipe, a seleção das mulheres, o campo e os avisos que pedem atenção.',
+      tarefas: [
+        ['Resolver um aviso', ['Leia os avisos do topo, do mais urgente para o menos.', 'Toque no aviso: o sistema abre a aba que resolve.', 'Faça a ação e volte à <b>Visão geral</b>: o aviso some quando o problema acaba.']]
+      ],
       passos: [
         'A linha de 13 quadradinhos mostra os meses do projeto; o quadrado colorido é o mês atual. Ao lado, quantos dias faltam para o fim da vigência.',
         'Os <b>avisos</b> vêm por ordem de urgência (crítico, atenção, informação). Toque no aviso para ir direto à aba que resolve.',
@@ -66,6 +73,13 @@
     equipe: {
       t: 'Equipe',
       intro: 'Cadastro de todas as pessoas do projeto: coordenação técnica, auxiliar administrativo, professores do FIC, bolsistas por estado e agentes de campo.',
+      tarefas: [
+        ['Cadastrar pelo link (recomendado)', ['Na aba <b>Equipe</b>, toque na vaga ou em <b>Cadastrar</b>.', 'Toque em <b>Gerar link de cadastro</b>.', 'Toque em <b>Enviar pelo WhatsApp</b> e escolha a pessoa.', 'Quando ela enviar, abra <b>Cadastros enviados pelo link</b>.', 'Confira os dados e toque em <b>Conferir e cadastrar</b> → <b>Cadastrar</b>.']],
+        ['Cadastrar digitando', ['Toque na vaga ou em <b>Cadastrar</b> → <b>Digitar os dados agora</b>.', 'Preencha nome, CPF, celular e e-mail.', 'Responda se a pessoa já tem cadastro no Arlo e, para quem vai a campo, o perfil no campo.', 'Marque a ciência sobre o uso dos dados.', 'Toque em <b>Cadastrar</b>.']],
+        ['Mandar o acesso para a pessoa', ['Abra a ficha da pessoa.', 'Toque em <b>Gerar código de acesso</b>.', 'Toque em <b>Mandar por WhatsApp</b>: a mensagem já leva endereço, e-mail e código.']],
+        ['Registrar a habilitação', ['Abra a ficha da pessoa.', 'Toque em <b>Registrar passos da habilitação</b>.', 'Em cada passo feito, toque em <b>Hoje</b> (ou escolha a data).', 'Toque em <b>Salvar habilitação</b>.']],
+        ['Desligar e pôr substituta', ['Abra a ficha da pessoa → <b>Desligar</b>.', 'Escolha o motivo e explique em uma frase.', 'Toque em <b>Confirmar desligamento</b> (não tem volta).', 'Na vaga que abriu, toque em <b>Cadastrar substituta</b>.']]
+      ],
       passos: [
         'Toque na vaga ou em <b>Cadastrar</b> e escolha: <b>Gerar link de cadastro</b> (a pessoa preenche pelo celular e você confere e aprova) ou <b>Digitar os dados agora</b> (você mesmo preenche). O link é o recomendado: menos digitação e a própria pessoa aceita o termo de dados.',
         'Para bolsistas, antes de salvar aparece o <b>perfil da bolsista</b> do Guia: confira se a indicada atende.',
@@ -87,6 +101,10 @@
     selecao: {
       t: 'Seleção das mulheres',
       intro: 'Cada mulher indicada pela comunidade tem uma ficha de indicação, preenchida pela bolsista do estado, com os critérios do edital e o termo de consentimento. Aqui a coordenação aprova ou devolve.',
+      tarefas: [
+        ['Aprovar ou devolver uma ficha', ['Na aba <b>Seleção</b>, abra uma ficha que aguarda.', 'Confira dados, critérios e a foto do termo assinado.', 'Toque em <b>Aprovar</b>, ou escreva o que corrigir e toque em <b>Devolver para correção</b>.']],
+        ['Baixar as fichas', ['Toque em <b>Baixar planilha (CSV)</b>.', 'Abra o arquivo no Excel ou no Google Planilhas.']]
+      ],
       passos: [
         'A tabela mostra, por estado, as fichas lançadas e a situação: <b>selecionadas aprovadas</b> (as que ocupam as 40 vagas), <b>lista de espera</b>, <b>sem água</b>, <b>não atende</b> e as que <b>aguardam</b> decisão.',
         'Abra uma ficha que aguarda, confira os dados, os critérios e a foto do termo assinado, e escolha <b>Aprovar</b> ou <b>Devolver</b> (dizendo o que corrigir).',
@@ -101,6 +119,11 @@
     campo: {
       t: 'Trabalho de campo',
       intro: 'As 5 visitas de cada quintal: diagnóstico e plano, implantação, 2 acompanhamentos e avaliação final. São até 200 dias de campo por estado.',
+      tarefas: [
+        ['Agendar uma visita', ['Na aba <b>Campo</b>, toque em <b>+ Agendar visita</b>.', 'Escolha o quintal, a etapa, a data e quem vai (só aparece quem está habilitada).', 'Toque em <b>Agendar</b>.']],
+        ['Aprovar o plano do quintal', ['Em <b>Planos para você aprovar</b>, abra o diagnóstico.', 'Confira fotos, kit (até R$ 4.500) e cronograma.', 'Toque em <b>Aprovar</b>, ou escreva o motivo e toque em <b>Devolver para correção</b>.']],
+        ['Mudar ou cancelar uma visita', ['Abra a visita no roteiro.', 'Toque em <b>Mudar data ou pessoa</b>, ou em <b>Cancelar esta visita</b>.']]
+      ],
       passos: [
         'A tabela mostra, por estado, os dias de campo feitos e previstos, diagnósticos, planos aprovados, casos sem água e agentes.',
         'Em <b>Planos para você aprovar</b>, abra o diagnóstico, confira as fotos, o kit (itens da lista aprovada, com preço, até o valor por quintal) e o cronograma, e <b>aprove</b> ou <b>devolva</b>.',
@@ -117,6 +140,11 @@
     fic: {
       t: 'Curso FIC',
       intro: 'Turmas do curso FIC do IFRN, matrículas das bolsistas e agentes e o acesso mensal ao AVA. A matrícula é um dos passos da habilitação; o acesso ao AVA é uma das entregas do mês das bolsistas.',
+      tarefas: [
+        ['Criar uma turma', ['Toque em <b>+ Nova turma</b>.', 'Dê o nome, o estado (ou vários estados) e as datas.', 'Toque em <b>Criar turma</b>.']],
+        ['Matricular', ['Na turma, toque em <b>+ Matricular</b>.', 'Marque as pessoas e digite o número da matrícula no SUAP de cada uma.', 'Confira a data e toque em <b>Salvar matrículas</b>.']],
+        ['Confirmar o acesso ao AVA', ['Em <b>Acesso ao AVA no mês</b>, confira o mês (use ‹ › para mudar).', 'Marque quem entrou e fez as atividades. Salva na hora.']]
+      ],
       passos: [
         'Os professores do FIC criam as turmas e matriculam, em qualquer turma. A coordenação geral também pode.',
         'Para matricular: abra a turma, toque em <b>+ Matricular</b>, escolha a pessoa, informe o número da matrícula (SUAP) e a data.',
@@ -132,6 +160,9 @@
     pagamentos: {
       t: 'Pagamentos',
       intro: 'Pedidos de ajuda de custo (visitas de campo) e de bolsa mensal. O caminho é sempre: a pessoa pede → a coordenação dá o aval → o auxiliar lança no Arlo (FUNCERN).',
+      tarefas: [
+        ['Dar o aval', ['Em <b>Esperando o seu aval</b>, abra o pedido.', 'Confira as visitas e o km (ajuda de custo) ou o relatório e as entregas do mês (bolsa).', 'Toque em <b>Dar aval</b>, ou escreva o que corrigir e toque em <b>Devolver para corrigir</b>.']]
+      ],
       passos: [
         'Em <b>Esperando o seu aval</b>, abra o pedido e confira: na ajuda de custo, as visitas e o km; na bolsa, o relatório e as <b>entregas do mês</b> (fotos, lista de presença, fichas, AVA e metas).',
         'Toque em <b>Dar aval</b> ou <b>Devolver</b>, dizendo o que corrigir.',
@@ -147,6 +178,11 @@
     custos: {
       t: 'Custos',
       intro: 'Cálculo da ajuda de custo de cada visita e planejamento do orçamento de campo do projeto.',
+      tarefas: [
+        ['Conferir o km de uma visita', ['Em <b>Pagamento do mês</b>, escolha o mês com ‹ ›.', 'Na linha da visita, digite o <b>Km conferido</b> (só a ida).', 'Saia do campo: salva sozinho e o valor da visita muda na hora.']],
+        ['Mudar os valores usados', ['Abra <b>Valores usados</b>.', 'Ajuste hora, horas por etapa, consumo, gasolina ou refeição.', 'Toque em <b>Salvar valores</b>.']],
+        ['Ver se o projeto cabe no orçamento', ['Toque em <b>Proposta de roteiro</b>.', 'Veja o custo projetado e, em <b>Caber no orçamento</b>, quanto cada medida economiza.']]
+      ],
       passos: [
         'Cada visita vale: horas da etapa × valor da hora + combustível (ida e volta, pela distância até o quintal) + refeição.',
         'Em <b>Valores usados</b> a coordenação ajusta valor da hora, horas por etapa, consumo do carro, preço da gasolina, refeição e o teto do projeto. Toda mudança fica no histórico.',
@@ -160,6 +196,10 @@
     viagens: {
       t: 'Viagens e eventos',
       intro: 'Pedidos de passagem aérea (intercâmbio e acompanhamento pedagógico) e de estrutura de evento, feitos pela bolsista de articulação territorial. A FUNCERN só compra ou contrata depois da autorização.',
+      tarefas: [
+        ['Conferir um pedido (coordenação técnica)', ['Em <b>Esperando a sua conferência</b>, abra o pedido.', 'Confira nomes iguais ao documento, CPF, RG, datas e quantidades.', 'Toque em <b>Conferido</b>, ou escreva o que corrigir e toque em <b>Devolver para corrigir</b>.']],
+        ['Autorizar e mandar à FUNCERN (coordenação geral)', ['Em <b>Esperando a sua autorização</b>, abra o pedido.', 'Se já tiver, digite o protocolo da FUNCERN.', 'Toque em <b>Autorizar</b> (ou devolva, ou recuse com o motivo).', 'Toque em <b>Copiar texto</b> e cole no e-mail ou sistema da FUNCERN.']]
+      ],
       passos: [
         'A bolsista de articulação territorial envia o pedido. Ele aparece para a <b>coordenação técnica</b> em "Esperando a sua conferência".',
         'A coordenação técnica confere os dados (nomes iguais ao documento, datas, CPF e RG, quantidades) e toca em <b>Conferido</b>, ou <b>Devolve</b> dizendo o que corrigir.',
@@ -176,8 +216,11 @@
     historico: {
       t: 'Histórico',
       intro: 'Registro de tudo o que foi feito no sistema: quem cadastrou, alterou, aprovou, devolveu, desligou, gerou código de acesso, consultou conta bancária, e quando.',
+      tarefas: [
+        ['Achar um registro', ['Role pelos dias (Hoje, Ontem, datas).', 'No fim da lista, toque em "Ver … registros anteriores" para ir mais para trás.']]
+      ],
       passos: [
-        'Os registros aparecem por dia (Hoje, Ontem, datas), do mais recente para o mais antigo. Os 12 últimos ficam à vista; os anteriores, em <b>Ver registros anteriores</b>.',
+        'Os registros aparecem por dia (Hoje, Ontem, datas), do mais recente para o mais antigo. Os 12 últimos ficam à vista; os anteriores, no fim da lista.',
         'Ninguém consegue alterar ou apagar o histórico pelo sistema, nem a coordenação geral.'
       ],
       duvidas: [
@@ -190,15 +233,19 @@
     bolsista: {
       t: 'Sua tela (bolsista)',
       intro: 'Tudo o que você faz no estado: indicar as mulheres, registrar o trabalho de campo, acompanhar as entregas do mês e pedir os pagamentos.',
+      tarefas: [
+        ['Lançar a ficha de uma mulher', ['No topo, toque em <b>+ Nova ficha de mulher</b>.', 'Preencha os dados e os critérios com a mulher.', 'Fotografe a ficha e o termo assinado.', 'Toque em <b>Registrar localização</b> e depois em <b>Salvar ficha</b>. Sem internet, ela sobe sozinha depois.']],
+        ['Registrar diagnóstico ou visita', ['No topo, toque em <b>Visitas e diagnósticos</b>.', 'Em <b>Para fazer agora</b>, toque no botão da visita (<b>Registrar diagnóstico</b>, <b>Registrar visita feita</b> ou <b>Registrar avaliação</b>).', 'Faça as fotos, registre a localização e salve.']],
+        ['Marcar a lista de presença', ['No topo, toque em <b>Entregas do mês</b>.', 'Na lista de presença, toque em <b>Entreguei</b>.']],
+        ['Pedir a bolsa e a ajuda de custo', ['No topo, toque em <b>Pedir pagamento</b>.', 'Na ajuda de custo, marque as visitas feitas e toque em <b>Solicitar</b>.', 'Na bolsa, escreva o relatório do mês (pode usar <b>Falar</b>) e toque em <b>Solicitar bolsa</b>.']],
+        ['Pedir passagem ou evento (só articulação territorial)', ['No topo, toque em <b>Passagem ou evento</b>.', 'Toque em <b>Pedir passagem aérea</b> (40 dias antes) ou <b>Pedir estrutura de evento</b> (45 dias antes).', 'Preencha tudo e toque em <b>Enviar para a coordenação técnica</b>.', 'Se voltar devolvido, abra, leia o motivo, toque em <b>Corrigir e reenviar</b>.']]
+      ],
       passos: [
-        'Leia os pontos importantes do Guia e toque em <b>Li e entendi</b> (aparece uma vez só).',
+        'Na primeira vez, leia os pontos importantes do Guia e toque em <b>Li e entendi</b>.',
         'Se aparecer <b>pendências no seu cadastro</b>, resolva primeiro: sem elas a FUNCERN não paga.',
-        '<b>Seleção das mulheres:</b> toque em <b>+ Nova ficha</b> quando estiver com a mulher indicada. Fichas devolvidas aparecem em "Para corrigir".',
-        '<b>Trabalho de campo:</b> em <b>Para fazer agora</b> estão as visitas atrasadas, as dos próximos 7 dias e os planos devolvidos, cada um com o botão da ação.',
-        '<b>Diagnóstico:</b> faça as 3 fotos (visão geral, água e plantio), registre a localização e monte o kit com o preço de cada item, sem passar de R$ 4.500.',
-        '<b>Entregas do mês:</b> acompanhe as 6 entregas. Quando entregar as listas de presença, toque em <b>Entreguei</b>. O acesso ao AVA é o professor quem confirma.',
-        '<b>Solicitar pagamento:</b> uma vez por mês, peça a ajuda de custo das visitas feitas e a bolsa, com o relatório de atividades.',
-        '<b>Passagens aéreas e eventos</b> (só a bolsista de articulação territorial): peça a passagem 40 dias antes da viagem e a estrutura do evento 45 dias antes. A coordenação técnica confere e a coordenação geral autoriza e manda para a FUNCERN.'
+        'Os botões de <b>O que você quer fazer?</b>, no topo, levam direto a cada parte da tela.',
+        '<b>Diagnóstico:</b> 3 fotos (visão geral, água e plantio), localização e o kit com o preço de cada item, sem passar de R$ 4.500.',
+        'As <b>Entregas do mês</b> (fotos, lista de presença, relatório, fichas, AVA e metas) liberam a bolsa do mês.'
       ],
       duvidas: [
         ['Posso falar em vez de digitar?', 'Sim. Nos campos de texto, toque em Falar e fale; o texto vai aparecendo. Revise antes de salvar. Evite dizer nomes e CPF. Precisa de internet.'],
@@ -211,11 +258,13 @@
     agente: {
       t: 'Sua tela (agente de campo)',
       intro: 'As visitas atribuídas a você, os registros de cada uma e o pedido da ajuda de custo.',
+      tarefas: [
+        ['Registrar uma visita', ['No topo, toque em <b>Minhas próximas visitas</b>.', 'Toque no botão da visita (<b>Registrar diagnóstico</b>, <b>Registrar visita feita</b> ou <b>Registrar avaliação</b>).', 'Faça as fotos, registre a localização e salve. Sem internet, sobe depois.']],
+        ['Pedir a ajuda de custo', ['No topo, toque em <b>Pedir ajuda de custo</b>.', 'Marque as visitas feitas no mês.', 'Toque em <b>Solicitar</b>.']]
+      ],
       passos: [
-        'Leia como funciona para a agente e toque em <b>Li e entendi</b> (aparece uma vez só).',
-        'Em <b>Próximas visitas</b> estão os quintais e as datas. Quem agenda é a bolsista do estado ou a coordenação técnica.',
-        'Na visita, toque no botão da ação: <b>Registrar diagnóstico</b>, <b>Registrar visita feita</b> ou <b>Registrar avaliação</b>. Registre no mesmo dia, com fotos e localização.',
-        'No fim do mês, peça a ajuda de custo das visitas feitas em <b>Solicitar pagamento</b>.'
+        'Na primeira vez, leia como funciona para a agente e toque em <b>Li e entendi</b>.',
+        'Quem agenda as visitas é a bolsista do estado ou a coordenação técnica. Registre cada visita no mesmo dia, com fotos e localização.'
       ],
       duvidas: [
         ['Não aparece nenhuma visita.', 'Você só vê os quintais atribuídos a você, e só depois de habilitada (FIC, Arlo e termo).'],
@@ -294,11 +343,14 @@
     professor_fic: {
       t: 'Sua tela (professor do FIC)',
       intro: 'Turmas do curso FIC, matrículas das bolsistas e agentes de campo e a confirmação mensal do acesso ao AVA.',
+      tarefas: [
+        ['Matricular alunas', ['No topo, toque em <b>Matricular alunas</b>.', 'Na turma, toque em <b>+ Matricular</b> (se não houver turma, crie em <b>+ Nova turma</b>).', 'Marque as pessoas, digite o número do SUAP e toque em <b>Salvar matrículas</b>.']],
+        ['Confirmar o AVA do mês', ['No topo, toque em <b>Confirmar acesso ao AVA</b>.', 'Marque quem acessou. Salva na hora.']]
+      ],
       passos: [
-        'Toque em <b>+ Nova turma</b> para criar a sua turma.',
-        'Matricule as pessoas com o número da matrícula no SUAP e a data. Você pode matricular também nas turmas do outro professor.',
+        'Você pode matricular também nas turmas do outro professor.',
         'A matrícula registrada aqui completa o passo "matrícula no FIC" da habilitação da pessoa.',
-        'Todo mês, em <b>Acesso ao AVA no mês</b>, marque quem entrou no curso e fez as atividades. É uma das entregas que liberam a bolsa das bolsistas.'
+        'O acesso ao AVA é uma das entregas que liberam a bolsa das bolsistas: marque todo mês.'
       ],
       duvidas: [
         ['Por que não vejo CPF nem telefone?', 'Você vê só o mínimo para matricular. Os demais dados são protegidos (LGPD).'],
@@ -308,10 +360,13 @@
     auxiliar_adm: {
       t: 'Sua tela (auxiliar administrativo)',
       intro: 'Cadastro da equipe no Arlo (FUNCERN), registro do termo de compromisso e lançamento dos pagamentos no Arlo.',
+      tarefas: [
+        ['Registrar o cadastro no Arlo', ['No topo, toque em <b>Cadastrar no Arlo</b>.', 'Abra a pessoa e, se precisar, toque em <b>Ver conta e Pix</b>.', 'Cadastre no Arlo, volte e toque em <b>Registrar passos da habilitação</b> → <b>Hoje</b> → <b>Salvar habilitação</b>.']],
+        ['Lançar um pagamento no Arlo', ['No topo, toque em <b>Lançar pagamentos no Arlo</b>.', 'Abra o pedido, lance o valor no Arlo e digite o protocolo.', 'Toque em <b>Registrar: lançado no Arlo</b>.']]
+      ],
       passos: [
-        '<b>Falta cadastrar no Arlo:</b> abra a pessoa, veja os dados (e a conta, se precisar), cadastre no Arlo e registre a data em <b>Registrar passos da habilitação</b>. O botão <b>Hoje</b> preenche a data do dia.',
-        '<b>No Arlo, falta o termo:</b> quando a pessoa entregar o termo assinado, registre a data e anexe o arquivo.',
-        '<b>Pagamentos para lançar:</b> pedidos que já têm aval. Lance no Arlo e registre o protocolo.'
+        'Quando a pessoa entregar o termo assinado, registre a data e anexe o arquivo em <b>Registrar passos da habilitação</b>.',
+        'Em <b>Pagamentos para lançar</b> ficam só os pedidos que já têm o aval da coordenação.'
       ],
       duvidas: [
         ['A consulta da conta bancária fica registrada?', 'Sim. Cada vez que você abre a conta de alguém, fica no histórico.'],
@@ -343,7 +398,8 @@
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo ajuda">
         <p class="ajuda-intro">${a.intro}</p>
-        ${a.passos && a.passos.length ? `<h3>Como fazer</h3>
+        ${a.tarefas && a.tarefas.length ? `<h3>Passo a passo</h3><div class="ajuda-duvidas ajuda-tarefas">${a.tarefas.map(([t, ps], i) => `<details ${i === 0 ? 'open' : ''}><summary>${E(t)}</summary><ol class="ajuda-passos">${ps.map(x => `<li>${x}</li>`).join('')}</ol></details>`).join('')}</div>` : ''}
+        ${a.passos && a.passos.length ? `<h3>${a.tarefas ? 'Como funciona' : 'Como fazer'}</h3>
         <ol class="ajuda-passos">${a.passos.map(x => `<li>${x}</li>`).join('')}</ol>` : ''}
         ${(a.secoes || []).map(([h, l]) => `<h3>${E(h)}</h3><ul class="ajuda-lista">${l.map(x => `<li>${x}</li>`).join('')}</ul>`).join('')}
         ${guiaDe(k) ? `<button type="button" class="cad-modo cad-modo-2" data-acao="ajuda" data-k="${guiaDe(k)}"><b>${E(A[guiaDe(k)].t)}</b><span>Pagamento, entregas do mês, o que é importante e com quem falar.</span></button>` : ''}

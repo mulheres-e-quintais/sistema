@@ -66,11 +66,16 @@
 
   /* ---------- tela ---------- */
   function aba() {
-    if (!C.carregado) { setTimeout(async () => { await carregar(); U().render(); }, 0); return '<p class="carregando">Carregando…</p>'; }
     const souCoord = /^coord/.test(S().eu.papel);
     const vis = C.visao || 'mes';
     const nav = `<div class="seg custo-nav" role="tablist" aria-label="Visão"><button type="button" role="tab" data-acao="custo-visao" data-v="mes" aria-pressed="${vis === 'mes'}">Pagamento do mês</button><button type="button" role="tab" data-acao="custo-visao" data-v="plano" aria-pressed="${vis === 'plano'}">Proposta de roteiro</button></div>`;
-    if (vis === 'plano') return nav + planoHTML();
+    if (!C.carregado) {
+      if (!C.carregando) C.carregando = carregar().then(() => U().render());
+      // mesmo cabeçalho da página pronta, para nada pular quando os valores chegarem
+      return `<div class="cab"><div><span class="eyebrow">Ajuda de custo</span><h1>Custo das visitas</h1><p class="carregando">Calculando os valores…</p></div></div>${nav}<div class="custo-esqueleto" aria-hidden="true"></div>`;
+    }
+    // o seletor de visão vem logo abaixo do título, como nas outras páginas (o título fica sempre no mesmo lugar)
+    if (vis === 'plano') return planoHTML().replace('<!--nav-->', nav);
     C.mes = C.mes || mesHoje();
     const vs = (S().visitas || []).filter(v => v.situacao !== 'cancelada' && mesDe(v.data_realizada || v.data_prevista) === C.mes)
       .sort((a, b) => String(a.data_realizada || a.data_prevista).localeCompare(String(b.data_realizada || b.data_prevista)));
@@ -80,9 +85,10 @@
     const porPessoa = {}; feitas.forEach(l => { const id = l.v.executor_id; (porPessoa[id] = porPessoa[id] || { p: l.p, n: 0, total: 0, falta: 0 }); porPessoa[id].n++; porPessoa[id].total += l.c.total; if (!l.c.completo) porPessoa[id].falta++; });
     const semKm = feitas.filter(l => !l.c.completo).length;
     const p = C.par;
-    return nav + `<div class="cab"><div><span class="eyebrow">Ajuda de custo</span><h1>Custo das visitas</h1>
+    return `<div class="cab"><div><span class="eyebrow">Ajuda de custo</span><h1>Custo das visitas</h1>
         <p>Cada visita paga as horas de trabalho, o combustível de ida e volta e uma refeição. Confira o km de cada visita antes de pagar: sem km conferido o sistema usa uma estimativa.</p></div>
         <span class="seg" role="group" aria-label="Mês"><button type="button" data-acao="custo-mes" data-n="-1" aria-label="Mês anterior">‹</button><button type="button" aria-pressed="true">${nomeMes(C.mes)}</button><button type="button" data-acao="custo-mes" data-n="1" aria-label="Próximo mês">›</button></span></div>
+      ${nav}
       ${C.erro ? `<div class="aviso">${E(C.erro)}</div>` : ''}
       <div class="aviso erro"><b>Confirme com a FUNCERN antes de pagar.</b> Bolsistas já recebem bolsa mensal: pagar também as horas de visita a elas pode ser entendido como pagamento em dobro pela mesma atividade.</div>
       <div class="resumo">
@@ -291,7 +297,7 @@
     const uf = C.planoUF || (ufs.find(u => u.viagens.length) || {}).uf || 'PI'; const U0 = r.ufs[uf];
     return `<div class="cab"><div><span class="eyebrow">Planejamento</span><h1>Proposta de roteiro</h1>
         <p>Cada quintal fica com a pessoa habilitada do estado que mora mais perto, e as visitas da mesma etapa são juntadas em viagens de um dia (até ${JORNADA_H} horas contando o deslocamento). É uma proposta: a bolsista ajusta ao agendar.</p>
-        <p class="small muted">Lê do sistema: equipe habilitada e município onde mora, fichas selecionadas e aprovadas (com GPS do diagnóstico quando houver), o roteiro de campo, os diagnósticos sem água (só recebem o diagnóstico) e os valores da aba Pagamento. Nenhum mês que já passou recebe custo.</p></div></div>
+        <p class="small muted">Lê do sistema: equipe habilitada e município onde mora, fichas selecionadas e aprovadas (com GPS do diagnóstico quando houver), o roteiro de campo, os diagnósticos sem água (só recebem o diagnóstico) e os valores da aba Pagamento. Nenhum mês que já passou recebe custo.</p></div></div><!--nav-->
       ${r.semOrigem.length ? `<div class="aviso">Sem município de moradia conhecido, fora do cálculo: ${r.semOrigem.map(m => E(m.nome_social || m.nome)).join(', ')}. Corrija o município no cadastro.</div>` : ''}
       ${r.semLocal ? `<div class="aviso">${r.semLocal} quintal(is) sem localização (nem GPS, nem município do mapa) ficaram fora.</div>` : ''}
       <div class="escolha" role="group" aria-label="O que calcular">

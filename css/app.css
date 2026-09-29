@@ -936,9 +936,9 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .ajuda-outros { display: flex; flex-wrap: wrap; gap: 6px; }
 .ent-ajuda { justify-self: center; font-size: var(--t-md); }
 
-/* ---------- celular: menu de seções (grade) no lugar das abas ---------- */
+/* ---------- celular e tablet: menu de seções (grade) no lugar das abas ---------- */
 .abas-m { display: none; }
-@media (max-width: 640px) {
+@media (max-width: 920px) {
   .abas { display: none; }
   .abas-m { display: block; position: relative; margin: 2px 0 6px; }
   .abas-m summary { list-style: none; display: flex; align-items: center; gap: 8px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px;
@@ -1214,3 +1214,23 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .viag-pdl:last-child { border-bottom: 0; margin-bottom: 0; }
 .viag-txt { white-space: pre-wrap; font: inherit; font-size: var(--t-sm); margin: 0; }
 .viag-copia { width: 100%; font-size: var(--t-sm); }
+
+/* abas: 9 seções cabem sem rolagem escondida em telas médias (notebook e tablet) */
+@media (max-width: 1120px) { .abas { gap: 0; } .abas button { padding: 10px 9px; font-size: var(--t-md); } }
+.conta-t.zero { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
+.custo-esqueleto { min-height: 900px; }
+.custo-nav { margin: 0 0 14px; display: inline-flex; }
+/* celular: botões pequenos e links de ação com área de toque confortável, sem mudar letra nem cor */
+@media (max-width: 640px) {
+  .btn.peq { min-height: 40px; }
+  .al-ir { min-height: 40px; }
+  button.link { min-height: 40px; padding-block: 8px; }
+  .btn-voz { min-height: 40px; }
+}
+/* atalhos das telas pessoais (mesmos botões do sistema) */
+.atalhos { display: grid; gap: 8px; margin: 0 0 18px; }
+.atalhos-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.atalhos-grade .btn { justify-content: center; min-height: 44px; }
+.atalhos-grade .btn[hidden] { display: none; }
+@media (max-width: 520px) { .atalhos-grade { grid-template-columns: 1fr 1fr; } .atalhos-grade .btn.pri { grid-column: 1 / -1; } }
+.ajuda-tarefas .ajuda-passos { margin: 6px 0 4px; }

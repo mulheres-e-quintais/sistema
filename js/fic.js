@@ -42,7 +42,7 @@
         <div><span class="v num">${professores().length}</span><span class="l">professor${professores().length === 1 ? '' : 'es'} do FIC</span></div>
       </div>
       ${sem.length ? blocoSem(sem) : pessoas.length ? '<div class="aviso ok-aviso">Todas as bolsistas e agentes ativas estão matriculadas no FIC.</div>' : ''}
-      <section class="secao"><div class="secao-cab"><h2>${souProf() ? 'Suas turmas' : 'Turmas'}</h2></div>
+      <section class="secao"><div class="secao-cab"><h2 id="t-turmas">${souProf() ? 'Suas turmas' : 'Turmas'}</h2></div>
         ${minhas.length ? minhas.map(cartaoTurma).join('') : `<div class="vazio"><span>${souProf() ? 'Você ainda não criou turma. Toque em <b>+ Nova turma</b>.' : 'Nenhuma turma cadastrada ainda.'}</span></div>`}</section>
       ${outras.length ? `<section class="secao"><div class="secao-cab"><h2>Turmas de outros professores</h2><p>Você também pode matricular nelas.</p></div>${outras.map(cartaoTurma).join('')}</section>` : ''}
       ${avulsas.length ? `<section class="secao"><div class="secao-cab"><div><h2>Matrícula registrada sem turma</h2><p>Lançadas à mão na habilitação, antes das turmas existirem no sistema. Para organizar, matricule a pessoa numa turma (o número e a data vêm preenchidos).</p></div></div>
@@ -79,6 +79,7 @@
     return `<main class="wrap" id="principal">
       <div class="cab"><div><span class="eyebrow">${E(P.professor_fic.nome)}</span><h1>Olá, ${E(nomeDe(eu).split(' ')[0])}</h1><p>${E(P.professor_fic.faz)}</p></div>
         <span class="chip chip-lg ${s.cod}">${E(s.rot)}</span></div>
+      ${MQ.atalhos ? MQ.atalhos([['Matricular alunas', '#t-turmas', true], ['Confirmar acesso ao AVA', '#t-ava'], ['Pedir a minha bolsa', '#t-pag']]) : ''}
       ${aba()}
       ${MQ.regras.situacao(eu).cod === 'ok' ? '' : `<div class="bloco"><h2>Habilitação para receber a bolsa</h2><p class="small muted">A FUNCERN paga a bolsa depois destes passos. Documentos, conta ou Pix: auxiliar administrativo.</p>${U().passos(eu)}</div>`}
       ${MQ.pagUI ? MQ.pagUI.secaoMinha() : ''}

@@ -109,7 +109,7 @@
     const outrasAval = lista().filter(s => s.situacao === 'solicitada' && !minhaVez(s));
     const arlo = lista().filter(s => s.situacao === 'avalizada'), dev = lista().filter(s => s.situacao === 'devolvida'), lanc = lista().filter(s => s.situacao === 'lancada');
     const soma = l => l.reduce((t, s) => t + (+(s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado) || 0), 0);
-    const bloco = (t, l, vazio, aberto) => `<section class="secao"><div class="secao-cab"><h2>${t} <span class="conta-t">${l.length}</span></h2>${l.length ? `<span class="muted">${brl(soma(l))}</span>` : ''}</div>
+    const bloco = (t, l, vazio, aberto) => `<section class="secao"><div class="secao-cab"><h2>${t} <span class="conta-t${l.length ? '' : ' zero'}">${l.length}</span></h2>${l.length ? `<span class="muted">${brl(soma(l))}</span>` : ''}</div>
       ${l.length ? `<div class="pag-lista">${l.map(s => linha(s, true)).join('')}</div>` : `<p class="muted">${vazio}</p>`}</section>`;
     return `<div class="cab"><div><span class="eyebrow">Pagamentos</span><h1>Solicitações de pagamento</h1>
         <p>Quem visita ou recebe bolsa solicita; ${souGeral ? 'a coordenação técnica dá o aval na ajuda de custo e na bolsa das bolsistas; você, na bolsa da coordenação técnica, dos professores e dos auxiliares (e pode substituir a técnica)' : 'você dá o aval na ajuda de custo e na bolsa das bolsistas'}. Com o aval, o auxiliar administrativo lança no Arlo.</p></div></div>
@@ -132,7 +132,7 @@
     const eu = S().eu;
     const fila = lista().filter(s => s.situacao === 'avalizada' && s.equipe_id !== eu.id).sort((a, b) => String(a.aval_em).localeCompare(String(b.aval_em)));
     const feitas = lista().filter(s => s.situacao === 'lancada').slice(0, 30);
-    return `<section class="secao"><div class="secao-cab"><div><h2>Pagamentos para lançar no Arlo <span class="conta-t">${fila.length}</span></h2>
+    return `<section class="secao"><div class="secao-cab"><div><h2 id="t-lancar">Pagamentos para lançar no Arlo <span class="conta-t${fila.length ? '' : ' zero'}">${fila.length}</span></h2>
         <p>Já têm o aval da coordenação. Lance no Arlo e registre aqui (com o número do protocolo, se houver).</p></div></div>
       ${fila.length ? `<div class="pag-lista">${fila.map(s => linha(s, true)).join('')}</div>` : '<p class="muted">Nada para lançar agora.</p>'}
       ${feitas.length ? `<details class="hist"><summary>Já lançadas (${feitas.length} mais recentes)</summary><div class="pag-lista" style="padding:0 18px 16px">${feitas.map(s => linha(s, true)).join('')}</div></details>` : ''}
