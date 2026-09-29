@@ -63,6 +63,9 @@ function carregar(arquivos, opcoes = {}) {
     const arq = path.join(JS, a);
     new vm.Script(fs.readFileSync(arq, 'utf8'), { filename: arq }).runInContext(ctx);
   }
+  // a equipe de exemplo começa em MQ.PROJETO.inicioBolsas e os testes usam o mês corrente:
+  // o início não pode ficar depois de hoje (regra do 32: nada de pagamento ou entrega antes do mês de início)
+  { const P = janela.MQ && janela.MQ.PROJETO, h = new Date().toISOString().slice(0, 8) + '01'; if (P && P.inicioBolsas > h) P.inicioBolsas = h; }
   if (opcoes.ui) janela.MQ.ui = Object.assign(janela.MQ.ui || {}, opcoes.ui);
   return { MQ: janela.MQ, janela, ouvintes, ouvintesJanela, app: () => app.innerHTML, painel: () => (painel && !painel.removido ? painel.innerHTML : '') };
 }
