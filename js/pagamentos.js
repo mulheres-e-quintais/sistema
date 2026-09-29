@@ -173,6 +173,7 @@
           ${s.obs_aval ? `<dt>Observação</dt><dd>${E(s.obs_aval)}</dd>` : ''}
           ${s.arlo_em ? `<dt>Lançada no Arlo</dt><dd>${new Date(s.arlo_em).toLocaleDateString('pt-BR')} por ${E(nomeDe(pessoa(s.arlo_por)))}${s.arlo_protocolo ? ' · protocolo ' + E(s.arlo_protocolo) : ''}</dd>` : ''}</dl></div>
         ${s.relatorio ? `<div class="bloco"><h3>Relatório de atividades</h3><p style="white-space:pre-wrap">${E(s.relatorio)}</p></div>` : ''}
+        ${MQ.entregasUI && /^coord/.test(eu.papel) ? MQ.entregasUI.resumoAval(s) : ''}
         ${visHTML ? `<div class="bloco"><h3>Visitas</h3>${visHTML}${conf != null && Math.abs(conf - s.valor_solicitado) >= 0.01 ? `<div class="aviso">Recalculado agora: <b>${brl(conf)}</b> (solicitado: ${brl(s.valor_solicitado)}). A diferença vem do km conferido ou dos valores da aba Custos.</div>` : ''}</div>` : ''}
         ${podeAval ? `<form class="bloco" data-form="pag-aval" data-id="${E(s.id)}" novalidate><h3>Aval</h3>
           <div class="campos"><div class="campo"><label for="pa-val">Valor com aval (R$)</label><input id="pa-val" name="valor" inputmode="decimal" value="${val != null ? String((conf != null ? conf : val).toFixed(2)).replace('.', ',') : ''}"></div>

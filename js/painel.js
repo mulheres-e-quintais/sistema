@@ -294,7 +294,7 @@
     const NOME_ABA = { equipe: 'Equipe', selecao: 'Seleção', campo: 'Campo', custos: 'Custos', historico: 'Histórico', visao: 'Visão geral' };
     const rotNivel = { crit: 'Crítico', pend: 'Atenção', info: 'Informação' };
     return `
-      <div class="cab"><div><span class="eyebrow">Visão geral · processo ${E(MQ.PROJETO.processo)}</span><h1>Mulheres &amp; Quintais</h1>
+      <div class="cab"><div><span class="eyebrow">Visão geral</span><h1>Mulheres &amp; Quintais</h1>
         <p>Vigência até ${R.fmtData(MQ.PROJETO.vigencia.fim)} · ${diasFim > 0 ? 'faltam ' + diasFim + ' dias' : 'encerrada'}.</p></div>
         <div class="cab-lado">
           <div class="ltm"><span class="small muted"><b>Mês ${Math.min(Math.max(mes, 1), MESES.length)} de ${MESES.length}</b> do projeto (${MESES[Math.min(Math.max(mes, 1), MESES.length) - 1]})</span>

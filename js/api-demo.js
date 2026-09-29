@@ -314,6 +314,21 @@
       Object.assign(p, { matricula_fic_em: null, matricula_fic_numero: null }); auditar('UPDATE', antes, p); gravar();
     },
 
+    async listarEntregas() { const d = ler(); return copia(d.entregas || []); },
+    async marcarEntrega(equipe_id, mes, item, marcar) {
+      const d = ler(); const eu = euMesmo(); d.entregas = d.entregas || [];
+      if (item === 'presenca' && (!eu || eu.id !== equipe_id)) throw falha('Só a própria bolsista marca a lista de presença.');
+      if (item === 'ava' && (!eu || !['professor_fic', 'coord_geral'].includes(eu.papel))) throw falha('Só o professor do FIC confirma o acesso ao AVA.');
+      d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes && x.item === item));
+      if (marcar) d.entregas.push({ equipe_id, mes, item, marcado_por: eu.id, marcado_em: new Date().toISOString() });
+      gravar();
+    },
+    async listarCiencias() { const d = ler(); return copia(d.ciencias || []); },
+    async darCiencia(equipe_id, documento) {
+      const d = ler(); d.ciencias = d.ciencias || [];
+      if (!d.ciencias.some(x => x.equipe_id === equipe_id && x.documento === documento)) d.ciencias.push({ equipe_id, documento, em: new Date().toISOString() });
+      gravar();
+    },
     /* demonstração: gera um código para mostrar a tela (não há login de verdade aqui) */
     async gerarCodigoAcesso(id) {
       const d = ler(); const eu = euMesmo(); const m = d.equipe.find(x => x.id === id);
@@ -549,7 +564,7 @@
       if (d.equipe.some(m => m.status === 'ativa' && (m.cpf === cpf || String(m.email).toLowerCase() === email))) throw falha('Já existe pessoa ativa na equipe com este CPF ou e-mail. Fale com a coordenação.');
       d.pre_cadastros = (d.pre_cadastros || []).concat([{ id: uid(), convite_id: c.id, papel: c.papel, uf: c.uf, substitui_id: c.substitui_id,
         nome: String(dados.nome).trim(), cpf, email, telefone: dados.telefone || null, municipio: dados.municipio || null, organizacao: dados.organizacao || null,
-        cadastro_arlo: !!dados.cadastro_arlo, siape: dados.siape || null, nome_social: dados.nome_social || null, data_nascimento: dados.data_nascimento || null, nis: dados.nis || null, endereco: dados.endereco || {}, socioeconomico: dados.socioeconomico || null,
+        cadastro_arlo: !!dados.cadastro_arlo, siape: dados.siape || null, nome_social: dados.nome_social || null, data_nascimento: dados.data_nascimento || null, nis: dados.nis || null, endereco: dados.endereco || {}, socioeconomico: dados.socioeconomico || null, perfil: dados.perfil || null,
         consentimento_lgpd: true, enviado_em: new Date().toISOString(), situacao: 'aguardando' }]);
       c.usado_em = new Date().toISOString(); gravar();
     },
@@ -560,7 +575,7 @@
     async salvarPrivado(id, dados) {
       const d = ler(); const eu = euMesmo(); const m = d.equipe.find(x => x.id === id);
       if (!eu || !m || !(eu.id === id || R.podeCadastrar(eu.papel, m.papel))) throw falha('Seu perfil não pode alterar estes dados.');
-      d.privado = d.privado || {}; d.privado[id] = Object.assign({ equipe_id: id }, copia(dados)); gravar();
+      d.privado = d.privado || {}; d.privado[id] = Object.assign({ equipe_id: id }, d.privado[id] || {}, copia(dados)); gravar();
     },
     async meusDadosBancarios() { const eu = euMesmo(); return eu ? copia((bancoMem[eu.id]) || null) : null; },
     async salvarMeusDadosBancarios(dd) { const eu = euMesmo(); if (!eu) throw falha('Entre no sistema.'); bancoMem[eu.id] = Object.assign({}, dd, { atualizado_em: new Date().toISOString() }); },

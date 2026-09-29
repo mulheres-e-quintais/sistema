@@ -13,13 +13,55 @@
   const ESCOLARIDADE = ['Fundamental incompleto', 'Fundamental completo', 'Médio incompleto', 'Médio completo', 'Técnico', 'Superior incompleto', 'Superior completo', 'Pós-graduação'];
   const RACA = ['Preta', 'Parda', 'Branca', 'Amarela', 'Indígena', 'Prefiro não informar'];
   /* papel: quem vai a campo (articulação, apoio, agente) informa a cidade mesmo com Arlo (cálculo da ajuda de custo) */
+  /* perfil no campo (Guia das bolsistas, item 3): coordenação técnica, bolsistas e agentes */
+  const PERFIL_Q = [
+    ['agricultora', 'É agricultora? (produz alimento em quintal, roça ou lote)'],
+    ['atua_mulheres', 'Atua junto às mulheres rurais do território?'],
+    ['mora_rural', 'Mora na zona rural?'],
+    ['movimento', 'Participa de movimento ou organização do campo? (MPA, sindicato, associação…)'],
+    ['internet', 'Tem celular com internet?'],
+    ['outra_bolsa', 'Recebe hoje outra bolsa, de qualquer instituição?']
+  ];
+  const EXPERIENCIA = [['nenhuma', 'Nenhuma'], ['ate2', 'Até 2 anos'], ['3a5', '3 a 5 anos'], ['mais5', 'Mais de 5 anos']];
+  const temPerfil = papel => ['coord_tecnico', 'articulacao', 'apoio', 'agente'].includes(papel);
+  function camposPerfil(pf, pub) {
+    pf = pf || {};
+    const sn = (k, val, t) => `<label class="sn${pf[k] === val ? ' on' : ''}"><input type="radio" name="pf_${k}" value="${val ? 'sim' : 'nao'}" ${pf[k] === val ? 'checked' : ''}>${t}</label>`;
+    return `<fieldset class="perfil-campo"><legend>Perfil no campo</legend>
+      <p class="small muted" style="margin-top:-6px">${pub ? 'Ajuda a coordenação a conhecer a equipe' : 'Se souber, marque'}: o projeto busca pessoas ligadas ao campo e às mulheres rurais.</p>
+      ${PERFIL_Q.map(([k, t]) => `<div class="criterio" id="w-pf_${k}"><span>${E(t)}</span><span class="sn-par">${sn(k, true, 'Sim')}${sn(k, false, 'Não')}</span></div>`).join('')}
+      <div class="campos"><div class="campo"><label for="pf-exp">Experiência com agricultura familiar ou agroecologia</label>
+        <select id="pf-exp" name="pf_experiencia"><option value="">Selecione…</option>${EXPERIENCIA.map(([v, t]) => `<option value="${v}" ${pf.experiencia === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+      <div class="campo"><label for="pf-qual">Qual movimento ou organização? <span class="muted">(se participar)</span></label><input id="pf-qual" name="pf_qual" value="${E(pf.qual || '')}"></div></div>
+    </fieldset>`;
+  }
+  function lerPerfil(fd) {
+    const pf = {}; let algum = false;
+    PERFIL_Q.forEach(([k]) => { const v = fd.get('pf_' + k); if (v) { pf[k] = v === 'sim'; algum = true; } });
+    const x = String(fd.get('pf_experiencia') || ''); if (x) { pf.experiencia = x; algum = true; }
+    const q = String(fd.get('pf_qual') || '').trim(); if (q) { pf.qual = q; algum = true; }
+    return algum ? pf : null;
+  }
+  /* resumo curto para a coordenação: "Agricultora · atua com mulheres rurais · MPA · 3 a 5 anos" */
+  function resumoPerfil(pf) {
+    if (!pf) return null;
+    const p = [];
+    if (pf.agricultora === true) p.push('agricultora'); else if (pf.agricultora === false) p.push('não é agricultora');
+    if (pf.atua_mulheres === true) p.push('atua com mulheres rurais');
+    if (pf.mora_rural === true) p.push('mora na zona rural'); else if (pf.mora_rural === false) p.push('mora na cidade');
+    if (pf.movimento === true) p.push(pf.qual ? 'participa de ' + pf.qual : 'participa de movimento do campo');
+    if (pf.experiencia) p.push('experiência: ' + (EXPERIENCIA.find(e => e[0] === pf.experiencia) || [0, pf.experiencia])[1].toLowerCase());
+    if (pf.internet === false) p.push('sem celular com internet');
+    if (pf.outra_bolsa === true) p.push('já recebe outra bolsa');
+    const t = p.join(' · '); return t ? t.charAt(0).toUpperCase() + t.slice(1) : null;
+  }
   function camposPessoais(d, pub, papel) {
     const campo = R.ehCampo(papel);
     d = d || {}; const en = d.endereco || {}; const se = d.socioeconomico || null; const v = x => E(x == null ? '' : x);
     const op = (lista, sel) => '<option value="">Selecione…</option>' + lista.map(x => `<option ${x === sel ? 'selected' : ''}>${E(x)}</option>`).join('');
     const arlo = d.cadastro_arlo === true;   // sem resposta ainda: nenhuma opção marcada
     const sn = (val, t) => `<label class="sn${d.cadastro_arlo === val ? ' on' : ''}"><input type="radio" name="cadastro_arlo" value="${val ? 'sim' : 'nao'}" ${d.cadastro_arlo === val ? 'checked' : ''} data-arlo>${t}</label>`;
-    return `<fieldset><legend>Cadastro no Arlo</legend>
+    return `${temPerfil(papel) ? camposPerfil(d.perfil, pub) : ''}<fieldset><legend>Cadastro no Arlo</legend>
         <div class="criterio" id="w-cadastro_arlo"><span>${pub ? 'Você já tem' : 'A pessoa já tem'} cadastro no Arlo?</span><span class="sn-par">${sn(true, 'Sim')}${sn(false, 'Não')}</span></div>
         <p class="small muted" data-arlo-nota ${arlo ? '' : 'hidden'}>Então bastam os dados básicos: nome, CPF, celular e e-mail${campo && pub ? ', mais a cidade onde mora (o sistema não lê o Arlo e calcula a ajuda de custo das visitas pela distância da cidade até os quintais)' : ''}. Nascimento, NIS, endereço e conta bancária ficam no Arlo.</p>
       </fieldset>
@@ -57,9 +99,9 @@
     const arlo = fd.get('cadastro_arlo') === 'sim';
     if (arlo) {   // no Arlo: guarda só a cidade (cálculo da ajuda de custo); o resto fica lá
       ['cep', 'logradouro', 'numero', 'complemento', 'bairro'].forEach(k => delete endereco[k]);
-      return { cadastro_arlo: true, _arlo_resp: fd.get('cadastro_arlo'), nome_social: t('nome_social') || null, data_nascimento: null, nis: null, endereco, socioeconomico: null };
+      return { cadastro_arlo: true, _arlo_resp: fd.get('cadastro_arlo'), nome_social: t('nome_social') || null, data_nascimento: null, nis: null, endereco, socioeconomico: null, perfil: lerPerfil(fd) };
     }
-    return { cadastro_arlo: false, _arlo_resp: fd.get('cadastro_arlo'), nome_social: t('nome_social') || null, data_nascimento: t('data_nascimento') || null, nis: R.soDigitos(t('nis')) || null, endereco, socioeconomico: socio };
+    return { cadastro_arlo: false, _arlo_resp: fd.get('cadastro_arlo'), nome_social: t('nome_social') || null, data_nascimento: t('data_nascimento') || null, nis: R.soDigitos(t('nis')) || null, endereco, socioeconomico: socio, perfil: lerPerfil(fd) };
   }
   function validarPessoais(d, pub) {
     const e = {};
@@ -68,6 +110,9 @@
     if (pub && d.cadastro_arlo && d._campo && !d.endereco.cidade) e.cidade = 'Informe a cidade onde mora (usada no cálculo da ajuda de custo).';
     if (d.data_nascimento && (d.data_nascimento > R.hoje() || R.idade(d.data_nascimento) < 16)) e.data_nascimento = 'Data de nascimento inválida.';
     if (d.nis && d.nis.length !== 11) e.nis = 'O PIS/NIS tem 11 números.';
+    if (pub && d._perfil) { const pf = d.perfil || {};
+      PERFIL_Q.forEach(([k]) => { if (typeof pf[k] !== 'boolean') e['pf_' + k] = 'Responda sim ou não.'; });
+      if (!pf.experiencia) e.pf_experiencia = 'Escolha uma opção.'; }
     if (d.endereco.cep && d.endereco.cep.length !== 8) e.cep = 'O CEP tem 8 números.';
     if (d.socioeconomico && (!d.socioeconomico.raca_etnia || d.socioeconomico.renda_familiar == null || !d.socioeconomico.pessoas_casa)) {
       if (!d.socioeconomico.raca_etnia) e.raca_etnia = 'Escolha uma opção (ou "Prefiro não informar").';
@@ -84,6 +129,7 @@
       const n = f.querySelector('[data-arlo-nota]'); if (n) n.hidden = !sim;
       t.closest('.sn-par').querySelectorAll('.sn').forEach(l => l.classList.toggle('on', l.contains(t)));
     }
+    if (t.matches && t.matches('input[type=radio][name^="pf_"]')) t.closest('.sn-par').querySelectorAll('.sn').forEach(l => l.classList.toggle('on', l.contains(t)));
     if (t.matches && t.matches('[data-socio]')) { const c = t.closest('fieldset').querySelector('[data-socio-campos]'); if (c) c.hidden = !t.checked; }
   });
   document.addEventListener('input', async ev => {
@@ -148,8 +194,8 @@
     const x = (S().pre || []).find(y => y.id === p.id); if (!x) return '<div class="painel-corpo"><p>Pré-cadastro não encontrado.</p></div>';
     const dl = [['Nome', x.nome], ['CPF', R.fmtCPF(x.cpf)], ['E-mail', x.email], ['Celular', x.telefone], ['Município', x.municipio], ['Organização', x.organizacao],
       ['Cadastro no Arlo', x.cadastro_arlo ? 'Sim: dados completos e conta no Arlo' : 'Não'], ['Matrícula SIAPE', x.siape], ['Nome social', x.nome_social], ['Nascimento', x.data_nascimento && R.fmtData(x.data_nascimento)], ['PIS/NIS', x.nis],
-      ['Endereço', textoEndereco(x.endereco)], ['Socioeconômico', x.socioeconomico ? 'Respondido' : 'Não respondeu'],
-      ['Termo de dados (LGPD)', 'Aceito por ela no envio'], ['Enviado em', new Date(x.enviado_em).toLocaleString('pt-BR')]].filter(l => l[1]);
+      ['Endereço', textoEndereco(x.endereco)], ['Socioeconômico', x.socioeconomico ? 'Respondido' : 'Não respondeu'], temPerfil(x.papel) ? ['Perfil no campo', resumoPerfil(x.perfil) || 'Não respondeu'] : null,
+      ['Termo de dados (LGPD)', 'Aceito por ela no envio'], ['Enviado em', new Date(x.enviado_em).toLocaleString('pt-BR')]].filter(l => l && l[1]);
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">Cadastro enviado pelo link</span><h2 id="painel-t">${E(x.nome)}</h2>
         <span class="small muted">${E(funcao(x.papel, x.uf))}</span></div><button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo">
@@ -171,7 +217,7 @@
   function dadosPre(id) {
     const x = (S().pre || []).find(y => y.id === id); if (!x) return null;
     return { nome: x.nome, nome_social: x.nome_social, siape: x.siape || null, cpf: x.cpf, email: x.email, telefone: x.telefone, municipio: x.municipio || (x.endereco || {}).cidade, organizacao: x.organizacao,
-      consentimento_lgpd: true, _pre: x, cadastro_arlo: !!x.cadastro_arlo, _priv: { cadastro_arlo: !!x.cadastro_arlo, data_nascimento: x.data_nascimento, nis: x.nis, endereco: x.endereco || {}, socioeconomico: x.socioeconomico } };
+      consentimento_lgpd: true, _pre: x, cadastro_arlo: !!x.cadastro_arlo, _priv: { cadastro_arlo: !!x.cadastro_arlo, data_nascimento: x.data_nascimento, nis: x.nis, endereco: x.endereco || {}, socioeconomico: x.socioeconomico, perfil: x.perfil || null } };
   }
 
   /* ---------- página pública do link ---------- */
@@ -246,8 +292,8 @@
         telefone: String(fd.get('telefone') || '').trim(), municipio: String(fd.get('municipio') || '').trim(), organizacao: String(fd.get('organizacao') || '').trim(),
         consentimento_lgpd: !!fd.get('consentimento_lgpd'), siape: R.soDigitos(fd.get('siape')) || null };
       Object.assign(d, lerPessoais(fd)); d.municipio = d.endereco.cidade || '';
-      d._campo = R.ehCampo(PUB.conv && PUB.conv.papel);
-      const erros = validarPessoais(d, true); delete d._arlo_resp; delete d._campo;
+      d._campo = R.ehCampo(PUB.conv && PUB.conv.papel); d._perfil = temPerfil(PUB.conv && PUB.conv.papel);
+      const erros = validarPessoais(d, true); delete d._arlo_resp; delete d._campo; delete d._perfil;
       if (d.nome.split(' ').length < 2 || d.nome.length < 5) erros.nome = 'Escreva o nome completo.';
       if (!R.cpfValido(d.cpf)) erros.cpf = 'CPF inválido. Confira os números.';
       if (!R.emailValido(d.email)) erros.email = 'E-mail inválido.';
@@ -262,5 +308,5 @@
     }
   }
 
-  MQ.convitesUI = { gerarLink, blocoLink, secaoPendentes, painel, dadosPre, pagina, clique, enviar, camposPessoais, lerPessoais, validarPessoais, privado, esquecerPrivado, textoEndereco };
+  MQ.convitesUI = { resumoPerfil, temPerfil, gerarLink, blocoLink, secaoPendentes, painel, dadosPre, pagina, clique, enviar, camposPessoais, lerPessoais, validarPessoais, privado, esquecerPrivado, textoEndereco };
 })();

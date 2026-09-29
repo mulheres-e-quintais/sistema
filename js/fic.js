@@ -46,7 +46,8 @@
         ${minhas.length ? minhas.map(cartaoTurma).join('') : `<div class="vazio"><span>${souProf() ? 'Você ainda não criou turma. Toque em <b>+ Nova turma</b>.' : 'Nenhuma turma cadastrada ainda.'}</span></div>`}</section>
       ${outras.length ? `<section class="secao"><div class="secao-cab"><h2>Turmas de outros professores</h2><p>Você também pode matricular nelas.</p></div>${outras.map(cartaoTurma).join('')}</section>` : ''}
       ${avulsas.length ? `<section class="secao"><div class="secao-cab"><div><h2>Matrícula registrada sem turma</h2><p>Lançadas à mão na habilitação, antes das turmas existirem no sistema. Para organizar, matricule a pessoa numa turma (o número e a data vêm preenchidos).</p></div></div>
-        <div class="fic-lista">${avulsas.map(m => linhaPessoa(m, `<span class="small muted num">${E(m.matricula_fic_numero || '')} · ${R.fmtData(m.matricula_fic_em)}</span>`)).join('')}</div></section>` : ''}`;
+        <div class="fic-lista">${avulsas.map(m => linhaPessoa(m, `<span class="small muted num">${E(m.matricula_fic_numero || '')} · ${R.fmtData(m.matricula_fic_em)}</span>`)).join('')}</div></section>` : ''}
+      ${MQ.entregasUI ? MQ.entregasUI.secaoAva() : ''}`;
   }
 
   function blocoSem(sem) {
@@ -92,7 +93,7 @@
     return `<section class="secao" aria-labelledby="t-prof">
       <div class="secao-cab"><h2 id="t-prof">Professores do curso FIC</h2><p>IFRN · cadastrados pela coordenação geral · criam as turmas e matriculam bolsistas e agentes</p></div>
       ${l.map(m => U().cartaoPessoa(m)).join('')}
-      <div class="vazio"><div>${l.length ? `<b>${l.length} professor${l.length > 1 ? 'es' : ''} cadastrado${l.length > 1 ? 's' : ''}.</b> Pode cadastrar mais, se o curso tiver outro professor.` : '<b>Nenhum professor do FIC cadastrado.</b> Cadastre à mão ou gere um link para ele preencher.'}
+      <div class="vazio"><div>${l.length ? `<b>${l.length} professor${l.length > 1 ? 'es' : ''} cadastrado${l.length > 1 ? 's' : ''}.</b> Pode cadastrar mais, se o curso tiver outro professor.` : '<b>Nenhum professor do FIC cadastrado.</b> Digite os dados ou gere um link para ele preencher.'}
         ${souGeral ? '' : '<br><span class="small">Só a coordenação geral pode fazer este cadastro.</span>'}</div>
         ${souGeral ? '<button class="btn pri btn-cad" data-acao="novo" data-papel="professor_fic">Cadastrar professor(a) do FIC</button>' : ''}</div>
     </section>`;
