@@ -1036,3 +1036,25 @@ input.invalido { border-color: var(--crit) !important; box-shadow: 0 0 0 3px col
 .perfil-lista { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
 .perfil-lista li { display: grid; grid-template-columns: 18px 1fr; gap: 8px; line-height: 1.45; color: var(--ink-2); font-size: 14px; }
 .perfil-lista li::before { content: "✓"; color: var(--ok); font-weight: 700; }
+/* entregas do mês */
+.entm-cont { margin: 0 0 8px; color: var(--ink-2); }
+.entm-cont b { font-size: 22px; color: var(--ink); }
+.entm-lista { list-style: none; margin: 0; padding: 0; display: grid; }
+.entm-lista li { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 12px 0; border-top: 1px solid var(--line); }
+.entm-lista li:first-child { border-top: 0; }
+.entm-ic { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; background: var(--surface-2); color: var(--muted); }
+.entm-ok .entm-ic { background: var(--ok-bg); color: var(--ok); }
+.entm-falta .entm-ic { background: var(--crit-bg); color: var(--crit); }
+.entm-pend .entm-ic { background: var(--pend-bg); color: var(--pend); }
+.entm-t { display: grid; gap: 2px; min-width: 0; }
+.entm-lista .btn { align-self: center; }
+.ciencia { border-left: 4px solid var(--ocre); }
+.ciencia h2 { font-size: 19px; margin-bottom: 10px; }
+.ciencia .acoes { margin-top: 12px; }
+.ajuda-lista { margin: 0 0 6px; padding-left: 18px; display: grid; gap: 6px; line-height: 1.5; }
+.ajuda-real { margin-top: 14px; }
+.fic-pessoa .ava-check { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; white-space: nowrap; font-size: 13px; }
+.fic-pessoa .ava-check input { margin: 0; }
+@media (max-width: 520px) { .fic-pessoa:has(.ava-check) { grid-template-columns: auto minmax(0, 1fr) auto !important; } .fic-pessoa .ava-check span { display: none; } }
+.perfil-campo .criterio { margin-bottom: 6px; }
+@media (max-width: 520px) { .entm-lista li { grid-template-columns: 30px minmax(0, 1fr); } .entm-lista .btn { grid-column: 2; justify-self: start; } }

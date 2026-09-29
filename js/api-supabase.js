@@ -108,6 +108,17 @@
       this.temSessao = true;
       return this.eu(true);
     },
+    /* entregas do mês (19_entregas_do_mes.sql) */
+    async listarEntregas() { const { data, error } = await sb.from('entregas_mes').select('*'); if (error) throw erro(error); return data; },
+    async marcarEntrega(equipe_id, mes, item, marcar) {
+      const q = marcar ? sb.from('entregas_mes').insert({ equipe_id, mes, item })
+        : sb.from('entregas_mes').delete().match({ equipe_id, mes, item });
+      const { error } = await q; if (error && !(marcar && error.code === '23505')) throw erro(error);
+    },
+    async listarCiencias() { const { data, error } = await sb.from('ciencias').select('*'); if (error) throw erro(error); return data; },
+    async darCiencia(equipe_id, documento) {
+      const { error } = await sb.from('ciencias').insert({ equipe_id, documento }); if (error && error.code !== '23505') throw erro(error);
+    },
     async gerarCodigoAcesso(id) { const { data, error } = await sb.rpc('gerar_codigo_acesso', { p_equipe: id }); if (error) throw erro(error); return data; },
     /* ---------- Fichas de indicação ---------- */
     async listarFichas() {
@@ -200,7 +211,7 @@
     /* ---------- Link de cadastro (a pessoa preenche, a coordenação valida) ---------- */
     async criarConvite(papel, uf, subst) {
       const { data, error } = await sb.rpc('criar_convite', { p_papel: papel, p_uf: uf || null, p_substitui: subst || null });
-      if (error) throw erro(/criar_convite|PGRST202/.test(error.message) ? 'O link de cadastro ainda não foi instalado no servidor: rode o arquivo 08_convites.sql no Supabase.' : error);
+      if (error) throw erro(/criar_convite|PGRST202/.test(error.message) ? 'O link de cadastro ainda não foi instalado no servidor: rode o arquivo 08_convites.sql no Supabase.' : /perfil/.test(error.message) ? 'Falta instalar o perfil no campo no servidor: rode o arquivo 19_entregas_do_mes.sql no Supabase.' : error);
       return data;
     },
     async verConvite(token) {
@@ -218,6 +229,7 @@
     },
     async salvarPrivado(id, d) {
       const reg = { equipe_id: id, data_nascimento: d.data_nascimento || null, nis: d.nis || null, endereco: d.endereco || {}, socioeconomico: d.socioeconomico || null, atualizado_em: new Date().toISOString() };
+      if ('perfil' in d) reg.perfil = d.perfil || null;   // 19_entregas_do_mes.sql
       const { error } = await sb.from('equipe_privado').upsert(reg, { onConflict: 'equipe_id' });
       if (error) throw erro(/equipe_privado|PGRST205/.test(error.message) ? 'Os dados pessoais complementares ainda não foram instalados no servidor: rode o arquivo 08_convites.sql no Supabase.' : error);
     },

@@ -61,6 +61,12 @@
         try { const r = await S.api.listarSolicitacoes(); S.solic = r.lista; S.solicVis = r.vinculos; }
         catch (e) { if (e.semRede || !semFic(e)) throw e; S.pagSemBanco = true; S.solic = []; S.solicVis = {}; }
       }
+      // entregas do mês e ciência do guia (19_entregas_do_mes.sql); sem o script, o resto continua
+      S.entregasSemBanco = false; S.entregas = []; S.ciencias = [];
+      if (S.api.listarEntregas && !['auxiliar_adm'].includes(S.eu.papel)) {
+        try { S.entregas = await S.api.listarEntregas(); S.ciencias = await S.api.listarCiencias(); }
+        catch (e) { if (e.semRede || !semFic(e)) throw e; S.entregasSemBanco = true; }
+      }
       // valor do kit por quintal (para a projeção do investimento no diagnóstico)
       S.kitPar = { valor_quintal: MQ.KIT_QUINTAL };   // R$ 4.500 por quintal, fixado no plano de trabalho
       S.pre = /^coord/.test(S.eu.papel) && S.api.listarPreCadastros ? await opcional(S.api.listarPreCadastros) : [];
@@ -195,7 +201,7 @@
     let corpo = '';
     if (aba === 'visao') corpo = MQ.painelUI ? MQ.painelUI.visaoGeral(S) : '';
     else if (aba === 'equipe') corpo = (MQ.convitesUI ? MQ.convitesUI.secaoPendentes() : '') + `
-      <div class="cab"><div><span class="eyebrow">Equipe do projeto · processo ${esc(MQ.PROJETO.processo)}</span><h1>Coordenação e bolsistas</h1><p>${intro}</p></div>${prazoChip()}</div>
+      <div class="cab"><div><span class="eyebrow">Equipe do projeto</span><h1>Coordenação e bolsistas</h1><p>${intro}</p></div>${prazoChip()}</div>
       <div class="resumo" aria-label="Resumo da equipe">
         <div><span class="v num">${ct ? 1 : 0}<small> de 1</small></span><span class="l">coordenação técnica cadastrada</span></div>
         <div><span class="v num">${bols.length}<small> de 10</small></span><span class="l">bolsistas cadastradas</span></div>
@@ -286,7 +292,7 @@
     const aux = naVaga('auxiliar_adm'); const ant = ultimaDesligada('auxiliar_adm');
     return `<section class="secao" aria-labelledby="t-aux">
       <div class="secao-cab"><h2 id="t-aux">Auxiliar administrativo</h2><p>Um para o projeto · IFRN · cadastrado pela coordenação geral · cadastra a equipe no Arlo, registra o Arlo e o termo e lança os pagamentos</p></div>
-      ${aux ? cartaoPessoa(aux) : `<div class="vazio"><div><b>Vaga aberta.</b> ${ant ? `O anterior, ${esc(ant.nome)}, foi desligado${ant.data_fim ? " em " + R.fmtData(ant.data_fim) : ""}.` : 'Cadastre à mão ou gere um link para ele preencher.'}
+      ${aux ? cartaoPessoa(aux) : `<div class="vazio"><div><b>Vaga aberta.</b> ${ant ? `O anterior, ${esc(ant.nome)}, foi desligado${ant.data_fim ? " em " + R.fmtData(ant.data_fim) : ""}.` : 'Digite os dados ou gere um link para ele preencher.'}
         ${souGeral ? '' : '<br><span class="small">Só a coordenação geral pode fazer este cadastro.</span>'}</div>
         ${souGeral ? `<button class="btn pri btn-cad" data-acao="novo" data-papel="auxiliar_adm" ${ant ? `data-subst="${ant.id}"` : ''}>Cadastrar auxiliar administrativo</button>` : ''}</div>`}
     </section>`;
@@ -451,7 +457,9 @@
     return `<main class="wrap" id="principal">
       <div class="cab"><div><span class="eyebrow">${esc(P[m.papel].nome)} · ${esc(nomeUF(m.uf))}</span><h1>Olá, ${esc(nomeDe(m).split(' ')[0])}</h1>
         <p>${esc(P[m.papel].faz)}</p></div><span class="chip ${s.cod}" style="font-size:13px;padding:4px 12px">${esc(s.rot)}</span></div>
+      ${MQ.entregasUI ? MQ.entregasUI.blocoCiencia() : ''}
       ${s.cod === 'ok' ? '' : `<div class="bloco"><h2>Habilitação para receber a bolsa</h2><p class="small muted">A bolsa de ${R.fmtBRL(P[m.papel].bolsa || 0)} por mês só é paga pela FUNCERN depois destes passos. Dúvidas sobre matrícula e AVA: professores do curso FIC. Documentos, conta ou Pix: auxiliar administrativo.</p>${passos(m)}</div>`}
+      ${MQ.entregasUI ? MQ.entregasUI.cartaoBolsista() : ''}
       ${m.meta_diagnosticos != null ? `<div class="bloco"><h2>Sua previsão de atividades</h2><p class="small muted">Previsão do termo de compromisso. O trabalho de campo do estado pode ser dividido de outro jeito, combinado com a coordenação técnica.</p><div class="resumo r3">
         <div><span class="v num">${m.meta_diagnosticos}</span><span class="l">diagnósticos (Meta 2)</span></div>
         <div><span class="v num">${m.meta_quintais}</span><span class="l">quintais implantados (Meta 3)</span></div>
@@ -555,7 +563,9 @@
       const b = MQ.bancoUI.informou(m.id); if (b) linhas.push(['Conta para a FUNCERN', b.ok ? 'Informada por ela' + (b.em ? ' em ' + new Date(b.em).toLocaleDateString('pt-BR') : '') : m.cadastro_arlo ? 'No Arlo' : 'Ainda não informou']);
     }
     if (pv) linhas.push(['Nascimento', pv.data_nascimento && R.fmtData(pv.data_nascimento)], ['PIS/NIS', pv.nis], ['Endereço', MQ.convitesUI.textoEndereco(pv.endereco)],
-      ['Socioeconômico', pv.socioeconomico ? 'Respondido' : null]);
+      ['Socioeconômico', pv.socioeconomico ? 'Respondido' : null],
+      ['Leitura do guia', MQ.entregasUI && gestao ? MQ.entregasUI.cienciaDe(m.id, m.papel) : null],
+      ['Perfil no campo', MQ.convitesUI && MQ.convitesUI.temPerfil(m.papel) ? (MQ.convitesUI.resumoPerfil(pv.perfil) || 'Não respondido') : null]);
     return `<dl class="dl">${linhas.filter(l => l[1]).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`;
   }
 
@@ -674,12 +684,12 @@
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>`;
     // cadastro novo: primeiro escolhe como (link para a pessoa preencher ou à mão)
     if (!edit && !pre && MQ.convitesUI && p.modo !== 'manual') {
-      if (p.modo === 'link') return cabP + `<div class="painel-corpo">${MQ.convitesUI.blocoLink(p)}<button type="button" class="cad-modo cad-modo-2" data-acao="cad-modo" data-m="manual"><b>Prefere cadastrar à mão?</b><span>Abra o formulário e digite os dados você mesmo.</span></button></div>`;
+      if (p.modo === 'link') return cabP + `<div class="painel-corpo"><button type="button" class="cad-modo cad-modo-2 cad-modo-topo" data-acao="cad-modo" data-m="manual"><b>Prefere digitar os dados você mesmo?</b><span>Abra o formulário e preencha agora, sem mandar link.</span></button>${MQ.convitesUI.blocoLink(p)}</div>`;
       return cabP + `<div class="painel-corpo"><p class="muted">Como você quer fazer este cadastro?</p>
         <div class="cad-modos">
           <button class="cad-modo" data-acao="cad-modo" data-m="link" autofocus><b>Gerar link de cadastro</b>
             <span>A pessoa preenche os próprios dados pelo celular e aceita o termo de uso dos dados. Você confere e aprova. Menos digitação e menos erro.</span><em>Recomendado</em></button>
-          <button class="cad-modo" data-acao="cad-modo" data-m="manual"><b>Cadastrar à mão agora</b>
+          <button class="cad-modo" data-acao="cad-modo" data-m="manual"><b>Digitar os dados agora</b>
             <span>Você digita os dados. Use quando já tem tudo em mãos ou a pessoa não tem internet.</span></button>
         </div></div>`;
     }
@@ -806,6 +816,7 @@
       else if (/^pag-/.test(a) && MQ.pagUI) { S.voltarFoco = el; await MQ.pagUI.clique(a, el); }
       else if (/^(aval|imp)-/.test(a) && MQ.impactoUI) { S.voltarFoco = el; await MQ.impactoUI.clique(a, el); }
       else if (/^vit-/.test(a) && MQ.vitrineUI) await MQ.vitrineUI.clique(a, el);
+      else if (/^ent-/.test(a) && MQ.entregasUI) await MQ.entregasUI.clique(a, el);
       else if (/^campo-/.test(a) && MQ.campoUI) { S.voltarFoco = el; await MQ.campoUI.clique(a, el); }
       else if (a === 'ver') { S.voltarFoco = el; abrirPainel({ tipo: 'detalhe', id: el.dataset.id }); }
       else if (a === 'novo') { S.voltarFoco = el; abrirPainel({ tipo: 'cadastro', papel: el.dataset.papel, uf: el.dataset.uf, subst: el.dataset.subst }); }

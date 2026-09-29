@@ -41,7 +41,7 @@
       t: 'Equipe',
       intro: 'Cadastro de todas as pessoas do projeto, na ordem: coordenação técnica, auxiliar administrativo, professores do FIC, bolsistas por estado e agentes de campo.',
       passos: [
-        'Para cadastrar, toque na vaga ou em <b>Cadastrar</b> e escolha: <b>Gerar link</b> (a pessoa preenche pelo celular e você aprova) ou <b>Cadastrar à mão</b>.',
+        'Para cadastrar, toque na vaga ou em <b>Cadastrar</b> e escolha: <b>Gerar link</b> (a pessoa preenche pelo celular e você aprova) ou <b>Digitar os dados agora</b> (você mesmo preenche o formulário).',
         'Depois de salvar, abra a ficha da pessoa e use <b>Avisar o acesso</b> para mandar por WhatsApp ou e-mail as instruções de entrada. O sistema não manda e-mail sozinho.',
         'Cadastros enviados pelo link aparecem no topo, em <b>Cadastros enviados pelo link</b>. Confira, complete e salve para aprovar.',
         'Na ficha da pessoa você vê a <b>habilitação</b> (FIC, Arlo, termo). O auxiliar administrativo registra Arlo e termo; os professores registram a matrícula no FIC.',
@@ -160,6 +160,73 @@
         ['Cuidado com os dados.', 'Os dados das mulheres são protegidos pela LGPD: não fotografe telas nem repasse informações.']
       ]
     },
+    guia_bolsista: {
+      t: 'Guia das bolsistas',
+      intro: 'O essencial do Guia das bolsistas do projeto Mulheres & Quintais: o que cada uma faz, como começar, como é o pagamento e o que entregar todo mês.',
+      secoes: [
+        ['O que cada uma faz', [
+          '<b>Coordenação técnica:</b> planeja, coordena e acompanha a execução técnica nos 5 estados, articula a equipe e garante o cumprimento do cronograma e das metas.',
+          '<b>Articulação estadual:</b> mobiliza as comunidades, organiza as atividades, acompanha as metas e elabora registros e relatórios.',
+          '<b>Apoio estadual:</b> cuida da logística, da coleta e organização das informações, dos registros das ações e do monitoramento.']],
+        ['Passo a passo para começar', [
+          '<b>Enviar os dados:</b> nome completo, CPF e e-mail, repassados pela coordenação técnica.',
+          '<b>Matrícula no curso FIC:</b> os professores do FIC fazem a matrícula e enviam o acesso ao AVA e a declaração de matrícula. A bolsa só pode ser paga a estudantes do IFRN, por isso o curso.',
+          '<b>Cadastro na FUNCERN:</b> entregue os documentos pedidos pela fundação, com conta bancária ou chave Pix no seu nome (informe em <b>Meus dados</b>, no alto da tela).',
+          '<b>Início das atividades:</b> com matrícula e cadastro prontos, a bolsa conta a partir do início da execução do projeto.']],
+        ['Como é o pagamento', [
+          'A bolsa é paga uma vez por mês, pela FUNCERN, por depósito na conta ou chave Pix da própria bolsista.',
+          'O pagamento segue um calendário mensal de entregas, combinado entre a coordenação do projeto e a coordenação técnica.',
+          'Cada mês só é pago depois que as entregas daquele mês forem apresentadas e conferidas.',
+          'A data de pagamento de cada mês é informada pela coordenação do projeto.']],
+        ['O que entregar todo mês', [
+          '<b>Fotos</b> de cada visita, oficina e atividade realizada.',
+          '<b>Lista de presença</b> assinada em toda atividade coletiva.',
+          '<b>Relatório:</b> o que foi feito no mês e o que ficou pendente (vai junto com o pedido da bolsa).',
+          '<b>Ficha do quintal:</b> uma por mulher atendida, atualizada a cada visita.',
+          '<b>Acesso ao AVA:</b> entrar no curso pelo menos uma vez por mês e fazer as atividades (o professor confirma).',
+          '<b>Metas do mês:</b> andamento do que estava previsto no calendário.',
+          'Acompanhe tudo no cartão <b>Entregas do mês</b>, na sua tela.']],
+        ['Importante', [
+          'A bolsa não gera vínculo empregatício com o IFRN, a FUNCERN ou o MDA.',
+          'Sem as comprovações do mês, o pagamento não pode ser feito, porque o projeto presta contas ao MDA.',
+          'A matrícula no curso precisa ficar ativa durante todo o período da bolsa.',
+          'Se você já recebe outra bolsa, avise a coordenação antes de se cadastrar.']],
+        ['Com quem falar', [
+          'Fale primeiro com a <b>coordenação técnica</b> do projeto.',
+          'Se ela não puder resolver: <b>coordenação geral</b> para questões gerais do projeto; <b>professores do FIC</b> para matrícula, curso e acesso ao AVA; <b>apoio administrativo</b> para documentos, conta ou Pix e pagamento.']]
+      ],
+      rodape: 'Realização: Subsecretaria de Mulheres Rurais · IFRN · FUNCERN'
+    },
+    guia_agente: {
+      t: 'Guia da agente de campo',
+      intro: 'Como funciona o trabalho da agente de campo no projeto Mulheres & Quintais.',
+      secoes: [
+        ['O que você faz', [
+          'Faz as visitas de diagnóstico, implantação, acompanhamento e avaliação nos quintais atribuídos a você.',
+          'Quem agenda as visitas é a bolsista do estado ou a coordenação técnica.']],
+        ['Antes da primeira visita paga', [
+          '<b>Matrícula no curso FIC</b>, feita pelos professores do curso.',
+          '<b>Cadastro na FUNCERN</b>, com conta bancária ou chave Pix no seu nome (informe em <b>Meus dados</b>).',
+          '<b>Termo de compromisso</b> assinado.']],
+        ['Como você recebe', [
+          'Você não recebe bolsa: recebe <b>ajuda de custo</b> por dia de campo, calculada pela distância até os quintais.',
+          'No fim do mês, peça a ajuda de custo das visitas feitas em <b>Solicitar pagamento</b>.',
+          'A coordenação técnica confere e dá o aval; o pagamento é lançado na FUNCERN.']],
+        ['Em cada visita', [
+          'Registre no sistema no mesmo dia: fotos, localização e um relato curto do que foi feito.',
+          'No diagnóstico: as 3 fotos (visão geral, água e plantio) e o kit com o preço de cada item, sem passar do valor por quintal.',
+          'Sem internet, pode preencher: o registro fica guardado no aparelho e é enviado depois.']],
+        ['Importante', [
+          'A ajuda de custo não gera vínculo empregatício com o IFRN, a FUNCERN ou o MDA.',
+          'Só é paga a visita registrada no sistema.',
+          'Os dados das mulheres são protegidos por lei: não fotografe telas nem repasse informações.']],
+        ['Com quem falar', [
+          'Agenda das visitas: a <b>bolsista do estado</b>.',
+          'Dúvidas do trabalho: a <b>coordenação técnica</b>.',
+          'Curso e AVA: os <b>professores do FIC</b>. Documentos, conta ou Pix e pagamento: o <b>apoio administrativo</b>.']]
+      ],
+      rodape: 'Realização: Subsecretaria de Mulheres Rurais · IFRN · FUNCERN'
+    },
     professor_fic: {
       t: 'Sua tela (professor do FIC)',
       intro: 'Turmas do curso FIC e matrículas das bolsistas e agentes de campo.',
@@ -198,6 +265,7 @@
     return A[s.eu.papel] ? s.eu.papel : 'bolsista';
   }
 
+  const guiaDe = k => k === 'bolsista' ? 'guia_bolsista' : k === 'agente' ? 'guia_agente' : null;
   function painel(p) {
     const k = p.k && A[p.k] ? p.k : chaveAtual(); const a = A[k];
     const s = S(); const coord = s.eu && /^coord/.test(s.eu.papel) && !s.verEntrada;
@@ -206,10 +274,13 @@
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo ajuda">
         <p class="ajuda-intro">${a.intro}</p>
-        <h3>Como fazer</h3>
-        <ol class="ajuda-passos">${a.passos.map(x => `<li>${x}</li>`).join('')}</ol>
+        ${a.passos && a.passos.length ? `<h3>Como fazer</h3>
+        <ol class="ajuda-passos">${a.passos.map(x => `<li>${x}</li>`).join('')}</ol>` : ''}
+        ${(a.secoes || []).map(([h, l]) => `<h3>${E(h)}</h3><ul class="ajuda-lista">${l.map(x => `<li>${x}</li>`).join('')}</ul>`).join('')}
+        ${guiaDe(k) ? `<button type="button" class="cad-modo cad-modo-2" data-acao="ajuda" data-k="${guiaDe(k)}"><b>${E(A[guiaDe(k)].t)}</b><span>Pagamento, entregas do mês, o que é importante e com quem falar.</span></button>` : ''}
         ${a.duvidas && a.duvidas.length ? `<h3>Dúvidas comuns</h3><div class="ajuda-duvidas">${a.duvidas.map(([q, r]) => `<details><summary>${E(q)}</summary><p>${E(r)}</p></details>`).join('')}</div>` : ''}
         ${outros.length ? `<h3>Ajuda de outras seções</h3><div class="ajuda-outros">${outros.map(x => `<button type="button" class="btn peq" data-acao="ajuda" data-k="${x}">${E(A[x].t)}</button>`).join('')}</div>` : ''}
+        ${a.rodape ? `<p class="small muted ajuda-real">${E(a.rodape)}</p>` : ''}
         <p class="small muted">Não achou a resposta? Fale com ${s.eu && ['articulacao', 'apoio', 'agente'].includes(s.eu.papel) ? 'a coordenação técnica' : 'a coordenação geral'}.</p>
       </div>`;
   }

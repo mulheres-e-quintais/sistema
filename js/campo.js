@@ -161,6 +161,7 @@
     return `<main class="wrap" id="principal">
       <div class="cab"><div><span class="eyebrow">Agente de campo · ${E(U().nomeUF(eu.uf))}</span><h1>Olá, ${E(primeiroNome(eu.nome))}</h1>
         <p>${E(MQ.PAPEIS.agente.faz)}</p></div><span class="chip ${s.cod}" style="font-size:13px;padding:4px 12px">${E(s.rot)}</span></div>
+      ${MQ.entregasUI ? MQ.entregasUI.blocoCiencia() : ''}
       ${!R.habilitado(eu) ? `<div class="aviso erro"><b>Você ainda não pode receber visitas no roteiro.</b> Faltam passos da habilitação (matrícula no FIC, documentos na FUNCERN e termo). Sem eles, a ajuda de custo não pode ser paga.</div>` : ''}
       ${pend.length ? `<div class="aviso">${pend.length} diagnóstico${pend.length > 1 ? 's' : ''} guardado${pend.length > 1 ? 's' : ''} neste aparelho, aguardando internet.${navigator.onLine ? ' <button class="link" data-acao="ficha-enviar">Enviar agora</button>' : ''}</div>` : ''}
       <section class="secao"><div class="secao-cab"><h2>Próximas visitas</h2><span class="muted small">${prox.length} prevista${prox.length === 1 ? '' : 's'}</span></div>
