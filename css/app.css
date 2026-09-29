@@ -855,7 +855,7 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .ent-card .muted { margin: 0; }
 .ent-seg { display: grid !important; grid-template-columns: 1fr 1fr; width: 100%; }
 .ent-seg button { padding: 9px 10px; }
-.ent-card input:not([type=checkbox]):not([type=radio]) { height: 48px; border-radius: 12px; font-size: 16px; transition: border-color .15s, box-shadow .15s; }
+.ent-card input:not([type=checkbox]):not([type=radio]):not([type=file]), .ent-card select { height: 48px; border-radius: 12px; font-size: 16px; transition: border-color .15s, box-shadow .15s; }
 .ent-card input:not([type=checkbox]):not([type=radio]):focus { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent); outline: none; }
 .ent-btn { height: 50px; border-radius: 14px; font-size: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: transform .15s, box-shadow .15s; }
 .ent-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--accent) 70%, transparent); }
@@ -1064,3 +1064,27 @@ input.invalido { border-color: var(--crit) !important; box-shadow: 0 0 0 3px col
 .perfil-campo .criterio { margin-bottom: 6px; }
 @media (max-width: 520px) { .entm-lista li { grid-template-columns: 30px minmax(0, 1fr); } .entm-lista .btn { grid-column: 2; justify-self: start; } }
 .check input[type=checkbox] { align-self: start; }
+
+/* ditado por voz */
+.voz-caixa { display: grid; gap: 6px; min-width: 0; }
+.voz-caixa textarea { width: 100%; }
+.btn-voz { justify-self: end; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2); font: 600 13px var(--sans); cursor: pointer; transition: background-color .15s, border-color .15s, color .15s; }
+.btn-voz:hover { border-color: var(--accent); color: var(--accent); }
+.btn-voz:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.btn-voz.gravando { background: var(--crit); border-color: var(--crit); color: #fff; }
+.voz-ponto { width: 9px; height: 9px; border-radius: 50%; background: #fff; animation: voz-pulso 1s ease-in-out infinite; }
+@keyframes voz-pulso { 50% { opacity: .3; transform: scale(.75); } }
+.voz-caixa.ouvindo textarea { border-color: var(--crit); box-shadow: 0 0 0 3px color-mix(in srgb, var(--crit) 14%, transparent); }
+@media (prefers-reduced-motion: reduce) { .voz-ponto { animation: none; } }
+
+/* formulários: campos da mesma linha alinhados e com a mesma altura */
+.campo input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]), .campo select { height: 46px; }
+.campo input[type=date] { line-height: 1.2; }
+.campo select { padding-right: 32px; }
+@supports (grid-template-rows: subgrid) {
+  .campos { row-gap: 0; }
+  .campos > .campo:not(:has(> :nth-child(5))) { grid-row: span 4; grid-template-rows: subgrid; row-gap: 4px; align-content: normal; padding-bottom: 12px; }
+  .campos > .campo:not(:has(> :nth-child(5))) > label { align-self: end; }
+  .campos > .campo:has(> :nth-child(5)):not(:has(> :nth-child(6))) { grid-row: span 5; grid-template-rows: subgrid; row-gap: 4px; align-content: normal; padding-bottom: 12px; }
+  .campos > .campo > .btn { align-self: stretch; }
+}
