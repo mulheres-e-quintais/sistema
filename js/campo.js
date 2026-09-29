@@ -294,7 +294,7 @@
         </div></fieldset>
 
         <fieldset><legend>1. Família</legend><div id="w-familia" class="linhas">${(d.familia || []).map(linhaFamilia).join('')}</div>
-          <button type="button" class="link" data-acao="campo-linha-add" data-tipo="familia">+ Pessoa</button></fieldset>
+          <button type="button" class="btn-add" data-acao="campo-linha-add" data-tipo="familia"><span aria-hidden="true">+</span> Pessoa</button></fieldset>
 
         <fieldset><legend>2. Renda e políticas públicas</legend>
           ${chk('politicas', MQ.DIAG.politicas, d.politicas)}
@@ -354,11 +354,11 @@
           <p class="small muted" style="margin-top:-6px">Só itens da lista aprovada pela coordenação, sem passar do valor por quintal. Sem irrigação, comece pelos itens de água (caixa d’água, gotejamento) e pela cobertura do solo.</p>
           <div class="kit-cab" aria-hidden="true"><span>Item</span><span>Qtd.</span><span>R$ unid.</span><span>Para quê</span></div>
           <div id="w-kit" class="linhas">${(d.kit && d.kit.length ? d.kit : [{}]).map(linhaKit).join('')}</div>
-          <button type="button" class="link" data-acao="campo-linha-add" data-tipo="kit">+ Item</button>
+          <button type="button" class="btn-add" data-acao="campo-linha-add" data-tipo="kit"><span aria-hidden="true">+</span> Item</button>
           <div id="kit-proj">${projKit(d.kit)}</div></fieldset>
         <fieldset><legend>11. Cronograma</legend>
           <div class="linhas">${(d.cronograma && d.cronograma.length ? d.cronograma : [{}]).map(linhaCron).join('')}</div>
-          <button type="button" class="link" data-acao="campo-linha-add" data-tipo="cron">+ Atividade</button>
+          <button type="button" class="btn-add" data-acao="campo-linha-add" data-tipo="cron"><span aria-hidden="true">+</span> Atividade</button>
           <div class="campos">
             <div class="campo" id="w-lote"><label>Lote de implantação</label>${rad('lote', [['1', 'Lote 1 (jan–abr)'], ['2', 'Lote 2 (mai–jul)']], d.lote ? String(d.lote) : '')}</div>
             <div class="campo"><label for="dg-mes">Mês previsto</label><input id="dg-mes" name="mes_implantacao" value="${v('mes_implantacao')}" placeholder="No início das chuvas ou com água garantida"></div>
