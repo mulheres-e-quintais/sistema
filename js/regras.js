@@ -97,7 +97,7 @@
     if (/equipe_cpf_ativo/.test(s)) return 'Esta pessoa (CPF) já ocupa outra vaga ativa.';
     if (/equipe_email_ativo/.test(s)) return 'Este e-mail já está em uso por outra pessoa ativa.';
     if (/row-level security|permission denied/i.test(s)) return 'Seu perfil não tem permissão para esta ação.';
-    if (/Failed to fetch|NetworkError|network/i.test(s)) return 'Sem conexão com o servidor. Verifique a internet e tente de novo.';
+    if (/Failed to fetch|NetworkError|Load failed|network|fetch/i.test(s)) return 'Sem internet agora. O que você preencheu continua na tela: tente de novo quando o sinal melhorar.';
     return s || 'Não foi possível salvar. Tente de novo.';
   };
 

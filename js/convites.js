@@ -226,7 +226,32 @@
     return `<main class="ent ent-conv"><div class="ent-fundo" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i></div>
       <div id="convite" class="conv-miolo">${corpo()}</div></main>`;
   }
-  function desenhar() { const el = $('#convite'); if (el) el.innerHTML = corpo(); }
+  function desenhar() { const el = $('#convite'); if (el) { el.innerHTML = corpo(); rascunho.restaurar(PUB.token); } }
+  /* rascunho no próprio celular: se a página recarregar (trocou de aplicativo, a tela apagou), nada do que foi digitado se perde */
+  const rascunho = {
+    chave: t => 'mq-rascunho-conv-' + t,
+    salvar(form) {
+      if (!PUB.token || PUB.enviado) return; const o = {};
+      new FormData(form).forEach((v, k) => { if (typeof v === 'string' && v !== '') o[k] = v; });
+      try { localStorage.setItem(this.chave(PUB.token), JSON.stringify(o)); } catch (e) {}
+    },
+    apagar(t) { try { localStorage.removeItem(this.chave(t)); } catch (e) {} },
+    restaurar(t) {
+      const f = document.querySelector('form[data-form=conv-enviar]'); if (!f || !t) return;
+      let o = null; try { o = JSON.parse(localStorage.getItem(this.chave(t)) || 'null'); } catch (e) {}
+      if (!o || !Object.keys(o).length) return;
+      Object.entries(o).forEach(([k, v]) => {
+        f.querySelectorAll(`[name="${k}"]`).forEach(el => {
+          if (el.type === 'radio') { el.checked = el.value === v; if (el.checked) el.dispatchEvent(new Event('change', { bubbles: true })); }
+          else if (el.type === 'checkbox') { el.checked = true; el.dispatchEvent(new Event('change', { bubbles: true })); }
+          else el.value = v;
+        });
+      });
+      f.insertAdjacentHTML('afterbegin', '<div class="aviso ok conv-rasc">Recuperamos o que você já tinha preenchido neste celular. Confira e continue.</div>');
+    }
+  };
+  document.addEventListener('input', ev => { const f = ev.target.closest && ev.target.closest('form[data-form=conv-enviar]'); if (f) rascunho.salvar(f); });
+  document.addEventListener('change', ev => { const f = ev.target.closest && ev.target.closest('form[data-form=conv-enviar]'); if (f) rascunho.salvar(f); });
   function corpo() {
     const c = PUB.conv;
     if (!c) return '<div class="login ent-card"><p class="carregando">Abrindo o link…</p></div>';
@@ -241,6 +266,7 @@
           <li><span>Toque em <b>Primeiro acesso</b>.</span></li>
           <li><span>Use o e-mail que você informou e o <b>código de acesso</b> que a coordenação vai mandar pelo WhatsApp, e crie a sua senha.</span></li>
         </ol>
+        ${PUB.email ? `<p class="conv-email">Seu e-mail de entrada: <b>${E(PUB.email)}</b><span class="small muted">Se estiver errado, avise quem mandou o link.</span></p>` : ''}
         <a class="btn pri ent-btn" href="${E(location.origin + location.pathname)}">Ir para o sistema <span aria-hidden="true">→</span></a>
         <p class="small muted">Guarde este endereço: <b>${E(location.host + location.pathname)}</b>. Se tiver dúvida, fale com quem mandou o link.</p></div>`;
     if (!c.valido) {
@@ -256,7 +282,7 @@
       <div class="campo"><label for="cv-nome">Nome completo</label><input id="cv-nome" name="nome" autocomplete="name" required></div>
       <div class="campos">
         <div class="campo"><label for="cv-cpf">CPF</label><input id="cv-cpf" name="cpf" inputmode="numeric" autocomplete="off" required></div>
-        <div class="campo"><label for="cv-tel">Celular (WhatsApp)</label><input id="cv-tel" name="telefone" inputmode="tel" autocomplete="tel"></div></div>
+        <div class="campo"><label for="cv-tel">Celular (WhatsApp)</label><input id="cv-tel" name="telefone" inputmode="tel" autocomplete="tel" required></div></div>
       <div class="campo"><label for="cv-email">E-mail</label><input id="cv-email" name="email" type="email" autocomplete="email" required>
         <span class="dica">É com este e-mail que você vai entrar no sistema. Use um que você acessa sempre.</span></div>
       <div class="campos">
@@ -295,10 +321,11 @@
       if (d.nome.split(' ').length < 2 || d.nome.length < 5) erros.nome = 'Escreva o nome completo.';
       if (!R.cpfValido(d.cpf)) erros.cpf = 'CPF inválido. Confira os números.';
       if (!R.emailValido(d.email)) erros.email = 'E-mail inválido.';
+      if (R.soDigitos(d.telefone).length < 10) erros.telefone = 'Informe o celular com DDD: é por ele que chega o código de acesso.';
       if (!d.consentimento_lgpd) erros.consentimento_lgpd = 'É preciso autorizar para enviar.';
       if (d.siape && !/^\d{5,8}$/.test(d.siape)) erros.siape = 'A matrícula SIAPE tem de 5 a 8 números.';
       if (Object.keys(erros).length) return U().mostrarErros(form, erros);
-      await U().ocupado(form, async () => { await S().api.enviarPreCadastro(PUB.token, d); PUB.enviado = true; desenhar(); window.scrollTo(0, 0); });
+      await U().ocupado(form, async () => { await S().api.enviarPreCadastro(PUB.token, d); PUB.enviado = true; PUB.email = d.email; rascunho.apagar(PUB.token); desenhar(); window.scrollTo(0, 0); });
     } else if (tipo === 'conv-recusar') {
       const obs = String(fd.get('obs') || '').trim();
       if (obs.length < 5) return U().mostrarErros(form, { obs: 'Escreva o motivo.' });

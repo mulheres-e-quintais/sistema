@@ -609,7 +609,7 @@
               return vp || dv ? `<div class="aviso erro"><b>Ainda não dá para desligar.</b> ${vp ? vp + ' visita' + (vp > 1 ? 's' : '') + ' agendada' + (vp > 1 ? 's' : '') + ' com ela' : ''}${vp && dv ? ' e ' : ''}${dv ? dv + ' diagnóstico' + (dv > 1 ? 's' : '') + ' devolvido' + (dv > 1 ? 's' : '') + ' para ela corrigir' : ''}. Na aba Campo, passe as visitas para outra pessoa ou cancele, e resolva os diagnósticos.</div>` : ''; })()}
           <p class="small muted">O cadastro não é apagado. A vaga fica livre para a substituta e o histórico guarda quem desligou, quando e por quê. Não dá para desfazer: se ela voltar, faça um novo cadastro.</p>
           <div class="campos"><div class="campo"><label for="d-data">Último dia na bolsa</label><input id="d-data" name="data_fim" type="date" min="${esc(m.data_inicio)}" value="${hoje}" required></div>
-            <div class="campo"><label for="d-motivo">Motivo</label><select id="d-motivo" name="motivo">${MQ.MOTIVOS.map(x => `<option>${esc(x)}</option>`).join('')}</select></div>
+            <div class="campo"><label for="d-motivo">Motivo</label><select id="d-motivo" name="motivo" required><option value="">Escolha o motivo…</option>${MQ.MOTIVOS.map(x => `<option>${esc(x)}</option>`).join('')}</select></div>
             <div class="campo inteiro"><label for="d-det">Explique em uma frase</label><textarea id="d-det" name="detalhe" placeholder="Ex.: pediu para sair por motivo de saúde, comunicou em 20/11."></textarea></div></div>
           <div class="aviso erro" data-erro hidden></div>
           <div class="acoes"><button class="btn perigo cheio" type="submit">Confirmar desligamento</button><button class="btn" type="button" data-acao="desligar-cancelar">Cancelar</button></div>
@@ -944,10 +944,14 @@
             await S.api.atualizar(p.id, patch); await recarregar(); abrirPainel({ tipo: 'detalhe', id: p.id }); toast('Cadastro atualizado.');
           } else {
             const novo = await S.api.criar(m);
-            const temAlgo = priv && (priv.data_nascimento || priv.nis || Object.keys(priv.endereco).length || priv.socioeconomico);
-            if (temAlgo) await S.api.salvarPrivado(novo.id, priv);
-            if (p.pre) await S.api.decidirPreCadastro(p.pre, 'aprovado', null, novo.id);
-            await recarregar(); abrirPainel({ tipo: 'detalhe', id: novo.id });
+            const temAlgo = priv && (priv.data_nascimento || priv.nis || Object.keys(priv.endereco).length || priv.socioeconomico || priv.perfil);
+            // a pessoa já está cadastrada: uma falha daqui em diante não pode levar a cadastrar de novo (daria "CPF já ocupa vaga")
+            let falhou = '';
+            try { if (temAlgo) await S.api.salvarPrivado(novo.id, priv); } catch (e) { falhou = 'os dados pessoais (nascimento, endereço, perfil) não foram salvos: abra "Editar dados" e salve de novo'; }
+            try { if (p.pre) await S.api.decidirPreCadastro(p.pre, 'aprovado', null, novo.id); } catch (e) { falhou = falhou || 'o cadastro enviado pelo link continua na lista: recuse-o com o motivo "já cadastrada"'; }
+            try { await recarregar(); } catch (e) {}
+            abrirPainel({ tipo: 'detalhe', id: novo.id });
+            if (falhou) { toast(nomeDe(m).split(' ')[0] + ' foi cadastrada, mas ' + falhou + '.'); return; }
             toast(nomeDe(m).split(' ')[0] + (['professor_fic', 'auxiliar_adm'].includes(m.papel) ? ' cadastrado(a). Próximo passo: cadastro no Arlo e termo.' : ' cadastrada. Próximo passo: matrícula no curso FIC.'));
           }
         });
@@ -978,6 +982,7 @@
         const erros = {};
         if (!data) erros.data_fim = 'Informe o último dia.';
         else if (data < m.data_inicio) erros.data_fim = 'Antes do início da bolsa (' + R.fmtData(m.data_inicio) + ').';
+        if (!fd.get('motivo')) erros.motivo = 'Escolha o motivo.';
         if (fd.get('motivo') === 'Outro motivo' && det.length < 5) erros.detalhe = 'Explique o motivo.';
         if (Object.keys(erros).length) return mostrarErros(form, erros);
         await ocupado(form, async () => {
@@ -986,7 +991,7 @@
         });
       }
     } catch (e) {
-      mostrarErros(form, e.campos || {}, e.message);
+      mostrarErros(form, e.campos || {}, e.original || !/fetch|network|Load failed/i.test(e.message || '') ? e.message : R.mensagemErro(e));
     }
   });
 
