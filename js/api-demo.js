@@ -441,6 +441,7 @@
       gravar();
     },
     /* demonstração: gera um código para mostrar a tela (não há login de verdade aqui) */
+    async trocarSenha(atual, nova) { if (!euMesmo()) throw falha('Entre de novo no sistema para trocar a senha.'); if (atual === nova) throw falha('A nova senha precisa ser diferente da atual.'); },   // demonstração: não há senha de verdade
     /* "Esqueci a senha" (mesmas regras do 28_pedido_novo_acesso.sql) */
     async pedirNovoAcesso(email) {
       const d = ler(); const e = String(email || '').trim().toLowerCase(); d.pedidosAcesso = d.pedidosAcesso || [];
