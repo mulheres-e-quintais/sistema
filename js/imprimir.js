@@ -138,7 +138,7 @@
     table.grade { width: 100%; border-collapse: collapse; margin: 4px 0 10px; font-size: 9pt; table-layout: fixed; }
     .grade th, .grade td { border: 1px solid #8A7565; padding: 3px 5px; text-align: left; } .grade td { height: 8mm; } .grade th { background: #F1E7DB; }
     .assina { margin-top: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px; break-inside: avoid; } .assina p { margin: 0; font-size: 9pt; text-align: center; } .assina .ln { height: 2.2em; }
-    .rodape { margin-top: 14px; font-size: 8pt; color: #8A7565; border-top: 1px solid #E2D3C1; padding-top: 6px; }
+    .rodape { margin-top: 14px; font-size: 8pt; color: #75604F; border-top: 1px solid #E2D3C1; padding-top: 6px; }
     @media print { .tela { display: none; } main { padding: 0; max-width: none; } }`;
   function pagina(tipo, form) {
     return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
