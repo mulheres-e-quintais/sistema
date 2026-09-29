@@ -317,6 +317,8 @@
       if (tipo === 'bolsa' && !['coord_tecnico', 'articulacao', 'apoio', 'professor_fic', 'auxiliar_adm'].includes(eu.papel)) throw falha('Seu perfil não recebe bolsa mensal pelo projeto.');
       if (!R.habilitado(eu)) throw falha('Sua habilitação ainda não está completa: sem ela não há pagamento.');
       const m = String(mes).slice(0, 7) + '-01'; if (m.slice(0, 7) > R.hoje().slice(0, 7)) throw falha('Só dá para solicitar o mês atual ou meses anteriores.');
+      const ini = (d.equipe.find(x => x.id === eu.id) || eu).data_inicio;   // 32: nada antes do mês de início
+      if (ini && m.slice(0, 7) < String(ini).slice(0, 7)) throw falha('Você começou no projeto em ' + String(ini).slice(5, 7) + '/' + String(ini).slice(0, 4) + ': só dá para solicitar a partir desse mês.');
       const s = d.solicitacoes.find(x => x.tipo === tipo && x.equipe_id === eu.id && x.mes === m);
       if (s && s.situacao !== 'devolvida') throw falha('Você já solicitou este mês. Acompanhe a situação na lista.');
       if (tipo === 'ajuda_custo') {
@@ -431,7 +433,12 @@
       const d = ler(); const eu = euMesmo(); d.entregas = d.entregas || [];
       if (item === 'presenca' && (!eu || eu.id !== equipe_id)) throw falha('Só a própria bolsista marca a lista de presença.');
       if (item === 'ava' && (!eu || !['professor_fic', 'coord_geral'].includes(eu.papel))) throw falha('Só o professor do FIC confirma o acesso ao AVA.');
-      d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes && x.item === item));
+      if (marcar) {   // 32: nada antes do mês de início (e o AVA, antes da matrícula no FIC)
+        const p = d.equipe.find(x => x.id === equipe_id) || {}; const m7 = String(mes).slice(0, 7);
+        if (p.data_inicio && m7 < String(p.data_inicio).slice(0, 7)) throw falha((p.nome_social || p.nome) + ' começou no projeto em ' + String(p.data_inicio).slice(5, 7) + '/' + String(p.data_inicio).slice(0, 4) + ': não há entrega antes desse mês.');
+        if (item === 'ava' && (!p.matricula_fic_em || m7 < String(p.matricula_fic_em).slice(0, 7))) throw falha('Acesso ao AVA só a partir do mês da matrícula no FIC.');
+      }
+d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes && x.item === item));
       if (marcar) d.entregas.push({ equipe_id, mes, item, marcado_por: eu.id, marcado_em: new Date().toISOString() });
       gravar();
     },

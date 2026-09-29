@@ -39,13 +39,15 @@
     const eu = Object.assign({}, S().eu, pessoa(S().eu.id)); const papel = eu.papel;
     if (!podeAjuda(papel) && !podeBolsa(papel)) return '';
     if (S().pagSemBanco) return `<section class="secao"><h2>Solicitar pagamento</h2>${semBanco()}</section>`;
-    const m = G.mes || mesHoje();
+    const mesIni = eu.data_inicio ? String(eu.data_inicio).slice(0, 7) : null;   // nada antes do mês de início (32)
+    let m = G.mes || mesHoje(); if (mesIni && m < mesIni && mesIni <= mesHoje()) m = G.mes = mesIni;
     const minhas = lista().filter(s => s.equipe_id === eu.id);
     const doMes = t => minhas.find(s => s.tipo === t && String(s.mes).slice(0, 7) === m);
     const hab = R.habilitado(eu);
     return `<section class="secao pag" aria-labelledby="t-pag">
       <div class="secao-cab"><div><h2 id="t-pag">Solicitar pagamento</h2><p>Você solicita, a ${quemAvaliza('bolsa', papel) === 'coord_geral' && !podeAjuda(papel) ? 'coordenação geral' : 'coordenação técnica'} dá o aval e o auxiliar administrativo lança no Arlo (FUNCERN).</p></div>
-        <span class="seg"><button type="button" data-acao="pag-mes" data-n="-1" aria-label="Mês anterior">‹</button><button type="button" data-acao="pag-mes" data-n="0">${nomeMes(m)}</button><button type="button" data-acao="pag-mes" data-n="1" aria-label="Próximo mês" ${m >= mesHoje() ? 'disabled' : ''}>›</button></span></div>
+        <span class="seg"><button type="button" data-acao="pag-mes" data-n="-1" aria-label="Mês anterior" ${mesIni && m <= mesIni ? 'disabled' : ''}>‹</button><button type="button" data-acao="pag-mes" data-n="0">${nomeMes(m)}</button><button type="button" data-acao="pag-mes" data-n="1" aria-label="Próximo mês" ${m >= mesHoje() ? 'disabled' : ''}>›</button></span></div>
+      ${mesIni && mesIni > mesHoje() ? `<div class="aviso">Você começa no projeto em ${nomeMes(mesIni)}: a partir desse mês dá para solicitar.</div>` : ''}
       ${!hab ? '<div class="aviso erro"><b>Sua habilitação ainda não está completa.</b> Sem ela não há pagamento: veja os passos que faltam.</div>' : ''}
       <div class="pag-grade">
         ${podeAjuda(papel) ? cartaoAjuda(eu, m, doMes('ajuda_custo'), hab) : ''}

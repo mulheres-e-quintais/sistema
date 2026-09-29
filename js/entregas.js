@@ -56,11 +56,12 @@
   function cartaoBolsista() {
     const eu = S().eu; if (!R.ehBolsista(eu.papel) || semBanco()) return '';
     const m = Object.assign({}, eu, pessoa(eu.id) || {});
-    const mes = G.mes || mesAtual();
+    const ini = m.data_inicio ? String(m.data_inicio).slice(0, 7) : null;   // nada antes do mês de início (32)
+    let mes = G.mes || mesAtual(); if (ini && mes < ini && ini <= mesAtual()) mes = G.mes = ini;
     const its = itens(m, mes); const ok = its.filter(i => i.e === 'ok').length;
     return `<section class="secao entm" aria-labelledby="t-ent"><div class="secao-cab"><div><h2 id="t-ent">Entregas do mês</h2>
         <p>Cada mês só é pago depois que estas entregas forem apresentadas e conferidas: o projeto presta contas ao MDA.</p></div>
-        <span class="seg"><button type="button" data-acao="ent-mes" data-n="-1" aria-label="Mês anterior">‹</button><button type="button" data-acao="ent-mes" data-n="0">${nomeMes(mes)}</button><button type="button" data-acao="ent-mes" data-n="1" aria-label="Próximo mês" ${mes >= mesAtual() ? 'disabled' : ''}>›</button></span></div>
+        <span class="seg"><button type="button" data-acao="ent-mes" data-n="-1" aria-label="Mês anterior" ${ini && mes <= ini ? 'disabled' : ''}>‹</button><button type="button" data-acao="ent-mes" data-n="0">${nomeMes(mes)}</button><button type="button" data-acao="ent-mes" data-n="1" aria-label="Próximo mês" ${mes >= mesAtual() ? 'disabled' : ''}>›</button></span></div>
       <div class="bloco"><p class="entm-cont"><b class="num">${ok}</b> de 6 entregas em dia</p>${lista(m, mes, true)}</div></section>`;
   }
 
@@ -78,12 +79,17 @@
     const mes = G.avaMes || mesAtual();
     const alunas = (S().equipe || []).filter(x => x.status === 'ativa' && R.matriculaFIC(x.papel) && x.matricula_fic_em)
       .sort((a, b) => String(a.uf).localeCompare(String(b.uf)) || nomeDe(a).localeCompare(nomeDe(b)));
-    const n = alunas.filter(x => marcada(x.id, mes, 'ava')).length;
+    const desdeDe = x => [x.data_inicio, x.matricula_fic_em].filter(Boolean).map(d => String(d).slice(0, 7)).sort().pop();
+    const elig = alunas.filter(x => !desdeDe(x) || mes >= desdeDe(x));
+    const n = elig.filter(x => marcada(x.id, mes, 'ava')).length;
     return `<section class="secao" aria-labelledby="t-ava"><div class="secao-cab"><div><h2 id="t-ava">Acesso ao AVA no mês</h2>
         <p>Marque quem entrou no curso e fez as atividades. É uma das entregas mensais das bolsistas: sem ela, a bolsa do mês não é conferida.</p></div>
         <span class="seg"><button type="button" data-acao="ent-avames" data-n="-1" aria-label="Mês anterior">‹</button><button type="button" data-acao="ent-avames" data-n="0">${nomeMes(mes)}</button><button type="button" data-acao="ent-avames" data-n="1" aria-label="Próximo mês" ${mes >= mesAtual() ? 'disabled' : ''}>›</button></span></div>
-      ${alunas.length ? `<p class="small muted">${n} de ${alunas.length} confirmada${alunas.length === 1 ? '' : 's'} em ${E(nomeMes(mes).toLowerCase())}.</p>
+      ${alunas.length ? `<p class="small muted">${n} de ${elig.length} confirmada${elig.length === 1 ? '' : 's'} em ${E(nomeMes(mes).toLowerCase())}.</p>
         <div class="fic-lista">${alunas.map(x => { const k = marcada(x.id, mes, 'ava');
+          const desde = desdeDe(x);   // início no projeto e matrícula no FIC
+          if (desde && mes < desde && !k) return `<div class="fic-pessoa">${U().avatar(x, 36)}<span class="fp-t"><b>${E(nomeDe(x))}</b><span class="small muted">${E(P[x.papel].nome)}${x.uf ? ' · ' + E(x.uf) : ''}</span></span>
+            <span class="small muted ava-antes">Começa em ${E(nomeMes(desde).toLowerCase())}</span></div>`;
           return `<div class="fic-pessoa">${U().avatar(x, 36)}<span class="fp-t"><b>${E(nomeDe(x))}</b><span class="small muted">${E(P[x.papel].nome)}${x.uf ? ' · ' + E(x.uf) : ''}</span></span>
             <label class="check ava-check"><input type="checkbox" data-acao="ent-ava" data-id="${E(x.id)}" data-mes="${mes}" aria-label="${E(nomeDe(x))}: acessou o AVA em ${E(nomeMes(mes).toLowerCase())}" ${k ? 'checked' : ''}> <span>${k ? 'Acessou' : 'Não confirmado'}</span></label></div>`; }).join('')}</div>`
         : '<div class="vazio"><span>Ninguém matriculado no FIC ainda.</span></div>'}</section>`;
