@@ -83,6 +83,8 @@
       // valor do kit por quintal (para a projeção do investimento no diagnóstico)
       S.kitPar = { valor_quintal: MQ.KIT_QUINTAL };   // R$ 4.500 por quintal, fixado no plano de trabalho
       S.pre = /^coord/.test(S.eu.papel) && S.api.listarPreCadastros ? await opcional(S.api.listarPreCadastros) : [];
+      // cálculo de custos carregado em segundo plano: a aba Custos abre pronta, sem "Carregando…" e sem a página pular
+      if (/^coord/.test(S.eu.papel) && MQ.custosUI && !MQ.custosUI.pronto()) MQ.custosUI.garantir().then(() => { if (S.aba === 'custos') render(); }).catch(() => {});
       S.exemplo = /^coord/.test(S.eu.papel) && S.api.contarExemplo ? await opcional(async () => [await S.api.contarExemplo()]).then(r => r[0] || 0) : 0;
       S.semRede = false;
       try { localStorage.setItem(chaveCache(), JSON.stringify({ equipe: S.equipe, fichas: S.fichas, visitas: S.visitas, diagnosticos: S.diagnosticos, aud: S.aud, em: Date.now() })); } catch (e) {}
@@ -141,6 +143,7 @@
       else h += telaBolsista();
     }
     app.innerHTML = h + rodape() + (S.eu && MQ.roteiroUI ? MQ.roteiroUI.barra() : '');
+    app.querySelectorAll('.atalhos [data-alvo]').forEach(b => { b.hidden = !document.querySelector(b.dataset.alvo); });
     if (S.eu && MQ.roteiroUI) MQ.roteiroUI.verificarLink();
     if (S.painel) desenharPainel();
     if (S.rolarPara && S.eu && !S.verEntrada) { const y = S.rolarPara; S.rolarPara = 0; requestAnimationFrame(() => window.scrollTo(0, y)); }
@@ -323,11 +326,12 @@
     const ok = pessoas.filter(m => m.docs_funcern_em && m.termo_assinado_em);
     const linha = m => `<button class="vagabtn com-foto" data-acao="ver" data-id="${m.id}">${avatar(m, 44)}<span class="vb-t"><span class="nm">${esc(nomeDe(m))}</span>
         <span class="sub">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(m.uf) : ''}${!m.docs_funcern_em && m.cadastro_arlo ? ' · <b>diz que já tem Arlo: confira e registre</b>' : ''}</span></span></button>`;
-    const grupo = (t, l, vazio) => `<section class="secao"><div class="secao-cab"><h2>${t} <span class="conta-t">${l.length}</span></h2></div>
+    const grupo = (t, l, vazio, id) => `<section class="secao"><div class="secao-cab"><h2${id ? ` id="${id}"` : ''}>${t} <span class="conta-t${l.length ? '' : ' zero'}">${l.length}</span></h2></div>
       ${l.length ? `<div class="grade-prof">${l.map(linha).join('')}</div>` : `<p class="muted">${vazio}</p>`}</section>`;
     return `<main class="wrap" id="principal">
       <div class="cab"><div><span class="eyebrow">${esc(P.auxiliar_adm.nome)}</span><h1>Olá, ${esc(nomeDe(eu).split(' ')[0])}</h1><p>${esc(P.auxiliar_adm.faz)}</p></div>
         <span class="chip chip-lg ${s.cod}">${esc(s.rot)}</span></div>
+      ${atalhos([['Cadastrar no Arlo', '#t-arlo', true], ['Lançar pagamentos no Arlo', '#t-lancar'], ['Pedir a minha bolsa', '#t-pag']])}
       <div class="resumo">
         <div><span class="v num">${pessoas.length}</span><span class="l">pessoas na equipe</span></div>
         <div><span class="v num" ${semArlo.length ? 'style="color:var(--crit)"' : ''}>${semArlo.length}</span><span class="l">falta cadastrar no Arlo</span></div>
@@ -336,7 +340,7 @@
       <p class="small muted">Abra a pessoa, veja os dados (e a conta, se precisar), cadastre no Arlo e registre a data em <b>Registrar passos da habilitação</b>. Cada consulta de conta bancária fica no histórico.</p>
       ${MQ.bancoUI ? MQ.bancoUI.blocoSituacao() : ''}
       ${MQ.pagUI ? MQ.pagUI.secaoAuxiliar() : ''}
-      ${grupo('Falta cadastrar no Arlo', semArlo, 'Todos já estão no Arlo.')}
+      ${grupo('Falta cadastrar no Arlo', semArlo, 'Todos já estão no Arlo.', 't-arlo')}
       ${grupo('No Arlo, falta registrar o termo', semTermo, 'Nenhum termo pendente.')}
       <details class="hist"><summary>Arlo e termo registrados (${ok.length})</summary><div style="padding:0 18px 16px">${ok.length ? `<div class="grade-prof">${ok.map(linha).join('')}</div>` : '<p class="muted">Ninguém ainda.</p>'}</div></details>
       ${s.cod === 'ok' ? '' : `<div class="bloco"><h2>Sua habilitação</h2><p class="small muted">A sua é registrada pela coordenação geral.</p>${passos(eu)}</div>`}
@@ -475,12 +479,23 @@
         ${S.api.modo === 'supabase' ? '<div class="acoes"><button class="btn" data-acao="sair">Sair do sistema</button></div>' : ''}</div>`;
   }
 
+  /* atalhos no topo das telas pessoais: o caminho mais curto para cada tarefa, sem rolar a página inteira no celular.
+     Cada item: [texto, '#id da seção' ou {acao: 'nome-da-acao'}, destaque]. Atalho de seção que não existe na tela some sozinho. */
+  MQ.atalhos = itens => atalhos(itens);
+  function atalhos(itens) {
+    const bt = ([t, alvo, pri]) => typeof alvo === 'string'
+      ? `<button type="button" class="btn${pri ? ' pri' : ''}" data-acao="ir" data-alvo="${alvo}">${t}</button>`
+      : `<button type="button" class="btn${pri ? ' pri' : ''}" data-acao="${alvo.acao}"${alvo.t ? ` data-t="${alvo.t}"` : ''}>${t}</button>`;
+    return `<nav class="atalhos" aria-label="O que você quer fazer"><span class="eyebrow">O que você quer fazer?</span><div class="atalhos-grade">${itens.filter(Boolean).map(bt).join('')}</div></nav>`;
+  }
   function telaBolsista() {
     const m = Object.assign({}, S.eu, porId(S.eu.id) || {});   // inclui o link da foto
     const s = R.situacao(m);
     return `<main class="wrap" id="principal">
       <div class="cab"><div><span class="eyebrow">${esc(P[m.papel].nome)} · ${esc(nomeUF(m.uf))}</span><h1>Olá, ${esc(nomeDe(m).split(' ')[0])}</h1>
         <p>${esc(P[m.papel].faz)}</p></div><span class="chip chip-lg ${s.cod}">${esc(s.rot)}</span></div>
+      ${atalhos([['+ Nova ficha de mulher', { acao: 'ficha-nova' }, true], ['Visitas e diagnósticos', '#t-campo'], ['Entregas do mês', '#t-ent'], ['Pedir pagamento', '#t-pag'],
+        m.papel === 'articulacao' ? ['Passagem ou evento', '#t-viag'] : null])}
       ${MQ.entregasUI ? MQ.entregasUI.blocoCiencia() : ''}
       ${s.cod === 'ok' ? '' : `<div class="bloco"><h2>Habilitação para receber a bolsa</h2><p class="small muted">A bolsa de ${R.fmtBRL(P[m.papel].bolsa || 0)} por mês só é paga pela FUNCERN depois destes passos. Dúvidas sobre matrícula e AVA: professores do curso FIC. Documentos, conta ou Pix: auxiliar administrativo.</p>${passos(m)}</div>`}
       ${MQ.entregasUI ? MQ.entregasUI.cartaoBolsista() : ''}
@@ -852,6 +867,7 @@
       else if (/^rot-/.test(a) && MQ.roteiroUI) { S.voltarFoco = null; await MQ.roteiroUI.clique(a, el); }
       else if (/^campo-/.test(a) && MQ.campoUI) { S.voltarFoco = el; await MQ.campoUI.clique(a, el); }
       else if (a === 'ver') { S.voltarFoco = el; abrirPainel({ tipo: 'detalhe', id: el.dataset.id }); }
+      else if (a === 'ir') { const t = document.querySelector(el.dataset.alvo); if (t) { const sec = t.closest('section, .bloco') || t; sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); t.setAttribute('tabindex', '-1'); t.focus({ preventScroll: true }); } }
       else if (a === 'novo') { S.voltarFoco = el; abrirPainel({ tipo: 'cadastro', papel: el.dataset.papel, uf: el.dataset.uf, subst: el.dataset.subst }); }
       else if (a === 'editar') abrirPainel({ tipo: 'cadastro', id: el.dataset.id });
       else if (a === 'desligar-abrir') { const f = $('form[data-form=desligar]'); f.hidden = false; f.scrollIntoView({ block: 'nearest' }); f.querySelector('select').focus(); }
