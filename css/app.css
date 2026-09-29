@@ -1157,3 +1157,40 @@ form .acoes:last-child .btn.pri { min-width: 160px; }
 /* aba ativa em negrito sem empurrar as vizinhas: reserva a largura do negrito */
 .aba-t { display: inline-grid; }
 .aba-t::after { content: attr(data-t); font-weight: 600; visibility: hidden; height: 0; overflow: hidden; }
+/* ---------- roteiro de testes ---------- */
+.teste-barra { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; align-items: center; gap: 10px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--barra-bg); color: var(--barra-ink); box-shadow: 0 -6px 20px -10px rgba(0, 0, 0, .5); }
+.teste-barra .tb-selo { flex: none; font: 700 var(--t-2xs)/1 var(--sans); letter-spacing: .1em; text-transform: uppercase; background: var(--ocre); color: #fff; padding: 5px 8px; border-radius: 6px; }
+.teste-barra .tb-t { flex: 1; min-width: 0; font-size: var(--t-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.com-teste .rodape { padding-bottom: 72px; }
+.rot { display: grid; gap: 14px; }
+.rot-abas { display: flex; gap: 6px; }
+.rot-intro { display: grid; gap: 12px; }
+.rot-prog { height: 6px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.rot-prog i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .3s; }
+.rot-t { font: 600 var(--t-2xl)/1.2 var(--serif); }
+.rot-bloco { display: grid; gap: 8px; padding: 12px 14px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+.rot-ver { background: var(--ok-bg); border-color: color-mix(in srgb, var(--ok) 30%, var(--line)); }
+.rot-passos { margin: 0; padding-left: 20px; display: grid; gap: 6px; line-height: 1.5; }
+.rot-acoes { display: grid; gap: 8px; }
+.rot-acoes .btn { min-height: 48px; font-size: var(--t-base); }
+.rot-ok { background: var(--ok); border-color: var(--ok); color: #fff; }
+.rot-nao { background: var(--crit-bg); border-color: var(--crit); color: var(--crit); }
+.rot-conte { display: grid; gap: 8px; }
+.rot-conte label { font-weight: 600; font-size: var(--t-md); }
+.rot-conte textarea { width: 100%; font: var(--t-base) var(--sans); padding: 10px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--surface); color: var(--ink); }
+.rot-lista ol { margin: 0; padding: 4px 16px 12px 34px; display: grid; gap: 6px; }
+.rot-lista li { font-size: var(--t-md); }
+.rot-lista li .link { text-align: left; }
+.rot-lista li.ok::marker { color: var(--ok); } .rot-lista li.nao::marker { color: var(--crit); }
+.rot-lista li.agora .link { font-weight: 700; }
+.rot-lista li .small { margin-left: 6px; }
+.rot-fim { display: grid; gap: 10px; justify-items: start; }
+.rot-fim-ic { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--ok-bg); color: var(--ok); font-weight: 700; font-size: var(--t-xl); }
+.rr { list-style: none; margin: 0; padding: 4px 14px 12px; display: grid; gap: 10px; }
+.rr > li { display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.rr-l { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; }
+.rr-com { list-style: none; margin: 0; padding: 0 0 0 10px; border-left: 3px solid var(--crit-bg); display: grid; gap: 6px; }
+.rr-com li { display: grid; gap: 1px; font-size: var(--t-md); }
+.rot-conv { margin: 4px 0 8px; }
+.fp-t .small { overflow-wrap: anywhere; }
+body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
