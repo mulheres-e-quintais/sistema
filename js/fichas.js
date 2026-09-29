@@ -100,7 +100,7 @@
       && (!busca || f.nome.toLowerCase().includes(busca) || f.cpf.includes(R.soDigitos(busca) || '#')));
     const op = (v, t, atual) => `<option value="${v}" ${v === atual ? 'selected' : ''}>${t}</option>`;
     return `<section class="secao" aria-labelledby="t-sel">
-      <div class="secao-cab"><div><h1 id="t-sel" style="font-size:24px">Seleção das beneficiárias</h1>
+      <div class="cab"><div><span class="eyebrow">Seleção das mulheres</span><h1 id="t-sel">Seleção das beneficiárias</h1>
         <p>Fichas de indicação dos 5 estados. ${souTec ? 'Você aprova ou devolve cada ficha antes do diagnóstico.' : 'A aprovação é da coordenação técnica.'} O sistema impede CPF repetido e mais de ${MQ.VAGAS_UF} selecionadas aprovadas por estado.</p></div>
         <button class="btn" data-acao="ficha-csv">Baixar planilha (CSV)</button></div>
       ${(() => { const u = MQ.UFS.find(x => contar(lista, x.uf).total); if (!u) return ''; const c = contar(lista, u.uf);
@@ -171,7 +171,7 @@
         </div></fieldset>
 
         <fieldset><legend>2. Termo de consentimento (leia em voz alta)</legend>
-          <div class="fixo" style="font-size:14px;gap:8px"><span>${E(MQ.TERMO.finalidade)}</span><span>${E(MQ.TERMO.direitos)}</span></div>
+          <div class="fixo" style="gap:8px"><span>${E(MQ.TERMO.finalidade)}</span><span>${E(MQ.TERMO.direitos)}</span></div>
           ${autorizo('consent_dados', f.consent_dados, 'Uso dos dados pessoais para os fins acima')}
           ${autorizo('consent_imagem', f.consent_imagem == null ? null : f.consent_imagem, 'Uso da imagem e voz (fotos e vídeos) em relatórios e divulgação, sem uso comercial')}
           ${autorizo('consent_criancas', f.consent_criancas == null ? null : f.consent_criancas, 'Crianças e adolescentes sob sua responsabilidade nas fotos, só em atividades do projeto')}

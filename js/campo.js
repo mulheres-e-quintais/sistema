@@ -160,7 +160,7 @@
     const pend = S().fila.filter(i => i.tipo === 'diagnostico');
     return `<main class="wrap" id="principal">
       <div class="cab"><div><span class="eyebrow">Agente de campo · ${E(U().nomeUF(eu.uf))}</span><h1>Olá, ${E(primeiroNome(eu.nome))}</h1>
-        <p>${E(MQ.PAPEIS.agente.faz)}</p></div><span class="chip ${s.cod}" style="font-size:13px;padding:4px 12px">${E(s.rot)}</span></div>
+        <p>${E(MQ.PAPEIS.agente.faz)}</p></div><span class="chip chip-lg ${s.cod}">${E(s.rot)}</span></div>
       ${MQ.entregasUI ? MQ.entregasUI.blocoCiencia() : ''}
       ${!R.habilitado(eu) ? `<div class="aviso erro"><b>Você ainda não pode receber visitas no roteiro.</b> Faltam passos da habilitação (matrícula no FIC, documentos na FUNCERN e termo). Sem eles, a ajuda de custo não pode ser paga.</div>` : ''}
       ${pend.length ? `<div class="aviso">${pend.length} diagnóstico${pend.length > 1 ? 's' : ''} guardado${pend.length > 1 ? 's' : ''} neste aparelho, aguardando internet.${navigator.onLine ? ' <button class="link" data-acao="ficha-enviar">Enviar agora</button>' : ''}</div>` : ''}
@@ -187,7 +187,7 @@
           <span class="medidor"><i style="width:${pct}%;opacity:.35"></i><i style="width:${pctF}%"></i></span><span class="small muted">${vs.length - feitas} previsto${vs.length - feitas === 1 ? '' : 's'} no roteiro</span></div></td>
         <td class="num c">${d.length} <span class="muted">de 40</span></td><td class="num c">${d.filter(x => x.situacao === 'aprovado').length}</td><td class="num c">${(n => n ? `<b style="color:var(--crit)">${n}</b>` : 0)(d.filter(x => x.sem_agua).length)}</td>
         <td class="num c">${pessoasCampo(u.uf).filter(p => p.papel === 'agente').length}</td></tr>`; };
-    return `<div class="cab"><div><span class="eyebrow">Trabalho de campo</span><h1 style="font-size:24px">Visitas, diagnósticos e planos</h1>
+    return `<div class="cab"><div><span class="eyebrow">Trabalho de campo</span><h1>Visitas, diagnósticos e planos</h1>
         <p>${souTec ? 'Você aprova ou devolve o plano de cada quintal antes da compra do kit.' : 'A aprovação dos planos é da coordenação técnica.'} Dias de campo: ${MQ.DIAS_CAMPO_UF} por estado (40 quintais × 5 visitas: diagnóstico, implantação, 2 acompanhamentos e avaliação final).</p></div></div>
       <div class="quadro-scroll" style="display:block"><table class="quadro tab-campo-uf"><thead><tr><th>Estado</th><th>Dias de campo</th><th class="c">Diagnósticos</th><th class="c">Planos aprovados</th><th class="c">Sem água na seca</th><th class="c">Agentes de campo</th></tr></thead>
         <tbody>${MQ.UFS.map(linhaUF).join('')}</tbody></table></div>
