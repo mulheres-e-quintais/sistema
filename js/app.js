@@ -24,16 +24,27 @@
     try {
       S.eu = await S.api.iniciar();
       // reabriu o sistema depois de 15 minutos sem uso: sai antes de mostrar qualquer dado
-      if (S.eu && MQ.sessao && MQ.sessao.venceu(MQ.sessao.ultimo())) await sairDoSistema(AVISO_INATIVO);
+      // sem internet não sai (não daria para entrar de novo): abrir o sistema conta como uso
+      if (S.eu && MQ.sessao && MQ.sessao.venceu(MQ.sessao.ultimo()) && !MQ.sessao.semRede() && await temConexao()) await sairDoSistema(AVISO_INATIVO);
       if (S.eu && !S.verEntrada) { if (MQ.sessao) MQ.sessao.tocar(true); await carregar(); setTimeout(() => sincronizar(false), 500); }
     } catch (e) { toast(e.message); }
-    if (MQ.sessao) MQ.sessao.iniciar({ ativo: () => !!S.eu && !S.verEntrada, aoVencer: () => sairDoSistema(AVISO_INATIVO) });
+    if (MQ.sessao) MQ.sessao.iniciar({ ativo: () => !!S.eu && !S.verEntrada, temConexao, aoVencer: () => sairDoSistema(AVISO_INATIVO) });
     render();
     if ('serviceWorker' in navigator && location.protocol === 'https:' && !MQ.CONFIG.semServiceWorker) {
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
   }
   const modoDemoAtivo = () => !!(S.api && S.api.modo === 'demo');
+  /* o servidor responde? (sinal fraco engana o navigator.onLine). Qualquer resposta = tem conexão; 5 s no máximo */
+  async function temConexao() {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+    if (modoDemoAtivo() || !MQ.CONFIG || !MQ.CONFIG.supabaseUrl) return true;
+    const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const t = ctl ? setTimeout(() => ctl.abort(), 5000) : null;
+    try { await fetch(MQ.CONFIG.supabaseUrl + '/auth/v1/health', { cache: 'no-store', headers: { apikey: MQ.CONFIG.supabaseAnonKey || '' }, signal: ctl ? ctl.signal : undefined }); return true; }
+    catch (e) { return false; }
+    finally { if (t) clearTimeout(t); }
+  }
   const AVISO_INATIVO = 'Você saiu do sistema depois de 15 minutos sem uso. Entre de novo. O que estava guardado no celular não se perdeu: é enviado quando você entrar.';
   /* sai do sistema (botão Sair ou 15 minutos sem uso): fecha o painel, apaga do aparelho a cópia dos dados e volta para a entrada */
   async function sairDoSistema(aviso) {
