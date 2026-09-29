@@ -14,6 +14,13 @@
   const SIT = { solicitada: ['pend', 'Aguardando aval'], devolvida: ['crit', 'Devolvida para corrigir'], avalizada: ['ok', 'Com aval · falta lançar no Arlo'], lancada: ['ok', 'Lançada no Arlo'] };
   const chip = s => `<span class="chip ${SIT[s.situacao][0]}">${SIT[s.situacao][1]}</span>`;
   const podeAjuda = papel => R.ehCampo(papel);
+  /* o que contar no relatório do mês, conforme a função */
+  const DICA_REL = {
+    bolsista: 'O que você fez no mês: comunidades mobilizadas, fichas, visitas acompanhadas, reuniões, dificuldades.',
+    professor_fic: 'O que você fez no mês: aulas dadas e carga horária, turmas, matrículas e frequência, materiais preparados, dificuldades.',
+    coord_tecnico: 'O que você fez no mês: fichas e planos conferidos, visitas agendadas, reuniões com os estados, formações, dificuldades.',
+    auxiliar_adm: 'O que você fez no mês: cadastros no Arlo, pagamentos lançados, documentos organizados, pendências com a FUNCERN.'
+  };
   const podeBolsa = papel => ['coord_tecnico', 'articulacao', 'apoio', 'professor_fic', 'auxiliar_adm'].includes(papel);
   const quemAvaliza = (tipo, papel) => tipo === 'bolsa' && ['coord_tecnico', 'professor_fic', 'auxiliar_adm'].includes(papel) ? 'coord_geral' : 'coord_tecnico';
   const lista = () => S().solic || [];
@@ -87,7 +94,7 @@
     return `<form class="bloco pag-c" data-form="pag-bolsa" data-mes="${m}" novalidate><h3>Bolsa · ${nomeMes(m)}</h3>
       ${s ? situacaoTxt(s) : ''}
       <p class="small muted">${valor ? 'Valor do termo de compromisso: <b>' + brl(valor) + '</b>.' : 'Valor conforme o termo de compromisso.'} O aval é da ${quemAvaliza('bolsa', eu.papel) === 'coord_geral' ? 'coordenação geral' : 'coordenação técnica'}.</p>
-      <div class="campo"><label for="pb-rel-${m}">Relatório de atividades do mês</label><textarea id="pb-rel-${m}" name="relatorio" rows="5" placeholder="O que você fez no mês: comunidades mobilizadas, fichas, visitas acompanhadas, reuniões, dificuldades.">${E(s ? s.relatorio || '' : '')}</textarea></div>
+      <div class="campo"><label for="pb-rel-${m}">Relatório de atividades do mês</label><textarea id="pb-rel-${m}" name="relatorio" rows="5" placeholder="${E(DICA_REL[eu.papel] || DICA_REL.bolsista)}">${E(s ? s.relatorio || '' : '')}</textarea></div>
       <div class="aviso erro" data-erro hidden></div>
       <button class="btn pri" type="submit" ${hab ? '' : 'disabled'}>${s ? 'Corrigir e reenviar' : 'Solicitar bolsa de ' + nomeMes(m)}</button></form>`;
   }
