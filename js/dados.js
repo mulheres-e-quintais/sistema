@@ -36,7 +36,7 @@ MQ.PAPEIS = {
   auxiliar_adm:  { nome: 'Auxiliar administrativo', curto: 'Auxiliar adm.', bolsa: null, org: 'IFRN',
                    faz: 'Cadastra a equipe no Arlo (FUNCERN) e registra no sistema o cadastro no Arlo e o termo de compromisso assinado.' },
   professor_fic: { nome: 'Professor(a) do curso FIC', curto: 'Professor FIC', bolsa: null, org: 'IFRN',
-                   faz: 'Dá as aulas do curso FIC e registra no sistema as turmas e a matrícula das bolsistas e agentes de campo.' }
+                   faz: 'Dá as aulas do curso FIC e registra no sistema as turmas e a matrícula da coordenação técnica, das bolsistas e das agentes de campo.' }
 };
 
 /* Motivos de cancelamento previstos no item 5 do termo de compromisso */

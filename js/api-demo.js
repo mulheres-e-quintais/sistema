@@ -326,7 +326,7 @@
     /* ---------- Curso FIC (mesmas regras do 11_fic.sql) ---------- */
     async listarEquipeFic() {
       const eu = euMesmo(); if (!eu || !['coord_geral', 'coord_tecnico', 'professor_fic'].includes(eu.papel)) return [];
-      return copia(ler().equipe.filter(m => m.status === 'ativa' && ['articulacao', 'apoio', 'agente', 'professor_fic'].includes(m.papel))
+      return copia(ler().equipe.filter(m => m.status === 'ativa' && ['coord_tecnico', 'articulacao', 'apoio', 'agente', 'professor_fic'].includes(m.papel))
         .map(m => ({ id: m.id, papel: m.papel, uf: m.uf, nome: m.nome, nome_social: m.nome_social, municipio: m.municipio, status: m.status,
           matricula_fic_em: m.matricula_fic_em, matricula_fic_numero: m.matricula_fic_numero, foto_path: m.foto_path, foto_url: m.foto_url })));
     },
@@ -352,8 +352,8 @@
       if (!t) throw falha('Turma não encontrada.');
       if (!eu || !R.podeMatricular(eu.papel)) throw falha('A matrícula no FIC é feita pelos professores do curso.');
       const p = d.equipe.find(m => m.id === equipe_id);
-      if (!p || p.status !== 'ativa' || !R.ehCampo(p.papel)) throw falha('Só bolsistas e agentes de campo ativas são matriculadas no FIC.');
-      if (t.uf && p.uf !== t.uf) throw falha('Esta turma é de ' + t.uf + '; ' + p.nome + ' é de ' + p.uf + '.');
+      if (!p || p.status !== 'ativa' || !R.matriculaFIC(p.papel)) throw falha('Só a coordenação técnica, bolsistas e agentes de campo ativas são matriculadas no FIC.');
+      if (!R.cabeNaTurma(t, p)) throw falha('Esta turma é de ' + t.uf + '; ' + p.nome + ' é de ' + p.uf + '.');
       if (String(numero || '').trim().length < 3) throw falha('Informe o número da matrícula (SUAP).');
       if (!data || data > R.hoje()) throw falha('Data da matrícula vazia ou no futuro.');
       d.matriculas = d.matriculas || []; const atual = d.matriculas.find(x => x.equipe_id === equipe_id && !x.cancelada_em);

@@ -50,6 +50,10 @@
   /* Habilitação para receber bolsa: passo a passo do Guia das bolsistas */
   /* professor do FIC não se matricula no curso: habilita com FUNCERN e termo */
   R.fazFIC = papel => !['professor_fic', 'auxiliar_adm', 'coord_geral'].includes(papel);
+  /* quem é matriculado no curso FIC: coordenação técnica, bolsistas e agentes de campo (decisão de 29/09/2026) */
+  R.matriculaFIC = papel => ['coord_tecnico', 'articulacao', 'apoio', 'agente'].includes(papel);
+  /* turma de um estado aceita gente daquele estado; a coordenação técnica (os 5 estados) entra em qualquer turma */
+  R.cabeNaTurma = (turma, pessoa) => !turma.uf || !pessoa.uf || pessoa.uf === turma.uf;
   R.passosHabilitacao = m => [
     { id: 'dados',     nome: ['professor_fic', 'auxiliar_adm', 'coord_tecnico'].includes(m.papel) ? 'Dados cadastrados pela coordenação geral' : 'Dados enviados pela coordenação técnica', feito: true, quando: m.criado_em && m.criado_em.slice(0, 10) },
     R.fazFIC(m.papel) ? { id: 'fic', nome: 'Matrícula no curso FIC (IFRN)', feito: !!m.matricula_fic_em, quando: m.matricula_fic_em, extra: m.matricula_fic_numero } : null,
