@@ -1,4 +1,4 @@
-/* Mulheres & Quintais — desconexão depois de 15 minutos sem uso, em todos os perfis.
+/* Mulheres & Quintais — desconexão depois de 15 minutos sem uso, em todos os perfis (com internet).
    Aos 13 minutos aparece um aviso com contagem; aos 15, o sistema sai sozinho. O último uso fica
    guardado no aparelho, então vale entre abas do navegador e também ao reabrir o sistema depois.
    O que estava guardado na fila (preenchido sem internet) não se perde: sobe na próxima entrada. */
@@ -32,17 +32,31 @@
   }
   function esconderAviso() { if (caixa) { caixa.remove(); caixa = null; } }
 
-  function conferir() {
+  /* Sem internet o sistema NÃO sai: para entrar de novo é preciso conexão, e a agente ficaria travada
+     no campo. Quando o sinal volta, se a pessoa continua parada há 15 minutos ou mais, aí sai.
+     navigator.onLine às vezes diz "tem rede" com sinal fraco; por isso, antes de sair, o app confere
+     se o servidor responde (cfg.temConexao). Se não responder, tenta de novo em 30 segundos. */
+  const semRede = () => typeof navigator !== 'undefined' && navigator.onLine === false;
+  let conferindo = false, esperarAte = 0;
+  async function conferir() {
     if (!cfg || !cfg.ativo()) { esconderAviso(); return; }
+    if (semRede()) { esconderAviso(); return; }   // sem sinal: não avisa nem sai
     const f = falta(ultimo());
-    if (f <= 0) { esconderAviso(); parar(); cfg.aoVencer(); }
-    else if (f <= AVISO) mostrarAviso(f);
-    else esconderAviso();
+    if (f > AVISO) { esconderAviso(); return; }
+    if (f > 0) { mostrarAviso(f); return; }
+    if (conferindo || agora() < esperarAte) return;
+    conferindo = true;
+    try {
+      const ok = cfg.temConexao ? await cfg.temConexao() : true;
+      if (!ok) { esconderAviso(); esperarAte = agora() + 30000; return; }
+      if (!cfg || !cfg.ativo() || !venceu(ultimo())) return;   // usou enquanto conferia
+      esconderAviso(); parar(); cfg.aoVencer();
+    } finally { conferindo = false; }
   }
   function parar() { if (timer) clearInterval(timer); timer = null; }
   /* cfg: { ativo(): há alguém logado?, aoVencer(): sai do sistema } */
   function iniciar(c) {
-    cfg = c; parar(); timer = setInterval(conferir, 1000);
+    cfg = c; parar(); esperarAte = 0; timer = setInterval(conferir, 1000);
     if (timer && typeof timer === 'object' && timer.unref) timer.unref();   // só no Node (testes); no navegador é número
   }
   // qualquer uso conta: toque, clique, tecla, rolagem, digitação
@@ -50,7 +64,9 @@
     document.addEventListener(ev, () => { if (cfg && cfg.ativo()) { tocar(); if (caixa) esconderAviso(); } }, { passive: true, capture: true }));
   // o celular pausa o relógio com a tela apagada: ao voltar, confere na hora
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') conferir(); });
+  // o sinal voltou: confere na hora (se continua parada há 15 minutos, sai)
+  if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('online', () => { esperarAte = 0; conferir(); });
   document.addEventListener('click', ev => { const b = ev.target.closest && ev.target.closest('[data-acao="sessao-continuar"]'); if (b) { tocar(true); esconderAviso(); } });
 
-  MQ.sessao = { LIMITE, AVISO, iniciar, parar, tocar, esquecer, ultimo, venceu, falta, conferir, fmt };
+  MQ.sessao = { LIMITE, AVISO, iniciar, parar, tocar, esquecer, ultimo, venceu, falta, conferir, fmt, semRede };
 })();

@@ -81,3 +81,62 @@ describe('no sistema, para cada perfil', () => {
     a.MQ.sessao.parar();
   });
 });
+
+/* Opção 1 (decisão da coordenação): com internet sai aos 15 minutos; sem internet NÃO sai, porque para
+   entrar de novo é preciso conexão e a agente ficaria travada no campo. Quando o sinal volta, se ela
+   continua parada há 15 minutos ou mais, aí sai. */
+describe('sem internet não sai; sai quando o sinal volta', () => {
+  const esperar = ms => new Promise(r => setTimeout(r, ms));
+  test('sem rede: passou de 15 minutos, não avisa nem sai', async () => {
+    const { S, amb } = sessao(); let saiu = 0, caixa = null;
+    amb.janela.document.body.appendChild = el => { caixa = el; };
+    amb.janela.navigator.onLine = false;
+    S.iniciar({ ativo: () => true, aoVencer: () => { saiu++; } }); S.parar();
+    amb.janela.localStorage.setItem('mq-ultimo-uso', String(Date.now() - 13.5 * MIN)); await S.conferir();
+    assert.equal(caixa, null, 'sem rede não mostra o aviso de saída');
+    amb.janela.localStorage.setItem('mq-ultimo-uso', String(Date.now() - 60 * MIN)); await S.conferir();
+    assert.equal(saiu, 0);
+  });
+  test('o sinal volta e ela continua parada: sai', async () => {
+    const { S, amb } = sessao(); let saiu = 0;
+    amb.janela.navigator.onLine = false;
+    S.iniciar({ ativo: () => true, aoVencer: () => { saiu++; } }); S.parar();
+    amb.janela.localStorage.setItem('mq-ultimo-uso', String(Date.now() - 40 * MIN)); await S.conferir();
+    assert.equal(saiu, 0);
+    amb.janela.navigator.onLine = true; (amb.ouvintesJanela.online || []).forEach(fn => fn()); await esperar(5);
+    assert.equal(saiu, 1);
+  });
+  test('o sinal volta mas ela estava usando (sem internet): continua dentro', async () => {
+    const { S, amb } = sessao(); let saiu = 0;
+    amb.janela.navigator.onLine = false;
+    S.iniciar({ ativo: () => true, aoVencer: () => { saiu++; } }); S.parar();
+    amb.janela.localStorage.setItem('mq-ultimo-uso', String(Date.now() - 40 * MIN));
+    amb.ouvintes.pointerdown.forEach(fn => fn({}));   // preencheu ficha sem sinal
+    amb.janela.navigator.onLine = true; await S.conferir();
+    assert.equal(saiu, 0);
+  });
+  test('sinal fraco (diz que tem rede, servidor não responde): não sai e tenta de novo depois', async () => {
+    const { S, amb } = sessao(); let saiu = 0, perguntas = 0, responde = false;
+    S.iniciar({ ativo: () => true, temConexao: async () => { perguntas++; return responde; }, aoVencer: () => { saiu++; } }); S.parar();
+    amb.janela.localStorage.setItem('mq-ultimo-uso', String(Date.now() - 20 * MIN));
+    await S.conferir(); assert.equal(saiu, 0); assert.equal(perguntas, 1);
+    await S.conferir(); assert.equal(perguntas, 1, 'espera 30 segundos antes de perguntar de novo');
+    responde = true; (amb.ouvintesJanela.online || []).forEach(fn => fn()); await esperar(5);   // voltou de verdade
+    assert.equal(saiu, 1);
+  });
+  test('usou enquanto o sistema conferia a conexão: não sai', async () => {
+    const { S, amb } = sessao(); let saiu = 0;
+    S.iniciar({ ativo: () => true, temConexao: async () => { amb.ouvintes.keydown.forEach(fn => fn({})); return true; }, aoVencer: () => { saiu++; } }); S.parar();
+    amb.janela.localStorage.setItem('mq-ultimo-uso', String(Date.now() - 20 * MIN));
+    await S.conferir(); assert.equal(saiu, 0);
+  });
+  for (const p of ['coord_geral', 'coord_tecnico', 'bolsista', 'agente', 'professor', 'auxiliar']) {
+    test(`${p}: reabrir sem internet depois de 40 minutos entra normalmente`, async () => {
+      const a = await abrirComoApp(p, 40 * MIN, { semRede: true });
+      try {
+        assert.ok(!a.S.verEntrada); assert.doesNotMatch(texto(a.html()), /15 minutos sem uso/);
+        assert.ok(Date.now() - a.MQ.sessao.ultimo() < 2000, 'abrir o sistema conta como uso');
+      } finally { a.MQ.sessao.parar(); }
+    });
+  }
+});

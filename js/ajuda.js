@@ -43,7 +43,7 @@
         ['Sem internet', [
           'Fichas, diagnósticos, visitas feitas e avaliações podem ser preenchidos sem sinal. Ficam guardados no celular, com as fotos, e sobem sozinhos quando a internet voltar (ou em <b>Enviar agora</b>).',
           'Antes de ir a campo, abra o sistema com internet para atualizar a lista de visitas.',
-          'Depois de 15 minutos sem uso o sistema sai sozinho, em todos os perfis (aos 13 minutos aparece um aviso: toque em <b>Continuar usando</b>). Para entrar de novo é preciso internet: no campo sem sinal, toque na tela de vez em quando entre uma casa e outra.',
+          'Depois de 15 minutos sem uso o sistema sai sozinho, em todos os perfis (aos 13 minutos aparece um aviso: toque em <b>Continuar usando</b>). Sem internet ele não sai (para entrar de novo é preciso conexão); quando o sinal volta, se você continuar parada há 15 minutos, aí ele sai.',
           'Se o sistema sair com um formulário pela metade, o que foi digitado volta quando você entrar e abrir o mesmo formulário (fica guardado só neste aparelho, por 24 horas). O que já estava guardado para enviar também não se perde.',
           'Não apague os dados do navegador nem desinstale o aplicativo com registros pendentes: eles se perdem.']],
         ['Proteção dos dados', [
@@ -269,7 +269,7 @@
       ],
       duvidas: [
         ['Posso falar em vez de digitar?', 'Sim. Nos campos de texto, toque em Falar e fale; o texto vai aparecendo. Revise antes de salvar. Evite dizer nomes e CPF. Precisa de internet.'],
-        ['Estou sem internet no campo.', 'Pode preencher fichas, diagnósticos, visitas e avaliações. Ficam guardados no celular e sobem quando a internet voltar ("Enviar agora"). Não saia do sistema enquanto estiver sem sinal e não deixe passar 15 minutos sem tocar na tela: ele sai sozinho e só entra de novo com internet.'],
+        ['Estou sem internet no campo.', 'Pode preencher fichas, diagnósticos, visitas e avaliações. Ficam guardados no celular e sobem quando a internet voltar ("Enviar agora"). Não toque em Sair enquanto estiver sem sinal. Sem internet o sistema não sai sozinho; ele só sai depois de 15 minutos sem uso quando o sinal voltar.'],
         ['A localização foi negada.', 'Libere a localização para o site nas permissões do navegador (cadeado ao lado do endereço) e tente de novo. Se não der, explique no campo indicado.'],
         ['Posso corrigir uma ficha aprovada?', 'Não. Peça à coordenação técnica para devolvê-la.'],
         ['Uma entrega está com "!".', 'Ainda falta. Veja a linha de baixo: ela diz o que fazer. Sem as entregas, a bolsa do mês não é paga.']

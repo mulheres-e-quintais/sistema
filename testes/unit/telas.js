@@ -26,14 +26,15 @@ async function montar(perfil) {
 
 /* abre o sistema como o navegador abre (roda o início do app), já com um perfil escolhido;
    ultimoUso: quando foi o último uso guardado no aparelho (ms atrás), para testar a saída por inatividade */
-async function abrirComoApp(perfil, ultimoUsoMsAtras) {
+async function abrirComoApp(perfil, ultimoUsoMsAtras, opcoes = {}) {
   const amb = carregar(ARQUIVOS);
+  if (opcoes.semRede) amb.janela.navigator.onLine = false;
   const { MQ } = amb; MQ.CONFIG = { supabaseUrl: '', supabaseAnonKey: '', semServiceWorker: true };
   await MQ.apiDemo.iniciar(); await MQ.apiDemo.trocarPerfil(perfil);
   if (ultimoUsoMsAtras != null) amb.janela.localStorage.setItem('mq-ultimo-uso', String(Date.now() - ultimoUsoMsAtras));
   for (const fn of amb.ouvintesJanela.DOMContentLoaded || []) await fn();
   await new Promise(r => setTimeout(r, 20));
-  return { MQ, S: MQ.ui.S, janela: amb.janela, html: () => amb.app(), ouvintes: amb.ouvintes };
+  return { MQ, S: MQ.ui.S, janela: amb.janela, html: () => amb.app(), ouvintes: amb.ouvintes, ouvintesJanela: amb.ouvintesJanela };
 }
 
 /* ajudas para ler o HTML sem depender do desenho */
