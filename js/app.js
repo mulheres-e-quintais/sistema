@@ -803,6 +803,12 @@
       else if (a === 'meus-dados') { if (S.menuAberto) { S.menuAberto = false; render(); } S.voltarFoco = el; abrirPainel({ tipo: 'meus-dados' }); }
       else if (a === 'copiar-texto') { const t = el.closest('.bloco').querySelector('textarea'); try { await navigator.clipboard.writeText(t.value); toast('Mensagem copiada.'); } catch (e) { t.select(); toast('Selecione e copie a mensagem.'); } }
       else if (a === 'modo-login') { S.modoLogin = el.dataset.m; render(); const f = $('#l-email'); if (f) f.focus(); }
+      else if (a === 'sair' && !el.dataset.ok && (!navigator.onLine || (S.fila || []).length)) {
+        // sem internet, não dá para entrar de novo; e o que está guardado no aparelho só sobe depois de entrar
+        el.dataset.ok = '1'; el.textContent = 'Sair mesmo?';
+        toast(!navigator.onLine ? 'Você está sem internet: se sair, só consegue entrar de novo quando a conexão voltar.' : (S.fila.length + (S.fila.length > 1 ? ' registros ainda estão' : ' registro ainda está') + ' só neste aparelho. Se sair, eles sobem quando você entrar de novo.'));
+        setTimeout(() => { if (el.isConnected) { delete el.dataset.ok; el.textContent = 'Sair'; } }, 6000);
+      }
       else if (a === 'sair') { S.menuAberto = false; S.aba = null; lembrarAba(); if (MQ.bancoUI) MQ.bancoUI.limpar(); try { Object.keys(sessionStorage).filter(k => /^mq-pend-visto-/.test(k)).forEach(k => sessionStorage.removeItem(k)); } catch (e) {} S.pendVisto = false; await S.api.sair(); S.eu = null; S.equipe = []; render(); }
       else if (a === 'fechar') fecharPainel();
       else if (a === 'aba') { S.aba = el.dataset.aba; lembrarAba(); S.menuAberto = false; render(); window.scrollTo(0, 0); }
