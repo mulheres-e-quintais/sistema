@@ -108,6 +108,19 @@
       this.temSessao = true;
       return this.eu(true);
     },
+    /* "Organizar o texto": Edge Function organizar-texto (20_organizar_texto.sql + chave da API no Supabase) */
+    async organizarTexto(texto, tipo) {
+      const { data, error } = await sb.functions.invoke('organizar-texto', { body: { texto, tipo } });
+      if (error) {
+        let msg = '';
+        try { const j = await error.context.json(); msg = j && j.erro; } catch (e) {}
+        const st = error.context && error.context.status;
+        if (!msg && (st === 404 || /not found|Failed to send/i.test(String(error.message)))) msg = 'A organização de texto ainda não foi instalada no servidor. Avise a coordenação geral.';
+        throw erro(msg || 'Não foi possível organizar o texto agora. Tente de novo.');
+      }
+      if (!data || !data.proposta) throw erro((data && data.erro) || 'Não veio texto. Tente de novo.');
+      return data.proposta;
+    },
     /* entregas do mês (19_entregas_do_mes.sql) */
     async listarEntregas() { const { data, error } = await sb.from('entregas_mes').select('*'); if (error) throw erro(error); return data; },
     async marcarEntrega(equipe_id, mes, item, marcar) {

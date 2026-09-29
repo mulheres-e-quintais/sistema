@@ -4,7 +4,6 @@
    Sem suporte no navegador, o botão não aparece (o microfone do teclado do celular continua valendo). */
 (function () {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { MQ.voz = { suportado: false }; return; }
 
   const ICONE = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg>';
   let ativo = null;   // { rec, ta, btn, base, finais }
@@ -31,7 +30,7 @@
     if (a.ta.value && !/[.!?]\s*$/.test(a.ta.value) && a.finais) a.ta.value += '.';
     a.ta.dispatchEvent(new Event('input', { bubbles: true }));
     try { a.rec.stop(); } catch (e) {}
-    a.btn.classList.remove('gravando'); a.btn.innerHTML = ICONE + '<span>Falar</span>'; a.btn.setAttribute('aria-pressed', 'false');
+    a.btn.classList.remove('gravando'); atualizarOrg(a.ta); a.btn.innerHTML = ICONE + '<span>Falar</span>'; a.btn.setAttribute('aria-pressed', 'false');
     a.ta.closest('.voz-caixa') && a.ta.closest('.voz-caixa').classList.remove('ouvindo');
     if (msg && MQ.ui) MQ.ui.toast(msg);
   }
@@ -66,16 +65,73 @@
     ta.focus();
   }
 
-  /* coloca o botão em todo campo de texto longo que a pessoa pode editar */
+  /* ---------- "Organizar o texto": proposta da IA para a pessoa conferir ---------- */
+  const IC_ORG = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9Zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5ZM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15Z"/></svg>';
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const tipoDe = ta => /relato/.test(ta.name) ? 'relato' : /relatorio/.test(ta.name) ? 'relatorio' : /obs/.test(ta.name) ? 'observacao' : 'geral';
+  /* primeira barreira de privacidade: troca nomes completos conhecidos, CPF, telefone e e-mail antes de sair do aparelho */
+  function semNomes(t) {
+    const S = MQ.ui && MQ.ui.S; if (!S) return t;
+    const nomes = [];
+    (S.fichas || []).forEach(f => f.nome && nomes.push([f.nome, 'a agricultora']));
+    (S.equipe || []).forEach(m => { if (m.nome) nomes.push([m.nome, 'a colega da equipe']); if (m.nome_social) nomes.push([m.nome_social, 'a colega da equipe']); });
+    const ex = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    nomes.forEach(([n, por]) => {
+      const p = String(n).replace(/\s*\(.*?\)\s*/g, ' ').trim().split(/\s+/); if (p.length < 2) return;
+      [p.join(' '), p[0] + ' ' + p[p.length - 1]].forEach(v => { t = t.replace(new RegExp('(?<!\\p{L})' + ex(v) + '(?!\\p{L})', 'giu'), por); });
+    });
+    return t.replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, '[CPF]').replace(/\(?\b\d{2}\)?\s?9?\d{4}-?\d{4}\b/g, '[telefone]').replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, '[e-mail]');
+  }
+  const podeOrganizar = () => { const S = MQ.ui && MQ.ui.S; return !!(S && S.api && S.api.organizarTexto && S.eu); };
+  function atualizarOrg(ta) {
+    const b = ta.closest('.voz-caixa') && ta.closest('.voz-caixa').querySelector('.btn-org'); if (!b) return;
+    b.hidden = !podeOrganizar(); b.disabled = ta.value.trim().length < 40 || b.dataset.ocupado === '1';
+  }
+  async function organizar(ta, b) {
+    const caixa = ta.closest('.voz-caixa'); if (ativo && ativo.ta === ta) parar();
+    if (!navigator.onLine) { MQ.ui && MQ.ui.toast('Sem internet agora. Organize o texto quando a conexão voltar.'); return; }
+    const velho = caixa.querySelector('.voz-proposta'); if (velho) velho.remove();
+    b.dataset.ocupado = '1'; b.disabled = true; b.innerHTML = '<i class="voz-gira" aria-hidden="true"></i><span>Organizando…</span>';
+    try {
+      const prop = await MQ.ui.S.api.organizarTexto(semNomes(ta.value.trim()), tipoDe(ta));
+      const box = document.createElement('div'); box.className = 'voz-proposta'; box.setAttribute('role', 'region'); box.setAttribute('aria-label', 'Texto proposto');
+      box.innerHTML = `<span class="eyebrow">Proposta do sistema · confira antes de usar</span><p class="vp-texto">${esc(prop).replace(/\n/g, '<br>')}</p>
+        <p class="small muted">O sistema só reorganiza o que você falou ou escreveu. Se algo estiver errado ou faltando, mantenha o seu texto ou corrija depois de usar.</p>
+        <div class="acoes"><button type="button" class="btn pri peq" data-vp="usar">Usar este texto</button><button type="button" class="btn peq" data-vp="manter">Manter o meu</button></div>`;
+      box.addEventListener('click', ev => {
+        const k = ev.target.closest('[data-vp]'); if (!k) return;
+        if (k.dataset.vp === 'usar') {
+          const original = ta.value; ta.value = prop; ta.dispatchEvent(new Event('input', { bubbles: true }));
+          box.innerHTML = '<p class="small">Texto do sistema aplicado. Revise e salve. <button type="button" class="link" data-vp="desfazer">Voltar ao meu texto</button></p>';
+          box.dataset.original = original; box.classList.add('aplicado');
+        } else if (k.dataset.vp === 'desfazer') { ta.value = box.dataset.original || ta.value; ta.dispatchEvent(new Event('input', { bubbles: true })); box.remove(); }
+        else box.remove();
+      });
+      caixa.appendChild(box); box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } catch (e) { MQ.ui && MQ.ui.toast(e.message || String(e)); }
+    b.dataset.ocupado = ''; b.innerHTML = IC_ORG + '<span>Organizar o texto</span>'; atualizarOrg(ta);
+  }
+
+  /* coloca os botões em todo campo de texto longo que a pessoa pode editar */
   function preparar(raiz) {
     (raiz || document).querySelectorAll('textarea:not([readonly]):not([disabled]):not([data-voz-ok]):not([data-sem-voz])').forEach(ta => {
       ta.dataset.vozOk = '1';
       const caixa = document.createElement('div'); caixa.className = 'voz-caixa';
       ta.parentNode.insertBefore(caixa, ta); caixa.appendChild(ta);
-      const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn-voz'; btn.setAttribute('aria-pressed', 'false');
-      btn.title = 'Falar em vez de digitar'; btn.innerHTML = ICONE + '<span>Falar</span>';
-      btn.addEventListener('click', () => comecar(ta, btn));
-      caixa.appendChild(btn);
+      const barra = document.createElement('div'); barra.className = 'voz-barra';
+      if (SR) {
+        const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn-voz'; btn.setAttribute('aria-pressed', 'false');
+        btn.title = 'Falar em vez de digitar'; btn.innerHTML = ICONE + '<span>Falar</span>';
+        btn.addEventListener('click', () => comecar(ta, btn));
+        barra.appendChild(btn);
+      }
+      const org = document.createElement('button'); org.type = 'button'; org.className = 'btn-voz btn-org';
+      org.title = 'O sistema propõe um texto organizado a partir do que foi falado ou escrito; você confere e decide'; org.innerHTML = IC_ORG + '<span>Organizar o texto</span>';
+      org.addEventListener('click', () => organizar(ta, org));
+      barra.appendChild(org);
+      caixa.appendChild(barra);
+      ta.addEventListener('input', () => atualizarOrg(ta));
+      atualizarOrg(ta);
     });
   }
   new MutationObserver(ms => {
@@ -85,5 +141,5 @@
   document.addEventListener('DOMContentLoaded', () => preparar());
   document.addEventListener('submit', () => { if (ativo) parar(); }, true);
 
-  MQ.voz = { suportado: true, parar, preparar };
+  MQ.voz = { suportado: !!SR, parar, preparar, semNomes };
 })();
