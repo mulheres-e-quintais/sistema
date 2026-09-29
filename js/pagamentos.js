@@ -112,7 +112,7 @@
     const bloco = (t, l, vazio, aberto) => `<section class="secao"><div class="secao-cab"><h2>${t} <span class="conta-t${l.length ? '' : ' zero'}">${l.length}</span></h2>${l.length ? `<span class="muted">${brl(soma(l))}</span>` : ''}</div>
       ${l.length ? `<div class="pag-lista">${l.map(s => linha(s, true)).join('')}</div>` : `<p class="muted">${vazio}</p>`}</section>`;
     return `<div class="cab"><div><span class="eyebrow">Pagamentos</span><h1>Solicitações de pagamento</h1>
-        <p>Quem visita ou recebe bolsa solicita; ${souGeral ? 'a coordenação técnica dá o aval na ajuda de custo e na bolsa das bolsistas; você, na bolsa da coordenação técnica, dos professores e dos auxiliares (e pode substituir a técnica)' : 'você dá o aval na ajuda de custo e na bolsa das bolsistas'}. Com o aval, o auxiliar administrativo lança no Arlo.</p></div></div>
+        <p>Quem visita ou recebe bolsa solicita; ${souGeral ? 'a coordenação técnica dá o aval na ajuda de custo e na bolsa das bolsistas; você, na bolsa da coordenação técnica, dos professores e do auxiliar administrativo (e pode substituir a técnica)' : 'você dá o aval na ajuda de custo e na bolsa das bolsistas'}. Com o aval, o auxiliar administrativo lança no Arlo.</p></div></div>
       <div class="resumo">
         <div><span class="v num" ${aval.length ? 'style="color:var(--crit)"' : ''}>${aval.length}</span><span class="l">esperando o seu aval</span></div>
         <div><span class="v num">${arlo.length}</span><span class="l">com aval, falta lançar no Arlo</span></div>

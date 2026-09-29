@@ -218,7 +218,14 @@ begin
     if to_regclass('public.' || t) is not null then
       execute format('drop policy if exists geral_tudo on public.%I', t);
       execute format('create policy geral_tudo on public.%I for all to authenticated using (public.meu_papel() = ''coord_geral'') with check (public.meu_papel() = ''coord_geral'')', t);
-      execute format('grant select, insert, update on public.%I to authenticated', t);
+      -- pagamentos: gravar só pelas funções (12_pagamentos.sql); convites e pré-cadastros: criar só pelas funções (08)
+      if t in ('solicitacoes_pagamento', 'solicitacao_visitas') then
+        execute format('grant select on public.%I to authenticated', t);
+      elsif t in ('convites', 'pre_cadastros') then
+        execute format('grant select, update on public.%I to authenticated', t);
+      else
+        execute format('grant select, insert, update on public.%I to authenticated', t);
+      end if;
     end if;
   end loop;
   -- na equipe, menos a própria vaga (ninguém se desliga sem querer)

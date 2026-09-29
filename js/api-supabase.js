@@ -369,10 +369,11 @@
       const { error: e1 } = await sb.storage.from('equipe').upload(path, blob, { contentType: 'image/jpeg', upsert: false });
       if (e1) throw erro(/bucket|not found/i.test(e1.message) ? 'A foto da equipe ainda não foi instalada no servidor: rode o arquivo 07_fotos_equipe.sql no Supabase.' : e1);
       const souEu = euCache && euCache.id === id;
-      if (souEu && !/^coord/.test(euCache.papel)) {
+      if (souEu) {
         const { error } = await sb.rpc('definir_minha_foto', { p_path: path }); if (error) throw erro(error);
       } else {
-        const { error } = await sb.from('equipe').update({ foto_path: path }).eq('id', id); if (error) throw erro(error);
+        const { data, error } = await sb.from('equipe').update({ foto_path: path }).eq('id', id).select('id'); if (error) throw erro(error);
+        if (!data || !data.length) throw erro('Você não pode trocar a foto desta pessoa.');
       }
       return path;
     },

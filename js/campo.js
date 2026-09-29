@@ -11,14 +11,22 @@
   let ufRoteiro = '';
 
   /* ---------- dados combinados: servidor + fila do aparelho ---------- */
-  function visitas() {
+  /* visitas() e diagnosticos() são chamadas várias vezes por quintal em cada tela: calcula UMA vez por mudança
+     de dados (servidor ou fila do aparelho) e devolve uma cópia da lista (quem ordena não mexe na guardada) */
+  const memo = {};
+  const lembrar = (nome, fonte, calc) => { const f = S().fila; const c = memo[nome];
+    if (!c || c.fonte !== fonte || c.fila !== f) memo[nome] = { fonte, fila: f, lista: calc() };
+    return memo[nome].lista.slice(); };
+  function visitas() { return lembrar('v', S().visitas, visitasCalc); }
+  function diagnosticos() { return lembrar('d', S().diagnosticos, diagnosticosCalc); }
+  function visitasCalc() {
     const m = new Map((S().visitas || []).map(v => [v.id, Object.assign({}, v)]));
     S().fila.filter(i => i.tipo === 'visita').forEach(i => m.set(i.id, Object.assign({}, m.get(i.id) || {}, i.dados, { _fila: true, _erro: i.erro })));
     // diagnóstico ainda na fila marca a visita como feita (para quem está sem internet)
     S().fila.filter(i => i.tipo === 'diagnostico').forEach(i => { const v = m.get(i.dados.visita_id); if (v) { v.situacao = 'realizada'; v.data_realizada = i.dados.data_visita; } });
     return [...m.values()];
   }
-  function diagnosticos() {
+  function diagnosticosCalc() {
     const m = new Map((S().diagnosticos || []).map(d => [d.id, Object.assign({}, d)]));
     S().fila.filter(i => i.tipo === 'diagnostico').forEach(i => m.set(i.id, Object.assign({}, m.get(i.id) || {}, i.dados, { _fila: true, _erro: i.erro, situacao: (m.get(i.id) || {}).situacao || 'aguardando' })));
     return [...m.values()];
@@ -256,7 +264,11 @@
         Quem faz o diagnóstico vê a projeção do kit e o quanto falta ou passa deste valor.</p></div></div>`;
   }
   /* projeção do investimento no quintal: soma de quantidade × valor estimado de cada item */
-  const numBR = t => { const m = String(t == null ? '' : t).replace(/\./g, '').replace(',', '.').match(/-?\d+(\.\d+)?/); return m ? +m[0] : null; };
+  const numBR = t => {
+    let s = String(t == null ? '' : t).replace(/[^\d.,-]/g, '');
+    if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');          // 1.250,50 → 1250.50
+    else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');       // 1.250 → 1250 (milhar)
+    const m = s.match(/-?\d+(\.\d+)?/); return m ? +m[0] : null; };           // 12.50 → 12.5
   const totalKit = kit => (kit || []).reduce((s, x) => s + (numBR(x.qtd) || 0) * (x.valor != null ? +x.valor : 0), 0);
   const brl = v => (+v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   function projKit(kit) {
@@ -654,5 +666,5 @@
     const kit = [...f.querySelectorAll('[data-linha="kit"]')].map(l => ({ item: l.querySelector('[name=kit_item]').value.trim(), qtd: l.querySelector('[name=kit_qtd]').value, valor: numBR(l.querySelector('[name=kit_valor]').value) })).filter(x => x.item);
     box.innerHTML = projKit(kit);
   });
-  MQ.campoUI = { secaoBolsista, telaAgente, abaCoord, painel, clique, enviar, diagnosticos, visitas, guardar };
+  MQ.campoUI = { secaoBolsista, telaAgente, abaCoord, painel, clique, enviar, diagnosticos, visitas, guardar, numBR };
 })();
