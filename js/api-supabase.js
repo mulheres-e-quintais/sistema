@@ -122,6 +122,9 @@
       return data.proposta;
     },
     async listarPerfisEquipe() { const { data, error } = await sb.from('equipe_privado').select('equipe_id, perfil'); if (error) throw erro(error); return data; },
+    /* roteiro de testes (21_roteiro_testes.sql) */
+    async listarTestes() { const { data, error } = await sb.from('testes_resultados').select('*'); if (error) throw erro(error); return data; },
+    async salvarTeste(r) { const { error } = await sb.from('testes_resultados').upsert(r, { onConflict: 'equipe_id,tarefa' }); if (error) throw erro(error); },
     /* entregas do mês (19_entregas_do_mes.sql) */
     async listarEntregas() { const { data, error } = await sb.from('entregas_mes').select('*'); if (error) throw erro(error); return data; },
     async marcarEntrega(equipe_id, mes, item, marcar) {

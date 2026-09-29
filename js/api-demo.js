@@ -321,6 +321,9 @@
       return (/[.!?]$/.test(t) ? t : t + '.') + '\n\n(Demonstração: no sistema de verdade, este texto é reescrito pela IA a partir do que foi falado.)';
     },
     async listarPerfisEquipe() { const d = ler(); return Object.values(d.privado || {}).map(x => ({ equipe_id: x.equipe_id, perfil: x.perfil || null })); },
+    async listarTestes() { const d = ler(); const eu = euMesmo(); if (!eu) return []; return copia((d.testes || []).filter(x => eu.papel === 'coord_geral' || x.equipe_id === eu.id)); },
+    async salvarTeste(r) { const d = ler(); const eu = euMesmo(); if (!eu) throw falha('Entre no sistema para responder.');
+      d.testes = (d.testes || []).filter(x => !(x.equipe_id === eu.id && x.tarefa === r.tarefa)).concat([Object.assign({}, r, { equipe_id: eu.id, em: new Date().toISOString() })]); gravar(); },
     async listarEntregas() { const d = ler(); return copia(d.entregas || []); },
     async marcarEntrega(equipe_id, mes, item, marcar) {
       const d = ler(); const eu = euMesmo(); d.entregas = d.entregas || [];
