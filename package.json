@@ -1,0 +1,9 @@
+{
+  "name": "mulheres-e-quintais",
+  "private": true,
+  "description": "Sistema do projeto Quintais Produtivos para Mulheres Rurais (site estático; este arquivo só guarda os comandos de teste).",
+  "scripts": {
+    "test": "node --test \"testes/unit/*.test.js\"",
+    "test:cobertura": "node --test --experimental-test-coverage \"testes/unit/*.test.js\""
+  }
+}

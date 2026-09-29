@@ -115,6 +115,7 @@
   R.idade = (nasc, em) => {
     if (!nasc) return null;
     const a = new Date(nasc + 'T12:00:00'), b = new Date((em || R.hoje()) + 'T12:00:00');
+    if (isNaN(a) || isNaN(b)) return null;   // texto que não é data (AAAA-MM-DD)
     let i = b.getFullYear() - a.getFullYear();
     if (b.getMonth() < a.getMonth() || (b.getMonth() === a.getMonth() && b.getDate() < a.getDate())) i--;
     return i;
@@ -141,7 +142,7 @@
     if (!R.cpfValido(f.cpf)) e.cpf = 'CPF inválido. Confira os 11 números.';
     else if (fichas.some(x => x.id !== f.id && x.cpf === R.soDigitos(f.cpf))) e.cpf = 'Esta mulher já tem ficha no projeto.';
     if (!f.data_nascimento) e.data_nascimento = 'Informe a data de nascimento.';
-    else { const i = R.idade(f.data_nascimento, f.data_ficha); if (i < 0 || i > 110) e.data_nascimento = 'Data de nascimento inválida.'; }
+    else { const i = R.idade(f.data_nascimento, f.data_ficha); if (i == null || i < 0 || i > 110) e.data_nascimento = 'Data de nascimento inválida.'; }
     if (!f.municipio || f.municipio.trim().length < 3) e.municipio = 'Informe o município.';
     if (!f.comunidade || f.comunidade.trim().length < 3) e.comunidade = 'Informe a comunidade ou assentamento.';
     if (!f.endereco || f.endereco.trim().length < 3) e.endereco = 'Informe o endereço (rua, sítio, nº).';

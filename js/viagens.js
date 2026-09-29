@@ -347,5 +347,6 @@
     }
   }
 
-  MQ.viagUI = { secaoBolsista, abaCoord, painel, clique, enviar, podeVer, contaMinha: () => lista().filter(minhaVez).length, textoFuncern };
+  MQ.viagUI = { secaoBolsista, abaCoord, painel, clique, enviar, podeVer, contaMinha: () => lista().filter(minhaVez).length, textoFuncern,
+    validar, lerForm };   // validar e lerForm expostos para os testes unitários (testes/unit)
 })();

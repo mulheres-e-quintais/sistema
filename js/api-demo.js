@@ -452,6 +452,8 @@
       const depois = Object.assign({}, antes, patch, { atualizado_em: new Date().toISOString() });
       if (depois.status === 'desligada' && (!depois.data_fim || String(depois.motivo_desligamento || '').trim().length < 5))
         throw falha('Para desligar, informe a data e o motivo.');
+      if (depois.data_fim && depois.data_inicio && depois.data_fim < depois.data_inicio)   // como o banco (datas_coerentes)
+        throw falha('O último dia não pode ser antes do início da bolsa (' + R.fmtData(depois.data_inicio) + ').');
       if (depois.status === 'ativa') {
         const erros = R.validar(depois, d.equipe);
         delete erros.papel;
