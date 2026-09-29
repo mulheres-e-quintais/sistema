@@ -30,7 +30,7 @@ chk as (
   union all select '17_corrige_link_cadastro', not exists (select 1 from pg_proc where proname = 'criar_convite' and prosrc like '%gen_random_bytes%')
   union all select '19_entregas_do_mes', to_regclass('public.entregas_mes') is not null and to_regclass('public.ciencias') is not null
                    and exists (select 1 from col where table_name = 'equipe_privado' and column_name = 'perfil')
-  union all select '20_organizar_texto', exists (select 1 from fn where proname = 'registrar_uso_ia')
+  union all select '20_organizar_texto (opcional: só se ligar a IA)', exists (select 1 from fn where proname = 'registrar_uso_ia')
   union all select '18_codigo_primeiro_acesso', to_regclass('public.acesso_codigos') is not null and exists (select 1 from fn where proname = 'gerar_codigo_acesso')
 )
 -- o SQL Editor do Supabase mostra só o último resultado: por isso vai tudo numa tabela só
