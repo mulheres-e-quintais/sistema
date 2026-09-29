@@ -238,5 +238,7 @@
   }
 
   MQ.pagUI = { secaoMinha, abaCoord, secaoAuxiliar, painel, clique, enviar,
+    contaDevolvidas: () => lista().filter(s => s.equipe_id === S().eu.id && s.situacao === 'devolvida').length,   // meus pedidos para corrigir
+    contaLancar: () => lista().filter(s => s.situacao === 'avalizada' && s.equipe_id !== S().eu.id).length,       // auxiliar: lançar no Arlo
     contaAval: () => { const eu = S().eu; const sem = U().semTecnica && U().semTecnica(); return lista().filter(s => s.situacao === 'solicitada' && s.equipe_id !== eu.id && (sem || quemAvaliza(s.tipo, pessoa(s.equipe_id).papel) === eu.papel)).length; } };
 })();

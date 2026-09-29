@@ -74,7 +74,7 @@
       const qualquer = e => !e.semRede;   // para as partes em que qualquer erro que não seja de rede só desliga a parte
       S.kitPar = { valor_quintal: MQ.KIT_QUINTAL };   // R$ 4.500 por quintal, fixado no plano de trabalho
       const campoPapel = !['professor_fic', 'auxiliar_adm'].includes(papel);
-      const [equipe, fic, fichas, visitas, diagnosticos, aval, aud, pag, docs, quem, entregas, testes, perfis, pre, exemplo] = await Promise.all([
+      const [equipe, fic, fichas, visitas, diagnosticos, aval, aud, pag, docs, quem, entregas, testes, perfis, pre, exemplo, pedAcesso] = await Promise.all([
         S.api.listarEquipe(),
         // curso FIC (11_fic.sql): turmas e matrículas
         (coord || papel === 'professor_fic') && S.api.listarTurmas
@@ -92,7 +92,8 @@
         S.api.listarTestes ? talvez(() => S.api.listarTestes(), qualquer) : [true, []],                     // 21_roteiro_testes.sql
         papel === 'coord_geral' && S.api.listarPerfisEquipe ? talvez(() => S.api.listarPerfisEquipe(), qualquer) : [true, []],
         coord && S.api.listarPreCadastros ? opcional(S.api.listarPreCadastros) : [],
-        coord && S.api.contarExemplo ? opcional(async () => [await S.api.contarExemplo()]).then(r => r[0] || 0) : 0
+        coord && S.api.contarExemplo ? opcional(async () => [await S.api.contarExemplo()]).then(r => r[0] || 0) : 0,
+        papel === 'coord_geral' && S.api.listarPedidosAcesso ? talvez(() => S.api.listarPedidosAcesso(), semFic) : [true, []]   // 28
       ]);
       S.equipe = equipe;
       S.ficSemBanco = !fic[0]; [S.turmas, S.matriculas] = fic[0] ? fic[1] : [[], []];
@@ -106,7 +107,7 @@
       S.entregasSemBanco = !entregas[0]; [S.entregas, S.ciencias] = entregas[0] ? entregas[1] : [[], []];
       S.testesSemBanco = !testes[0]; S.testes = testes[0] ? testes[1] : [];
       S.perfisSemBanco = !perfis[0]; S.perfisEquipe = perfis[0] ? perfis[1] : [];
-      S.pre = pre; S.exemplo = exemplo;
+      S.pre = pre; S.exemplo = exemplo; S.pedidosAcesso = pedAcesso[0] ? pedAcesso[1] : [];
       // segunda leva: os pedidos de viagem dependem de saber quem confere (22 e 26)
       S.pedSemBanco = false; S.pedidos = [];
       if (S.api.listarPedidos && MQ.viagUI && (MQ.viagUI.podeVer(papel) || MQ.viagUI.souConferente())) {
@@ -186,7 +187,8 @@
     return `<footer class="rodape"><div class="rodape-in">
       <div class="rodape-marca"><img src="assets/isotipo.svg" alt="" width="26" height="37"><span><b>Mulheres &amp; Quintais</b><small>Quintais Produtivos para Mulheres Rurais</small></span></div>
       <p class="rodape-org">IFRN Campus Apodi · MPA · FUNCERN<br><span>Processo ${esc(MQ.PROJETO.processo)}</span></p>
-      <p class="rodape-lgpd">Dados protegidos pela LGPD (Lei nº 13.709/2018), usados só para o projeto.<br><button type="button" class="link" data-acao="ajuda">Ajuda</button></p>
+      <div class="rodape-lgpd"><button type="button" class="rodape-ajuda" data-acao="ajuda"><span class="rodape-ajuda-ic" aria-hidden="true">?</span>Ajuda desta página</button>
+        <p>Dados protegidos pela LGPD (Lei nº 13.709/2018), usados só para o projeto.</p></div>
     </div></footer>`;
   }
   function barra(publica, semBotao) {
@@ -227,7 +229,8 @@
     const aguard = (S.fichas || []).filter(f => f.situacao === 'aguardando').length;
     const diagAguard = (S.diagnosticos || []).filter(x => x.situacao === 'aguardando').length;
     const aval = MQ.pagUI ? MQ.pagUI.contaAval() : 0;
-    return [['visao', 'Visão geral', 0], ['equipe', 'Equipe', 0], ['selecao', 'Seleção', aguard], ['campo', 'Campo', diagAguard], ['fic', 'Curso FIC', 0],
+    const equipe = (S.pre || []).length + (S.pedidosAcesso || []).length;   // cadastros do link para conferir + pedidos de novo acesso
+    return [['visao', 'Visão geral', 0], ['equipe', 'Equipe', equipe], ['selecao', 'Seleção', aguard], ['campo', 'Campo', diagAguard], ['fic', 'Curso FIC', 0],
       ['pagamentos', 'Pagamentos', aval], ['viagens', 'Viagens e eventos', MQ.viagUI ? MQ.viagUI.contaMinha() : 0], ['custos', 'Custos', 0], ['documentos', 'Documentos', 0], ['historico', 'Histórico', 0]].filter(([id]) => pode.includes(id));
   }
   function abaAtual() { const pode = ABAS_PAPEL[S.eu.papel] || ABAS_PAPEL.coord_tecnico; return pode.includes(S.aba) ? S.aba : pode[0]; }
@@ -239,16 +242,21 @@
     const aptas = pagaveis.filter(m => R.situacao(m).cod === 'ok').length;
     const pode = ABAS_PAPEL[S.eu.papel] || ABAS_PAPEL.coord_tecnico;
     const aba = pode.includes(S.aba) ? S.aba : pode[0];
-    const abas = abasCoord().map(([id, t, n]) => [id, `<span class="aba-t" data-t="${esc(t)}">${t}</span>` + (n ? ` <span class="conta">${n}</span>` : '')]);
+    const lista = abasCoord();
+    // número na aba = coisas esperando uma ação SUA ali (quem lê tela ouve "3 esperando você")
+    const abas = lista.map(([id, t, n]) => [id, `<span class="aba-t" data-t="${esc(t)}">${t}</span>` + (n ? ` <span class="conta" aria-hidden="true">${n}</span><span class="so-leitor"> (${n} esperando você)</span>` : '')]);
+    const nomeAba = id => { const x = lista.find(([i]) => i === id) || lista[0]; return x[1]; };
+    const outras = lista.filter(([id, , n]) => n && id !== aba);
+    const somaOutras = outras.reduce((t, [, , n]) => t + n, 0);
     const nav = `<nav class="abas" aria-label="Seções">${abas.map(([id, t]) => `<button type="button" data-acao="aba" data-aba="${id}" ${aba === id ? 'aria-current="page"' : ''}>${t}</button>`).join('')}</nav>
-      <details class="abas-m"><summary><span class="small muted">Seção</span> <b>${(abas.find(([id]) => id === aba) || abas[0])[1]}</b><span class="abas-m-seta" aria-hidden="true">▾</span></summary>
+      <details class="abas-m"><summary><span class="small muted">Seção</span> <b>${(abas.find(([id]) => id === aba) || abas[0])[1]}</b>${somaOutras ? `<span class="conta abas-m-pend" aria-hidden="true">${somaOutras}</span><span class="so-leitor"> (${somaOutras} esperando você em: ${esc(outras.map(([id]) => nomeAba(id)).join(', '))})</span>` : ''}<span class="abas-m-seta" aria-hidden="true">▾</span></summary>
         <div class="abas-m-grade">${abas.map(([id, t]) => `<button type="button" data-acao="aba" data-aba="${id}" ${aba === id ? 'aria-current="page"' : ''}>${t}</button>`).join('')}</div></details>`;
     const intro = souGeral
       ? 'Você cadastra a coordenação técnica indicada pelo MPA, os professores do curso FIC e o auxiliar administrativo, e tem acesso a tudo: também pode cadastrar, editar e desligar bolsistas e agentes, registrar a habilitação e matricular no FIC.'
       : 'Cadastre as bolsistas indicadas pelo MPA: uma de articulação estadual e uma de apoio estadual por estado.';
     let corpo = '';
     if (aba === 'visao') corpo = MQ.painelUI ? MQ.painelUI.visaoGeral(S) : '';
-    else if (aba === 'equipe') corpo = (MQ.convitesUI ? MQ.convitesUI.secaoPendentes() : '') + `
+    else if (aba === 'equipe') corpo = secaoPedidosAcesso() + (MQ.convitesUI ? MQ.convitesUI.secaoPendentes() : '') + `
       <div class="cab"><div><span class="eyebrow">Equipe do projeto</span><h1>Coordenação e bolsistas</h1><p>${intro}</p></div>${prazoChip()}</div>
       <div class="resumo" aria-label="Resumo da equipe">
         <div><span class="v num">${ct ? 1 : 0}<small> de 1</small></span><span class="l">coordenação técnica cadastrada</span></div>
@@ -363,8 +371,9 @@
     return `<main class="wrap" id="principal">
       <div class="cab"><div><span class="eyebrow">${esc(P.auxiliar_adm.nome)}</span><h1>Olá, ${esc(nomeDe(eu).split(' ')[0])}</h1><p>${esc(P.auxiliar_adm.faz)}</p></div>
         <span class="chip chip-lg ${s.cod}">${esc(s.rot)}</span></div>
-      ${atalhos([['Cadastrar no Arlo', '#t-arlo', true], ['Lançar pagamentos no Arlo', '#t-lancar'], ['Pedir a minha bolsa', '#t-pag'],
-        S.quemConfere === 'auxiliar_adm' ? ['Conferir passagens e eventos', '#t-conf'] : null])}
+      ${atalhos([['Cadastrar no Arlo', '#t-arlo', true, semArlo.length], ['Lançar pagamentos no Arlo', '#t-lancar', false, MQ.pagUI ? MQ.pagUI.contaLancar() : 0],
+        ['Pedir a minha bolsa', '#t-pag', false, MQ.pagUI ? MQ.pagUI.contaDevolvidas() : 0],
+        S.quemConfere === 'auxiliar_adm' ? ['Conferir passagens e eventos', '#t-conf', false, MQ.viagUI ? MQ.viagUI.contaMinha() : 0] : null])}
       <div class="resumo">
         <div><span class="v num">${pessoas.length}</span><span class="l">pessoas na equipe</span></div>
         <div><span class="v num" ${semArlo.length ? 'style="color:var(--crit)"' : ''}>${semArlo.length}</span><span class="l">falta cadastrar no Arlo</span></div>
@@ -519,9 +528,11 @@
      Cada item: [texto, '#id da seção' ou {acao: 'nome-da-acao'}, destaque]. Atalho de seção que não existe na tela some sozinho. */
   MQ.atalhos = itens => atalhos(itens);
   function atalhos(itens) {
-    const bt = ([t, alvo, pri]) => typeof alvo === 'string'
-      ? `<button type="button" class="btn${pri ? ' pri' : ''}" data-acao="ir" data-alvo="${alvo}">${t}</button>`
-      : `<button type="button" class="btn${pri ? ' pri' : ''}" data-acao="${alvo.acao}"${alvo.t ? ` data-t="${alvo.t}"` : ''}>${t}</button>`;
+    // 4º item (opcional): quantas coisas esperam a pessoa ali; aparece como número no botão
+    const n = k => k ? ` <span class="conta" aria-hidden="true">${k}</span><span class="so-leitor"> (${k} esperando você)</span>` : '';
+    const bt = ([t, alvo, pri, k]) => typeof alvo === 'string'
+      ? `<button type="button" class="btn${pri ? ' pri' : ''}" data-acao="ir" data-alvo="${alvo}">${t}${n(k)}</button>`
+      : `<button type="button" class="btn${pri ? ' pri' : ''}" data-acao="${alvo.acao}"${alvo.t ? ` data-t="${alvo.t}"` : ''}>${t}${n(k)}</button>`;
     return `<nav class="atalhos" aria-label="O que você quer fazer"><span class="eyebrow">O que você quer fazer?</span><div class="atalhos-grade">${itens.filter(Boolean).map(bt).join('')}</div></nav>`;
   }
   function telaBolsista() {
@@ -530,8 +541,9 @@
     return `<main class="wrap" id="principal">
       <div class="cab"><div><span class="eyebrow">${esc(P[m.papel].nome)} · ${esc(nomeUF(m.uf))}</span><h1>Olá, ${esc(nomeDe(m).split(' ')[0])}</h1>
         <p>${esc(P[m.papel].faz)}</p></div><span class="chip chip-lg ${s.cod}">${esc(s.rot)}</span></div>
-      ${atalhos([['+ Nova ficha de mulher', { acao: 'ficha-nova' }, true], ['Visitas e diagnósticos', '#t-campo'], ['Entregas do mês', '#t-ent'], ['Pedir pagamento', '#t-pag'],
-        m.papel === 'articulacao' ? ['Passagem ou evento', '#t-viag'] : null])}
+      ${atalhos([['+ Nova ficha de mulher', { acao: 'ficha-nova' }, true], ['Visitas e diagnósticos', '#t-campo', false, MQ.campoUI ? MQ.campoUI.contaAFazer() : 0],
+        ['Entregas do mês', '#t-ent', false, MQ.entregasUI ? MQ.entregasUI.contaFaltas() : 0], ['Pedir pagamento', '#t-pag', false, MQ.pagUI ? MQ.pagUI.contaDevolvidas() : 0],
+        m.papel === 'articulacao' ? ['Passagem ou evento', '#t-viag', false, MQ.viagUI ? MQ.viagUI.contaDevolvidos() : 0] : null])}
       ${MQ.entregasUI ? MQ.entregasUI.blocoCiencia() : ''}
       ${s.cod === 'ok' ? '' : `<div class="bloco"><h2>Habilitação para receber a bolsa</h2><p class="small muted">A bolsa de ${R.fmtBRL(P[m.papel].bolsa || 0)} por mês só é paga pela FUNCERN depois destes passos. Dúvidas sobre matrícula e AVA: professores do curso FIC. Documentos, conta ou Pix: auxiliar administrativo.</p>${passos(m)}</div>`}
       ${MQ.entregasUI ? MQ.entregasUI.cartaoBolsista() : ''}
@@ -574,7 +586,7 @@
         ${broto}
       </section>
       <section class="ent-acesso">
-        <form class="login ent-card" data-form="login" novalidate>
+        ${S.modoLogin === 'esqueci' ? formEsqueci() : `<form class="login ent-card" data-form="login" novalidate>
           ${S.avisoLogin ? `<div class="aviso sessao-saiu" role="status">${esc(S.avisoLogin)}</div>` : ''}
           <div><span class="eyebrow">Sistema do projeto</span><h2 class="serif">${primeiro ? 'Primeiro acesso' : 'Que bom ver você'}</h2>
             <p class="muted">${primeiro ? 'Crie a sua senha com o e-mail que a coordenação cadastrou.' : 'Entre com o e-mail cadastrado pela coordenação.'}</p></div>
@@ -586,11 +598,29 @@
           ${primeiro ? '<div class="campo"><label for="l-senha2">Repita a senha</label><input id="l-senha2" name="senha2" type="password" autocomplete="new-password" required></div>' : ''}
           <div class="aviso erro" data-erro hidden></div>
           <button class="btn pri ent-btn" type="submit">${primeiro ? 'Criar senha e entrar' : 'Entrar'} <span aria-hidden="true">→</span></button>
-          ${primeiro ? '' : '<p class="nota">Esqueceu a senha? A coordenação geral libera um novo primeiro acesso.</p>'}
+          ${primeiro ? '' : '<button type="button" class="link ent-esqueci" data-acao="modo-login" data-m="esqueci">Esqueci a senha</button>'}
           <button type="button" class="link ent-ajuda" data-acao="ajuda" data-k="entrada">Precisa de ajuda para entrar?</button>
-        </form>
+        </form>`}
       </section>
     </main>`;
+  }
+  /* "Esqueci a senha": a pessoa pede; a coordenação geral libera um código novo e manda pelo WhatsApp cadastrado */
+  function formEsqueci() {
+    if (S.esqueciEnviado) return `<div class="login ent-card" role="status">
+        <div><span class="eyebrow">Esqueci a senha</span><h2 class="serif">Pedido enviado</h2></div>
+        <div class="aviso ok">Se este e-mail estiver cadastrado no projeto, a <b>coordenação geral</b> vai liberar um <b>código de acesso novo</b> e mandar para o <b>WhatsApp do seu cadastro</b>.</div>
+        <p class="muted">Quando receber o código, volte aqui, toque em <b>Primeiro acesso</b> e crie uma senha nova. Seus dados não se perdem.</p>
+        <p class="small muted">Se precisar com urgência, fale direto com a coordenação geral.</p>
+        <button type="button" class="btn pri ent-btn" data-acao="modo-login" data-m="primeiro">Já recebi o código</button>
+        <button type="button" class="link ent-ajuda" data-acao="modo-login" data-m="entrar">Voltar para entrar</button></div>`;
+    return `<form class="login ent-card" data-form="esqueci" novalidate>
+        <div><span class="eyebrow">Esqueci a senha</span><h2 class="serif">Pedir um novo acesso</h2>
+          <p class="muted">Digite o e-mail do seu cadastro. A coordenação geral recebe o pedido e manda um código novo para o seu WhatsApp.</p></div>
+        <div class="campo"><label for="e-email">E-mail</label><input id="e-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="seu@email.com" value="${esc(S.emailDigitado || '')}" required></div>
+        <div class="aviso erro" data-erro hidden></div>
+        <button class="btn pri ent-btn" type="submit">Pedir novo acesso <span aria-hidden="true">→</span></button>
+        <button type="button" class="link ent-ajuda" data-acao="modo-login" data-m="entrar">Voltar para entrar</button>
+      </form>`;
   }
   /* a flor ocupa o espaço que sobra abaixo dos estados, sem ser cortada no pé da tela */
   function ajustarBroto() {
@@ -729,20 +759,35 @@
       </div>`;
   }
 
+  /* pedidos de "Esqueci a senha" feitos na tela de entrada (28_pedido_novo_acesso.sql): só a coordenação geral */
+  const pedidoAcessoDe = id => (S.pedidosAcesso || []).find(p => p.equipe_id === id);
+  const quandoPediu = p => new Date(p.pedido_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + (p.vezes > 1 ? ` · pediu ${p.vezes} vezes` : '');
+  function secaoPedidosAcesso() {
+    const l = (S.pedidosAcesso || []).map(p => [p, porId(p.equipe_id)]).filter(([, m]) => m);
+    if (S.eu.papel !== 'coord_geral' || !l.length) return '';
+    return `<section class="secao" aria-labelledby="t-acesso"><div class="secao-cab"><div><h2 id="t-acesso">Pedidos de novo acesso <span class="conta-t">${l.length}</span></h2>
+        <p>Pessoas que tocaram em "Esqueci a senha". Abra a ficha, toque em <b>Liberar novo primeiro acesso</b> e mande o código pelo WhatsApp do cadastro. Se não foi a própria pessoa que pediu (ela não sabe do pedido), descarte.</p></div></div>
+      <div class="lista-fichas">${l.map(([p, m]) => `<div class="vagabtn ficha-linha pedido-acesso">
+          <span class="nm">${esc(nomeDe(m))}</span><span class="small muted">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(m.uf) : ''} · pediu em ${quandoPediu(p)}</span>
+          <span class="acoes"><button type="button" class="btn peq pri" data-acao="ver" data-id="${esc(m.id)}">Abrir ficha</button>
+            <button type="button" class="btn peq" data-acao="acesso-descartar" data-id="${esc(p.id)}">Descartar</button></span></div>`).join('')}</div></section>`;
+  }
   /* a pessoa só entra no sistema quando alguém avisa: o sistema não manda e-mail */
   function avisoAcesso(m, pode) {
     if (!pode || m.status !== 'ativa' || m.id === S.eu.id) return '';
     const gera = R.podeCadastrar(S.eu.papel, m.papel);
     if (m.user_id) {   // já tem senha: só a coordenação geral libera um novo primeiro acesso (esqueceu a senha)
       if (S.eu.papel !== 'coord_geral' || !gera) return '';
-      const conf = S.confirmaAcesso === m.id;
+      const conf = S.confirmaAcesso === m.id; const ped = pedidoAcessoDe(m.id);
       return `<div class="bloco aviso-acesso"><h3>Esqueceu a senha?</h3>
+        ${ped ? `<div class="aviso">Ela pediu novo acesso na tela de entrada em ${quandoPediu(ped)}.</div>` : ''}
         <p class="small muted">Libere um novo primeiro acesso: a senha atual deixa de valer e sai um código novo para ${esc(nomeDe(m).split(' ')[0])} criar outra senha. Os dados dela não mudam.</p>
         <div class="acoes"><button class="btn${conf ? ' pri' : ''}" type="button" data-acao="gerar-codigo" data-id="${esc(m.id)}"${conf ? ' data-ok="1"' : ''}>${conf ? 'Confirmar: apagar a senha atual' : 'Liberar novo primeiro acesso'}</button>
         ${conf ? '<button class="btn" type="button" data-acao="gerar-codigo-nao">Cancelar</button>' : ''}</div></div>`;
     }
     const cod = (S.codigos || {})[m.id];
-    if (!cod) return `<div class="bloco aviso-acesso"><h3>Avisar o acesso</h3>
+    const pedNovo = pedidoAcessoDe(m.id);
+    if (!cod) return `<div class="bloco aviso-acesso"><h3>Avisar o acesso</h3>${pedNovo ? `<div class="aviso">Ela pediu acesso na tela de entrada em ${quandoPediu(pedNovo)}: gere o código e mande para ela.</div>` : ''}
       <p class="small muted">Ela ainda não entrou. Para criar a senha, ela precisa de um <b>código de acesso</b> junto com o e-mail. É isso que impede outra pessoa de entrar no lugar dela.</p>
       ${gera ? `<div class="acoes"><button class="btn pri" type="button" data-acao="gerar-codigo" data-id="${esc(m.id)}">Gerar código de acesso</button></div>
       <p class="small muted">O código vale 7 dias e uma vez só. Se ela perder, gere outro (o anterior deixa de valer).</p>`
@@ -895,6 +940,9 @@
       else if (a === 'perfil') { S.verEntrada = false; S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); S.aba = null; lembrarAba(); S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.trocarPerfil(el.dataset.p); await carregar(); render(); }
       else if (a === 'recomecar') { S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.recomecar(); await carregar(); render(); toast('Demonstração recomeçada com os dados de exemplo.'); }
       else if (a === 'gerar-codigo-nao') { S.confirmaAcesso = null; abrirPainel(S.painel); }
+      else if (a === 'acesso-descartar') {
+        await S.api.descartarPedidoAcesso(el.dataset.id); await carregar(); render(); toast('Pedido descartado.');
+      }
       else if (a === 'gerar-codigo') {
         const m = porId(el.dataset.id); if (!m) return;
         if (m.user_id && !el.dataset.ok) { S.confirmaAcesso = m.id; abrirPainel(S.painel); return; }
@@ -917,7 +965,9 @@
       else if (a === 'ajuda') { if (S.menuAberto) { S.menuAberto = false; render(); } S.voltarFoco = el; abrirPainel({ tipo: 'ajuda', k: el.dataset.k }); }
       else if (a === 'meus-dados') { if (S.menuAberto) { S.menuAberto = false; render(); } S.voltarFoco = el; abrirPainel({ tipo: 'meus-dados' }); }
       else if (a === 'copiar-texto') { const t = el.closest('.bloco').querySelector('textarea'); try { await navigator.clipboard.writeText(t.value); toast('Mensagem copiada.'); } catch (e) { t.select(); toast('Selecione e copie a mensagem.'); } }
-      else if (a === 'modo-login') { S.modoLogin = el.dataset.m; render(); const f = $('#l-email'); if (f) f.focus(); }
+      else if (a === 'modo-login') {
+        const em = $('#l-email'); if (em && em.value) S.emailDigitado = em.value.trim();   // leva o e-mail já digitado
+        S.modoLogin = el.dataset.m; S.esqueciEnviado = false; render(); const f = $('#l-email') || $('#e-email'); if (f) f.focus(); }
       else if (a === 'sair' && !el.dataset.ok && (!navigator.onLine || (S.fila || []).length)) {
         // sem internet, não dá para entrar de novo; e o que está guardado no aparelho só sobe depois de entrar
         el.dataset.ok = '1'; el.textContent = 'Sair mesmo?';
@@ -993,6 +1043,12 @@
     const tipo = form.dataset.form;
     const fd = new FormData(form);
     try {
+      if (tipo === 'esqueci') {
+        const email = String(fd.get('email') || '').trim().toLowerCase();
+        if (!R.emailValido(email)) return mostrarErros(form, { email: 'Digite o e-mail do seu cadastro.' });
+        await ocupado(form, async () => { await S.api.pedirNovoAcesso(email); S.emailDigitado = email; S.esqueciEnviado = true; render(); });
+        return;
+      }
       if (tipo === 'login') {
         const email = String(fd.get('email') || '').trim();
         const senha = String(fd.get('senha') || '');

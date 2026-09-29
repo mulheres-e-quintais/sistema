@@ -81,7 +81,8 @@
     return `<main class="wrap" id="principal">
       <div class="cab"><div><span class="eyebrow">${E(P.professor_fic.nome)}</span><h1>Olá, ${E(nomeDe(eu).split(' ')[0])}</h1><p>${E(P.professor_fic.faz)}</p></div>
         <span class="chip chip-lg ${s.cod}">${E(s.rot)}</span></div>
-      ${MQ.atalhos ? MQ.atalhos([['Matricular alunas', '#t-turmas', true], ['Confirmar acesso ao AVA', '#t-ava'], ['Pedir a minha bolsa', '#t-pag']]) : ''}
+      ${MQ.atalhos ? MQ.atalhos([['Matricular alunas', '#t-turmas', true, S().ficSemBanco ? 0 : deCampo().filter(m => !m.matricula_fic_em).length], ['Confirmar acesso ao AVA', '#t-ava'],
+        ['Pedir a minha bolsa', '#t-pag', false, MQ.pagUI ? MQ.pagUI.contaDevolvidas() : 0]]) : ''}
       ${aba()}
       ${MQ.regras.situacao(eu).cod === 'ok' ? '' : `<div class="bloco"><h2>Habilitação para receber a bolsa</h2><p class="small muted">A FUNCERN paga a bolsa depois destes passos. Documentos, conta ou Pix: auxiliar administrativo.</p>${U().passos(eu)}</div>`}
       ${MQ.pagUI ? MQ.pagUI.secaoMinha() : ''}

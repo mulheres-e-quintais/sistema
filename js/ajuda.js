@@ -20,7 +20,7 @@
       duvidas: [
         ['Aparece "confira o e-mail e o código de acesso".', 'O e-mail tem de ser exatamente o do cadastro (confira pontos e o final @gmail.com, @ifrn.edu.br…). O código vale 7 dias e uma vez só. Se venceu ou se perdeu, peça um novo a quem cadastrou você.'],
         ['Aparece "Este e-mail já tem senha".', 'Você já fez o primeiro acesso. Use "Já tenho senha".'],
-        ['Esqueci a senha.', 'Peça à coordenação geral para liberar um novo primeiro acesso. Ela manda um código novo; entre em "Primeiro acesso" e crie outra senha. Seus dados não se perdem.'],
+        ['Esqueci a senha.', 'Na tela de entrada, toque em <b>Esqueci a senha</b>, digite o seu e-mail e toque em <b>Pedir novo acesso</b>. A coordenação geral recebe o pedido e manda um código novo para o WhatsApp do seu cadastro. Com o código, entre em <b>Primeiro acesso</b> e crie outra senha. Seus dados não se perdem.'],
         ['Não recebi e-mail do sistema.', 'É normal: o sistema não manda e-mail. Quem cadastrou você manda o aviso de acesso, com o código, pelo WhatsApp.'],
         ['Por que esse código?', 'Ele garante que só você crie a senha da sua conta. Sem ele, qualquer pessoa que soubesse o seu e-mail poderia entrar no seu lugar.']
       ]
@@ -93,7 +93,7 @@
       duvidas: [
         ['Quem cadastra quem?', 'A coordenação geral cadastra a coordenação técnica, os professores do FIC e o auxiliar, e pode cadastrar todos os outros. A coordenação técnica cadastra bolsistas e agentes.'],
         ['A pessoa perdeu o código ou ele venceu.', 'Abra a ficha dela e gere outro. O anterior deixa de valer na hora.'],
-        ['A pessoa esqueceu a senha.', 'Só a coordenação geral resolve: na ficha dela, "Liberar novo primeiro acesso" (confirme). A senha antiga é apagada e sai um código novo; os dados não mudam.'],
+        ['A pessoa esqueceu a senha.', 'Quando ela toca em "Esqueci a senha" na entrada, o pedido aparece na aba <b>Equipe</b> (com número na aba), em "Pedidos de novo acesso". Só a coordenação geral resolve: abra a ficha, toque em "Liberar novo primeiro acesso" (confirme) e mande o código pelo WhatsApp do cadastro. A senha antiga é apagada; os dados não mudam. Se a pessoa não sabe do pedido, descarte.'],
         ['Errei o CPF.', 'CPF e estado não mudam depois de salvos. Desligue o cadastro errado e faça um novo.'],
         ['A pessoa já tem cadastro no Arlo.', 'Marque "Sim" na pergunta do Arlo: só os dados básicos são pedidos (e a cidade, para quem vai a campo).'],
         ['O CEP não preencheu a rua.', 'Em muitas cidades pequenas o CEP é um só para a cidade toda. O sistema preenche cidade e estado; digite a rua, o sítio ou a comunidade.']

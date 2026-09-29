@@ -380,6 +380,6 @@
     </section>`;
   }
 
-  MQ.viagUI = { secaoBolsista, secaoConferente, souConferente, abaCoord, painel, clique, enviar, podeVer, contaMinha: () => lista().filter(minhaVez).length, textoFuncern,
+  MQ.viagUI = { contaDevolvidos: () => lista().filter(p => p.solicitante_id === S().eu.id && p.situacao === 'devolvido').length, secaoBolsista, secaoConferente, souConferente, abaCoord, painel, clique, enviar, podeVer, contaMinha: () => lista().filter(minhaVez).length, textoFuncern,
     validar, lerForm };   // validar e lerForm expostos para os testes unitários (testes/unit)
 })();
