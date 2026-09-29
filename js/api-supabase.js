@@ -121,6 +121,7 @@
       if (!data || !data.proposta) throw erro((data && data.erro) || 'Não veio texto. Tente de novo.');
       return data.proposta;
     },
+    async listarPerfisEquipe() { const { data, error } = await sb.from('equipe_privado').select('equipe_id, perfil'); if (error) throw erro(error); return data; },
     /* entregas do mês (19_entregas_do_mes.sql) */
     async listarEntregas() { const { data, error } = await sb.from('entregas_mes').select('*'); if (error) throw erro(error); return data; },
     async marcarEntrega(equipe_id, mes, item, marcar) {

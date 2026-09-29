@@ -320,6 +320,7 @@
       const t = String(texto).replace(/\s+/g, ' ').trim().split(/(?<=[.!?])\s+/).map(f => f.charAt(0).toUpperCase() + f.slice(1)).join(' ');
       return (/[.!?]$/.test(t) ? t : t + '.') + '\n\n(Demonstração: no sistema de verdade, este texto é reescrito pela IA a partir do que foi falado.)';
     },
+    async listarPerfisEquipe() { const d = ler(); return Object.values(d.privado || {}).map(x => ({ equipe_id: x.equipe_id, perfil: x.perfil || null })); },
     async listarEntregas() { const d = ler(); return copia(d.entregas || []); },
     async marcarEntrega(equipe_id, mes, item, marcar) {
       const d = ler(); const eu = euMesmo(); d.entregas = d.entregas || [];
