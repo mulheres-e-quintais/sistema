@@ -144,5 +144,8 @@
     }
   }
 
-  MQ.entregasUI = { cartaoBolsista, resumoAval, secaoAva, blocoCiencia, cienciaDe, clique, itens };
+  // entregas do mês atual que estão faltando (fotos, relato, presença, AVA…)
+  const contaFaltas = () => { if (semBanco()) return 0; const eu = S().eu; const m = Object.assign({}, eu, pessoa(eu.id) || {});
+    return itens(m, mesAtual()).filter(i => i.e === 'falta').length; };
+  MQ.entregasUI = { contaFaltas, cartaoBolsista, resumoAval, secaoAva, blocoCiencia, cienciaDe, clique, itens };
 })();

@@ -441,12 +441,34 @@
       gravar();
     },
     /* demonstração: gera um código para mostrar a tela (não há login de verdade aqui) */
+    /* "Esqueci a senha" (mesmas regras do 28_pedido_novo_acesso.sql) */
+    async pedirNovoAcesso(email) {
+      const d = ler(); const e = String(email || '').trim().toLowerCase(); d.pedidosAcesso = d.pedidosAcesso || [];
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return;
+      const m = d.equipe.find(x => String(x.email).toLowerCase() === e && x.status === 'ativa'); if (!m) return;   // resposta sempre igual
+      const aberto = d.pedidosAcesso.find(p => p.equipe_id === m.id && p.situacao === 'aguardando');
+      if (aberto) aberto.vezes++; else d.pedidosAcesso.push({ id: uid(), equipe_id: m.id, pedido_em: new Date().toISOString(), vezes: 1, situacao: 'aguardando' });
+      gravar();
+    },
+    async listarPedidosAcesso() {
+      const d = ler(); const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') return [];
+      return copia((d.pedidosAcesso || []).filter(p => p.situacao === 'aguardando'));
+    },
+    async descartarPedidoAcesso(id) {
+      const d = ler(); const eu = euMesmo(); const p = (d.pedidosAcesso || []).find(x => x.id === id);
+      if (!eu || eu.papel !== 'coord_geral' || !p) throw falha('Pedido não encontrado.');
+      if (p.situacao !== 'aguardando') throw falha('Este pedido já foi resolvido.');
+      Object.assign(p, { situacao: 'descartado', resolvido_por: eu.id, resolvido_em: new Date().toISOString() }); gravar();
+    },
     async gerarCodigoAcesso(id) {
       const d = ler(); const eu = euMesmo(); const m = d.equipe.find(x => x.id === id);
       if (!m || m.status !== 'ativa') throw falha('Cadastro não encontrado ou desligado.');
       if (!eu || !R.podeCadastrar(eu.papel, m.papel)) throw falha('Você não pode gerar o acesso desta pessoa.');
       if (m.user_id && eu.papel !== 'coord_geral') throw falha('Esta pessoa já tem senha. Só a coordenação geral libera um novo primeiro acesso.');
-      if (m.user_id) { m.user_id = null; gravar(); }
+      if (m.user_id) m.user_id = null;
+      (d.pedidosAcesso || []).filter(p => p.equipe_id === m.id && p.situacao === 'aguardando')   // código gerado = pedido atendido
+        .forEach(p => Object.assign(p, { situacao: 'atendido', resolvido_por: eu.id, resolvido_em: new Date().toISOString() }));
+      gravar();
       const a = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; const r = new Uint8Array(8); crypto.getRandomValues(r);
       const c = Array.from(r, x => a[x % a.length]).join(''); return c.slice(0, 4) + '-' + c.slice(4);
     },

@@ -136,6 +136,19 @@
     async darCiencia(equipe_id, documento) {
       const { error } = await sb.from('ciencias').insert({ equipe_id, documento }); if (error && error.code !== '23505') throw erro(error);
     },
+    /* ---------- "Esqueci a senha" (28_pedido_novo_acesso.sql) ---------- */
+    async pedirNovoAcesso(email) {   // sem login; a resposta é sempre a mesma
+      if (!sb) sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, { auth: { persistSession: true } });
+      const { error } = await sb.rpc('pedir_novo_acesso', { p_email: email });
+      if (error) throw erro(/pedir_novo_acesso|PGRST202/.test(error.message) ? 'O pedido de novo acesso ainda não está instalado. Fale direto com a coordenação geral.' : error);
+    },
+    async listarPedidosAcesso() {
+      const { data, error } = await sb.from('pedidos_novo_acesso').select('*').eq('situacao', 'aguardando').order('pedido_em'); if (error) throw erro(error); return data;
+    },
+    async descartarPedidoAcesso(id) {
+      const { data, error } = await sb.from('pedidos_novo_acesso').update({ situacao: 'descartado' }).eq('id', id).select('id'); if (error) throw erro(error);
+      if (!data || !data.length) throw erro('Pedido não encontrado.');
+    },
     async gerarCodigoAcesso(id) { const { data, error } = await sb.rpc('gerar_codigo_acesso', { p_equipe: id }); if (error) throw erro(error); return data; },
     /* ---------- Fichas de indicação ---------- */
     async listarFichas() {

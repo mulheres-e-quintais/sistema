@@ -169,7 +169,7 @@
     return `<main class="wrap" id="principal">
       <div class="cab"><div><span class="eyebrow">Agente de campo · ${E(U().nomeUF(eu.uf))}</span><h1>Olá, ${E(primeiroNome(eu.nome))}</h1>
         <p>${E(MQ.PAPEIS.agente.faz)}</p></div><span class="chip chip-lg ${s.cod}">${E(s.rot)}</span></div>
-      ${MQ.atalhos ? MQ.atalhos([['Minhas próximas visitas', '#t-prox', true], ['Visitas feitas', '#t-feitas'], ['Pedir ajuda de custo', '#t-pag']]) : ''}
+      ${MQ.atalhos ? MQ.atalhos([['Minhas próximas visitas', '#t-prox', true, contaAFazer()], ['Visitas feitas', '#t-feitas'], ['Pedir ajuda de custo', '#t-pag', false, MQ.pagUI ? MQ.pagUI.contaDevolvidas() : 0]]) : ''}
       ${MQ.entregasUI ? MQ.entregasUI.blocoCiencia() : ''}
       ${!R.habilitado(eu) ? `<div class="aviso erro"><b>Você ainda não pode receber visitas no roteiro.</b> Faltam passos da habilitação (matrícula no FIC, documentos na FUNCERN e termo). Sem eles, a ajuda de custo não pode ser paga.</div>` : ''}
       ${pend.length ? `<div class="aviso">${pend.length} diagnóstico${pend.length > 1 ? 's' : ''} guardado${pend.length > 1 ? 's' : ''} neste aparelho, aguardando internet.${navigator.onLine ? ' <button class="link" data-acao="ficha-enviar">Enviar agora</button>' : ''}</div>` : ''}
@@ -666,5 +666,13 @@
     const kit = [...f.querySelectorAll('[data-linha="kit"]')].map(l => ({ item: l.querySelector('[name=kit_item]').value.trim(), qtd: l.querySelector('[name=kit_qtd]').value, valor: numBR(l.querySelector('[name=kit_valor]').value) })).filter(x => x.item);
     box.innerHTML = projKit(kit);
   });
-  MQ.campoUI = { secaoBolsista, telaAgente, abaCoord, painel, clique, enviar, diagnosticos, visitas, guardar, numBR };
+  /* o que espera a pessoa no campo: visita dela com data que já chegou e ainda não registrada,
+     e diagnóstico devolvido para corrigir (da agente: os dela; da bolsista: os do estado) */
+  function contaAFazer() {
+    const eu = S().eu; const hoje = R.hoje();
+    const vencidas = visitas().filter(v => v.executor_id === eu.id && v.situacao === 'prevista' && String(v.data_prevista) <= hoje).length;
+    const devolvidos = diagnosticos().filter(d => d.situacao === 'devolvido' && (eu.papel === 'agente' ? (visitas().find(v => v.id === d.visita_id) || {}).executor_id === eu.id : d.uf === eu.uf)).length;
+    return vencidas + devolvidos;
+  }
+  MQ.campoUI = { contaAFazer, secaoBolsista, telaAgente, abaCoord, painel, clique, enviar, diagnosticos, visitas, guardar, numBR };
 })();
