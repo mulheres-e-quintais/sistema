@@ -938,7 +938,7 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 
 /* ---------- celular e tablet: menu de seções (grade) no lugar das abas ---------- */
 .abas-m { display: none; }
-@media (max-width: 920px) {
+@media (max-width: 1000px) {
   .abas { display: none; }
   .abas-m { display: block; position: relative; margin: 2px 0 6px; }
   .abas-m summary { list-style: none; display: flex; align-items: center; gap: 8px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px;
@@ -1216,7 +1216,9 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .viag-copia { width: 100%; font-size: var(--t-sm); }
 
 /* abas: 9 seções cabem sem rolagem escondida em telas médias (notebook e tablet) */
-@media (max-width: 1120px) { .abas { gap: 0; } .abas button { padding: 10px 9px; font-size: var(--t-md); } }
+/* 10 seções da coordenação geral: padding menor para caber sem rolagem escondida */
+.abas { gap: 0; } .abas button { padding: 10px 11px; }
+@media (max-width: 1180px) { .abas button { padding: 10px 8px; font-size: var(--t-md); } }
 .conta-t.zero { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
 .custo-esqueleto { min-height: 900px; }
 .custo-nav { margin: 0 0 14px; display: inline-flex; }
@@ -1234,3 +1236,13 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .atalhos-grade .btn[hidden] { display: none; }
 @media (max-width: 520px) { .atalhos-grade { grid-template-columns: 1fr 1fr; } .atalhos-grade .btn.pri { grid-column: 1 / -1; } }
 .ajuda-tarefas .ajuda-passos { margin: 6px 0 4px; }
+/* documentos e relatório da ação */
+.doc-linha { display: grid; gap: 3px; text-align: left; }
+.rel-filtro .acoes { margin-top: 0; }
+.rel-previa { overflow-x: auto; }
+.rel h1 { font-size: var(--t-2xl); margin: 4px 0 8px; }
+.rel h2 { font-size: var(--t-xl); margin: 18px 0 6px; }
+.rel table { border-collapse: collapse; width: 100%; margin: 6px 0 10px; font-size: var(--t-sm); }
+.rel th, .rel td { border: 1px solid var(--line); padding: 5px 8px; text-align: left; }
+.rel th { background: var(--surface-2); }
+.rel-sobre, .rel-nota { font-size: var(--t-xs); color: var(--muted); }

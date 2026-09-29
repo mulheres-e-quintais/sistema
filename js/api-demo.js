@@ -200,6 +200,36 @@
     async trocarPerfil(p) { const d = ler(); d.perfil = p; this.perfisDemo(); gravar(); return euMesmo(); },
     async recomecar() { mem = null; try { localStorage.removeItem(CHAVE); } catch (e) {} ler(); gravar(); return euMesmo(); },
 
+    /* ---------- Documentos do projeto (mesmas regras do 24_documentos.sql): só a coordenação geral ---------- */
+    async listarDocumentos() {
+      const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') return [];
+      return copia((ler().documentos || []).slice().sort((a, b) => String(b.data_documento).localeCompare(String(a.data_documento))));
+    },
+    async enviarDocumento(dd, arquivo) {
+      const d = ler(); const eu = euMesmo();
+      if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral anexa documentos do projeto.');
+      const erros = MQ.docsUI ? MQ.docsUI.validarDocumento(dd, arquivo) : {};
+      if (Object.keys(erros).length) { const e = falha(Object.values(erros)[0]); e.campos = erros; throw e; }
+      const agora = new Date().toISOString(); const path = String(dd.data_documento).slice(0, 4) + '/' + uid() + '_' + arquivo.name;
+      try { if (typeof URL !== 'undefined' && URL.createObjectURL && arquivo instanceof Blob) fotosMemoria.set(path, URL.createObjectURL(arquivo)); } catch (e) { /* sem arquivo na demonstração */ }
+      const x = Object.assign({ id: uid() }, copia(dd), { arquivo_path: path, arquivo_nome: arquivo.name, tamanho: arquivo.size, mime: arquivo.type || null,
+        enviado_por: eu.id, enviado_em: agora, arquivado_em: null, arquivado_por: null, motivo_arquivo: null });
+      d.documentos = (d.documentos || []).concat([x]);
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'documentos_projeto', registro_id: x.id, acao: 'INSERT', por: eu.id, em: agora, antes: null, depois: copia(x) });
+      gravar(); return copia(x);
+    },
+    async linkDocumento(path) { return fotosMemoria.get(path) || null; },
+    async arquivarDocumento(id, motivo) {
+      const d = ler(); const eu = euMesmo(); const x = (d.documentos || []).find(y => y.id === id);
+      if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral arquiva documentos.');
+      if (!x) throw falha('Documento não encontrado.');
+      if (x.arquivado_em) throw falha('Este documento já está arquivado.');
+      if (String(motivo || '').trim().length < 5) throw falha('Para arquivar, escreva o motivo.');
+      const antes = copia(x); Object.assign(x, { arquivado_em: new Date().toISOString(), arquivado_por: eu.id, motivo_arquivo: String(motivo).trim() });
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'documentos_projeto', registro_id: x.id, acao: 'UPDATE', por: eu.id, em: x.arquivado_em, antes, depois: copia(x) });
+      gravar();
+    },
+
     /* ---------- Pedidos de passagem e evento (mesmas regras do 22_passagens_eventos.sql) ---------- */
     async listarPedidos() {
       const d = ler(); const eu = euMesmo(); if (!eu) return [];
