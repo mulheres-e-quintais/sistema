@@ -231,9 +231,14 @@
     },
 
     /* ---------- Pedidos de passagem e evento (mesmas regras do 22_passagens_eventos.sql) ---------- */
+    /* quem confere os pedidos agora (26_conferencia_auxiliar.sql): técnica; sem ela, o auxiliar; sem os dois, a geral */
+    async quemConferePedidos() {
+      const d = ler(); const ativo = papel => (d.equipe || []).some(m => m.papel === papel && m.status === 'ativa');
+      return ativo('coord_tecnico') ? 'coord_tecnico' : ativo('auxiliar_adm') ? 'auxiliar_adm' : 'coord_geral';
+    },
     async listarPedidos() {
       const d = ler(); const eu = euMesmo(); if (!eu) return [];
-      const ve = ['coord_geral', 'coord_tecnico'].includes(eu.papel);
+      const ve = ['coord_geral', 'coord_tecnico'].includes(eu.papel) || (eu.papel === 'auxiliar_adm' && await this.quemConferePedidos() === 'auxiliar_adm');
       return copia((d.pedidos || []).filter(p => ve || p.solicitante_id === eu.id).sort((a, b) => String(b.enviado_em).localeCompare(String(a.enviado_em))));
     },
     async salvarPedido(id, tipo, titulo, data, dados, justificativa) {
@@ -261,17 +266,21 @@
       const d = ler(); const eu = euMesmo(); const p = (d.pedidos || []).find(x => x.id === id);
       if (!eu || !p) throw falha('Pedido não encontrado.');
       const papel = eu.papel; const agora = new Date().toISOString(); const o = String(obs || '').trim();
+      const conferente = await this.quemConferePedidos();
+      const nomeConf = { coord_tecnico: 'a coordenação técnica', auxiliar_adm: 'o auxiliar administrativo', coord_geral: 'a coordenação geral' }[conferente];
       if (acao === 'conferir') {
-        if (!['coord_tecnico', 'coord_geral'].includes(papel)) throw falha('Quem confere é a coordenação técnica.');
+        if (papel !== conferente) throw falha('Quem confere agora é ' + nomeConf + '.');
+        if (p.solicitante_id === eu.id) throw falha('Ninguém confere o próprio pedido.');
         if (p.situacao !== 'enviado') throw falha('Este pedido não está esperando conferência.');
         Object.assign(p, { situacao: 'conferido', conferido_por: eu.id, conferido_em: agora, obs: null });
       } else if (acao === 'devolver') {
-        if (!((['coord_tecnico', 'coord_geral'].includes(papel) && p.situacao === 'enviado') || (papel === 'coord_geral' && p.situacao === 'conferido'))) throw falha('Este pedido não pode ser devolvido agora.');
+        if (!((papel === conferente && p.situacao === 'enviado') || (papel === 'coord_geral' && p.situacao === 'conferido'))) throw falha('Este pedido não pode ser devolvido agora.');
         if (o.length < 5) throw falha('Para devolver, escreva o que precisa ser corrigido.');
         Object.assign(p, { situacao: 'devolvido', obs: o, decidido_por: eu.id, decidido_em: agora });
       } else if (acao === 'autorizar') {
         if (papel !== 'coord_geral') throw falha('Quem autoriza e manda para a FUNCERN é a coordenação geral.');
-        if (p.situacao !== 'conferido') throw falha('Só pedido conferido pela coordenação técnica pode ser autorizado.');
+        if (p.situacao !== 'conferido') throw falha('Só pedido conferido pode ser autorizado.');
+        if (p.conferido_por === eu.id && conferente !== 'coord_geral') throw falha('Quem conferiu não autoriza o mesmo pedido. Devolva para ' + nomeConf + '.');
         Object.assign(p, { situacao: 'autorizado', decidido_por: eu.id, decidido_em: agora, obs: o || null, funcern_protocolo: String(protocolo || '').trim() || null });
       } else if (acao === 'recusar') {
         if (papel !== 'coord_geral') throw falha('Quem recusa é a coordenação geral.');

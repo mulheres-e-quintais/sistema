@@ -198,19 +198,22 @@
       t: 'Viagens e eventos',
       intro: 'Pedidos de passagem aérea (intercâmbio e acompanhamento pedagógico) e de estrutura de evento, feitos pela bolsista de articulação estadual. A FUNCERN só compra ou contrata depois da autorização.',
       tarefas: [
-        ['Conferir um pedido (coordenação técnica)', ['Em <b>Esperando a sua conferência</b>, abra o pedido.', 'Confira nomes iguais ao documento, CPF, RG, datas e quantidades.', 'Toque em <b>Conferido</b>, ou escreva o que corrigir e toque em <b>Devolver para corrigir</b>.']],
+        ['Conferir um pedido (coordenação técnica; sem ela, o auxiliar administrativo)', ['Em <b>Esperando a sua conferência</b>, abra o pedido.', 'Confira nomes iguais ao documento, CPF, RG, datas e quantidades.', 'Toque em <b>Conferido</b>, ou escreva o que corrigir e toque em <b>Devolver para corrigir</b>.']],
         ['Autorizar e mandar à FUNCERN (coordenação geral)', ['Em <b>Esperando a sua autorização</b>, abra o pedido.', 'Se já tiver, digite o protocolo da FUNCERN.', 'Toque em <b>Autorizar</b> (ou devolva, ou recuse com o motivo).', 'Toque em <b>Copiar texto</b> e cole no e-mail ou sistema da FUNCERN.']]
       ],
       passos: [
         'A bolsista de articulação estadual envia o pedido. Ele aparece para a <b>coordenação técnica</b> em "Esperando a sua conferência".',
         'A coordenação técnica confere os dados (nomes iguais ao documento, datas, CPF e RG, quantidades) e toca em <b>Conferido</b>, ou <b>Devolve</b> dizendo o que corrigir.',
+        '<b>Sem coordenação técnica ativa</b>, quem confere é o <b>auxiliar administrativo</b> (na tela dele aparece "Passagens e eventos para conferir"). Sem os dois, a coordenação geral confere e autoriza, com aviso. Quando a técnica é cadastrada, volta tudo para ela.',
+        'Cada pedido passa por <b>duas pessoas</b>: quem conferiu não autoriza o mesmo pedido.',
         'A <b>coordenação geral</b> autoriza (ou devolve, ou recusa com o motivo). Depois de autorizar, use <b>Copiar texto</b> para mandar o pedido à FUNCERN e registre o protocolo.',
         'Prazos: passagem <b>40 dias</b> antes da viagem (a FUNCERN exige 30); evento <b>45 dias</b> antes. Fora do prazo, o pedido só vai com justificativa.',
         'Os contadores mostram quantas passagens já foram autorizadas (25 de intercâmbio e 8 de acompanhamento pedagógico, por pessoa) e quantos estados já têm evento (5).'
       ],
       duvidas: [
-        ['Quem vê os pedidos?', 'Só quem pediu, a coordenação técnica e a coordenação geral. Os dados das passageiras (CPF, RG, nascimento) não vão para o histórico.'],
+        ['Quem vê os pedidos?', 'Só quem pediu, a coordenação técnica e a coordenação geral (e o auxiliar administrativo, só enquanto estiver conferindo no lugar da técnica). Os dados das passageiras (CPF, RG, nascimento) não vão para o histórico.'],
         ['Pode dividir o almoço em vários pedidos?', 'Não. Um serviço, um pedido: dividir o mesmo serviço é proibido e pode anular a compra. Serviços diferentes (alimentação, tenda, som) podem ir separados.'],
+        ['Por que o auxiliar não dá aval nos pagamentos?', 'Porque é ele quem lança no Arlo: se também desse o aval, uma pessoa só aprovaria e lançaria. Sem coordenação técnica, o aval dos pagamentos é da coordenação geral.'],
         ['E depois da viagem ou do evento?', 'Os cartões de embarque, a lista de presença e o relato ou relatório são entregues à coordenação técnica.']
       ]
     },
@@ -258,7 +261,7 @@
         ['Registrar diagnóstico ou visita', ['No topo, toque em <b>Visitas e diagnósticos</b>.', 'Em <b>Para fazer agora</b>, toque no botão da visita (<b>Registrar diagnóstico</b>, <b>Registrar visita feita</b> ou <b>Registrar avaliação</b>).', 'Faça as fotos, registre a localização e salve.']],
         ['Marcar a lista de presença', ['No topo, toque em <b>Entregas do mês</b>.', 'Na lista de presença, toque em <b>Entreguei</b>.']],
         ['Pedir a bolsa e a ajuda de custo', ['No topo, toque em <b>Pedir pagamento</b>.', 'Na ajuda de custo, marque as visitas feitas e toque em <b>Solicitar</b>.', 'Na bolsa, escreva o relatório do mês (pode usar <b>Falar</b>) e toque em <b>Solicitar bolsa</b>.']],
-        ['Pedir passagem ou evento (só articulação estadual)', ['No topo, toque em <b>Passagem ou evento</b>.', 'Toque em <b>Pedir passagem aérea</b> (40 dias antes) ou <b>Pedir estrutura de evento</b> (45 dias antes).', 'Preencha tudo e toque em <b>Enviar para a coordenação técnica</b>.', 'Se voltar devolvido, abra, leia o motivo, toque em <b>Corrigir e reenviar</b>.']]
+        ['Pedir passagem ou evento (só articulação estadual)', ['No topo, toque em <b>Passagem ou evento</b>.', 'Toque em <b>Pedir passagem aérea</b> (40 dias antes) ou <b>Pedir estrutura de evento</b> (45 dias antes).', 'Preencha tudo e toque em <b>Enviar</b> (vai para a coordenação técnica; sem ela, para o auxiliar administrativo).', 'Se voltar devolvido, abra, leia o motivo, toque em <b>Corrigir e reenviar</b>.']]
       ],
       passos: [
         'Na primeira vez, leia os pontos importantes do Guia e toque em <b>Li e entendi</b>.',

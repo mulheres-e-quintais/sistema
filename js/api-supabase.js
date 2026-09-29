@@ -411,6 +411,11 @@
     },
 
     /* ---------- Pedidos de passagem aérea e de estrutura de evento (22_passagens_eventos.sql) ---------- */
+    async quemConferePedidos() {
+      const { data, error } = await sb.rpc('quem_confere_pedidos');
+      if (error) { if (/quem_confere_pedidos|PGRST202/.test(error.message)) return null; throw erro(error); }   // sem o 26: regra antiga
+      return data;
+    },
     async listarPedidos() {
       const { data, error } = await sb.from('pedidos_apoio').select('*').order('enviado_em', { ascending: false }); if (error) throw erro(error); return data;
     },

@@ -2,7 +2,7 @@
 -- Mulheres & Quintais — VERIFICAR o banco (só lê, não muda nada)
 -- Supabase > SQL Editor > New query > cole este arquivo inteiro > Run.
 -- Mostra, etapa por etapa, o que já está instalado. Onde aparecer "FALTA", rode aquele script
--- (na ordem 01, 02, 03, 04, 07, 08, 09, 10, 11, 12, 13, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25). Todos podem rodar de novo sem estragar nada.
+-- (na ordem 01, 02, 03, 04, 07, 08, 09, 10, 11, 12, 13, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26). Todos podem rodar de novo sem estragar nada.
 -- =====================================================================
 with col as (select table_name, column_name from information_schema.columns where table_schema = 'public'),
 fn as (select proname from pg_proc where pronamespace = 'public'::regnamespace),
@@ -37,6 +37,13 @@ chk as (
                    and exists (select 1 from pg_proc where proname = 'enviar_pre_cadastro' and prosrc like '%já foram enviados%')
   union all select '24_documentos', to_regclass('public.documentos_projeto') is not null and exists (select 1 from storage.buckets where id = 'documentos')
   union all select '23_fic_coordenacao_tecnica', exists (select 1 from pg_proc where proname = 'matricular_fic' and prosrc like '%coord_tecnico%')
+  -- rodar 01, 03, 07 ou 11 de novo DEPOIS do 15 volta regras antigas da equipe: estes dois itens acusam
+  union all select '15_coord_geral_total (rode de novo se rodou 01/03/07/11 depois dele)',
+                   exists (select 1 from pg_proc where proname = 'equipe_antes' and prosrc like '%só registra o cadastro no Arlo%' and prosrc like '%coordenação geral altera%')
+  union all select '11_fic (auxiliar ver e registrar Arlo; rode o 11 e depois o 15 de novo)',
+                   exists (select 1 from pg_policy where polname = 'equipe_ler' and pg_get_expr(polqual, polrelid) like '%auxiliar_adm%')
+                   and exists (select 1 from pg_policy where polname = 'equipe_alterar' and pg_get_expr(polqual, polrelid) like '%auxiliar_adm%')
+  union all select '26_conferencia_auxiliar', exists (select 1 from fn where proname = 'quem_confere_pedidos')
   union all select '22_passagens_eventos', to_regclass('public.pedidos_apoio') is not null and exists (select 1 from fn where proname = 'mover_pedido_apoio')
 )
 -- o SQL Editor do Supabase mostra só o último resultado: por isso vai tudo numa tabela só

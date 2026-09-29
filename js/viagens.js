@@ -1,7 +1,8 @@
 /* Mulheres & Quintais — pedidos de passagem aérea e de estrutura de evento (Guia "Viagens, ajuda de custo e eventos").
    Caminho: a bolsista de articulação estadual pede → a coordenação técnica confere (ou devolve)
    → a coordenação geral autoriza e manda para a FUNCERN (ou recusa ou devolve).
-   Só estes três perfis veem os pedidos (supabase/22_passagens_eventos.sql). */
+   Sem coordenação técnica ativa, quem confere é o auxiliar administrativo; sem os dois, a geral
+   (26_conferencia_auxiliar.sql). Quem conferiu não autoriza o mesmo pedido: sempre duas pessoas. */
 (function () {
   const R = MQ.regras;
   const U = () => MQ.ui; const S = () => MQ.ui.S; const E = s => MQ.ui.esc(s);
@@ -10,6 +11,11 @@
   const FIM_PROJETO = '2027-09-30';
   const FINALIDADE = { intercambio: 'Intercâmbio entre as beneficiárias', pedagogico: 'Acompanhamento pedagógico' };
   const TIPO = { passagem: 'Passagem aérea', evento: 'Estrutura de evento' };
+  const NOME_CONF = { coord_tecnico: 'a coordenação técnica', auxiliar_adm: 'o auxiliar administrativo', coord_geral: 'a coordenação geral' };
+  const conf = () => S().quemConfere || 'coord_tecnico';            // quem confere agora
+  const legado = () => !S().quemConfere;                            // 26 ainda não instalado: regra antiga
+  const nomeConf = () => NOME_CONF[conf()];
+  const souConferente = () => !!(S().eu && S().eu.papel === conf());
   const SIT = {
     enviado: ['pend', 'Com a coordenação técnica'], devolvido: ['crit', 'Devolvido para corrigir'], conferido: ['pend', 'Com a coordenação geral'],
     autorizado: ['ok', 'Autorizado · enviado à FUNCERN'], recusado: ['crit', 'Recusado'], cancelado: ['', 'Cancelado']
@@ -20,12 +26,13 @@
   const lista = () => S().pedidos || [];
   const pessoa = id => U().porId(id) || {};
   const nomeDe = m => (m && (m.nome_social || m.nome)) || '—';
-  const chip = p => `<span class="chip ${SIT[p.situacao][0]}">${SIT[p.situacao][1]}</span>`;
+  const rotSit = p => p.situacao === 'enviado' ? 'Com ' + nomeConf() : SIT[p.situacao][1];
+  const chip = p => `<span class="chip ${SIT[p.situacao][0]}">${rotSit(p)}</span>`;
   const podeVer = papel => ['articulacao', 'coord_tecnico', 'coord_geral'].includes(papel);
   const semBanco = () => '<div class="aviso">Os pedidos de passagem e de evento ainda não estão instalados no servidor. A coordenação geral roda o arquivo <b>22_passagens_eventos.sql</b> no Supabase.</div>';
   const diasAte = d => Math.round((new Date(d + 'T12:00:00') - new Date(R.hoje() + 'T12:00:00')) / 864e5);
-  const minhaVez = p => { const papel = S().eu.papel; const sem = MQ.ui.semTecnica && MQ.ui.semTecnica();
-    return (papel === 'coord_tecnico' && p.situacao === 'enviado') || (papel === 'coord_geral' && (p.situacao === 'conferido' || (sem && p.situacao === 'enviado'))); };
+  const minhaVez = p => { const eu = S().eu;
+    return (souConferente() && p.situacao === 'enviado' && p.solicitante_id !== eu.id) || (eu.papel === 'coord_geral' && p.situacao === 'conferido'); };
   const nPass = p => p.tipo === 'passagem' ? ((p.dados && p.dados.passageiros) || []).length : 0;
 
   /* ---------- bolsista de articulação ---------- */
@@ -36,7 +43,7 @@
     const dev = meus.filter(p => p.situacao === 'devolvido');
     return `<section class="secao viag" aria-labelledby="t-viag">
       <div class="secao-cab"><div><h2 id="t-viag">Passagens aéreas e eventos</h2>
-        <p>Você pede, a coordenação técnica confere e a coordenação geral autoriza e manda para a FUNCERN. <b>Nunca compre, contrate ou pague nada por conta própria:</b> despesa sem autorização não é reembolsada.</p></div></div>
+        <p>Você pede, ${nomeConf()} confere e a coordenação geral autoriza e manda para a FUNCERN. <b>Nunca compre, contrate ou pague nada por conta própria:</b> despesa sem autorização não é reembolsada.</p></div></div>
       ${dev.length ? `<div class="aviso erro"><b>${dev.length} pedido${dev.length > 1 ? 's' : ''} devolvido${dev.length > 1 ? 's' : ''} para corrigir.</b> Abra, veja o motivo e reenvie.</div>` : ''}
       <div class="viag-botoes">
         <button type="button" class="cad-modo" data-acao="viag-nova" data-t="passagem"><b>Pedir passagem aérea</b><span>Intercâmbio ou acompanhamento pedagógico. Envie <b>${PRAZO.passagem} dias antes</b> da viagem.</span></button>
@@ -71,7 +78,7 @@
     const bloco = (t, xs, vazio) => `<section class="secao"><div class="secao-cab"><h2>${t} <span class="conta-t${xs.length ? '' : ' zero'}">${xs.length}</span></h2></div>
       ${xs.length ? `<div class="pag-lista">${xs.map(p => linha(p, true)).join('')}</div>` : `<p class="muted">${vazio}</p>`}</section>`;
     return `<div class="cab"><div><span class="eyebrow">Viagens e eventos</span><h1>Passagens e eventos</h1>
-        <p>A bolsista de articulação estadual pede; ${souGeral ? 'a coordenação técnica confere; você autoriza e manda para a FUNCERN, que compra ou contrata.' : 'você confere e manda para a coordenação geral, que autoriza e manda para a FUNCERN.'}
+        <p>A bolsista de articulação estadual pede; ${souGeral ? (conf() === 'coord_geral' ? 'você confere e autoriza' : nomeConf() + ' confere; você autoriza') + ' e manda para a FUNCERN, que compra ou contrata.' : 'você confere e manda para a coordenação geral, que autoriza e manda para a FUNCERN.'}
         Prazos: passagem ${PRAZO.passagem} dias antes da viagem (a FUNCERN exige 30); evento ${PRAZO.evento} dias antes.</p></div></div>
       <div class="resumo">
         <div><span class="v num" ${vez.length ? 'style="color:var(--crit)"' : ''}>${vez.length}</span><span class="l">esperando você</span></div>
@@ -79,9 +86,10 @@
         <div><span class="v num">${usados('pedagogico')}<small> de ${PREVISTO.pedagogico}</small></span><span class="l">passagens de acompanhamento pedagógico</span></div>
         <div><span class="v num">${ufsEvento.size}<small> de ${PREVISTO.evento}</small></span><span class="l">estados com evento autorizado</span></div></div>
       <p class="small muted">Passagens contadas por pessoa (ida e volta). ${[...ufsEvento].length ? 'Evento autorizado em: ' + [...ufsEvento].join(', ') + '.' : ''}</p>
-      ${souGeral && MQ.ui.semTecnica && MQ.ui.semTecnica() ? '<div class="aviso">Sem coordenação técnica ativa: você confere e autoriza os pedidos.</div>' : ''}
-      ${bloco(souGeral ? (MQ.ui.semTecnica && MQ.ui.semTecnica() ? 'Esperando você (conferir ou autorizar)' : 'Esperando a sua autorização') : 'Esperando a sua conferência', vez, 'Nada esperando você.')}
-      ${outros.length ? bloco(souGeral ? 'Com a coordenação técnica (você pode conferir se ela não puder)' : 'Com a coordenação geral', outros, '') : ''}
+      ${souGeral && conf() === 'auxiliar_adm' ? '<div class="aviso">Sem coordenação técnica ativa: quem confere os pedidos é o auxiliar administrativo; você autoriza. Assim cada pedido passa por duas pessoas. Quando a técnica for cadastrada, ela volta a conferir.</div>' : ''}
+      ${souGeral && conf() === 'coord_geral' && !legado() ? '<div class="aviso erro">Sem coordenação técnica e sem auxiliar administrativo: você confere e autoriza sozinho (fica registrado). Cadastre a técnica ou o auxiliar para voltar a ter duas pessoas em cada pedido.</div>' : ''}
+      ${bloco(souGeral ? (conf() === 'coord_geral' ? 'Esperando você (conferir ou autorizar)' : 'Esperando a sua autorização') : 'Esperando a sua conferência', vez, 'Nada esperando você.')}
+      ${outros.length ? bloco(souGeral ? 'Com ' + nomeConf() + (legado() ? ' (você pode conferir se ela não puder)' : '') : 'Com a coordenação geral', outros, '') : ''}
       ${dev.length ? bloco('Devolvidos para a bolsista corrigir', dev, '') : ''}
       <details class="hist"><summary>Autorizados (${aut.length})</summary><div class="pag-lista" style="padding:0 18px 16px">${aut.map(p => linha(p, true)).join('') || '<p class="muted">Nenhum ainda.</p>'}</div></details>
       ${fim.length ? `<details class="hist"><summary>Recusados e cancelados (${fim.length})</summary><div class="pag-lista" style="padding:0 18px 16px">${fim.map(p => linha(p, true)).join('')}</div></details>` : ''}`;
@@ -169,7 +177,7 @@
       ${x && x.obs ? `<div class="aviso erro"><b>O que corrigir:</b> ${E(x.obs)}</div>` : ''}
       ${corpo}
       <div class="aviso erro" data-erro hidden></div>
-      <div class="acoes"><button class="btn pri" type="submit">${x ? 'Reenviar pedido' : 'Enviar para a coordenação técnica'}</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div>
+      <div class="acoes"><button class="btn pri" type="submit">${x ? 'Reenviar pedido' : 'Enviar para ' + nomeConf()}</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div>
     </form></div>`;
   }
 
@@ -213,9 +221,18 @@
     const acoes = [];
     if (souDono && x.situacao === 'devolvido') acoes.push(`<div class="acoes"><button class="btn pri" data-acao="viag-nova" data-t="${x.tipo}" data-id="${E(x.id)}">Corrigir e reenviar</button></div>`);
     if (souDono && ['enviado', 'devolvido'].includes(x.situacao)) acoes.push(formMover(x, 'Cancelar este pedido', [['cancelar', 'Cancelar o pedido', 'perigo']], 'Motivo (opcional)'));
-    if (!souDono && papel === 'coord_tecnico' && x.situacao === 'enviado') acoes.push(formMover(x, 'Conferência', [['conferir', 'Conferido: mandar para a coordenação geral', 'pri'], ['devolver', 'Devolver para corrigir', 'perigo']], 'Observação (obrigatória para devolver)'));
-    if (papel === 'coord_geral' && x.situacao === 'enviado') acoes.push(formMover(x, 'Conferir no lugar da coordenação técnica', [['conferir', 'Conferido', ''], ['devolver', 'Devolver para corrigir', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)'));
-    if (papel === 'coord_geral' && x.situacao === 'conferido') acoes.push(formMover(x, 'Autorizar e mandar para a FUNCERN', [['autorizar', 'Autorizar', 'pri'], ['devolver', 'Devolver para corrigir', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)', true));
+    const geral = papel === 'coord_geral';
+    if (!souDono && papel !== 'coord_geral' && souConferente() && x.situacao === 'enviado') acoes.push(formMover(x, 'Conferência', [['conferir', 'Conferido: mandar para a coordenação geral', 'pri'], ['devolver', 'Devolver para corrigir', 'perigo']], 'Observação (obrigatória para devolver)'));
+    if (geral && x.situacao === 'enviado') {
+      if (souConferente()) acoes.push(formMover(x, 'Conferência (sem coordenação técnica e sem auxiliar)', [['conferir', 'Conferido', 'pri'], ['devolver', 'Devolver para corrigir', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)'));
+      else if (legado()) acoes.push(formMover(x, 'Conferir no lugar da coordenação técnica', [['conferir', 'Conferido', ''], ['devolver', 'Devolver para corrigir', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)'));
+      else acoes.push(`<div class="aviso">Quem confere este pedido é ${nomeConf()}. Depois da conferência, ele volta para você autorizar.</div>` + formMover(x, 'Recusar sem esperar a conferência', [['recusar', 'Recusar', 'perigo']], 'Motivo da recusa (obrigatório)'));
+    }
+    if (geral && x.situacao === 'conferido') {
+      const mesmo = x.conferido_por === eu.id && conf() !== 'coord_geral' && !legado();
+      if (mesmo) acoes.push(`<div class="aviso erro">Você conferiu este pedido, então não pode autorizá-lo: cada pedido passa por duas pessoas. Devolva para ${nomeConf()} conferir.</div>` + formMover(x, 'Devolver ou recusar', [['devolver', 'Devolver para corrigir', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória)'));
+      else acoes.push(formMover(x, 'Autorizar e mandar para a FUNCERN', [['autorizar', 'Autorizar', 'pri'], ['devolver', 'Devolver para corrigir', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)', true));
+    }
     if (papel === 'coord_geral' && x.situacao === 'autorizado') acoes.push(formMover(x, 'Protocolo da FUNCERN', [['protocolo', 'Salvar protocolo', 'pri']], null, true));
     const ver = x.tipo === 'passagem' ? `<div class="bloco"><h3>Viagem</h3><dl class="dl">
         <dt>Para quê</dt><dd>${E(FINALIDADE[d.finalidade] || '—')}</dd><dt>Trecho</dt><dd>${E(d.origem || '—')} → ${E(d.destino || '—')}${d.volta_para ? ' · volta para ' + E(d.volta_para) : ''}</dd>
@@ -334,7 +351,7 @@
       await U().ocupado(form, async () => {
         await S().api.salvarPedido(form.dataset.id || null, t, titulo, data, d, just || null);
         await recarregar(); U().fecharPainel();
-        U().toast((form.dataset.id ? 'Pedido reenviado' : 'Pedido enviado') + ' para a coordenação técnica conferir.');
+        U().toast((form.dataset.id ? 'Pedido reenviado' : 'Pedido enviado') + ' para ' + nomeConf() + ' conferir.');
       });
     }
     if (tipo === 'viag-mover') {
@@ -349,6 +366,20 @@
     }
   }
 
-  MQ.viagUI = { secaoBolsista, abaCoord, painel, clique, enviar, podeVer, contaMinha: () => lista().filter(minhaVez).length, textoFuncern,
+  /* ---------- auxiliar administrativo: confere só enquanto não há coordenação técnica ativa ---------- */
+  function secaoConferente() {
+    const eu = S().eu; if (!eu || eu.papel !== 'auxiliar_adm' || S().quemConfere !== 'auxiliar_adm') return '';
+    const vez = lista().filter(minhaVez);
+    const meus = lista().filter(p => p.conferido_por === eu.id);
+    return `<section class="secao viag" aria-labelledby="t-conf">
+      <div class="secao-cab"><div><h2 id="t-conf">Passagens e eventos para conferir <span class="conta-t${vez.length ? '' : ' zero'}">${vez.length}</span></h2>
+        <p>Enquanto o projeto está sem coordenação técnica, você confere os pedidos das bolsistas de articulação e a coordenação geral autoriza. Assim cada pedido passa por duas pessoas. Quando a técnica for cadastrada, os pedidos voltam para ela e somem desta tela.</p></div></div>
+      <p class="small muted">Confira: prazo (passagem ${PRAZO.passagem} dias, evento ${PRAZO.evento} dias antes, ou justificativa), finalidade, trecho e datas, e se os dados das passageiras estão completos e iguais aos documentos. Os dados pessoais são só para a conferência: não copie nem repasse.</p>
+      ${vez.length ? `<div class="pag-lista">${vez.map(p => linha(p, true)).join('')}</div>` : '<p class="muted">Nenhum pedido esperando conferência.</p>'}
+      ${meus.length ? `<details class="hist"><summary>Conferidos por você (${meus.length})</summary><div class="pag-lista" style="padding:0 18px 16px">${meus.map(p => linha(p, true)).join('')}</div></details>` : ''}
+    </section>`;
+  }
+
+  MQ.viagUI = { secaoBolsista, secaoConferente, souConferente, abaCoord, painel, clique, enviar, podeVer, contaMinha: () => lista().filter(minhaVez).length, textoFuncern,
     validar, lerForm };   // validar e lerForm expostos para os testes unitários (testes/unit)
 })();
