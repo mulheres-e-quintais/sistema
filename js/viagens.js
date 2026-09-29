@@ -24,7 +24,8 @@
   const podeVer = papel => ['articulacao', 'coord_tecnico', 'coord_geral'].includes(papel);
   const semBanco = () => '<div class="aviso">Os pedidos de passagem e de evento ainda não estão instalados no servidor. A coordenação geral roda o arquivo <b>22_passagens_eventos.sql</b> no Supabase.</div>';
   const diasAte = d => Math.round((new Date(d + 'T12:00:00') - new Date(R.hoje() + 'T12:00:00')) / 864e5);
-  const minhaVez = p => { const papel = S().eu.papel; return (papel === 'coord_tecnico' && p.situacao === 'enviado') || (papel === 'coord_geral' && p.situacao === 'conferido'); };
+  const minhaVez = p => { const papel = S().eu.papel; const sem = MQ.ui.semTecnica && MQ.ui.semTecnica();
+    return (papel === 'coord_tecnico' && p.situacao === 'enviado') || (papel === 'coord_geral' && (p.situacao === 'conferido' || (sem && p.situacao === 'enviado'))); };
   const nPass = p => p.tipo === 'passagem' ? ((p.dados && p.dados.passageiros) || []).length : 0;
 
   /* ---------- bolsista de articulação ---------- */
@@ -78,7 +79,8 @@
         <div><span class="v num">${usados('pedagogico')}<small> de ${PREVISTO.pedagogico}</small></span><span class="l">passagens de acompanhamento pedagógico</span></div>
         <div><span class="v num">${ufsEvento.size}<small> de ${PREVISTO.evento}</small></span><span class="l">estados com evento autorizado</span></div></div>
       <p class="small muted">Passagens contadas por pessoa (ida e volta). ${[...ufsEvento].length ? 'Evento autorizado em: ' + [...ufsEvento].join(', ') + '.' : ''}</p>
-      ${bloco(souGeral ? 'Esperando a sua autorização' : 'Esperando a sua conferência', vez, 'Nada esperando você.')}
+      ${souGeral && MQ.ui.semTecnica && MQ.ui.semTecnica() ? '<div class="aviso">Sem coordenação técnica ativa: você confere e autoriza os pedidos.</div>' : ''}
+      ${bloco(souGeral ? (MQ.ui.semTecnica && MQ.ui.semTecnica() ? 'Esperando você (conferir ou autorizar)' : 'Esperando a sua autorização') : 'Esperando a sua conferência', vez, 'Nada esperando você.')}
       ${outros.length ? bloco(souGeral ? 'Com a coordenação técnica (você pode conferir se ela não puder)' : 'Com a coordenação geral', outros, '') : ''}
       ${dev.length ? bloco('Devolvidos para a bolsista corrigir', dev, '') : ''}
       <details class="hist"><summary>Autorizados (${aut.length})</summary><div class="pag-lista" style="padding:0 18px 16px">${aut.map(p => linha(p, true)).join('') || '<p class="muted">Nenhum ainda.</p>'}</div></details>

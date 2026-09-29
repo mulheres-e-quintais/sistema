@@ -139,7 +139,10 @@
     render();
     if (r.enviados && avisar !== false) toast(r.enviados + (r.enviados > 1 ? ' registros enviados.' : ' registro enviado.'));
   }
-  MQ.ui = { S, esc, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: () => render(), abrirPainel: p => abrirPainel(p), fecharPainel: () => fecharPainel(),
+  /* sem coordenação técnica ativa (vaga aberta, desligada): a coordenação geral assume a vez dela
+     nos contadores e listas, para nenhum pedido ficar parado sem aviso. Só vale para quem vê a equipe toda. */
+  const semTecnica = () => !!(S.eu && S.eu.papel === 'coord_geral') && !(S.equipe || []).some(m => m.papel === 'coord_tecnico' && m.status === 'ativa');
+  MQ.ui = { S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: () => render(), abrirPainel: p => abrirPainel(p), fecharPainel: () => fecharPainel(),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), sincronizar: a => sincronizar(a),
     porId: id => porId(id), avatar: (m, t) => avatar(m, t), passos: m => passos(m), dadosDL: m => dadosDL(m), botaoFoto: m => botaoFoto(m), cartaoPessoa: m => cartaoPessoa(m) };
 

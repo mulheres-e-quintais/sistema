@@ -104,7 +104,7 @@
   function abaCoord() {
     if (S().pagSemBanco) return semBanco();
     const eu = S().eu; const souGeral = eu.papel === 'coord_geral';
-    const minhaVez = s => s.situacao === 'solicitada' && s.equipe_id !== eu.id && quemAvaliza(s.tipo, pessoa(s.equipe_id).papel) === eu.papel;
+    const minhaVez = s => s.situacao === 'solicitada' && s.equipe_id !== eu.id && (quemAvaliza(s.tipo, pessoa(s.equipe_id).papel) === eu.papel || (U().semTecnica && U().semTecnica()));
     const aval = lista().filter(minhaVez);
     const outrasAval = lista().filter(s => s.situacao === 'solicitada' && !minhaVez(s));
     const arlo = lista().filter(s => s.situacao === 'avalizada'), dev = lista().filter(s => s.situacao === 'devolvida'), lanc = lista().filter(s => s.situacao === 'lancada');
@@ -118,6 +118,7 @@
         <div><span class="v num">${arlo.length}</span><span class="l">com aval, falta lançar no Arlo</span></div>
         <div><span class="v num">${dev.length}</span><span class="l">devolvidas para corrigir</span></div>
         <div><span class="v num">${brl(soma(lanc))}</span><span class="l">lançado no Arlo (${lanc.length})</span></div></div>
+      ${U().semTecnica && U().semTecnica() ? '<div class="aviso">Sem coordenação técnica ativa: os avais que seriam dela estão com você.</div>' : ''}
       ${bloco('Esperando o seu aval', aval, 'Nada esperando o seu aval.')}
       ${outrasAval.length ? bloco(souGeral ? 'Com a coordenação técnica (você pode dar o aval se ela não puder)' : 'Com a coordenação geral', outrasAval, '') : ''}
       ${bloco('Com aval, falta o auxiliar lançar no Arlo', arlo, 'Nenhuma.')}
@@ -237,5 +238,5 @@
   }
 
   MQ.pagUI = { secaoMinha, abaCoord, secaoAuxiliar, painel, clique, enviar,
-    contaAval: () => { const eu = S().eu; return lista().filter(s => s.situacao === 'solicitada' && s.equipe_id !== eu.id && quemAvaliza(s.tipo, pessoa(s.equipe_id).papel) === eu.papel).length; } };
+    contaAval: () => { const eu = S().eu; const sem = U().semTecnica && U().semTecnica(); return lista().filter(s => s.situacao === 'solicitada' && s.equipe_id !== eu.id && (sem || quemAvaliza(s.tipo, pessoa(s.equipe_id).papel) === eu.papel)).length; } };
 })();

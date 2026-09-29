@@ -121,3 +121,29 @@ describe('Documentos', () => {
     assert.ok(!texto(h).includes('Documentos do projeto')); assert.equal(botoes(h, 'doc-novo').length, 0);
   });
 });
+
+/* ================================================================== SEM COORDENAÇÃO TÉCNICA */
+describe('Sem coordenação técnica ativa, a coordenação geral assume a vez dela', () => {
+  const pass = { finalidade: 'intercambio', passageiros: [{ nome: 'Maria das Dores', cpf: '52998224725', nascimento: '1970-01-01', rg: '1' }] };
+  const semTec = t => { t.S.equipe = t.S.equipe.map(m => m.papel === 'coord_tecnico' ? Object.assign({}, m, { status: 'desligada' }) : m); };
+  test('com técnica ativa: bolsa da bolsista NÃO conta para a geral (fluxo normal)', async () => {
+    const t = await montar('bolsista'); await t.api.solicitarPagamento('bolsa', mes(), 1000, REL, [], {});
+    await t.trocar('coord_geral'); assert.equal(t.MQ.ui.semTecnica(), false); assert.equal(t.MQ.pagUI.contaAval(), 0);
+  });
+  test('sem técnica: a bolsa da bolsista conta no aviso da geral e aparece em "Esperando o seu aval"', async () => {
+    const t = await montar('bolsista'); await t.api.solicitarPagamento('bolsa', mes(), 1000, REL, [], {});
+    await t.trocar('coord_geral'); semTec(t);
+    assert.equal(t.MQ.ui.semTecnica(), true); assert.equal(t.MQ.pagUI.contaAval(), 1);
+    const h = texto(t.aba('pagamentos'));
+    assert.ok(h.includes('Sem coordenação técnica ativa')); assert.ok(!h.includes('Com a coordenação técnica'));
+  });
+  test('sem técnica: pedido de passagem recém-enviado conta para a geral', async () => {
+    const t = await montar('bolsista'); await t.api.salvarPedido(null, 'passagem', 'Intercâmbio em Juazeiro', diaMais(50), pass);
+    await t.trocar('coord_geral'); assert.equal(t.MQ.viagUI.contaMinha(), 0);
+    semTec(t); assert.equal(t.MQ.viagUI.contaMinha(), 1);
+    assert.ok(texto(t.aba('viagens')).includes('Esperando você (conferir ou autorizar)'));
+  });
+  test('a regra só vale para a coordenação geral (bolsista não vê a equipe toda)', async () => {
+    const t = await montar('bolsista'); t.S.equipe = []; assert.equal(t.MQ.ui.semTecnica(), false);
+  });
+});
