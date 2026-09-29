@@ -196,7 +196,7 @@
     const aptas = pagaveis.filter(m => R.situacao(m).cod === 'ok').length;
     const pode = ABAS_PAPEL[S.eu.papel] || ABAS_PAPEL.coord_tecnico;
     const aba = pode.includes(S.aba) ? S.aba : pode[0];
-    const abas = abasCoord().map(([id, t, n]) => [id, t + (n ? ` <span class="conta">${n}</span>` : '')]);
+    const abas = abasCoord().map(([id, t, n]) => [id, `<span class="aba-t" data-t="${esc(t)}">${t}</span>` + (n ? ` <span class="conta">${n}</span>` : '')]);
     const nav = `<nav class="abas" aria-label="Seções">${abas.map(([id, t]) => `<button type="button" data-acao="aba" data-aba="${id}" ${aba === id ? 'aria-current="page"' : ''}>${t}</button>`).join('')}</nav>
       <details class="abas-m"><summary><span class="small muted">Seção</span> <b>${(abas.find(([id]) => id === aba) || abas[0])[1]}</b><span class="abas-m-seta" aria-hidden="true">▾</span></summary>
         <div class="abas-m-grade">${abas.map(([id, t]) => `<button type="button" data-acao="aba" data-aba="${id}" ${aba === id ? 'aria-current="page"' : ''}>${t}</button>`).join('')}</div></details>`;
@@ -229,7 +229,9 @@
     else if (aba === 'fic') corpo = MQ.ficUI ? MQ.ficUI.aba() : '';
     else if (aba === 'pagamentos') corpo = MQ.pagUI ? MQ.pagUI.abaCoord() : '';
     else if (aba === 'campo') corpo = (MQ.campoUI ? MQ.campoUI.abaCoord() : '') + (MQ.vitrineUI && !S.campoSemBanco ? MQ.vitrineUI.secaoCoord() : '');
-    else corpo = `<section class="secao" aria-labelledby="t-h"><h2 id="t-h">Histórico de alterações</h2>${historico()}</section>`;
+    else corpo = `<div class="cab"><div><span class="eyebrow">Histórico</span><h1 id="t-h">Histórico de alterações</h1>
+        <p>Quem fez o quê, e quando: cadastros, aprovações, pagamentos, códigos de acesso e consultas a dados bancários. Serve para a prestação de contas.</p></div></div>
+      <section class="secao" aria-label="Registros">${historico()}</section>`;
     const avisoEx = S.exemplo ? `<div class="aviso erro" role="status"><b>Este sistema está com dados de exemplo (${S.exemplo} registros inventados).</b> Servem para testar; não aparecem na vitrine pública. Antes de cadastrar a equipe e as fichas de verdade, a coordenação geral roda o arquivo 06_apagar_exemplo.sql no Supabase.</div>` : '';
     return `<main class="wrap" id="principal">${avisoEx}${nav}${corpo}</main>`;
   }
@@ -315,7 +317,7 @@
       ${l.length ? `<div class="grade-prof">${l.map(linha).join('')}</div>` : `<p class="muted">${vazio}</p>`}</section>`;
     return `<main class="wrap" id="principal">
       <div class="cab"><div><span class="eyebrow">${esc(P.auxiliar_adm.nome)}</span><h1>Olá, ${esc(nomeDe(eu).split(' ')[0])}</h1><p>${esc(P.auxiliar_adm.faz)}</p></div>
-        <span class="chip ${s.cod}" style="font-size:13px;padding:4px 12px">${esc(s.rot)}</span></div>
+        <span class="chip chip-lg ${s.cod}">${esc(s.rot)}</span></div>
       <div class="resumo">
         <div><span class="v num">${pessoas.length}</span><span class="l">pessoas na equipe</span></div>
         <div><span class="v num" ${semArlo.length ? 'style="color:var(--crit)"' : ''}>${semArlo.length}</span><span class="l">falta cadastrar no Arlo</span></div>
@@ -461,7 +463,7 @@
     const s = R.situacao(m);
     return `<main class="wrap" id="principal">
       <div class="cab"><div><span class="eyebrow">${esc(P[m.papel].nome)} · ${esc(nomeUF(m.uf))}</span><h1>Olá, ${esc(nomeDe(m).split(' ')[0])}</h1>
-        <p>${esc(P[m.papel].faz)}</p></div><span class="chip ${s.cod}" style="font-size:13px;padding:4px 12px">${esc(s.rot)}</span></div>
+        <p>${esc(P[m.papel].faz)}</p></div><span class="chip chip-lg ${s.cod}">${esc(s.rot)}</span></div>
       ${MQ.entregasUI ? MQ.entregasUI.blocoCiencia() : ''}
       ${s.cod === 'ok' ? '' : `<div class="bloco"><h2>Habilitação para receber a bolsa</h2><p class="small muted">A bolsa de ${R.fmtBRL(P[m.papel].bolsa || 0)} por mês só é paga pela FUNCERN depois destes passos. Dúvidas sobre matrícula e AVA: professores do curso FIC. Documentos, conta ou Pix: auxiliar administrativo.</p>${passos(m)}</div>`}
       ${MQ.entregasUI ? MQ.entregasUI.cartaoBolsista() : ''}
@@ -661,7 +663,7 @@
         <span class="hab-seta" aria-hidden="true"></span></summary>
       <form class="f" data-form="hab" data-id="${m.id}" style="margin-top:12px" novalidate>
       <div class="campos">
-        ${!fic ? '' : `<div class="campo inteiro"><span class="dica" style="font-size:14px">${turma ? `Matrícula no FIC registrada pelo professor na turma <b>${esc(turma.nome)}</b> (nº ${esc(mt.numero)}, ${R.fmtData(mt.matriculado_em)}).`
+        ${!fic ? '' : `<div class="campo inteiro"><span class="dica">${turma ? `Matrícula no FIC registrada pelo professor na turma <b>${esc(turma.nome)}</b> (nº ${esc(mt.numero)}, ${R.fmtData(mt.matriculado_em)}).`
           : m.matricula_fic_em ? `Matrícula no FIC registrada em ${R.fmtData(m.matricula_fic_em)} (nº ${esc(m.matricula_fic_numero || '')}), ainda sem turma no sistema.` : '<b>Matrícula no FIC: aguardando.</b>'} A matrícula é registrada só pelos professores do curso, na aba Curso FIC.</span></div>`}
         <div class="campo"><label for="h-fun">Cadastrado no Arlo (FUNCERN) em</label><div class="data-hoje"><input id="h-fun" name="docs_funcern_em" type="date" max="${R.hoje()}" value="${esc(m.docs_funcern_em || '')}"><button type="button" class="btn peq" data-acao="data-hoje" data-alvo="h-fun">Hoje</button></div></div>
         <div class="campo"><label for="h-ter">Termo de compromisso assinado em</label><div class="data-hoje"><input id="h-ter" name="termo_assinado_em" type="date" max="${R.hoje()}" value="${esc(m.termo_assinado_em || '')}"><button type="button" class="btn peq" data-acao="data-hoje" data-alvo="h-ter">Hoje</button></div></div>

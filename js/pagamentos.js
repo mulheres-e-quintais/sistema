@@ -55,7 +55,7 @@
 
   function cartaoAjuda(eu, m, s, hab) {
     if (s && s.situacao !== 'devolvida') return `<div class="bloco pag-c"><h3>Ajuda de custo · ${nomeMes(m)}</h3>
-      <p class="num" style="font-size:22px;margin:0">${brl(s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado)}</p>${situacaoTxt(s)}</div>`;
+      <p class="num valor-destaque">${brl(s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado)}</p>${situacaoTxt(s)}</div>`;
     if (!garantirCustos()) return '<div class="bloco pag-c"><p class="carregando">Calculando…</p></div>';
     const vinc = vinculadas();
     const feitas = (S().visitas || []).filter(v => v.executor_id === eu.id && v.situacao === 'realizada' && String(v.data_realizada).slice(0, 7) === m && !v._fila)
@@ -83,7 +83,7 @@
   function cartaoBolsa(eu, m, s, hab) {
     const valor = P[eu.papel].bolsa;
     if (s && s.situacao !== 'devolvida') return `<div class="bloco pag-c"><h3>Bolsa · ${nomeMes(m)}</h3>
-      <p class="num" style="font-size:22px;margin:0">${valor ? brl(s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado) : 'Conforme o termo'}</p>${situacaoTxt(s)}</div>`;
+      <p class="num valor-destaque">${valor ? brl(s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado) : 'Conforme o termo'}</p>${situacaoTxt(s)}</div>`;
     return `<form class="bloco pag-c" data-form="pag-bolsa" data-mes="${m}" novalidate><h3>Bolsa · ${nomeMes(m)}</h3>
       ${s ? situacaoTxt(s) : ''}
       <p class="small muted">${valor ? 'Valor do termo de compromisso: <b>' + brl(valor) + '</b>.' : 'Valor conforme o termo de compromisso.'} O aval é da ${quemAvaliza('bolsa', eu.papel) === 'coord_geral' ? 'coordenação geral' : 'coordenação técnica'}.</p>
