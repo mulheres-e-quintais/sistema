@@ -329,7 +329,7 @@
           'Se você já recebe outra bolsa, avise a coordenação antes de se cadastrar.']],
         ['Com quem falar', [
           'Fale primeiro com a <b>coordenação técnica</b> do projeto.',
-          'Se ela não puder resolver: <b>coordenação geral</b> para questões gerais do projeto; <b>professores do FIC</b> para matrícula, curso e acesso ao AVA; <b>apoio administrativo</b> para documentos, conta ou Pix e pagamento.']]
+          'Se ela não puder resolver: <b>coordenação geral</b> para questões gerais do projeto; <b>professores do FIC</b> para matrícula, curso e acesso ao AVA; <b>auxiliar administrativo</b> para documentos, conta ou Pix e pagamento.']]
       ],
       rodape: 'Realização: Subsecretaria de Mulheres Rurais · IFRN · FUNCERN'
     },
@@ -359,7 +359,7 @@
         ['Com quem falar', [
           'Agenda das visitas: a <b>bolsista do estado</b>.',
           'Dúvidas do trabalho: a <b>coordenação técnica</b>.',
-          'Curso e AVA: os <b>professores do FIC</b>. Documentos, conta ou Pix e pagamento: o <b>apoio administrativo</b>.']]
+          'Curso e AVA: os <b>professores do FIC</b>. Documentos, conta ou Pix e pagamento: o <b>auxiliar administrativo</b>.']]
       ],
       rodape: 'Realização: Subsecretaria de Mulheres Rurais · IFRN · FUNCERN'
     },

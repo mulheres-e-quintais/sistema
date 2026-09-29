@@ -51,7 +51,7 @@
       if (p.id === 'funcern') itens.push({ id: 'arlo', t: 'Cadastro no Arlo (FUNCERN) ainda não registrado',
         d: (m.cadastro_arlo ? 'Você informou que já tem cadastro no Arlo: ' + quemHab + ' precisa conferir e registrar.' : 'Quem faz o seu cadastro no Arlo é ' + quemHab + ', com os seus dados e a sua conta.') + ' Se pedirem algum documento, envie logo.' });
       if (p.id === 'termo') itens.push({ id: 'termo', t: 'Termo de compromisso ainda não assinado',
-        d: 'Assine o termo de compromisso e entregue a ' + quemHab + ', que registra no sistema.' });
+        d: 'Assine o termo de compromisso e entregue ' + quemHab.replace(/^a /, 'à ').replace(/^o /, 'ao ') + ', que registra no sistema.' });
     });
     return { itens, carregando, m };
   }

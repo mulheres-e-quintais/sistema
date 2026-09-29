@@ -48,6 +48,10 @@ begin
       raise exception 'O arquivo e quem enviou não mudam. Para trocar o arquivo, arquive este documento e anexe outro.';
     end if;
     if old.arquivado_em is not null and new.arquivado_em is null then raise exception 'Documento arquivado não volta. Anexe de novo, se precisar.'; end if;
+    if old.arquivado_em is not null and (new.arquivado_em is distinct from old.arquivado_em or new.motivo_arquivo is distinct from old.motivo_arquivo
+        or new.arquivado_por is distinct from old.arquivado_por) then
+      raise exception 'Este documento já está arquivado.';
+    end if;
     if new.arquivado_em is not null and old.arquivado_em is null then
       if length(trim(coalesce(new.motivo_arquivo, ''))) < 5 then raise exception 'Para arquivar, escreva o motivo.'; end if;
       new.arquivado_por := public.meu_id(); new.arquivado_em := now();

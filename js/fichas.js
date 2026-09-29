@@ -41,8 +41,15 @@
     const s = MQ.SITUACOES[f.situacao] || {}; return `<span class="chip ${s.cls}">${E(s.nome)}</span>`;
   };
 
+  /* "Mesma casa?" na lista: conta os endereços UMA vez por mudança de dados (antes: a lista inteira para cada linha) */
+  let memoCasas = { fichas: null, fila: null, n: null };
+  function contagemCasas() {
+    const S = U().S;
+    if (memoCasas.fichas !== S.fichas || memoCasas.fila !== S.fila) memoCasas = { fichas: S.fichas, fila: S.fila, n: R.contarCasas(todas()) };
+    return memoCasas.n;
+  }
   function linhaFicha(f, mostrarUF) {
-    const casas = R.casasParecidas(f, todas());
+    const k = R.chaveCasa(f); const casas = k && (contagemCasas().get(k) || 0) > 1 ? [1] : [];
     return `<button class="vagabtn ficha-linha" data-acao="ficha-ver" data-id="${E(f.id)}">
       <span class="nm">${E(f.nome)}${f.exemplo ? '' : ''}</span>
       <span style="display:flex;gap:6px;flex-wrap:wrap">${chipRes(f)}${chipSit(f)}${casas.length ? '<span class="chip crit">Mesma casa?</span>' : ''}</span>

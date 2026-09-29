@@ -62,67 +62,58 @@
   const chaveCache = () => 'mq-cache-' + (S.eu && S.eu.id);
   async function carregar() {
     try {
-      S.equipe = await S.api.listarEquipe();
-      // curso FIC (11_fic.sql): turmas e matrículas; o professor vê da equipe só o necessário para matricular
-      S.ficSemBanco = false;
+      /* Tudo o que não depende de outra coisa é buscado AO MESMO TEMPO (antes eram ~18 esperas em fila:
+         6 a 12 segundos em internet fraca). Cada parte continua com o seu tratamento: "sem o script no
+         banco" vira lista vazia; sem internet, o erro sobe e o sistema mostra a cópia do aparelho. */
+      const papel = S.eu.papel, coord = /^coord/.test(papel);
       const semFic = e => /PGRST20[25]|42P01|42883|does not exist|Could not find|schema cache/i.test(String((e.original && (e.original.code + ' ' + e.original.message)) || e.message));
-      if (/^coord|professor_fic/.test(S.eu.papel) && S.api.listarTurmas) {
-        try {
-          S.turmas = await S.api.listarTurmas(); S.matriculas = await S.api.listarMatriculas();
-          if (S.eu.papel === 'professor_fic') { const outros = await S.api.listarEquipeFic(); S.equipe = S.equipe.concat(outros.filter(o => !S.equipe.some(m => m.id === o.id))); }
-        } catch (e) { if (e.semRede || !semFic(e)) throw e; S.ficSemBanco = true; S.turmas = []; S.matriculas = []; }
-      } else { S.turmas = []; S.matriculas = []; }
-      S.fichas = ['professor_fic', 'auxiliar_adm'].includes(S.eu.papel) ? [] : await S.api.listarFichas();
-      // se o banco ainda não tiver as tabelas de campo (03_campo.sql), o resto do sistema continua funcionando
       const semTabela = e => !e.semRede && /PGRST205|42P01|does not exist|Could not find the table|schema cache/i.test(String((e.original && (e.original.code + ' ' + e.original.message)) || e.message));
       const opcional = async fn => { try { return fn ? await fn.call(S.api) : []; } catch (e) { if (semTabela(e)) { S.campoSemBanco = true; return []; } throw e; } };
-      S.visitas = await opcional(S.api.listarVisitas);
-      S.diagnosticos = await opcional(S.api.listarDiagnosticos);
-      // avaliação final (13_avaliacao.sql); sem o script, o resto continua
-      S.avalSemBanco = false; S.avaliacoes = [];
-      if (S.api.listarAvaliacoes && !['professor_fic', 'auxiliar_adm'].includes(S.eu.papel)) {
-        try { S.avaliacoes = await S.api.listarAvaliacoes(); } catch (e) { if (e.semRede || !semFic(e)) throw e; S.avalSemBanco = true; }
-      }
-      S.aud = S.eu.papel === 'coord_geral' ? await S.api.auditoria() : [];   // o histórico é só da coordenação geral
-      // solicitações de pagamento (12_pagamentos.sql); sem o script, o resto continua
-      S.pagSemBanco = false;
-      if (S.api.listarSolicitacoes) {
-        try { const r = await S.api.listarSolicitacoes(); S.solic = r.lista; S.solicVis = r.vinculos; }
-        catch (e) { if (e.semRede || !semFic(e)) throw e; S.pagSemBanco = true; S.solic = []; S.solicVis = {}; }
-      }
-      // documentos do projeto (24_documentos.sql): só a coordenação geral
-      S.docSemBanco = false; S.documentos = [];
-      if (S.eu.papel === 'coord_geral' && S.api.listarDocumentos) {
-        try { S.documentos = await S.api.listarDocumentos(); } catch (e) { if (e.semRede || !semFic(e)) throw e; S.docSemBanco = true; }
-      }
-      // pedidos de passagem e evento (22_passagens_eventos.sql): só articulação, coordenação técnica e geral
-      S.pedSemBanco = false; S.pedidos = []; S.quemConfere = null;
-      if (S.api.quemConferePedidos && ['coord_geral', 'coord_tecnico', 'articulacao', 'auxiliar_adm'].includes(S.eu.papel)) {
-        try { S.quemConfere = await S.api.quemConferePedidos(); } catch (e) { if (e.semRede) throw e; }
-      }
-      if (S.api.listarPedidos && MQ.viagUI && (MQ.viagUI.podeVer(S.eu.papel) || MQ.viagUI.souConferente())) {
-        try { S.pedidos = await S.api.listarPedidos(); } catch (e) { if (e.semRede || !semFic(e)) throw e; S.pedSemBanco = true; }
-      }
-      // entregas do mês e ciência do guia (19_entregas_do_mes.sql); sem o script, o resto continua
-      S.entregasSemBanco = false; S.entregas = []; S.ciencias = [];
-      if (S.api.listarEntregas && !['auxiliar_adm'].includes(S.eu.papel)) {
-        try { S.entregas = await S.api.listarEntregas(); S.ciencias = await S.api.listarCiencias(); }
-        catch (e) { if (e.semRede || !semFic(e)) throw e; S.entregasSemBanco = true; }
-      }
-      // roteiro de testes (21_roteiro_testes.sql): minhas respostas; a coordenação geral vê todas
-      S.testesSemBanco = false; S.testes = [];
-      if (S.api.listarTestes) { try { S.testes = await S.api.listarTestes(); } catch (e) { if (e.semRede) throw e; S.testesSemBanco = true; } }
-      // perfil no campo da equipe (visão geral da coordenação geral)
-      S.perfisSemBanco = false; S.perfisEquipe = [];
-      if (S.eu.papel === 'coord_geral' && S.api.listarPerfisEquipe) {
-        try { S.perfisEquipe = await S.api.listarPerfisEquipe(); } catch (e) { if (e.semRede) throw e; S.perfisSemBanco = true; }
-      }
-      // valor do kit por quintal (para a projeção do investimento no diagnóstico)
+      // parte que pode não estar instalada no banco: devolve [ok, valor]; sem internet ou erro de verdade, sobe
+      const talvez = async (fn, seErro) => { try { return [true, await fn()]; } catch (e) { if (e.semRede || !seErro(e)) throw e; return [false, null]; } };
+      const qualquer = e => !e.semRede;   // para as partes em que qualquer erro que não seja de rede só desliga a parte
       S.kitPar = { valor_quintal: MQ.KIT_QUINTAL };   // R$ 4.500 por quintal, fixado no plano de trabalho
-      S.pre = /^coord/.test(S.eu.papel) && S.api.listarPreCadastros ? await opcional(S.api.listarPreCadastros) : [];
+      const campoPapel = !['professor_fic', 'auxiliar_adm'].includes(papel);
+      const [equipe, fic, fichas, visitas, diagnosticos, aval, aud, pag, docs, quem, entregas, testes, perfis, pre, exemplo] = await Promise.all([
+        S.api.listarEquipe(),
+        // curso FIC (11_fic.sql): turmas e matrículas
+        (coord || papel === 'professor_fic') && S.api.listarTurmas
+          ? talvez(() => Promise.all([S.api.listarTurmas(), S.api.listarMatriculas(), papel === 'professor_fic' ? S.api.listarEquipeFic() : []]), semFic) : [true, [[], [], []]],
+        campoPapel ? S.api.listarFichas() : [],
+        opcional(S.api.listarVisitas),        // sem o 03_campo.sql, o resto do sistema continua
+        opcional(S.api.listarDiagnosticos),
+        S.api.listarAvaliacoes && campoPapel ? talvez(() => S.api.listarAvaliacoes(), semFic) : [true, []],   // 13_avaliacao.sql
+        papel === 'coord_geral' ? S.api.auditoria() : [],   // o histórico é só da coordenação geral
+        S.api.listarSolicitacoes ? talvez(() => S.api.listarSolicitacoes(), semFic) : [false, null],          // 12_pagamentos.sql
+        papel === 'coord_geral' && S.api.listarDocumentos ? talvez(() => S.api.listarDocumentos(), semFic) : [true, []],   // 24_documentos.sql
+        S.api.quemConferePedidos && ['coord_geral', 'coord_tecnico', 'articulacao', 'auxiliar_adm'].includes(papel)
+          ? talvez(() => S.api.quemConferePedidos(), qualquer) : [true, null],                                // 26_conferencia_auxiliar.sql
+        S.api.listarEntregas && papel !== 'auxiliar_adm' ? talvez(() => Promise.all([S.api.listarEntregas(), S.api.listarCiencias()]), semFic) : [true, [[], []]],   // 19
+        S.api.listarTestes ? talvez(() => S.api.listarTestes(), qualquer) : [true, []],                     // 21_roteiro_testes.sql
+        papel === 'coord_geral' && S.api.listarPerfisEquipe ? talvez(() => S.api.listarPerfisEquipe(), qualquer) : [true, []],
+        coord && S.api.listarPreCadastros ? opcional(S.api.listarPreCadastros) : [],
+        coord && S.api.contarExemplo ? opcional(async () => [await S.api.contarExemplo()]).then(r => r[0] || 0) : 0
+      ]);
+      S.equipe = equipe;
+      S.ficSemBanco = !fic[0]; [S.turmas, S.matriculas] = fic[0] ? fic[1] : [[], []];
+      if (fic[0] && papel === 'professor_fic') { const ids = new Set(S.equipe.map(m => m.id)); S.equipe = S.equipe.concat(fic[1][2].filter(o => !ids.has(o.id))); }
+      S.fichas = fichas; S.visitas = visitas; S.diagnosticos = diagnosticos;
+      S.avalSemBanco = !aval[0]; S.avaliacoes = aval[0] ? aval[1] : [];
+      S.aud = aud;
+      S.pagSemBanco = !!S.api.listarSolicitacoes && !pag[0]; S.solic = pag[0] ? pag[1].lista : []; S.solicVis = pag[0] ? pag[1].vinculos : {};
+      S.docSemBanco = !docs[0]; S.documentos = docs[0] ? docs[1] : [];
+      S.quemConfere = quem[0] ? quem[1] : null;
+      S.entregasSemBanco = !entregas[0]; [S.entregas, S.ciencias] = entregas[0] ? entregas[1] : [[], []];
+      S.testesSemBanco = !testes[0]; S.testes = testes[0] ? testes[1] : [];
+      S.perfisSemBanco = !perfis[0]; S.perfisEquipe = perfis[0] ? perfis[1] : [];
+      S.pre = pre; S.exemplo = exemplo;
+      // segunda leva: os pedidos de viagem dependem de saber quem confere (22 e 26)
+      S.pedSemBanco = false; S.pedidos = [];
+      if (S.api.listarPedidos && MQ.viagUI && (MQ.viagUI.podeVer(papel) || MQ.viagUI.souConferente())) {
+        const r = await talvez(() => S.api.listarPedidos(), semFic); S.pedSemBanco = !r[0]; S.pedidos = r[0] ? r[1] : [];
+      }
       // cálculo de custos carregado em segundo plano: a aba Custos abre pronta, sem "Carregando…" e sem a página pular
-      if (/^coord/.test(S.eu.papel) && MQ.custosUI && !MQ.custosUI.pronto()) MQ.custosUI.garantir().then(() => { if (S.aba === 'custos') render(); }).catch(() => {});
-      S.exemplo = /^coord/.test(S.eu.papel) && S.api.contarExemplo ? await opcional(async () => [await S.api.contarExemplo()]).then(r => r[0] || 0) : 0;
+      if (coord && MQ.custosUI && !MQ.custosUI.pronto()) MQ.custosUI.garantir().then(() => { if (S.aba === 'custos') render(); }).catch(() => {});
       S.semRede = false;
       try { localStorage.setItem(chaveCache(), JSON.stringify({ equipe: S.equipe, fichas: S.fichas, visitas: S.visitas, diagnosticos: S.diagnosticos, aud: S.aud, em: Date.now() })); } catch (e) {}
     } catch (e) {
@@ -300,7 +291,7 @@
     let h = 0; for (const c of String(m.id || m.nome)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
     return `<span class="av" style="--av:${tam || 32}px;--avc:${CORES_AV[h % CORES_AV.length]}" aria-hidden="true">${esc(ini)}${m.foto_url ? `<img src="${esc(m.foto_url)}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span>`;
   }
-  const podeTrocarFoto = m => m.status === 'ativa' && (S.eu.id === m.id || (/^coord/.test(S.eu.papel) && m.papel !== 'coord_geral'));
+  const podeTrocarFoto = m => m.status === 'ativa' && (S.eu.id === m.id || (/^coord/.test(S.eu.papel) && R.podeEditarDados(S.eu.papel, m.papel)));
   const botaoFoto = m => podeTrocarFoto(m) ? `<label class="btn peq foto-btn">${m.foto_url ? 'Trocar foto' : 'Adicionar foto'}<input type="file" accept="image/*" data-foto-equipe="${m.id}" hidden></label>` : '';
 
   function cartaoPessoa(m) {
@@ -499,7 +490,7 @@
 
   /* "Meus dados": abre pelo botão com a foto, no alto, ao lado de Sair */
   const NOTA_DADOS = { coord_tecnico: 'a coordenação geral', professor_fic: 'a coordenação geral', auxiliar_adm: 'a coordenação geral',
-    articulacao: 'a coordenação técnica', apoio: 'a coordenação técnica', agente: 'a bolsista do estado ou a coordenação técnica' };
+    articulacao: 'a coordenação técnica', apoio: 'a coordenação técnica', agente: 'a coordenação técnica' };
   /* bloco recolhível que lembra se foi aberto (entre uma atualização da tela e outra) */
   S.aberto = S.aberto || {};
   function dobra(chave, titulo, conteudo, aberto) {
@@ -612,7 +603,7 @@
   window.addEventListener('resize', () => requestAnimationFrame(ajustarBroto));
 
   function semCadastro() {
-    return `<main class="wrap"><div class="login"><h1>Acesso não liberado</h1><p>Este e-mail não está ativo na equipe do projeto. Se você foi desligada ou trocou de e-mail, fale com a coordenação técnica.</p>
+    return `<main class="wrap"><div class="login"><h1>Acesso não liberado</h1><p>Este e-mail não está ativo na equipe do projeto. Se você foi desligada ou trocou de e-mail, fale com quem fez o seu cadastro (coordenação técnica ou coordenação geral).</p>
       <button class="btn" data-acao="sair">Sair</button></div></main>`;
   }
 
@@ -991,8 +982,7 @@
 
   document.addEventListener('input', ev => {
     const t = ev.target;
-    if (t.name === 'cpf' && !t.readOnly) t.value = R.fmtCPF(t.value);
-    if (t.name === 'telefone') t.value = R.fmtFone(t.value);
+    // CPF e telefone: a máscara (com o cursor no lugar certo) é do mascaras.js
     const c = t.closest && t.closest('.campo.tem-erro, .check.tem-erro, .criterio.tem-erro');   // some o aviso do campo assim que a pessoa corrige
     if (c) { c.classList.remove('tem-erro'); const e = c.querySelector('.erro'); if (e) e.remove(); }
   });

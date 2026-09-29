@@ -30,7 +30,7 @@
   const chip = p => `<span class="chip ${SIT[p.situacao][0]}">${rotSit(p)}</span>`;
   const podeVer = papel => ['articulacao', 'coord_tecnico', 'coord_geral'].includes(papel);
   const semBanco = () => '<div class="aviso">Os pedidos de passagem e de evento ainda não estão instalados no servidor. A coordenação geral roda o arquivo <b>22_passagens_eventos.sql</b> no Supabase.</div>';
-  const diasAte = d => Math.round((new Date(d + 'T12:00:00') - new Date(R.hoje() + 'T12:00:00')) / 864e5);
+  const diasAte = R.diasAte;
   const minhaVez = p => { const eu = S().eu;
     return (souConferente() && p.situacao === 'enviado' && p.solicitante_id !== eu.id) || (eu.papel === 'coord_geral' && p.situacao === 'conferido'); };
   const nPass = p => p.tipo === 'passagem' ? ((p.dados && p.dados.passageiros) || []).length : 0;
@@ -360,7 +360,7 @@
       await U().ocupado(form, async () => {
         await S().api.moverPedido(form.dataset.id, acao, obs || null, prot || null);
         await recarregar(); if (acao !== 'protocolo') U().fecharPainel();
-        U().toast({ conferir: 'Conferido. Foi para a coordenação geral autorizar.', devolver: 'Devolvido. A bolsista vê o motivo e pode corrigir.', autorizar: 'Autorizado. Mande o pedido para a FUNCERN (use "Copiar texto").',
+        U().toast({ conferir: S().eu.papel === 'coord_geral' ? 'Conferido. Agora você pode autorizar.' : 'Conferido. Foi para a coordenação geral autorizar.', devolver: 'Devolvido. A bolsista vê o motivo e pode corrigir.', autorizar: 'Autorizado. Mande o pedido para a FUNCERN (use "Copiar texto").',
           recusar: 'Pedido recusado.', cancelar: 'Pedido cancelado.', protocolo: 'Protocolo salvo.' }[acao]);
       });
     }

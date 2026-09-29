@@ -9,7 +9,7 @@ MQ.PROJETO = {
   ted: 'TED nº 30879420260063-006373 (7AAEKA)',
   vigencia: { inicio: '2026-09-14', fim: '2027-09-30' },
   inicioBolsas: '2026-10-01',
-  prazoIndicacao: '2026-09-30',   // MPA indica coordenação técnica e as 10 bolsistas
+  prazoIndicacao: '2026-10-09',   // (prorrogado em 29/09/2026) MPA indica coordenação técnica e as 10 bolsistas
   inicioDiagnosticos: '2026-10-23'
 };
 
@@ -129,7 +129,7 @@ MQ.METAS = [
   { id: 'M8', nome: 'Relatório final', alvo: 1, un: 'relatório', ini: 13, fim: 13, fonte: null }
 ];
 MQ.MARCOS = [
-  { d: '2026-09-30', t: 'MPA indica a coordenação técnica e as 10 bolsistas' },
+  { d: '2026-10-09', t: 'MPA indica a coordenação técnica e as 10 bolsistas' },
   { d: '2026-10-16', t: 'Termo de referência dos kits enviado à FUNCERN' },
   { d: '2026-10-23', t: 'Ata dos critérios de seleção assinada; início dos diagnósticos' },
   { d: '2027-01-31', t: 'Fim dos diagnósticos (Meta 2)' },

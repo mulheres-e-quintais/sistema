@@ -85,10 +85,15 @@
     if (!e.email && ativos.some(x => String(x.email).toLowerCase() === em)) e.email = 'Este e-mail já está em uso por outra pessoa ativa.';
     if (m.papel === 'auxiliar_adm' && !m.id && ativos.some(x => x.papel === 'auxiliar_adm'))
       e.papel = 'Já existe auxiliar administrativo ativo. Desligue antes de cadastrar outro.';
+    if (m.papel === 'coord_tecnico' && !m.id && ativos.some(x => x.papel === 'coord_tecnico'))
+      e.papel = 'Já existe coordenação técnica ativa. Desligue a atual antes de cadastrar outra.';
     if (R.ehBolsista(m.papel)) {
       if (!m.id && ativos.some(x => x.papel === m.papel && x.uf === m.uf))
         e.papel = 'Já existe ' + MQ.PAPEIS[m.papel].nome.toLowerCase() + ' ativa em ' + m.uf + '. Desligue antes de cadastrar outra.';
-      ['meta_diagnosticos', 'meta_quintais', 'meta_visitas'].forEach(c => { if (m[c] != null && +m[c] < 0) e[c] = 'Não pode ser negativo.'; });
+      // mesmos limites do banco (01_criar_banco.sql): 0 a 40 diagnósticos e quintais, 0 a 80 visitas
+      [['meta_diagnosticos', 40], ['meta_quintais', 40], ['meta_visitas', 80]].forEach(([c, max]) => {
+        if (m[c] == null || m[c] === '') return;
+        if (+m[c] < 0) e[c] = 'Não pode ser negativo.'; else if (+m[c] > max) e[c] = 'No máximo ' + max + '.'; });
     }
     return e;
   };
@@ -97,6 +102,7 @@
   R.mensagemErro = function (err) {
     const s = String((err && (err.message || err.details)) || err || '');
     if (/equipe_uma_bolsista_por_uf/.test(s)) return 'Já existe bolsista ativa nessa função e estado. Desligue a atual antes de cadastrar outra.';
+    if (/meta_(diagnosticos|quintais|visitas)/.test(s) && /check/.test(s)) return 'Previsão de atividades fora do limite: até 40 diagnósticos, 40 quintais e 80 visitas.';
     if (/equipe_uma_coordenacao/.test(s)) return 'Já existe coordenação técnica ativa. Desligue a atual antes de cadastrar outra.';
     if (/equipe_cpf_ativo/.test(s)) return 'Esta pessoa (CPF) já ocupa outra vaga ativa.';
     if (/equipe_email_ativo/.test(s)) return 'Este e-mail já está em uso por outra pessoa ativa.';
@@ -108,7 +114,8 @@
   R.hoje = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
   R.fmtData = d => (d ? d.slice(0, 10).split('-').reverse().join('/') : '');
   R.fmtBRL = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  R.diasAte = d => Math.ceil((new Date(d + 'T23:59:59') - new Date()) / 864e5);
+  // dias de calendário até a data: hoje = 0, amanhã = 1, ontem = -1 (não depende da hora do dia)
+  R.diasAte = d => Math.round((new Date(String(d).slice(0, 10) + 'T12:00:00') - new Date(R.hoje() + 'T12:00:00')) / 864e5);
 })();
 
 /* ---------- Regras da ficha de indicação ---------- */
@@ -132,9 +139,14 @@
     return ['nao_atende'];
   };
   /* Endereço "normalizado" para achar a mesma casa escrita de jeitos diferentes */
-  R.normEndereco = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const memoEnd = new Map();   // o mesmo endereço é normalizado muitas vezes por tela: guarda o resultado
+  R.normEndereco = s => { const k = String(s || ''); let v = memoEnd.get(k); if (v === undefined) { v = normEnd(k); if (memoEnd.size > 5000) memoEnd.clear(); memoEnd.set(k, v); } return v; };
+  const normEnd = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/\b(sitio|sit|rua|r|povoado|pov|fazenda|faz|assentamento|assent|comunidade|com|numero|n|no|s\/n|sn)\b\.?/g, ' ')
     .replace(/[^a-z0-9]+/g, ' ').trim();
+  /* chave da "mesma casa" (estado + município + endereço normalizados) e contagem de uma lista inteira de uma vez só */
+  R.chaveCasa = f => { const e = R.normEndereco(f.endereco); return e ? f.uf + '|' + R.normEndereco(f.municipio) + '|' + e : null; };
+  R.contarCasas = fichas => { const m = new Map(); fichas.forEach(f => { const k = R.chaveCasa(f); if (k) m.set(k, (m.get(k) || 0) + 1); }); return m; };
   R.casasParecidas = (f, fichas) => {
     const alvo = R.normEndereco(f.endereco); if (!alvo) return [];
     return fichas.filter(x => x.id !== f.id && x.uf === f.uf && R.normEndereco(x.municipio) === R.normEndereco(f.municipio)
