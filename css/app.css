@@ -1127,3 +1127,7 @@ form .acoes:last-child .btn.pri { min-width: 160px; }
 @media (max-width: 520px) { .criterio .sn-par { width: 100%; } form .acoes:last-child { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); } form .acoes:last-child .btn.pri { min-width: 0; } }
 .sn-par:has(> .sn:nth-child(3)) { display: flex; flex-wrap: wrap; }
 .sn-par:has(> .sn:nth-child(3)) .sn { flex: 1 1 auto; white-space: nowrap; }
+/* login: logomarca num selo escuro (as cores claras do símbolo somem no fundo bege) */
+.ent-marca img { height: 64px; width: 64px; object-fit: contain; padding: 8px; border-radius: 18px; background: var(--barra-bg);
+  box-shadow: 0 8px 20px -10px color-mix(in srgb, var(--barra-bg) 80%, transparent), inset 0 0 0 1px rgba(246, 237, 228, .12); }
+@media (max-width: 640px) { .ent-marca img { height: 54px; width: 54px; padding: 7px; border-radius: 16px; } }
