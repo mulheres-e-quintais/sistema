@@ -100,6 +100,18 @@ MQ.SITUACOES = {
   devolvida:  { nome: 'Devolvida para correção', cls: 'crit' }
 };
 MQ.VAGAS_UF = 40;
+/* Perfil das bolsistas (Guia das bolsistas, item 3) */
+MQ.PERFIL_BOLSISTA = {
+  todas: ['Ser mulher, preferencialmente agricultora ou com atuação junto às mulheres do território.',
+    'Morar no território de atuação do projeto ou próximo a ele.',
+    'Ter vínculo com movimentos ou organizações do campo e experiência com agricultura familiar ou agroecologia.',
+    'Ter disponibilidade para as atividades e para as visitas nos municípios do estado.',
+    'Ter celular com internet para acessar o curso, fotografar as atividades e enviar relatórios.',
+    'Saber ler e escrever para preencher fichas e relatórios simples.',
+    'Ter CPF e conta bancária ou chave Pix no próprio nome.'],
+  articulacao: 'Conhecer as comunidades e lideranças locais e ter facilidade para mobilizar e organizar atividades.',
+  apoio: 'Organização com registros, fotos e documentos, e disponibilidade para a logística das visitas.'
+};
 MQ.TERMO = {
   finalidade: 'O Projeto Quintais Produtivos para Mulheres Rurais, executado pelo IFRN com recursos do MDA, em parceria com o MPA e a FUNCERN, vai usar os seus dados só para: fazer o diagnóstico e o plano do seu quintal; comprar e entregar o kit e acompanhar a produção; prestar contas ao MDA e aos órgãos de controle (CGU, TCU); e produzir relatórios sem mostrar o seu nome quando os dados forem divulgados em números.',
   direitos: 'Você pode, a qualquer momento e sem custo, saber quais dados o projeto tem sobre você, pedir correção e retirar este consentimento. A retirada não apaga os registros que o projeto é obrigado a guardar para a prestação de contas. Os dados não serão vendidos nem repassados para outros fins (Lei nº 13.709/2018).'

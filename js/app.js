@@ -718,6 +718,10 @@
             <div class="campo"><label for="c-mq">Quintais</label><input id="c-mq" name="meta_quintais" type="number" min="0" inputmode="numeric" value="${v('meta_quintais')}"></div>
             <div class="campo"><label for="c-mv">Visitas</label><input id="c-mv" name="meta_visitas" type="number" min="0" inputmode="numeric" value="${v('meta_visitas')}"></div>
           </div></fieldset>` : ''}
+        ${bols && !edit && MQ.PERFIL_BOLSISTA ? `<fieldset class="perfil-bols"><legend>Perfil da bolsista</legend>
+          <p class="small muted">Antes de ${pre ? 'aprovar' : 'cadastrar'}, confira se a indicada tem este perfil (Guia das bolsistas, item 3).</p>
+          <p class="perfil-esp"><b>${esc(P[m.papel].nome)}:</b> ${esc(MQ.PERFIL_BOLSISTA[m.papel] || '')}</p>
+          <ul class="perfil-lista">${MQ.PERFIL_BOLSISTA.todas.map(t => `<li>${esc(t)}</li>`).join('')}</ul></fieldset>` : ''}
         <fieldset><legend>Proteção de dados</legend>
           <label class="check" id="w-lgpd"><input type="checkbox" id="c-lgpd" name="consentimento_lgpd" ${m.consentimento_lgpd ? 'checked' : ''}>
             <span>A pessoa foi informada e concorda que estes dados sejam usados só para a gestão do projeto e o pagamento da bolsa (Lei nº 13.709/2018).</span></label>
