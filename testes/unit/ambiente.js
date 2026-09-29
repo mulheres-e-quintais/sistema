@@ -36,7 +36,7 @@ function elementoFalso() {
  * opcoes.ui: objeto que substitui MQ.ui (para módulos que leem o estado da tela).
  */
 function carregar(arquivos, opcoes = {}) {
-  const ouvintes = {};
+  const ouvintes = {}; const ouvintesJanela = {};
   // #app e #painel guardam o HTML desenhado, para os testes das telas lerem
   const app = elementoFalso(); let painel = null;
   const corpo = Object.assign(elementoFalso(), { appendChild(el) { if (el.id === 'painel') painel = el; }, contains: () => false });
@@ -52,7 +52,7 @@ function carregar(arquivos, opcoes = {}) {
     localStorage: new ArmazenamentoFalso(), sessionStorage: new ArmazenamentoFalso(),
     navigator: { onLine: true, userAgent: 'node-teste' }, location: { origin: 'https://exemplo.test', pathname: '/sistema/', hash: '', host: 'exemplo.test' },
     document: documento, FormData: FormDataFalso, crypto: globalThis.crypto, fetch: async () => { throw new Error('Failed to fetch'); },
-    addEventListener() {}, removeEventListener() {}, matchMedia: () => ({ matches: false, addEventListener() {} }),
+    addEventListener(tipo, fn) { (ouvintesJanela[tipo] = ouvintesJanela[tipo] || []).push(fn); }, removeEventListener() {}, matchMedia: () => ({ matches: false, addEventListener() {} }),
     Event: class { constructor(t) { this.type = t; } }, indexedDB: undefined,
     MutationObserver: class { observe() {} disconnect() {} }, requestAnimationFrame: fn => setTimeout(fn, 0), scrollTo() {}, scrollY: 0, innerWidth: 390
   };
@@ -64,7 +64,7 @@ function carregar(arquivos, opcoes = {}) {
     new vm.Script(fs.readFileSync(arq, 'utf8'), { filename: arq }).runInContext(ctx);
   }
   if (opcoes.ui) janela.MQ.ui = Object.assign(janela.MQ.ui || {}, opcoes.ui);
-  return { MQ: janela.MQ, janela, ouvintes, app: () => app.innerHTML, painel: () => (painel && !painel.removido ? painel.innerHTML : '') };
+  return { MQ: janela.MQ, janela, ouvintes, ouvintesJanela, app: () => app.innerHTML, painel: () => (painel && !painel.removido ? painel.innerHTML : '') };
 }
 
 /* data relativa a hoje, no formato AAAA-MM-DD (fuso local) */

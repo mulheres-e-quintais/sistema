@@ -23,12 +23,30 @@
     S.api = producao ? MQ.apiSupabase : MQ.apiDemo;
     try {
       S.eu = await S.api.iniciar();
-      if (S.eu) { await carregar(); setTimeout(() => sincronizar(false), 500); }
+      // reabriu o sistema depois de 15 minutos sem uso: sai antes de mostrar qualquer dado
+      if (S.eu && MQ.sessao && MQ.sessao.venceu(MQ.sessao.ultimo())) await sairDoSistema(AVISO_INATIVO);
+      if (S.eu && !S.verEntrada) { if (MQ.sessao) MQ.sessao.tocar(true); await carregar(); setTimeout(() => sincronizar(false), 500); }
     } catch (e) { toast(e.message); }
+    if (MQ.sessao) MQ.sessao.iniciar({ ativo: () => !!S.eu && !S.verEntrada, aoVencer: () => sairDoSistema(AVISO_INATIVO) });
     render();
     if ('serviceWorker' in navigator && location.protocol === 'https:' && !MQ.CONFIG.semServiceWorker) {
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
+  }
+  const modoDemoAtivo = () => !!(S.api && S.api.modo === 'demo');
+  const AVISO_INATIVO = 'Você saiu do sistema depois de 15 minutos sem uso. Entre de novo. O que estava guardado no celular não se perdeu: é enviado quando você entrar.';
+  /* sai do sistema (botão Sair ou 15 minutos sem uso): fecha o painel, apaga do aparelho a cópia dos dados e volta para a entrada */
+  async function sairDoSistema(aviso) {
+    if (aviso) guardarRascunhoPainel();   // saiu sozinho: guarda o formulário pela metade
+    S.painel = null; const pf = $('#painel'); if (pf) pf.remove();
+    S.menuAberto = false; S.aba = null; lembrarAba(); if (MQ.bancoUI) MQ.bancoUI.limpar();
+    try { Object.keys(sessionStorage).filter(k => /^mq-pend-visto-/.test(k)).forEach(k => sessionStorage.removeItem(k)); } catch (e) {}
+    S.pendVisto = false; S.avisoLogin = aviso || null;
+    if (MQ.sessao) MQ.sessao.esquecer();
+    if (modoDemoAtivo()) { S.verEntrada = true; render(); return; }   // demonstração: volta para a tela de entrada
+    try { await S.api.sair(); } catch (e) { /* sem internet: a sessão já foi apagada do aparelho */ }
+    S.eu = null; S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.documentos = [];
+    render();
   }
   const chaveCache = () => 'mq-cache-' + (S.eu && S.eu.id);
   async function carregar() {
@@ -547,6 +565,7 @@
       </section>
       <section class="ent-acesso">
         <form class="login ent-card" data-form="login" novalidate>
+          ${S.avisoLogin ? `<div class="aviso sessao-saiu" role="status">${esc(S.avisoLogin)}</div>` : ''}
           <div><span class="eyebrow">Sistema do projeto</span><h2 class="serif">${primeiro ? 'Primeiro acesso' : 'Que bom ver você'}</h2>
             <p class="muted">${primeiro ? 'Crie a sua senha com o e-mail que a coordenação cadastrou.' : 'Entre com o e-mail cadastrado pela coordenação.'}</p></div>
           <span class="seg ent-seg" role="group" aria-label="Tipo de acesso">${aba('entrar', 'Já tenho senha')}${aba('primeiro', 'Primeiro acesso')}</span>
@@ -584,12 +603,50 @@
     S.painel = null; const f = $('#painel'); if (f) f.remove();
     if (S.voltarFoco && document.body.contains(S.voltarFoco)) S.voltarFoco.focus();
   }
+  /* rascunho do formulário aberto: se o sistema sair sozinho (15 minutos sem uso) com um formulário
+     pela metade, o que foi digitado fica guardado neste aparelho (só para a mesma pessoa, por 24 horas)
+     e volta quando ela abrir o mesmo formulário. Senha e arquivo nunca são guardados. */
+  const RASC_VALIDADE = 24 * 60 * 60 * 1000;
+  const chaveRasc = () => 'mq-rascunho-painel-' + (S.eu && S.eu.id);
+  const registroDoPainel = () => (S.painel && (S.painel.id || (S.painel.dados && S.painel.dados.id))) || null;   // ficha A não volta na ficha B
+  function guardarRascunhoPainel() {
+    const f = $('#painel form[data-form]'); if (!f || !S.eu || !S.painel) return;
+    const campos = {}; let algum = false;
+    f.querySelectorAll('input,select,textarea').forEach(i => {
+      if (/^(password|file|hidden|submit|button)$/.test(i.type)) return;
+      const k = i.type === 'radio' ? (i.name ? 'r:' + i.name + '=' + i.value : null) : i.id ? 'i:' + i.id : null; if (!k) return;
+      const v = (i.type === 'checkbox' || i.type === 'radio') ? (i.checked ? '1' : '') : i.value;
+      campos[k] = v; if (v && i.type !== 'checkbox' && i.type !== 'radio' && i.tagName !== 'SELECT') algum = true;
+    });
+    if (!algum) return;
+    try { localStorage.setItem(chaveRasc(), JSON.stringify({ tipo: S.painel.tipo, id: registroDoPainel(), form: f.dataset.form, campos, em: Date.now() })); } catch (e) {}
+  }
+  function restaurarRascunhoPainel(el) {
+    let r; try { r = JSON.parse(localStorage.getItem(chaveRasc()) || 'null'); } catch (e) { r = null; }
+    if (!r) return;
+    if (Date.now() - r.em > RASC_VALIDADE) { try { localStorage.removeItem(chaveRasc()); } catch (e) {} return; }
+    const f = el.querySelector(`form[data-form="${r.form}"]`);
+    if (!f || r.tipo !== S.painel.tipo || (r.id || null) !== registroDoPainel()) return;
+    const limpo = x => String(x).replace(/["\\]/g, '');
+    Object.keys(r.campos).forEach(k => {
+      const m = /^r:(.*)=(.*)$/.exec(k);
+      const i = m ? f.querySelector(`input[type=radio][name="${limpo(m[1])}"][value="${limpo(m[2])}"]`) : f.querySelector(`[id="${limpo(k.slice(2))}"]`);
+      if (!i) return; const id = k;
+      if (i.type === 'checkbox' || i.type === 'radio') { if (i.type === 'checkbox' || r.campos[id] === '1') i.checked = r.campos[id] === '1'; } else i.value = r.campos[id];
+      if (i.tagName === 'SELECT' || i.type === 'checkbox' || (i.type === 'radio' && i.checked)) i.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    const nota = document.createElement('p'); nota.className = 'aviso rascunho-volta'; nota.setAttribute('role', 'status');
+    nota.textContent = 'Recuperamos o que você tinha digitado antes de o sistema sair sozinho. Confira e salve.';
+    f.prepend(nota);
+    try { localStorage.removeItem(chaveRasc()); } catch (e) {}
+  }
   function desenharPainel() {
     let el = $('#painel');
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
     const p = S.painel;
     const corpo = p.tipo === 'roteiro' && MQ.roteiroUI ? MQ.roteiroUI.painel(p) : p.tipo === 'ajuda' ? MQ.ajudaUI.painel(p) : p.tipo === 'meus-dados' ? painelMeusDados() : /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^viag-/.test(p.tipo) && MQ.viagUI ? MQ.viagUI.painel(p) : /^doc-/.test(p.tipo) && MQ.docsUI ? MQ.docsUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
     el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel" role="dialog" aria-modal="true" aria-labelledby="painel-t">${corpo}</aside>`;
+    restaurarRascunhoPainel(el);
     const foco = el.querySelector('[autofocus]') || el.querySelector('.fechar');
     if (foco) foco.focus();
   }
@@ -825,7 +882,7 @@
     try {
       if (a === 'perfil' && MQ.bancoUI) MQ.bancoUI.limpar();
       if (a === 'perfil' && el.dataset.p === 'entrada') { S.verEntrada = true; S.painel = null; render(); window.scrollTo(0, 0); }
-      else if (a === 'perfil') { S.verEntrada = false; S.aba = null; lembrarAba(); S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.trocarPerfil(el.dataset.p); await carregar(); render(); }
+      else if (a === 'perfil') { S.verEntrada = false; S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); S.aba = null; lembrarAba(); S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.trocarPerfil(el.dataset.p); await carregar(); render(); }
       else if (a === 'recomecar') { S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.recomecar(); await carregar(); render(); toast('Demonstração recomeçada com os dados de exemplo.'); }
       else if (a === 'gerar-codigo-nao') { S.confirmaAcesso = null; abrirPainel(S.painel); }
       else if (a === 'gerar-codigo') {
@@ -857,7 +914,7 @@
         toast(!navigator.onLine ? 'Você está sem internet: se sair, só consegue entrar de novo quando a conexão voltar.' : (S.fila.length + (S.fila.length > 1 ? ' registros ainda estão' : ' registro ainda está') + ' só neste aparelho. Se sair, eles sobem quando você entrar de novo.'));
         setTimeout(() => { if (el.isConnected) { delete el.dataset.ok; el.textContent = 'Sair'; } }, 6000);
       }
-      else if (a === 'sair') { S.menuAberto = false; S.aba = null; lembrarAba(); if (MQ.bancoUI) MQ.bancoUI.limpar(); try { Object.keys(sessionStorage).filter(k => /^mq-pend-visto-/.test(k)).forEach(k => sessionStorage.removeItem(k)); } catch (e) {} S.pendVisto = false; await S.api.sair(); S.eu = null; S.equipe = []; render(); }
+      else if (a === 'sair') await sairDoSistema();
       else if (a === 'fechar') fecharPainel();
       else if (a === 'aba') { S.aba = el.dataset.aba; lembrarAba(); S.menuAberto = false; render(); window.scrollTo(0, 0); }
       else if (/^ficha/.test(a) && MQ.fichasUI) { S.voltarFoco = el; await MQ.fichasUI.clique(a, el); }
@@ -940,7 +997,7 @@
         if (Object.keys(erros).length) return mostrarErros(form, erros);
         await ocupado(form, async () => {
           S.eu = S.modoLogin === 'primeiro' ? await S.api.criarSenha(email, senha, codigo) : await S.api.entrarSenha(email, senha);
-          if (S.eu) { await carregar(); setTimeout(() => sincronizar(false), 500); }
+          if (S.eu) { S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); await carregar(); setTimeout(() => sincronizar(false), 500); }
           render();
         });
       }
