@@ -1131,3 +1131,5 @@ form .acoes:last-child .btn.pri { min-width: 160px; }
 .ent-marca img { height: 64px; width: 64px; object-fit: contain; padding: 8px; border-radius: 18px; background: var(--barra-bg);
   box-shadow: 0 8px 20px -10px color-mix(in srgb, var(--barra-bg) 80%, transparent), inset 0 0 0 1px rgba(246, 237, 228, .12); }
 @media (max-width: 640px) { .ent-marca img { height: 54px; width: 54px; padding: 7px; border-radius: 16px; } }
+/* título do login: tamanho óptico médio (o "f" do Fraunces em tamanho de cartaz fica fino demais e encosta no "o") */
+.ent-t { font-variation-settings: "opsz" 48; font-optical-sizing: none; letter-spacing: -.01em; }
