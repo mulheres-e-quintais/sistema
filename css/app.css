@@ -1032,3 +1032,7 @@ input.invalido { border-color: var(--crit) !important; box-shadow: 0 0 0 3px col
 .grade-uf .cartao { grid-template-rows: auto 1fr auto; align-content: stretch; }
 .btn-ag { align-self: end; min-height: 42px; width: 100%; justify-content: center; }
 @media (max-width: 640px) { .btn-cad { width: 100%; } }
+.perfil-bols .perfil-esp { margin: 4px 0 8px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); line-height: 1.45; }
+.perfil-lista { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.perfil-lista li { display: grid; grid-template-columns: 18px 1fr; gap: 8px; line-height: 1.45; color: var(--ink-2); font-size: 14px; }
+.perfil-lista li::before { content: "✓"; color: var(--ok); font-weight: 700; }
