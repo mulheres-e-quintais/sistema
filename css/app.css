@@ -1269,3 +1269,7 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 /* Meus dados: trocar a própria senha (recolhido, no mesmo desenho dos outros blocos recolhíveis) */
 .trocar-senha { margin: 14px 0; }
 .trocar-senha form { padding: 0 18px 16px; display: grid; gap: 12px; }
+
+/* formulário de campo: "Prefere aplicar no papel? Imprimir em branco" */
+.imp-barra { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 14px; padding: 10px 12px;
+  border: 1px dashed var(--line-2); border-radius: 10px; background: var(--surface-2); font-size: var(--t-sm); color: var(--ink-2); }
