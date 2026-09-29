@@ -1,5 +1,5 @@
 /* Mulheres & Quintais — pedidos de passagem aérea e de estrutura de evento (Guia "Viagens, ajuda de custo e eventos").
-   Caminho: a bolsista de articulação territorial pede → a coordenação técnica confere (ou devolve)
+   Caminho: a bolsista de articulação estadual pede → a coordenação técnica confere (ou devolve)
    → a coordenação geral autoriza e manda para a FUNCERN (ou recusa ou devolve).
    Só estes três perfis veem os pedidos (supabase/22_passagens_eventos.sql). */
 (function () {
@@ -70,7 +70,7 @@
     const bloco = (t, xs, vazio) => `<section class="secao"><div class="secao-cab"><h2>${t} <span class="conta-t${xs.length ? '' : ' zero'}">${xs.length}</span></h2></div>
       ${xs.length ? `<div class="pag-lista">${xs.map(p => linha(p, true)).join('')}</div>` : `<p class="muted">${vazio}</p>`}</section>`;
     return `<div class="cab"><div><span class="eyebrow">Viagens e eventos</span><h1>Passagens e eventos</h1>
-        <p>A bolsista de articulação territorial pede; ${souGeral ? 'a coordenação técnica confere; você autoriza e manda para a FUNCERN, que compra ou contrata.' : 'você confere e manda para a coordenação geral, que autoriza e manda para a FUNCERN.'}
+        <p>A bolsista de articulação estadual pede; ${souGeral ? 'a coordenação técnica confere; você autoriza e manda para a FUNCERN, que compra ou contrata.' : 'você confere e manda para a coordenação geral, que autoriza e manda para a FUNCERN.'}
         Prazos: passagem ${PRAZO.passagem} dias antes da viagem (a FUNCERN exige 30); evento ${PRAZO.evento} dias antes.</p></div></div>
       <div class="resumo">
         <div><span class="v num" ${vez.length ? 'style="color:var(--crit)"' : ''}>${vez.length}</span><span class="l">esperando você</span></div>

@@ -3,7 +3,7 @@
 -- Supabase > SQL Editor > New query > cole este arquivo inteiro > Run. Pode rodar de novo.
 --
 -- Caminho (Guia "Viagens, ajuda de custo e eventos"):
---   bolsista de articulação territorial pede  →  coordenação técnica confere (ou devolve)
+--   bolsista de articulação estadual pede  →  coordenação técnica confere (ou devolve)
 --   →  coordenação geral autoriza e manda para a FUNCERN (ou recusa/devolve).
 -- Só veem os pedidos: quem pediu, a coordenação técnica e a coordenação geral.
 -- Prazos: passagem 40 dias antes da viagem; evento 45 dias antes. Fora do prazo, só com justificativa.
@@ -64,7 +64,7 @@ declare eu public.equipe; p public.pedidos_apoio; v_id uuid; antecedencia int :=
 begin
   select * into eu from public.equipe where id = public.meu_id() and status = 'ativa';
   if eu.id is null or eu.papel <> 'articulacao' then
-    raise exception 'Quem pede passagem e estrutura de evento é a bolsista de articulação territorial.';
+    raise exception 'Quem pede passagem e estrutura de evento é a bolsista de articulação estadual.';
   end if;
   if antecedencia is null then raise exception 'Tipo de pedido inválido.'; end if;
   if p_data is null or p_data < current_date then raise exception 'Informe uma data que ainda não passou.'; end if;
