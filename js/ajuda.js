@@ -157,6 +157,22 @@
         ['Por que o custo projetado é alto?', 'Quintais longe de quem visita pesam no combustível. A medida que mais economiza é ter agentes morando nos municípios distantes.']
       ]
     },
+    viagens: {
+      t: 'Viagens e eventos',
+      intro: 'Pedidos de passagem aérea (intercâmbio e acompanhamento pedagógico) e de estrutura de evento, feitos pela bolsista de articulação territorial. A FUNCERN só compra ou contrata depois da autorização.',
+      passos: [
+        'A bolsista de articulação territorial envia o pedido. Ele aparece para a <b>coordenação técnica</b> em "Esperando a sua conferência".',
+        'A coordenação técnica confere os dados (nomes iguais ao documento, datas, CPF e RG, quantidades) e toca em <b>Conferido</b>, ou <b>Devolve</b> dizendo o que corrigir.',
+        'A <b>coordenação geral</b> autoriza (ou devolve, ou recusa com o motivo). Depois de autorizar, use <b>Copiar texto</b> para mandar o pedido à FUNCERN e registre o protocolo.',
+        'Prazos: passagem <b>40 dias</b> antes da viagem (a FUNCERN exige 30); evento <b>45 dias</b> antes. Fora do prazo, o pedido só vai com justificativa.',
+        'Os contadores mostram quantas passagens já foram autorizadas (25 de intercâmbio e 8 de acompanhamento pedagógico, por pessoa) e quantos estados já têm evento (5).'
+      ],
+      duvidas: [
+        ['Quem vê os pedidos?', 'Só quem pediu, a coordenação técnica e a coordenação geral. Os dados das passageiras (CPF, RG, nascimento) não vão para o histórico.'],
+        ['Pode dividir o almoço em vários pedidos?', 'Não. Um serviço, um pedido: dividir o mesmo serviço é proibido e pode anular a compra. Serviços diferentes (alimentação, tenda, som) podem ir separados.'],
+        ['E depois da viagem ou do evento?', 'Os cartões de embarque, a lista de presença e o relato ou relatório são entregues à coordenação técnica.']
+      ]
+    },
     historico: {
       t: 'Histórico',
       intro: 'Registro de tudo o que foi feito no sistema: quem cadastrou, alterou, aprovou, devolveu, desligou, gerou código de acesso, consultou conta bancária, e quando.',
@@ -181,7 +197,8 @@
         '<b>Trabalho de campo:</b> em <b>Para fazer agora</b> estão as visitas atrasadas, as dos próximos 7 dias e os planos devolvidos, cada um com o botão da ação.',
         '<b>Diagnóstico:</b> faça as 3 fotos (visão geral, água e plantio), registre a localização e monte o kit com o preço de cada item, sem passar de R$ 4.500.',
         '<b>Entregas do mês:</b> acompanhe as 6 entregas. Quando entregar as listas de presença, toque em <b>Entreguei</b>. O acesso ao AVA é o professor quem confirma.',
-        '<b>Solicitar pagamento:</b> uma vez por mês, peça a ajuda de custo das visitas feitas e a bolsa, com o relatório de atividades.'
+        '<b>Solicitar pagamento:</b> uma vez por mês, peça a ajuda de custo das visitas feitas e a bolsa, com o relatório de atividades.',
+        '<b>Passagens aéreas e eventos</b> (só a bolsista de articulação territorial): peça a passagem 40 dias antes da viagem e a estrutura do evento 45 dias antes. A coordenação técnica confere e a coordenação geral autoriza e manda para a FUNCERN.'
       ],
       duvidas: [
         ['Posso falar em vez de digitar?', 'Sim. Nos campos de texto, toque em Falar e fale; o texto vai aparecendo. Revise antes de salvar. Evite dizer nomes e CPF. Precisa de internet.'],
@@ -304,13 +321,13 @@
     }
   };
 
-  const TOPICOS_COORD = ['visao', 'equipe', 'selecao', 'campo', 'fic', 'pagamentos', 'custos', 'historico'];
+  const TOPICOS_COORD = ['visao', 'equipe', 'selecao', 'campo', 'fic', 'pagamentos', 'viagens', 'custos', 'historico'];
 
   function chaveAtual() {
     const s = S();
     if (!s.eu || s.verEntrada) return 'entrada';
     if (/^coord/.test(s.eu.papel)) {
-      const pode = { coord_geral: TOPICOS_COORD, coord_tecnico: ['selecao', 'equipe', 'campo', 'pagamentos', 'custos'] }[s.eu.papel];
+      const pode = { coord_geral: TOPICOS_COORD, coord_tecnico: ['selecao', 'equipe', 'campo', 'pagamentos', 'viagens', 'custos'] }[s.eu.papel];
       return pode.includes(s.aba) ? s.aba : pode[0];
     }
     if (['articulacao', 'apoio'].includes(s.eu.papel)) return 'bolsista';
@@ -321,7 +338,7 @@
   function painel(p) {
     const k = p.k && A[p.k] ? p.k : chaveAtual(); const a = A[k];
     const s = S(); const coord = s.eu && /^coord/.test(s.eu.papel) && !s.verEntrada;
-    const outros = coord ? TOPICOS_COORD.filter(x => x !== k && (s.eu.papel === 'coord_geral' || ['selecao', 'equipe', 'campo', 'pagamentos', 'custos'].includes(x))) : [];
+    const outros = coord ? TOPICOS_COORD.filter(x => x !== k && (s.eu.papel === 'coord_geral' || ['selecao', 'equipe', 'campo', 'pagamentos', 'viagens', 'custos'].includes(x))) : [];
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">Ajuda</span><h2 id="painel-t">${E(a.t)}</h2></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo ajuda">
