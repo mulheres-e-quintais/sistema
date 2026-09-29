@@ -276,7 +276,7 @@ legend { font: 600 12px/1.2 var(--cond); letter-spacing: .09em; text-transform: 
 .lista-fichas { display: grid; gap: 6px; }
 .ficha-linha { background: var(--surface); border: 1px solid var(--line); min-height: 0; }
 .ficha-linha:hover { border-color: var(--verde-2); }
-.criterio { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 14px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 14px; color: var(--ink); }
+.criterio { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 14px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 14px; color: var(--ink); }
 .criterio.tem-erro, .check.tem-erro { border-color: var(--crit); box-shadow: 0 0 0 1px var(--crit); }
 @media (max-width: 520px) { .criterio { grid-template-columns: 1fr; } }
 .sn-par { display: inline-flex; gap: 6px; }
@@ -1099,3 +1099,31 @@ input.invalido { border-color: var(--crit) !important; box-shadow: 0 0 0 3px col
 .voz-proposta .acoes { margin: 0; }
 .voz-proposta.aplicado { background: var(--ok-bg); border-color: color-mix(in srgb, var(--ok) 40%, var(--line)); }
 .voz-proposta.aplicado p { margin: 0; }
+
+/* ---------- fichas e formulários: botões e escolhas mais elegantes ---------- */
+/* Sim/Não, Autorizo/Não autorizo: controle segmentado */
+.sn-par { display: inline-grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 3px; padding: 3px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); }
+.sn-par .sn { border: 0; background: transparent; border-radius: 9px; min-height: 36px; padding: 6px 16px; justify-content: center; color: var(--ink-2); transition: background-color .15s, color .15s, box-shadow .15s; }
+.sn-par .sn:hover:not(.on):not(.off) { background: color-mix(in srgb, var(--surface) 70%, transparent); color: var(--ink); }
+.sn-par .sn.on { background: var(--sel-bg); color: var(--sel-ink); box-shadow: 0 1px 3px color-mix(in srgb, var(--ink) 18%, transparent); }
+/* escolhas soltas (políticas, resultado…): pílulas com marca quando escolhidas */
+.sn { min-height: 36px; transition: background-color .15s, border-color .15s, color .15s; }
+.sn:hover:not(.on):not(.off) { border-color: var(--verde-2); color: var(--ink); }
+.sn.on::before { content: "✓"; font-size: 12px; font-weight: 700; }
+/* acrescentar linha (+ Pessoa, + Item, + Atividade) */
+.btn-add { justify-self: start; display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 6px 14px; border-radius: 10px; border: 1px dashed var(--line-2); background: transparent; color: var(--accent); font: 600 14px var(--sans); cursor: pointer; transition: background-color .15s, border-color .15s; }
+.btn-add span { font-size: 18px; line-height: 1; }
+.btn-add:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.btn-add:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* remover linha: botão redondo discreto */
+.linha-din .fechar { width: 32px; height: 32px; padding: 0; border-radius: 50%; font-size: 18px; display: grid; place-items: center; color: var(--muted); }
+.linha-din .fechar:hover { background: var(--crit-bg); color: var(--crit); }
+/* enviar arquivo/foto: botão no mesmo estilo do sistema */
+.campo input[type=file] { height: auto; padding: 6px; font: 14px var(--sans); color: var(--ink-2); }
+input[type=file]::file-selector-button { margin-right: 12px; min-height: 36px; padding: 6px 14px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--ink); font: 600 13px var(--sans); cursor: pointer; transition: border-color .15s, background-color .15s; }
+input[type=file]::file-selector-button:hover { border-color: var(--verde-2); background: var(--surface); }
+/* ações no fim da ficha */
+form .acoes:last-child .btn.pri { min-width: 160px; }
+@media (max-width: 520px) { .criterio .sn-par { width: 100%; } form .acoes:last-child { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); } form .acoes:last-child .btn.pri { min-width: 0; } }
+.sn-par:has(> .sn:nth-child(3)) { display: flex; flex-wrap: wrap; }
+.sn-par:has(> .sn:nth-child(3)) .sn { flex: 1 1 auto; white-space: nowrap; }

@@ -82,7 +82,8 @@
     });
     return t.replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, '[CPF]').replace(/\(?\b\d{2}\)?\s?9?\d{4}-?\d{4}\b/g, '[telefone]').replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, '[e-mail]');
   }
-  const podeOrganizar = () => { const S = MQ.ui && MQ.ui.S; return !!(S && S.api && S.api.organizarTexto && S.eu); };
+  const ORGANIZAR_ATIVO = false;   // liga quando houver a chave da API no Supabase (Edge Function organizar-texto)
+  const podeOrganizar = () => { const S = MQ.ui && MQ.ui.S; return ORGANIZAR_ATIVO && !!(S && S.api && S.api.organizarTexto && S.eu); };
   function atualizarOrg(ta) {
     const b = ta.closest('.voz-caixa') && ta.closest('.voz-caixa').querySelector('.btn-org'); if (!b) return;
     b.hidden = !podeOrganizar(); b.disabled = ta.value.trim().length < 40 || b.dataset.ocupado === '1';
