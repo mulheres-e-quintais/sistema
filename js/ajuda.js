@@ -174,6 +174,7 @@
         'Com o aval, o pedido vai para o auxiliar, que lança no Arlo e registra o protocolo.'
       ],
       duvidas: [
+        ['Quem começou no meio do mês recebe o mês inteiro?', 'Sim. A bolsa é pedida a partir do mês de início no projeto e, pedida no mês, vale o mês inteiro (decisão da coordenação geral). Antes do mês de início o sistema não deixa pedir.'],
         ['Uma visita pode entrar em dois pedidos?', 'Não. Depois de pedida, a visita fica travada (data, pessoa e situação) até o pedido ser devolvido.'],
         ['A lista de presença está marcada, mas não vi o papel.', 'A marcação é a bolsista quem faz. Confira as listas assinadas antes de dar o aval.'],
         ['Quanto é a ajuda de custo?', 'É calculada na aba Custos: horas da visita, combustível pela distância e refeição.']
