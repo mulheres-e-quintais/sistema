@@ -2,7 +2,7 @@
 -- Mulheres & Quintais — VERIFICAR o banco (só lê, não muda nada)
 -- Supabase > SQL Editor > New query > cole este arquivo inteiro > Run.
 -- Mostra, etapa por etapa, o que já está instalado. Onde aparecer "FALTA", rode aquele script
--- (na ordem 01, 02, 03, 04, 07, 08, 09, 10, 11, 12, 13, 15, 17, 18, 19). Todos podem rodar de novo sem estragar nada.
+-- (na ordem 01, 02, 03, 04, 07, 08, 09, 10, 11, 12, 13, 15, 17, 18, 19, 20). Todos podem rodar de novo sem estragar nada.
 -- =====================================================================
 with col as (select table_name, column_name from information_schema.columns where table_schema = 'public'),
 fn as (select proname from pg_proc where pronamespace = 'public'::regnamespace),
@@ -30,6 +30,7 @@ chk as (
   union all select '17_corrige_link_cadastro', not exists (select 1 from pg_proc where proname = 'criar_convite' and prosrc like '%gen_random_bytes%')
   union all select '19_entregas_do_mes', to_regclass('public.entregas_mes') is not null and to_regclass('public.ciencias') is not null
                    and exists (select 1 from col where table_name = 'equipe_privado' and column_name = 'perfil')
+  union all select '20_organizar_texto', exists (select 1 from fn where proname = 'registrar_uso_ia')
   union all select '18_codigo_primeiro_acesso', to_regclass('public.acesso_codigos') is not null and exists (select 1 from fn where proname = 'gerar_codigo_acesso')
 )
 -- o SQL Editor do Supabase mostra só o último resultado: por isso vai tudo numa tabela só

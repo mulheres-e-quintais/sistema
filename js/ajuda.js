@@ -141,6 +141,7 @@
         '<b>Solicitar pagamento:</b> uma vez por mês, peça a ajuda de custo das visitas feitas e a bolsa, com o relatório de atividades.'
       ],
       duvidas: [
+        ['Posso falar em vez de digitar?', 'Sim. Nos campos de texto, toque em Falar e fale; o texto vai aparecendo. Depois, Organizar o texto propõe uma versão mais clara, que você confere antes de usar. Evite dizer nomes e CPF: o sistema já sabe de quem é a visita. Precisa de internet.'],
         ['Estou sem internet no campo.', 'Pode preencher. O registro fica guardado no aparelho e é enviado quando a internet voltar ("Enviar agora").'],
         ['A localização foi negada.', 'Libere a localização para o site nas permissões do navegador (cadeado ao lado do endereço) e tente de novo. Se não der, explique no campo indicado.'],
         ['Posso corrigir uma ficha aprovada?', 'Não. Peça à coordenação técnica para devolvê-la.']

@@ -1068,7 +1068,7 @@ input.invalido { border-color: var(--crit) !important; box-shadow: 0 0 0 3px col
 /* ditado por voz */
 .voz-caixa { display: grid; gap: 6px; min-width: 0; }
 .voz-caixa textarea { width: 100%; }
-.btn-voz { justify-self: end; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2); font: 600 13px var(--sans); cursor: pointer; transition: background-color .15s, border-color .15s, color .15s; }
+.btn-voz { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2); font: 600 13px var(--sans); cursor: pointer; transition: background-color .15s, border-color .15s, color .15s; }
 .btn-voz:hover { border-color: var(--accent); color: var(--accent); }
 .btn-voz:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .btn-voz.gravando { background: var(--crit); border-color: var(--crit); color: #fff; }
@@ -1088,3 +1088,14 @@ input.invalido { border-color: var(--crit) !important; box-shadow: 0 0 0 3px col
   .campos > .campo:has(> :nth-child(5)):not(:has(> :nth-child(6))) { grid-row: span 5; grid-template-rows: subgrid; row-gap: 4px; align-content: normal; padding-bottom: 12px; }
   .campos > .campo > .btn { align-self: stretch; }
 }
+.voz-barra { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.btn-voz[hidden] { display: none; }
+.btn-voz:disabled { opacity: .45; cursor: not-allowed; }
+.btn-org { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line-2)); }
+.voz-gira { width: 12px; height: 12px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: voz-gira .8s linear infinite; }
+@keyframes voz-gira { to { transform: rotate(360deg); } }
+.voz-proposta { display: grid; gap: 8px; padding: 12px 14px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
+.voz-proposta .vp-texto { margin: 0; line-height: 1.55; color: var(--ink); white-space: normal; }
+.voz-proposta .acoes { margin: 0; }
+.voz-proposta.aplicado { background: var(--ok-bg); border-color: color-mix(in srgb, var(--ok) 40%, var(--line)); }
+.voz-proposta.aplicado p { margin: 0; }
