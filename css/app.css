@@ -1194,3 +1194,9 @@ body.com-teste .rodape { padding-bottom: 72px; }
 .rot-conv { margin: 4px 0 8px; }
 .fp-t .small { overflow-wrap: anywhere; }
 body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+
+/* cadastro pelo link: toque confortável, e-mail conferido, rascunho recuperado */
+.sn-par .sn { min-height: 44px; }
+.dica-email .sug-email { margin-top: 6px; display: inline-flex; }
+.conv-email { display: grid; gap: 2px; margin: 4px 0 0; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); overflow-wrap: anywhere; }
+.conv-rasc { margin-bottom: 4px; }
