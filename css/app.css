@@ -1290,3 +1290,8 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 }
 /* toque: o "×" que tira uma linha (família, kit, cronograma) com 40 px no celular */
 @media (max-width: 700px) { .linha-din .fechar, .painel-cab .fechar { min-width: 40px; min-height: 40px; } }
+/* Últimos acessos (Histórico, coordenação geral) */
+.linha-tempo.lt-acesso { padding: 0; }
+.linha-tempo.lt-acesso li { grid-template-columns: 118px minmax(0, 1fr); }
+@media (max-width: 520px) { .linha-tempo.lt-acesso li { grid-template-columns: 1fr; } }
+.ult-acesso { margin: 0 0 12px; }
