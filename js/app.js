@@ -96,8 +96,11 @@
         try { S.documentos = await S.api.listarDocumentos(); } catch (e) { if (e.semRede || !semFic(e)) throw e; S.docSemBanco = true; }
       }
       // pedidos de passagem e evento (22_passagens_eventos.sql): só articulação, coordenação técnica e geral
-      S.pedSemBanco = false; S.pedidos = [];
-      if (S.api.listarPedidos && MQ.viagUI && MQ.viagUI.podeVer(S.eu.papel)) {
+      S.pedSemBanco = false; S.pedidos = []; S.quemConfere = null;
+      if (S.api.quemConferePedidos && ['coord_geral', 'coord_tecnico', 'articulacao', 'auxiliar_adm'].includes(S.eu.papel)) {
+        try { S.quemConfere = await S.api.quemConferePedidos(); } catch (e) { if (e.semRede) throw e; }
+      }
+      if (S.api.listarPedidos && MQ.viagUI && (MQ.viagUI.podeVer(S.eu.papel) || MQ.viagUI.souConferente())) {
         try { S.pedidos = await S.api.listarPedidos(); } catch (e) { if (e.semRede || !semFic(e)) throw e; S.pedSemBanco = true; }
       }
       // entregas do mês e ciência do guia (19_entregas_do_mes.sql); sem o script, o resto continua
@@ -369,7 +372,8 @@
     return `<main class="wrap" id="principal">
       <div class="cab"><div><span class="eyebrow">${esc(P.auxiliar_adm.nome)}</span><h1>Olá, ${esc(nomeDe(eu).split(' ')[0])}</h1><p>${esc(P.auxiliar_adm.faz)}</p></div>
         <span class="chip chip-lg ${s.cod}">${esc(s.rot)}</span></div>
-      ${atalhos([['Cadastrar no Arlo', '#t-arlo', true], ['Lançar pagamentos no Arlo', '#t-lancar'], ['Pedir a minha bolsa', '#t-pag']])}
+      ${atalhos([['Cadastrar no Arlo', '#t-arlo', true], ['Lançar pagamentos no Arlo', '#t-lancar'], ['Pedir a minha bolsa', '#t-pag'],
+        S.quemConfere === 'auxiliar_adm' ? ['Conferir passagens e eventos', '#t-conf'] : null])}
       <div class="resumo">
         <div><span class="v num">${pessoas.length}</span><span class="l">pessoas na equipe</span></div>
         <div><span class="v num" ${semArlo.length ? 'style="color:var(--crit)"' : ''}>${semArlo.length}</span><span class="l">falta cadastrar no Arlo</span></div>
@@ -377,6 +381,7 @@
         <div><span class="v num">${ok.length}</span><span class="l">Arlo e termo registrados</span></div></div>
       <p class="small muted">Abra a pessoa, veja os dados (e a conta, se precisar), cadastre no Arlo e registre a data em <b>Registrar passos da habilitação</b>. Cada consulta de conta bancária fica no histórico.</p>
       ${MQ.bancoUI ? MQ.bancoUI.blocoSituacao() : ''}
+      ${MQ.viagUI ? MQ.viagUI.secaoConferente() : ''}
       ${MQ.pagUI ? MQ.pagUI.secaoAuxiliar() : ''}
       ${grupo('Falta cadastrar no Arlo', semArlo, 'Todos já estão no Arlo.', 't-arlo')}
       ${grupo('No Arlo, falta registrar o termo', semTermo, 'Nenhum termo pendente.')}
