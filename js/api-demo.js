@@ -198,6 +198,7 @@
       return d.perfil;
     },
     async trocarPerfil(p) { const d = ler(); d.perfil = p; this.perfisDemo(); gravar(); return euMesmo(); },
+    async reler() { mem = null; ler(); return euMesmo(); },   // lê de novo o que está guardado no aparelho (outra aba mudou; testes)
     async recomecar() { mem = null; try { localStorage.removeItem(CHAVE); } catch (e) {} ler(); gravar(); return euMesmo(); },
 
     /* ---------- Documentos do projeto (mesmas regras do 24_documentos.sql): só a coordenação geral ---------- */
@@ -663,13 +664,13 @@
       const i = d.diagnosticos.findIndex(x => x.id === dados.id); const antes = i >= 0 ? d.diagnosticos[i] : null;
       if (!antes && d.diagnosticos.some(x => x.ficha_id === dados.ficha_id)) throw falha('Este quintal já tem diagnóstico registrado.');
       if (antes && antes.situacao === 'aprovado') throw falha('Plano já aprovado pela coordenação técnica. Peça que ela devolva para corrigir.');
-      if (dados.latitude == null && String(dados.sem_gps_motivo || '').trim().length < 5) throw falha('Registre a localização ou explique por que não foi possível.');
+      if (dados.latitude == null && String(dados.sem_gps_motivo || '').trim().length < 15) throw falha('Sem localização: explique em pelo menos 15 letras por que não foi possível registrar no quintal.');   // 31
       const caminhos = new Set(dados.fotos || (antes && antes.fotos) || []);
       Object.entries(fotos || {}).forEach(([campo, blob]) => { if (!blob) return; const path = v.uf + '/' + v.ficha_id + '/diag_' + campo; fotosMemoria.set(path, URL.createObjectURL(blob)); caminhos.add(path); });
       const agora = new Date().toISOString();
       const n = Object.assign({}, antes || {}, dados, { uf: v.uf, executor_id: v.executor_id, fotos: [...caminhos], situacao: 'aguardando',
         aprovado_por: antes ? antes.aprovado_por : null, aprovado_em: antes ? antes.aprovado_em : null, obs_coordenacao: antes ? antes.obs_coordenacao : null,
-        criado_em: antes ? antes.criado_em : agora, atualizado_em: agora });
+        criado_em: antes ? antes.criado_em : agora, atualizado_em: agora, conteudo_alterado_por: eu.id, conteudo_alterado_em: agora });
       if (i >= 0) d.diagnosticos[i] = n; else d.diagnosticos.push(n);
       Object.assign(v, { situacao: 'realizada', data_realizada: n.data_visita, atualizado_em: agora });
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'diagnosticos', registro_id: n.id, acao: antes ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: antes && copia(antes), depois: copia(n) });
@@ -681,6 +682,13 @@
       const i = d.diagnosticos.findIndex(x => x.id === id); if (i < 0) throw falha('Diagnóstico não encontrado.');
       if (situacao === 'devolvido' && String(obs || '').trim().length < 5) throw falha('Para devolver, escreva o que precisa ser corrigido.');
       const agora = new Date().toISOString(); const antes = d.diagnosticos[i];
+      // mesmas regras do 31_validacao_diagnostico.sql
+      if (situacao === 'aprovado' && antes.situacao !== 'aprovado') {
+        if (antes.conteudo_alterado_por === eu.id) throw falha('Você alterou este diagnóstico: quem aprova é a coordenação técnica. Sem técnica, devolva para quem aplicou corrigir.');
+        const o = String(obs || '').trim();
+        if (antes.latitude == null && !antes.sem_agua && (o.length < 10 || o === String(antes.obs_coordenacao || '').trim()))
+          throw falha('Diagnóstico sem localização: para aprovar, escreva na observação como você confirmou que a visita aconteceu.');
+      }
       d.diagnosticos[i] = Object.assign({}, antes, { situacao, obs_coordenacao: obs || null, atualizado_em: agora,
         aprovado_por: situacao === 'aprovado' ? eu.id : antes.aprovado_por, aprovado_em: situacao === 'aprovado' ? agora : antes.aprovado_em });
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'diagnosticos', registro_id: id, acao: 'UPDATE', por: eu.id, em: agora, antes: copia(antes), depois: copia(d.diagnosticos[i]) });

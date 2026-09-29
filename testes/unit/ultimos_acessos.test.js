@@ -22,7 +22,7 @@ describe('Últimos acessos', () => {
     const d = JSON.parse(t.janela.localStorage.getItem('mq-demo-v4'));
     d.acessos = [{ id: 1, equipe_id: t.S.eu.id, em: new Date(Date.now() - 200 * 864e5).toISOString(), tipo: 'entrada' }];
     t.janela.localStorage.setItem('mq-demo-v4', JSON.stringify(d));
-    await t.api.iniciar(); await t.api.registrarAcesso('abriu', null);
+    await t.api.reler(); await t.api.registrarAcesso('abriu', null);
     const l = await t.api.listarAcessos(); assert.equal(l.length, 1); assert.equal(l[0].tipo, 'abriu');
   });
   test('aba Histórico da geral mostra o quadro com a última entrada de cada pessoa', async () => {

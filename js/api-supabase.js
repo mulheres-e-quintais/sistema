@@ -225,7 +225,7 @@
         caminhos.add(path);
       }
       d.fotos = [...caminhos];
-      ['situacao', 'aprovado_por', 'aprovado_em', 'obs_coordenacao', 'executor_id', 'criado_em', 'atualizado_em'].forEach(k => delete d[k]);
+      ['situacao', 'aprovado_por', 'aprovado_em', 'obs_coordenacao', 'executor_id', 'criado_em', 'atualizado_em', 'conteudo_alterado_por', 'conteudo_alterado_em'].forEach(k => delete d[k]);
       return gravar('diagnosticos', d);
     },
     async listarAvaliacoes() {

@@ -1295,3 +1295,12 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .linha-tempo.lt-acesso li { grid-template-columns: 118px minmax(0, 1fr); }
 @media (max-width: 520px) { .linha-tempo.lt-acesso li { grid-template-columns: 1fr; } }
 .ult-acesso { margin: 0 0 12px; }
+/* Diagnóstico: onde a localização foi registrada (campo.js, 31_validacao_diagnostico.sql) */
+.local-grade { display: grid; grid-template-columns: minmax(0, 180px) minmax(0, 1fr); gap: 14px; align-items: center; }
+@media (max-width: 520px) { .local-grade { grid-template-columns: 1fr; } .mapa-local { max-width: 220px; } }
+.mapa-local { width: 100%; height: auto; max-height: 200px; }
+.mapa-local .ml-linha { stroke: var(--muted); stroke-dasharray: 2 2; }
+.mapa-local .ml-mun { fill: none; stroke: var(--ink-2); }
+.mapa-local .ml-gps { fill: var(--ok); }
+.mapa-local .ml-gps.ml-alerta { fill: var(--crit); }
+.sem-gps select { margin-bottom: 6px; }

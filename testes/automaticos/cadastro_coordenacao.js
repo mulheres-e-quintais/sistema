@@ -17,7 +17,7 @@ let seq = 100000000; const cpf = () => { const b = String(seq++).padStart(9, '0'
   const semRolagem = async n => { const w = await p.evaluate(() => document.documentElement.scrollWidth); ok(n + ': sem rolagem para os lados', w <= 390, 'largura ' + w); };
   async function preencher(d) {
     await p.fill('#c-nome', d.nome); await p.fill('#c-cpf', d.cpf); await p.fill('#c-fone', d.tel || '(84) 99888-7766'); await p.fill('#c-email', d.email);
-    if (d.mun != null) await p.fill('#c-mun', d.mun);
+    if (d.mun != null) await p.fill('#dp-cid', d.mun);
     if (d.arlo !== undefined) await p.click(`#w-cadastro_arlo label:has-text("${d.arlo ? 'Sim' : 'Não'}")`);
     if (d.perfil) for (const k of ['agricultora', 'atua_mulheres', 'mora_rural', 'internet', 'outra_bolsa']) await p.click(`#w-pf_${k} label:has-text("${d.perfil[k] ? 'Sim' : 'Não'}")`).catch(() => {});
     if (d.exp) await p.selectOption('#pf-exp', d.exp).catch(() => {});

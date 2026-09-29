@@ -7,6 +7,69 @@
   const E = s => MQ.ui.esc(s);
   const $ = s => document.querySelector(s);
   const fotosTemp = {};
+
+  /* ---------- onde o diagnóstico foi registrado (31_validacao_diagnostico.sql) ---------- */
+  const MOTIVOS_SEM_GPS = ['O celular não achou o sinal de GPS no quintal', 'O celular não tem GPS ou a localização está bloqueada',
+    'A mulher não autorizou registrar a localização', 'Aplicado no papel: a localização não foi registrada na hora', 'Outro motivo'];
+  const LONGE_KM = 40;   // mais longe que isso do centro do município da ficha: a coordenação confere
+  const normMun = t => String(t || '').split('/')[0].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  function centroMun(uf, mun) {
+    const muns = ((MQ.GEO || {}).mun || {})[uf] || {}; const k = Object.keys(muns).find(m => normMun(m) === normMun(mun));
+    return k ? { lat: +muns[k][1], lon: +muns[k][0], nome: k } : null;
+  }
+  function kmEntre(a, b) {
+    const r = x => x * Math.PI / 180; const dLa = r(b.lat - a.lat), dLo = r(b.lon - a.lon);
+    const h = Math.sin(dLa / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dLo / 2) ** 2;
+    return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
+  }
+  /* o que a coordenação precisa saber sobre a localização de um diagnóstico */
+  function localDiag(dg, f) {
+    f = f || {}; const d = dg.dados || {};
+    if (dg.latitude == null || dg.latitude === '') return { sem: true, alerta: !dg.sem_agua, motivo: dg.sem_gps_motivo || '' };
+    const p = { lat: +dg.latitude, lon: +dg.longitude };
+    const c = centroMun(dg.uf || f.uf, f.municipio); const km = c ? kmEntre(p, c) : null;
+    const pf = f.latitude != null && f.latitude !== '' ? { lat: +f.latitude, lon: +f.longitude } : null;
+    const noEstado = MQ.GEO && MQ.GEO.uf && MQ.GEO.uf[dg.uf || f.uf] ? dentroUF(p, MQ.GEO.uf[dg.uf || f.uf].r) : true;
+    return { sem: false, p, centro: c, km, kmFicha: pf ? kmEntre(p, pf) : null, precisao: d.gps_precisao != null ? +d.gps_precisao : null,
+      noEstado, alerta: (km != null && km > LONGE_KM) || !noEstado };
+  }
+  function dentroUF(p, aneis) {   // ponto dentro do contorno do estado (qualquer anel)
+    return (aneis || []).some(anel => { let dentro = false;
+      for (let i = 0, j = anel.length - 1; i < anel.length; j = i++) { const [xi, yi] = anel[i], [xj, yj] = anel[j];
+        if ((yi > p.lat) !== (yj > p.lat) && p.lon < (xj - xi) * (p.lat - yi) / (yj - yi) + xi) dentro = !dentro; }
+      return dentro; });
+  }
+  const chipLocal = l => l.sem ? (l.alerta ? '<span class="chip crit">Sem localização</span>' : '') : !l.noEstado ? '<span class="chip crit">Fora do estado</span>'
+    : l.alerta ? `<span class="chip crit">${Math.round(l.km)} km do município</span>` : '';
+  /* mapinha do estado: centro do município da ficha (círculo) e onde o GPS foi registrado (ponto). Nada sai do sistema. */
+  function mapaLocal(uf, l) {
+    const g = MQ.GEO && MQ.GEO.uf && MQ.GEO.uf[uf]; if (!g || l.sem) return '';
+    const pts = g.r.flat(); const lons = pts.map(x => x[0]), lats = pts.map(x => x[1]);
+    const K = Math.cos((Math.max(...lats) + Math.min(...lats)) / 2 * Math.PI / 180);
+    const xy = ([lon, lat]) => [lon * K, -lat];
+    const bx = [Math.min(...lons) * K, -Math.max(...lats), (Math.max(...lons) - Math.min(...lons)) * K, Math.max(...lats) - Math.min(...lats)];
+    const m = Math.max(bx[2], bx[3]) * 0.06; const vb = [bx[0] - m, bx[1] - m, bx[2] + 2 * m, bx[3] + 2 * m]; const e = Math.max(vb[2], vb[3]) / 100;
+    const path = anel => 'M' + anel.map(q => xy(q).map(v => v.toFixed(3)).join(',')).join('L') + 'Z';
+    const [gx, gy] = xy([l.p.lon, l.p.lat]); const c = l.centro && xy([l.centro.lon, l.centro.lat]);
+    return `<svg class="mapa mapa-local" viewBox="${vb.join(' ')}" role="img" aria-label="Mapa de ${E(uf)}: ${c ? 'círculo no centro de ' + E(l.centro.nome) + ', ' : ''}ponto onde a localização foi registrada" preserveAspectRatio="xMidYMid meet">
+      <path d="${g.r.map(path).join('')}" class="uf-proj" stroke-width="${e * 0.3}"></path>
+      ${c ? `<line x1="${c[0]}" y1="${c[1]}" x2="${gx}" y2="${gy}" class="ml-linha" stroke-width="${e * 0.4}"></line><circle cx="${c[0]}" cy="${c[1]}" r="${e * 2.2}" class="ml-mun" stroke-width="${e * 0.6}"></circle>` : ''}
+      <circle cx="${gx}" cy="${gy}" r="${e * 1.8}" class="ml-gps${l.alerta ? ' ml-alerta' : ''}"></circle></svg>`;
+  }
+  function blocoLocal(dg, f) {
+    const l = localDiag(dg, f); const fmtKm = k => k < 1 ? Math.round(k * 1000) + ' m' : (k < 10 ? k.toFixed(1).replace('.', ',') : Math.round(k)) + ' km';
+    if (l.sem) return `<div class="bloco bloco-local"><h3>Onde foi registrado</h3>
+      <div class="aviso${l.alerta ? ' erro' : ''}"><b>Sem localização.</b> ${E(l.motivo || 'Sem explicação.')}${l.alerta ? '<br>Para aprovar, escreva na observação como você confirmou que a visita aconteceu (ligação para a mulher, foto com referência do lugar, relato da bolsista).' : ''}</div></div>`;
+    const linhas = [
+      ['Coordenadas', l.p.lat.toFixed(5) + ', ' + l.p.lon.toFixed(5) + (l.precisao != null ? ' (precisão de ' + Math.round(l.precisao) + ' m)' : '')],
+      l.centro ? ['Distância do centro de ' + l.centro.nome, fmtKm(l.km)] : ['Município da ficha', 'não encontrado no mapa do projeto'],
+      l.kmFicha != null ? ['Distância do ponto da ficha', fmtKm(l.kmFicha)] : null].filter(Boolean);
+    return `<div class="bloco bloco-local"><h3>Onde foi registrado</h3>
+      ${!l.noEstado ? `<div class="aviso erro"><b>A localização está fora de ${E(U().nomeUF(dg.uf))}.</b> Confira com quem aplicou antes de aprovar.</div>`
+        : l.alerta ? `<div class="aviso erro"><b>Registrado a ${fmtKm(l.km)} do centro de ${E(l.centro.nome)}.</b> Municípios grandes podem ter comunidades longe do centro, mas confira antes de aprovar e diga na observação como conferiu.</div>` : ''}
+      <div class="local-grade">${mapaLocal(dg.uf, l)}<dl class="dl">${linhas.map(([k, v]) => `<dt>${E(k)}</dt><dd>${E(v)}</dd>`).join('')}</dl></div>
+      <p class="small muted">Círculo: centro do município da ficha. Ponto: onde o celular registrou a localização. O mapa é desenhado aqui mesmo, sem mandar a localização para outro site.</p></div>`;
+  }
   let mesRoteiro = null;          // 'AAAA-MM'
   let ufRoteiro = '';
 
@@ -205,7 +268,7 @@
       ${MQ.impactoUI ? MQ.impactoUI.secaoCoord() : ''}
       ${aguard.length ? `<div class="bloco"><h3>${souTec ? 'Planos para você aprovar' : 'Planos aguardando a coordenação técnica'} (${aguard.length})</h3><div class="lista-fichas">
         ${aguard.map(d => { const f = ficha(d.ficha_id) || {}; return `<button class="vagabtn ficha-linha" data-acao="campo-diag-ver" data-ficha="${E(d.ficha_id)}"><span class="nm">${E(f.nome || '—')}</span>
-          <span style="display:flex;gap:6px;flex-wrap:wrap">${d.sem_agua ? '<span class="chip crit">Sem água: sem plano</span>' : `<span class="chip pend">Lote ${d.lote}</span>`}<span class="chip off">${E((d.dados && d.dados.kit || []).filter(k => k.item).length)} itens no kit${totalKit(d.dados && d.dados.kit) ? ' · ' + brl(totalKit(d.dados && d.dados.kit)) : ''}</span></span>
+          <span style="display:flex;gap:6px;flex-wrap:wrap">${chipLocal(localDiag(d, f))}${d.sem_agua ? '<span class="chip crit">Sem água: sem plano</span>' : `<span class="chip pend">Lote ${d.lote}</span>`}<span class="chip off">${E((d.dados && d.dados.kit || []).filter(k => k.item).length)} itens no kit${totalKit(d.dados && d.dados.kit) ? ' · ' + brl(totalKit(d.dados && d.dados.kit)) : ''}</span></span>
           <span class="sub">${E(d.uf)} · ${E(f.municipio || '')} · visita em ${R.fmtData(d.data_visita)} por ${E((pessoa(d.executor_id) || {}).nome || '—')}</span></button>`; }).join('')}</div></div>` : ''}
       <div class="secao-cab"><h2>Roteiro</h2><span class="seg">${['', ...MQ.UFS.map(u => u.uf)].map(u => `<button type="button" data-acao="campo-uf" data-uf="${u}" aria-pressed="${ufRoteiro === u}">${u || 'Todos'}</button>`).join('')}</span></div>
       ${roteiro(ufRoteiro, souTec)}`;
@@ -290,7 +353,7 @@
     const f = ficha(p.ficha); if (!f) return '<div class="painel-corpo"><p>Ficha não encontrada.</p></div>';
     const atual = diagnosticos().find(d => d.ficha_id === f.id);
     const d = atual ? Object.assign({}, atual, atual.dados || {}) : { id: MQ.novoId(), ficha_id: f.id, visita_id: p.visita || '', data_visita: R.hoje(),
-      latitude: f.latitude ?? null, longitude: f.longitude ?? null, familia: [{ nome: primeiroNome(f.nome), parentesco: 'Ela mesma', ajuda: true }], kit: [{}, {}, {}], cronograma: [{}, {}] };
+      latitude: null, longitude: null, familia: [{ nome: primeiroNome(f.nome), parentesco: 'Ela mesma', ajuda: true }], kit: [{}, {}, {}], cronograma: [{}, {}] };
     const v = k => E(d[k] == null ? '' : d[k]);
     const prod = d.producao || {};
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">${atual ? 'Corrigir diagnóstico' : '1ª visita'} · ${E(f.uf)} · ${codigoQuintal(f)}</span>
@@ -302,8 +365,15 @@
         <fieldset><legend>Visita</legend><div class="campos">
           <div class="campo"><label for="dg-data">Data da visita</label><input id="dg-data" name="data_visita" type="date" value="${v('data_visita')}" max="${R.hoje()}"></div>
           <div class="campo"><label>Localização do quintal</label><button type="button" class="btn peq" data-acao="campo-gps">${d.latitude ? 'Localização registrada ✓' : 'Registrar localização'}</button>
-            <input type="hidden" name="latitude" value="${v('latitude')}"><input type="hidden" name="longitude" value="${v('longitude')}"><span class="dica" id="dg-gps-dica">${d.latitude ? E(d.latitude + ', ' + d.longitude) : 'Registre em pé, no quintal.'}</span></div>
-          <div class="campo inteiro" id="w-sem_gps_motivo"><label for="dg-semgps">Sem localização? Explique</label><input id="dg-semgps" name="sem_gps_motivo" value="${v('sem_gps_motivo')}" placeholder="Ex.: celular sem GPS; ela preferiu não registrar"></div>
+            <input type="hidden" name="latitude" value="${v('latitude')}"><input type="hidden" name="longitude" value="${v('longitude')}">
+            <input type="hidden" name="gps_precisao" value="${v('gps_precisao')}"><input type="hidden" name="gps_em" value="${v('gps_em')}">
+            <span class="dica" id="dg-gps-dica">${d.latitude ? E(d.latitude + ', ' + d.longitude) : 'Registre em pé, no quintal, durante a visita.'}</span></div>
+          ${(() => { const mt = String(d.sem_gps_motivo || ''); const tipo = MOTIVOS_SEM_GPS.find(x => mt.startsWith(x + '. ')) || ''; const det = tipo ? mt.slice(tipo.length + 2) : mt;
+            return `<div class="campo inteiro sem-gps" id="w-sem_gps_motivo"><label for="dg-semgps-tipo">Sem localização? Por quê</label>
+              <select id="dg-semgps-tipo" name="sem_gps_tipo"><option value="">Escolha, se não conseguiu registrar…</option>${MOTIVOS_SEM_GPS.map(x => `<option${x === tipo ? ' selected' : ''}>${E(x)}</option>`).join('')}</select>
+              <label for="dg-semgps" class="so-leitor">Explique com suas palavras</label>
+              <input id="dg-semgps" name="sem_gps_detalhe" value="${E(det)}" placeholder="Explique com suas palavras: onde fica o quintal e o que aconteceu">
+              <span class="dica">Sem localização, a coordenação só aprova depois de confirmar a visita de outro jeito.</span></div>`; })()}
         </div></fieldset>
 
         <fieldset><legend>1. Família</legend><div id="w-familia" class="linhas">${(d.familia || []).map(linhaFamilia).join('')}</div>
@@ -397,7 +467,8 @@
     MQ.DIAG.producao.forEach(([k]) => { const q = txt('pr_' + k + '_qtd'), c = !!fd.get('pr_' + k + '_consumo'), v = !!fd.get('pr_' + k + '_venda'), o = txt('pr_' + k + '_onde');
       if (q || c || v || o) producao[k] = { qtd: q, consumo: c, venda: v, onde: o }; });
     const d = {
-      data_visita: txt('data_visita'), latitude: num('latitude'), longitude: num('longitude'), sem_gps_motivo: txt('sem_gps_motivo'),
+      data_visita: txt('data_visita'), latitude: num('latitude'), longitude: num('longitude'), sem_gps_motivo: [txt('sem_gps_tipo'), txt('sem_gps_detalhe')].filter(Boolean).join('. '), sem_gps_tipo: txt('sem_gps_tipo'), sem_gps_detalhe: txt('sem_gps_detalhe'),
+      gps_precisao: num('gps_precisao'), gps_em: txt('gps_em') || null,
       familia: linhas('familia', [['nome', 'fam_nome'], ['idade', 'fam_idade', 'num'], ['parentesco', 'fam_par'], ['ocupacao', 'fam_ocup'], ['ajuda', 'fam_ajuda', 'chk']]).filter(x => x.nome),
       politicas: todos('politicas'), renda_familiar: num('renda_familiar'), fonte_renda: txt('fonte_renda'),
       area_m2: num('area_m2'), terra: txt('terra'), cercado: txt('cercado'), fontes_agua: todos('fontes_agua'), agua_seca: txt('agua_seca'),
@@ -449,7 +520,8 @@
           <div><span class="v num">${d.area_m2 ?? '—'}<small> m²</small></span><span class="l">área do quintal</span></div>
           <div><span class="v num">${d.renda_quintal != null ? R.fmtBRL(+d.renda_quintal).replace(',00', '') : '—'}</span><span class="l">vendas do quintal por mês</span></div>
           <div><span class="v">${{ sim: 'Sim', as_vezes: 'Às vezes', nao: 'Não' }[d.agua_seca] || '—'}</span><span class="l">água dura na seca</span></div></div>
-        <div class="bloco"><h3>Visita</h3>${dl([['Data', R.fmtData(d.data_visita)], ['Quem visitou', (pessoa(dg.executor_id) || {}).nome], ['Localização', d.latitude ? d.latitude + ', ' + d.longitude : 'Sem GPS: ' + (d.sem_gps_motivo || '')]])}</div>
+        <div class="bloco"><h3>Visita</h3>${dl([['Data', R.fmtData(d.data_visita)], ['Quem visitou', (pessoa(dg.executor_id) || {}).nome]])}</div>
+        ${blocoLocal(dg, f)}
         <div class="bloco"><h3>Família (${(d.familia || []).length})</h3>${tab(['Nome', 'Idade', 'Parentesco', 'Estuda/trabalha', 'Ajuda'], (d.familia || []).map(x => [x.nome, x.idade, x.parentesco, x.ocupacao, x.ajuda ? 'Sim' : 'Não']))}
           ${dl([['Políticas', (d.politicas || []).map(k => rot(MQ.DIAG.politicas, k)).join(', ')], ['Renda da família', d.renda_familiar != null ? R.fmtBRL(+d.renda_familiar) : null], ['Maior fonte', d.fonte_renda]])}</div>
         <div class="bloco"><h3>Quintal e água</h3>${dl([['Terra', { propria: 'Própria', cedida: 'Cedida', outra: 'Outra' }[d.terra]], ['Cercado', { sim: 'Sim', nao: 'Não', em_parte: 'Em parte' }[d.cercado]],
@@ -465,12 +537,15 @@
         <div class="bloco"><h3>Fotos</h3><div class="acoes">${(dg.fotos || []).map((x, i) => `<button class="btn peq" data-acao="ficha-foto" data-path="${E(x)}">${x === 'exemplo' ? 'Foto de exemplo' : 'Foto ' + (i + 1)}</button>`).join('') || '<span class="muted small">Sem fotos enviadas.</span>'}</div><div id="fi-foto-vista"></div></div>
         ${MQ.sugestaoUI && !dg._fila ? MQ.sugestaoUI.bloco(f, dg) : ''}
         ${MQ.vitrineUI && !dg._fila ? MQ.vitrineUI.blocoPublicar(f, dg) : ''}
-        ${souTec && !dg._fila ? `<form class="bloco" data-form="diag-decisao" data-id="${E(dg.id)}" novalidate><h3>Decisão da coordenação</h3>
+        ${souTec && !dg._fila ? (() => { const loc = localDiag(dg, f); const alterei = dg.conteudo_alterado_por && dg.conteudo_alterado_por === eu.id;
+          return `<form class="bloco" data-form="diag-decisao" data-id="${E(dg.id)}" data-conferir="${loc.alerta ? '1' : ''}" novalidate><h3>Decisão da coordenação</h3>
           <p class="small muted">${dg.sem_agua ? 'Confirme o encaminhamento por falta de água.' : 'Aprove se o kit está na lista aprovada e cabe no valor por quintal, e se o cronograma é viável.'}</p>
-          <div class="campo"><label for="dd-obs">Observação</label><textarea id="dd-obs" name="obs">${E(dg.obs_coordenacao || '')}</textarea></div>
+          ${alterei && dg.situacao !== 'aprovado' ? '<div class="aviso"><b>Você alterou este diagnóstico, então não aprova.</b> Quem aprova é a coordenação técnica. Sem técnica, devolva para quem aplicou corrigir: depois da correção dela, você pode aprovar.</div>' : ''}
+          <div class="campo"><label for="dd-obs">${loc.alerta && dg.situacao !== 'aprovado' ? 'Observação: como você confirmou que a visita aconteceu?' : 'Observação'}</label><textarea id="dd-obs" name="obs">${dg.situacao === 'aprovado' ? E(dg.obs_coordenacao || '') : ''}</textarea>
+            ${dg.situacao !== 'aprovado' && dg.obs_coordenacao ? `<span class="dica">Observação anterior: ${E(dg.obs_coordenacao)}</span>` : ''}</div>
           <div class="aviso erro" data-erro hidden></div>
-          <div class="acoes">${dg.situacao !== 'aprovado' ? `<button class="btn pri" type="submit" name="decisao" value="aprovado">${dg.sem_agua ? 'Confirmar encaminhamento' : 'Aprovar plano'}</button>` : ''}
-            <button class="btn perigo" type="submit" name="decisao" value="devolvido">${dg.situacao === 'aprovado' ? 'Reabrir: devolver' : 'Devolver para correção'}</button></div></form>` : ''}
+          <div class="acoes">${dg.situacao !== 'aprovado' && !alterei ? `<button class="btn pri" type="submit" name="decisao" value="aprovado">${dg.sem_agua ? 'Confirmar encaminhamento' : 'Aprovar plano'}</button>` : ''}
+            <button class="btn perigo" type="submit" name="decisao" value="devolvido">${dg.situacao === 'aprovado' ? 'Reabrir: devolver' : 'Devolver para correção'}</button></div></form>`; })() : ''}
       </div>`;
   }
 
@@ -535,6 +610,7 @@
       navigator.geolocation.getCurrentPosition(pos => {
         const fm = $('form[data-form=diag]'); if (!fm) return;
         fm.latitude.value = pos.coords.latitude.toFixed(6); fm.longitude.value = pos.coords.longitude.toFixed(6);
+        fm.gps_precisao.value = Math.round(pos.coords.accuracy); fm.gps_em.value = new Date().toISOString();
         dica.textContent = fm.latitude.value + ', ' + fm.longitude.value + ' (precisão de ' + Math.round(pos.coords.accuracy) + ' m)'; el.textContent = 'Localização registrada ✓';
       }, err => { dica.textContent = MQ.dicaGPS(err, 'Se não der, explique no campo abaixo.'); },
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 });
@@ -605,7 +681,7 @@
         const reg = { id: form.dataset.id, ficha_id: f.id, visita_id: visitaId, uf: f.uf, codigo_quintal: codigoQuintal(f), sem_agua: sem, fotos: d.fotos.filter(x => x !== 'exemplo') };
         campos.forEach(k => { reg[k] = d[k]; });
         if (sem) { reg.lote = null; reg.mes_implantacao = null; }
-        const extra = Object.assign({}, d); campos.concat(['fotos', 'fotos_ok']).forEach(k => delete extra[k]);
+        const extra = Object.assign({}, d); campos.concat(['fotos', 'fotos_ok', 'sem_gps_tipo', 'sem_gps_detalhe']).forEach(k => delete extra[k]);
         if (sem) ['objetivos', 'frase_objetivo', 'kit', 'cronograma', 'compromissos'].forEach(k => delete extra[k]);
         reg.dados = extra;
         const fotos = Object.assign({}, fotosTemp);
@@ -634,6 +710,7 @@
     if (tipo === 'diag-decisao') {
       const dec = form.dataset.decisao || 'aprovado'; const obs = String(fd.get('obs') || '').trim();
       if (dec === 'devolvido' && obs.length < 5) return U().mostrarErros(form, { obs: 'Escreva o que precisa ser corrigido.' });
+      if (dec === 'aprovado' && form.dataset.conferir && obs.length < 10) return U().mostrarErros(form, { obs: 'Escreva como você confirmou que a visita aconteceu (pelo menos 10 letras).' });
       await U().ocupado(form, async () => {
         await S().api.decidirDiagnostico(form.dataset.id, dec, obs);
         await U().carregar(); U().fecharPainel(); U().render();
@@ -674,5 +751,5 @@
     const devolvidos = diagnosticos().filter(d => d.situacao === 'devolvido' && (eu.papel === 'agente' ? (visitas().find(v => v.id === d.visita_id) || {}).executor_id === eu.id : d.uf === eu.uf)).length;
     return vencidas + devolvidos;
   }
-  MQ.campoUI = { contaAFazer, secaoBolsista, telaAgente, abaCoord, painel, clique, enviar, diagnosticos, visitas, guardar, numBR };
+  MQ.campoUI = { contaAFazer, secaoBolsista, telaAgente, abaCoord, painel, clique, enviar, diagnosticos, visitas, guardar, numBR, localDiag, kmEntre, centroMun, MOTIVOS_SEM_GPS };
 })();

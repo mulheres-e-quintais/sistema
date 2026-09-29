@@ -52,7 +52,7 @@
     if (pf.outra_bolsa === true) p.push('já recebe outra bolsa');
     const t = p.join(' · '); return t ? t.charAt(0).toUpperCase() + t.slice(1) : null;
   }
-  function camposPessoais(d, pub, papel) {
+  function camposPessoais(d, pub, papel, munis) {   // munis: municípios do projeto no estado (lista de sugestões)
     const campo = R.ehCampo(papel);
     d = d || {}; const en = d.endereco || {}; const se = d.socioeconomico || null; const v = x => E(x == null ? '' : x);
     const op = (lista, sel) => '<option value="">Selecione…</option>' + lista.map(x => `<option ${x === sel ? 'selected' : ''}>${E(x)}</option>`).join('');
@@ -60,14 +60,14 @@
     const sn = (val, t) => `<label class="sn${d.cadastro_arlo === val ? ' on' : ''}"><input type="radio" name="cadastro_arlo" value="${val ? 'sim' : 'nao'}" ${d.cadastro_arlo === val ? 'checked' : ''} data-arlo>${t}</label>`;
     return `${temPerfil(papel) ? camposPerfil(d.perfil, pub) : ''}<fieldset><legend>Cadastro no Arlo</legend>
         <div class="criterio" id="w-cadastro_arlo"><span>${pub ? 'Você já tem' : 'A pessoa já tem'} cadastro no Arlo?</span><span class="sn-par">${sn(true, 'Sim')}${sn(false, 'Não')}</span></div>
-        <p class="small muted" data-arlo-nota ${arlo ? '' : 'hidden'}>Então bastam os dados básicos: nome, CPF, celular e e-mail${campo && pub ? ', mais a cidade onde mora (o sistema não lê o Arlo e calcula a ajuda de custo das visitas pela distância da cidade até os quintais)' : ''}. Nascimento, NIS, endereço e conta bancária ficam no Arlo.</p>
+        <p class="small muted" data-arlo-nota ${arlo ? '' : 'hidden'}>Então bastam os dados básicos: nome, CPF, celular e e-mail${campo && pub ? ', mais o município onde mora (o sistema não lê o Arlo e calcula a ajuda de custo das visitas pela distância do município até os quintais)' : ''}. Nascimento, NIS, endereço e conta bancária ficam no Arlo.</p>
       </fieldset>
       <div data-arlo-opc ${arlo ? 'hidden' : ''}><fieldset><legend>Mais dados pessoais</legend><div class="campos">
         <div class="campo"><label for="dp-soc">Nome social <span class="muted">(se usar)</span></label><input id="dp-soc" name="nome_social" value="${v(d.nome_social)}" placeholder="Como prefere ser chamada"></div>
         <div class="campo"><label for="dp-nasc">Data de nascimento</label><input id="dp-nasc" name="data_nascimento" type="date" value="${v(d.data_nascimento)}" max="${R.hoje()}"></div>
         <div class="campo inteiro"><label for="dp-nis">PIS/NIS/PASEP <span class="muted">(se tiver)</span></label><input id="dp-nis" name="nis" inputmode="numeric" value="${v(d.nis)}" placeholder="000.00000.00-0"></div>
       </div></fieldset></div>
-      <fieldset ${!(campo && pub) ? `data-arlo-opc ${arlo ? 'hidden' : ''}` : ''}><legend>Endereço</legend>
+      <fieldset><legend>Endereço</legend>
         <p class="small muted" style="margin-top:-6px">Usado para calcular a ajuda de custo das visitas (distância até os quintais) e para a FUNCERN.</p>
         <div class="campos">
         <div class="campo" data-arlo-opc ${arlo ? 'hidden' : ''}><label for="dp-cep">CEP</label><input id="dp-cep" name="cep" inputmode="numeric" value="${v(en.cep)}" placeholder="00000-000" data-cep><span class="dica" id="dp-cep-dica">Preenche o resto sozinho quando há internet.</span></div>
@@ -75,7 +75,8 @@
         <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo inteiro"><label for="dp-log">Logradouro (rua, sítio, estrada)</label><input id="dp-log" name="logradouro" value="${v(en.logradouro)}"></div>
         <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo"><label for="dp-comp">Complemento</label><input id="dp-comp" name="complemento" value="${v(en.complemento)}"></div>
         <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo"><label for="dp-bai">Bairro ou comunidade</label><input id="dp-bai" name="bairro" value="${v(en.bairro)}"></div>
-        <div class="campo"><label for="dp-cid">Cidade</label><input id="dp-cid" name="cidade" value="${v(en.cidade)}"></div>
+        <div class="campo"><label for="dp-cid">Município onde mora</label><input id="dp-cid" name="cidade" value="${v(en.cidade || d.municipio)}" ${munis && munis.length ? 'list="lista-mun"' : ''} autocomplete="address-level2">
+          ${munis && munis.length ? `<datalist id="lista-mun">${munis.map(x => `<option value="${E(x)}">`).join('')}</datalist><span class="dica">A lista traz os municípios do projeto no estado.</span>` : ''}</div>
         <div class="campo"><label for="dp-uf">Estado</label><select id="dp-uf" name="uf_end">${op(['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE', 'Outro'], en.uf)}</select></div>
       </div></fieldset>
       <fieldset data-arlo-opc ${arlo ? 'hidden' : ''}><legend>Questionário socioeconômico (opcional)</legend>
@@ -104,7 +105,7 @@
     const e = {};
     if (!d._arlo_resp) e.cadastro_arlo = 'Responda se já tem cadastro no Arlo.';
     if (pub && !d.cadastro_arlo && !d.data_nascimento) e.data_nascimento = 'Informe a data de nascimento.';
-    if (pub && d.cadastro_arlo && d._campo && !d.endereco.cidade) e.cidade = 'Informe a cidade onde mora (usada no cálculo da ajuda de custo).';
+    if (pub && d.cadastro_arlo && d._campo && !d.endereco.cidade) e.cidade = 'Informe o município onde mora (usado no cálculo da ajuda de custo).';
     if (d.data_nascimento && (d.data_nascimento > R.hoje() || R.idade(d.data_nascimento) < 16)) e.data_nascimento = 'Data de nascimento inválida.';
     if (d.nis && d.nis.length !== 11) e.nis = 'O PIS/NIS tem 11 números.';
     if (pub && d._perfil) { const pf = d.perfil || {};

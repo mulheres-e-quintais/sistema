@@ -205,7 +205,11 @@
   R.validarDiagnostico = function (d) {
     const e = {};
     if (!d.data_visita) e.data_visita = 'Informe a data da visita.'; else if (d.data_visita > R.hoje()) e.data_visita = 'Data no futuro.';
-    if (d.latitude == null && String(d.sem_gps_motivo || '').trim().length < 5) e.sem_gps_motivo = 'Registre a localização ou explique por que não foi possível.';
+    if (d.latitude == null) {   // sem GPS: motivo escolhido e explicação com as próprias palavras (31_validacao_diagnostico.sql)
+      const det = String(d.sem_gps_detalhe != null ? d.sem_gps_detalhe : d.sem_gps_motivo || '').trim();
+      if (d.sem_gps_detalhe != null && !String(d.sem_gps_tipo || '').trim()) e.sem_gps_motivo = 'Registre a localização no quintal ou escolha por que não foi possível.';
+      else if (det.length < 15) e.sem_gps_motivo = 'Registre a localização no quintal ou explique, em pelo menos 15 letras, por que não foi possível.';
+    }
     if (!(d.familia || []).some(x => String(x.nome || '').trim())) e.familia = 'Registre pelo menos a própria mulher na família.';
     if (!d.agua_seca) e.agua_seca = 'Informe se a água dá para o quintal no período seco.';
     if (!(d.fontes_agua || []).length) e.fontes_agua = 'Marque as fontes de água.';
