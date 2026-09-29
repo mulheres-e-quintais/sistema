@@ -157,6 +157,14 @@
       const { data, error } = await sb.from('pedidos_novo_acesso').update({ situacao: 'descartado' }).eq('id', id).select('id'); if (error) throw erro(error);
       if (!data || !data.length) throw erro('Pedido não encontrado.');
     },
+    /* ---------- Últimos acessos (30_ultimos_acessos.sql) ---------- */
+    async registrarAcesso(tipo, aparelho) {   // nunca atrapalha: sem o script 30, só não registra
+      if (!sb) return;
+      try { await sb.rpc('registrar_acesso', { p_tipo: tipo, p_aparelho: aparelho || null }); } catch (e) {}
+    },
+    async listarAcessos() {
+      const { data, error } = await sb.from('acessos').select('*').order('em', { ascending: false }).limit(500); if (error) throw erro(error); return data;
+    },
     async gerarCodigoAcesso(id) { const { data, error } = await sb.rpc('gerar_codigo_acesso', { p_equipe: id }); if (error) throw erro(error); return data; },
     /* ---------- Fichas de indicação ---------- */
     async listarFichas() {

@@ -14,7 +14,7 @@ async function montar(perfil) {
   await S.api.iniciar(); S.eu = await S.api.trocarPerfil(perfil);
   await MQ.ui.carregar();
   const tela = {
-    MQ, S, api: S.api,
+    MQ, S, api: S.api, janela: amb.janela,
     /* desenha a tela (ou uma aba da coordenação) e devolve o HTML */
     aba(nome) { S.aba = nome || null; S.painel = null; MQ.ui.render(); return amb.app(); },
     /* abre um painel lateral e devolve o HTML dele */

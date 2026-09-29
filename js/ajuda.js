@@ -241,7 +241,8 @@
       t: 'Histórico',
       intro: 'Registro de tudo o que foi feito no sistema: quem cadastrou, alterou, aprovou, devolveu, desligou, gerou código de acesso, consultou conta bancária, e quando.',
       tarefas: [
-        ['Achar um registro', ['Role pelos dias (Hoje, Ontem, datas).', 'No fim da lista, toque em "Ver … registros anteriores" para ir mais para trás.']]
+        ['Achar um registro', ['Role pelos dias (Hoje, Ontem, datas).', 'No fim da lista, toque em "Ver … registros anteriores" para ir mais para trás.']],
+        ['Ver quem entrou no sistema', ['No alto da aba, em <b>Últimos acessos</b>, cada pessoa aparece com a última entrada, o aparelho e a rede.', 'Embaixo aparece quem ainda não entrou.', 'Toque em "Ver entradas e saídas" para ver tudo, inclusive quem saiu por 15 minutos sem uso.', 'Na ficha de cada pessoa aparece o último acesso dela.']]
       ],
       passos: [
         'Os registros aparecem por dia (Hoje, Ontem, datas), do mais recente para o mais antigo. Os 12 últimos ficam à vista; os anteriores, no fim da lista.',
@@ -249,7 +250,9 @@
       ],
       duvidas: [
         ['Para que serve?', 'Prestação de contas e auditoria (CGU, TCU): mostra quem fez cada ação e quando.'],
-        ['Está vazio.', 'Ele começa a encher quando o sistema passa a ser usado: cada cadastro, aprovação ou pagamento vira um registro.']
+        ['Está vazio.', 'Ele começa a encher quando o sistema passa a ser usado: cada cadastro, aprovação ou pagamento vira um registro.'],
+        ['Os acessos ficam guardados para sempre?', 'Não. Entradas e saídas ficam 6 meses e depois são apagadas sozinhas. O IP aparece pela metade: basta para ver se foi a mesma rede.'],
+        ['Alguém abriu o sistema e não aparece.', 'Quem já estava logado conta uma vez por aba aberta. Sem internet nada é registrado.']
       ]
     },
 

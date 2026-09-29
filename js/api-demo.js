@@ -461,6 +461,20 @@
       if (p.situacao !== 'aguardando') throw falha('Este pedido já foi resolvido.');
       Object.assign(p, { situacao: 'descartado', resolvido_por: eu.id, resolvido_em: new Date().toISOString() }); gravar();
     },
+    /* Últimos acessos (mesmas regras do 30_ultimos_acessos.sql): grava em nome de quem está logado, só a geral lê, 6 meses */
+    async registrarAcesso(tipo, aparelho) {
+      const TIPOS = ['entrada', 'primeiro_acesso', 'abriu', 'saida', 'saida_inatividade', 'senha_trocada'];
+      const d = ler(); const eu = euMesmo(); if (!eu || !TIPOS.includes(tipo)) return;
+      const limite = Date.now() - 183 * 864e5;
+      d.acessos = (d.acessos || []).filter(a => new Date(a.em).getTime() >= limite);
+      d.acessos.push({ id: d.acessos.length ? Math.max(...d.acessos.map(a => a.id)) + 1 : 1, equipe_id: eu.id, em: new Date().toISOString(), tipo, aparelho: String(aparelho || '').slice(0, 80) || null, ip: null });
+      if (d.acessos.length > 2000) d.acessos = d.acessos.slice(-2000);
+      gravar();
+    },
+    async listarAcessos() {
+      const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') return [];
+      return copia(ler().acessos || []).sort((a, b) => String(b.em).localeCompare(String(a.em))).slice(0, 500);
+    },
     async gerarCodigoAcesso(id) {
       const d = ler(); const eu = euMesmo(); const m = d.equipe.find(x => x.id === id);
       if (!m || m.status !== 'ativa') throw falha('Cadastro não encontrado ou desligado.');

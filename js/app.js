@@ -26,7 +26,7 @@
       // reabriu o sistema depois de 15 minutos sem uso: sai antes de mostrar qualquer dado
       // sem internet não sai (não daria para entrar de novo): abrir o sistema conta como uso
       if (S.eu && MQ.sessao && MQ.sessao.venceu(MQ.sessao.ultimo()) && !MQ.sessao.semRede() && await temConexao()) await sairDoSistema(AVISO_INATIVO);
-      if (S.eu && !S.verEntrada) { if (MQ.sessao) MQ.sessao.tocar(true); await carregar(); setTimeout(() => sincronizar(false), 500); }
+      if (S.eu && !S.verEntrada) { if (MQ.sessao) MQ.sessao.tocar(true); registrarAbriu(); await carregar(); setTimeout(() => sincronizar(false), 500); }
     } catch (e) { toast(e.message); }
     if (MQ.sessao) MQ.sessao.iniciar({ ativo: () => !!S.eu && !S.verEntrada, temConexao, aoVencer: () => sairDoSistema(AVISO_INATIVO) });
     render();
@@ -45,10 +45,35 @@
     catch (e) { return false; }
     finally { if (t) clearTimeout(t); }
   }
+  /* Últimos acessos (30_ultimos_acessos.sql): o aparelho em poucas palavras, sem guardar o "user agent" inteiro */
+  function aparelho() {
+    const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+    const so = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? (/Mobile/.test(ua) ? 'Android' : 'Tablet Android')
+      : /Windows/.test(ua) ? 'Windows' : /CrOS/.test(ua) ? 'Chromebook' : /Mac OS X|Macintosh/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : 'Outro';
+    const nav = /Edg\//.test(ua) ? 'Edge' : /SamsungBrowser/.test(ua) ? 'Samsung Internet' : /OPR\/|Opera/.test(ua) ? 'Opera' : /Firefox|FxiOS/.test(ua) ? 'Firefox'
+      : /CriOS|Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'navegador';
+    let app = false; try { app = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true; } catch (e) {}
+    return so + ' · ' + nav + (app ? ' · app instalado' : '');
+  }
+  /* registra sem nunca travar nem quebrar o sistema (sem o script 30, sem internet: só não registra). Espera no máximo 3 s */
+  function registrarAcesso(tipo) {
+    if (!S.api || !S.api.registrarAcesso) return Promise.resolve();
+    let t; const limite = new Promise(ok => { t = setTimeout(ok, 3000); if (t && t.unref) t.unref(); });
+    return Promise.race([Promise.resolve().then(() => S.api.registrarAcesso(tipo, aparelho())).catch(() => {}), limite]).finally(() => clearTimeout(t));
+  }
+  const CHAVE_ABRIU = 'mq-acesso-registrado';
+  const marcarAbriu = () => { try { sessionStorage.setItem(CHAVE_ABRIU, '1'); } catch (e) {} };
+  /* abriu o sistema já logado: uma vez por aba (recarregar a página não conta de novo) */
+  function registrarAbriu() {
+    let ja = false; try { ja = sessionStorage.getItem(CHAVE_ABRIU) === '1'; } catch (e) {}
+    if (ja) return; marcarAbriu(); registrarAcesso('abriu');
+  }
   const AVISO_INATIVO = 'Você saiu do sistema depois de 15 minutos sem uso. Entre de novo. O que estava guardado no celular não se perdeu: é enviado quando você entrar.';
   /* sai do sistema (botão Sair ou 15 minutos sem uso): fecha o painel, apaga do aparelho a cópia dos dados e volta para a entrada */
   async function sairDoSistema(aviso) {
     if (aviso) guardarRascunhoPainel();   // saiu sozinho: guarda o formulário pela metade
+    if (S.eu && !S.verEntrada) await registrarAcesso(aviso ? 'saida_inatividade' : 'saida');   // antes de encerrar a sessão no servidor
+    try { sessionStorage.removeItem(CHAVE_ABRIU); } catch (e) {}
     S.painel = null; const pf = $('#painel'); if (pf) pf.remove();
     S.menuAberto = false; S.aba = null; lembrarAba(); if (MQ.bancoUI) MQ.bancoUI.limpar();
     try { Object.keys(sessionStorage).filter(k => /^mq-pend-visto-/.test(k)).forEach(k => sessionStorage.removeItem(k)); } catch (e) {}
@@ -59,7 +84,7 @@
     try { localStorage.removeItem(chaveCache()); } catch (e) {}
     if (modoDemoAtivo()) { S.verEntrada = true; render(); return; }   // demonstração: volta para a tela de entrada
     try { await S.api.sair(); } catch (e) { /* sem internet: a sessão já foi apagada do aparelho */ }
-    S.eu = null; S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.documentos = [];
+    S.eu = null; S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.documentos = []; S.acessos = [];
     render();
   }
   const chaveCache = () => 'mq-cache-' + (S.eu && S.eu.id);
@@ -77,7 +102,7 @@
       const qualquer = e => !e.semRede;   // para as partes em que qualquer erro que não seja de rede só desliga a parte
       S.kitPar = { valor_quintal: MQ.KIT_QUINTAL };   // R$ 4.500 por quintal, fixado no plano de trabalho
       const campoPapel = !['professor_fic', 'auxiliar_adm'].includes(papel);
-      const [equipe, fic, fichas, visitas, diagnosticos, aval, aud, pag, docs, quem, entregas, testes, perfis, pre, exemplo, pedAcesso] = await Promise.all([
+      const [equipe, fic, fichas, visitas, diagnosticos, aval, aud, pag, docs, quem, entregas, testes, perfis, pre, exemplo, pedAcesso, acessos] = await Promise.all([
         S.api.listarEquipe(),
         // curso FIC (11_fic.sql): turmas e matrículas
         (coord || papel === 'professor_fic') && S.api.listarTurmas
@@ -96,7 +121,8 @@
         papel === 'coord_geral' && S.api.listarPerfisEquipe ? talvez(() => S.api.listarPerfisEquipe(), qualquer) : [true, []],
         coord && S.api.listarPreCadastros ? opcional(S.api.listarPreCadastros) : [],
         coord && S.api.contarExemplo ? opcional(async () => [await S.api.contarExemplo()]).then(r => r[0] || 0) : 0,
-        papel === 'coord_geral' && S.api.listarPedidosAcesso ? talvez(() => S.api.listarPedidosAcesso(), semFic) : [true, []]   // 28
+        papel === 'coord_geral' && S.api.listarPedidosAcesso ? talvez(() => S.api.listarPedidosAcesso(), semFic) : [true, []],   // 28
+        papel === 'coord_geral' && S.api.listarAcessos ? talvez(() => S.api.listarAcessos(), qualquer) : [true, []]   // 30
       ]);
       S.equipe = equipe;
       S.ficSemBanco = !fic[0]; [S.turmas, S.matriculas] = fic[0] ? fic[1] : [[], []];
@@ -111,6 +137,7 @@
       S.testesSemBanco = !testes[0]; S.testes = testes[0] ? testes[1] : [];
       S.perfisSemBanco = !perfis[0]; S.perfisEquipe = perfis[0] ? perfis[1] : [];
       S.pre = pre; S.exemplo = exemplo; S.pedidosAcesso = pedAcesso[0] ? pedAcesso[1] : [];
+      S.acessosSemBanco = !acessos[0]; S.acessos = acessos[0] ? acessos[1] : [];
       // segunda leva: os pedidos de viagem dependem de saber quem confere (22 e 26)
       S.pedSemBanco = false; S.pedidos = [];
       if (S.api.listarPedidos && MQ.viagUI && (MQ.viagUI.podeVer(papel) || MQ.viagUI.souConferente())) {
@@ -142,7 +169,8 @@
   const semTecnica = () => !!(S.eu && S.eu.papel === 'coord_geral') && !(S.equipe || []).some(m => m.papel === 'coord_tecnico' && m.status === 'ativa');
   MQ.ui = { S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: () => render(), abrirPainel: p => abrirPainel(p), fecharPainel: () => fecharPainel(),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), sincronizar: a => sincronizar(a),
-    porId: id => porId(id), avatar: (m, t) => avatar(m, t), passos: m => passos(m), dadosDL: m => dadosDL(m), botaoFoto: m => botaoFoto(m), cartaoPessoa: m => cartaoPessoa(m) };
+    porId: id => porId(id), avatar: (m, t) => avatar(m, t), passos: m => passos(m), dadosDL: m => dadosDL(m), botaoFoto: m => botaoFoto(m), cartaoPessoa: m => cartaoPessoa(m),
+    aparelho: () => aparelho(), ipCurto: ip => ipCurto(ip), sair: a => sairDoSistema(a) };
 
   /* ---------- consultas ---------- */
   const ativos = () => S.equipe.filter(m => m.status === 'ativa');
@@ -287,7 +315,8 @@
     else if (aba === 'campo') corpo = (MQ.campoUI ? MQ.campoUI.abaCoord() : '') + (MQ.vitrineUI && !S.campoSemBanco ? MQ.vitrineUI.secaoCoord() : '');
     else corpo = `<div class="cab"><div><span class="eyebrow">Histórico</span><h1 id="t-h">Histórico de alterações</h1>
         <p>Quem fez o quê, e quando: cadastros, aprovações, pagamentos, códigos de acesso e consultas a dados bancários. Serve para a prestação de contas.</p></div></div>
-      <section class="secao" aria-label="Registros">${historico()}</section>`;
+      ${secaoAcessos()}
+      <section class="secao" aria-label="Registros"><div class="secao-cab"><div><h2 id="t-reg">Alterações</h2></div></div>${historico()}</section>`;
     const avisoEx = S.exemplo ? `<div class="aviso erro" role="status"><b>Este sistema está com dados de exemplo (${S.exemplo} registros inventados).</b> Servem para testar; não aparecem na vitrine pública. Antes de cadastrar a equipe e as fichas de verdade, a coordenação geral roda o arquivo 06_apagar_exemplo.sql no Supabase.</div>` : '';
     return `<main class="wrap" id="principal">${avisoEx}${nav}${corpo}</main>`;
   }
@@ -498,6 +527,50 @@
     return `<p class="small muted">${S.aud.length} registro${S.aud.length > 1 ? 's' : ''} · ${semana} nos últimos 7 dias</p>
       <ul class="linha-tempo lt-hora">${lista(rec)}</ul>
       ${resto.length ? dobra('hist-antigos', `Ver ${resto.length} registro${resto.length > 1 ? 's' : ''} anterior${resto.length > 1 ? 'es' : ''}`, `<ul class="linha-tempo lt-hora">${lista(resto)}</ul>`) : ''}`;
+  }
+
+  /* ---------- Últimos acessos (só a coordenação geral; 30_ultimos_acessos.sql) ---------- */
+  const TIPO_ACESSO = { entrada: 'entrou', primeiro_acesso: 'entrou pela primeira vez', abriu: 'abriu o sistema (já estava logada)',
+    saida: 'saiu pelo botão Sair', saida_inatividade: 'saiu sozinho: 15 minutos sem uso', senha_trocada: 'trocou a senha' };
+  /* IP pela metade: basta para ver se é a mesma rede; o número inteiro fica só no banco */
+  const ipCurto = ip => { const v = String(ip || ''); if (!v) return '';
+    if (v.includes('.')) { const p = v.split('.'); return p.length === 4 ? p[0] + '.' + p[1] + '.•.•' : ''; }
+    return v.split(':').slice(0, 2).join(':') + ':…'; };
+  function quandoAcesso(t) {
+    const d = new Date(t), h = new Date(); const k = x => x.toLocaleDateString('pt-BR');
+    const ontem = new Date(h); ontem.setDate(h.getDate() - 1);
+    const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return k(d) === k(h) ? 'hoje, ' + hora : k(d) === k(ontem) ? 'ontem, ' + hora : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) + ', ' + hora;
+  }
+  const ultimoAcessoDe = id => (S.acessos || []).find(a => a.equipe_id === id && a.tipo !== 'saida' && a.tipo !== 'saida_inatividade');
+  function linhaUltimoAcesso(m) {
+    if (!S.eu || S.eu.papel !== 'coord_geral' || S.acessosSemBanco || m.id === S.eu.id) return '';
+    const a = ultimoAcessoDe(m.id);
+    if (!a) return `<p class="small muted ult-acesso">${m.user_id ? 'Último acesso: sem registro nos últimos 6 meses.' : 'Ainda não entrou no sistema.'}</p>`;
+    return `<p class="small muted ult-acesso">Último acesso: <b>${esc(quandoAcesso(a.em))}</b>${a.aparelho ? ' · ' + esc(a.aparelho) : ''}</p>`;
+  }
+  function secaoAcessos() {
+    if (!S.eu || S.eu.papel !== 'coord_geral') return '';
+    const cab = `<div class="secao-cab"><div><h2 id="t-acessos">Últimos acessos</h2><p>Quem entrou no sistema, quando e de que aparelho. Só a coordenação geral vê. Registros com mais de 6 meses são apagados sozinhos.</p></div></div>`;
+    if (S.acessosSemBanco) return `<section class="secao" aria-labelledby="t-acessos">${cab}<div class="aviso">Para ver quem entrou no sistema, quando e de que aparelho, rode no Supabase o arquivo <b>30_ultimos_acessos.sql</b>. O registro começa a partir daí.</div></section>`;
+    const acessos = (S.acessos || []).slice().sort((x, y) => String(y.em).localeCompare(String(x.em)));
+    const pessoas = (S.equipe || []).filter(m => m.status === 'ativa' && m.id !== S.eu.id);
+    const com = pessoas.map(m => [m, ultimoAcessoDe(m.id)]).filter(([, a]) => a).sort((x, y) => String(y[1].em).localeCompare(String(x[1].em)));
+    const nunca = pessoas.filter(m => !m.user_id && !ultimoAcessoDe(m.id)), semReg = pessoas.filter(m => m.user_id && !ultimoAcessoDe(m.id));
+    const semana = new Set(acessos.filter(a => Date.now() - new Date(a.em) < 7 * 864e5 && a.equipe_id !== S.eu.id).map(a => a.equipe_id)).size;
+    const detalhe = a => [a.aparelho, ipCurto(a.ip) && 'rede ' + ipCurto(a.ip)].filter(Boolean).map(esc).join(' · ');
+    const papelDe = m => esc(P[m.papel] ? P[m.papel].nome : m.papel) + (m.uf ? ' · ' + esc(m.uf) : '');
+    const itemPessoa = ([m, a]) => `<li><time datetime="${esc(a.em)}">${esc(quandoAcesso(a.em))}</time><span><b>${esc(nomeDe(m))}</b> <span class="small muted">${papelDe(m)}</span>${detalhe(a) ? `<br><span class="small muted">${detalhe(a)}</span>` : ''}</span></li>`;
+    const itemReg = a => { const m = porId(a.equipe_id) || { nome: 'Pessoa' };
+      return `<li><time datetime="${esc(a.em)}">${esc(quandoAcesso(a.em))}</time><span><b>${esc(nomeDe(m))}</b> ${esc(TIPO_ACESSO[a.tipo] || a.tipo)}${detalhe(a) ? `<br><span class="small muted">${detalhe(a)}</span>` : ''}</span></li>`; };
+    const nomes = l => l.map(m => esc(nomeDe(m))).join(', ');
+    return `<section class="secao" aria-labelledby="t-acessos">${cab}
+      <p class="small muted">${semana} de ${pessoas.length} pessoa${pessoas.length === 1 ? '' : 's'} da equipe entr${semana === 1 ? 'ou' : 'aram'} nos últimos 7 dias.</p>
+      ${com.length ? `<ul class="linha-tempo lt-acesso" id="lista-acessos">${com.map(itemPessoa).join('')}</ul>` : '<p class="small muted">Ninguém da equipe entrou desde que o registro começou.</p>'}
+      ${nunca.length ? `<p class="small"><b>Ainda não entraram (${nunca.length}):</b> ${nomes(nunca)}. Na ficha de cada uma está o código de acesso.</p>` : ''}
+      ${semReg.length ? `<p class="small muted">Sem registro de entrada nos últimos 6 meses (${semReg.length}): ${nomes(semReg)}.</p>` : ''}
+      ${acessos.length ? dobra('acessos-todos', `Ver entradas e saídas (${acessos.length})`, `<ul class="linha-tempo lt-acesso">${acessos.slice(0, 300).map(itemReg).join('')}</ul>`) : ''}
+    </section>`;
   }
 
   /* "Meus dados": abre pelo botão com a foto, no alto, ao lado de Sair */
@@ -763,6 +836,7 @@
           <div class="acoes"><button class="btn perigo cheio" type="submit">Confirmar desligamento</button><button class="btn" type="button" data-acao="desligar-cancelar">Cancelar</button></div>
         </form>
 
+        ${linhaUltimoAcesso(m)}
         ${avisoAcesso(m, editaDados || /^coord|auxiliar_adm/.test(S.eu.papel))}
         ${plano}
         ${m.id === S.eu.id && m.papel !== 'coord_geral' && MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
@@ -951,7 +1025,7 @@
     try {
       if (a === 'perfil' && MQ.bancoUI) MQ.bancoUI.limpar();
       if (a === 'perfil' && el.dataset.p === 'entrada') { S.verEntrada = true; S.painel = null; render(); window.scrollTo(0, 0); }
-      else if (a === 'perfil') { S.verEntrada = false; S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); S.aba = null; lembrarAba(); S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.trocarPerfil(el.dataset.p); await carregar(); render(); }
+      else if (a === 'perfil') { S.verEntrada = false; S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); S.aba = null; lembrarAba(); S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.trocarPerfil(el.dataset.p); marcarAbriu(); registrarAcesso('entrada'); await carregar(); render(); }
       else if (a === 'recomecar') { S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.recomecar(); await carregar(); render(); toast('Demonstração recomeçada com os dados de exemplo.'); }
       else if (a === 'gerar-codigo-nao') { S.confirmaAcesso = null; abrirPainel(S.painel); }
       else if (a === 'acesso-descartar') {
@@ -1065,7 +1139,7 @@
         else if (nova === atual) e.nova = 'A nova senha precisa ser diferente da atual.';
         if (!e.nova && nova !== nova2) e.nova2 = 'As duas senhas não são iguais.';
         if (Object.keys(e).length) return mostrarErros(form, e);
-        await ocupado(form, async () => { await S.api.trocarSenha(atual, nova); form.reset(); form.closest('details').open = false; toast('Senha trocada. Use a nova senha na próxima vez que entrar.'); });
+        await ocupado(form, async () => { await S.api.trocarSenha(atual, nova); registrarAcesso('senha_trocada'); form.reset(); form.closest('details').open = false; toast('Senha trocada. Use a nova senha na próxima vez que entrar.'); });
         return;
       }
       if (tipo === 'esqueci') {
@@ -1087,7 +1161,7 @@
         if (Object.keys(erros).length) return mostrarErros(form, erros);
         await ocupado(form, async () => {
           S.eu = S.modoLogin === 'primeiro' ? await S.api.criarSenha(email, senha, codigo) : await S.api.entrarSenha(email, senha);
-          if (S.eu) { S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); await carregar(); setTimeout(() => sincronizar(false), 500); }
+          if (S.eu) { S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); marcarAbriu(); registrarAcesso(S.modoLogin === 'primeiro' ? 'primeiro_acesso' : 'entrada'); await carregar(); setTimeout(() => sincronizar(false), 500); }
           render();
         });
       }
