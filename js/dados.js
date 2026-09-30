@@ -158,7 +158,7 @@ MQ.DIAG = {
              ['veneno', 'Usa veneno / agrotóxico'], ['adubo_quimico', 'Usa adubo químico'], ['cobertura', 'Faz cobertura do solo']],
   participa: [['associacao', 'Associação'], ['sindicato', 'Sindicato'], ['grupo_mulheres', 'Grupo de mulheres'], ['mpa', 'MPA'], ['cooperativa', 'Cooperativa']],
   objetivos: [['alimentacao', 'Alimentação da família'], ['venda', 'Venda do excedente'], ['animais', 'Criação de pequenos animais'], ['medicinais', 'Plantas medicinais']],
-  fotos: [['geral', 'Visão geral do quintal'], ['agua', 'Fonte de água'], ['plantio', 'Área de plantio'], ['croqui', 'Croqui desenhado (casa, água, canteiros, árvores, animais, cerca, norte)']]
+  fotos: [['geral', 'Visão geral do quintal'], ['agua', 'Fonte de água'], ['plantio', 'Área de plantio'], ['mulher', 'Ela no quintal (opcional)'], ['croqui', 'Croqui desenhado (casa, água, canteiros, árvores, animais, cerca, norte)']]
 };
 
 /* ---------- Ajuda de custo por visita (valores padrão; a coordenação altera na aba Custos) ---------- */
