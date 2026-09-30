@@ -124,16 +124,22 @@
      quando os números chegam, nada na tela de entrada sai do lugar */
   const esqueleto = () => `<span class="eyebrow">O projeto agora</span><h2 id="vit-t" class="serif">Mulheres &amp; Quintais em números</h2>
     <div class="vts">${'<div class="vt esq"><span class="vt-n">&nbsp;</span><span class="vt-l">&nbsp;</span></div>'.repeat(4)}</div>
-    <div class="vit-duo" aria-hidden="true"><div class="vit-mapa">${MQ.painelUI && MQ.painelUI.mapaUFs ? MQ.painelUI.mapaUFs() : ''}</div>
+    <div class="vit-duo" aria-hidden="true"><div class="vit-mapa">${MQ.painelUI && MQ.painelUI.mapaUFs ? MQ.painelUI.mapaUFs({ entrada: true }) : ''}</div>
       <div id="vit-foto"><div class="vit-sem-foto"><span>&nbsp;</span></div></div></div>
     <p class="vit-rodape"><span>&nbsp;</span></p>`;
+  /* rotas saindo de Apodi: só na primeira vez que o mapa da entrada aparece; depois voltam ao tracejado em movimento */
+  function rotasSaindo() {
+    if (V.mapaSaiu) return false; V.mapaSaiu = true;
+    setTimeout(() => { if (typeof document !== 'undefined') document.querySelectorAll('.mapa-pub.saindo').forEach(x => x.classList.remove('saindo')); }, 3400);
+    return true;
+  }
   function corpoEntrada(d) {
     const t = totais(d);
     return `<span class="eyebrow">O projeto agora</span>
       <h2 id="vit-t" class="serif">Mulheres &amp; Quintais em números</h2>
       <div class="vts">${tiles(t).map(tile).join('')}</div>
       <div class="vit-duo">
-        <div class="vit-mapa">${MQ.painelUI.mapaUFs()}</div>
+        <div class="vit-mapa">${MQ.painelUI.mapaUFs({ entrada: true, animar: rotasSaindo() })}</div>
         <div id="vit-foto">${miniMosaico(d, V.foto) || `<div class="vit-sem-foto"><span>As fotos dos quintais aparecem aqui quando a coordenação aprovar, só de quem autorizou.</span></div>`}</div>
       </div>
       <p class="vit-rodape"><span>Totais sem nomes nem endereços${quando() ? ' · atualizado ' + quando() : ''}</span></p>`;

@@ -19,9 +19,15 @@ const MUN = { PI: 10, BA: 8, AL: 3, PE: 5, SE: 3 };
       const pre = raiz + ' ';
       ok(`${w} ${raiz}: 29 municípios + Apodi no mapa`, (await p.$$eval(pre + '.mun-pt', l => l.length)) === 30);
       ok(`${w} ${raiz}: 29 rotas saindo de Apodi`, (await p.$$eval(pre + '.rota', l => l.length)) === 29);
-      const leg = await p.textContent(pre + '.mapa-lista');
-      ok(`${w} ${raiz}: legenda com municípios por estado`, Object.entries(MUN).every(([uf, n]) => new RegExp(uf + '\\s*' + n + ' municípios').test(leg)) && /RN\s*sede/.test(leg), leg.replace(/\s+/g, ' '));
-      ok(`${w} ${raiz}: legenda sem contagem de mulheres`, !/mulher/i.test(leg));
+      if (raiz === '#vitrine') {   // tela de entrada: sem legenda; o número de cidades fica em cada estado
+        ok(`${w} ${raiz}: sem legenda`, !(await p.$(pre + '.mapa-lista')));
+        const nums = await p.$$eval(pre + '.uf-num', l => l.map(x => x.textContent.trim()));
+        ok(`${w} ${raiz}: número de cidades em cada estado`, Object.values(MUN).every(n => nums.includes(n + ' cidades')), nums.join(','));
+      } else {
+        const leg = await p.textContent(pre + '.mapa-lista');
+        ok(`${w} ${raiz}: legenda com municípios por estado`, Object.entries(MUN).every(([uf, n]) => new RegExp(uf + '\\s*' + n + ' municípios').test(leg)) && /RN\s*sede/.test(leg), leg.replace(/\s+/g, ' '));
+        ok(`${w} ${raiz}: legenda sem contagem de mulheres`, !/mulher/i.test(leg));
+      }
       const corte = await p.$eval(pre + 'svg.mapa-pub', svg => { const vb = svg.viewBox.baseVal; const fora = [];
         svg.querySelectorAll('.uf-pub, .uf-sede').forEach(pth => { const bb = pth.getBBox(); if (bb.x < vb.x - 1e-3 || bb.y < vb.y - 1e-3 || bb.x + bb.width > vb.x + vb.width + 1e-3 || bb.y + bb.height > vb.y + vb.height + 1e-3) fora.push(pth.textContent.split(':')[0]); });
         return fora; });
