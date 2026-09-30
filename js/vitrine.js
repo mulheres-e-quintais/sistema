@@ -49,6 +49,39 @@
   const tile = x => `<div class="vt"><span class="vt-n num">${fmt(x.v)}${x.de ? `<small> de ${x.de}</small>` : ''}</span><span class="vt-l">${E(x.l)}</span></div>`;
   const quando = () => V.em ? new Date(V.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
 
+  /* ---------- ilustrações: enquanto nenhuma foto real foi publicada, o mosaico mostra desenhos
+     (marcados como ilustração). Não são fotos de pessoas: somem sozinhas quando a primeira foto real entrar. ---------- */
+  const ILUS = [['Hortaliças no canteiro', 'regador'], ['Colheita do dia', 'cesto'], ['Galinhas no terreiro', 'galinha'], ['Água guardada na cisterna', 'cisterna'],
+    ['Mudas de frutíferas', 'arvore'], ['Canteiros no sertão', 'regador'], ['Feira da agricultura familiar', 'cesto'], ['Plantio de feijão e milho', 'milho'],
+    ['Quintal produtivo', 'arvore'], ['Cuidando das mudas', 'regador']];
+  function desenho(i, tema) {
+    const pele = ['#8D5A3B', '#6B4128', '#B07A52', '#9A6440', '#5A3520'][i % 5], cabelo = ['#2A1B12', '#3B2416', '#1E140E'][i % 3];
+    const roupa = ['#A44934', '#2E6B45', '#C98B2B', '#5B6FA6', '#8A4E7A'][(i * 3) % 5], lenco = ['#E7B04A', '#D9725A', '#6A9F5E'][i % 3];
+    const ceu = ['#DCE7D6', '#F2E3C6', '#D8E4EC'][i % 3], terra = ['#B98B5E', '#A87B50', '#C69C6D'][i % 3];
+    const x = 150 + (i % 3) * 30;   // onde ela fica
+    let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="${ceu}"/><circle cx="${330 - (i % 4) * 20}" cy="48" r="24" fill="#E7B04A"/>`;
+    s += `<path d="M0 150 Q100 ${130 + (i % 3) * 8} 200 150 T400 145 V300 H0Z" fill="#E9E2CF"/>`;
+    for (let r = 0; r < 4; r++) { const y = 185 + r * 28; s += `<rect x="${10 + r * 6}" y="${y}" width="${380 - r * 12}" height="18" rx="9" fill="${terra}"/>`;
+      for (let j = 0; j < 11; j++) s += `<circle cx="${28 + j * 34 + r * 4}" cy="${y + 4}" r="${6 + ((i + r + j) % 3) * 2}" fill="${['#2E6B45', '#3C7D4F', '#4F8F5A', '#6A9F5E'][(i + r + j) % 4]}"/>`; }
+    // elemento do tema
+    if (tema === 'cisterna') s += `<g transform="translate(40 92)"><rect width="78" height="70" rx="6" fill="#E4E0D6" stroke="#9B9588" stroke-width="3"/><path d="M-6 4 Q39 -22 84 4" fill="#CFC9BC" stroke="#9B9588" stroke-width="3"/><rect x="30" y="30" width="18" height="10" rx="2" fill="#7FA7C2"/></g>`;
+    if (tema === 'arvore') s += `<g transform="translate(300 60)"><rect x="18" y="60" width="12" height="70" fill="#7A5230"/><circle cx="24" cy="50" r="42" fill="#3C7D4F"/><circle cx="8" cy="52" r="5" fill="#E7B04A"/><circle cx="40" cy="40" r="5" fill="#E7B04A"/><circle cx="28" cy="70" r="5" fill="#E7B04A"/></g>`;
+    if (tema === 'galinha') for (let g = 0; g < 3; g++) s += `<g transform="translate(${250 + g * 40} ${150 + (g % 2) * 12})"><ellipse cx="0" cy="0" rx="16" ry="12" fill="${['#F3EDE2', '#B5673A', '#3B2A20'][g]}"/><circle cx="14" cy="-10" r="7" fill="${['#F3EDE2', '#B5673A', '#3B2A20'][g]}"/><path d="M20 -10 l6 2 -6 2z" fill="#E7B04A"/><path d="M12 -18 l2 -5 3 5z" fill="#C0392B"/><path d="M-4 12 v8 M4 12 v8" stroke="#C98B2B" stroke-width="2"/></g>`;
+    if (tema === 'milho') for (let g = 0; g < 5; g++) s += `<g transform="translate(${255 + g * 26} 120)"><path d="M0 60 V0" stroke="#4F8F5A" stroke-width="4"/><path d="M0 30 q-14 -6 -18 -20 M0 20 q14 -6 18 -18" stroke="#6A9F5E" stroke-width="3" fill="none"/><ellipse cx="4" cy="12" rx="4" ry="9" fill="#E7B04A"/></g>`;
+    // ela
+    s += `<g transform="translate(${x} 88)">`;
+    s += `<path d="M-30 150 Q-26 70 0 62 Q26 70 30 150Z" fill="${roupa}"/>`;                        // vestido
+    s += `<path d="M-22 78 Q-40 100 -34 122" stroke="${pele}" stroke-width="9" stroke-linecap="round" fill="none"/>`;   // braço
+    s += `<path d="M22 78 Q40 96 44 112" stroke="${pele}" stroke-width="9" stroke-linecap="round" fill="none"/>`;
+    s += `<rect x="-6" y="44" width="12" height="16" fill="${pele}"/><circle cx="0" cy="34" r="20" fill="${pele}"/>`;  // pescoço e rosto (sem feições)
+    s += i % 2 ? `<path d="M-21 32 Q-22 8 0 9 Q22 8 21 32 Q14 18 0 18 Q-14 18 -21 32Z" fill="${cabelo}"/>` : `<path d="M-22 30 Q-20 6 0 8 Q20 6 22 30 L22 18 Q0 4 -22 18Z" fill="${lenco}"/>`;
+    if (tema === 'regador') s += `<g transform="translate(40 104)"><rect x="0" y="0" width="30" height="22" rx="4" fill="#5B6FA6"/><path d="M30 6 l22 -12" stroke="#5B6FA6" stroke-width="5" stroke-linecap="round"/><path d="M56 -12 l6 8 M58 -6 l8 6" stroke="#7FA7C2" stroke-width="2"/></g>`;
+    if (tema === 'cesto') s += `<g transform="translate(-58 110)"><path d="M0 0 h40 l-5 24 h-30z" fill="#C69C6D" stroke="#8C6A45" stroke-width="2"/><circle cx="10" cy="-2" r="6" fill="#C0392B"/><circle cx="22" cy="-4" r="6" fill="#E7B04A"/><circle cx="32" cy="-1" r="6" fill="#4F8F5A"/></g>`;
+    s += `</g></svg>`;
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
+  }
+  const ilustracoes = () => ILUS.map(([leg, tema], i) => ({ url: desenho(i, tema), legenda: leg, uf: MQ.UFS[i % MQ.UFS.length].uf, ilustracao: true }));
+
   /* ---------- fotos ---------- */
   function foto(d, i, cls) {
     const fs = d.fotos || []; if (!fs.length) return '';
@@ -126,7 +159,9 @@
       ${(d.fotos || []).length ? `<section class="secao"><h2 class="serif">Mulheres nos quintais</h2><div class="mosaico">${d.fotos.map((f, i) =>
         `<button type="button" class="mos-item${i % 7 === 0 ? ' mos-g' : i % 7 === 4 ? ' mos-a' : ''}" data-acao="vit-ampliar" data-i="${i}" aria-label="${E(f.legenda)} · ${E(f.uf)}"><img src="${E(f.url)}" alt="" loading="lazy" decoding="async"><span class="mos-leg">${E(f.legenda)} · ${E(f.uf)}</span></button>`).join('')}</div>
         <p class="small muted">Fotos de mulheres que autorizaram o uso da imagem. Toque para ampliar.</p></section>`
-        : `<section class="secao"><h2 class="serif">Mulheres nos quintais</h2><div class="mos-vazio"><span>As fotos das mulheres aparecem aqui quando a coordenação publicar, só de quem autorizou o uso da imagem.</span></div></section>`}
+        : `<section class="secao"><h2 class="serif">Mulheres nos quintais</h2><div class="mosaico mos-ilus">${ilustracoes().map((f, i) =>
+          `<div class="mos-item${i % 7 === 0 ? ' mos-g' : i % 7 === 4 ? ' mos-a' : ''}" role="img" aria-label="Ilustração: ${E(f.legenda)}"><img src="${E(f.url)}" alt="" loading="lazy" decoding="async"><span class="mos-selo">Ilustração</span><span class="mos-leg">${E(f.legenda)}</span></div>`).join('')}</div>
+          <p class="small muted">Ilustrações. As fotos das mulheres entram aqui quando a coordenação publicar, só de quem autorizou o uso da imagem.</p></section>`}
       <section class="secao nota-pub"><h2 class="serif">Como os dados são tratados</h2>
         <p>Esta página mostra só totais por estado. Nomes, endereços, CPF e a localização dos quintais ficam no sistema, com acesso só da equipe do projeto (Lei nº 13.709/2018). As fotos são escolhidas pela coordenação entre mulheres que autorizaram o uso de imagem.</p>
         <p class="small muted">${quando() ? 'Atualizado em ' + quando() + '. ' : ''}Execução: IFRN Campus Apodi, com recursos do Ministério do Desenvolvimento Agrário e Agricultura Familiar (MDA), em parceria com o MPA e a FUNCERN.</p></section>`;
