@@ -506,7 +506,7 @@
     const path = anel => 'M' + anel.map(p => px(p).map(v => v.toFixed(3)).join(',')).join('L') + 'Z';
     // vizinhos (CE, PB…) só de fundo; RN destacado como sede; os 5 estados coloridos pelo número de selecionadas
     const estados = Object.entries(MQ.GEO.uf).map(([uf, g]) => {
-      if (ufsProj.includes(uf)) return `<path d="${g.r.map(path).join('')}" class="uf-pub" style="fill:${tom(valores[uf])}" stroke-width="${esc * 0.25}"><title>${U.nomeUF(uf)}: ${valores[uf] || 0} ${rotulo}</title></path>`;
+      if (ufsProj.includes(uf)) return `<path d="${g.r.map(path).join('')}" class="uf-pub" style="fill:var(--uf-${uf})" stroke-width="${esc * 0.25}"><title>${U.nomeUF(uf)}: ${valores[uf] || 0} ${rotulo}</title></path>`;
       if (uf === 'RN') return `<path d="${g.r.map(path).join('')}" class="uf-sede" stroke-width="${esc * 0.3}"><title>Rio Grande do Norte: IFRN Campus Apodi</title></path>`;
       return `<path d="${g.r.map(path).join('')}" class="uf-fundo" stroke-width="${esc * 0.2}"/>`;
     }).join('');
@@ -522,9 +522,12 @@
     const sede = `<g class="mun-pt sede-pt" data-mun="Apodi/RN · IFRN Campus Apodi, de onde sai a equipe" tabindex="0"><circle cx="${ax}" cy="${ay}" r="${esc * 3.4}" class="mun-alvo"/><circle cx="${ax}" cy="${ay}" r="${esc * 2.1}" class="sede-dot" stroke-width="${esc * 0.5}"/><circle cx="${ax}" cy="${ay}" r="${esc * 0.8}" class="sede-miolo"/><title>Apodi/RN: IFRN Campus Apodi</title></g>
       <text x="${ax + esc * 3}" y="${ay - esc * 2.2}" class="sede-rot" font-size="${esc * 3.4}">Apodi</text>`;
     const nMun = muns.length;
-    return `<svg class="mapa mapa-pub" viewBox="${vb.join(' ')}" role="img" aria-label="${E(rotulo)} por estado: ${ufsProj.map(u => u + ' ' + (valores[u] || 0)).join(', ')}; ${nMun} municípios que receberão os quintais, ligados a Apodi/RN, sede do IFRN" preserveAspectRatio="xMidYMid meet">${estados}<g class="rotas">${rotas}</g>${pontos}${sede}</svg>
-      <p class="mun-nome" aria-live="polite"><span class="mun-leg-pt" aria-hidden="true"></span> <span data-mun-nome>${nMun} municípios que receberão os quintais, a partir de Apodi/RN</span></p>
-      <ul class="mapa-lista">${ordem.map(uf => `<li><span class="lg-q" style="background:${tom(valores[uf])}"></span>${uf} <b class="num">${valores[uf] || 0}</b></li>`).join('')}<li><span class="lg-q lg-sede"></span>RN <span class="muted">sede</span></li></ul>`;
+    const siglas = ufsProj.concat(['RN']).map(uf => { const g = MQ.GEO.uf[uf]; if (!g || !g.c) return ''; const [x, y] = px(g.c);
+      return `<text x="${x}" y="${y}" class="uf-sigla" font-size="${esc * 3.6}" text-anchor="middle">${uf}</text>`; }).join('');
+    return `<svg class="mapa mapa-pub" viewBox="${vb.join(' ')}" role="img" aria-label="${E(rotulo)} por estado: ${ufsProj.map(u => u + ' ' + (valores[u] || 0)).join(', ')}; ${nMun} municípios que receberão os quintais, ligados a Apodi/RN, sede do IFRN" preserveAspectRatio="xMidYMid meet">${estados}${siglas}<g class="rotas">${rotas}</g>${pontos}${sede}</svg>
+      <p class="mun-nome" aria-live="polite"><span data-mun-nome></span></p>
+      <ul class="mapa-lista">${ordem.map(uf => { const nm = Object.keys((MQ.GEO.mun || {})[uf] || {}).length;
+        return `<li><span class="lg-q" style="background:var(--uf-${uf})"></span>${uf} <span class="lg-mun">${nm} ${nm === 1 ? 'município' : 'municípios'}</span> · <b class="num">${valores[uf] || 0}</b> <span class="muted">${(valores[uf] || 0) === 1 ? 'mulher' : 'mulheres'}</span></li>`; }).join('')}<li><span class="lg-q lg-sede"></span>RN <span class="muted">sede (Apodi)</span></li></ul>`;
   }
 
   MQ.painelUI = { visaoGeral, mesDoProjeto, mapaUFs };
