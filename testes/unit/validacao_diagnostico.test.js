@@ -65,6 +65,6 @@ describe('Cadastro: um campo só para o município', () => {
   test('formulário da coordenação pede "Município onde mora" uma vez, dentro do endereço', async () => {
     const t = await montar('coord_geral'); await new Promise(r => setTimeout(r, 30));
     const h2 = t.painel({ tipo: 'cadastro', papel: 'articulacao', uf: 'PI', modo: 'manual' });
-    assert.equal((h2.match(/Município onde mora/g) || []).length, 1, 'aparece uma vez'); assert.ok(!/>Cidade</.test(h2)); assert.ok(/list="lista-mun"/.test(h2));
+    assert.equal((h2.match(/<label[^>]*>Município onde mora/g) || []).length, 1, 'um campo só'); assert.ok(!/>Cidade</.test(h2)); assert.ok(/list="lista-mun"/.test(h2));
   });
 });

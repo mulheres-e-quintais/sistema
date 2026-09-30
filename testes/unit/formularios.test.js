@@ -52,11 +52,13 @@ describe('link de cadastro (js/convites.js)', () => {
     assert.equal(d.cadastro_arlo, false); assert.equal(d.nis, '12345678901');
     assert.deepEqual(simples(d.endereco), { cep: '64600100', cidade: 'Picos', uf: 'PI' });
   });
-  test('lerPessoais com Arlo: guarda só a cidade e descarta nascimento e rua', () => {
+  test('lerPessoais com Arlo: quem vai a campo guarda só o município; os outros, nenhum endereço', () => {
     const C = novo();
-    const d = C.lerPessoais(fd({ cadastro_arlo: 'sim', data_nascimento: '1985-03-10', cep: '64600100', logradouro: 'Rua A', cidade: 'Picos' }));
+    const d = C.lerPessoais(fd({ cadastro_arlo: 'sim', _campo: '1', data_nascimento: '1985-03-10', cep: '64600100', logradouro: 'Rua A', cidade: 'Picos', uf_end: 'PI' }));
     assert.equal(d.cadastro_arlo, true); assert.equal(d.data_nascimento, null);
     assert.deepEqual(simples(d.endereco), { cidade: 'Picos' });
+    const o = C.lerPessoais(fd({ cadastro_arlo: 'sim', cep: '64600100', logradouro: 'Rua A', cidade: 'Picos', uf_end: 'PI' }));
+    assert.deepEqual(simples(o.endereco), {});
   });
   test('lerPessoais: perfil no campo só quando respondido', () => {
     const C = novo();
