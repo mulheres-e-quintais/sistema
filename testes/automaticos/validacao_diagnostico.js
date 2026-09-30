@@ -13,7 +13,7 @@ const R = []; const ok = (n, c, d = '') => R.push([c ? 'PASSOU' : 'FALHOU', n, d
     ok(`${w}: diagnóstico mostra "Onde foi registrado" com mapa`, !!(await p.$('#painel .bloco-local svg.mapa-local')));
     ok(`${w}: mostra distância do centro do município`, /Distância do centro de/.test(await p.textContent('#painel')));
     ok(`${w}: painel sem rolagem para o lado`, await p.evaluate(() => { const e = document.querySelector('#painel .painel-corpo'); return e.scrollWidth <= e.clientWidth + 1; }));
-    if (w === 390) await p.screenshot({ path: process.argv[3] + '/diag_local.png', fullPage: false });
+    if (w === 390 && process.argv[3]) await p.screenshot({ path: process.argv[3] + '/diag_local.png', fullPage: false });
     // sem localização: aprovar pede a observação
     await p.evaluate(() => { const S = MQ.ui.S; S.diagnosticos = S.diagnosticos.map((x, i) => i ? x : Object.assign({}, x, { latitude: null, longitude: null, sem_gps_motivo: 'O celular não achou o sinal de GPS no quintal. Fica no fundo do vale' })); const d = S.diagnosticos[0]; MQ.ui.abrirPainel({ tipo: 'diag-ver', ficha: d.ficha_id }); }); await p.waitForTimeout(300);
     ok(`${w}: sem localização aparece o aviso`, /Sem localização\./.test(await p.textContent('#painel')));

@@ -45,11 +45,12 @@ set role anon; select jsonb_array_length(public.vitrine()->'fotos') n, public.vi
 alter table public.fichas disable trigger fichas_antes; update public.fichas set consent_imagem = false where id='10000000-0000-0000-0000-000000000001'; alter table public.fichas enable trigger fichas_antes;
 set role anon; select jsonb_array_length(public.vitrine()->'fotos') n; reset role;
 
-\echo '== 11. bolsista lê parâmetros (OK: valor_hora 50) e não altera (ERRO)'
+\echo '== 11. bolsista lê parâmetros (valor_hora 50) e tentar alterar o banco ignora (continua 50)'
 select pg_temp.como('ana@x.org'); set role authenticated;
 select valor->>'valor_hora' from public.parametros where chave='custo_visita';
 update public.parametros set valor = jsonb_set(valor, '{valor_hora}', '80') where chave='custo_visita';
 reset role;
+select case when valor->>'valor_hora' = '50' then 'ok: continua 50' else 'FALHOU: alterou' end as confere from public.parametros where chave='custo_visita';
 \echo '== 12. coordenação altera preço do litro (OK, com autor)'
 select pg_temp.como('tec@x.org'); set role authenticated;
 update public.parametros set valor = jsonb_set(valor, '{preco_litro}', '6.8') where chave='custo_visita';

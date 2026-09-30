@@ -61,7 +61,7 @@ revoke all on function public.fic_mes_fechado(uuid, date) from public, anon;
 create or replace function public.registrar_encontro_fic(p_id uuid, p_turma uuid, p_data date, p_carga numeric, p_modalidade text,
                                                          p_conteudo text, p_presentes uuid[]) returns uuid
 language plpgsql security definer set search_path = public as $$
-declare e public.fic_encontros; v_id uuid; m record; eu uuid := public.meu_id();
+declare e public.fic_encontros; v_id uuid; m record; eu uuid := public.meu_id(); v_prof uuid;
 begin
   if coalesce(public.meu_papel(), '') not in ('professor_fic', 'coord_geral') then raise exception 'Quem registra os encontros do curso é o professor do FIC.'; end if;
   if not exists (select 1 from public.turmas_fic where id = p_turma) then raise exception 'Turma não encontrada.'; end if;
@@ -74,10 +74,12 @@ begin
              where not exists (select 1 from public.matriculas_fic mt where mt.turma_id = p_turma and mt.equipe_id = x and mt.cancelada_em is null)) then
     raise exception 'Só entra na lista de presença quem está matriculado nesta turma.';
   end if;
+  -- o encontro é sempre do professor: se a coordenação geral registra no lugar dele, fica em nome do professor da turma
+  v_prof := case when public.meu_papel() = 'professor_fic' then eu else (select professor_id from public.turmas_fic where id = p_turma) end;
   if p_id is null then
-    if public.fic_mes_fechado(eu, p_data) then raise exception 'A sua bolsa deste mês já teve aval: não dá para incluir encontro neste mês.'; end if;
+    if public.fic_mes_fechado(v_prof, p_data) then raise exception 'A bolsa deste mês do professor já teve aval: não dá para incluir encontro neste mês.'; end if;
     insert into public.fic_encontros (turma_id, professor_id, data, carga_horaria, modalidade, conteudo)
-      values (p_turma, eu, p_data, p_carga, p_modalidade, trim(p_conteudo)) returning id into v_id;
+      values (p_turma, v_prof, p_data, p_carga, p_modalidade, trim(p_conteudo)) returning id into v_id;
   else
     select * into e from public.fic_encontros where id = p_id for update;
     if e.id is null then raise exception 'Encontro não encontrado.'; end if;

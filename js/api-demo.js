@@ -452,8 +452,9 @@
       const fechado = (prof, data) => (d.solicitacoes || []).some(s => s.tipo === 'bolsa' && s.equipe_id === prof && String(s.mes).slice(0, 7) === String(data).slice(0, 7) && ['avalizada', 'lancada'].includes(s.situacao));
       const agora = new Date().toISOString(); let e;
       if (!x.id) {
-        if (fechado(eu.id, x.data)) throw falha('A sua bolsa deste mês já teve aval: não dá para incluir encontro neste mês.');
-        e = { id: uid(), professor_id: eu.id, criado_em: agora }; d.ficEncontros.push(e);
+        const prof = eu.papel === 'professor_fic' ? eu.id : ((d.turmas || []).find(t => t.id === x.turma_id) || {}).professor_id;   // o encontro é sempre do professor da turma
+        if (fechado(prof, x.data)) throw falha('A bolsa deste mês do professor já teve aval: não dá para incluir encontro neste mês.');
+        e = { id: uid(), professor_id: prof, criado_em: agora };
       } else {
         e = d.ficEncontros.find(y => y.id === x.id); if (!e) throw falha('Encontro não encontrado.');
         if (fechado(e.professor_id, e.data) || fechado(e.professor_id, x.data)) throw falha('A bolsa deste mês já teve aval: o encontro não muda mais.');
@@ -461,6 +462,7 @@
       }
       for (const id of mats) { const p = d.ficPresencas.find(y => y.encontro_id === e.id && y.equipe_id === id);
         if (p && p.confirmado_em && !pres.includes(id)) throw falha('Alguém que já confirmou a presença foi desmarcado. Quem confirmou continua presente.'); }
+      if (!x.id) d.ficEncontros.push(e);
       Object.assign(e, { turma_id: x.turma_id, data: x.data, carga_horaria: +x.carga_horaria, modalidade: x.modalidade, conteudo: String(x.conteudo).trim(), atualizado_em: agora });
       mats.forEach(id => { const p = d.ficPresencas.find(y => y.encontro_id === e.id && y.equipe_id === id); const v = pres.includes(id);
         if (!p) d.ficPresencas.push({ id: uid(), encontro_id: e.id, equipe_id: id, presente: v, marcado_por: eu.id, marcado_em: agora, confirmado_em: null });
