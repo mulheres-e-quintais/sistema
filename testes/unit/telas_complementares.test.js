@@ -12,7 +12,7 @@ const mes = () => diaMais(0).slice(0, 7) + '-01';
 describe('Abas de cada perfil', () => {
   test('coordenação geral: 10 abas, na ordem da tela', async () => {
     const t = await montar('coord_geral');
-    assert.deepEqual(simples(abasDe(t.aba(null))), ['visao', 'equipe', 'selecao', 'campo', 'fic', 'pagamentos', 'viagens', 'custos', 'documentos', 'historico']);
+    assert.deepEqual(simples(abasDe(t.aba(null))), ['visao', 'equipe', 'selecao', 'campo', 'fic', 'pagamentos', 'viagens', 'custos', 'execucao', 'documentos', 'historico']);
   });
   test('coordenação técnica: 6 abas (sem Visão geral, Curso FIC, Documentos e Histórico) e abre na Seleção', async () => {
     const t = await montar('coord_tecnico'); const h = t.aba(null);

@@ -202,3 +202,45 @@ MQ.ampulheta = (grande) => `<span class="ampulheta${grande ? ' grande' : ''}" ro
   + `<rect x="22" y="18" width="10" height="8" rx="2"/><path d="M32 21l6-5M24 18c0-4 6-4 6 0"/><path d="M29 43h16" opacity=".5"/><path d="M40 43v-6"/></g>`
   + `<g fill="currentColor"><path d="M40 37c-3 0-5-2-5-4 2.6 0 5 1.6 5 4zM40 37c3 0 5-2.4 5-4.6-2.8 0-5 2-5 4.6z"/>`
   + `<circle class="gota" cx="38.6" cy="19" r="1.5"/><circle class="gota g2" cx="40.6" cy="19" r="1.5"/><circle class="gota g3" cx="36.8" cy="19" r="1.5"/></g></svg></span>`;
+
+/* ORÇAMENTO do TED (planilha atualizada de apoio, escolhida em 30/09/2026 como base do painel de execução).
+   auto: de onde o sistema tira sozinho o executado/comprometido. Sem auto: a coordenação geral lança.
+   Rubricas com previsão zero (CLT, serviços PF, ressarcimento IFRN, outros custos) ficam de fora. */
+MQ.ORCAMENTO = {
+  fonte: 'Planilha atualizada de apoio do TED (Financeiro/Planilhas_e_memoria_de_calculo)',
+  total: 2000000,
+  repasses: [{ mes: '2026-09', valor: 1000000 }, { mes: '2027-04', valor: 1000000 }],   // cronograma de desembolso do plano de trabalho
+  /* ritmo mensal do gasto: Plano_de_desembolso_TED_quintais_produtivos.xlsx (set/2026 a set/2027). A planilha soma
+     R$ 1.970.308,00 (não R$ 2 milhões); o gráfico usa só o formato mês a mês, ajustado ao total do orçamento. */
+  cronograma: { inicio: '2026-09', meses: [110000, 54392.31, 333192.31, 253192.31, 64792.31, 53192.31, 67992.31, 453192.31, 361992.31, 53192.31, 53192.31, 58792.31, 53192.31] },
+  rubricas: [
+    { id: 'r1', nome: 'Auxílio financeiro a pesquisador (bolsas)', itens: [
+      { id: 'bolsa_coord_geral', nome: 'Coordenador geral', calc: '1 × 14 meses × R$ 5.000', total: 70000 },
+      { id: 'bolsa_professor', nome: 'Professores do curso FIC', calc: '2 × 12 meses × R$ 2.200', total: 52800, auto: { bolsa: 'professor_fic' } },
+      { id: 'bolsa_auxiliar', nome: 'Auxiliar administrativo', calc: '1 × 14 meses × R$ 1.200', total: 16800, auto: { bolsa: 'auxiliar_adm' } },
+      { id: 'bolsa_secretaria', nome: 'Secretária acadêmica', calc: '1 × 12 meses × R$ 1.000', total: 12000 },
+      { id: 'bolsa_coord_pedagogico', nome: 'Coordenador pedagógico', calc: '1 × 12 meses × R$ 1.000', total: 12000 }] },
+    { id: 'r2', nome: 'Auxílio financeiro a estudantes (bolsas)', itens: [
+      { id: 'bolsa_coord_tecnico', nome: 'Coordenador técnico', calc: '1 × 12 meses × R$ 4.700', total: 56400, auto: { bolsa: 'coord_tecnico' } },
+      { id: 'bolsa_articulacao', nome: 'Articulação estadual (5)', calc: '5 × 12 meses × R$ 2.200', total: 132000, auto: { bolsa: 'articulacao' } },
+      { id: 'bolsa_apoio', nome: 'Apoio estadual (5)', calc: '5 × 12 meses × R$ 1.600', total: 96000, auto: { bolsa: 'apoio' } }] },
+    { id: 'r4', nome: 'Diárias', itens: [
+      { id: 'diarias', nome: 'Diárias (meta 7)', calc: '28 × R$ 400', total: 11200 }] },
+    { id: 'r5', nome: 'Ajuda de custo (pessoa física)', itens: [
+      { id: 'ajuda_visitas', nome: 'Equipe técnica: diagnóstico, implantação e acompanhamento', calc: '800 visitas × R$ 225 (200 + 200 + 400)', total: 180000, auto: { ajuda: true }, unitario: 225 },
+      { id: 'ajuda_apoio', nome: 'Apoio à execução das atividades', calc: '50 × R$ 225', total: 11250 }] },
+    { id: 'r6', nome: 'Passagens e locomoção', itens: [
+      { id: 'passagem_intercambio', nome: 'Passagens aéreas: intercâmbio (meta 6)', calc: '25 × R$ 2.800', total: 70000, auto: { passagem: 'intercambio' } },
+      { id: 'passagem_pedagogico', nome: 'Passagens aéreas: acompanhamento pedagógico (meta 7)', calc: '8 × R$ 2.800', total: 22400, auto: { passagem: 'pedagogico' } },
+      { id: 'locacao_veiculo', nome: 'Locação de veículo (meta 7)', calc: '28 × R$ 350', total: 9800 }] },
+    { id: 'r7', nome: 'Serviços de terceiros (pessoa jurídica)', itens: [
+      { id: 'eventos', nome: 'Infraestrutura dos eventos (meta 5)', calc: '5 × R$ 6.000', total: 30000, auto: { evento: true } },
+      { id: 'quintais', nome: 'Implantação dos quintais produtivos (meta 3)', calc: '200 × R$ 5.000', total: 1000000 }] },
+    { id: 'r9', nome: 'Material de consumo', itens: [
+      { id: 'combustivel', nome: 'Combustível', calc: 'verba', total: 7350 }] },
+    { id: 'r10', nome: 'Máquinas e equipamentos', itens: [
+      { id: 'equipamento', nome: 'Dispositivo eletrônico (notebook)', calc: '1 × R$ 10.000', total: 10000 }] },
+    { id: 'r13', nome: 'Despesas operacionais e administrativas (FUNCERN)', itens: [
+      { id: 'doa', nome: 'Taxa da fundação de apoio', calc: '10% do projeto', total: 200000 }] }
+  ]
+};

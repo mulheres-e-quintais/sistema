@@ -420,6 +420,18 @@
     async registrarNoArlo(id, protocolo) { const { error } = await sb.rpc('registrar_no_arlo', { p_id: id, p_protocolo: protocolo || null }); if (error) throw erro(error); },
 
     /* ---------- Documentos do projeto (24_documentos.sql): só a coordenação geral ---------- */
+    /* execução financeira (36): só a coordenação geral; sem update nem delete, erro vira estorno */
+    async listarLancamentos() {
+      const { data, error } = await sb.from('execucao_lancamentos').select('*').order('data', { ascending: false }).order('criado_em', { ascending: false }); if (error) throw erro(error); return data;
+    },
+    async lancarExecucao(d) {
+      const { data, error } = await sb.from('execucao_lancamentos').insert({ tipo: d.tipo, item: d.item, valor: +d.valor, data: d.data, documento: d.documento || null, descricao: d.descricao || null }).select().single();
+      if (error) throw erro(error); return data;
+    },
+    async estornarLancamento(id, motivo) {   // o banco copia tipo, item e valor (negativo) do original
+      const { data, error } = await sb.from('execucao_lancamentos').insert({ tipo: 'despesa', item: 'estorno', valor: -1, data: new Date().toISOString().slice(0, 10), estorno_de: id, descricao: motivo }).select().single();
+      if (error) throw erro(error); return data;
+    },
     async listarDocumentos() {
       const { data, error } = await sb.from('documentos_projeto').select('*').order('data_documento', { ascending: false }); if (error) throw erro(error); return data;
     },

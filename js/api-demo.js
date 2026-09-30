@@ -202,6 +202,36 @@
     async reler() { mem = null; ler(); return euMesmo(); },   // lê de novo o que está guardado no aparelho (outra aba mudou; testes)
     async recomecar() { mem = null; try { localStorage.removeItem(CHAVE); } catch (e) {} ler(); gravar(); return euMesmo(); },
 
+    /* ---------- Execução financeira (mesmas regras do 36_execucao_financeira.sql): só a coordenação geral; nada se altera, erro vira estorno ---------- */
+    async listarLancamentos() {
+      const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') return [];
+      return copia((ler().lancamentos || []).slice().sort((a, b) => String(b.data).localeCompare(String(a.data)) || String(b.criado_em).localeCompare(String(a.criado_em))));
+    },
+    async lancarExecucao(dd) {
+      const d = ler(); const eu = euMesmo();
+      if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral lança a execução financeira.');
+      const erros = MQ.execUI ? MQ.execUI.validar(dd) : {};
+      if (Object.keys(erros).length) { const e = falha(Object.values(erros)[0]); e.campos = erros; throw e; }
+      const x = { id: uid(), tipo: dd.tipo, item: dd.item, valor: Math.round(+dd.valor * 100) / 100, data: dd.data, documento: dd.documento || null, descricao: dd.descricao || null,
+        estorno_de: null, criado_por: eu.id, criado_em: new Date().toISOString() };
+      d.lancamentos = (d.lancamentos || []).concat([x]);
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'execucao_lancamentos', registro_id: x.id, acao: 'INSERT', por: eu.id, em: x.criado_em, antes: null, depois: copia(x) });
+      gravar(); return copia(x);
+    },
+    async estornarLancamento(id, motivo) {
+      const d = ler(); const eu = euMesmo();
+      if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral lança a execução financeira.');
+      const o = (d.lancamentos || []).find(x => x.id === id);
+      if (!o) throw falha('Lançamento a estornar não encontrado.');
+      if (o.estorno_de) throw falha('Não se estorna um estorno.');
+      if (d.lancamentos.some(x => x.estorno_de === id)) throw falha('Este lançamento já foi estornado.');
+      if (String(motivo || '').trim().length < 10) throw falha('Para estornar, escreva o motivo (pelo menos 10 letras).');
+      const x = { id: uid(), tipo: o.tipo, item: o.item, valor: -o.valor, data: R.hoje(), documento: null, descricao: String(motivo).trim(), estorno_de: id, criado_por: eu.id, criado_em: new Date().toISOString() };
+      d.lancamentos.push(x);
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'execucao_lancamentos', registro_id: x.id, acao: 'INSERT', por: eu.id, em: x.criado_em, antes: null, depois: copia(x) });
+      gravar(); return copia(x);
+    },
+
     /* ---------- Documentos do projeto (mesmas regras do 24_documentos.sql): só a coordenação geral ---------- */
     async listarDocumentos() {
       const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') return [];

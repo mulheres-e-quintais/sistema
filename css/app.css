@@ -1456,3 +1456,65 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .lembrete details[open] .lb-mais { display: none; }
 .lembrete li > button { flex: none; }
 .lembrete li + li { padding-top: 8px; border-top: 1px dashed var(--line); }
+
+/* Execução financeira (só a coordenação geral) */
+.exec-resumo { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.exec-ritmo { display: grid; gap: 6px; margin: 14px 0; }
+.exec-ritmo .medidor, .exec-tab .medidor { display: block; width: 100%; }
+.exec-alertas { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.exec-tab th[scope=row] { font-weight: 400; text-transform: none; letter-spacing: 0; padding-left: 22px; min-width: 260px; white-space: normal; }
+.exec-tab th[scope=row] > span { display: block; } .exec-tab th[scope=row] > .small { margin-top: 2px; }
+.exec-tab tr.rub th { text-transform: none; letter-spacing: 0; font-size: var(--t-md); color: var(--ink); padding-left: 12px; }
+.exec-tab tr.rub th, .exec-tab tr.rub td { background: var(--surface-2); font-weight: 600; border-top: 2px solid var(--line-2); }
+.exec-tab td { white-space: nowrap; }
+.exec-tab td:last-child { min-width: 90px; width: 16%; }
+.exec-tab tr.passou td, .exec-tab tr.passou th { color: var(--crit); }
+.exec-tab tfoot th, .exec-tab tfoot td { border-top: 2px solid var(--line-2); font-weight: 600; }
+.exec-lanc { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.exec-lanc > .small, .exec-lanc > button { grid-column: 1 / -1; justify-self: start; }
+.exec-lanc.estorno { border-style: dashed; }
+.exec-lanc.estornado .nm, .exec-lanc.estornado > b { text-decoration: line-through; color: var(--muted); }
+form[data-form=exec-lancar]:has(input[name=tipo][value=repasse]:checked) [data-so=despesa] { display: none; }
+form[data-form=exec-lancar] .sn-par .sn:has(input:checked) { background: var(--sel-bg); color: var(--sel-ink); box-shadow: 0 1px 3px color-mix(in srgb, var(--ink) 18%, transparent); }
+form[data-form=exec-lancar] .sn-par .sn:has(input:checked)::before { content: "✓"; font-size: var(--t-xs); font-weight: 700; }
+.exec-tab { table-layout: auto; min-width: 860px; } .exec-tab th[scope=row], .exec-tab thead th:first-child { width: 36%; }
+/* Execução financeira: gráficos (cores validadas para daltonismo; executado = terracota da marca, recebido = azul) */
+:root { --eg-exe: #A44934; --eg-rec: #2E6FB0; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --eg-exe: #D9725A; --eg-rec: #5F95D6; } }
+:root[data-theme="dark"] { --eg-exe: #D9725A; --eg-rec: #5F95D6; }
+.exec-grafs { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; margin: 14px 0; }
+@media (max-width: 900px) { .exec-grafs { grid-template-columns: minmax(0, 1fr); } }
+.exec-graf { position: relative; margin: 0; padding: 16px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.exec-graf figcaption { margin-bottom: 6px; }
+.eg-leg { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--ink-2); }
+.eg-leg li { display: inline-flex; align-items: center; gap: 6px; }
+.eg-q { display: inline-block; width: 14px; height: 4px; border-radius: 2px; background: var(--eg-exe); vertical-align: middle; }
+.eg-q.rec { background: var(--eg-rec); } .eg-q.prev { background: none; border-top: 2px dashed var(--muted); height: 0; }
+.eg-q.comp { background: color-mix(in srgb, var(--eg-exe) 35%, var(--surface)); height: 8px; } .eg-q.tempo { width: 2px; height: 12px; background: var(--ink); }
+.eg-caixa { position: relative; } .eg-caixa svg { width: 100%; height: auto; display: block; overflow: visible; }
+.eg-grade { stroke: var(--line); stroke-width: 1; } .eg-eixo { fill: var(--muted); font-size: 11px; font-family: var(--sans); }
+.eg-prev { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 5 4; }
+.eg-exe { fill: none; stroke: var(--eg-exe); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.eg-rec { fill: none; stroke: var(--eg-rec); stroke-width: 2; }
+.eg-pt { stroke: var(--surface); stroke-width: 2; } .eg-pt.exe { fill: var(--eg-exe); } .eg-pt.rec { fill: var(--eg-rec); }
+.eg-hoje { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 2 3; opacity: .6; }
+.eg-cruz { stroke: var(--ink-2); stroke-width: 1; pointer-events: none; }
+.eg-alvo { fill: transparent; cursor: crosshair; outline: none; } .eg-alvo:focus-visible { fill: color-mix(in srgb, var(--focus) 12%, transparent); }
+.exec-dica { position: absolute; z-index: 5; pointer-events: none; display: grid; gap: 3px; min-width: 190px; padding: 10px 12px; border-radius: 10px; background: var(--surface);
+  border: 1px solid var(--line-2); box-shadow: 0 6px 20px color-mix(in srgb, var(--ink) 18%, transparent); font-size: var(--t-sm); color: var(--ink); }
+.exec-dica span { display: flex; align-items: center; gap: 6px; }
+.eg-barras { display: grid; gap: 4px; }
+.eg-bar { display: grid; grid-template-columns: minmax(0, 1fr) 54px; grid-template-areas: "nome pct" "trilho pct"; gap: 4px 10px; align-items: center; width: 100%; padding: 6px 8px;
+  border: 0; border-radius: 8px; background: none; text-align: left; font: inherit; color: var(--ink); cursor: pointer; min-height: 44px; }
+.eg-bar:hover, .eg-bar:focus-visible { background: var(--surface-2); }
+.eg-nome { grid-area: nome; font-size: var(--t-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eg-pct { grid-area: pct; text-align: right; font-weight: 600; font-size: var(--t-sm); }
+.eg-trilho { grid-area: trilho; position: relative; height: 10px; border-radius: 5px; background: var(--surface-2); }
+.eg-trilho i { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 5px; transition: width .6s ease; }
+.eg-trilho .exe { background: var(--eg-exe); } .eg-trilho .comp { background: color-mix(in srgb, var(--eg-exe) 35%, var(--surface)); border-radius: 0 5px 5px 0; }
+.eg-trilho .tempo { width: 2px; top: -4px; bottom: -4px; background: var(--ink); border-radius: 1px; transform: translateX(-1px); }
+.eg-bar.passou .eg-pct { color: var(--crit); }
+.exec-tab tbody.realce tr { animation: exr-realce 1.8s ease-out; }
+@keyframes exr-realce { from { background: color-mix(in srgb, var(--focus) 22%, transparent); } to { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .eg-trilho i { transition: none; } .exec-tab tbody.realce tr { animation: none; } }
+@media (max-width: 640px) { .eg-caixa { overflow-x: auto; overscroll-behavior-x: contain; } .eg-caixa svg { min-width: 560px; } }

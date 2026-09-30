@@ -42,6 +42,9 @@ function marcar(v, onde) { const i = n++; campos[i] = onde; return v + `<img src
     id: 'x-sol-' + i, tipo, equipe_id: p.id, mes, situacao: sit, valor_solicitado: 100, valor_avalizado: sit === 'solicitada' ? null : 100,
     relatorio: 'Relatório de atividades do mês com visitas, reuniões e articulação no território.', detalhe: { obs: 'Detalhe do mês' },
     obs_aval: 'Aval com observação', motivo_devolucao: 'Faltou detalhar', protocolo_arlo: 'ARLO-123', solicitada_em: agora }));
+  dados.lancamentos = [{ id: 'x-l-0', tipo: 'repasse', item: 'repasse_mda', valor: 1000000, data: hoje, documento: 'Nota de crédito', descricao: 'Primeiro repasse do MDA', estorno_de: null, criado_por: ger.id, criado_em: agora },
+    { id: 'x-l-1', tipo: 'despesa', item: 'quintais', valor: 5000, data: hoje, documento: 'Nota fiscal', descricao: 'Kit do quintal', estorno_de: null, criado_por: ger.id, criado_em: agora },
+    { id: 'x-l-2', tipo: 'despesa', item: 'quintais', valor: -5000, data: hoje, documento: null, descricao: 'Estorno por duplicidade', estorno_de: 'x-l-1', criado_por: ger.id, criado_em: agora }];
   const env = envenenar(dados, '');
   const porTabela = {}; Object.values(campos).forEach(c => { const t = c.split('.')[1]; porTabela[t] = (porTabela[t] || 0) + 1; });
   await p.evaluate(s => localStorage.setItem('mq-demo-v4', s), JSON.stringify(env));
