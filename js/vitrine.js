@@ -125,7 +125,7 @@
      quando os números chegam, nada na tela de entrada sai do lugar */
   const esqueleto = () => `<span class="eyebrow">O projeto agora</span><h2 id="vit-t" class="serif">Mulheres &amp; Quintais em números</h2>
     <div class="vts">${'<div class="vt esq"><span class="vt-n">&nbsp;</span><span class="vt-l">&nbsp;</span></div>'.repeat(4)}</div>
-    <div class="vit-duo" aria-hidden="true"><div class="vit-mapa">${MQ.painelUI && MQ.painelUI.mapaUFs ? MQ.painelUI.mapaUFs({}, 'mulheres selecionadas') : ''}<span class="vit-leg">&nbsp;</span></div>
+    <div class="vit-duo" aria-hidden="true"><div class="vit-mapa">${MQ.painelUI && MQ.painelUI.mapaUFs ? MQ.painelUI.mapaUFs({}, 'mulheres selecionadas') : ''}</div>
       <div id="vit-foto"><div class="vit-sem-foto"><span>&nbsp;</span></div></div></div>
     <p class="vit-rodape"><span>&nbsp;</span></p>`;
   function corpoEntrada(d) {
@@ -134,7 +134,7 @@
       <h2 id="vit-t" class="serif">Mulheres &amp; Quintais em números</h2>
       <div class="vts">${tiles(t).map(tile).join('')}</div>
       <div class="vit-duo">
-        <div class="vit-mapa">${MQ.painelUI.mapaUFs(t.porUF('selecionadas'), 'mulheres selecionadas')}<span class="vit-leg">Cor do estado: mulheres selecionadas</span></div>
+        <div class="vit-mapa">${MQ.painelUI.mapaUFs(t.porUF('selecionadas'), 'mulheres selecionadas')}</div>
         <div id="vit-foto">${miniMosaico(d, V.foto) || `<div class="vit-sem-foto"><span>As fotos dos quintais aparecem aqui quando a coordenação aprovar, só de quem autorizou.</span></div>`}</div>
       </div>
       <p class="vit-rodape"><span>Totais sem nomes nem endereços${quando() ? ' · atualizado ' + quando() : ''}</span></p>`;
@@ -172,7 +172,7 @@
               `<span role="cell" class="pub-c" data-rot="${E(rot)}"><span class="num">${fmt(u[k])}</span><span class="barra-mini" aria-hidden="true"><i style="width:${Math.min(100, (+u[k] || 0) / alvo * 100)}%"></i></span></span>`).join('')}</div>`).join('')}
           </div></div>
         <div class="bloco"><h2 class="serif">Onde</h2>${MQ.painelUI.mapaUFs(t.porUF('selecionadas'), 'mulheres selecionadas')}
-          <p class="small muted">A cor do estado mostra quantas mulheres foram selecionadas; os pontos são os municípios que receberão os quintais. O mapa não mostra onde cada uma mora.</p></div>
+          <p class="small muted">Os pontos são os municípios que receberão os quintais. O mapa não mostra onde cada uma mora.</p></div>
       </section>
       ${(d.fotos || []).length ? `<section class="secao"><h2 class="serif">Mulheres nos quintais</h2><div class="mosaico">${d.fotos.map((f, i) =>
         `<button type="button" class="mos-item${i % 7 === 0 ? ' mos-g' : i % 7 === 4 ? ' mos-a' : ''}" data-acao="vit-ampliar" data-i="${i}" aria-label="${E(f.legenda)} · ${E(f.uf)}"><img src="${E(f.url)}" alt="" loading="lazy" decoding="async"><span class="mos-leg">${E(f.legenda)} · ${E(f.uf)}</span></button>`).join('')}</div>

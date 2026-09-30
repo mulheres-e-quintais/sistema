@@ -1384,3 +1384,16 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .mapa-pub .sede-miolo { fill: var(--ocre); }
 .mapa-pub .sede-rot { fill: var(--ink); font-weight: 700; paint-order: stroke; stroke: var(--surface); stroke-width: .12px; }
 .lg-sede { background: color-mix(in oklab, var(--ocre) 22%, var(--surface)); border: 1px solid var(--ocre); }
+.mapa-lista .lg-mun { color: var(--ocre); font-weight: 600; }
+
+/* cada estado com uma cor (paleta validada para daltonismo; a sigla vai escrita no mapa e na legenda) */
+:root { --uf-PI: #2a78d6; --uf-PE: #eb6834; --uf-BA: #1baf7a; --uf-SE: #eda100; --uf-AL: #e87ba4; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --uf-PI: #3987e5; --uf-PE: #d95926; --uf-BA: #199e70; --uf-SE: #c98500; --uf-AL: #d55181; } }
+:root[data-theme="dark"] { --uf-PI: #3987e5; --uf-PE: #d95926; --uf-BA: #199e70; --uf-SE: #c98500; --uf-AL: #d55181; }
+.mapa-pub .uf-pub { stroke: var(--surface); }
+.mapa-pub .uf-sigla { fill: #fff; font-weight: 700; paint-order: stroke; stroke: rgba(0,0,0,.45); stroke-width: .08px; pointer-events: none; }
+.mapa-pub .mun-pt .mun-dot { fill: #fff; stroke: #2b1d14; }
+.mapa-pub .mun-pt .mun-onda { fill: #fff; }
+.mapa-pub .rota { stroke: #2b1d14; opacity: .3; }
+.mapa-pub + .mun-nome + .mapa-lista, .vit-mapa .mapa-lista { display: grid; grid-template-columns: 1fr; justify-items: start; gap: 2px; font-size: var(--t-xs); max-width: 100%; margin: 0 auto; width: max-content; }
+.vit-mapa .mapa-lista li, .mapa-pub ~ .mapa-lista li { white-space: nowrap; }
