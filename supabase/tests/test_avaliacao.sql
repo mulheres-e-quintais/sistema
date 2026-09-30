@@ -1,4 +1,5 @@
 -- Testes da etapa 13. Banco novo com stub, 01 (CPF preenchido), 02, 03, 04, 07, 08, 09, 10, 11, 12 e 13.
+\ir _professor_habilitado.sql
 \set QUIET 1
 create or replace function pg_temp.como(p_email text) returns void language plpgsql as $$
 declare u uuid; begin select id into u from auth.users where email = p_email;

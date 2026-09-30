@@ -108,7 +108,6 @@
   const nomeMes = m => { const [a, b] = m.split('-'); return ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][+b - 1] + '/' + a; };
   const mesMais = (m, n) => { const [a, b] = m.split('-').map(Number); const d = new Date(a, b - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
   const codigoQuintal = f => f.uf + '-' + String(f.id).replace(/[^a-z0-9]/gi, '').slice(-5).toUpperCase();
-  const podeAgendar = uf => R.decideCampo(S().eu.papel) || (R.ehBolsista(S().eu.papel) && S().eu.uf === uf);
 
   /* etapa de cada quintal, em forma de "pílulas" */
   function pilulas(f) {

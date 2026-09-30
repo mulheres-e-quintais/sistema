@@ -12,7 +12,8 @@
 
   const TIPO = { ajuda_custo: 'Ajuda de custo', bolsa: 'Bolsa' };
   const SIT = { solicitada: ['pend', 'Aguardando aval'], devolvida: ['crit', 'Devolvida para corrigir'], avalizada: ['ok', 'Com aval · falta lançar no Arlo'], lancada: ['ok', 'Lançada no Arlo'] };
-  const chip = s => `<span class="chip ${SIT[s.situacao][0]}">${SIT[s.situacao][1]}</span>`;
+  const sit = s => SIT[s.situacao] || ['', E(s.situacao || '—')];   // situação nova no banco não derruba a tela
+  const chip = s => `<span class="chip ${sit(s)[0]}">${sit(s)[1]}</span>`;
   const podeAjuda = papel => R.ehCampo(papel);
   /* o que contar no relatório do mês, conforme a função */
   const DICA_REL = {

@@ -26,8 +26,9 @@
   const lista = () => S().pedidos || [];
   const pessoa = id => U().porId(id) || {};
   const nomeDe = m => (m && (m.nome_social || m.nome)) || '—';
-  const rotSit = p => p.situacao === 'enviado' ? 'Com ' + nomeConf() : SIT[p.situacao][1];
-  const chip = p => `<span class="chip ${SIT[p.situacao][0]}">${rotSit(p)}</span>`;
+  const sit = p => SIT[p.situacao] || ['', E(p.situacao || '—')];   // situação nova no banco não derruba a tela
+  const rotSit = p => p.situacao === 'enviado' ? 'Com ' + nomeConf() : sit(p)[1];
+  const chip = p => `<span class="chip ${sit(p)[0]}">${rotSit(p)}</span>`;
   const podeVer = papel => ['articulacao', 'coord_tecnico', 'coord_geral'].includes(papel);
   /* ---------- tetos: R$ 6.000 por estado para eventos; R$ 70.000 para passagens (35_tetos_passagens_eventos.sql) ---------- */
   const brl = v => R.fmtBRL(+v || 0);
