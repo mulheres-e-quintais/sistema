@@ -1430,7 +1430,8 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .publico .vit-mapa .mapa-lista { display: grid; grid-template-columns: 1fr; justify-items: start; gap: 2px; font-size: var(--t-sm); width: max-content; max-width: 100%; margin: 0 auto; }
 
 /* Viagens e eventos: gastos separados (passagens com teto do projeto; eventos com teto por estado) */
-.viag-ir { margin: 4px 0 14px; } .viag-ir a { font-weight: 600; }
+.viag-ir { margin: 4px 0 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+.viag-ir a { font-weight: 600; display: inline-flex; align-items: center; min-height: 40px; padding: 6px 14px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--surface); text-decoration: none; }
 .viag-tipo { scroll-margin-top: 80px; }
 .viag-gasto { display: grid; gap: 6px; margin: 6px 0 10px; }
 .vg-lin { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
@@ -1440,3 +1441,18 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .viag-bloco { margin-top: 14px; } .viag-bloco h3 { font-size: var(--t-md); margin: 0 0 8px; }
 .viag-meus + .viag-meus { margin-top: 16px; }
 .viag-tab .medidor, .viag-gasto .medidor { display: block; width: 100%; }
+
+/* lembrete no topo de cada perfil: calmo (não é alerta), no máximo duas linhas */
+.lembrete { background: color-mix(in srgb, var(--verde-2) 9%, var(--surface)); border-bottom: 1px solid color-mix(in srgb, var(--verde-2) 30%, var(--line)); }
+.lembrete-in { max-width: 1120px; margin: 0 auto; padding: 12px 20px; display: flex; gap: 12px; align-items: flex-start; font-size: var(--t-md); line-height: 1.4; }
+.lembrete-ic { color: var(--verde-2); flex: none; margin-top: 1px; }
+.lembrete ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; flex: 1; }
+.lembrete li { display: flex; gap: 12px; align-items: center; }
+.lembrete .lb-txt { flex: 1 1 auto; min-width: 0; }
+.lembrete .lb-txt p { margin: 0; }
+.lembrete .lb-txt .small { color: var(--ink-2); margin-top: 2px; }
+.lembrete summary { cursor: pointer; list-style: none; } .lembrete summary::-webkit-details-marker { display: none; }
+.lembrete .lb-mais { color: var(--accent); text-decoration: underline; white-space: nowrap; }
+.lembrete details[open] .lb-mais { display: none; }
+.lembrete li > button { flex: none; }
+.lembrete li + li { padding-top: 8px; border-top: 1px dashed var(--line); }
