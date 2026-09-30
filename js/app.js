@@ -13,6 +13,15 @@
   window.addEventListener('pagehide', () => { try { sessionStorage.setItem('mq-rolagem', String(Math.round(window.scrollY))); } catch (e) {} });
 
   /* ---------- início ---------- */
+  /* abertura: a arte de carregamento (mulher regando) fica pelo menos 1,8 s, só na 1ª abertura da sessão.
+     Não segura quem pediu menos animação, nem os testes automáticos (medem o tempo real de abertura). */
+  const ABERTURA_MIN = 1800;
+  async function esperarAbertura() {
+    try { if (sessionStorage.getItem('mq-abertura-vista')) return; sessionStorage.setItem('mq-abertura-vista', '1'); } catch (e) { return; }
+    if (navigator.webdriver || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    const passou = typeof performance !== 'undefined' ? performance.now() : ABERTURA_MIN;
+    if (passou < ABERTURA_MIN) await new Promise(r => setTimeout(r, ABERTURA_MIN - passou));
+  }
   async function boot() {
     const producao = !!(MQ.CONFIG && MQ.CONFIG.supabaseUrl);
     // Em produção nunca cai no modo demonstração: se a biblioteca não carregou, para e avisa.
@@ -29,6 +38,7 @@
       if (S.eu && !S.verEntrada) { if (MQ.sessao) MQ.sessao.tocar(true); registrarAbriu(); await carregar(); setTimeout(() => sincronizar(false), 500); }
     } catch (e) { toast(e.message); }
     if (MQ.sessao) MQ.sessao.iniciar({ ativo: () => !!S.eu && !S.verEntrada, temConexao, aoVencer: () => sairDoSistema(AVISO_INATIVO) });
+    await esperarAbertura();
     render();
     if ('serviceWorker' in navigator && location.protocol === 'https:' && !MQ.CONFIG.semServiceWorker) {
       navigator.serviceWorker.register('sw.js').catch(() => {});
@@ -84,7 +94,7 @@
     try { localStorage.removeItem(chaveCache()); } catch (e) {}
     if (modoDemoAtivo()) { S.verEntrada = true; render(); return; }   // demonstração: volta para a tela de entrada
     try { await S.api.sair(); } catch (e) { /* sem internet: a sessão já foi apagada do aparelho */ }
-    S.eu = null; S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.documentos = []; S.acessos = []; S.execPlanilhas = [];
+    S.eu = null; S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.documentos = []; S.acessos = []; S.execPlanilhas = []; S.encontros = [];
     render();
   }
   const chaveCache = () => 'mq-cache-' + (S.eu && S.eu.id);
@@ -102,7 +112,7 @@
       const qualquer = e => !e.semRede;   // para as partes em que qualquer erro que não seja de rede só desliga a parte
       S.kitPar = { valor_quintal: MQ.KIT_QUINTAL };   // R$ 4.500 por quintal, fixado no plano de trabalho
       const campoPapel = !['professor_fic', 'auxiliar_adm'].includes(papel);
-      const [equipe, fic, fichas, visitas, diagnosticos, aval, aud, pag, docs, quem, entregas, testes, perfis, pre, exemplo, pedAcesso, acessos, lancs] = await Promise.all([
+      const [equipe, fic, fichas, visitas, diagnosticos, aval, aud, pag, docs, quem, entregas, testes, perfis, pre, exemplo, pedAcesso, acessos, lancs, encs] = await Promise.all([
         S.api.listarEquipe(),
         // curso FIC (11_fic.sql): turmas e matrículas
         (coord || papel === 'professor_fic') && S.api.listarTurmas
@@ -123,7 +133,8 @@
         coord && S.api.contarExemplo ? opcional(async () => [await S.api.contarExemplo()]).then(r => r[0] || 0) : 0,
         papel === 'coord_geral' && S.api.listarPedidosAcesso ? talvez(() => S.api.listarPedidosAcesso(), semFic) : [true, []],   // 28
         papel === 'coord_geral' && S.api.listarAcessos ? talvez(() => S.api.listarAcessos(), qualquer) : [true, []],   // 30
-        papel === 'coord_geral' && S.api.listarPlanilhasExec ? talvez(() => S.api.listarPlanilhasExec(), semFic) : [true, []]   // 37_execucao_planilhas.sql
+        papel === 'coord_geral' && S.api.listarPlanilhasExec ? talvez(() => S.api.listarPlanilhasExec(), semFic) : [true, []],   // 37_execucao_planilhas.sql
+        S.api.listarEncontrosFic && papel !== 'auxiliar_adm' ? talvez(() => S.api.listarEncontrosFic(), semFic) : [true, []]   // 38_fic_encontros.sql
       ]);
       S.equipe = equipe;
       S.ficSemBanco = !fic[0]; [S.turmas, S.matriculas] = fic[0] ? fic[1] : [[], []];
@@ -134,6 +145,7 @@
       S.pagSemBanco = !!S.api.listarSolicitacoes && !pag[0]; S.solic = pag[0] ? pag[1].lista : []; S.solicVis = pag[0] ? pag[1].vinculos : {};
       S.docSemBanco = !docs[0]; S.documentos = docs[0] ? docs[1] : [];
       S.execSemBanco = !lancs[0]; S.execPlanilhas = lancs[0] ? lancs[1] : [];
+      S.encSemBanco = !encs[0]; S.encontros = encs[0] ? encs[1] : [];
       S.quemConfere = quem[0] ? quem[1] : null;
       S.entregasSemBanco = !entregas[0]; [S.entregas, S.ciencias] = entregas[0] ? entregas[1] : [[], []];
       S.testesSemBanco = !testes[0]; S.testes = testes[0] ? testes[1] : [];
@@ -183,12 +195,12 @@
     if (!forcar && Date.now() - atualizadoEm < ATUALIZA_MIN) return;
     atualizando = true;
     try {
-      const antes = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.solic, S.pedidos, S.pre, S.pedidosAcesso, S.entregas, S.matriculas, S.turmas, S.documentos, S.avaliacoes, S.execPlanilhas]);
+      const antes = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.solic, S.pedidos, S.pre, S.pedidosAcesso, S.entregas, S.matriculas, S.turmas, S.documentos, S.avaliacoes, S.execPlanilhas, S.encontros]);
       // dados pessoais e conta do próprio cadastro também podem ter sido resolvidos por outra pessoa (pendências)
       if (!digitando() && !S.painel) { if (MQ.convitesUI) MQ.convitesUI.esquecerPrivado(S.eu.id); if (MQ.bancoUI) MQ.bancoUI.limpar(); }
       if (S.api.reler) await S.api.reler();   // demonstração: outra aba pode ter mudado os dados guardados
       await carregar(); atualizadoEm = Date.now();
-      const depois = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.solic, S.pedidos, S.pre, S.pedidosAcesso, S.entregas, S.matriculas, S.turmas, S.documentos, S.avaliacoes, S.execPlanilhas]);
+      const depois = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.solic, S.pedidos, S.pre, S.pedidosAcesso, S.entregas, S.matriculas, S.turmas, S.documentos, S.avaliacoes, S.execPlanilhas, S.encontros]);
       if (antes !== depois && !digitando()) { const y = window.scrollY; render(); window.scrollTo(0, y); }
     } catch (e) { /* sem internet ou servidor fora: fica com o que já está na tela */ }
     finally { atualizando = false; }
@@ -234,7 +246,7 @@
     else {
       if (MQ.pendUI) h += MQ.pendUI.faixa();   // pendências do próprio cadastro, em todas as telas
       if (MQ.lembreteUI && (!/^coord/.test(S.eu.papel) || abaAtual() === abasDoPapel()[0])) h += MQ.lembreteUI.quadro();   // prazo, data com roda de conversa ou número do projeto
-      if (/^coord/.test(S.eu.papel)) h += telaCoordenacao();
+      if (/^coord/.test(S.eu.papel)) h += (S.eu.papel === 'coord_tecnico' && MQ.encUI && MQ.encUI.paraConfirmar().length ? `<div class="wrap">${MQ.encUI.blocoConfirmar()}</div>` : '') + telaCoordenacao();
       else if (S.eu.papel === 'agente' && MQ.campoUI) h += MQ.campoUI.telaAgente();
       else if (S.eu.papel === 'professor_fic' && MQ.ficUI) h += MQ.ficUI.telaProfessor();
       else if (S.eu.papel === 'auxiliar_adm') h += telaAuxiliar();
@@ -666,6 +678,7 @@
         ['Entregas do mês', '#t-ent', false, MQ.entregasUI ? MQ.entregasUI.contaFaltas() : 0], ['Pedir pagamento', '#t-pag', false, MQ.pagUI ? MQ.pagUI.contaDevolvidas() : 0],
         m.papel === 'articulacao' ? ['Passagem ou evento', '#t-viag', false, MQ.viagUI ? MQ.viagUI.contaDevolvidos() : 0] : null])}
       ${MQ.entregasUI ? MQ.entregasUI.blocoCiencia() : ''}
+      ${MQ.encUI ? MQ.encUI.blocoConfirmar() : ''}
       ${s.cod === 'ok' ? '' : `<div class="bloco"><h2>Habilitação para receber a bolsa</h2><p class="small muted">A bolsa de ${R.fmtBRL(P[m.papel].bolsa || 0)} por mês só é paga pela FUNCERN depois destes passos. Dúvidas sobre matrícula e AVA: professores do curso FIC. Documentos, conta ou Pix: auxiliar administrativo.</p>${passos(m)}</div>`}
       ${MQ.entregasUI ? MQ.entregasUI.cartaoBolsista() : ''}
       ${m.meta_diagnosticos != null ? `<div class="bloco"><h2>Sua previsão de atividades</h2><p class="small muted">Previsão do termo de compromisso. O trabalho de campo do estado pode ser dividido de outro jeito, combinado com a coordenação técnica.</p><div class="resumo r3">
@@ -805,7 +818,7 @@
     let el = $('#painel');
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
     const p = S.painel;
-    const corpo = p.tipo === 'roteiro' && MQ.roteiroUI ? MQ.roteiroUI.painel(p) : p.tipo === 'ajuda' ? MQ.ajudaUI.painel(p) : p.tipo === 'meus-dados' ? painelMeusDados() : /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^viag-/.test(p.tipo) && MQ.viagUI ? MQ.viagUI.painel(p) : /^doc-/.test(p.tipo) && MQ.docsUI ? MQ.docsUI.painel(p) : /^exec-/.test(p.tipo) && MQ.execUI ? MQ.execUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
+    const corpo = p.tipo === 'roteiro' && MQ.roteiroUI ? MQ.roteiroUI.painel(p) : p.tipo === 'ajuda' ? MQ.ajudaUI.painel(p) : p.tipo === 'meus-dados' ? painelMeusDados() : /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^viag-/.test(p.tipo) && MQ.viagUI ? MQ.viagUI.painel(p) : /^doc-/.test(p.tipo) && MQ.docsUI ? MQ.docsUI.painel(p) : /^exec-/.test(p.tipo) && MQ.execUI ? MQ.execUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : /^enc-/.test(p.tipo) && MQ.encUI ? MQ.encUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
     el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel" role="dialog" aria-modal="true" aria-labelledby="painel-t">${corpo}</aside>`;
     restaurarRascunhoPainel(el);
     // questionário de campo: opção de imprimir em branco para aplicar no papel (só para quem preenche)
@@ -1122,6 +1135,7 @@
       else if (/^custo-/.test(a) && MQ.custosUI) await MQ.custosUI.clique(a, el);
       else if (/^fic-/.test(a) && MQ.ficUI) { S.voltarFoco = el; await MQ.ficUI.clique(a, el); }
       else if (/^pag-/.test(a) && MQ.pagUI) { S.voltarFoco = el; await MQ.pagUI.clique(a, el); }
+      else if (/^enc-/.test(a) && MQ.encUI) { if (/^enc-(novo|editar)$/.test(a)) S.voltarFoco = el; await MQ.encUI.clique(a, el); }
       else if (/^exec-/.test(a) && MQ.execUI) { S.voltarFoco = el; await MQ.execUI.clique(a, el); }
       else if (/^doc-/.test(a) && MQ.docsUI) { if (!/^doc-rel-/.test(a)) S.voltarFoco = el; await MQ.docsUI.clique(a, el); }
       else if (/^viag-/.test(a) && MQ.viagUI) { if (!/pass$/.test(a)) S.voltarFoco = el; await MQ.viagUI.clique(a, el); }
@@ -1225,6 +1239,7 @@
       if (/^viag-/.test(tipo) && MQ.viagUI) await MQ.viagUI.enviar(tipo, form, fd);
       if (/^doc-/.test(tipo) && MQ.docsUI) await MQ.docsUI.enviar(tipo, form, fd);
       if (/^exec-/.test(tipo) && MQ.execUI) await MQ.execUI.enviar(tipo, form, fd);
+      if (/^enc-/.test(tipo) && MQ.encUI) await MQ.encUI.enviar(tipo, form, fd);
       if (/^rot-/.test(tipo) && MQ.roteiroUI) await MQ.roteiroUI.enviar(tipo, form, fd);
       if (tipo === 'aval' && MQ.impactoUI) await MQ.impactoUI.enviar(tipo, form, fd);
       if (/^conv-/.test(tipo) && MQ.convitesUI) await MQ.convitesUI.enviar(tipo, form, fd);

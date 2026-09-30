@@ -46,6 +46,12 @@ function marcar(v, onde) { const i = n++; campos[i] = onde; return v + `<img src
     enviado_por: ger.id, enviado_em: agora, linhas: [{ linha: 2, data: hoje, texto: 'Repasse do MDA', item: 'repasse_mda', rubrica: null, descricao: 'Nota de crédito', documento: 'NC 14', valor: 1000000 },
       { linha: 3, data: hoje, texto: 'Implantação dos quintais', item: 'quintais', rubrica: 'r7', descricao: 'Kit do quintal', documento: 'NF 1', valor: 5000 },
       { linha: 4, data: hoje, texto: 'Coffee break da reunião', item: null, rubrica: null, descricao: 'Lanche da reunião', documento: 'NF 2', valor: 300 }] }];
+  const tur = (dados.turmas || [])[0]; const prof = pes('professor_fic');
+  if (tur) { dados.ficEncontros = [{ id: 'x-e-0', turma_id: tur.id, professor_id: prof.id, data: hoje, carga_horaria: 4, modalidade: 'presencial', conteudo: 'Planejamento do quintal e plantio', criado_em: agora, atualizado_em: agora }];
+    dados.ficPresencas = dados.equipe.filter(m => ['articulacao', 'apoio', 'agente', 'coord_tecnico'].includes(m.papel)).map((m, i) => ({ id: 'x-p' + i, encontro_id: 'x-e-0', equipe_id: m.id, presente: true, marcado_por: prof.id, marcado_em: agora, confirmado_em: i % 2 ? agora : null })); }
+  dados.solicitacoes.push({ id: 'x-sol-prof', tipo: 'bolsa', equipe_id: prof.id, mes, situacao: 'solicitada', valor_solicitado: 2200, relatorio: 'Aulas do curso e acompanhamento da turma.', solicitada_em: agora,
+    detalhe: { justificativa_sem_encontro: 'Mês de preparação do curso', fic_carga_horaria: 4, fic_gerado_em: agora, fic_encontros: [{ data: hoje, turma: 'Turma do Piauí', carga_horaria: 4, modalidade: 'presencial', conteudo: 'Planejamento do quintal',
+      presencas: [{ nome: 'Maria Participante', papel: 'articulacao', uf: 'PI', presente: true, confirmado_em: agora }, { nome: 'Joana Ausente', papel: 'apoio', uf: 'PI', presente: false, confirmado_em: null }] }] } });
   const env = envenenar(dados, '');
   const porTabela = {}; Object.values(campos).forEach(c => { const t = c.split('.')[1]; porTabela[t] = (porTabela[t] || 0) + 1; });
   await p.evaluate(s => localStorage.setItem('mq-demo-v4', s), JSON.stringify(env));

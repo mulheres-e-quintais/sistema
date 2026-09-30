@@ -206,5 +206,5 @@
     }
   }
 
-  MQ.docsUI = { aba, painel, clique, enviar, validarDocumento, dadosRelatorio, htmlRelatorio, TIPOS };
+  MQ.docsUI = { aba, painel, clique, enviar, validarDocumento, dadosRelatorio, htmlRelatorio, documentoCompleto, TIPOS };
 })();

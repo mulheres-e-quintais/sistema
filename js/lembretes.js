@@ -51,6 +51,10 @@
       const doMes = (S().execPlanilhas || []).some(p => String(p.enviado_em).slice(0, 7) === hoje.slice(0, 7));
       if (!doMes) out.push({ id: 'planilha-' + hoje.slice(0, 7), t: `Envie a <b>planilha de gastos de ${MESES[+hoje.slice(5, 7) - 1]}</b>.`, d: 'Na aba Execução. Sem ela, o executado do painel fica parado na planilha anterior.' });
     }
+    if (MQ.encUI && R.matriculaFIC(eu.papel)) {   // 38: presença no curso FIC para confirmar
+      const n = MQ.encUI.paraConfirmar().length;
+      if (n) out.push({ id: 'presenca-' + n + '-' + hoje, t: `Confirme a sua presença em <b>${n} encontro${n > 1 ? 's' : ''} do curso FIC</b>.`, d: 'O professor marcou você como presente. A confirmação entra no relatório dele.' });
+    }
     const nDiag = R.diasAte(P.inicioDiagnosticos);
     if ((R.ehCampo(eu.papel) || R.decideCampo(eu.papel)) && nDiag >= 0 && nDiag <= 14)
       out.push({ id: 'diagnosticos', t: `Os diagnósticos nos quintais começam em <b>${R.fmtData(P.inicioDiagnosticos)}</b> (${quando(nDiag)}).`, d: R.ehCampo(eu.papel) ? 'Confira na ajuda o roteiro da visita e leve o celular carregado para registrar a localização no quintal.' : '' });
