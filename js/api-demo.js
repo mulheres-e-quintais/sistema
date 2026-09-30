@@ -202,35 +202,27 @@
     async reler() { mem = null; ler(); return euMesmo(); },   // lê de novo o que está guardado no aparelho (outra aba mudou; testes)
     async recomecar() { mem = null; try { localStorage.removeItem(CHAVE); } catch (e) {} ler(); gravar(); return euMesmo(); },
 
-    /* ---------- Execução (mesmas regras do 36_execucao_financeira.sql): só a coordenação geral; nada se altera, erro vira estorno ---------- */
-    async listarLancamentos() {
+    /* ---------- Execução: planilha de gastos do mês (mesmas regras do 37_execucao_planilhas.sql): só a coordenação geral; nada se altera nem se apaga ---------- */
+    async listarPlanilhasExec() {
       const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') return [];
-      return copia((ler().lancamentos || []).slice().sort((a, b) => String(b.data).localeCompare(String(a.data)) || String(b.criado_em).localeCompare(String(a.criado_em))));
+      return copia(ler().execPlanilhas || []);
     },
-    async lancarExecucao(dd) {
+    async enviarPlanilhaExec(dd, arquivo) {
       const d = ler(); const eu = euMesmo();
-      if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral lança a execução.');
-      const erros = MQ.execUI ? MQ.execUI.validar(dd) : {};
-      if (Object.keys(erros).length) { const e = falha(Object.values(erros)[0]); e.campos = erros; throw e; }
-      const x = { id: uid(), tipo: dd.tipo, item: dd.item, valor: Math.round(+dd.valor * 100) / 100, data: dd.data, documento: dd.documento || null, descricao: dd.descricao || null,
-        estorno_de: null, criado_por: eu.id, criado_em: new Date().toISOString() };
-      d.lancamentos = (d.lancamentos || []).concat([x]);
-      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'execucao_lancamentos', registro_id: x.id, acao: 'INSERT', por: eu.id, em: x.criado_em, antes: null, depois: copia(x) });
+      if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral envia a planilha de gastos.');
+      if (!dd.posicao_em || dd.posicao_em > R.hoje()) throw falha('A data da planilha não pode ser no futuro.');
+      if (!Array.isArray(dd.linhas) || !dd.linhas.length || dd.linhas.length > 5000) throw falha('A planilha precisa ter de 1 a 5000 linhas com valor.');
+      const limpo = String((arquivo && arquivo.name) || dd.arquivo_nome || 'planilha').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w.-]+/g, '_').slice(-80);
+      const path = String(dd.posicao_em).slice(0, 4) + '/' + uid() + '_' + limpo;
+      try { if (typeof URL !== 'undefined' && URL.createObjectURL && arquivo instanceof Blob) fotosMemoria.set(path, URL.createObjectURL(arquivo)); } catch (e) { /* sem arquivo na demonstração */ }
+      const x = { id: uid(), posicao_em: dd.posicao_em, arquivo_path: path, arquivo_nome: String(dd.arquivo_nome || limpo).slice(0, 200), linhas: copia(dd.linhas),
+        total_gasto: +dd.total_gasto || 0, total_recebido: +dd.total_recebido || 0, nao_classificadas: +dd.nao_classificadas || 0, obs: dd.obs || null, enviado_por: eu.id, enviado_em: new Date().toISOString() };
+      d.execPlanilhas = (d.execPlanilhas || []).concat([x]);
+      const aud = Object.assign({}, x); delete aud.linhas;
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'execucao_planilhas', registro_id: x.id, acao: 'INSERT', por: eu.id, em: x.enviado_em, antes: null, depois: aud });
       gravar(); return copia(x);
     },
-    async estornarLancamento(id, motivo) {
-      const d = ler(); const eu = euMesmo();
-      if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral lança a execução.');
-      const o = (d.lancamentos || []).find(x => x.id === id);
-      if (!o) throw falha('Lançamento a estornar não encontrado.');
-      if (o.estorno_de) throw falha('Não se estorna um estorno.');
-      if (d.lancamentos.some(x => x.estorno_de === id)) throw falha('Este lançamento já foi estornado.');
-      if (String(motivo || '').trim().length < 10) throw falha('Para estornar, escreva o motivo (pelo menos 10 letras).');
-      const x = { id: uid(), tipo: o.tipo, item: o.item, valor: -o.valor, data: R.hoje(), documento: null, descricao: String(motivo).trim(), estorno_de: id, criado_por: eu.id, criado_em: new Date().toISOString() };
-      d.lancamentos.push(x);
-      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'execucao_lancamentos', registro_id: x.id, acao: 'INSERT', por: eu.id, em: x.criado_em, antes: null, depois: copia(x) });
-      gravar(); return copia(x);
-    },
+    async linkPlanilhaExec(path) { return fotosMemoria.get(path) || null; },
 
     /* ---------- Documentos do projeto (mesmas regras do 24_documentos.sql): só a coordenação geral ---------- */
     async listarDocumentos() {
