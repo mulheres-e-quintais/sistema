@@ -371,6 +371,14 @@
         if (ruim) throw falha('Há visita que não é sua, não está feita, é de outro mês ou já foi solicitada.');
       } else if (String(relatorio || '').trim().length < 50) throw falha('Escreva o relatório de atividades do mês (pelo menos algumas linhas).');
       const agora = new Date().toISOString(); let alvo = s;
+      if (tipo === 'bolsa' && eu.papel === 'professor_fic') {   // 38: relatório com os encontros do mês e a presença, gravado pelo sistema
+        const enc = (d.ficEncontros || []).filter(e => e.professor_id === eu.id && String(e.data).slice(0, 7) === m.slice(0, 7)).sort((a, b) => String(a.data).localeCompare(String(b.data)));
+        if (!enc.length && String((detalhe || {}).justificativa_sem_encontro || '').trim().length < 30) throw falha('Nenhum encontro do curso registrado neste mês: explique por quê (pelo menos 30 letras), por exemplo, mês de preparação do curso.');
+        const nomeP = id => { const q = d.equipe.find(y => y.id === id) || {}; return { nome: q.nome_social || q.nome, papel: q.papel, uf: q.uf }; };
+        detalhe = Object.assign({}, detalhe || {}, { fic_carga_horaria: enc.reduce((t, e) => t + (+e.carga_horaria || 0), 0), fic_gerado_em: new Date().toISOString(),
+          fic_encontros: enc.map(e => ({ id: e.id, data: e.data, turma: ((d.turmas || []).find(t => t.id === e.turma_id) || {}).nome, carga_horaria: e.carga_horaria, modalidade: e.modalidade, conteudo: e.conteudo,
+            presencas: (d.ficPresencas || []).filter(p => p.encontro_id === e.id).map(p => Object.assign(nomeP(p.equipe_id), { presente: p.presente, confirmado_em: p.confirmado_em })).sort((a, b) => String(a.nome).localeCompare(String(b.nome))) })) });
+      }
       if (!alvo) { alvo = { id: uid(), tipo, equipe_id: eu.id, mes: m }; d.solicitacoes.push(alvo); }
       Object.assign(alvo, { situacao: 'solicitada', valor_solicitado: valor, valor_avalizado: null, relatorio: relatorio || null, detalhe: detalhe || {}, solicitada_em: agora, aval_por: null, aval_em: null });
       Object.keys(d.solic_visitas).forEach(k => { if (d.solic_visitas[k] === alvo.id) delete d.solic_visitas[k]; });
@@ -420,6 +428,50 @@
       const eu = euMesmo(); if (!eu) return [];
       const l = (ler().matriculas || []).filter(x => !x.cancelada_em);
       return copia(['coord_geral', 'coord_tecnico', 'professor_fic'].includes(eu.papel) ? l : l.filter(x => x.equipe_id === eu.id));
+    },
+    /* ---------- encontros do FIC e lista de presença (mesmas regras do 38_fic_encontros.sql) ---------- */
+    async listarEncontrosFic() {
+      const d = ler(); const eu = euMesmo(); if (!eu) return [];
+      const enc = d.ficEncontros || [], pres = d.ficPresencas || [];
+      const todos = ['coord_geral', 'coord_tecnico', 'professor_fic'].includes(eu.papel);
+      const meus = todos ? enc : enc.filter(e => pres.some(p => p.encontro_id === e.id && p.equipe_id === eu.id));
+      return copia(meus.map(e => Object.assign({}, e, { presencas: pres.filter(p => p.encontro_id === e.id && (todos || p.equipe_id === eu.id)) })));
+    },
+    async salvarEncontroFic(x) {
+      const d = ler(); const eu = euMesmo(); d.ficEncontros = d.ficEncontros || []; d.ficPresencas = d.ficPresencas || [];
+      if (!eu || !['professor_fic', 'coord_geral'].includes(eu.papel)) throw falha('Quem registra os encontros do curso é o professor do FIC.');
+      if (!(d.turmas || []).some(t => t.id === x.turma_id)) throw falha('Turma não encontrada.');
+      if (!x.data || x.data > R.hoje()) throw falha('A data do encontro não pode ser no futuro.');
+      if (x.data < '2026-09-01') throw falha('Data antes do início do projeto.');
+      if (!(+x.carga_horaria > 0 && +x.carga_horaria <= 12)) throw falha('Informe a carga horária do encontro (até 12 horas).');
+      if (!['presencial', 'online', 'ava'].includes(x.modalidade)) throw falha('Modalidade inválida.');
+      if (String(x.conteudo || '').trim().length < 10) throw falha('Escreva o que foi trabalhado no encontro (pelo menos 10 letras).');
+      const mats = (d.matriculas || []).filter(m => m.turma_id === x.turma_id && !m.cancelada_em).map(m => m.equipe_id);
+      const pres = x.presentes || [];
+      if (pres.some(id => !mats.includes(id))) throw falha('Só entra na lista de presença quem está matriculado nesta turma.');
+      const fechado = (prof, data) => (d.solicitacoes || []).some(s => s.tipo === 'bolsa' && s.equipe_id === prof && String(s.mes).slice(0, 7) === String(data).slice(0, 7) && ['avalizada', 'lancada'].includes(s.situacao));
+      const agora = new Date().toISOString(); let e;
+      if (!x.id) {
+        if (fechado(eu.id, x.data)) throw falha('A sua bolsa deste mês já teve aval: não dá para incluir encontro neste mês.');
+        e = { id: uid(), professor_id: eu.id, criado_em: agora }; d.ficEncontros.push(e);
+      } else {
+        e = d.ficEncontros.find(y => y.id === x.id); if (!e) throw falha('Encontro não encontrado.');
+        if (fechado(e.professor_id, e.data) || fechado(e.professor_id, x.data)) throw falha('A bolsa deste mês já teve aval: o encontro não muda mais.');
+        if (e.turma_id !== x.turma_id && d.ficPresencas.some(p => p.encontro_id === e.id && p.confirmado_em)) throw falha('Já há presença confirmada neste encontro: a turma não pode mudar.');
+      }
+      for (const id of mats) { const p = d.ficPresencas.find(y => y.encontro_id === e.id && y.equipe_id === id);
+        if (p && p.confirmado_em && !pres.includes(id)) throw falha('Alguém que já confirmou a presença foi desmarcado. Quem confirmou continua presente.'); }
+      Object.assign(e, { turma_id: x.turma_id, data: x.data, carga_horaria: +x.carga_horaria, modalidade: x.modalidade, conteudo: String(x.conteudo).trim(), atualizado_em: agora });
+      mats.forEach(id => { const p = d.ficPresencas.find(y => y.encontro_id === e.id && y.equipe_id === id); const v = pres.includes(id);
+        if (!p) d.ficPresencas.push({ id: uid(), encontro_id: e.id, equipe_id: id, presente: v, marcado_por: eu.id, marcado_em: agora, confirmado_em: null });
+        else if (p.presente !== v) Object.assign(p, { presente: v, marcado_por: eu.id, marcado_em: agora }); });
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'fic_encontros', registro_id: e.id, acao: x.id ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: null, depois: copia(e) });
+      gravar(); return e.id;
+    },
+    async confirmarPresencaFic(encontro_id) {
+      const d = ler(); const eu = euMesmo(); const p = (d.ficPresencas || []).find(y => y.encontro_id === encontro_id && y.equipe_id === (eu || {}).id && y.presente && !y.confirmado_em);
+      if (!p) throw falha('Não há presença sua para confirmar neste encontro (ou já está confirmada).');
+      p.confirmado_em = new Date().toISOString(); gravar();
     },
     async salvarTurma(t) {
       const d = ler(); const eu = euMesmo();

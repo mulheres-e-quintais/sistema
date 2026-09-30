@@ -33,9 +33,9 @@ MQ.PAPEIS = {
                    faz: 'Cuida da logística, da coleta e organização das informações, dos registros das ações e do monitoramento.' },
   agente:        { nome: 'Agente de campo',      curto: 'Agente',         bolsa: null, org: 'MPA',
                    faz: 'Faz as visitas de diagnóstico, implantação e acompanhamento nos quintais atribuídos a ela, com ajuda de custo por dia de campo.' },
-  auxiliar_adm:  { nome: 'Auxiliar administrativo', curto: 'Auxiliar adm.', bolsa: null, org: 'IFRN',
+  auxiliar_adm:  { nome: 'Auxiliar administrativo', curto: 'Auxiliar adm.', bolsa: 1200, org: 'IFRN',
                    faz: 'Cadastra a equipe no Arlo (FUNCERN) e registra no sistema o cadastro no Arlo e o termo de compromisso assinado.' },
-  professor_fic: { nome: 'Professor(a) do curso FIC', curto: 'Professor FIC', bolsa: null, org: 'IFRN',
+  professor_fic: { nome: 'Professor(a) do curso FIC', curto: 'Professor FIC', bolsa: 2200, org: 'IFRN',
                    faz: 'Dá as aulas do curso FIC e registra no sistema as turmas e a matrícula da coordenação técnica, das bolsistas e das agentes de campo.' }
 };
 

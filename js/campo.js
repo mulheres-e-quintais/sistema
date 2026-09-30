@@ -233,6 +233,7 @@
         <p>${E(MQ.PAPEIS.agente.faz)}</p></div><span class="chip chip-lg ${s.cod}">${E(s.rot)}</span></div>
       ${MQ.atalhos ? MQ.atalhos([['Minhas próximas visitas', '#t-prox', true, contaAFazer()], ['Visitas feitas', '#t-feitas'], ['Pedir ajuda de custo', '#t-pag', false, MQ.pagUI ? MQ.pagUI.contaDevolvidas() : 0]]) : ''}
       ${MQ.entregasUI ? MQ.entregasUI.blocoCiencia() : ''}
+      ${MQ.encUI ? MQ.encUI.blocoConfirmar() : ''}
       ${!R.habilitado(eu) ? `<div class="aviso erro"><b>Você ainda não pode receber visitas no roteiro.</b> Faltam passos da habilitação (matrícula no FIC, documentos na FUNCERN e termo). Sem eles, a ajuda de custo não pode ser paga.</div>` : ''}
       ${pend.length ? `<div class="aviso">${pend.length} diagnóstico${pend.length > 1 ? 's' : ''} guardado${pend.length > 1 ? 's' : ''} neste aparelho, aguardando internet.${navigator.onLine ? ' <button class="link" data-acao="ficha-enviar">Enviar agora</button>' : ''}</div>` : ''}
       <section class="secao"><div class="secao-cab"><h2 id="t-prox">Próximas visitas</h2><span class="muted small">${prox.length} prevista${prox.length === 1 ? '' : 's'}</span></div>

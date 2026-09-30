@@ -1528,3 +1528,13 @@ form[data-form=exec-lancar] .sn-par .sn:has(input:checked)::before { content: "�
 @keyframes exr-realce { from { background: color-mix(in srgb, var(--focus) 22%, transparent); } to { background: transparent; } }
 @media (prefers-reduced-motion: reduce) { .eg-trilho i { transition: none; } .exec-tab tbody.realce tr { animation: none; } }
 @media (max-width: 640px) { .eg-caixa { overflow-x: auto; overscroll-behavior-x: contain; } .eg-caixa svg { min-width: 560px; } }
+
+/* Curso FIC: encontros, lista de presença e relatório do professor */
+.enc-lista { margin-top: 12px; display: grid; gap: 6px; }
+.enc-lista .check { align-items: flex-start; }
+.enc-pedido { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 8px 0 12px; background: var(--surface-2); }
+.enc-pedido h4 { margin: 0 0 4px; font-size: var(--t-md); }
+.enc-rel { margin: 10px 0 14px; } .enc-rel p { margin: 4px 0; }
+.enc-tab { min-width: 0; table-layout: auto; margin-top: 6px; } .enc-tab td, .enc-tab th { padding: 6px 8px; }
+.enc-confirmar .exec-lanc > button { justify-self: start; }
+.enc-relatorio h1 { font-size: var(--t-xl); margin: 4px 0; } .enc-relatorio h2 { font-size: var(--t-md); margin: 14px 0 4px; }

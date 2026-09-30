@@ -50,10 +50,10 @@
         <span class="seg"><button type="button" data-acao="pag-mes" data-n="-1" aria-label="Mês anterior" ${mesIni && m <= mesIni ? 'disabled' : ''}>‹</button><button type="button" data-acao="pag-mes" data-n="0">${nomeMes(m)}</button><button type="button" data-acao="pag-mes" data-n="1" aria-label="Próximo mês" ${m >= mesHoje() ? 'disabled' : ''}>›</button></span></div>
       ${mesIni && mesIni > mesHoje() ? `<div class="aviso">Você começa no projeto em ${nomeMes(mesIni)}: a partir desse mês dá para solicitar.</div>` : ''}
       ${!hab ? '<div class="aviso erro"><b>Sua habilitação ainda não está completa.</b> Sem ela não há pagamento: veja os passos que faltam.</div>' : ''}
-      <div class="pag-grade">
+      ${mesIni && m < mesIni ? '' : `<div class="pag-grade">
         ${podeAjuda(papel) ? cartaoAjuda(eu, m, doMes('ajuda_custo'), hab) : ''}
         ${podeBolsa(papel) ? cartaoBolsa(eu, m, doMes('bolsa'), hab) : ''}
-      </div>
+      </div>`}
       ${minhas.length ? `<details class="hist"><summary>Minhas solicitações (${minhas.length})</summary><div class="pag-lista">${minhas.map(s => linha(s, false)).join('')}</div></details>` : ''}
     </section>`;
   }
@@ -97,7 +97,8 @@
     return `<form class="bloco pag-c" data-form="pag-bolsa" data-mes="${m}" novalidate><h3>Bolsa · ${nomeMes(m)}</h3>
       ${s ? situacaoTxt(s) : ''}
       <p class="small muted">${valor ? 'Valor do termo de compromisso: <b>' + brl(valor) + '</b>.' : 'Valor conforme o termo de compromisso.'} O aval é da ${quemAvaliza('bolsa', eu.papel) === 'coord_geral' ? 'coordenação geral' : 'coordenação técnica'}.</p>
-      <div class="campo"><label for="pb-rel-${m}">Relatório de atividades do mês</label><textarea id="pb-rel-${m}" name="relatorio" rows="5" placeholder="${E(DICA_REL[eu.papel] || DICA_REL.bolsista)}">${E(s ? s.relatorio || '' : '')}</textarea></div>
+      ${eu.papel === 'professor_fic' && MQ.encUI && !S().encSemBanco ? MQ.encUI.blocoPedido(eu.id, m) : ''}
+      <div class="campo"><label for="pb-rel-${m}">${eu.papel === 'professor_fic' ? 'Ações realizadas no mês' : 'Relatório de atividades do mês'}</label><textarea id="pb-rel-${m}" name="relatorio" rows="5" placeholder="${E(DICA_REL[eu.papel] || DICA_REL.bolsista)}">${E(s ? s.relatorio || '' : '')}</textarea></div>
       <div class="aviso erro" data-erro hidden></div>
       <button class="btn pri" type="submit" ${hab ? '' : 'disabled'}>${s ? 'Corrigir e reenviar' : 'Solicitar bolsa de ' + nomeMes(m)}</button></form>`;
   }
@@ -172,18 +173,21 @@
         visHTML = d.length ? `<table class="tab-uf"><thead><tr><th>Visita</th><th>Município</th><th style="text-align:right">Valor</th></tr></thead><tbody>${d.map(x => `<tr><td>${E(MQ.ETAPAS_CUSTO[x.etapa] || x.etapa)} · ${R.fmtData(x.data)}</td><td>${E(x.municipio || '')}</td><td class="num" style="text-align:right">${brl(x.total)}</td></tr>`).join('')}</tbody></table>` : '';
       }
     }
-    const val = s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado;
+    const doPerfil = s.tipo === 'bolsa' && P[pe.papel] ? P[pe.papel].bolsa : null;   // valor da bolsa conforme o perfil (planilha do TED)
+    const val = s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado != null ? s.valor_solicitado : doPerfil;
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">${TIPO[s.tipo]} · ${nomeMes(s.mes)}</span><h2 id="painel-t">${E(nomeDe(pe))}</h2>
         <span class="small muted">${E(P[pe.papel] ? P[pe.papel].nome : '')}${pe.uf ? ' · ' + E(pe.uf) : ''}${['auxiliar_adm', 'coord_geral'].includes(eu.papel) && pe.cpf ? ' · CPF ' + E(R.fmtCPF(pe.cpf)) : ''}</span></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo">
-        <div class="bloco"><dl class="dl"><dt>Situação</dt><dd>${chip(s)}</dd><dt>Valor solicitado</dt><dd class="num">${brl(s.valor_solicitado)}</dd>
+        <div class="bloco"><dl class="dl"><dt>Situação</dt><dd>${chip(s)}</dd><dt>Valor solicitado</dt><dd class="num">${s.valor_solicitado != null ? brl(s.valor_solicitado) : '—'}</dd>${doPerfil ? `<dt>Bolsa do perfil</dt><dd class="num">${brl(doPerfil)} <span class="small muted">(${E(P[pe.papel].nome)})</span></dd>` : ''}
           ${s.valor_avalizado != null ? `<dt>Valor com aval</dt><dd class="num"><b>${brl(s.valor_avalizado)}</b></dd>` : ''}
           <dt>Enviada em</dt><dd>${new Date(s.solicitada_em).toLocaleString('pt-BR')}</dd>
           ${s.aval_em ? `<dt>${s.situacao === 'devolvida' ? 'Devolvida' : 'Aval'} em</dt><dd>${new Date(s.aval_em).toLocaleString('pt-BR')} por ${E(nomeDe(pessoa(s.aval_por)))}</dd>` : ''}
           ${s.obs_aval ? `<dt>Observação</dt><dd>${E(s.obs_aval)}</dd>` : ''}
           ${s.arlo_em ? `<dt>Lançada no Arlo</dt><dd>${new Date(s.arlo_em).toLocaleDateString('pt-BR')} por ${E(nomeDe(pessoa(s.arlo_por)))}${s.arlo_protocolo ? ' · protocolo ' + E(s.arlo_protocolo) : ''}</dd>` : ''}</dl></div>
-        ${s.relatorio ? `<div class="bloco"><h3>Relatório de atividades</h3><p style="white-space:pre-wrap">${E(s.relatorio)}</p></div>` : ''}
+        ${pe.papel === 'professor_fic' && s.tipo === 'bolsa' && MQ.encUI && (s.detalhe || {}).fic_encontros ? `<div class="bloco enc-rel-painel">${MQ.encUI.relatorioHTML(s)}
+            <div class="acoes"><button type="button" class="btn" data-acao="enc-imprimir" data-id="${E(s.id)}">Imprimir ou salvar em PDF</button></div></div>`
+          : s.relatorio ? `<div class="bloco"><h3>Relatório de atividades</h3><p style="white-space:pre-wrap">${E(s.relatorio)}</p></div>` : ''}
         ${MQ.entregasUI && /^coord/.test(eu.papel) ? MQ.entregasUI.resumoAval(s) : ''}
         ${visHTML ? `<div class="bloco"><h3>Visitas</h3>${visHTML}${conf != null && Math.abs(conf - s.valor_solicitado) >= 0.01 ? `<div class="aviso">Recalculado agora: <b>${brl(conf)}</b> (solicitado: ${brl(s.valor_solicitado)}). A diferença vem do km conferido ou dos valores da aba Custos.</div>` : ''}</div>` : ''}
         ${podeAval ? `<form class="bloco" data-form="pag-aval" data-id="${E(s.id)}" novalidate><h3>Aval</h3>
@@ -223,9 +227,12 @@
     if (tipo === 'pag-bolsa') {
       const rel = String(fd.get('relatorio') || '').trim();
       if (rel.length < 50) return U().mostrarErros(form, { relatorio: 'Conte em algumas linhas o que você fez no mês (pelo menos 50 letras).' });
+      if (S().eu.papel === 'professor_fic' && MQ.encUI && !S().encSemBanco && !MQ.encUI.doMes(S().eu.id, mes).length && String(fd.get('justificativa_sem_encontro') || '').trim().length < 30)
+        return U().mostrarErros(form, { justificativa_sem_encontro: 'Nenhum encontro registrado neste mês: explique por quê (pelo menos 30 letras).' });
       const valor = P[S().eu.papel].bolsa;
       await U().ocupado(form, async () => {
-        await S().api.solicitarPagamento('bolsa', mes + '-01', valor ? Math.round(valor * 100) / 100 : null, rel, [], {});
+        const just = String(fd.get('justificativa_sem_encontro') || '').trim();
+        await S().api.solicitarPagamento('bolsa', mes + '-01', valor ? Math.round(valor * 100) / 100 : null, rel, [], just ? { justificativa_sem_encontro: just } : {});
         await recarregar(); U().toast('Bolsa de ' + nomeMes(mes) + ' solicitada. Agora vai para o aval.');
       });
     }

@@ -489,6 +489,16 @@
         (urls || []).forEach((u, i) => { if (u && u.signedUrl) com[i].foto_url = u.signedUrl; }); } catch (e) { /* sem foto */ } }
       return data;
     },
+    /* encontros do FIC e lista de presença (38) */
+    async listarEncontrosFic() {
+      const { data, error } = await sb.from('fic_encontros').select('*, presencas:fic_presencas(*)').order('data', { ascending: false }); if (error) throw erro(error); return data;
+    },
+    async salvarEncontroFic(x) {
+      const { data, error } = await sb.rpc('registrar_encontro_fic', { p_id: x.id || null, p_turma: x.turma_id, p_data: x.data, p_carga: +x.carga_horaria, p_modalidade: x.modalidade,
+        p_conteudo: x.conteudo, p_presentes: x.presentes || [] });
+      if (error) throw erro(error); return data;
+    },
+    async confirmarPresencaFic(encontro_id) { const { error } = await sb.rpc('confirmar_presenca_fic', { p_encontro: encontro_id }); if (error) throw erro(error); },
     async listarTurmas() { const { data, error } = await sb.from('turmas_fic').select('*').order('criado_em'); if (error) throw erro(error); return data; },
     async listarMatriculas() { const { data, error } = await sb.from('matriculas_fic').select('*').is('cancelada_em', null).order('criado_em'); if (error) throw erro(error); return data; },
     async salvarTurma(t) {
