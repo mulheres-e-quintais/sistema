@@ -194,3 +194,5 @@ MQ.BANCOS = [['001', 'Banco do Brasil'], ['104', 'Caixa Econômica Federal'], ['
   ['380', 'PicPay'], ['290', 'PagBank'], ['212', 'Banco Original'], ['070', 'BRB'], ['041', 'Banrisul']];
 /* tetos de gasto (35_tetos_passagens_eventos.sql): evento por estado; passagens no projeto todo */
 MQ.TETOS = { evento: 6000, passagem: 70000 };
+/* carregando: só o ícone de ampulheta (o leitor de tela ouve "Carregando") */
+MQ.ampulheta = (grande) => `<span class="ampulheta${grande ? ' grande' : ''}" role="status" aria-label="Carregando"><svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M6 3h12M6 21h12M7 3c0 4.5 5 6 5 9s-5 4.5-5 9M17 3c0 4.5-5 6-5 9s5 4.5 5 9"/><path fill="currentColor" d="M9.2 6.5h5.6c-.7 1.6-2.8 2.8-2.8 4-.0-1.2-2.1-2.4-2.8-4zM8.6 19.6c.6-2 3.4-3.3 3.4-5 0 1.7 2.8 3 3.4 5z"/></svg></span>`;

@@ -97,7 +97,7 @@
   /* ---------- página pública "O projeto em números" ---------- */
   function pagina() {
     setTimeout(async () => { await buscar(true); const el = $('#numeros'); if (el) el.innerHTML = V.dados ? corpoPagina(V.dados) : '<div class="login"><h1>Números indisponíveis</h1><p class="muted">Não foi possível carregar os números agora. Tente mais tarde.</p><a class="btn" href="#">Voltar</a></div>'; }, 0);
-    return `<main class="wrap publico" id="numeros">${V.dados ? corpoPagina(V.dados) : '<p class="carregando">Carregando os números…</p>'}</main>`;
+    return `<main class="wrap publico" id="numeros">${V.dados ? corpoPagina(V.dados) : '<p class="carregando">' + MQ.ampulheta(true) + '</p>'}</main>`;
   }
   function corpoPagina(d) {
     const t = totais(d); const et = etapa(t);
@@ -155,7 +155,7 @@
     }, 0);
     return `<section class="secao" aria-labelledby="t-vit"><div class="secao-cab"><div><h2 id="t-vit">Vitrine pública</h2>
       <p>Fotos que aparecem na tela de entrada e em <a href="#numeros">O projeto em números</a>. Para publicar, abra um diagnóstico e use "Publicar na vitrine".</p></div></div>
-      <div id="vit-coord">${V.lista ? corpoCoord() : '<p class="muted">Carregando…</p>'}</div></section>`;
+      <div id="vit-coord">${V.lista ? corpoCoord() : '<p class="muted">' + MQ.ampulheta() + '</p>'}</div></section>`;
   }
   function corpoCoord() {
     if (V.erroLista && /vitrine_fotos|PGRST205|does not exist|schema cache/i.test(V.erroLista))

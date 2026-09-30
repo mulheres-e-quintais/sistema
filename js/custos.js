@@ -72,7 +72,7 @@
     if (!C.carregado) {
       if (!C.carregando) C.carregando = carregar().then(() => U().render());
       // mesmo cabeçalho da página pronta, para nada pular quando os valores chegarem
-      return `<div class="cab"><div><span class="eyebrow">Ajuda de custo</span><h1>Custo das visitas</h1><p class="carregando">Calculando os valores…</p></div></div>${nav}<div class="custo-esqueleto" aria-hidden="true"></div>`;
+      return `<div class="cab"><div><span class="eyebrow">Ajuda de custo</span><h1>Custo das visitas</h1><p class="carregando">${MQ.ampulheta(true)}</p></div></div>${nav}<div class="custo-esqueleto" aria-hidden="true"></div>`;
     }
     // o seletor de visão vem logo abaixo do título, como nas outras páginas (o título fica sempre no mesmo lugar)
     if (vis === 'plano') return planoHTML().replace('<!--nav-->', nav);
@@ -286,7 +286,7 @@
   }
 
   function planoHTML() {
-    if (!C.par) return '<p class="carregando">Carregando…</p>';
+    if (!C.par) return '<p class="carregando">' + MQ.ampulheta(true) + '</p>';
     const r = C.plano || (C.plano = planejar());
     const ufs = Object.values(r.ufs);
     const tot = k => ufs.reduce((s, u) => s + ((u[k] && u[k].total) || 0), 0);   // estado sem equipe ou sem quintal: conta 0

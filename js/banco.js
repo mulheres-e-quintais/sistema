@@ -35,7 +35,7 @@
     const cab = noPainel ? `<p class="small muted">Preencha uma vez. Só você vê estes números; o auxiliar administrativo usa a conta para o seu cadastro no Arlo (FUNCERN), que paga ${S().eu && S().eu.papel === 'agente' ? 'a ajuda de custo' : 'a bolsa'}.</p>` : `<div class="banco-cab"><h2 id="t-banco">Dados bancários para a FUNCERN</h2><span class="chip ${tem || arlo ? 'ok' : 'pend'}">${tem ? 'Informados' : arlo ? 'No Arlo' : 'Faltam'}</span></div>
       ${arlo && !tem ? '<p class="small">Você informou que já tem cadastro no Arlo: a conta que está lá vale. Só preencha aqui se ela mudou.</p>' : ''}
       <p class="small muted">Só você vê estes números. A coordenação vê apenas se foram informados. O auxiliar administrativo usa a conta para o seu cadastro no Arlo (FUNCERN), que paga a bolsa ou a ajuda de custo.</p>`;
-    if (B.meus === null) return cab + '<p class="muted">Carregando…</p>';
+    if (B.meus === null) return cab + '<p class="muted">' + MQ.ampulheta() + '</p>';
     if (B.meus && B.meus.erro) return cab + `<div class="aviso">${/09_dados|PGRST202|meus_dados/.test(B.meus.erro) ? 'Ainda não instalado no servidor (arquivo 09_dados_bancarios.sql).' : E(B.meus.erro)}</div>`;
     const d = B.meus || {};
     if (B.meus && !B.editando) return cab + `<dl class="dl"><dt>Banco</dt><dd>${E(d.banco_codigo)} · ${E(d.banco_nome)}</dd><dt>Agência</dt><dd class="num">${E(d.agencia)}${d.agencia_dv ? '-' + E(d.agencia_dv) : ''}</dd>
