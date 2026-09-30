@@ -2,7 +2,7 @@
 -- Mulheres & Quintais — VERIFICAR o banco (só lê, não muda nada)
 -- Supabase > SQL Editor > New query > cole este arquivo inteiro > Run.
 -- Mostra, etapa por etapa, o que já está instalado. Onde aparecer "FALTA", rode aquele script
--- (na ordem 01, 02, 03, 04, 07, 08, 09, 10, 11, 12, 13, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35). Todos podem rodar de novo sem estragar nada.
+-- (na ordem 01, 02, 03, 04, 07, 08, 09, 10, 11, 12, 13, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36). Todos podem rodar de novo sem estragar nada.
 -- =====================================================================
 with col as (select table_name, column_name from information_schema.columns where table_schema = 'public'),
 fn as (select proname from pg_proc where pronamespace = 'public'::regnamespace),
@@ -38,10 +38,10 @@ chk as (
   union all select '24_documentos', to_regclass('public.documentos_projeto') is not null and exists (select 1 from storage.buckets where id = 'documentos')
   union all select '23_fic_coordenacao_tecnica', exists (select 1 from pg_proc where proname = 'matricular_fic' and prosrc like '%coord_tecnico%')
   -- rodar 01, 03, 07 ou 11 de novo fora de ordem volta regras antigas da equipe: estes dois itens acusam.
-  -- Conserto: rodar de novo, em ordem, 11, 12, 13, 15, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35 (nunca 05, 06, 14 ou 16).
-  union all select 'regras da equipe (se FALTA: rode de novo, em ordem, do 11 ao 35)',
+  -- Conserto: rodar de novo, em ordem, 11, 12, 13, 15, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36 (nunca 05, 06, 14 ou 16).
+  union all select 'regras da equipe (se FALTA: rode de novo, em ordem, do 11 ao 36)',
                    exists (select 1 from pg_proc where proname = 'equipe_antes' and prosrc like '%só registra o cadastro no Arlo%' and prosrc like '%coordenação geral altera%')
-  union all select 'auxiliar ver e registrar Arlo (se FALTA: rode de novo, em ordem, do 11 ao 35)',
+  union all select 'auxiliar ver e registrar Arlo (se FALTA: rode de novo, em ordem, do 11 ao 36)',
                    exists (select 1 from pg_policy where polname = 'equipe_ler' and pg_get_expr(polqual, polrelid) like '%auxiliar_adm%')
                    and exists (select 1 from pg_policy where polname = 'equipe_alterar' and pg_get_expr(polqual, polrelid) like '%auxiliar_adm%')
   union all select '29_desempenho (rode depois do 11 ao 28)', to_regclass('public.auditoria_em') is not null
@@ -60,6 +60,8 @@ chk as (
   union all select '35_tetos_passagens_eventos (se rodar 22 de novo, rode este depois)',
                    exists (select 1 from col where table_name = 'pedidos_apoio' and column_name = 'valor_autorizado')
                    and exists (select 1 from pg_trigger where tgname = 'pedidos_apoio_valor')
+  union all select '36_execucao_financeira', to_regclass('public.execucao_lancamentos') is not null
+                   and exists (select 1 from pg_trigger where tgname = 'execucao_antes')
   union all select '28_pedido_novo_acesso', to_regclass('public.pedidos_novo_acesso') is not null and exists (select 1 from fn where proname = 'pedir_novo_acesso')
   -- (as checagens de permissão olham o objeto pelo número dele: se a tabela ou a função ainda não existe, dá FALTA e não erro)
   union all select '27_seguranca_revisao',

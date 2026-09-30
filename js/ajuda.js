@@ -221,6 +221,27 @@
         ['E depois da viagem ou do evento?', 'Os cartões de embarque, a lista de presença e o relato ou relatório são entregues à coordenação técnica.']
       ]
     },
+    execucao: {
+      t: 'Execução financeira',
+      intro: 'Previsto × executado de cada rubrica do TED, com gráficos. Bolsas e ajudas de custo lançadas no Arlo, passagens e eventos autorizados entram sozinhos; o resto e os repasses do MDA a coordenação geral lança. Só a coordenação geral vê esta aba.',
+      tarefas: [
+        ['Lançar uma despesa paga', ['Toque em <b>Lançar despesa ou repasse</b>.', 'Deixe marcado <b>Despesa paga</b> e escolha o item do orçamento.', 'Informe o valor, a data do pagamento e, se tiver, o documento (nota fiscal, ordem bancária).', 'Toque em <b>Lançar</b>.']],
+        ['Lançar um repasse do MDA', ['Toque em <b>Lançar despesa ou repasse</b>.', 'Marque <b>Repasse do MDA</b>.', 'Informe o valor, a data e o número da nota de crédito.', 'Toque em <b>Lançar</b>.']],
+        ['Corrigir um lançamento errado', ['Na lista de lançamentos, toque em <b>Estornar</b>.', 'Escreva o motivo e confirme.', 'O original fica riscado e o estorno aparece na lista. Se era para lançar outro valor, lance de novo o certo.']],
+        ['Ler os gráficos', ['<b>Ritmo do gasto</b>: passe o mouse ou toque num mês para ver previsto, executado e recebido até ali.', '<b>Uso de cada rubrica</b>: a barra cheia é o executado; a clara, o comprometido; o traço vertical, o tempo de vigência já passado. Toque numa rubrica para ver os itens na tabela.']]
+      ],
+      passos: [
+        '<b>Executado</b> é o que já saiu: bolsa e ajuda de custo lançadas no Arlo, e as despesas que você lançou.',
+        '<b>Comprometido</b> é o que já foi decidido mas não pago: bolsa com aval ainda sem Arlo, passagem e evento autorizados (a FUNCERN paga depois).',
+        'Base: a planilha atualizada de apoio do TED. O ritmo mês a mês vem do plano de desembolso.'
+      ],
+      duvidas: [
+        ['Por que não aparece bolsa no item para lançar?', 'Bolsas (menos a sua, a da secretária acadêmica e a do coordenador pedagógico), ajudas de custo, passagens e eventos entram sozinhos pelo sistema. Lançar à mão contaria duas vezes.'],
+        ['Dá para apagar um lançamento?', 'Não. Nada se apaga nem se altera: erro vira estorno, e tudo fica no histórico.'],
+        ['Quem mais vê esta aba?', 'Ninguém. A aba e os lançamentos são só da coordenação geral, no sistema e no banco.'],
+        ['O alerta diz que a ajuda de custo está acima do previsto.', 'O orçamento prevê R$ 225 por visita. Se a média paga passar disso, as 800 visitas não cabem na rubrica: reveja os valores em Custos ou peça remanejamento.']
+      ]
+    },
     documentos: {
       t: 'Documentos',
       intro: 'Pasta de documentos do projeto (atas, ofícios, relatórios, listas de presença) e o relatório da ação, gerado com os dados do sistema. Só a coordenação geral vê esta aba.',
