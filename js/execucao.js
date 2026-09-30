@@ -1,4 +1,4 @@
-/* Mulheres & Quintais — aba "Execução financeira" (só a coordenação geral), 30/09/2026.
+/* Mulheres & Quintais — aba "Execução" (só a coordenação geral), 30/09/2026.
    Previsto: MQ.ORCAMENTO (planilha atualizada de apoio do TED).
    Executado e comprometido:
      - automático: bolsas e ajudas de custo (lançada no Arlo = executado; com aval = comprometido),
@@ -134,8 +134,8 @@
     return a;
   }
   function aba() {
-    if (S().execSemBanco) return `<div class="cab"><div><span class="eyebrow">Execução financeira</span><h1>Execução do orçamento</h1></div></div>
-      <div class="aviso">A execução financeira ainda não está instalada no servidor. Rode o arquivo <b>36_execucao_financeira.sql</b> no Supabase.</div>`;
+    if (S().execSemBanco) return `<div class="cab"><div><span class="eyebrow">Execução</span><h1>Execução do orçamento</h1></div></div>
+      <div class="aviso">A execução ainda não está instalada no servidor. Rode o arquivo <b>36_execucao_financeira.sql</b> no Supabase.</div>`;
     const n = numeros(); const T = O().total; const al = alertas(n);
     const usoPct = pct(n.exec + n.comp, T), tempoPct = Math.round(n.tempo * 1000) / 10;
     const ritmo = usoPct + 10 < tempoPct ? 'abaixo do tempo decorrido: o projeto está gastando devagar' : usoPct > tempoPct + 15 ? 'acima do tempo decorrido: atenção ao ritmo' : 'no ritmo do tempo decorrido';
@@ -143,7 +143,7 @@
     const linhaItem = i => { const x = n.porItem[i.id];
       return `<tr${x.passou ? ' class="passou"' : ''}><th scope="row"><span>${E(i.nome)}</span><span class="small muted">${E(i.calc)} · ${i.auto ? 'automático' : 'lançado à mão'}</span></th>
         <td class="num">${brl(i.total)}</td><td class="num">${brl(x.exec)}</td><td class="num muted">${brl(x.comp)}</td><td class="num"><b>${brl(x.saldo)}</b></td><td>${med(x.exec, x.comp, i.total)}</td></tr>`; };
-    return `<div class="cab"><div><span class="eyebrow">Execução financeira</span><h1>Execução do orçamento</h1>
+    return `<div class="cab"><div><span class="eyebrow">Execução</span><h1>Execução do orçamento</h1>
         <p>Previsto × executado de cada rubrica do TED (R$ ${(T / 1e6).toLocaleString('pt-BR')} milhões). Bolsas e ajudas de custo lançadas no Arlo, passagens e eventos autorizados entram sozinhos; o resto e os repasses do MDA você lança. Só você vê esta aba.</p>
         <p class="small muted">Base: ${E(O().fonte)}. Confira se o remanejamento em relação ao plano pactuado foi aprovado pelo MDA.</p></div></div>
       <div class="viag-botoes"><button type="button" class="cad-modo" data-acao="exec-novo"><b>Lançar despesa ou repasse</b><span>Implantação dos quintais, diárias, locação, combustível, equipamento, taxa da FUNCERN, bolsas pagas fora do sistema, repasses do MDA.</span></button></div>
@@ -194,7 +194,7 @@
   function painel(p) {
     if (p.tipo === 'exec-novo') {
       const opts = O().rubricas.map(r => { const m = r.itens.filter(i => !i.auto); return m.length ? `<optgroup label="${E(r.nome)}">${m.map(i => `<option value="${i.id}">${E(i.nome)}</option>`).join('')}</optgroup>` : ''; }).join('');
-      return cab('Execução financeira', 'Lançar despesa ou repasse') + `<div class="painel-corpo"><form class="f" data-form="exec-lancar" novalidate>
+      return cab('Execução', 'Lançar despesa ou repasse') + `<div class="painel-corpo"><form class="f" data-form="exec-lancar" novalidate>
         <fieldset class="campo inteiro"><legend>O que é</legend><div class="sn-par">
           <label class="sn"><input type="radio" name="tipo" value="despesa" checked> Despesa paga</label>
           <label class="sn"><input type="radio" name="tipo" value="repasse"> Repasse do MDA</label></div></fieldset>
@@ -212,9 +212,9 @@
       </form></div>`;
     }
     if (p.tipo === 'exec-estornar') {
-      const l = lanc().find(x => x.id === p.id); if (!l) return cab('Execução financeira', 'Lançamento não encontrado');
+      const l = lanc().find(x => x.id === p.id); if (!l) return cab('Execução', 'Lançamento não encontrado');
       const it = l.tipo === 'repasse' ? { nome: 'Repasse do MDA' } : (itemPorId(l.item) || { nome: l.item });
-      return cab('Execução financeira', 'Estornar lançamento') + `<div class="painel-corpo">
+      return cab('Execução', 'Estornar lançamento') + `<div class="painel-corpo">
         <dl class="dl"><dt>Item</dt><dd>${E(it.nome)}</dd><dt>Valor</dt><dd class="num">${brl(l.valor)}</dd><dt>Data</dt><dd>${R.fmtData(l.data)}</dd>${l.documento ? `<dt>Documento</dt><dd>${E(l.documento)}</dd>` : ''}</dl>
         <form class="f" data-form="exec-estornar" data-id="${E(l.id)}" novalidate><div class="campos">
           <div class="campo inteiro"><label for="ex-mot">Motivo do estorno</label><textarea id="ex-mot" name="motivo" maxlength="500" placeholder="Ex.: nota fiscal lançada em duplicidade"></textarea></div></div>

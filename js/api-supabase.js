@@ -420,7 +420,7 @@
     async registrarNoArlo(id, protocolo) { const { error } = await sb.rpc('registrar_no_arlo', { p_id: id, p_protocolo: protocolo || null }); if (error) throw erro(error); },
 
     /* ---------- Documentos do projeto (24_documentos.sql): só a coordenação geral ---------- */
-    /* execução financeira (36): só a coordenação geral; sem update nem delete, erro vira estorno */
+    /* execução (36): só a coordenação geral; sem update nem delete, erro vira estorno */
     async listarLancamentos() {
       const { data, error } = await sb.from('execucao_lancamentos').select('*').order('data', { ascending: false }).order('criado_em', { ascending: false }); if (error) throw erro(error); return data;
     },

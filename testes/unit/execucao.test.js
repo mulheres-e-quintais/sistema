@@ -1,4 +1,4 @@
-/* 30/09/2026: aba Execução financeira (só a coordenação geral): previsto da planilha atualizada × executado e comprometido. */
+/* 30/09/2026: aba Execução (só a coordenação geral): previsto da planilha atualizada × executado e comprometido. */
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { montar, texto } = require('./telas');
