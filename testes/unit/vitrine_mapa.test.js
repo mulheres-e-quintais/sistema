@@ -62,3 +62,11 @@ test('o carregando da abertura (index.html) é o mesmo desenho do sistema: sem c
   const h = require('fs').readFileSync(require('path').join(__dirname, '../../index.html'), 'utf8');
   assert.ok(h.includes(t.MQ.ampulheta(true)), 'index.html precisa ter exatamente MQ.ampulheta(true)');
 });
+
+test('mapa da tela de entrada: sem legenda, número de cidades em cada estado, rotas marcadas para sair de Apodi', async () => {
+  const t = await montar('coord_geral'); const h = t.MQ.painelUI.mapaUFs({ entrada: true, animar: true });
+  assert.ok(!/mapa-lista/.test(h), 'sem legenda');
+  for (const [uf, n] of Object.entries({ PI: 10, BA: 8, PE: 5, AL: 3, SE: 3 })) assert.ok(new RegExp(`class="uf-sigla uf-num[^"]*"[^>]*>${n} cidades<`).test(h), uf + ' com ' + n + ' cidades');
+  assert.ok(/class="mapa mapa-pub saindo"/.test(h)); assert.equal((h.match(/--len:\d/g) || []).length, 29, 'comprimento de cada rota para desenhar');
+  const pub = t.MQ.painelUI.mapaUFs(); assert.ok(/mapa-lista/.test(pub) && !/uf-num/.test(pub) && !/saindo/.test(pub), 'página pública continua com a legenda');
+});

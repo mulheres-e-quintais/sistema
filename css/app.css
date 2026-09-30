@@ -1538,3 +1538,13 @@ form[data-form=exec-lancar] .sn-par .sn:has(input:checked)::before { content: "�
 .enc-tab { min-width: 0; table-layout: auto; margin-top: 6px; } .enc-tab td, .enc-tab th { padding: 6px 8px; }
 .enc-confirmar .exec-lanc > button { justify-self: start; }
 .enc-relatorio h1 { font-size: var(--t-xl); margin: 4px 0; } .enc-relatorio h2 { font-size: var(--t-md); margin: 14px 0 4px; }
+
+/* tela de entrada: as rotas saem de Apodi até cada cidade (uma vez, ao abrir); o ponto aparece quando a linha chega */
+.mapa-pub .uf-num { font-weight: 600; }
+@media (prefers-reduced-motion: no-preference) {
+  .mapa-pub.saindo .rota { stroke-dasharray: var(--len) var(--len); stroke-dashoffset: var(--len); opacity: .55; animation: rota-sai 1.1s cubic-bezier(.3, .7, .3, 1) forwards; animation-delay: calc(var(--i) * 55ms + .2s); }
+  .mapa-pub.saindo .mun-dot { opacity: 0; animation: ponto-chega .35s ease-out forwards; animation-delay: calc(var(--i) * 55ms + 1.15s); }
+  @keyframes rota-sai { to { stroke-dashoffset: 0; } }
+  @keyframes ponto-chega { from { opacity: 0; transform: scale(.2); } to { opacity: 1; transform: scale(1); } }
+}
+.mapa-pub .uf-sigla.sigla-mar { fill: var(--ink); stroke: var(--surface); }   /* rótulo no mar: cor do texto da página, nos dois temas */

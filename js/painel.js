@@ -498,7 +498,8 @@
     const r = svg.querySelector(`.rota[data-rota="${CSS.escape ? CSS.escape(g.dataset.mun) : g.dataset.mun}"]`); if (r) r.classList.add('ativa'); };
   document.addEventListener('mouseover', mostrarMun); document.addEventListener('focusin', mostrarMun); document.addEventListener('click', mostrarMun);
   const APODI = [-37.7989, -5.6649];   // IFRN Campus Apodi: de onde sai a equipe do projeto
-  function mapaUFs() {   // mapa fixo: os 5 estados (cor própria), o RN sede e os municípios que receberão os quintais
+  function mapaUFs(op) {   // op.entrada: tela de entrada (sem legenda, nº de cidades em cada estado); op.animar: rotas saindo de Apodi
+    op = op || {};   // mapa fixo: os 5 estados (cor própria), o RN sede e os municípios que receberão os quintais
     const ufsProj = MQ.UFS.map(u => u.uf);
     // quadro justo nos 5 estados e no RN (nenhum estado cortado); o mapa fica grande pela altura, não pelo corte
     const vb = (() => { const c = caixa(ufsProj.concat(['RN'])); const m = Math.max(c[2], c[3]) * 0.035; return [c[0] + m, c[1] + m, c[2] - 2 * m, c[3] - 2 * m]; })();
@@ -517,18 +518,24 @@
     const muns = ufsProj.flatMap(uf => Object.entries((MQ.GEO.mun || {})[uf] || {}).map(([nome, c]) => ({ uf, nome, xy: px(c) })));
     const rotas = muns.map(({ uf, nome, xy: [x, y] }, k) => { const mx = (ax + x) / 2, my = (ay + y) / 2, dx = x - ax, dy = y - ay, d = Math.hypot(dx, dy) || 1;
       const cx = mx - dy / d * d * 0.18, cy = my + dx / d * d * 0.18;   // curva para o lado, como rota de voo
-      return `<path class="rota" data-rota="${E(nome)}/${uf}" d="M${ax.toFixed(3)},${ay.toFixed(3)}Q${cx.toFixed(3)},${cy.toFixed(3)} ${x.toFixed(3)},${y.toFixed(3)}" stroke-width="${esc * 0.28}" stroke-dasharray="${esc * 1.2} ${esc * 1}" style="animation-delay:-${(k * 0.23).toFixed(2)}s"/>`; }).join('');
+      let len = 0, px0 = ax, py0 = ay; for (let i = 1; i <= 12; i++) { const u = i / 12, qx = (1 - u) * (1 - u) * ax + 2 * (1 - u) * u * cx + u * u * x, qy = (1 - u) * (1 - u) * ay + 2 * (1 - u) * u * cy + u * u * y; len += Math.hypot(qx - px0, qy - py0); px0 = qx; py0 = qy; }
+      return `<path class="rota" data-rota="${E(nome)}/${uf}" d="M${ax.toFixed(3)},${ay.toFixed(3)}Q${cx.toFixed(3)},${cy.toFixed(3)} ${x.toFixed(3)},${y.toFixed(3)}" stroke-width="${esc * 0.28}" stroke-dasharray="${esc * 1.2} ${esc * 1}" style="animation-delay:-${(k * 0.23).toFixed(2)}s;--len:${(len * 1.02).toFixed(2)};--i:${k}"/>`; }).join('');
     const pontos = muns.map(({ uf, nome, xy: [x, y] }, k) =>
-      `<g class="mun-pt" data-mun="${E(nome)}/${uf}" tabindex="0" style="animation-delay:${((k * 0.37) % 2.4).toFixed(2)}s"><circle cx="${x}" cy="${y}" r="${esc * 3.2}" class="mun-alvo"/><circle cx="${x}" cy="${y}" r="${esc * 2.2}" class="mun-onda"/><circle cx="${x}" cy="${y}" r="${esc * 1.4}" class="mun-dot" stroke-width="${esc * 0.35}"/><title>${E(nome)}/${uf}</title></g>`).join('');
+      `<g class="mun-pt" data-mun="${E(nome)}/${uf}" tabindex="0" style="animation-delay:${((k * 0.37) % 2.4).toFixed(2)}s;--i:${k}"><circle cx="${x}" cy="${y}" r="${esc * 3.2}" class="mun-alvo"/><circle cx="${x}" cy="${y}" r="${esc * 2.2}" class="mun-onda"/><circle cx="${x}" cy="${y}" r="${esc * 1.4}" class="mun-dot" stroke-width="${esc * 0.35}"/><title>${E(nome)}/${uf}</title></g>`).join('');
     const sede = `<g class="mun-pt sede-pt" data-mun="Apodi/RN · IFRN Campus Apodi, de onde sai a equipe" tabindex="0"><circle cx="${ax}" cy="${ay}" r="${esc * 3.4}" class="mun-alvo"/><circle cx="${ax}" cy="${ay}" r="${esc * 2.1}" class="sede-dot" stroke-width="${esc * 0.5}"/><circle cx="${ax}" cy="${ay}" r="${esc * 0.8}" class="sede-miolo"/><title>Apodi/RN: IFRN Campus Apodi</title></g>
       <text x="${ax + esc * 3}" y="${ay - esc * 2.2}" class="sede-rot" font-size="${esc * 3.4}">Apodi</text>`;
     const nMun = muns.length;
-    const siglas = ufsProj.concat(['RN']).map(uf => { const g = MQ.GEO.uf[uf]; if (!g || !g.c) return ''; const [x, y] = px(g.c);
-      return `<text x="${x}" y="${y}" class="uf-sigla${uf === 'RN' ? ' sigla-sede' : ''}" font-size="${esc * 3.6}" text-anchor="middle">${uf}</text>`; }).join('');
-    return `<svg class="mapa mapa-pub" viewBox="${vb.join(' ')}" role="img" aria-label="Mapa dos estados do projeto: ${ufsProj.map(u => u + ' ' + nMunUF(u) + ' municípios').join(', ')}; ${nMun} municípios que receberão os quintais, ligados a Apodi/RN, sede do IFRN" preserveAspectRatio="xMidYMid meet">${estados}${siglas}<g class="rotas">${rotas}</g>${pontos}${sede}</svg>
+    // rótulos longe dos pontos das cidades: PI desce; AL e SE vão para o mar, ao lado (em unidades de "esc")
+    const DESLOC = op.entrada ? { PI: [0, 12, 'middle'], AL: [7, -1.5, 'start'], SE: [6.5, 3, 'start'] } : {};
+    const siglas = ufsProj.concat(['RN']).map(uf => { const g = MQ.GEO.uf[uf]; if (!g || !g.c) return ''; const [x0, y0] = px(g.c);
+      const [ddx, ddy, anc] = DESLOC[uf] || [0, 0, 'middle']; const x = x0 + ddx * esc, y = y0 + ddy * esc;
+      const n = nMunUF(uf);
+      return `<text x="${x}" y="${y}" class="uf-sigla${uf === 'RN' ? ' sigla-sede' : ''}${DESLOC[uf] && anc === 'start' ? ' sigla-mar' : ''}" font-size="${esc * 3.6}" text-anchor="${anc}">${uf}</text>`
+        + (op.entrada && uf !== 'RN' ? `<text x="${x}" y="${y + esc * 3.4}" class="uf-sigla uf-num${anc === 'start' ? ' sigla-mar' : ''}" font-size="${esc * 2.5}" text-anchor="${anc}">${n} ${n === 1 ? 'cidade' : 'cidades'}</text>` : ''); }).join('');
+    return `<svg class="mapa mapa-pub${op.animar ? ' saindo' : ''}" viewBox="${vb.join(' ')}" role="img" aria-label="Mapa dos estados do projeto: ${ufsProj.map(u => u + ' ' + nMunUF(u) + ' municípios').join(', ')}; ${nMun} municípios que receberão os quintais, ligados a Apodi/RN, sede do IFRN" preserveAspectRatio="xMidYMid meet">${estados}${siglas}<g class="rotas">${rotas}</g>${pontos}${sede}</svg>
       <p class="mun-nome" aria-live="polite"><span data-mun-nome></span></p>
-      <ul class="mapa-lista">${ordem.map(uf => { const nm = nMunUF(uf);
-        return `<li><span class="lg-q" style="background:var(--uf-${uf})"></span>${uf} <span class="lg-mun">${nm} ${nm === 1 ? 'município' : 'municípios'}</span></li>`; }).join('')}<li><span class="lg-q lg-sede"></span>RN <span class="muted">sede (Apodi)</span></li></ul>`;
+      ${op.entrada ? '' : `<ul class="mapa-lista">${ordem.map(uf => { const nm = nMunUF(uf);
+        return `<li><span class="lg-q" style="background:var(--uf-${uf})"></span>${uf} <span class="lg-mun">${nm} ${nm === 1 ? 'município' : 'municípios'}</span></li>`; }).join('')}<li><span class="lg-q lg-sede"></span>RN <span class="muted">sede (Apodi)</span></li></ul>`}`;
   }
 
   MQ.painelUI = { visaoGeral, mesDoProjeto, mapaUFs };
