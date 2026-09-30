@@ -1,4 +1,5 @@
 /* Vitrine (tela de entrada e "O projeto em números"): mapa com municípios, Apodi e rotas; mosaico de retratos */
+const CFG = "window.MQ=window.MQ||{};MQ.CONFIG={supabaseUrl:'',supabaseAnonKey:'',semServiceWorker:true};";
 const { chromium } = require(process.argv[2]);
 const R = []; const ok = (n, c, d = '') => R.push([c ? 'PASSOU' : 'FALHOU', n, d]);
 const MUN = { PI: 10, BA: 8, AL: 3, PE: 5, SE: 3 };
@@ -44,7 +45,7 @@ const MUN = { PI: 10, BA: 8, AL: 3, PE: 5, SE: 3 };
       ok(`${w} entrada: login ao lado da frase`, xl > xh);
       ok(`${w} entrada: números na largura toda, abaixo do login`, await p.evaluate(() => document.querySelector('#vitrine').getBoundingClientRect().top >= document.querySelector('.ent-acesso').getBoundingClientRect().bottom - 2));
       const q = p.locator('#vit-foto .mini-mos > span.mm-n').first(); await q.hover(); await p.waitForTimeout(500);
-      ok(`${w} entrada: zoom ao passar o mouse na foto`, /matrix\(1\.15/.test(await q.locator('img').evaluate(i => getComputedStyle(i).transform)));
+      ok(`${w} entrada: zoom ao passar o mouse na foto`, /matrix\(1\.3/.test(await q.locator('img').evaluate(i => getComputedStyle(i).transform)));
       const l1 = await p.$$eval('#vit-foto .mini-mos > span', l => l.map(e => e.className).join(','));
       await p.waitForTimeout(8500);
       ok(`${w} entrada: painel fixo (o desenho não muda quando as fotos trocam)`, l1 === await p.$$eval('#vit-foto .mini-mos > span', l => l.map(e => e.className).join(',')));
@@ -68,6 +69,21 @@ const MUN = { PI: 10, BA: 8, AL: 3, PE: 5, SE: 3 };
     await p.keyboard.press('Escape'); await p.waitForTimeout(150);
     ok(`${w} números: Esc fecha a foto`, !(await p.isVisible('#vit-amplia')));
     ok(`${w}: sem erro de página`, errs.length === 0, errs.join('|'));
+    await ctx.close(); }
+  // cores do MDA (suaves) e sigla legível sobre cada estado, nos dois temas
+  const MDA = { light: { PI: '#6CBB62', BA: '#8FA3F5', PE: '#FFE27A', AL: '#F2918A', SE: '#9FDA90' }, dark: { PI: '#4F9A47', BA: '#8195DC', PE: '#D2B955', AL: '#D2807A', SE: '#A4D196' } };
+  const rgb = h => 'rgb(' + [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)).join(', ') + ')';
+  for (const tema of ['light', 'dark']) {
+    const ctx = await b.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: tema, reducedMotion: 'reduce' }); const p = await ctx.newPage();
+    await ctx.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: CFG })); await ctx.route('**/cdn.jsdelivr.net/**', r => r.abort()); await ctx.route('**/fonts.g*/**', r => r.abort());
+    await p.goto('http://localhost:8766/#numeros'); await p.waitForSelector('.vit-mapa svg');
+    const r = await p.$$eval('.vit-mapa svg .uf-pub', l => l.map(x => [x.querySelector('title').textContent, getComputedStyle(x).fill]));
+    const nomes = { PI: 'Piauí', BA: 'Bahia', PE: 'Pernambuco', AL: 'Alagoas', SE: 'Sergipe' };
+    for (const [uf, hex] of Object.entries(MDA[tema])) { const x = r.find(([t]) => t.startsWith(nomes[uf])); ok(`${tema}: ${uf} com a cor do MDA ${hex}`, x && x[1] === rgb(hex), x && x[1]); }
+    const contr = await p.$$eval('.vit-mapa svg .uf-sigla', (l, MDA) => { const lum = c => { const v = c.match(/\d+/g).slice(0, 3).map(n => { n /= 255; return n <= .03928 ? n / 12.92 : ((n + .055) / 1.055) ** 2.4; }); return .2126 * v[0] + .7152 * v[1] + .0722 * v[2]; };
+      return l.map(t => { const uf = t.textContent.trim().slice(0, 2); const f = MDA[uf]; if (!f) return [uf, 99]; const a = lum(getComputedStyle(t).fill), bb = lum('rgb(' + [1, 3, 5].map(i => parseInt(f.slice(i, i + 2), 16)).join(',') + ')'); return [uf, (Math.max(a, bb) + .05) / (Math.min(a, bb) + .05)]; }); }, MDA[tema]);
+    const pior = contr.filter(([, c]) => c < 99).sort((a, b) => a[1] - b[1])[0];
+    ok(`${tema}: sigla legível sobre o estado (contraste ≥ 4,5)`, pior && pior[1] >= 4.5, pior && pior[0] + ' ' + pior[1].toFixed(2));
     await ctx.close(); }
   await b.close(); R.forEach(r => console.log(r.join(' | '))); console.log('TOTAL', R.length, 'FALHAS', R.filter(r => r[0] === 'FALHOU').length);
 })().catch(e => { console.error(e); process.exit(1); });
