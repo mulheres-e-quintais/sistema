@@ -1371,3 +1371,16 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .mun-pt:hover .mun-dot, .mun-pt:focus-visible .mun-dot { transform: scale(1.6); }
 .mun-nome { margin: 6px 0 0; font-size: var(--t-sm); color: var(--ink-2); display: flex; align-items: center; gap: 6px; justify-content: center; min-height: 1.4em; }
 .mun-leg-pt { width: 10px; height: 10px; border-radius: 50%; background: var(--ocre); display: inline-block; }
+/* mapa público: RN (sede, IFRN Campus Apodi), vizinhos de fundo e rotas de Apodi até cada município */
+.mapa-pub .uf-fundo { fill: var(--surface-2); stroke: var(--line); opacity: .7; }
+.mapa-pub .uf-sede { fill: color-mix(in oklab, var(--ocre) 22%, var(--surface)); stroke: var(--ocre); }
+.mapa-pub .rota { fill: none; stroke: var(--ocre); opacity: .35; stroke-linecap: round; transition: opacity .2s, stroke-width .2s; }
+.mapa-pub .rota.ativa { opacity: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  .mapa-pub .rota { animation: rota 2.6s linear infinite; }
+  @keyframes rota { to { stroke-dashoffset: -8; } }
+}
+.mapa-pub .sede-dot { fill: var(--surface); stroke: var(--ocre); }
+.mapa-pub .sede-miolo { fill: var(--ocre); }
+.mapa-pub .sede-rot { fill: var(--ink); font-weight: 700; paint-order: stroke; stroke: var(--surface); stroke-width: .12px; }
+.lg-sede { background: color-mix(in oklab, var(--ocre) 22%, var(--surface)); border: 1px solid var(--ocre); }
