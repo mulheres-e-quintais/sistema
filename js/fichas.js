@@ -319,18 +319,25 @@
           <li class="${f.autodeclaracao ? 'feito' : ''}"><span class="mk">${sim(f.autodeclaracao)}</span><span>Autodeclaração assinada</span></li></ul></div>
         <div class="bloco"><h3>Prioridade: <span class="num">${R.pontosFicha(f)}</span> ponto${R.pontosFicha(f) === 1 ? '' : 's'}</h3>
           <p class="small">${MQ.PRIORIDADES.filter(([k]) => f[k]).map(([, t, pt]) => E(t) + ' (' + pt + ')').join(' · ') || 'Nenhum critério de prioridade.'}</p></div>
-        <div class="bloco"><h3>Resultado</h3>${dl([['Resultado', (MQ.RESULTADOS[f.resultado] || {}).nome], ['Posição na espera', f.posicao_espera],
+        <div class="bloco"><h3>Resultado</h3>${dl([['Resultado da seleção', (MQ.RESULTADOS[f.resultado] || {}).nome], ['Posição na espera', f.posicao_espera],
           ['Encaminhada para', f.encaminhada_para], ['Observações', f.justificativa],
-          ['Aprovada por', aprovador ? aprovador.nome + ' em ' + new Date(f.aprovada_em).toLocaleDateString('pt-BR') : null]])}
+          ['Conferida e aprovada por', aprovador ? aprovador.nome + ' em ' + new Date(f.aprovada_em).toLocaleDateString('pt-BR') : null]])}
+          <p class="small muted">"${E((MQ.RESULTADOS[f.resultado] || {}).nome || 'Resultado')}" é o que a bolsista marcou na seleção. "Aprovada" quer dizer que a coordenação técnica conferiu os papéis e confirmou.</p>
           <div class="acoes">${f.foto_termo_path ? `<button class="btn peq" data-acao="ficha-foto" data-path="${E(f.foto_termo_path)}">Ver termo assinado</button>` : ''}
             ${f.foto_ficha_path ? `<button class="btn peq" data-acao="ficha-foto" data-path="${E(f.foto_ficha_path)}">Ver ficha em papel</button>` : ''}</div>
           <div id="fi-foto-vista"></div></div>
-        ${podeDecidir ? `<form class="bloco" data-form="ficha-decisao" data-id="${E(f.id)}" novalidate><h3>Decisão da coordenação</h3>
-          <p class="small muted">Aprove se os papéis fotografados conferem com a ficha e os critérios foram aplicados como aprovado em ata. Para devolver, diga o que corrigir.</p>
+        ${podeDecidir && f.situacao !== 'aprovada' ? `<form class="bloco" data-form="ficha-decisao" data-id="${E(f.id)}" novalidate><h3>Decisão da coordenação</h3>
+          <p class="small muted">A bolsista marcou o resultado (${E(((MQ.RESULTADOS[f.resultado] || {}).nome || '').toLowerCase())}). Aqui você confere: aprove se os papéis fotografados batem com a ficha e os critérios foram aplicados como aprovado em ata. Se algo estiver errado, devolva dizendo o que corrigir.</p>
           <div class="campo"><label for="fd-obs">Observação para a bolsista</label><textarea id="fd-obs" name="obs">${E(f.obs_coordenacao || '')}</textarea></div>
           <div class="aviso erro" data-erro hidden></div>
-          <div class="acoes">${f.situacao !== 'aprovada' ? '<button class="btn pri" type="submit" name="decisao" value="aprovada">Aprovar</button>' : ''}
-            <button class="btn perigo" type="submit" name="decisao" value="devolvida">${f.situacao === 'aprovada' ? 'Reabrir: devolver para correção' : 'Devolver para correção'}</button></div></form>` : ''}
+          <div class="acoes"><button class="btn pri" type="submit" name="decisao" value="aprovada">Aprovar</button>
+            <button class="btn perigo" type="submit" name="decisao" value="devolvida">Devolver para correção</button></div></form>` : ''}
+        ${podeDecidir && f.situacao === 'aprovada' ? `<details class="hist reabrir-ficha"><summary>Achou um erro depois de aprovar? Reabrir esta ficha</summary>
+          <form class="f" data-form="ficha-decisao" data-id="${E(f.id)}" novalidate>
+          <p class="small muted">A ficha já foi conferida e aprovada: não há nada a fazer aqui. Só use isto se descobrir um erro. Ela volta para a bolsista corrigir e sai da contagem de aprovadas até ser aprovada de novo.</p>
+          <div class="campo"><label for="fd-obs">O que precisa ser corrigido</label><textarea id="fd-obs" name="obs"></textarea></div>
+          <div class="aviso erro" data-erro hidden></div>
+          <div class="acoes"><button class="btn perigo" type="submit" name="decisao" value="devolvida">Reabrir: devolver para correção</button></div></form></details>` : ''}
       </div>`;
   }
 
