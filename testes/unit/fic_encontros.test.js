@@ -78,3 +78,11 @@ test('antes do mês de início, o pedido não aparece (só o aviso de quando com
   eu.data_inicio = '2099-01-01'; t.S.eu.data_inicio = '2099-01-01';
   const h = t.aba(); assert.match(texto(h), /Você começa no projeto em jan\/2099/); assert.ok(!/data-form="pag-bolsa"/.test(h), 'sem formulário de pedido antes do início');
 });
+
+test('coordenação geral registra encontro no lugar do professor: fica em nome do professor da turma (entra no relatório dele)', async () => {
+  const { t, turma, bol, hoje, prof } = await cenario();
+  await t.trocar('coord_geral');
+  await t.api.salvarEncontroFic({ turma_id: turma.id, data: hoje, carga_horaria: 2, modalidade: 'ava', conteudo: 'Atividade no AVA sobre compostagem', presentes: [bol.id] });
+  const e = (await t.api.listarEncontrosFic()).find(x => x.conteudo === 'Atividade no AVA sobre compostagem');
+  assert.equal(e.professor_id, prof.id);
+});

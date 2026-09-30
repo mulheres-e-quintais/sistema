@@ -87,11 +87,11 @@ set session_replication_role = origin;
 select pg_temp.como('prof@ifrn.edu.br'); set role authenticated; select (public.vincular_conta()).papel;
 select public.cancelar_matricula_fic((select id from public.matriculas_fic limit 1), 'Matrícula errada');
 reset role;
-\echo '== 21. sem visita, cancela (OK) e a habilitação fica sem matrícula'
+\echo '== 21a. cancelar com motivo curto (ERRO)'
 delete from public.visitas;
 select pg_temp.como('prof@ifrn.edu.br'); set role authenticated; select (public.vincular_conta()).papel;
-\echo '   motivo curto (ERRO)'
 select public.cancelar_matricula_fic((select id from public.matriculas_fic limit 1), 'x');
+\echo '== 21. sem visita, cancela (OK) e a habilitação fica sem matrícula'
 select public.cancelar_matricula_fic((select id from public.matriculas_fic limit 1), 'Matrícula lançada na pessoa errada');
 select nome, matricula_fic_em from public.equipe_para_fic() where nome = 'Ana Bolsista';
 reset role;

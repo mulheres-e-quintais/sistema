@@ -159,7 +159,7 @@ a { color: var(--accent); }
 .vazio { border: 1px dashed var(--line-2); border-radius: var(--r); background: var(--vaga-bg), var(--surface); padding: 18px; display: flex; gap: 12px 20px; align-items: center; justify-content: space-between; flex-wrap: wrap; color: var(--ink-2); }
 
 /* quadro de vagas */
-.quadro-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.quadro-scroll { position: relative; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
 .quadro { width: 100%; border-collapse: collapse; min-width: 760px; table-layout: fixed; }
 .quadro col.c-uf { width: 128px; } .quadro col.c-plano { width: 230px; }
 .quadro th { text-align: left; font: 600 var(--t-xs)/1.2 var(--cond); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 12px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
@@ -304,7 +304,7 @@ fieldset > .fixo { margin: 0; }
 .abas button:hover { color: var(--ink); }
 .abas button[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
 .abas .conta { background: var(--accent); color: var(--accent-ink); border-radius: 999px; font-size: var(--t-xs); padding: 0 7px; line-height: 18px; }
-.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .linha-tempo-mini { display: grid; grid-template-columns: repeat(13, 14px); gap: 3px; align-self: center; }
 .linha-tempo-mini span { height: 14px; border-radius: 3px; background: var(--surface-2); border: 1px solid var(--line); }
 .linha-tempo-mini span.passou { background: var(--verde-2); border-color: var(--verde-2); }

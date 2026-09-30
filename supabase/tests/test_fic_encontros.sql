@@ -47,6 +47,9 @@ select t('bolsa do professor leva os encontros do mês (gravados pelo banco)', :
   select detalhe into d from public.solicitacoes_pagamento where id = s;
   if jsonb_typeof(d->'fic_encontros') <> 'array' or jsonb_array_length(d->'fic_encontros') < 1 then raise exception 'sem encontros: %', d; end if;
   if (d->'fic_encontros'->0->'presencas') is null then raise exception 'sem presenças'; end if; end $x$ $q$, 'ok');
+select t('coordenação geral registra no lugar do professor: o encontro fica em nome do professor da turma', :G, format($q$do $x$ declare v uuid; begin
+  v := public.registrar_encontro_fic(null, %L, current_date, 2, 'ava', 'Atividade no AVA sobre compostagem', '{}');
+  if (select professor_id from public.fic_encontros where id = v) <> %L then raise exception 'ficou em nome da coordenação'; end if; end $x$ $q$, :'turma', :'prof'), 'ok');
 -- mês sem encontro: só com justificativa
 insert into public.equipe (papel, nome, cpf, email, data_inicio, consentimento_lgpd, docs_funcern_em, termo_assinado_em)
   values ('professor_fic', 'Professora Sem Encontro', '95813246746', 'prof.sem.encontro@t.com', date '2026-09-01', true, current_date, current_date);

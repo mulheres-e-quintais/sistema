@@ -43,7 +43,8 @@ select situacao, data_realizada from public.visitas where id = '20000000-0000-00
 select public.solicitar_pagamento('ajuda_custo','2026-09-01', 300, null, array['20000000-0000-0000-0000-000000000001','20000000-0000-0000-0000-000000000002','20000000-0000-0000-0000-000000000005']::uuid[], null) is not null as ok;
 reset role;
 select pg_temp.como('tec@x.org'); set role authenticated; select (public.vincular_conta()).papel;
-\echo '== 8. coordenação técnica lê (1) mas não altera a avaliação (ERRO)'
+\echo '== 8. coordenação técnica lê (1) e tentar alterar a avaliação o banco ignora (continua sim)'
 select count(*) from public.avaliacoes;
 update public.avaliacoes set quintal_produz = 'nao';
 reset role;
+select case when quintal_produz = 'sim' then 'ok: continua sim' else 'FALHOU: alterou' end as confere from public.avaliacoes;

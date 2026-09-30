@@ -20,7 +20,8 @@ async function telas(p, fn) {   // percorre todas as telas: entrada, cada perfil
 (async () => { const b = await chromium.launch();
   // ---------- 1. acessibilidade (axe-core, regras WCAG 2.1 A e AA) ----------
   { const { ctx, p, errs } = await nova(b); const porRegra = {}; let telasN = 0;
-    await telas(p, async nome => { telasN++; await p.addScriptTag({ content: AXE }).catch(() => {});
+    await telas(p, async nome => { telasN++; await p.evaluate(() => Promise.all(document.getAnimations().filter(a => isFinite(a.effect && a.effect.getComputedTiming().endTime)).map(a => a.finished.catch(() => {}))));   // mede depois das animações de entrada (no meio do fade o contraste é falso)
+      await p.addScriptTag({ content: AXE }).catch(() => {});
       const r = await p.evaluate(async () => { const x = await axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] } }); return x.violations.map(v => ({ id: v.id, impacto: v.impact, n: v.nodes.length, ex: v.nodes[0] && v.nodes[0].target.join(' '), desc: v.help })); });
       r.forEach(v => { const k = v.id; porRegra[k] = porRegra[k] || { impacto: v.impacto, desc: v.desc, telas: [], nos: 0, ex: v.ex }; porRegra[k].telas.push(nome); porRegra[k].nos += v.n; }); });
     log('ACESSIBILIDADE', `${telasN} telas verificadas`, `${Object.keys(porRegra).length} tipos de problema`);
