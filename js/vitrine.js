@@ -164,14 +164,14 @@
       <div class="vts grande">${[
         { v: t.selecionadas, de: 200, l: 'mulheres selecionadas' }, { v: t.diagnosticos, de: 200, l: 'quintais com diagnóstico' },
         { v: t.implantados, de: 200, l: 'quintais implantados' }, { v: t.acompanhamentos, de: 400, l: 'visitas de acompanhamento' }].map(tile).join('')}</div>
-      <section class="secao duas-col perfil-cols">
+      <section class="secao duas-col perfil-cols pub-onde">
         <div class="bloco"><h2 class="serif">Por estado</h2><p class="small muted">Meta de 40 quintais em cada estado.</p>
           <div class="pub-tab" role="table">
             <div class="pub-l cab" role="row"><span role="columnheader">Estado</span>${linhas.map(l => `<span role="columnheader">${l[1]}</span>`).join('')}</div>
             ${(d.por_uf || []).map(u => `<div class="pub-l" role="row"><span role="cell"><b>${E(U().nomeUF(u.uf))}</b></span>${linhas.map(([k, rot, alvo]) =>
               `<span role="cell" class="pub-c" data-rot="${E(rot)}"><span class="num">${fmt(u[k])}</span><span class="barra-mini" aria-hidden="true"><i style="width:${Math.min(100, (+u[k] || 0) / alvo * 100)}%"></i></span></span>`).join('')}</div>`).join('')}
           </div></div>
-        <div class="bloco"><h2 class="serif">Onde</h2>${MQ.painelUI.mapaUFs(t.porUF('selecionadas'), 'mulheres selecionadas')}
+        <div class="bloco"><h2 class="serif">Onde</h2><div class="vit-mapa">${MQ.painelUI.mapaUFs(t.porUF('selecionadas'), 'mulheres selecionadas')}</div>
           <p class="small muted">Os pontos são os municípios que receberão os quintais. O mapa não mostra onde cada uma mora.</p></div>
       </section>
       ${(d.fotos || []).length ? `<section class="secao"><h2 class="serif">Mulheres nos quintais</h2><div class="mosaico">${d.fotos.map((f, i) =>
