@@ -129,7 +129,7 @@
         <div><span class="v num" ${vezTodos.length ? 'style="color:var(--crit)"' : ''}>${vezTodos.length}</span><span class="l">esperando você</span></div>
         <div><span class="v num">${brl(gp.usado)}</span><span class="l">gasto com passagens</span></div>
         <div><span class="v num">${brl(somaE('usado'))}</span><span class="l">gasto com eventos</span></div></div>
-      <nav class="viag-ir small" aria-label="Ir para"><a href="#viag-passagens">Passagens aéreas${nVez('passagem') ? ` (${nVez('passagem')} esperando)` : ''}</a> · <a href="#viag-eventos">Eventos${nVez('evento') ? ` (${nVez('evento')} esperando)` : ''}</a></nav>
+      <nav class="viag-ir small" aria-label="Ir para"><a href="#viag-passagens">Passagens aéreas${nVez('passagem') ? ` (${nVez('passagem')} esperando)` : ''}</a><a href="#viag-eventos">Eventos${nVez('evento') ? ` (${nVez('evento')} esperando)` : ''}</a></nav>
       ${souGeral && conf() === 'auxiliar_adm' ? '<div class="aviso">Sem coordenação técnica ativa: quem confere os pedidos é o auxiliar administrativo; você autoriza. Assim cada pedido passa por duas pessoas. Quando a técnica for cadastrada, ela volta a conferir.</div>' : ''}
       ${souGeral && conf() === 'coord_geral' && !legado() ? '<div class="aviso erro">Sem coordenação técnica e sem auxiliar administrativo: você confere e autoriza sozinho (fica registrado). Cadastre a técnica ou o auxiliar para voltar a ter duas pessoas em cada pedido.</div>' : ''}
       <section class="secao viag-tipo" id="viag-passagens" aria-labelledby="t-vp"><div class="secao-cab"><div><h2 id="t-vp">Passagens aéreas</h2>

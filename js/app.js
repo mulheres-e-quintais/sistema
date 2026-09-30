@@ -231,6 +231,7 @@
     else if (!S.eu) h += modoDemo ? '<main class="wrap"><p class="carregando">' + MQ.ampulheta(true) + '</p></main>' : (S.api.temSessao ? semCadastro() : login());
     else {
       if (MQ.pendUI) h += MQ.pendUI.faixa();   // pendências do próprio cadastro, em todas as telas
+      if (MQ.lembreteUI && (!/^coord/.test(S.eu.papel) || abaAtual() === abasDoPapel()[0])) h += MQ.lembreteUI.quadro();   // prazo, data com roda de conversa ou número do projeto
       if (/^coord/.test(S.eu.papel)) h += telaCoordenacao();
       else if (S.eu.papel === 'agente' && MQ.campoUI) h += MQ.campoUI.telaAgente();
       else if (S.eu.papel === 'professor_fic' && MQ.ficUI) h += MQ.ficUI.telaProfessor();
@@ -1067,6 +1068,7 @@
     const a = el.dataset.acao;
     try {
       if (a === 'perfil' && MQ.bancoUI) MQ.bancoUI.limpar();
+      if (a === 'lembrete-ok') { MQ.lembreteUI.dispensar(el.dataset.id); render(); return; }
       if (a === 'perfil' && el.dataset.p === 'entrada') { S.verEntrada = true; S.painel = null; render(); window.scrollTo(0, 0); }
       else if (a === 'perfil') { S.verEntrada = false; S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); S.aba = null; lembrarAba(); S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.trocarPerfil(el.dataset.p); marcarAbriu(); registrarAcesso('entrada'); await carregar(); render(); }
       else if (a === 'recomecar') { S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.recomecar(); await carregar(); render(); toast('Demonstração recomeçada com os dados de exemplo.'); }
