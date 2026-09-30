@@ -178,7 +178,8 @@
               const p0 = [cx + R * Math.cos(a0), cy + R * Math.sin(a0)], p1 = [cx + R * Math.cos(a1), cy + R * Math.sin(a1)];
               return `<path d="M${cx},${cy}L${p0[0]},${p0[1]}A${R},${R} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${p1[0]},${p1[1]}Z" fill="${CATS.find(k => k.id === id).cor}"/>`; }).join('');
         const txt = `${nome}/${g.uf} · ${n} mulher${n > 1 ? 'es' : ''} com ficha: ${por.map(([id, q]) => q + ' ' + CATS.find(k => k.id === id).nome.toLowerCase()).join(', ')} · clique para ver ${foco ? 'cada quintal' : 'o estado'}`;
-        return `<g class="q-pt q-grupo" data-acao="mapa-info" data-uf="${g.uf}" data-mun="${E(g.k)}" data-dica="${E(txt)}">${fatias}<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--surface)" stroke-width="${esc * 0.3}"/>
+        // área de toque invisível maior que o círculo: no celular o dedo acerta mesmo em município pequeno
+        return `<g class="q-pt q-grupo" data-acao="mapa-info" data-uf="${g.uf}" data-mun="${E(g.k)}" data-dica="${E(txt)}"><circle cx="${cx}" cy="${cy}" r="${Math.max(R, esc * (foco ? 4.5 : 3.8))}" fill="transparent" class="q-alvo"/>${fatias}<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--surface)" stroke-width="${esc * 0.3}"/>
           ${n > 1 ? `<text x="${cx}" y="${cy + R * 0.34}" text-anchor="middle" font-size="${Math.min(R * 1.05, esc * 3)}" class="q-num">${n}</text>` : ''}<title>${E(txt)}</title></g>`;
       }).join('');
     } else {
@@ -186,9 +187,10 @@
       marcas = pts.map(({ f, cat, p }) => {
         const c = CATS.find(k => k.id === cat).cor; const [x, y] = p.xy;
         const txt = `${f.municipio}/${f.uf} · ${(MQ.RESULTADOS[f.resultado] || {}).nome}${f.situacao !== 'aprovada' ? ' (' + (MQ.SITUACOES[f.situacao] || {}).nome + ')' : ''}${p.exato ? '' : ' · posição aproximada'} · clique para abrir a ficha`;
-        return p.exato
-          ? `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="var(--surface)" stroke-width="${r * 0.45}" class="q-pt" data-acao="mapa-info" data-id="${E(f.id)}" data-dica="${E(txt)}"><title>${E(txt)}</title></circle>`
-          : `<circle cx="${x}" cy="${y}" r="${r * 0.85}" fill="var(--surface)" stroke="${c}" stroke-width="${r * 0.55}" class="q-pt" data-acao="mapa-info" data-id="${E(f.id)}" data-dica="${E(txt)}"><title>${E(txt)}</title></circle>`;
+        const alvo = `<circle cx="${x}" cy="${y}" r="${r * 3.2}" fill="transparent" class="q-alvo"/>`;   // área de toque maior que o ponto
+        return `<g class="q-pt" data-acao="mapa-info" data-id="${E(f.id)}" data-exato="${p.exato ? '1' : ''}" data-dica="${E(txt)}">${alvo}${p.exato
+          ? `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="var(--surface)" stroke-width="${r * 0.45}"/>`
+          : `<circle cx="${x}" cy="${y}" r="${r * 0.85}" fill="var(--surface)" stroke="${c}" stroke-width="${r * 0.55}"/>`}<title>${E(txt)}</title></g>`;
       }).join('');
     }
     const cont = {}; pts.forEach(x => { cont[x.cat] = (cont[x.cat] || 0) + 1; });
@@ -458,7 +460,7 @@
       const lin = [['Situação', (MQ.RESULTADOS[f.resultado] || {}).nome + (f.situacao !== 'aprovada' ? ' · ' + (MQ.SITUACOES[f.situacao] || {}).nome : '')],
         ['Comunidade', f.comunidade], ['Prioridade', (f.pontos ?? '—') + ' pontos'], ['Indicada por', b ? b.nome_social || b.nome : null],
         ['Diagnóstico', dg ? (dg.situacao === 'aprovado' ? 'plano aprovado' : 'feito, ' + (dg.situacao === 'devolvido' ? 'devolvido' : 'aguardando aprovação')) : 'ainda não'],
-        ['Visitas feitas', String(vs)], ['Local', el.getAttribute('fill') === 'var(--surface)' ? 'aproximado (sem GPS)' : 'GPS']].filter(l => l[1]);
+        ['Visitas feitas', String(vs)], ['Local', el.dataset.exato ? 'GPS' : 'aproximado (sem GPS)']].filter(l => l[1]);
       html = `<div class="mc-cab"><b>Quintal em ${E(f.municipio)}/${f.uf}</b><button class="fechar" data-acao="mapa-cartao-fechar" aria-label="Fechar">×</button></div>
         <dl class="dl mc-dl">${lin.map(([k, v]) => `<dt>${k}</dt><dd>${E(v)}</dd>`).join('')}</dl>
         <div class="acoes"><button class="btn peq pri" data-acao="ficha-ver" data-id="${E(f.id)}">Abrir a ficha</button></div>`;
