@@ -61,7 +61,10 @@
         <button type="button" class="cad-modo" data-acao="viag-nova" data-t="passagem"><b>Pedir passagem aérea</b><span>Intercâmbio ou acompanhamento pedagógico. Envie <b>${PRAZO.passagem} dias antes</b> da viagem.</span></button>
         <button type="button" class="cad-modo" data-acao="viag-nova" data-t="evento"><b>Pedir estrutura de evento</b><span>Espaço, cadeiras, tenda, som, alimentação. Envie <b>${PRAZO.evento} dias antes</b> do evento.</span></button>
       </div>
-      ${meus.length ? `<h3 class="viag-sub">Meus pedidos (${meus.length})</h3><div class="pag-lista">${meus.map(p => linha(p, false)).join('')}</div>` : '<p class="small muted">Você ainda não fez nenhum pedido.</p>'}
+      ${['passagem', 'evento'].map(tipo => { const xs = meus.filter(p => p.tipo === tipo);
+        return `<div class="viag-meus"><h3 class="viag-sub">Meus pedidos de ${tipo === 'passagem' ? 'passagem aérea' : 'evento'} (${xs.length})</h3>
+          <p class="small muted">${rotSaldo(tipo, eu.uf)}</p>
+          ${xs.length ? `<div class="pag-lista">${xs.map(p => linha(p, false)).join('')}</div>` : `<p class="small muted">Nenhum pedido de ${tipo === 'passagem' ? 'passagem' : 'evento'} ainda.</p>`}</div>`; }).join('')}
     </section>`;
   }
 
@@ -77,37 +80,72 @@
       <span>${chip(p)}</span></button>`;
   }
 
+  /* ---------- gastos separados: passagens (teto do projeto) e eventos (teto por estado) ---------- */
+  const EM_ANALISE = ['enviado', 'conferido', 'devolvido'];
+  const estimado = p => +((p.dados || {}).valor_estimado) || 0;
+  function gastos(tipo, uf) {   // autorizado = valor da coordenação; em análise = valor estimado de quem pediu
+    const xs = lista().filter(p => p.tipo === tipo && (!uf || p.uf === uf));
+    const x = saldo(tipo, uf);
+    const analise = xs.filter(p => EM_ANALISE.includes(p.situacao)).reduce((t, p) => t + estimado(p), 0);
+    return { teto: x.teto, usado: x.usado, livre: x.livre, analise, estoura: x.usado + analise > x.teto };
+  }
+  const medidor = g => `<span class="medidor" title="autorizado e em análise"><i style="width:${Math.min(100, (g.usado + g.analise) / g.teto * 100)}%;opacity:.35"></i><i style="width:${Math.min(100, g.usado / g.teto * 100)}%"></i></span>`;
+  function cartaoGasto(g, rot) {
+    return `<div class="viag-gasto">
+      <div class="vg-lin"><span>${rot}</span><b class="num">${brl(g.usado)}<small class="muted"> de ${brl(g.teto)}</small></b></div>
+      ${medidor(g)}
+      <div class="vg-lin small"><span class="muted">Em análise (valor estimado): ${brl(g.analise)}</span><span>Saldo <b class="num">${brl(g.livre)}</b></span></div>
+      ${g.estoura ? '<p class="small" style="color:var(--crit);margin:4px 0 0">Autorizado + em análise passa do teto: nem todos os pedidos cabem.</p>' : ''}</div>`;
+  }
+
   /* ---------- coordenação: aba Viagens e eventos ---------- */
   function abaCoord() {
     if (S().pedSemBanco) return `<div class="cab"><div><span class="eyebrow">Viagens e eventos</span><h1>Passagens e eventos</h1></div></div>${semBanco()}`;
     const souGeral = S().eu.papel === 'coord_geral';
     const l = lista();
-    const vez = l.filter(minhaVez);
-    const outros = l.filter(p => ['enviado', 'conferido'].includes(p.situacao) && !minhaVez(p));
-    const dev = l.filter(p => p.situacao === 'devolvido'), aut = l.filter(p => p.situacao === 'autorizado'), fim = l.filter(p => ['recusado', 'cancelado'].includes(p.situacao));
+    const vezTodos = l.filter(minhaVez);
+    const aut = l.filter(p => p.situacao === 'autorizado');
     const usados = f => aut.filter(p => p.tipo === 'passagem' && (p.dados || {}).finalidade === f).reduce((t, p) => t + nPass(p), 0);
     const ufsEvento = new Set(aut.filter(p => p.tipo === 'evento').map(p => p.uf));
-    const bloco = (t, xs, vazio) => `<section class="secao"><div class="secao-cab"><h2>${t} <span class="conta-t${xs.length ? '' : ' zero'}">${xs.length}</span></h2></div>
-      ${xs.length ? `<div class="pag-lista">${xs.map(p => linha(p, true)).join('')}</div>` : `<p class="muted">${vazio}</p>`}</section>`;
+    const tituloVez = souGeral ? (conf() === 'coord_geral' ? 'Esperando você (conferir ou autorizar)' : 'Esperando a sua autorização') : 'Esperando a sua conferência';
+    const bloco = (t, xs, vazio) => `<div class="viag-bloco"><h3>${t} <span class="conta-t${xs.length ? '' : ' zero'}">${xs.length}</span></h3>
+      ${xs.length ? `<div class="pag-lista">${xs.map(p => linha(p, true)).join('')}</div>` : `<p class="muted small">${vazio}</p>`}</div>`;
+    const listas = tipo => { const t = l.filter(p => p.tipo === tipo);
+      const vez = t.filter(minhaVez), outros = t.filter(p => ['enviado', 'conferido'].includes(p.situacao) && !minhaVez(p));
+      const dev = t.filter(p => p.situacao === 'devolvido'), au = t.filter(p => p.situacao === 'autorizado'), fim = t.filter(p => ['recusado', 'cancelado'].includes(p.situacao));
+      return `${bloco(tituloVez, vez, 'Nada esperando você.')}
+        ${outros.length ? bloco(souGeral ? 'Com ' + nomeConf() + (legado() ? ' (você pode conferir se ela não puder)' : '') : 'Com a coordenação geral', outros, '') : ''}
+        ${dev.length ? bloco('Devolvidos para a bolsista corrigir', dev, '') : ''}
+        <details class="hist"><summary>Autorizados (${au.length})</summary><div class="pag-lista" style="padding:0 18px 16px">${au.map(p => linha(p, true)).join('') || '<p class="muted">Nenhum ainda.</p>'}</div></details>
+        ${fim.length ? `<details class="hist"><summary>Recusados e cancelados (${fim.length})</summary><div class="pag-lista" style="padding:0 18px 16px">${fim.map(p => linha(p, true)).join('')}</div></details>` : ''}`; };
+    const gp = gastos('passagem');
+    const ge = MQ.UFS.map(u => Object.assign({ uf: u.uf, nome: u.nome }, gastos('evento', u.uf)));
+    const somaE = k => ge.reduce((t, g) => t + g[k], 0);
+    const nVez = tipo => vezTodos.filter(p => p.tipo === tipo).length;
     return `<div class="cab"><div><span class="eyebrow">Viagens e eventos</span><h1>Passagens e eventos</h1>
         <p>A bolsista de articulação estadual pede; ${souGeral ? (conf() === 'coord_geral' ? 'você confere e autoriza' : nomeConf() + ' confere; você autoriza') + ' e manda para a FUNCERN, que compra ou contrata.' : 'você confere e manda para a coordenação geral, que autoriza e manda para a FUNCERN.'}
-        Prazos: passagem ${PRAZO.passagem} dias antes da viagem (a FUNCERN exige 30); evento ${PRAZO.evento} dias antes.</p></div></div>
+        Prazos: passagem ${PRAZO.passagem} dias antes da viagem (a FUNCERN exige 30); evento ${PRAZO.evento} dias antes. <b>Os gastos são separados:</b> passagens têm um teto para o projeto todo; eventos, um teto por estado.</p></div></div>
       <div class="resumo">
-        <div><span class="v num" ${vez.length ? 'style="color:var(--crit)"' : ''}>${vez.length}</span><span class="l">esperando você</span></div>
-        <div><span class="v num">${usados('intercambio')}<small> de ${PREVISTO.intercambio}</small></span><span class="l">passagens de intercâmbio autorizadas</span></div>
-        <div><span class="v num">${usados('pedagogico')}<small> de ${PREVISTO.pedagogico}</small></span><span class="l">passagens de acompanhamento pedagógico</span></div>
-        <div><span class="v num">${ufsEvento.size}<small> de ${PREVISTO.evento}</small></span><span class="l">estados com evento autorizado</span></div></div>
-      <div class="bloco viag-tetos"><h3>Tetos de gasto</h3>
-        <p class="small">${rotSaldo('passagem')}</p>
-        <ul class="pp">${MQ.UFS.map(u => { const x = saldo('evento', u.uf); return `<li><span>Eventos em ${E(u.nome)}</span><b class="num">${brl(x.usado)}<small class="muted"> de ${brl(x.teto)}</small></b></li>`; }).join('')}</ul></div>
-      <p class="small muted">Passagens contadas por pessoa (ida e volta). ${[...ufsEvento].length ? 'Evento autorizado em: ' + [...ufsEvento].join(', ') + '.' : ''}</p>
+        <div><span class="v num" ${vezTodos.length ? 'style="color:var(--crit)"' : ''}>${vezTodos.length}</span><span class="l">esperando você</span></div>
+        <div><span class="v num">${brl(gp.usado)}</span><span class="l">gasto com passagens</span></div>
+        <div><span class="v num">${brl(somaE('usado'))}</span><span class="l">gasto com eventos</span></div></div>
+      <nav class="viag-ir small" aria-label="Ir para"><a href="#viag-passagens">Passagens aéreas${nVez('passagem') ? ` (${nVez('passagem')} esperando)` : ''}</a> · <a href="#viag-eventos">Eventos${nVez('evento') ? ` (${nVez('evento')} esperando)` : ''}</a></nav>
       ${souGeral && conf() === 'auxiliar_adm' ? '<div class="aviso">Sem coordenação técnica ativa: quem confere os pedidos é o auxiliar administrativo; você autoriza. Assim cada pedido passa por duas pessoas. Quando a técnica for cadastrada, ela volta a conferir.</div>' : ''}
       ${souGeral && conf() === 'coord_geral' && !legado() ? '<div class="aviso erro">Sem coordenação técnica e sem auxiliar administrativo: você confere e autoriza sozinho (fica registrado). Cadastre a técnica ou o auxiliar para voltar a ter duas pessoas em cada pedido.</div>' : ''}
-      ${bloco(souGeral ? (conf() === 'coord_geral' ? 'Esperando você (conferir ou autorizar)' : 'Esperando a sua autorização') : 'Esperando a sua conferência', vez, 'Nada esperando você.')}
-      ${outros.length ? bloco(souGeral ? 'Com ' + nomeConf() + (legado() ? ' (você pode conferir se ela não puder)' : '') : 'Com a coordenação geral', outros, '') : ''}
-      ${dev.length ? bloco('Devolvidos para a bolsista corrigir', dev, '') : ''}
-      <details class="hist"><summary>Autorizados (${aut.length})</summary><div class="pag-lista" style="padding:0 18px 16px">${aut.map(p => linha(p, true)).join('') || '<p class="muted">Nenhum ainda.</p>'}</div></details>
-      ${fim.length ? `<details class="hist"><summary>Recusados e cancelados (${fim.length})</summary><div class="pag-lista" style="padding:0 18px 16px">${fim.map(p => linha(p, true)).join('')}</div></details>` : ''}`;
+      <section class="secao viag-tipo" id="viag-passagens" aria-labelledby="t-vp"><div class="secao-cab"><div><h2 id="t-vp">Passagens aéreas</h2>
+          <p class="small muted">Teto de ${brl(MQ.TETOS.passagem)} para o projeto todo, somando os 5 estados. Passagens contadas por pessoa (ida e volta).</p></div></div>
+        <div class="bloco viag-tetos"><h3>Tetos de gasto · passagens</h3>${cartaoGasto(gp, 'Autorizado em passagens')}
+          <ul class="pp"><li><span>Intercâmbio entre as beneficiárias</span><b class="num">${usados('intercambio')}<small class="muted"> de ${PREVISTO.intercambio} passagens</small></b></li>
+            <li><span>Acompanhamento pedagógico</span><b class="num">${usados('pedagogico')}<small class="muted"> de ${PREVISTO.pedagogico} passagens</small></b></li></ul></div>
+        ${listas('passagem')}</section>
+      <section class="secao viag-tipo" id="viag-eventos" aria-labelledby="t-ve"><div class="secao-cab"><div><h2 id="t-ve">Eventos</h2>
+          <p class="small muted">Teto de ${brl(MQ.TETOS.evento)} por estado (o saldo de um estado não passa para outro). ${ufsEvento.size} de ${PREVISTO.evento} estados com evento autorizado.</p></div></div>
+        <div class="bloco viag-tetos"><h3>Tetos de gasto · eventos</h3>
+          <div class="quadro-scroll"><table class="quadro viag-tab"><thead><tr><th scope="col">Estado</th><th scope="col">Autorizado</th><th scope="col">Em análise</th><th scope="col">Saldo</th><th scope="col"><span class="sr">Uso do teto</span></th></tr></thead><tbody>
+            ${ge.map(g => `<tr><th scope="row">${E(g.nome)}</th><td class="num">${brl(g.usado)}</td><td class="num muted">${brl(g.analise)}</td><td class="num"><b>${brl(g.livre)}</b>${g.estoura ? ' <span style="color:var(--crit)" title="autorizado + em análise passa do teto">!</span>' : ''}</td><td>${medidor(g)}</td></tr>`).join('')}
+            <tr class="tot"><th scope="row">Total</th><td class="num">${brl(somaE('usado'))}</td><td class="num muted">${brl(somaE('analise'))}</td><td class="num"><b>${brl(somaE('livre'))}</b></td><td class="small muted">de ${brl(MQ.TETOS.evento * MQ.UFS.length)}</td></tr>
+          </tbody></table></div></div>
+        ${listas('evento')}</section>`;
   }
 
   /* ---------- formulário ---------- */

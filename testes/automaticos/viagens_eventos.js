@@ -79,7 +79,11 @@ const dia = n => { const d = new Date(Date.now() + n * 864e5 - new Date().getTim
   const tabT = await p.$eval('[data-acao=aba][data-aba=viagens]', e => e.textContent).catch(() => '');
   ok('Coord. técnica tem a aba "Viagens e eventos" com 2 pendentes', /Viagens e eventos/.test(tabT) && /2/.test(tabT), tabT);
   await aba('viagens'); await larg('Aba Viagens (técnica)');
-  ok('Lista "Esperando a sua conferência" com 2', /Esperando a sua conferência\s*2/.test(await p.textContent('main')));
+  ok('Resumo: 2 esperando você', /^2$/.test((await p.textContent('.resumo .v')).trim()));
+  ok('Passagens e eventos em seções separadas, cada uma com 1 esperando', /Esperando a sua conferência\s*1/.test(await p.textContent('#viag-passagens')) && /Esperando a sua conferência\s*1/.test(await p.textContent('#viag-eventos')));
+  ok('Seção de passagens só tem passagem; a de eventos só evento', !/Estrutura de evento/.test(await p.textContent('#viag-passagens .pag-lista')) && !/Passagem aérea/.test(await p.textContent('#viag-eventos .pag-lista')));
+  ok('Gasto de eventos por estado, com total de 5 × R$ 6.000', /Total[\s\S]*de R\$\s?30\.000/.test(await p.textContent('#viag-eventos table')));
+  ok('Em análise mostra o valor estimado do pedido', /Em análise \(valor estimado\): R\$\s?[1-9]/.test(await p.textContent('#viag-passagens')));
   const idP = (await peds()).find(x => x.tipo === 'passagem').id, idE = (await peds()).find(x => x.tipo === 'evento').id;
   await p.evaluate(id => MQ.ui.abrirPainel({ tipo: 'viag-ver', id }), idP); await p.waitForTimeout(250);
   ok('Técnica vê CPF e RG das passageiras', /529\.982\.247-25/.test(await p.textContent('.painel-corpo')) && /1234567/.test(await p.textContent('.painel-corpo')));
@@ -114,7 +118,7 @@ const dia = n => { const d = new Date(Date.now() + n * 864e5 - new Date().getTim
   await p.fill('#vm-prot', 'FUNCERN 45/2026'); await p.click('button[name=acao][value=autorizar]'); await p.waitForTimeout(400);
   pd = (await peds()).find(x => x.id === idP);
   ok('Passagem autorizada com protocolo', pd.situacao === 'autorizado' && pd.funcern_protocolo === 'FUNCERN 45/2026', await toast());
-  ok('Contador: 2 de 25 passagens de intercâmbio', /2\s*de 25/.test(await p.textContent('.resumo')));
+  ok('Contador: 2 de 25 passagens de intercâmbio (na seção de passagens)', /Intercâmbio entre as beneficiárias\s*2\s*de 25/.test(await p.textContent('#viag-passagens')));
   await p.evaluate(id => MQ.ui.abrirPainel({ tipo: 'viag-ver', id }), idE); await p.waitForTimeout(250);
   await p.click('button[name=acao][value=recusar]'); await p.waitForTimeout(250);
   ok('Recusar sem motivo não recusa', (await peds()).find(x => x.id === idE).situacao === 'conferido');

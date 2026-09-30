@@ -56,3 +56,9 @@ test('carregando: mulher regando (sem a palavra na tela, mas o leitor de tela ou
   assert.ok(/class="ampulheta grande"/.test(g));
   assert.ok(/class="uf-sigla sigla-sede"[^>]*>RN</.test(t.MQ.painelUI.mapaUFs()));
 });
+
+test('o carregando da abertura (index.html) é o mesmo desenho do sistema: sem cópia antiga esquecida', async () => {
+  const t = await montar('coord_geral');
+  const h = require('fs').readFileSync(require('path').join(__dirname, '../../index.html'), 'utf8');
+  assert.ok(h.includes(t.MQ.ampulheta(true)), 'index.html precisa ter exatamente MQ.ampulheta(true)');
+});

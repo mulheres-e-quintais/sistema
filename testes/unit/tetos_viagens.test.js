@@ -42,3 +42,25 @@ test('telas: formulário pede o valor e mostra o saldo; aba da coordenação mos
   assert.ok(texto(t.aba('viagens')).includes('Tetos de gasto'));
   const h = t.painel({ tipo: 'viag-ver', id }); assert.ok(/name="valor" inputmode="decimal" value="1234,5"/.test(h)); assert.ok(texto(h).includes('Valor estimado'));
 });
+
+test('gastos separados: evento autorizado não entra no gasto de passagens (e vice-versa); em análise pelo valor estimado', async () => {
+  const t = await montar('coord_geral');
+  await autorizado(t, 'evento', 2500);
+  await autorizado(t, 'passagem', 4000, 3800);
+  await t.trocar('bolsista'); await t.api.salvarPedido(null, 'passagem', 'Ainda em análise', diaMais(60), pass(1200));
+  await t.trocar('coord_geral');
+  const h = t.aba('viagens');
+  const sec = id => { const i = h.indexOf(`id="${id}"`); const j = h.indexOf('</section>', i); return texto(h.slice(i, j)); };
+  const P = sec('viag-passagens'), Ev = sec('viag-eventos');
+  assert.ok(/Autorizado em passagens\s*R\$\s?3\.800,00 de R\$\s?70\.000,00/.test(P), 'passagem: só o valor autorizado da passagem');
+  assert.ok(/Em análise \(valor estimado\): R\$\s?1\.200,00/.test(P), 'passagem em análise pelo estimado');
+  assert.ok(!/2\.500/.test(P), 'o evento não aparece nas passagens');
+  assert.ok(/Piauí\s*R\$\s?2\.500,00/.test(Ev), 'evento no estado dele');
+  assert.ok(!/3\.800/.test(Ev), 'a passagem não aparece nos eventos');
+  assert.ok(/Total\s*R\$\s?2\.500,00[\s\S]*de R\$\s?30\.000,00/.test(Ev));
+  const r = texto(h.slice(h.indexOf('class="resumo"'), h.indexOf('</div></div>', h.indexOf('class="resumo"'))));
+  assert.ok(/R\$\s?3\.800,00\s*gasto com passagens/.test(r) && /R\$\s?2\.500,00\s*gasto com eventos/.test(r), r);
+  // a bolsista vê os dois pedidos em listas separadas, cada uma com o seu saldo
+  await t.trocar('bolsista'); const b = texto(t.aba());
+  assert.ok(/Meus pedidos de passagem aérea \(2\)/.test(b) && /Meus pedidos de evento \(1\)/.test(b), b.slice(0, 300));
+});

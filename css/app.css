@@ -1428,3 +1428,15 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   .publico .vit-mapa > .mapa-lista { grid-column: 2; grid-row: 2; margin: 0; }
 }
 .publico .vit-mapa .mapa-lista { display: grid; grid-template-columns: 1fr; justify-items: start; gap: 2px; font-size: var(--t-sm); width: max-content; max-width: 100%; margin: 0 auto; }
+
+/* Viagens e eventos: gastos separados (passagens com teto do projeto; eventos com teto por estado) */
+.viag-ir { margin: 4px 0 14px; } .viag-ir a { font-weight: 600; }
+.viag-tipo { scroll-margin-top: 80px; }
+.viag-gasto { display: grid; gap: 6px; margin: 6px 0 10px; }
+.vg-lin { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.viag-tab td, .viag-tab th { white-space: nowrap; }
+.viag-tab td:last-child { min-width: 90px; width: 30%; }
+.viag-tab tr.tot th, .viag-tab tr.tot td { border-top: 2px solid var(--line-2); font-weight: 600; }
+.viag-bloco { margin-top: 14px; } .viag-bloco h3 { font-size: var(--t-md); margin: 0 0 8px; }
+.viag-meus + .viag-meus { margin-top: 16px; }
+.viag-tab .medidor, .viag-gasto .medidor { display: block; width: 100%; }
