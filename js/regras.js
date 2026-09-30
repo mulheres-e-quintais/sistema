@@ -197,6 +197,10 @@
 (function () {
   const R = MQ.regras;
   R.ehCampo = p => p === 'articulacao' || p === 'apoio' || p === 'agente';
+  /* 33: técnica, bolsistas e agentes precisam da matrícula no FIC; só se cadastram com professor do FIC ativo e habilitado */
+  R.PRECISA_PROFESSOR = ['coord_tecnico', 'articulacao', 'apoio', 'agente'];
+  R.temProfessorHabilitado = equipe => (equipe || []).some(m => m.papel === 'professor_fic' && m.status === 'ativa' && m.docs_funcern_em && m.termo_assinado_em);
+  R.MSG_SEM_PROFESSOR = 'Antes, cadastre e habilite um professor do FIC (cadastro no Arlo e termo assinado): sem ele, ninguém consegue a matrícula no curso.';
   R.habilitado = m => !!(m && m.status === 'ativa' && (m.matricula_fic_em || !R.fazFIC(m.papel)) && m.docs_funcern_em && m.termo_assinado_em);
   R.podeMatricular = papel => papel === 'professor_fic' || papel === 'coord_geral';
   R.decideCampo = papel => papel === 'coord_tecnico' || papel === 'coord_geral';   // aprova ou devolve fichas e diagnósticos, agenda visitas   // sempre um dos professores do FIC, em qualquer turma

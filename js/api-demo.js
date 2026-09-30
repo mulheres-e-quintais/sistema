@@ -131,6 +131,7 @@
         docs_funcern_em: '2026-09-28', termo_path: null, termo_assinado_em: null, obs_habilitacao: null, consentimento_lgpd: true, status: 'ativa',
         substitui_id: null, criado_por: cg && cg.id, criado_em: t0, atualizado_em: t0, exemplo: true, foto_path: 'exemplo', foto_url: 'assets/exemplo/pessoa-' + foto + '.svg' });
       const p1 = prof('Tiago Menezes (exemplo)', 811, 912345678, 'tiago.exemplo@ifrn.edu.br', 12), p2 = prof('Clara Bezerra (exemplo)', 822, 923456781, 'clara.exemplo@ifrn.edu.br', 9);
+      p1.termo_assinado_em = '2026-09-28';   // um professor habilitado (33): sem ele não se cadastra técnica, bolsista nem agente
       mem.equipe.push(p1, p2); mem.eu.professor = p1.id;
       const tu = { id: uid(), nome: 'FIC Agroecologia e Quintais Produtivos – Piauí (exemplo)', uf: 'PI', municipio: 'Paulistana', inicio: '2026-09-29', fim: '2027-03-31',
         professor_id: p1.id, obs: null, criado_por: p1.id, criado_em: t0, atualizado_em: t0 };
@@ -509,6 +510,7 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     async criar(m) {
       const d = ler(); const eu = euMesmo();
       if (!eu || !R.podeCadastrar(eu.papel, m.papel)) throw falha('Seu perfil não tem permissão para esta ação.');
+      if (R.PRECISA_PROFESSOR.includes(m.papel) && !R.temProfessorHabilitado(d.equipe)) throw falha(R.MSG_SEM_PROFESSOR);   // 33
       const erros = R.validar(m, d.equipe);
       if (Object.keys(erros).length) { const e = falha(Object.values(erros)[0]); e.campos = erros; throw e; }
       const agora = new Date().toISOString();
@@ -706,6 +708,7 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     async criarConvite(papel, uf, subst) {
       const d = ler(); const eu = euMesmo();
       if (!eu || !R.podeCadastrar(eu.papel, papel)) throw falha('Seu perfil não pode cadastrar esta função.');
+      if (R.PRECISA_PROFESSOR.includes(papel) && !R.temProfessorHabilitado(d.equipe)) throw falha(R.MSG_SEM_PROFESSOR);   // 33
       const ativa = d.equipe.find(m => m.status === 'ativa' && m.papel === papel && (papel === 'coord_tecnico' || (R.ehBolsista(papel) && m.uf === uf)));
       if (ativa && papel !== 'agente') throw falha(papel === 'coord_tecnico' ? 'Já há coordenação técnica ativa. Desligue antes de convidar outra.' : 'Esta vaga já está ocupada no estado.');
       if (papel === 'auxiliar_adm' && d.equipe.some(m => m.status === 'ativa' && m.papel === 'auxiliar_adm')) throw falha('Já há auxiliar administrativo ativo. Desligue antes de convidar outro.');
