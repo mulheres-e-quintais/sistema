@@ -123,7 +123,9 @@
         <div class="bloco"><h2 class="serif">Onde</h2>${MQ.painelUI.mapaUFs(t.porUF('selecionadas'), 'mulheres selecionadas')}
           <p class="small muted">Mulheres selecionadas por estado. O mapa não mostra onde cada uma mora.</p></div>
       </section>
-      ${(d.fotos || []).length ? `<section class="secao"><h2 class="serif">Nos quintais</h2><div class="galeria">${d.fotos.map((f, i) => foto(d, i, 'gal-item')).join('')}</div></section>` : ''}
+      ${(d.fotos || []).length ? `<section class="secao"><h2 class="serif">Mulheres nos quintais</h2><div class="mosaico">${d.fotos.map((f, i) =>
+        `<button type="button" class="mos-item${i % 7 === 0 ? ' mos-g' : i % 7 === 4 ? ' mos-a' : ''}" data-acao="vit-ampliar" data-i="${i}" aria-label="${E(f.legenda)} · ${E(f.uf)}"><img src="${E(f.url)}" alt="" loading="lazy" decoding="async"><span class="mos-leg">${E(f.legenda)} · ${E(f.uf)}</span></button>`).join('')}</div>
+        <p class="small muted">Fotos de mulheres que autorizaram o uso da imagem. Toque para ampliar.</p></section>` : ''}
       <section class="secao nota-pub"><h2 class="serif">Como os dados são tratados</h2>
         <p>Esta página mostra só totais por estado. Nomes, endereços, CPF e a localização dos quintais ficam no sistema, com acesso só da equipe do projeto (Lei nº 13.709/2018). As fotos são escolhidas pela coordenação entre mulheres que autorizaram o uso de imagem.</p>
         <p class="small muted">${quando() ? 'Atualizado em ' + quando() + '. ' : ''}Execução: IFRN Campus Apodi, com recursos do Ministério do Desenvolvimento Agrário e Agricultura Familiar (MDA), em parceria com o MPA e a FUNCERN.</p></section>`;
@@ -132,12 +134,13 @@
   /* ---------- coordenação: publicar e retirar fotos ---------- */
   function blocoPublicar(f, dg) {
     const eu = S().eu; if (!eu || !/^coord/.test(eu.papel)) return '';
-    const fotos = (dg.fotos || []).filter(x => x === 'exemplo' || /\/diag_(geral|plantio|agua)/.test(x));
+    const fotos = (dg.fotos || []).filter(x => x === 'exemplo' || /\/diag_(mulher|geral|plantio|agua)/.test(x))
+      .sort((a, b) => /diag_mulher/.test(b) - /diag_mulher/.test(a));   // a foto dela vem primeiro
     if (!fotos.length) return '';
     if (!f.consent_imagem) return `<div class="bloco"><h3>Vitrine pública</h3><p class="small muted">Esta mulher não autorizou uso de imagem: as fotos dela não podem ir para a vitrine.</p></div>`;
-    const nome = p => p === 'exemplo' ? 'Foto de exemplo' : { geral: 'Visão geral', plantio: 'Área de plantio', agua: 'Fonte de água' }[(p.match(/diag_(\w+)/) || [])[1]] || 'Foto';
+    const nome = p => p === 'exemplo' ? 'Foto de exemplo' : { mulher: 'Ela no quintal', geral: 'Visão geral', plantio: 'Área de plantio', agua: 'Fonte de água' }[(p.match(/diag_(\w+)/) || [])[1]] || 'Foto';
     return `<form class="bloco" data-form="vit-publicar" data-ficha="${E(f.id)}" novalidate><h3>Publicar na vitrine pública</h3>
-      <p class="small muted">A foto aparece na tela de entrada e na página pública, sem o nome dela. Olhe a foto antes: nada de rosto de criança${f.consent_criancas ? ' (ela autorizou crianças, mas evite)' : ''}, placa, número da casa ou documento.</p>
+      <p class="small muted">A foto aparece na tela de entrada e no mosaico da página pública, sem o nome dela. Ela autorizou o uso da imagem. Olhe a foto antes: nada de rosto de criança${f.consent_criancas ? ' (ela autorizou crianças, mas evite)' : ''}, placa, número da casa ou documento.</p>
       <div class="campo"><label>Foto</label><span class="chips-sel">${fotos.map((p, i) => `<label class="sn${i ? '' : ' on'}"><input type="radio" name="origem" value="${E(p)}" ${i ? '' : 'checked'}>${nome(p)}</label>`).join('')}</span></div>
       <div class="campo"><label for="vp-leg">Legenda (sem o nome dela)</label><input id="vp-leg" name="legenda" maxlength="140" placeholder="Ex.: Canteiros de hortaliças no sertão do Piauí"></div>
       ${f.consent_criancas ? '' : '<label class="check"><input type="checkbox" name="sem_criancas"> Conferi: nenhuma criança aparece na foto</label>'}
@@ -161,6 +164,20 @@
       <figcaption>${E(v.legenda)} <span>· ${E(v.uf)} · ${R.fmtData(String(v.publicada_em).slice(0, 10))}</span>
       <button class="link perigo" data-acao="vit-retirar" data-id="${E(v.id)}" data-path="${E(v.path)}">Retirar</button></figcaption></figure>`).join('')}</div>`;
   }
+
+  /* foto ampliada do mosaico (fecha com Esc, tocando fora ou no ×) */
+  function ampliar(i) {
+    const fs = (V.dados && V.dados.fotos) || []; const f = fs[i]; if (!f) return;
+    let box = document.getElementById('vit-amplia');
+    if (!box) { box = document.createElement('div'); box.id = 'vit-amplia'; box.className = 'vit-amplia'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); document.body.appendChild(box);
+      box.addEventListener('click', ev => { if (ev.target === box || ev.target.closest('[data-fechar]')) fecharAmplia(); });
+      document.addEventListener('keydown', ev => { if (ev.key === 'Escape') fecharAmplia(); }); }
+    box.innerHTML = `<figure><img src="${E(f.url)}" alt="${E(f.legenda)}"><figcaption>${E(f.legenda)} <span>· ${E(f.uf)}</span></figcaption>
+      <button type="button" class="fechar" data-fechar aria-label="Fechar">×</button></figure>`;
+    box.hidden = false; const b = box.querySelector('[data-fechar]'); if (b) b.focus();
+  }
+  function fecharAmplia() { const box = document.getElementById('vit-amplia'); if (box) box.hidden = true; }
+  document.addEventListener('click', ev => { const b = ev.target.closest && ev.target.closest('[data-acao="vit-ampliar"]'); if (b) ampliar(+b.dataset.i); });
 
   async function clique(a, el) {
     if (a === 'vit-retirar') {
