@@ -1334,3 +1334,4 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .mos-ilus .mos-item { cursor: default; }
 .mos-selo { position: absolute; top: 6px; left: 6px; padding: 2px 8px; border-radius: 999px; font-size: var(--t-2xs); font-weight: 600; background: rgba(255,255,255,.88); color: #3B2A20; }
 .mos-ilus .mos-leg { opacity: 1; }
+.e-ilus { position: relative; }

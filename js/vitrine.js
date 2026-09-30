@@ -83,14 +83,16 @@
   const ilustracoes = () => ILUS.map(([leg, tema], i) => ({ url: desenho(i, tema), legenda: leg, uf: MQ.UFS[i % MQ.UFS.length].uf, ilustracao: true }));
 
   /* ---------- fotos ---------- */
+  // sem foto real publicada: o destaque também mostra as ilustrações (com o selo)
+  const fotosOuIlus = d => (d && (d.fotos || []).length) ? d.fotos : ilustracoes();
   function foto(d, i, cls) {
-    const fs = d.fotos || []; if (!fs.length) return '';
+    const fs = fotosOuIlus(d); if (!fs.length) return '';
     const f = fs[((i % fs.length) + fs.length) % fs.length];
-    return `<figure class="${cls}"><img src="${E(f.url)}" alt="${E(f.legenda)}" loading="lazy" decoding="async"><figcaption>${E(f.legenda)} <span>· ${E(f.uf)}</span></figcaption></figure>`;
+    return `<figure class="${cls}${f.ilustracao ? ' e-ilus' : ''}"><img src="${E(f.url)}" alt="${f.ilustracao ? 'Ilustração: ' : ''}${E(f.legenda)}" loading="lazy" decoding="async">${f.ilustracao ? '<span class="mos-selo">Ilustração</span>' : ''}<figcaption>${E(f.legenda)}${f.ilustracao ? '' : ` <span>· ${E(f.uf)}</span>`}</figcaption></figure>`;
   }
   function girar() {
     clearInterval(V.timer);
-    const d = V.dados; if (!d || (d.fotos || []).length < 2) return;
+    const d = V.dados; if (fotosOuIlus(d).length < 2) return;
     if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     V.timer = setInterval(() => {
       const box = $('#vit-foto'); if (!box) { clearInterval(V.timer); return; }
