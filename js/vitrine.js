@@ -125,7 +125,8 @@
       </section>
       ${(d.fotos || []).length ? `<section class="secao"><h2 class="serif">Mulheres nos quintais</h2><div class="mosaico">${d.fotos.map((f, i) =>
         `<button type="button" class="mos-item${i % 7 === 0 ? ' mos-g' : i % 7 === 4 ? ' mos-a' : ''}" data-acao="vit-ampliar" data-i="${i}" aria-label="${E(f.legenda)} · ${E(f.uf)}"><img src="${E(f.url)}" alt="" loading="lazy" decoding="async"><span class="mos-leg">${E(f.legenda)} · ${E(f.uf)}</span></button>`).join('')}</div>
-        <p class="small muted">Fotos de mulheres que autorizaram o uso da imagem. Toque para ampliar.</p></section>` : ''}
+        <p class="small muted">Fotos de mulheres que autorizaram o uso da imagem. Toque para ampliar.</p></section>`
+        : `<section class="secao"><h2 class="serif">Mulheres nos quintais</h2><div class="mos-vazio"><span>As fotos das mulheres aparecem aqui quando a coordenação publicar, só de quem autorizou o uso da imagem.</span></div></section>`}
       <section class="secao nota-pub"><h2 class="serif">Como os dados são tratados</h2>
         <p>Esta página mostra só totais por estado. Nomes, endereços, CPF e a localização dos quintais ficam no sistema, com acesso só da equipe do projeto (Lei nº 13.709/2018). As fotos são escolhidas pela coordenação entre mulheres que autorizaram o uso de imagem.</p>
         <p class="small muted">${quando() ? 'Atualizado em ' + quando() + '. ' : ''}Execução: IFRN Campus Apodi, com recursos do Ministério do Desenvolvimento Agrário e Agricultura Familiar (MDA), em parceria com o MPA e a FUNCERN.</p></section>`;
