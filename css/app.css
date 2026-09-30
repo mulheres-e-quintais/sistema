@@ -1351,3 +1351,23 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 @media (prefers-reduced-motion: no-preference) { .mini-mos img.troca { animation: troca .8s ease-out; } @keyframes troca { from { opacity: 0; } to { opacity: 1; } } }
 @media (prefers-reduced-motion: reduce) { .mini-mos img, .mosaico .mos-item img { transition: none; } .mini-mos > span:hover img, .mosaico .mos-item:hover img { transform: none; } }
 .mos-l { grid-column: span 2; }
+/* mosaico de retratos: quadros em pé, com o rosto no alto da foto preservado */
+.mosaico { grid-auto-rows: 170px; }
+@media (max-width: 520px) { .mosaico { grid-auto-rows: 40vw; } }
+.mosaico .mos-item img, .mini-mos img { object-position: 50% 22%; }
+/* entrada: no computador o mosaico tem a mesma altura do quadro do mapa */
+@media (min-width: 561px) { #vit-foto { height: auto; min-height: 300px; align-self: stretch; } }
+@media (max-width: 560px) { #vit-foto { height: 340px; } }
+/* mapa: pontos dos municípios que receberão os quintais, com uma onda suave */
+.mun-pt { cursor: pointer; outline: none; }
+.mun-pt .mun-alvo { fill: transparent; }
+.mun-pt .mun-dot { fill: var(--ocre); stroke: var(--surface); }
+.mun-pt .mun-onda { fill: var(--ocre); opacity: 0; transform-box: fill-box; transform-origin: center; }
+@media (prefers-reduced-motion: no-preference) {
+  .mun-pt .mun-onda { animation: onda 2.4s ease-out infinite; animation-delay: inherit; }
+  @keyframes onda { from { opacity: .45; transform: scale(.6); } to { opacity: 0; transform: scale(2.2); } }
+}
+.mun-pt .mun-dot { transition: transform .2s; transform-box: fill-box; transform-origin: center; }
+.mun-pt:hover .mun-dot, .mun-pt:focus-visible .mun-dot { transform: scale(1.6); }
+.mun-nome { margin: 6px 0 0; font-size: var(--t-sm); color: var(--ink-2); display: flex; align-items: center; gap: 6px; justify-content: center; min-height: 1.4em; }
+.mun-leg-pt { width: 10px; height: 10px; border-radius: 50%; background: var(--ocre); display: inline-block; }

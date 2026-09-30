@@ -492,6 +492,8 @@
   });
 
   /* Mapa público: só os 5 estados pintados pelo total (sem nenhum ponto de quintal) */
+  const mostrarMun = ev => { const g = ev.target.closest && ev.target.closest('.mun-pt'); if (!g) return; const box = g.closest('svg').parentElement.querySelector('[data-mun-nome]'); if (box) box.textContent = g.dataset.mun; };
+  document.addEventListener('mouseover', mostrarMun); document.addEventListener('focusin', mostrarMun); document.addEventListener('click', mostrarMun);
   function mapaUFs(valores, rotulo) {
     const ufsProj = MQ.UFS.map(u => u.uf);
     const vb = caixa(ufsProj); const esc = Math.max(vb[2], vb[3]) / 100;
@@ -503,7 +505,12 @@
       return `<path d="${g.r.map(path).join('')}" class="${proj ? 'uf-pub' : 'uf-viz'}" ${proj ? `style="fill:${tom(valores[uf])}"` : ''} stroke-width="${esc * 0.25}"><title>${proj ? `${U.nomeUF(uf)}: ${valores[uf] || 0} ${rotulo}` : uf}</title></path>`;
     }).join('');
     const ordem = ufsProj.slice().sort((x, y) => (valores[y] || 0) - (valores[x] || 0) || x.localeCompare(y));
-    return `<svg class="mapa mapa-pub" viewBox="${vb.join(' ')}" role="img" aria-label="${E(rotulo)} por estado: ${ufsProj.map(u => u + ' ' + (valores[u] || 0)).join(', ')}" preserveAspectRatio="xMidYMid meet">${estados}</svg>
+    // pontos: os municípios do projeto técnico que receberão os quintais (passar o mouse ou tocar mostra o nome)
+    const pontos = ufsProj.map(uf => Object.entries((MQ.GEO.mun || {})[uf] || {}).map(([nome, c], k) => { const [x, y] = px(c);
+      return `<g class="mun-pt" data-mun="${E(nome)}/${uf}" tabindex="0" style="animation-delay:${((k * 0.37 + uf.charCodeAt(0) * 0.11) % 2.4).toFixed(2)}s"><circle cx="${x}" cy="${y}" r="${esc * 3.2}" class="mun-alvo"/><circle cx="${x}" cy="${y}" r="${esc * 2.2}" class="mun-onda"/><circle cx="${x}" cy="${y}" r="${esc * 1.4}" class="mun-dot" stroke-width="${esc * 0.35}"/><title>${E(nome)}/${uf}</title></g>`; }).join('')).join('');
+    const nMun = ufsProj.reduce((t, uf) => t + Object.keys((MQ.GEO.mun || {})[uf] || {}).length, 0);
+    return `<svg class="mapa mapa-pub" viewBox="${vb.join(' ')}" role="img" aria-label="${E(rotulo)} por estado: ${ufsProj.map(u => u + ' ' + (valores[u] || 0)).join(', ')}; ${nMun} municípios que receberão os quintais" preserveAspectRatio="xMidYMid meet">${estados}${pontos}</svg>
+      <p class="mun-nome" aria-live="polite"><span class="mun-leg-pt" aria-hidden="true"></span> <span data-mun-nome>${nMun} municípios que receberão os quintais</span></p>
       <ul class="mapa-lista">${ordem.map(uf => `<li><span class="lg-q" style="background:${tom(valores[uf])}"></span>${uf} <b class="num">${valores[uf] || 0}</b></li>`).join('')}</ul>`;
   }
 
