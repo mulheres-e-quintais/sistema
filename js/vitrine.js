@@ -90,14 +90,25 @@
     const f = fs[((i % fs.length) + fs.length) % fs.length];
     return `<figure class="${cls}${f.ilustracao ? ' e-ilus' : ''}"><img src="${E(f.url)}" alt="${f.ilustracao ? 'Ilustração: ' : ''}${E(f.legenda)}" loading="lazy" decoding="async">${f.ilustracao ? '<span class="mos-selo">Ilustração</span>' : ''}<figcaption>${E(f.legenda)}${f.ilustracao ? '' : ` <span>· ${E(f.uf)}</span>`}</figcaption></figure>`;
   }
+  /* mosaico pequeno da tela de entrada: 7 fotos em tamanhos diferentes; a cada 6 s a grande muda de lugar
+     e entram outras fotos; cada uma cresce e diminui devagar (sem movimento para quem pediu menos animação) */
+  const PADROES = [['g', 'a', 'n', 'n', 'l', 'n', 'n'], ['n', 'n', 'g', 'l', 'a', 'n', 'n'], ['l', 'n', 'n', 'g', 'n', 'a', 'n']];
+  function miniMosaico(d, passo) {
+    const fs = fotosOuIlus(d); if (!fs.length) return '';
+    const ilus = !!fs[0].ilustracao; const pad = PADROES[passo % PADROES.length];
+    const itens = pad.map((t, k) => fs[(passo * 3 + k) % fs.length]);
+    return `<div class="mini-mos" role="img" aria-label="${ilus ? 'Ilustrações de mulheres nos quintais' : 'Fotos de mulheres nos quintais'}">${itens.map((f, k) =>
+      `<span class="mm-${pad[k]}"><img src="${E(f.url)}" alt="" decoding="async" style="animation-delay:-${(k * 1.7).toFixed(1)}s;animation-duration:${7 + (k % 3) * 1.5}s">${pad[k] === 'g' ? `<i class="mm-leg">${E(f.legenda)}${f.ilustracao ? '' : ' · ' + E(f.uf)}</i>` : ''}</span>`).join('')}
+      ${ilus ? '<span class="mos-selo">Ilustração</span>' : ''}</div>`;
+  }
   function girar() {
     clearInterval(V.timer);
     const d = V.dados; if (fotosOuIlus(d).length < 2) return;
     if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     V.timer = setInterval(() => {
       const box = $('#vit-foto'); if (!box) { clearInterval(V.timer); return; }
-      V.foto++; box.innerHTML = foto(d, V.foto, 'vit-foto');
-    }, 7000);
+      V.foto++; box.innerHTML = miniMosaico(d, V.foto);
+    }, 6000);
   }
 
   /* ---------- faixa da tela de entrada ---------- */
@@ -119,7 +130,7 @@
       <div class="vts">${tiles(t).map(tile).join('')}</div>
       <div class="vit-duo">
         <div class="vit-mapa">${MQ.painelUI.mapaUFs(t.porUF('selecionadas'), 'mulheres selecionadas')}<span class="vit-leg">Mulheres selecionadas por estado</span></div>
-        <div id="vit-foto">${foto(d, V.foto, 'vit-foto') || `<div class="vit-sem-foto"><span>As fotos dos quintais aparecem aqui quando a coordenação aprovar, só de quem autorizou.</span></div>`}</div>
+        <div id="vit-foto">${miniMosaico(d, V.foto) || `<div class="vit-sem-foto"><span>As fotos dos quintais aparecem aqui quando a coordenação aprovar, só de quem autorizou.</span></div>`}</div>
       </div>
       <p class="vit-rodape"><span>Totais sem nomes nem endereços${quando() ? ' · atualizado ' + quando() : ''}</span></p>`;
   }
@@ -159,10 +170,10 @@
           <p class="small muted">Mulheres selecionadas por estado. O mapa não mostra onde cada uma mora.</p></div>
       </section>
       ${(d.fotos || []).length ? `<section class="secao"><h2 class="serif">Mulheres nos quintais</h2><div class="mosaico">${d.fotos.map((f, i) =>
-        `<button type="button" class="mos-item${i % 7 === 0 ? ' mos-g' : i % 7 === 4 ? ' mos-a' : ''}" data-acao="vit-ampliar" data-i="${i}" aria-label="${E(f.legenda)} · ${E(f.uf)}"><img src="${E(f.url)}" alt="" loading="lazy" decoding="async"><span class="mos-leg">${E(f.legenda)} · ${E(f.uf)}</span></button>`).join('')}</div>
+        `<button type="button" class="mos-item${i % 7 === 0 ? ' mos-g' : i % 7 === 4 ? ' mos-a' : i % 7 === 2 ? ' mos-l' : ''}" data-acao="vit-ampliar" data-i="${i}" aria-label="${E(f.legenda)} · ${E(f.uf)}"><img src="${E(f.url)}" alt="" loading="lazy" decoding="async"><span class="mos-leg">${E(f.legenda)} · ${E(f.uf)}</span></button>`).join('')}</div>
         <p class="small muted">Fotos de mulheres que autorizaram o uso da imagem. Toque para ampliar.</p></section>`
         : `<section class="secao"><h2 class="serif">Mulheres nos quintais</h2><div class="mosaico mos-ilus">${ilustracoes().map((f, i) =>
-          `<div class="mos-item${i % 7 === 0 ? ' mos-g' : i % 7 === 4 ? ' mos-a' : ''}" role="img" aria-label="Ilustração: ${E(f.legenda)}"><img src="${E(f.url)}" alt="" loading="lazy" decoding="async"><span class="mos-selo">Ilustração</span><span class="mos-leg">${E(f.legenda)}</span></div>`).join('')}</div>
+          `<div class="mos-item${i % 7 === 0 ? ' mos-g' : i % 7 === 4 ? ' mos-a' : i % 7 === 2 ? ' mos-l' : ''}" role="img" aria-label="Ilustração: ${E(f.legenda)}"><img src="${E(f.url)}" alt="" loading="lazy" decoding="async"><span class="mos-selo">Ilustração</span><span class="mos-leg">${E(f.legenda)}</span></div>`).join('')}</div>
           <p class="small muted">Ilustrações. As fotos das mulheres entram aqui quando a coordenação publicar, só de quem autorizou o uso da imagem.</p></section>`}
       <section class="secao nota-pub"><h2 class="serif">Como os dados são tratados</h2>
         <p>Esta página mostra só totais por estado. Nomes, endereços, CPF e a localização dos quintais ficam no sistema, com acesso só da equipe do projeto (Lei nº 13.709/2018). As fotos são escolhidas pela coordenação entre mulheres que autorizaram o uso de imagem.</p>

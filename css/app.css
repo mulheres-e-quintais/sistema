@@ -1335,3 +1335,19 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .mos-selo { position: absolute; top: 6px; left: 6px; padding: 2px 8px; border-radius: 999px; font-size: var(--t-2xs); font-weight: 600; background: rgba(255,255,255,.88); color: #3B2A20; }
 .mos-ilus .mos-leg { opacity: 1; }
 .e-ilus { position: relative; }
+/* mosaico pequeno da tela de entrada: 4 colunas × 3 linhas, altura fixa (a página não pula quando as fotos chegam) */
+#vit-foto { height: 300px; min-height: 0; }
+@media (max-width: 560px) { #vit-foto { height: 260px; } }
+.mini-mos { position: relative; height: 100%; min-height: 0; overflow: hidden; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); grid-auto-flow: dense; gap: 6px; }
+@media (prefers-reduced-motion: no-preference) { .mini-mos { animation: surge .8s ease-out; } }
+.mini-mos > span:not(.mos-selo) { position: relative; overflow: hidden; border-radius: 10px; background: var(--surface-2); min-height: 0; }
+.mini-mos img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mm-g { grid-column: span 2; grid-row: span 2; } .mm-a { grid-row: span 2; } .mm-l { grid-column: span 2; }
+.mm-leg { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px 8px 6px; font-style: normal; font-size: var(--t-xs); color: #fff; background: linear-gradient(transparent, rgba(0,0,0,.6)); }
+.mini-mos .mos-selo { z-index: 1; }
+/* as fotos crescem e diminuem devagar */
+@media (prefers-reduced-motion: no-preference) {
+  .mini-mos img, .mosaico .mos-item img { animation: respira 8s ease-in-out infinite alternate; }
+  @keyframes respira { from { transform: scale(1); } to { transform: scale(1.12); } }
+}
+.mos-l { grid-column: span 2; }
