@@ -500,7 +500,12 @@
   const APODI = [-37.7989, -5.6649];   // IFRN Campus Apodi: de onde sai a equipe do projeto
   function mapaUFs(valores, rotulo) {
     const ufsProj = MQ.UFS.map(u => u.uf);
-    const vb = caixa(ufsProj.concat(['RN'])); const esc = Math.max(vb[2], vb[3]) / 100;
+    // "zoom": o quadro vai só até os municípios e Apodi (com folga), para os pontos aparecerem maiores
+    const pts = ufsProj.flatMap(uf => Object.values((MQ.GEO.mun || {})[uf] || {})).concat([APODI]).map(px);
+    const vb = (() => { if (pts.length < 2) return caixa(ufsProj.concat(['RN']));
+      let x0 = Math.min(...pts.map(q => q[0])), x1 = Math.max(...pts.map(q => q[0])), y0 = Math.min(...pts.map(q => q[1])), y1 = Math.max(...pts.map(q => q[1]));
+      const m = Math.max(x1 - x0, y1 - y0) * 0.1; return [x0 - m, y0 - m, x1 - x0 + 2 * m, y1 - y0 + 2 * m]; })();
+    const esc = Math.max(vb[2], vb[3]) / 100;
     const max = Math.max(1, ...ufsProj.map(u => valores[u] || 0));
     const tom = v => !v ? 'var(--mapa-0)' : `color-mix(in oklab, var(--mapa-1) ${Math.round(25 + 75 * v / max)}%, var(--mapa-0))`;
     const path = anel => 'M' + anel.map(p => px(p).map(v => v.toFixed(3)).join(',')).join('L') + 'Z';
@@ -527,7 +532,7 @@
     return `<svg class="mapa mapa-pub" viewBox="${vb.join(' ')}" role="img" aria-label="${E(rotulo)} por estado: ${ufsProj.map(u => u + ' ' + (valores[u] || 0)).join(', ')}; ${nMun} municípios que receberão os quintais, ligados a Apodi/RN, sede do IFRN" preserveAspectRatio="xMidYMid meet">${estados}${siglas}<g class="rotas">${rotas}</g>${pontos}${sede}</svg>
       <p class="mun-nome" aria-live="polite"><span data-mun-nome></span></p>
       <ul class="mapa-lista">${ordem.map(uf => { const nm = Object.keys((MQ.GEO.mun || {})[uf] || {}).length;
-        return `<li><span class="lg-q" style="background:var(--uf-${uf})"></span>${uf} <span class="lg-mun">${nm} ${nm === 1 ? 'município' : 'municípios'}</span> · <b class="num">${valores[uf] || 0}</b> <span class="muted">${(valores[uf] || 0) === 1 ? 'mulher' : 'mulheres'}</span></li>`; }).join('')}<li><span class="lg-q lg-sede"></span>RN <span class="muted">sede (Apodi)</span></li></ul>`;
+        return `<li><span class="lg-q" style="background:var(--uf-${uf})"></span>${uf} <span class="lg-mun">${nm} ${nm === 1 ? 'município' : 'municípios'}</span></li>`; }).join('')}<li><span class="lg-q lg-sede"></span>RN <span class="muted">sede (Apodi)</span></li></ul>`;
   }
 
   MQ.painelUI = { visaoGeral, mesDoProjeto, mapaUFs };

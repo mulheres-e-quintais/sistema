@@ -1387,9 +1387,9 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .mapa-lista .lg-mun { color: var(--ocre); font-weight: 600; }
 
 /* cada estado com uma cor (paleta validada para daltonismo; a sigla vai escrita no mapa e na legenda) */
-:root { --uf-PI: #2a78d6; --uf-PE: #eb6834; --uf-BA: #1baf7a; --uf-SE: #eda100; --uf-AL: #e87ba4; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --uf-PI: #3987e5; --uf-PE: #d95926; --uf-BA: #199e70; --uf-SE: #c98500; --uf-AL: #d55181; } }
-:root[data-theme="dark"] { --uf-PI: #3987e5; --uf-PE: #d95926; --uf-BA: #199e70; --uf-SE: #c98500; --uf-AL: #d55181; }
+:root { --uf-PI: #2E6FB0; --uf-PE: #C9542C; --uf-BA: #1F9E86; --uf-SE: #D8A21C; --uf-AL: #9A4FA8; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --uf-PI: #3E7FD0; --uf-PE: #D26A40; --uf-BA: #1E9A7C; --uf-SE: #B98617; --uf-AL: #B067C2; } }
+:root[data-theme="dark"] { --uf-PI: #3E7FD0; --uf-PE: #D26A40; --uf-BA: #1E9A7C; --uf-SE: #B98617; --uf-AL: #B067C2; }
 .mapa-pub .uf-pub { stroke: var(--surface); }
 .mapa-pub .uf-sigla { fill: #fff; font-weight: 700; paint-order: stroke; stroke: rgba(0,0,0,.45); stroke-width: .08px; pointer-events: none; }
 .mapa-pub .mun-pt .mun-dot { fill: #fff; stroke: #2b1d14; }
@@ -1397,3 +1397,25 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .mapa-pub .rota { stroke: #2b1d14; opacity: .3; }
 .mapa-pub + .mun-nome + .mapa-lista, .vit-mapa .mapa-lista { display: grid; grid-template-columns: 1fr; justify-items: start; gap: 2px; font-size: var(--t-xs); max-width: 100%; margin: 0 auto; width: max-content; }
 .vit-mapa .mapa-lista li, .mapa-pub ~ .mapa-lista li { white-space: nowrap; }
+/* tela de entrada no computador: frase e estados à esquerda, login à direita; os números do projeto
+   (mapa e mosaico) ocupam a largura toda embaixo — o mapa fica maior e nada some */
+@media (min-width: 901px) {
+  .ent { grid-template-rows: auto auto auto auto auto; row-gap: 18px; align-items: start; }
+  .ent-hero { display: contents; }
+  .ent-hero > * { position: relative; z-index: 1; }
+  .ent-marca { grid-column: 1; grid-row: 1; } .ent-t { grid-column: 1; grid-row: 2; } .ent-s { grid-column: 1; grid-row: 3; } .ent-ufs { grid-column: 1; grid-row: 4; }
+  .ent-acesso { grid-column: 2; grid-row: 1 / span 4; align-self: center; }
+  .ent-hero .vitrine { grid-column: 1 / -1; grid-row: 5; margin-top: 10px; }
+  .ent-hero .vit-duo { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+  .ent-hero .ent-broto { display: none !important; }
+}
+@media (max-width: 900px) { .ent-marca, .ent-t, .ent-s, .ent-ufs, .ent-acesso, .ent-hero .vitrine { grid-column: auto; grid-row: auto; } }
+@media (min-width: 901px) {
+  .ent { grid-template-rows: auto auto auto 1fr auto; }
+  .ent-ufs { align-self: start; }
+  /* mapa grande à esquerda, legenda ao lado */
+  .ent-hero .vit-mapa { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 1fr auto 1fr; column-gap: 14px; align-items: center; }
+  .ent-hero .vit-mapa > svg { grid-column: 1; grid-row: 1 / -1; }
+  .ent-hero .vit-mapa > .mun-nome { grid-column: 2; grid-row: 1; align-self: end; justify-content: flex-start; }
+  .ent-hero .vit-mapa > .mapa-lista { grid-column: 2; grid-row: 2; margin: 0; }
+}
