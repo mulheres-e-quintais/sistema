@@ -1331,3 +1331,6 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .ampulheta.grande svg { width: 40px; height: 40px; }
 @keyframes ampulheta { 0%, 40% { transform: rotate(0); } 50%, 90% { transform: rotate(180deg); } 100% { transform: rotate(180deg); } }
 @media (prefers-reduced-motion: reduce) { .ampulheta svg { animation: none; } }
+.mos-ilus .mos-item { cursor: default; }
+.mos-selo { position: absolute; top: 6px; left: 6px; padding: 2px 8px; border-radius: 999px; font-size: var(--t-2xs); font-weight: 600; background: rgba(255,255,255,.88); color: #3B2A20; }
+.mos-ilus .mos-leg { opacity: 1; }
