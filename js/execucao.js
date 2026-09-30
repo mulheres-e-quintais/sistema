@@ -1,49 +1,50 @@
 /* Mulheres & Quintais — aba "Execução" (só a coordenação geral), 30/09/2026.
    Previsto: MQ.ORCAMENTO (planilha atualizada de apoio do TED).
-   Executado e comprometido:
-     - automático: bolsas e ajudas de custo (lançada no Arlo = executado; com aval = comprometido),
-       passagens e eventos autorizados (comprometido: quem paga é a FUNCERN);
-     - lançado à mão pela coordenação geral: o resto e os repasses do MDA (36_execucao_financeira.sql).
-   Nada se apaga: erro vira estorno. */
+   Executado: a PLANILHA DE GASTOS mais recente que a coordenação geral envia (pelo menos uma vez por mês).
+     Ela é o retrato completo desde o início e traz tudo (bolsas, ajudas de custo, passagens, eventos…);
+     a mais nova substitui as anteriores, que ficam no histórico (37_execucao_planilhas.sql).
+   Comprometido: o que o sistema sabe e ainda não entrou na planilha — bolsa ou ajuda de custo com aval,
+     ou lançada no Arlo depois da data da planilha; passagem e evento autorizados depois dessa data.
+   Não há lançamento à mão. */
 (function () {
   const U = () => MQ.ui; const S = () => MQ.ui.S; const R = MQ.regras; const E = s => MQ.ui.esc(s);
   const O = () => MQ.ORCAMENTO;
   const brl = v => R.fmtBRL(+v || 0);
   const itens = () => O().rubricas.flatMap(r => r.itens.map(i => Object.assign({ rubrica: r.id }, i)));
   const itemPorId = id => itens().find(i => i.id === id);
-  const manuais = () => itens().filter(i => !i.auto);
-  const lanc = () => S().lancamentos || [];
-  const valorBR = t => { const x = String(t || '').replace(/[^\d,.]/g, ''); if (!x) return null; const n = /,\d{1,2}$/.test(x) ? +x.replace(/\./g, '').replace(',', '.') : +x.replace(/[.,](?=\d{3}(\D|$))/g, '').replace(',', '.'); return isFinite(n) ? n : null; };
+  const planilhas = () => (S().execPlanilhas || []).slice().sort((a, b) => String(b.posicao_em).localeCompare(String(a.posicao_em)) || String(b.enviado_em).localeCompare(String(a.enviado_em)));
+  const vigente = () => planilhas()[0] || null;
+  const G = {};   // prévia da planilha escolhida (antes de confirmar o envio)
 
   /* ---------- números ---------- */
-  function autoItem(i) {
-    const a = i.auto; const eq = S().equipe || []; const papelDe = id => (eq.find(m => m.id === id) || {}).papel;
+  function comprometidoItem(i, desde) {   // o que o sistema sabe e a planilha (até "desde") ainda não trouxe
+    const a = i.auto; if (!a) return 0;
+    const eq = S().equipe || []; const papelDe = id => (eq.find(m => m.id === id) || {}).papel;
     const val = s => +(s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado) || 0;
+    const depois = d => !desde || (d && String(d).slice(0, 10) > desde);
     if (a.bolsa || a.ajuda) {
-      const xs = (S().solic || []).filter(s => a.ajuda ? s.tipo === 'ajuda_custo' : (s.tipo === 'bolsa' && papelDe(s.equipe_id) === a.bolsa));
-      return { exec: xs.filter(s => s.situacao === 'lancada').reduce((t, s) => t + val(s), 0), comp: xs.filter(s => s.situacao === 'avalizada').reduce((t, s) => t + val(s), 0) };
+      return (S().solic || []).filter(s => (a.ajuda ? s.tipo === 'ajuda_custo' : (s.tipo === 'bolsa' && papelDe(s.equipe_id) === a.bolsa))
+        && (s.situacao === 'avalizada' || (s.situacao === 'lancada' && depois(s.arlo_em)))).reduce((t, s) => t + val(s), 0);
     }
-    const peds = (S().pedidos || []).filter(p => p.situacao === 'autorizado' && (a.evento ? p.tipo === 'evento' : p.tipo === 'passagem' && (p.dados || {}).finalidade === a.passagem));
-    return { exec: 0, comp: peds.reduce((t, p) => t + (+p.valor_autorizado || +(p.dados || {}).valor_estimado || 0), 0) };
+    return (S().pedidos || []).filter(p => p.situacao === 'autorizado' && depois(p.decidido_em) && (a.evento ? p.tipo === 'evento' : p.tipo === 'passagem' && (p.dados || {}).finalidade === a.passagem))
+      .reduce((t, p) => t + (+p.valor_autorizado || +(p.dados || {}).valor_estimado || 0), 0);
   }
   function numeros() {
+    const pl = vigente(); const linhas = pl ? pl.linhas : []; const desde = pl ? String(pl.posicao_em).slice(0, 10) : null;
+    const somaL = f => Math.round(linhas.filter(f).reduce((t, l) => t + (+l.valor || 0), 0) * 100) / 100;
     const porItem = {};
-    itens().forEach(i => {
-      const m = lanc().filter(l => l.tipo === 'despesa' && l.item === i.id).reduce((t, l) => t + (+l.valor || 0), 0);
-      const a = i.auto ? autoItem(i) : { exec: 0, comp: 0 };
-      const exec = a.exec + m, comp = a.comp;
-      porItem[i.id] = { exec, comp, saldo: i.total - exec - comp, passou: exec + comp > i.total + 0.005 };
-    });
+    itens().forEach(i => { const exec = somaL(l => l.item === i.id), comp = comprometidoItem(i, desde);
+      porItem[i.id] = { exec, comp, saldo: i.total - exec - comp, passou: exec + comp > i.total + 0.005 }; });
     const soma = (xs, k) => xs.reduce((t, i) => t + porItem[i.id][k], 0);
-    const rub = O().rubricas.map(r => ({ r, previsto: r.itens.reduce((t, i) => t + i.total, 0), exec: soma(r.itens, 'exec'), comp: soma(r.itens, 'comp') }));
-    const exec = soma(itens(), 'exec'), comp = soma(itens(), 'comp');
-    const recebido = lanc().filter(l => l.tipo === 'repasse').reduce((t, l) => t + (+l.valor || 0), 0);
+    const rub = O().rubricas.map(r => { const semItem = somaL(l => l.rubrica === r.id && !l.item);
+      return { r, previsto: r.itens.reduce((t, i) => t + i.total, 0), exec: soma(r.itens, 'exec') + semItem, comp: soma(r.itens, 'comp'), semItem }; });
+    const naoClass = somaL(l => l.item !== 'repasse_mda' && !l.rubrica);
+    const exec = somaL(l => l.item !== 'repasse_mda'), comp = soma(itens(), 'comp');
+    const recebido = somaL(l => l.item === 'repasse_mda');
     const V = MQ.PROJETO.vigencia; const dia = d => new Date(d + 'T12:00:00').getTime();
     const tempo = Math.max(0, Math.min(1, (dia(R.hoje()) - dia(V.inicio)) / (dia(V.fim) - dia(V.inicio))));
-    // ajuda de custo: média paga por visita comparada com o previsto (R$ 225)
-    const vis = S().solicVis || {}; const lancadas = new Set((S().solic || []).filter(s => s.tipo === 'ajuda_custo' && s.situacao === 'lancada').map(s => s.id));
-    const nVis = Object.values(vis).filter(id => lancadas.has(id)).length;
-    return { porItem, rub, exec, comp, recebido, tempo, livre: O().total - exec - comp, caixa: recebido - exec, ajudaMedia: nVis ? porItem.ajuda_visitas.exec / nVis : null, nVis };
+    const idade = pl ? R.diasAte(R.hoje()) - R.diasAte(desde) : null;
+    return { pl, porItem, rub, exec, comp, recebido, naoClass, tempo, idade, livre: O().total - exec - comp, caixa: recebido - exec };
   }
 
   /* ---------- gráficos (SVG/HTML próprios: funcionam sem internet) ---------- */
@@ -56,9 +57,9 @@
     const previsto = C.meses.map(v => (ac += v) / tot * O().total);
     const hoje = R.hoje().slice(0, 7); const idxHoje = meses.indexOf(hoje);
     const gastoMes = {}; const add = (ym, v) => { gastoMes[ym] = (gastoMes[ym] || 0) + v; };
-    lanc().filter(l => l.tipo === 'despesa').forEach(l => add(String(l.data).slice(0, 7), +l.valor || 0));
-    (S().solic || []).filter(x => x.situacao === 'lancada').forEach(x => add(String(x.arlo_em || x.mes).slice(0, 7), +(x.valor_avalizado != null ? x.valor_avalizado : x.valor_solicitado) || 0));
-    const recMes = {}; lanc().filter(l => l.tipo === 'repasse').forEach(l => { const ym = String(l.data).slice(0, 7); recMes[ym] = (recMes[ym] || 0) + (+l.valor || 0); });
+    const pl = vigente(); const mesPl = pl ? String(pl.posicao_em).slice(0, 7) : hoje; const recMes = {};
+    (pl ? pl.linhas : []).forEach(l => { const ym = l.data ? String(l.data).slice(0, 7) : mesPl;
+      if (l.item === 'repasse_mda') recMes[ym] = (recMes[ym] || 0) + (+l.valor || 0); else add(ym, +l.valor || 0); });
     const antes = (obj, ym) => Object.entries(obj).filter(([k]) => k < meses[0]).reduce((t, [, v]) => t + v, 0);   // o que veio antes de set/2026 entra no primeiro mês
     let e = antes(gastoMes), r = antes(recMes);
     const executado = [], recebido = [];
@@ -127,31 +128,37 @@
   const med = (exec, comp, total) => `<span class="medidor exec-med" title="executado e comprometido"><i style="width:${Math.min(100, (exec + comp) / total * 100)}%;opacity:.35"></i><i style="width:${Math.min(100, exec / total * 100)}%"></i></span>`;
   function alertas(n) {
     const a = [];
+    if (!n.pl) a.push('Nenhuma planilha de gastos enviada ainda. Sem ela, o executado fica zerado: envie a planilha do mês.');
+    else if (n.idade > 35) a.push(`A planilha vigente é de <b>${R.fmtData(n.pl.posicao_em)}</b> (${n.idade} dias atrás). Envie a planilha deste mês.`);
     itens().forEach(i => { const x = n.porItem[i.id]; if (x.passou) a.push(`<b>${E(i.nome)}</b>: executado + comprometido (${brl(x.exec + x.comp)}) passa do previsto (${brl(i.total)}).`); });
-    if (n.ajudaMedia != null && n.ajudaMedia > (itemPorId('ajuda_visitas').unitario || 225) * 1.05)
-      a.push(`Ajuda de custo: a média paga é <b>${brl(n.ajudaMedia)} por visita</b> (${n.nVis} visitas), acima dos ${brl(itemPorId('ajuda_visitas').unitario)} previstos. Nesse ritmo, as 800 visitas não cabem na rubrica.`);
-    if (n.caixa < -0.005) a.push(`O executado (${brl(n.exec)}) passa do que foi lançado como recebido (${brl(n.recebido)}). Falta lançar um repasse, ou há despesa lançada a mais.`);
+    if (n.naoClass) a.push(`${brl(n.naoClass)} em linhas que não batem com nenhum item do orçamento (entram no executado total, fora das rubricas). Veja em <b>Planilhas enviadas</b>.`);
+    if (n.caixa < -0.005) a.push(`O executado (${brl(n.exec)}) passa do recebido do MDA na planilha (${brl(n.recebido)}). Confira se a planilha traz os repasses.`);
     return a;
   }
   function aba() {
     if (S().execSemBanco) return `<div class="cab"><div><span class="eyebrow">Execução</span><h1>Execução do orçamento</h1></div></div>
-      <div class="aviso">A execução ainda não está instalada no servidor. Rode o arquivo <b>36_execucao_financeira.sql</b> no Supabase.</div>`;
+      <div class="aviso">A execução ainda não está instalada no servidor. Rode o arquivo <b>37_execucao_planilhas.sql</b> no Supabase.</div>`;
     const n = numeros(); const T = O().total; const al = alertas(n);
     const usoPct = pct(n.exec + n.comp, T), tempoPct = Math.round(n.tempo * 1000) / 10;
     const ritmo = usoPct + 10 < tempoPct ? 'abaixo do tempo decorrido: o projeto está gastando devagar' : usoPct > tempoPct + 15 ? 'acima do tempo decorrido: atenção ao ritmo' : 'no ritmo do tempo decorrido';
     let acum = 0; const prox = O().repasses.find(r => { acum += r.valor; return acum > n.recebido + 0.005; });   // o próximo repasse que ainda não entrou
     const linhaItem = i => { const x = n.porItem[i.id];
-      return `<tr${x.passou ? ' class="passou"' : ''}><th scope="row"><span>${E(i.nome)}</span><span class="small muted">${E(i.calc)} · ${i.auto ? 'automático' : 'lançado à mão'}</span></th>
+      return `<tr${x.passou ? ' class="passou"' : ''}><th scope="row"><span>${E(i.nome)}</span><span class="small muted">${E(i.calc)}</span></th>
         <td class="num">${brl(i.total)}</td><td class="num">${brl(x.exec)}</td><td class="num muted">${brl(x.comp)}</td><td class="num"><b>${brl(x.saldo)}</b></td><td>${med(x.exec, x.comp, i.total)}</td></tr>`; };
+    const semItem = x => x.semItem ? `<tr><th scope="row"><span>Sem item definido na planilha</span><span class="small muted">a planilha disse só a rubrica</span></th><td class="num">—</td><td class="num">${brl(x.semItem)}</td><td class="num muted">—</td><td class="num">—</td><td></td></tr>` : '';
     return `<div class="cab"><div><span class="eyebrow">Execução</span><h1>Execução do orçamento</h1>
-        <p>Previsto × executado de cada rubrica do TED (R$ ${(T / 1e6).toLocaleString('pt-BR')} milhões). Bolsas e ajudas de custo lançadas no Arlo, passagens e eventos autorizados entram sozinhos; o resto e os repasses do MDA você lança. Só você vê esta aba.</p>
-        <p class="small muted">Base: ${E(O().fonte)}. Confira se o remanejamento em relação ao plano pactuado foi aprovado pelo MDA.</p></div></div>
-      <div class="viag-botoes"><button type="button" class="cad-modo" data-acao="exec-novo"><b>Lançar despesa ou repasse</b><span>Implantação dos quintais, diárias, locação, combustível, equipamento, taxa da FUNCERN, bolsas pagas fora do sistema, repasses do MDA.</span></button></div>
+        <p>Previsto × executado de cada rubrica do TED (R$ ${(T / 1e6).toLocaleString('pt-BR')} milhões). O executado vem da <b>planilha de gastos</b> mais recente; o comprometido, do que o sistema já sabe e a planilha ainda não trouxe. Só você vê esta aba.</p>
+        <p class="small muted">Base do previsto: ${E(O().fonte)}. Confira se o remanejamento em relação ao plano pactuado foi aprovado pelo MDA.</p></div></div>
+      <div class="viag-botoes">
+        <button type="button" class="cad-modo" data-acao="exec-enviar"><b>Enviar planilha de gastos</b><span>Pelo menos uma vez por mês. Retrato completo desde o início: a mais nova substitui as anteriores.</span></button>
+        <a class="cad-modo" href="modelos/Modelo_planilha_de_gastos_Mulheres_e_Quintais.xlsx" download><b>Baixar o modelo</b><span>Planilha com a lista de itens do orçamento para escolher. Para a FUNCERN ou o auxiliar preencherem.</span></a>
+      </div>
+      <p class="small ${n.pl ? 'muted' : ''}">${n.pl ? `Planilha vigente: <b>${E(n.pl.arquivo_nome)}</b>, gastos até ${R.fmtData(n.pl.posicao_em)} (enviada em ${R.fmtData(String(n.pl.enviado_em).slice(0, 10))}).` : '<b>Nenhuma planilha enviada ainda.</b>'}</p>
       <div class="resumo exec-resumo">
         <div><span class="v num">${brl(n.exec)}</span><span class="l">executado · ${pctBR(pct(n.exec, T))}%</span></div>
-        <div><span class="v num">${brl(n.comp)}</span><span class="l">comprometido (autorizado ou com aval, ainda não pago)</span></div>
+        <div><span class="v num">${brl(n.comp)}</span><span class="l">comprometido (aval, Arlo ou autorização ${n.pl ? 'depois de ' + R.fmtData(n.pl.posicao_em) : 'ainda sem planilha'})</span></div>
         <div><span class="v num">${brl(n.livre)}</span><span class="l">livre para executar</span></div>
-        <div><span class="v num">${brl(n.recebido)}<small> de ${brl(T)}</small></span><span class="l">recebido do MDA${prox ? ` · próximo repasse: ${brl(prox.valor)}, previsto para ${prox.mes.slice(5)}/${prox.mes.slice(0, 4)}${prox.mes < R.hoje().slice(0, 7) ? ' (atrasado ou ainda não lançado aqui)' : ''}` : ''}</span></div>
+        <div><span class="v num">${brl(n.recebido)}<small> de ${brl(T)}</small></span><span class="l">recebido do MDA${prox ? ` · próximo repasse: ${brl(prox.valor)}, previsto para ${prox.mes.slice(5)}/${prox.mes.slice(0, 4)}${prox.mes < R.hoje().slice(0, 7) ? ' (atrasado ou ainda fora da planilha)' : ''}` : ''}</span></div>
       </div>
       <div class="bloco exec-ritmo"><div class="vg-lin"><span>Uso do orçamento (executado + comprometido)</span><b class="num">${pctBR(usoPct)}%</b></div>${med(n.exec, n.comp, T)}
         <div class="vg-lin small"><span class="muted">Tempo de vigência decorrido: ${pctBR(tempoPct)}% (${R.fmtData(MQ.PROJETO.vigencia.inicio)} a ${R.fmtData(MQ.PROJETO.vigencia.fim)})</span><span>${ritmo}</span></div>
@@ -160,88 +167,89 @@
       ${al.length ? `<div class="aviso erro"><ul class="exec-alertas">${al.map(x => `<li>${x}</li>`).join('')}</ul></div>` : ''}
       <section class="secao" aria-labelledby="t-exr"><div class="secao-cab"><h2 id="t-exr">Por rubrica</h2></div>
         <div class="quadro-scroll"><table class="quadro exec-tab"><thead><tr><th scope="col">Rubrica e item</th><th scope="col">Previsto</th><th scope="col">Executado</th><th scope="col">Comprometido</th><th scope="col">Saldo</th><th scope="col"><span class="sr">Uso</span></th></tr></thead>
-          ${n.rub.map(({ r, previsto, exec, comp }) => `<tbody id="exr-${r.id}"><tr class="rub"><th scope="rowgroup">${E(r.nome)}</th><td class="num">${brl(previsto)}</td><td class="num">${brl(exec)}</td><td class="num muted">${brl(comp)}</td><td class="num"><b>${brl(previsto - exec - comp)}</b></td><td>${med(exec, comp, previsto)}</td></tr>
-            ${r.itens.map(linhaItem).join('')}</tbody>`).join('')}
+          ${n.rub.map(x => { const { r, previsto, exec, comp } = x; return `<tbody id="exr-${r.id}"><tr class="rub"><th scope="rowgroup">${E(r.nome)}</th><td class="num">${brl(previsto)}</td><td class="num">${brl(exec)}</td><td class="num muted">${brl(comp)}</td><td class="num"><b>${brl(previsto - exec - comp)}</b></td><td>${med(exec, comp, previsto)}</td></tr>
+            ${r.itens.map(linhaItem).join('')}${semItem(x)}</tbody>`; }).join('')}
+          ${n.naoClass ? `<tbody><tr class="rub"><th scope="rowgroup">Fora do orçamento (não classificado)</th><td class="num">—</td><td class="num">${brl(n.naoClass)}</td><td class="num muted">—</td><td class="num">—</td><td></td></tr></tbody>` : ''}
           <tfoot><tr class="tot"><th scope="row">Total</th><td class="num">${brl(T)}</td><td class="num">${brl(n.exec)}</td><td class="num muted">${brl(n.comp)}</td><td class="num"><b>${brl(n.livre)}</b></td><td>${med(n.exec, n.comp, T)}</td></tr></tfoot>
         </table></div></section>
-      <section class="secao" aria-labelledby="t-exl"><div class="secao-cab"><h2 id="t-exl">Lançamentos <span class="conta-t${lanc().length ? '' : ' zero'}">${lanc().length}</span></h2></div>
-        ${lanc().length ? `<div class="pag-lista">${lanc().map(linhaLanc).join('')}</div>` : '<p class="muted">Nenhum lançamento ainda. Comece pelo repasse do MDA (nota de crédito) e pelas despesas que a FUNCERN já pagou.</p>'}</section>`;
+      <section class="secao" aria-labelledby="t-exl"><div class="secao-cab"><h2 id="t-exl">Planilhas enviadas <span class="conta-t${planilhas().length ? '' : ' zero'}">${planilhas().length}</span></h2></div>
+        ${planilhas().length ? `<div class="pag-lista">${planilhas().map((pl, k) => linhaPlanilha(pl, k === 0)).join('')}</div>` : '<p class="muted">Nenhuma ainda.</p>'}</section>`;
   }
-  function linhaLanc(l) {
-    const it = l.tipo === 'repasse' ? { nome: 'Repasse do MDA' } : (itemPorId(l.item) || { nome: l.item });
-    const estornado = lanc().some(x => x.estorno_de === l.id);
-    return `<div class="exec-lanc${l.estorno_de ? ' estorno' : ''}${estornado ? ' estornado' : ''}">
-      <span class="nm">${E(it.nome)}</span><b class="num">${brl(l.valor)}</b>
-      <span class="small muted">${R.fmtData(l.data)}${l.documento ? ' · ' + E(l.documento) : ''}${l.estorno_de ? ' · estorno' : ''}${estornado ? ' · estornado' : ''}</span>
-      ${l.descricao ? `<span class="small">${E(l.descricao)}</span>` : ''}
-      ${!l.estorno_de && !estornado ? `<button type="button" class="link small" data-acao="exec-estornar" data-id="${E(l.id)}">Estornar</button>` : ''}</div>`;
+  function linhaPlanilha(pl, vale) {
+    const nao = (pl.linhas || []).filter(l => l.item !== 'repasse_mda' && !l.rubrica);
+    return `<div class="exec-lanc${vale ? '' : ' antiga'}">
+      <span class="nm">${E(pl.arquivo_nome)} ${vale ? '<span class="chip ok">vigente</span>' : '<span class="chip">substituída</span>'}</span><b class="num">${brl(pl.total_gasto)}</b>
+      <span class="small muted">Gastos até ${R.fmtData(pl.posicao_em)} · enviada em ${R.fmtData(String(pl.enviado_em).slice(0, 10))} · ${(pl.linhas || []).length} linhas · recebido ${brl(pl.total_recebido)}</span>
+      ${pl.obs ? `<span class="small">${E(pl.obs)}</span>` : ''}
+      ${nao.length ? `<details class="small"><summary>${nao.length} linha${nao.length > 1 ? 's' : ''} fora do orçamento</summary><ul>${nao.slice(0, 30).map(l => `<li>Linha ${l.linha}: “${E(l.texto)}” · ${brl(l.valor)}${l.descricao ? ' · ' + E(l.descricao) : ''}</li>`).join('')}</ul></details>` : ''}
+      <button type="button" class="link small" data-acao="exec-baixar" data-path="${E(pl.arquivo_path)}">Baixar o arquivo enviado</button></div>`;
   }
 
-  /* ---------- formulários ---------- */
-  function validar(d) {
-    const e = {};
-    if (!['despesa', 'repasse'].includes(d.tipo)) e.tipo = 'Escolha despesa ou repasse.';
-    if (d.tipo === 'despesa' && !manuais().some(i => i.id === d.item)) e.item = 'Escolha o item do orçamento.';
-    if (d.tipo === 'repasse' && d.item !== 'repasse_mda') e.item = 'Repasse vai no item "Repasse do MDA".';
-    if (!(+d.valor > 0)) e.valor = 'Informe o valor (R$).'; else if (+d.valor > O().total) e.valor = 'Valor maior que o projeto inteiro.';
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(d.data || '')) e.data = 'Informe a data.'; else if (d.data > R.hoje()) e.data = 'A data não pode ser no futuro.';
-    if (d.documento && d.documento.length > 120) e.documento = 'Até 120 letras.';
-    if (d.descricao && d.descricao.length > 500) e.descricao = 'Até 500 letras.';
-    return e;
-  }
+  /* ---------- enviar planilha: escolher o arquivo, ver a prévia, confirmar ---------- */
   const cab = (eyebrow, titulo) => `<div class="painel-cab"><div class="t"><span class="eyebrow">${eyebrow}</span><h2 id="painel-t">${titulo}</h2></div>
       <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>`;
+  function previaHTML(pr) {
+    const s = pr.resumo; const porRub = {};
+    pr.linhas.filter(l => l.item !== 'repasse_mda').forEach(l => { const k = l.rubrica || '_'; porRub[k] = (porRub[k] || 0) + l.valor; });
+    const nomeR = id => id === '_' ? 'Fora do orçamento (não classificado)' : (O().rubricas.find(r => r.id === id) || {}).nome;
+    const ant = vigente();
+    return `<div class="bloco"><h3>Prévia: ${E(pr.nome)}</h3>
+      <p class="small muted">Aba lida: ${E(pr.aba)} · ${pr.linhas.length} linhas com valor${pr.ignoradas ? ` · ${pr.ignoradas} linhas de total ou sem valor ignoradas` : ''}</p>
+      <ul class="pp"><li><span>Gastos</span><b class="num">${brl(s.gasto)}</b></li><li><span>Recebido do MDA</span><b class="num">${brl(s.recebido)}</b></li>
+        ${ant ? `<li><span>Planilha vigente hoje</span><b class="num">${brl(ant.total_gasto)}<small class="muted"> até ${R.fmtData(ant.posicao_em)}</small></b></li>` : ''}</ul>
+      ${ant && s.gasto + 0.005 < +ant.total_gasto ? '<div class="aviso erro">O total desta planilha é <b>menor</b> que o da planilha vigente. Como cada planilha é o retrato completo desde o início, confira se não faltam gastos antigos.</div>' : ''}
+      <table class="quadro viag-tab"><tbody>${Object.entries(porRub).map(([k, v]) => `<tr><th scope="row">${E(nomeR(k))}</th><td class="num">${brl(v)}</td></tr>`).join('')}</tbody></table>
+      ${s.naoClassificadas.length ? `<div class="aviso erro"><b>${s.naoClassificadas.length} linha${s.naoClassificadas.length > 1 ? 's' : ''} não batem com nenhum item do orçamento</b> (entram no total, fora das rubricas). Se for erro de nome, corrija na planilha com o nome da aba Itens do modelo e escolha de novo.
+        <ul class="small">${s.naoClassificadas.slice(0, 15).map(l => `<li>Linha ${l.linha}: “${E(l.texto)}” · ${brl(l.valor)}</li>`).join('')}${s.naoClassificadas.length > 15 ? `<li>… e mais ${s.naoClassificadas.length - 15}</li>` : ''}</ul></div>` : ''}
+      ${pr.avisos.map(a => `<p class="small muted">${E(a)}</p>`).join('')}</div>`;
+  }
   function painel(p) {
-    if (p.tipo === 'exec-novo') {
-      const opts = O().rubricas.map(r => { const m = r.itens.filter(i => !i.auto); return m.length ? `<optgroup label="${E(r.nome)}">${m.map(i => `<option value="${i.id}">${E(i.nome)}</option>`).join('')}</optgroup>` : ''; }).join('');
-      return cab('Execução', 'Lançar despesa ou repasse') + `<div class="painel-corpo"><form class="f" data-form="exec-lancar" novalidate>
-        <fieldset class="campo inteiro"><legend>O que é</legend><div class="sn-par">
-          <label class="sn"><input type="radio" name="tipo" value="despesa" checked> Despesa paga</label>
-          <label class="sn"><input type="radio" name="tipo" value="repasse"> Repasse do MDA</label></div></fieldset>
-        <div class="campos">
-          <div class="campo inteiro" data-so="despesa"><label for="ex-item">Item do orçamento</label><select id="ex-item" name="item"><option value="">Selecione…</option>${opts}</select>
-            <span class="dica">Bolsas, ajudas de custo, passagens e eventos não aparecem aqui: entram sozinhos pelo sistema.</span></div>
-          <div class="campo"><label for="ex-valor">Valor (R$)</label><input id="ex-valor" name="valor" inputmode="decimal" placeholder="0,00" autocomplete="off"></div>
-          <div class="campo"><label for="ex-data">Data do pagamento ou do repasse</label><input id="ex-data" name="data" type="date" max="${R.hoje()}" value="${R.hoje()}"></div>
-          <div class="campo inteiro"><label for="ex-doc">Documento <span class="muted">(opcional)</span></label><input id="ex-doc" name="documento" maxlength="120" placeholder="Ex.: NF 1234, ordem bancária, 2026NC000014"></div>
-          <div class="campo inteiro"><label for="ex-desc">Descrição <span class="muted">(opcional)</span></label><textarea id="ex-desc" name="descricao" maxlength="500"></textarea></div>
-        </div>
-        <p class="small muted">Lançamento não se altera nem se apaga. Se errar, use "Estornar" na lista: fica registrado.</p>
+    if (p.tipo !== 'exec-enviar') return '';
+    const pr = G.previa;
+    return cab('Execução', 'Enviar planilha de gastos') + `<div class="painel-corpo">
+      <form class="f" data-form="exec-ler" novalidate><div class="campos">
+        <div class="campo inteiro"><label for="ex-arq">Planilha (.xlsx ou .csv)</label><input id="ex-arq" name="arquivo" type="file" accept=".xlsx,.csv">
+          <span class="dica">Todos os gastos desde o início, até a data de hoje (ou da última atualização da FUNCERN). Colunas: Data, Item do orçamento, Descrição, Documento, Valor. Use o modelo.</span></div></div>
         <div class="aviso erro" data-erro hidden></div>
-        <div class="acoes"><button class="btn pri" type="submit">Lançar</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div>
-      </form></div>`;
-    }
-    if (p.tipo === 'exec-estornar') {
-      const l = lanc().find(x => x.id === p.id); if (!l) return cab('Execução', 'Lançamento não encontrado');
-      const it = l.tipo === 'repasse' ? { nome: 'Repasse do MDA' } : (itemPorId(l.item) || { nome: l.item });
-      return cab('Execução', 'Estornar lançamento') + `<div class="painel-corpo">
-        <dl class="dl"><dt>Item</dt><dd>${E(it.nome)}</dd><dt>Valor</dt><dd class="num">${brl(l.valor)}</dd><dt>Data</dt><dd>${R.fmtData(l.data)}</dd>${l.documento ? `<dt>Documento</dt><dd>${E(l.documento)}</dd>` : ''}</dl>
-        <form class="f" data-form="exec-estornar" data-id="${E(l.id)}" novalidate><div class="campos">
-          <div class="campo inteiro"><label for="ex-mot">Motivo do estorno</label><textarea id="ex-mot" name="motivo" maxlength="500" placeholder="Ex.: nota fiscal lançada em duplicidade"></textarea></div></div>
-          <p class="small muted">O estorno lança o mesmo valor com sinal trocado. O lançamento original continua na lista, marcado como estornado.</p>
+        <div class="acoes"><button class="btn${pr ? '' : ' pri'}" type="submit">${pr ? 'Ler outro arquivo' : 'Ler a planilha'}</button></div></form>
+      ${pr ? previaHTML(pr) + `<form class="f" data-form="exec-confirmar" novalidate><div class="campos">
+          <div class="campo"><label for="ex-pos">Gastos até (data da planilha)</label><input id="ex-pos" name="posicao_em" type="date" max="${R.hoje()}" value="${pr.posicao}"></div>
+          <div class="campo inteiro"><label for="ex-obs">Observação <span class="muted">(opcional)</span></label><input id="ex-obs" name="obs" maxlength="500" placeholder="Ex.: planilha enviada pela FUNCERN em 05/10"></div></div>
+          <p class="small muted">Depois de enviada, a planilha não se altera nem se apaga: se precisar corrigir, envie outra. A mais nova passa a valer.</p>
           <div class="aviso erro" data-erro hidden></div>
-          <div class="acoes"><button class="btn pri" type="submit">Estornar ${brl(l.valor)}</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div></form></div>`;
-    }
-    return '';
+          <div class="acoes"><button class="btn pri" type="submit">Enviar e usar esta planilha</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div></form>` : ''}
+    </div>`;
   }
   async function clique(a, el) {
-    if (a === 'exec-novo') U().abrirPainel({ tipo: 'exec-novo' });
-    else if (a === 'exec-estornar') U().abrirPainel({ tipo: 'exec-estornar', id: el.dataset.id });
+    if (a === 'exec-enviar') { G.previa = null; U().abrirPainel({ tipo: 'exec-enviar' }); }
+    else if (a === 'exec-baixar') { const url = await S().api.linkPlanilhaExec(el.dataset.path); if (url) window.open(url, '_blank', 'noopener'); else U().toast('O arquivo não está disponível neste aparelho.'); }
     else if (a === 'exec-rub') { const tb = document.getElementById('exr-' + el.dataset.id); if (tb) { tb.scrollIntoView({ behavior: 'smooth', block: 'start' }); tb.classList.remove('realce'); void tb.offsetWidth; tb.classList.add('realce'); } }
   }
+  async function preparar(arquivo) {   // lê e interpreta; devolve a prévia (também usado nos testes)
+    const tab = await MQ.planilha.ler(arquivo); const r = MQ.planilha.interpretar(tab); const resumo = MQ.planilha.resumo(r);
+    const posicao = resumo.ultimaData && resumo.ultimaData <= R.hoje() ? resumo.ultimaData : R.hoje();
+    return Object.assign(r, { resumo, posicao, nome: String(arquivo.name || 'planilha').slice(0, 200), arquivo });
+  }
   async function enviar(tipo, form, fd) {
-    if (tipo === 'exec-lancar') {
-      const t = String(fd.get('tipo') || 'despesa');
-      const d = { tipo: t, item: t === 'repasse' ? 'repasse_mda' : String(fd.get('item') || ''), valor: valorBR(fd.get('valor')), data: String(fd.get('data') || ''),
-        documento: String(fd.get('documento') || '').trim() || null, descricao: String(fd.get('descricao') || '').trim() || null };
-      const e = validar(d); if (Object.keys(e).length) return U().mostrarErros(form, e);
-      await U().ocupado(form, async () => { await S().api.lancarExecucao(d); await U().carregar(); U().fecharPainel(); U().render(); U().toast(t === 'repasse' ? 'Repasse lançado.' : 'Despesa lançada.'); });
+    if (tipo === 'exec-ler') {
+      const arq = fd.get('arquivo'); if (!arq || !arq.name) return U().mostrarErros(form, { arquivo: 'Escolha o arquivo da planilha.' });
+      await U().ocupado(form, async () => {
+        try { G.previa = await preparar(arq); } catch (e) { return U().mostrarErros(form, { arquivo: e.message }); }
+        U().abrirPainel({ tipo: 'exec-enviar' });
+      });
     }
-    if (tipo === 'exec-estornar') {
-      const m = String(fd.get('motivo') || '').trim();
-      if (m.length < 10) return U().mostrarErros(form, { motivo: 'Escreva o motivo (pelo menos 10 letras).' });
-      await U().ocupado(form, async () => { await S().api.estornarLancamento(form.dataset.id, m); await U().carregar(); U().fecharPainel(); U().render(); U().toast('Lançamento estornado.'); });
+    if (tipo === 'exec-confirmar') {
+      const pr = G.previa; if (!pr) return;
+      const pos = String(fd.get('posicao_em') || '');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(pos)) return U().mostrarErros(form, { posicao_em: 'Informe até que data vão os gastos.' });
+      if (pos > R.hoje()) return U().mostrarErros(form, { posicao_em: 'A data não pode ser no futuro.' });
+      const obs = String(fd.get('obs') || '').trim() || null;
+      await U().ocupado(form, async () => {
+        await S().api.enviarPlanilhaExec({ posicao_em: pos, arquivo_nome: pr.nome, linhas: pr.linhas, total_gasto: pr.resumo.gasto, total_recebido: pr.resumo.recebido,
+          nao_classificadas: pr.resumo.naoClassificadas.length, obs }, pr.arquivo);
+        G.previa = null; await U().carregar(); U().fecharPainel(); U().render(); U().toast('Planilha enviada. Os números já são os dela.');
+      });
     }
   }
-  MQ.execUI = { aba, painel, clique, enviar, validar, numeros, valorBR, serie };
+  MQ.execUI = { aba, painel, clique, enviar, numeros, serie, preparar, vigente };
 })();

@@ -420,18 +420,20 @@
     async registrarNoArlo(id, protocolo) { const { error } = await sb.rpc('registrar_no_arlo', { p_id: id, p_protocolo: protocolo || null }); if (error) throw erro(error); },
 
     /* ---------- Documentos do projeto (24_documentos.sql): só a coordenação geral ---------- */
-    /* execução (36): só a coordenação geral; sem update nem delete, erro vira estorno */
-    async listarLancamentos() {
-      const { data, error } = await sb.from('execucao_lancamentos').select('*').order('data', { ascending: false }).order('criado_em', { ascending: false }); if (error) throw erro(error); return data;
+    /* execução (37): planilha de gastos do mês; só a coordenação geral; sem update nem delete */
+    async listarPlanilhasExec() {
+      const { data, error } = await sb.from('execucao_planilhas').select('*').order('posicao_em', { ascending: false }).order('enviado_em', { ascending: false }); if (error) throw erro(error); return data;
     },
-    async lancarExecucao(d) {
-      const { data, error } = await sb.from('execucao_lancamentos').insert({ tipo: d.tipo, item: d.item, valor: +d.valor, data: d.data, documento: d.documento || null, descricao: d.descricao || null }).select().single();
+    async enviarPlanilhaExec(d, arquivo) {
+      const limpo = String(arquivo.name).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w.-]+/g, '_').slice(-80);
+      const path = String(d.posicao_em).slice(0, 4) + '/' + (crypto.randomUUID ? crypto.randomUUID() : Date.now()) + '_' + limpo;
+      const { error: e1 } = await sb.storage.from('execucao').upload(path, arquivo, { upsert: false, contentType: arquivo.type || undefined });
+      if (e1) throw erro(e1);
+      const { data, error } = await sb.from('execucao_planilhas').insert({ posicao_em: d.posicao_em, arquivo_path: path, arquivo_nome: d.arquivo_nome, linhas: d.linhas,
+        total_gasto: d.total_gasto, total_recebido: d.total_recebido, nao_classificadas: d.nao_classificadas, obs: d.obs }).select().single();
       if (error) throw erro(error); return data;
     },
-    async estornarLancamento(id, motivo) {   // o banco copia tipo, item e valor (negativo) do original
-      const { data, error } = await sb.from('execucao_lancamentos').insert({ tipo: 'despesa', item: 'estorno', valor: -1, data: new Date().toISOString().slice(0, 10), estorno_de: id, descricao: motivo }).select().single();
-      if (error) throw erro(error); return data;
-    },
+    async linkPlanilhaExec(path) { const { data, error } = await sb.storage.from('execucao').createSignedUrl(path, 600); if (error) throw erro(error); return data.signedUrl; },
     async listarDocumentos() {
       const { data, error } = await sb.from('documentos_projeto').select('*').order('data_documento', { ascending: false }); if (error) throw erro(error); return data;
     },

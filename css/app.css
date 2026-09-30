@@ -1317,13 +1317,23 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .vit-amplia .fechar { position: absolute; top: -8px; right: -8px; background: var(--surface); color: var(--ink); border-radius: 50%; width: 40px; height: 40px; }
 @media (prefers-reduced-motion: reduce) { .mos-item img { transition: none; } }
 .mos-vazio { display: grid; place-items: center; min-height: 140px; padding: 20px; border: 1px dashed var(--line-2); border-radius: 12px; text-align: center; color: var(--muted); font-size: var(--t-sm); }
-/* carregando: mulher regando um broto; as gotas caem do regador (sem a palavra) */
+/* carregando: mulher regando; o broto cresce (caule → folhas → flor) enquanto as gotas caem; centralizado e maior */
 .ampulheta { display: inline-flex; color: var(--muted); vertical-align: middle; }
-.ampulheta.grande svg { width: 48px; height: 48px; }
+.ampulheta.grande svg { width: 116px; height: 99px; }
+.carregando:has(> .ampulheta.grande), p.carregando:has(.ampulheta.grande) { display: flex; justify-content: center; align-items: center; min-height: 80vh; min-height: 80dvh; margin: 0; }
 .ampulheta .gota { opacity: 0; transform-box: fill-box; animation: gota 1.2s ease-in infinite; }
 .ampulheta .g2 { animation-delay: .4s; } .ampulheta .g3 { animation-delay: .8s; }
 @keyframes gota { 0% { opacity: 0; transform: translateY(0); } 15% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(15px); } }
-@media (prefers-reduced-motion: reduce) { .ampulheta .gota { animation: none; opacity: 1; } .ampulheta .g2 { transform: translateY(5px); } .ampulheta .g3 { transform: translateY(10px); } }
+.ampulheta .caule, .ampulheta .folha, .ampulheta .flor { transform-box: fill-box; }
+.ampulheta .caule { transform-origin: 50% 100%; animation: caule 3.6s ease-out infinite; }
+.ampulheta .f1 { transform-origin: 100% 100%; animation: folha 3.6s ease-out infinite; }
+.ampulheta .f2 { transform-origin: 0% 100%; animation: folha2 3.6s ease-out infinite; }
+.ampulheta .flor { transform-origin: 50% 50%; fill: var(--accent); animation: flor 3.6s ease-out infinite; }
+@keyframes caule { 0% { transform: scaleY(.15); } 45%, 92% { transform: scaleY(1); } 100% { transform: scaleY(.15); } }
+@keyframes folha { 0%, 25% { transform: scale(0); } 50%, 92% { transform: scale(1); } 100% { transform: scale(0); } }
+@keyframes folha2 { 0%, 38% { transform: scale(0); } 62%, 92% { transform: scale(1); } 100% { transform: scale(0); } }
+@keyframes flor { 0%, 62% { transform: scale(0); } 78%, 92% { transform: scale(1); } 100% { transform: scale(0); } }
+@media (prefers-reduced-motion: reduce) { .ampulheta .gota, .ampulheta .caule, .ampulheta .folha, .ampulheta .flor { animation: none; opacity: 1; transform: none; } .ampulheta .g2 { transform: translateY(5px); } .ampulheta .g3 { transform: translateY(10px); } }
 .mos-ilus .mos-item { cursor: default; }
 .mos-selo { position: absolute; top: 6px; left: 6px; padding: 2px 8px; border-radius: 999px; font-size: var(--t-2xs); font-weight: 600; background: rgba(255,255,255,.88); color: #3B2A20; }
 .mos-ilus .mos-leg { opacity: 1; }

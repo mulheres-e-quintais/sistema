@@ -54,7 +54,7 @@ function carregar(arquivos, opcoes = {}) {
     document: documento, FormData: FormDataFalso, crypto: globalThis.crypto, fetch: async () => { throw new Error('Failed to fetch'); },
     addEventListener(tipo, fn) { (ouvintesJanela[tipo] = ouvintesJanela[tipo] || []).push(fn); }, removeEventListener() {}, matchMedia: () => ({ matches: false, addEventListener() {} }),
     Event: class { constructor(t) { this.type = t; } }, indexedDB: undefined,
-    MutationObserver: class { observe() {} disconnect() {} }, requestAnimationFrame: fn => setTimeout(fn, 0), scrollTo() {}, scrollY: 0, innerWidth: 390
+    MutationObserver: class { observe() {} disconnect() {} }, TextDecoder, Blob, Response, DecompressionStream, requestAnimationFrame: fn => setTimeout(fn, 0), scrollTo() {}, scrollY: 0, innerWidth: 390
   };
   janela.window = janela; janela.self = janela; janela.globalThis = janela;
   if (opcoes.ui) janela.MQ.ui = opcoes.ui;
