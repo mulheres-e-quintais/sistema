@@ -5,7 +5,8 @@ select logar('apoio.pi@t.com') \gset ap_
 \set AP '''' :ap_logar ''''
 \set PASS '{"finalidade":"intercambio","origem":"Salvador/BA","destino":"Teresina/PI","volta":"2026-12-20","bagagem":"mao","passageiros":[{"nome":"Maria Passageira Um","cpf":"529.982.247-25","rg":"123456","rg_orgao":"SSP/BA","nascimento":"1970-01-01","sexo":"F","celular":"(71) 99999-0000","email":"m@x.com"}]}'
 create or replace function sp(quem text, id text, tipo text, dias int, dados text, just text default null) returns text language sql as $$
-  select format('select public.salvar_pedido_apoio(%s, %L, %L, current_date + %s, %L::jsonb, %L)', coalesce(id, 'null'), tipo, 'Intercâmbio de beneficiárias', dias, dados, just) $$;
+  -- valor estimado padrão de R$ 1.000 (35_tetos_passagens_eventos.sql); o do teste, se vier, vale mais
+  select format('select public.salvar_pedido_apoio(%s, %L, %L, current_date + %s, (''{"valor_estimado":1000}''::jsonb || %L::jsonb), %L)', coalesce(id, 'null'), tipo, 'Intercâmbio de beneficiárias', dias, dados, just) $$;
 create or replace function mv(id text, acao text, obs text default null, prot text default null) returns text language sql as $$
   select format('select public.mover_pedido_apoio(%s, %L, %L, %L)', id, acao, obs, prot) $$;
 -- quem pode pedir

@@ -29,6 +29,17 @@
   const rotSit = p => p.situacao === 'enviado' ? 'Com ' + nomeConf() : SIT[p.situacao][1];
   const chip = p => `<span class="chip ${SIT[p.situacao][0]}">${rotSit(p)}</span>`;
   const podeVer = papel => ['articulacao', 'coord_tecnico', 'coord_geral'].includes(papel);
+  /* ---------- tetos: R$ 6.000 por estado para eventos; R$ 70.000 para passagens (35_tetos_passagens_eventos.sql) ---------- */
+  const brl = v => R.fmtBRL(+v || 0);
+  const valorBR = t => { const x = String(t || '').replace(/[^\d,.]/g, ''); if (!x) return null; const n = /,\d{1,2}$/.test(x) ? +x.replace(/\./g, '').replace(',', '.') : +x.replace(/[.,](?=\d{3}(\D|$))/g, '').replace(',', '.'); return isFinite(n) ? n : null; };
+  function saldo(tipo, uf, semId) {
+    const teto = MQ.TETOS[tipo]; const sd = S().saldoPed;
+    let usado;
+    if (sd && !semId) usado = tipo === 'passagem' ? +sd.passagem_usado || 0 : +((sd.evento_usado || {})[uf]) || 0;
+    else usado = lista().filter(p => p.situacao === 'autorizado' && p.tipo === tipo && (tipo === 'passagem' || p.uf === uf) && p.id !== semId).reduce((t, p) => t + (+p.valor_autorizado || 0), 0);
+    return { teto, usado, livre: Math.max(0, teto - usado) };
+  }
+  const rotSaldo = (tipo, uf) => { const x = saldo(tipo, uf); return tipo === 'evento' ? `Teto de eventos de ${uf}: ${brl(x.teto)} · já autorizado ${brl(x.usado)} · saldo <b>${brl(x.livre)}</b>` : `Teto de passagens do projeto: ${brl(x.teto)} · já autorizado ${brl(x.usado)} · saldo <b>${brl(x.livre)}</b>`; };
   const semBanco = () => '<div class="aviso">Os pedidos de passagem e de evento ainda não estão instalados no servidor. A coordenação geral roda o arquivo <b>22_passagens_eventos.sql</b> no Supabase.</div>';
   const diasAte = R.diasAte;
   const minhaVez = p => { const eu = S().eu;
@@ -85,6 +96,9 @@
         <div><span class="v num">${usados('intercambio')}<small> de ${PREVISTO.intercambio}</small></span><span class="l">passagens de intercâmbio autorizadas</span></div>
         <div><span class="v num">${usados('pedagogico')}<small> de ${PREVISTO.pedagogico}</small></span><span class="l">passagens de acompanhamento pedagógico</span></div>
         <div><span class="v num">${ufsEvento.size}<small> de ${PREVISTO.evento}</small></span><span class="l">estados com evento autorizado</span></div></div>
+      <div class="bloco viag-tetos"><h3>Tetos de gasto</h3>
+        <p class="small">${rotSaldo('passagem')}</p>
+        <ul class="pp">${MQ.UFS.map(u => { const x = saldo('evento', u.uf); return `<li><span>Eventos em ${E(u.nome)}</span><b class="num">${brl(x.usado)}<small class="muted"> de ${brl(x.teto)}</small></b></li>`; }).join('')}</ul></div>
       <p class="small muted">Passagens contadas por pessoa (ida e volta). ${[...ufsEvento].length ? 'Evento autorizado em: ' + [...ufsEvento].join(', ') + '.' : ''}</p>
       ${souGeral && conf() === 'auxiliar_adm' ? '<div class="aviso">Sem coordenação técnica ativa: quem confere os pedidos é o auxiliar administrativo; você autoriza. Assim cada pedido passa por duas pessoas. Quando a técnica for cadastrada, ela volta a conferir.</div>' : ''}
       ${souGeral && conf() === 'coord_geral' && !legado() ? '<div class="aviso erro">Sem coordenação técnica e sem auxiliar administrativo: você confere e autoriza sozinho (fica registrado). Cadastre a técnica ou o auxiliar para voltar a ter duas pessoas em cada pedido.</div>' : ''}
@@ -139,6 +153,9 @@
           <div class="campo inteiro"><label for="vg-bag">Bagagem</label><select id="vg-bag" name="bagagem"><option value="">Selecione…</option>${Object.entries(BAGAGEM).map(([k, t]) => `<option value="${k}" ${d.bagagem === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
           ${just}</div></fieldset>
         ${prazo}
+        <fieldset><legend>Valor</legend><div class="campos"><div class="campo"><label for="vg-valor">Valor estimado (R$)</label><input id="vg-valor" name="valor_estimado" inputmode="decimal" value="${E(d.valor_estimado != null ? String(d.valor_estimado).replace('.', ',') : '')}" placeholder="Ex.: 1.800,00">
+          <span class="dica">${tipo === 'passagem' ? 'Some as passagens de todas as pessoas, ida e volta (pesquise o preço no dia).' : 'Espaço, estrutura e alimentação (use o orçamento de referência, se tiver).'}</span></div></div>
+          <p class="small muted">${rotSaldo(tipo, S().eu.uf)}</p></fieldset>
         <div data-passageiros>${ps.map((y, i) => passBloco(i, y)).join('')}</div>
         <button type="button" class="btn-add" data-acao="viag-add-pass"><span aria-hidden="true">+</span> Outra pessoa</button>
         <div class="aviso"><b>Depois de emitida:</b> o voo pode mudar (depende da vaga e do preço no dia) e remarcar ou cancelar gera custo. Confira datas e nomes antes de enviar. Guarde os cartões de embarque de ida e volta.</div>`;
@@ -152,6 +169,9 @@
           <div class="campo inteiro"><label for="vg-ref">Ponto de referência</label><input id="vg-ref" name="referencia" value="${v('referencia')}"></div>
           ${just}</div></fieldset>
         ${prazo}
+        <fieldset><legend>Valor</legend><div class="campos"><div class="campo"><label for="vg-valor">Valor estimado (R$)</label><input id="vg-valor" name="valor_estimado" inputmode="decimal" value="${E(d.valor_estimado != null ? String(d.valor_estimado).replace('.', ',') : '')}" placeholder="Ex.: 1.800,00">
+          <span class="dica">${tipo === 'passagem' ? 'Some as passagens de todas as pessoas, ida e volta (pesquise o preço no dia).' : 'Espaço, estrutura e alimentação (use o orçamento de referência, se tiver).'}</span></div></div>
+          <p class="small muted">${rotSaldo(tipo, S().eu.uf)}</p></fieldset>
         <fieldset><legend>Participantes</legend><div class="campos" style="grid-template-columns:repeat(3,minmax(0,1fr))">
           <div class="campo"><label for="vg-pm">Mulheres</label><input id="vg-pm" name="p_mulheres" type="number" min="0" inputmode="numeric" value="${E(part.mulheres == null ? '' : part.mulheres)}"></div>
           <div class="campo"><label for="vg-pe">Equipe</label><input id="vg-pe" name="p_equipe" type="number" min="0" inputmode="numeric" value="${E(part.equipe == null ? '' : part.equipe)}"></div>
@@ -204,6 +224,7 @@
       if (d.fornecedores) L.push(`Fornecedores sugeridos: ${d.fornecedores}`);
       if (d.orcamento) L.push(`Orçamento de referência: ${d.orcamento}`);
     }
+    if (p.valor_autorizado || d.valor_estimado) L.push(p.valor_autorizado ? `Valor autorizado: ${brl(p.valor_autorizado)}` : `Valor estimado: ${brl(d.valor_estimado)}`);
     if (p.justificativa_prazo) L.push(`Justificativa do prazo: ${p.justificativa_prazo}`);
     return L.join('\n');
   }
@@ -213,6 +234,8 @@
     const dias = diasAte(x.data_ref);
     const dl = [['Situação', chip(x)], ['Estado', E(x.uf)], ['Quem pediu', E(nomeDe(pessoa(x.solicitante_id)))],
       [x.tipo === 'passagem' ? 'Ida' : 'Dia do evento', `${R.fmtData(x.data_ref)}${['enviado', 'conferido'].includes(x.situacao) ? ` · faltam ${dias} dias${dias < PRAZO[x.tipo] ? ' <b style="color:var(--crit)">(fora do prazo)</b>' : ''}` : ''}`],
+      ['Valor estimado', d.valor_estimado ? brl(d.valor_estimado) : '<span class="muted">não informado</span>'],
+      x.valor_autorizado ? ['Valor autorizado', '<b>' + brl(x.valor_autorizado) + '</b>'] : null,
       ['Enviado em', new Date(x.enviado_em).toLocaleString('pt-BR')],
       x.conferido_em ? ['Conferido', `${new Date(x.conferido_em).toLocaleString('pt-BR')} por ${E(nomeDe(pessoa(x.conferido_por)))}`] : null,
       x.decidido_em && x.situacao !== 'enviado' ? [{ autorizado: 'Autorizado', recusado: 'Recusado', devolvido: 'Devolvido', cancelado: 'Cancelado' }[x.situacao] || 'Decidido', `${new Date(x.decidido_em).toLocaleString('pt-BR')} por ${E(nomeDe(pessoa(x.decidido_por)))}`] : null,
@@ -231,7 +254,7 @@
     if (geral && x.situacao === 'conferido') {
       const mesmo = x.conferido_por === eu.id && conf() !== 'coord_geral' && !legado();
       if (mesmo) acoes.push(`<div class="aviso erro">Você conferiu este pedido, então não pode autorizá-lo: cada pedido passa por duas pessoas. Devolva para ${nomeConf()} conferir.</div>` + formMover(x, 'Devolver ou recusar', [['devolver', 'Devolver para corrigir', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória)'));
-      else acoes.push(formMover(x, 'Autorizar e mandar para a FUNCERN', [['autorizar', 'Autorizar', 'pri'], ['devolver', 'Devolver para corrigir', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)', true));
+      else acoes.push(formMover(x, 'Autorizar e mandar para a FUNCERN', [['autorizar', 'Autorizar', 'pri'], ['devolver', 'Devolver para corrigir', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)', true, true));
     }
     if (papel === 'coord_geral' && x.situacao === 'autorizado') acoes.push(formMover(x, 'Protocolo da FUNCERN', [['protocolo', 'Salvar protocolo', 'pri']], null, true));
     const ver = x.tipo === 'passagem' ? `<div class="bloco"><h3>Viagem</h3><dl class="dl">
@@ -250,8 +273,11 @@
         ${acoes.join('')}
       </div>`;
   }
-  function formMover(x, titulo, botoes, rotObs, protocolo) {
-    return `<form class="bloco" data-form="viag-mover" data-id="${E(x.id)}" novalidate><h3>${titulo}</h3>
+  function formMover(x, titulo, botoes, rotObs, protocolo, valor) {
+    const vl = +x.valor_autorizado || +(x.dados || {}).valor_estimado || '';
+    return `<form class="bloco" data-form="viag-mover" data-id="${E(x.id)}" data-tipo="${E(x.tipo)}" data-uf="${E(x.uf)}" novalidate><h3>${titulo}</h3>
+      ${valor ? `<div class="campo"><label for="vm-valor">Valor autorizado (R$)</label><input id="vm-valor" name="valor" inputmode="decimal" value="${E(vl ? String(vl).replace('.', ',') : '')}">
+        <span class="dica">Vem o estimado pela bolsista; ajuste pelo orçamento da FUNCERN, se tiver.</span></div><p class="small muted">${rotSaldo(x.tipo, x.uf)}</p>` : ''}
       ${protocolo ? `<div class="campo"><label for="vm-prot">Protocolo ou número do pedido na FUNCERN <span class="muted">(se já tiver)</span></label><input id="vm-prot" name="protocolo" value="${E(x.funcern_protocolo || '')}"></div>` : ''}
       ${rotObs ? `<div class="campo"><label for="vm-obs-${E(x.id)}">${rotObs}</label><textarea id="vm-obs-${E(x.id)}" name="obs"></textarea></div>` : ''}
       <div class="aviso erro" data-erro hidden></div>
@@ -337,8 +363,10 @@
     if (tipo === 'viag-salvar') {
       const t = form.dataset.t; const titulo = String(fd.get('titulo') || '').trim().replace(/\s+/g, ' ');
       const data = String(fd.get('data_ref') || ''); const just = String(fd.get('justificativa') || '').trim();
-      const d = lerForm(t, fd);
+      const d = lerForm(t, fd); d.valor_estimado = valorBR(fd.get('valor_estimado'));
       const e = validar(t, titulo, data, just, d);
+      if (!(d.valor_estimado > 0)) e.valor_estimado = 'Informe o valor estimado (R$).';
+      else { const sd = saldo(t, S().eu.uf); if (d.valor_estimado > sd.livre) e.valor_estimado = 'Passa do saldo: restam ' + brl(sd.livre) + (t === 'evento' ? ' para eventos em ' + S().eu.uf : ' para passagens no projeto') + '.'; }
       const lp = e._pass || []; const geral = e._geral; delete e._pass; delete e._geral;
       if (Object.keys(e).length || lp.length || geral) {
         const total = Object.keys(e).length + lp.length;
@@ -357,7 +385,14 @@
     if (tipo === 'viag-mover') {
       const acao = form.dataset.acao; const obs = String(fd.get('obs') || '').trim(); const prot = String(fd.get('protocolo') || '').trim();
       if (['devolver', 'recusar'].includes(acao) && obs.length < 5) return U().mostrarErros(form, { obs: acao === 'devolver' ? 'Escreva o que precisa ser corrigido.' : 'Escreva o motivo da recusa.' });
+      const valor = acao === 'autorizar' && form.querySelector('[name=valor]') ? valorBR(fd.get('valor')) : null;
+      if (acao === 'autorizar' && form.querySelector('[name=valor]')) {
+        if (!(valor > 0)) return U().mostrarErros(form, { valor: 'Informe o valor para autorizar.' });
+        const sd = saldo(form.dataset.tipo, form.dataset.uf);
+        if (valor > sd.livre) return U().mostrarErros(form, { valor: 'Passa do teto: o saldo é ' + brl(sd.livre) + '. Ajuste o valor, devolva ou recuse.' });
+      }
       await U().ocupado(form, async () => {
+        if (valor && S().api.definirValorPedido) await S().api.definirValorPedido(form.dataset.id, valor);
         await S().api.moverPedido(form.dataset.id, acao, obs || null, prot || null);
         await recarregar(); if (acao !== 'protocolo') U().fecharPainel();
         U().toast({ conferir: S().eu.papel === 'coord_geral' ? 'Conferido. Agora você pode autorizar.' : 'Conferido. Foi para a coordenação geral autorizar.', devolver: 'Devolvido. A bolsista vê o motivo e pode corrigir.', autorizar: 'Autorizado. Mande o pedido para a FUNCERN (use "Copiar texto").',

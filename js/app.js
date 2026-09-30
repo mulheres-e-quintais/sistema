@@ -142,6 +142,7 @@
       S.pedSemBanco = false; S.pedidos = [];
       if (S.api.listarPedidos && MQ.viagUI && (MQ.viagUI.podeVer(papel) || MQ.viagUI.souConferente())) {
         const r = await talvez(() => S.api.listarPedidos(), semFic); S.pedSemBanco = !r[0]; S.pedidos = r[0] ? r[1] : [];
+        if (S.api.saldoPedidos && !S.pedSemBanco) { const sd = await talvez(() => S.api.saldoPedidos(), qualquer); S.saldoPed = sd[0] ? sd[1] : null; }   // 35
       }
       // cálculo de custos carregado em segundo plano: a aba Custos abre pronta, sem "Carregando…" e sem a página pular
       if (coord && MQ.custosUI && !MQ.custosUI.pronto()) MQ.custosUI.garantir().then(() => { if (S.aba === 'custos') render(); }).catch(() => {});

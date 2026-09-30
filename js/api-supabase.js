@@ -454,6 +454,14 @@
       if (error) throw erro(/salvar_pedido_apoio|PGRST202/.test(error.message) ? 'Os pedidos de passagem e evento ainda não foram instalados: a coordenação geral roda o arquivo 22_passagens_eventos.sql no Supabase.' : error);
       return r;
     },
+    /* tetos: R$ 6.000 por estado para eventos, R$ 70.000 para passagens (35_tetos_passagens_eventos.sql) */
+    async definirValorPedido(id, valor) {
+      const { error } = await sb.rpc('definir_valor_pedido', { p_id: id, p_valor: valor });
+      if (error) { if (/definir_valor_pedido|PGRST202/.test(error.message)) return; throw erro(error); }   // sem o 35: segue sem valor
+    },
+    async saldoPedidos() {
+      const { data, error } = await sb.rpc('saldo_passagens_eventos'); if (error) throw erro(error); return data;
+    },
     async moverPedido(id, acao, obs, protocolo) {
       const { error } = await sb.rpc('mover_pedido_apoio', { p_id: id, p_acao: acao, p_obs: obs || null, p_protocolo: protocolo || null }); if (error) throw erro(error);
     },

@@ -60,7 +60,7 @@ describe('Pagamentos', () => {
 
 /* ================================================================== VIAGENS E EVENTOS */
 describe('Viagens e eventos', () => {
-  const pass = { finalidade: 'intercambio', passageiros: [{ nome: 'Maria das Dores', cpf: '52998224725', nascimento: '1970-01-01', rg: '1' }] };
+  const pass = { valor_estimado: 1500, finalidade: 'intercambio', passageiros: [{ nome: 'Maria das Dores', cpf: '52998224725', nascimento: '1970-01-01', rg: '1' }] };
   test('articulação estadual pede; a técnica recebe para conferir; depois a geral para autorizar', async () => {
     const t = await montar('bolsista'); assert.ok(texto(t.aba(null)).includes('Passagens aéreas e eventos'));
     const id = await t.api.salvarPedido(null, 'passagem', 'Intercâmbio em Juazeiro', diaMais(50), pass);
@@ -124,7 +124,7 @@ describe('Documentos', () => {
 
 /* ================================================================== SEM COORDENAÇÃO TÉCNICA */
 describe('Sem coordenação técnica ativa, a coordenação geral assume a vez dela', () => {
-  const pass = { finalidade: 'intercambio', passageiros: [{ nome: 'Maria das Dores', cpf: '52998224725', nascimento: '1970-01-01', rg: '1' }] };
+  const pass = { valor_estimado: 1500, finalidade: 'intercambio', passageiros: [{ nome: 'Maria das Dores', cpf: '52998224725', nascimento: '1970-01-01', rg: '1' }] };
   const semTec = t => { t.S.equipe = t.S.equipe.map(m => m.papel === 'coord_tecnico' ? Object.assign({}, m, { status: 'desligada' }) : m); };
   test('com técnica ativa: bolsa da bolsista NÃO conta para a geral (fluxo normal)', async () => {
     const t = await montar('bolsista'); await t.api.solicitarPagamento('bolsa', mes(), 1000, REL, [], {});
@@ -145,7 +145,7 @@ describe('Sem coordenação técnica ativa, a coordenação geral assume a vez d
 /* ================================================================== CONFERÊNCIA DE PASSAGENS E EVENTOS (26_conferencia_auxiliar.sql)
    Sempre duas pessoas: técnica confere e geral autoriza; sem técnica, o AUXILIAR confere; sem os dois, a geral faz tudo. */
 describe('Viagens e eventos: quem confere na falta da coordenação técnica', () => {
-  const pass = { finalidade: 'intercambio', passageiros: [{ nome: 'Maria das Dores', cpf: '52998224725', nascimento: '1970-01-01', rg: '1' }] };
+  const pass = { valor_estimado: 1500, finalidade: 'intercambio', passageiros: [{ nome: 'Maria das Dores', cpf: '52998224725', nascimento: '1970-01-01', rg: '1' }] };
   const desligar = async (t, papel) => {
     await t.trocar('coord_geral');
     const m = t.S.equipe.find(x => x.papel === papel && x.status === 'ativa');
