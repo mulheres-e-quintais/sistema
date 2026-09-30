@@ -67,6 +67,7 @@ chk as (
                    and exists (select 1 from storage.buckets where id = 'execucao')
   union all select '38_fic_encontros', to_regclass('public.fic_encontros') is not null and to_regclass('public.fic_presencas') is not null
                    and exists (select 1 from pg_trigger where tgname = 'solic_professor_fic')
+                   and exists (select 1 from fn where proname = 'cancelar_encontro_fic')   -- revisão de 01/10 (se FALTA: rode o 38 de novo)
   union all select '28_pedido_novo_acesso', to_regclass('public.pedidos_novo_acesso') is not null and exists (select 1 from fn where proname = 'pedir_novo_acesso')
   -- (as checagens de permissão olham o objeto pelo número dele: se a tabela ou a função ainda não existe, dá FALTA e não erro)
   union all select '27_seguranca_revisao',

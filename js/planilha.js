@@ -49,10 +49,10 @@
     const ss = (await ler('xl/sharedStrings.xml')) || '';
     const comp = [...ss.matchAll(/<si>([\s\S]*?)<\/si>/g)].map(m => textoDe(m[1]));
     const xml = await ler(caminho); if (!xml) throw new Error('Não achei a aba "' + aba.nome + '" dentro do arquivo.');
-    const linhas = [];
-    for (const r of xml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)) {
-      const cel = [];
-      for (const c of r[1].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+    const linhas = []; let reais = 0;
+    for (const r of xml.matchAll(/<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g)) {   // linha vazia vem como <row .../>
+      const cel = []; if (!r[2]) continue;
+      for (const c of r[2].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
         const at = c[1]; const ref = (/\br="([A-Z]+\d+)"/.exec(at) || [])[1]; const t = (/\bt="(\w+)"/.exec(at) || [])[1]; const corpo = c[2] || '';
         const v = (/<v>([\s\S]*?)<\/v>/.exec(corpo) || [])[1];
         let val = null;
@@ -63,8 +63,10 @@
         else if (v != null) val = +v;
         const i = ref ? colIdx(ref) : cel.length; cel[i] = val;
       }
-      linhas.push(Array.from(cel, x => x === undefined ? null : x));
-      if (linhas.length > LIMITE_LINHAS + 50) throw new Error(`A planilha tem mais de ${LIMITE_LINHAS} linhas.`);
+      const n = +((/\br="(\d+)"/.exec(r[1]) || [])[1]) || linhas.length + 1;   // número da linha no Excel (pula as vazias)
+      if (++reais > LIMITE_LINHAS + 50 || n > 200000) throw new Error(`A planilha tem mais de ${LIMITE_LINHAS} linhas.`);
+      while (linhas.length < n - 1) linhas.push([]);
+      linhas[n - 1] = Array.from(cel, x => x === undefined ? null : x);
     }
     return { aba: aba.nome, linhas };
   }
@@ -74,7 +76,9 @@
     let txt = new TextDecoder('utf-8').decode(buf);
     if (txt.includes('�')) txt = new TextDecoder('windows-1252').decode(buf);   // Excel brasileiro salva CSV em ANSI
     txt = txt.replace(/^﻿/, '');
-    const prim = txt.split(/\r?\n/, 1)[0] || ''; const sep = (prim.match(/;/g) || []).length >= (prim.match(/,/g) || []).length ? ';' : ',';
+    // separador: conta ; e , fora de aspas nas primeiras linhas (a 1ª linha pode ser um título com vírgula)
+    const amostra = txt.split(/\r?\n/).slice(0, 30).join('\n').replace(/"[^"]*"/g, '');
+    const sep = (amostra.match(/;/g) || []).length >= (amostra.match(/,/g) || []).length ? ';' : ',';
     const linhas = []; let lin = [], cel = '', aspas = false;
     for (let i = 0; i < txt.length; i++) {
       const ch = txt[i];
@@ -103,17 +107,25 @@
   function numeroBR(v) {
     if (typeof v === 'number') return isFinite(v) ? v : null;
     if (v == null) return null; let s = String(v).trim(); if (!s) return null;
-    const neg = /^\(.*\)$/.test(s) || /^-/.test(s) || /-$/.test(s);
-    s = s.replace(/[^\d,.]/g, ''); if (!s) return null;
-    const n = /,\d{1,2}$/.test(s) ? +s.replace(/\./g, '').replace(',', '.') : /\.\d{1,2}$/.test(s) && !/,/.test(s) ? +s : +s.replace(/[.,](?=\d{3}(\D|$))/g, '').replace(',', '.');
+    s = s.replace(/\u2212/g, '-');   // sinal de menos tipográfico
+    const neg = /^\(.*\)$/.test(s) || /^[^\d]*-/.test(s) || /-\s*$/.test(s);   // (1.234,56), -1.234,56, R$ -1.234,56, 1.234,56-
+    s = s.replace(/[^\d,.]/g, ''); if (!/\d/.test(s)) return null;
+    const vg = s.lastIndexOf(','), pt = s.lastIndexOf('.'); let n;
+    if (vg >= 0 && pt >= 0) n = vg > pt ? +s.replace(/\./g, '').replace(',', '.') : +s.replace(/,/g, '');   // o último separador é o dos centavos
+    else if (vg >= 0) n = (s.match(/,/g) || []).length > 1 ? +s.replace(/,/g, '') : +s.replace(',', '.');   // só vírgula: decimal (padrão brasileiro)
+    else if (pt >= 0) n = (s.match(/\./g) || []).length > 1 || (/^[1-9]\d{0,2}\.\d{3}$/.test(s)) ? +s.replace(/\./g, '') : +s;   // 1.234 = mil; 0.125 e 12.5 = decimal
+    else n = +s;
     return isFinite(n) ? (neg ? -n : n) : null;
   }
   function dataDe(v) {
     if (v == null || v === '') return null;
     if (typeof v === 'number' && v > 30000 && v < 80000) return new Date(Math.round((v - 25569) * 864e5)).toISOString().slice(0, 10);   // número de série do Excel
     const s = String(v).trim(); let m;
-    if ((m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s))) return `${m[1]}-${m[2]}-${m[3]}`;
-    if ((m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})/.exec(s))) { const a = m[3].length === 2 ? '20' + m[3] : m[3]; return `${a}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`; }
+    const valida = (a, me, di) => { a = +a; me = +me; di = +di; if (a < 2000 || a > 2100 || me < 1 || me > 12 || di < 1) return null;
+      if (di > new Date(Date.UTC(a, me, 0)).getUTCDate()) return null; return `${a}-${String(me).padStart(2, '0')}-${String(di).padStart(2, '0')}`; };
+    if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s))) return valida(m[1], m[2], m[3]);
+    if ((m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})\b/.exec(s))) { const a = m[3].length === 2 ? '20' + m[3] : m[3];
+      return +m[2] > 12 && +m[1] <= 12 ? valida(a, m[1], m[2]) : valida(a, m[2], m[1]); }   // 09/25/2026 (ordem americana) vira 25/09
     return null;
   }
   const COL = {
@@ -123,11 +135,14 @@
     descricao: /descri|historico|objeto|favorecido|fornecedor|beneficiario/,
     documento: /documento|^doc\b|nota fiscal|^nf\b|n doc|comprovante|ordem bancaria/
   };
+  // entre várias colunas de valor, a do valor gasto: pago/executado > total > valor; nunca unitário, quantidade, previsto ou saldo
+  const pesoValor = c => /unit|qtd|quant|previst|orcad|saldo|percent|data/.test(c) ? -1 : /pago|execut|realizad|liquid/.test(c) ? 3 : /total/.test(c) ? 2 : 1;
   function acharCabecalho(linhas) {
     for (let i = 0; i < Math.min(linhas.length, 20); i++) {
-      const cab = (linhas[i] || []).map(norm); const col = {};
+      const cab = (linhas[i] || []).map(norm); const col = {}; let melhor = 0;
       cab.forEach((c, j) => { if (!c) return;
-        for (const k of ['item', 'data', 'documento', 'descricao', 'valor']) if (col[k] == null && COL[k].test(c) && !(k === 'valor' && /data/.test(c))) { col[k] = j; break; } });
+        if (COL.valor.test(c)) { const w = pesoValor(c); if (w > melhor) { melhor = w; col.valor = j; } if (w !== 0) return; }
+        for (const k of ['item', 'data', 'documento', 'descricao']) if (col[k] == null && COL[k].test(c)) { col[k] = j; break; } });
       if (col.valor != null && col.item != null) return { i, col };
     }
     return null;
@@ -142,7 +157,12 @@
     if (/repasse|receita|nota de credito|transferencia do mda|recurso recebido|credito recebido/.test(n)) return { item: 'repasse_mda', rubrica: null };
     const T = tabelaItens();
     let x = T.find(t => t.chaves.includes(n)); if (x) return { item: x.id, rubrica: x.rubrica };
-    x = T.find(t => t.chaves.some(k => k.length >= 6 && (n.includes(k) || k.includes(n) && n.length >= 8))); if (x) return { item: x.id, rubrica: x.rubrica };
+    x = T.find(t => t.chaves.some(k => k.length >= 6 && n.includes(k))); if (x) return { item: x.id, rubrica: x.rubrica };
+    // nome genérico ("Passagens", "Coordenador"): cabe em mais de um item; fica só na rubrica, se todos forem da mesma
+    const parecidos = n.length >= 6 ? T.filter(t => t.chaves.some(k => k.includes(n))) : [];
+    if (parecidos.length && parecidos.every(t => t.rubrica === parecidos[0].rubrica)) {
+      const rb = MQ.ORCAMENTO.rubricas.find(r => r.id === parecidos[0].rubrica); return rb.itens.length === 1 ? { item: rb.itens[0].id, rubrica: rb.id } : { item: null, rubrica: rb.id };
+    }
     const r = MQ.ORCAMENTO.rubricas.find(r => { const k = norm(r.nome.replace(/\s*\(.*?\)\s*/g, ' ')); return k === n || n.includes(k) || (k.includes(n) && n.length >= 6); });
     if (r) return r.itens.length === 1 ? { item: r.itens[0].id, rubrica: r.id } : { item: null, rubrica: r.id };
     return { item: null, rubrica: null };
@@ -151,20 +171,22 @@
   function interpretar(tab) {
     const c = acharCabecalho(tab.linhas);
     if (!c) throw new Error('Não achei o cabeçalho. A planilha precisa ter as colunas "Item" (ou "Rubrica") e "Valor". Use o modelo.');
-    const out = []; let ignoradas = 0; const avisos = [];
+    const out = []; let ignoradas = 0, datasRuins = 0; const avisos = [];
     for (let i = c.i + 1; i < tab.linhas.length; i++) {
       const l = tab.linhas[i] || []; const pega = k => c.col[k] == null ? null : l[c.col[k]];
       const texto = pega('item'); const valor = numeroBR(pega('valor'));
       if ((texto == null || String(texto).trim() === '') && valor == null) continue;   // linha em branco
-      if (/^(sub ?)?total|^soma|^saldo/.test(norm(texto))) { ignoradas++; continue; }   // linha de total: não entra (contaria duas vezes)
+      if (l.some(x => typeof x === 'string' && /^(sub ?)?total\b|^soma\b|^saldo\b/.test(norm(x)))) { ignoradas++; continue; }   // linha de total (em qualquer coluna): não entra (contaria duas vezes)
       if (valor == null || valor === 0) { ignoradas++; continue; }
       const cls = classificar(texto);
-      out.push({ linha: i + 1, data: dataDe(pega('data')), texto: String(texto == null ? '' : texto).slice(0, 120), item: cls.item, rubrica: cls.rubrica,
+      const dt = dataDe(pega('data')); if (!dt && pega('data') != null && String(pega('data')).trim() !== '') datasRuins++;
+      out.push({ linha: i + 1, data: dt, texto: String(texto == null ? '' : texto).slice(0, 120), item: cls.item, rubrica: cls.rubrica,
         descricao: pega('descricao') == null ? null : String(pega('descricao')).slice(0, 200), documento: pega('documento') == null ? null : String(pega('documento')).slice(0, 80), valor: Math.round(valor * 100) / 100 });
       if (out.length > LIMITE_LINHAS) throw new Error(`A planilha tem mais de ${LIMITE_LINHAS} lançamentos.`);
     }
     if (!out.length) throw new Error('A planilha não tem nenhuma linha com valor.');
-    const semData = out.filter(x => !x.data).length; if (semData) avisos.push(`${semData} linha${semData > 1 ? 's' : ''} sem data: entram no mês da planilha.`);
+    if (datasRuins) avisos.push(`${datasRuins} data${datasRuins > 1 ? 's' : ''} que não reconheci (ex.: 31/02): ${datasRuins > 1 ? 'entram' : 'entra'} no mês da planilha. Confira.`);
+    const semData = out.filter(x => !x.data).length - datasRuins; if (semData) avisos.push(`${semData} linha${semData > 1 ? 's' : ''} sem data: entram no mês da planilha.`);
     if (c.col.data == null) avisos.push('A planilha não tem coluna de data: o gráfico do ritmo usa o mês da planilha para todos os gastos.');
     return { linhas: out, avisos, ignoradas, aba: tab.aba };
   }

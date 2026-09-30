@@ -498,6 +498,7 @@
         p_conteudo: x.conteudo, p_presentes: x.presentes || [] });
       if (error) throw erro(error); return data;
     },
+    async cancelarEncontroFic(id, motivo) { const { error } = await sb.rpc('cancelar_encontro_fic', { p_id: id, p_motivo: motivo }); if (error) throw erro(error); },
     async confirmarPresencaFic(encontro_id) { const { error } = await sb.rpc('confirmar_presenca_fic', { p_encontro: encontro_id }); if (error) throw erro(error); },
     async listarTurmas() { const { data, error } = await sb.from('turmas_fic').select('*').order('criado_em'); if (error) throw erro(error); return data; },
     async listarMatriculas() { const { data, error } = await sb.from('matriculas_fic').select('*').is('cancelada_em', null).order('criado_em'); if (error) throw erro(error); return data; },

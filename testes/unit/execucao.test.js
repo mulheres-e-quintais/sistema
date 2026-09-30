@@ -93,3 +93,10 @@ test('gráficos: ritmo com os gastos da planilha por mês; uma barra por rubrica
   assert.ok(/data-acao="exec-rub" data-id="r13"/.test(h) && /<tbody id="exr-r13">/.test(h));
   assert.ok(!/\d\.\d%/.test(texto(h)), 'porcentagem com vírgula');
 });
+
+test('vale a última planilha ENVIADA, mesmo que corrija uma data anterior', async () => {
+  const t = await montar('coord_geral');
+  t.S.execPlanilhas = [{ id: 'a', posicao_em: '2026-09-28', enviado_em: '2026-09-29T10:00:00Z', total_gasto: 9999, linhas: [], arquivo_nome: 'a.xlsx' },
+                       { id: 'b', posicao_em: '2026-09-20', enviado_em: '2026-09-30T10:00:00Z', total_gasto: 500, linhas: [], arquivo_nome: 'b.xlsx' }];
+  assert.equal(t.MQ.execUI.vigente().id, 'b');
+});

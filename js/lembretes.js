@@ -48,7 +48,7 @@
         d: `Cadastradas até agora: ${tec ? 'coordenação técnica e ' : 'sem coordenação técnica; '}${bols} de 10 bolsistas.` });
     }
     if (eu.papel === 'coord_geral' && !S().execSemBanco && +hoje.slice(8, 10) >= 20) {   // planilha de gastos: pelo menos uma por mês
-      const doMes = (S().execPlanilhas || []).some(p => String(p.enviado_em).slice(0, 7) === hoje.slice(0, 7));
+      const doMes = (S().execPlanilhas || []).some(p => String(R.diaLocal(p.enviado_em)).slice(0, 7) === hoje.slice(0, 7));
       if (!doMes) out.push({ id: 'planilha-' + hoje.slice(0, 7), t: `Envie a <b>planilha de gastos de ${MESES[+hoje.slice(5, 7) - 1]}</b>.`, d: 'Na aba Execução. Sem ela, o executado do painel fica parado na planilha anterior.' });
     }
     if (MQ.encUI && R.matriculaFIC(eu.papel)) {   // 38: presença no curso FIC para confirmar

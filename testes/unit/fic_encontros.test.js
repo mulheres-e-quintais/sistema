@@ -86,3 +86,62 @@ test('coordenação geral registra encontro no lugar do professor: fica em nome 
   const e = (await t.api.listarEncontrosFic()).find(x => x.conteudo === 'Atividade no AVA sobre compostagem');
   assert.equal(e.professor_id, prof.id);
 });
+
+/* revisão 01/10/2026: dono da turma, turma fixa, matrícula na data, duplicidade, cancelamento e mês fechado ao pedir a bolsa */
+async function comoOutraProfessora(t) {
+  const d = JSON.parse(t.janela.localStorage.getItem('mq-demo-v4')); const outra = d.equipe.find(m => m.papel === 'professor_fic' && m.id !== d.eu.professor);
+  d.eu.professor = outra.id; t.janela.localStorage.setItem('mq-demo-v4', JSON.stringify(d)); await t.api.reler(); await t.trocar('professor'); return outra;
+}
+test('outro professor não registra, não altera e não cancela encontro de turma que não é dele (e não vê na tela)', async () => {
+  const { t, turma, bol, hoje } = await cenario();
+  await t.api.salvarEncontroFic({ turma_id: turma.id, data: hoje, carga_horaria: 3, modalidade: 'presencial', conteudo: 'Planejamento do quintal e calendário de plantio', presentes: [bol.id] });
+  const id = (await t.api.listarEncontrosFic())[0].id;
+  await comoOutraProfessora(t);
+  await assert.rejects(t.api.salvarEncontroFic({ turma_id: turma.id, data: hoje, carga_horaria: 2, modalidade: 'ava', conteudo: 'Aula na turma alheia', presentes: [] }), /outro\(a\) professor/);
+  await assert.rejects(t.api.salvarEncontroFic({ id, turma_id: turma.id, data: hoje, carga_horaria: 11, modalidade: 'ava', conteudo: 'Alterando o encontro alheio', presentes: [] }), /outro\(a\) professor/);
+  await assert.rejects(t.api.cancelarEncontroFic(id, 'Cancelando encontro de outra pessoa'), /outro\(a\) professor/);
+  const h = texto(t.aba()); assert.ok(!/Planejamento do quintal e calendário/.test(h), 'a lista da outra professora não mostra encontro alheio');
+});
+test('a turma não muda; clique duplo não duplica; quem se matriculou depois da data fica fora da lista', async () => {
+  const { t, turma, bol, hoje, prof } = await cenario();
+  await t.api.salvarTurma({ nome: 'Turma Piauí 2', professor_id: prof.id, uf: 'PI', inicio: '2026-09-01' });
+  const t2 = (await t.api.listarTurmas()).find(x => x.nome === 'Turma Piauí 2');
+  const x = { turma_id: turma.id, data: hoje, carga_horaria: 3, modalidade: 'presencial', conteudo: 'Planejamento do quintal e calendário de plantio', presentes: [bol.id] };
+  const id = await t.api.salvarEncontroFic(x);
+  await assert.rejects(t.api.salvarEncontroFic(x), /já está registrado/);
+  await assert.rejects(t.api.salvarEncontroFic(Object.assign({}, x, { id, turma_id: t2.id, presentes: [] })), /turma de um encontro não muda/);
+  const antes = '2026-09-01' < hoje ? '2026-09-01' : null;
+  if (antes) {   // matrícula de hoje: no encontro de 01/09 ninguém estava matriculado
+    await assert.rejects(t.api.salvarEncontroFic({ turma_id: turma.id, data: antes, carga_horaria: 2, modalidade: 'ava', conteudo: 'Encontro antes da matrícula', presentes: [bol.id] }), /na data do encontro/);
+    const v = await t.api.salvarEncontroFic({ turma_id: turma.id, data: antes, carga_horaria: 2, modalidade: 'ava', conteudo: 'Encontro antes da matrícula', presentes: [] });
+    assert.equal((await t.api.listarEncontrosFic()).find(e => e.id === v).presencas.length, 0);
+  }
+  await assert.rejects(t.api.salvarEncontroFic(Object.assign({}, x, { conteudo: 'Outro encontro no mesmo dia', carga_horaria: 0.04 })), /carga horária/);
+});
+test('encontro cancelado (com motivo) fica guardado, sai do relatório e não se confirma', async () => {
+  const { t, turma, bol, hoje } = await cenario(); const mes = hoje.slice(0, 7);
+  const id = await t.api.salvarEncontroFic({ turma_id: turma.id, data: hoje, carga_horaria: 3, modalidade: 'online', conteudo: 'Oficina lançada por engano no sistema', presentes: [bol.id] });
+  await assert.rejects(t.api.cancelarEncontroFic(id, 'x'), /motivo/);
+  await t.api.cancelarEncontroFic(id, 'Lançado por engano, duplicado');
+  await assert.rejects(t.api.cancelarEncontroFic(id, 'Lançado por engano, duplicado'), /já foi cancelado/);
+  await assert.rejects(t.api.salvarEncontroFic({ id, turma_id: turma.id, data: hoje, carga_horaria: 3, modalidade: 'online', conteudo: 'Oficina lançada por engano no sistema', presentes: [bol.id] }), /cancelado/);
+  await t.trocar('professor'); const h = texto(t.aba()); assert.match(h, /cancelado/); assert.match(h, /0 encontros · 0 h/);
+  await t.trocar('bolsista'); await assert.rejects(t.api.confirmarPresencaFic(id), /cancelado/); assert.equal(t.MQ.encUI.paraConfirmar().length, 0);
+  await t.trocar('professor');
+  await assert.rejects(t.api.solicitarPagamento('bolsa', mes + '-01', 2200, 'Aulas do curso FIC, acompanhamento da turma e preparação das atividades no AVA.', [], {}), /Nenhum encontro/);
+});
+test('bolsa pedida fecha o mês (como as visitas): não inclui nem altera encontro; devolvida reabre', async () => {
+  const { t, turma, bol, hoje } = await cenario(); const mes = hoje.slice(0, 7);
+  const id = await t.api.salvarEncontroFic({ turma_id: turma.id, data: hoje, carga_horaria: 4, modalidade: 'presencial', conteudo: 'Planejamento do quintal e calendário de plantio', presentes: [bol.id] });
+  const sid = await t.api.solicitarPagamento('bolsa', mes + '-01', 2200, 'Aulas do curso FIC, acompanhamento da turma e preparação das atividades no AVA.', [], {});
+  await assert.rejects(t.api.salvarEncontroFic({ turma_id: turma.id, data: hoje, carga_horaria: 2, modalidade: 'ava', conteudo: 'Encontro depois do pedido', presentes: [] }), /já foi pedida/);
+  await assert.rejects(t.api.salvarEncontroFic({ id, turma_id: turma.id, data: hoje, carga_horaria: 12, modalidade: 'presencial', conteudo: 'Planejamento do quintal e calendário de plantio', presentes: [bol.id] }), /já foi pedida/);
+  await t.trocar('coord_geral'); await t.api.avalizarPagamento(sid, false, 'Faltou detalhar as atividades do mês.');
+  await t.trocar('professor');
+  await t.api.salvarEncontroFic({ turma_id: turma.id, data: hoje, carga_horaria: 2, modalidade: 'ava', conteudo: 'Encontro depois da devolução', presentes: [] });
+});
+test('lembrete da planilha: envio às 22 h de Brasília (já é outro dia em UTC) conta no mês local', async () => {
+  const t = await montar('coord_geral'); const R = t.MQ.regras;
+  const iso = new Date(new Date(R.hoje() + 'T22:30:00').getTime()).toISOString();
+  assert.equal(R.diaLocal(iso), R.hoje()); assert.equal(R.diaLocal('2026-09-30'), '2026-09-30'); assert.equal(R.diaLocal(null), null);
+});
