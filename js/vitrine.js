@@ -90,25 +90,29 @@
     const f = fs[((i % fs.length) + fs.length) % fs.length];
     return `<figure class="${cls}${f.ilustracao ? ' e-ilus' : ''}"><img src="${E(f.url)}" alt="${f.ilustracao ? 'Ilustração: ' : ''}${E(f.legenda)}" loading="lazy" decoding="async">${f.ilustracao ? '<span class="mos-selo">Ilustração</span>' : ''}<figcaption>${E(f.legenda)}${f.ilustracao ? '' : ` <span>· ${E(f.uf)}</span>`}</figcaption></figure>`;
   }
-  /* mosaico pequeno da tela de entrada: 7 fotos em tamanhos diferentes; a cada 6 s a grande muda de lugar
-     e entram outras fotos; cada uma cresce e diminui devagar (sem movimento para quem pediu menos animação) */
+  /* mosaico pequeno da tela de entrada: painel fixo com 7 fotos em tamanhos diferentes; o desenho não muda,
+     só as fotos trocam a cada 8 s (se houver mais de 7). Passar o mouse aproxima a foto. */
   const PADROES = [['g', 'a', 'n', 'n', 'l', 'n', 'n'], ['n', 'n', 'g', 'l', 'a', 'n', 'n'], ['l', 'n', 'n', 'g', 'n', 'a', 'n']];
   function miniMosaico(d, passo) {
     const fs = fotosOuIlus(d); if (!fs.length) return '';
-    const ilus = !!fs[0].ilustracao; const pad = PADROES[passo % PADROES.length];
+    const ilus = !!fs[0].ilustracao; const pad = PADROES[0];
     const itens = pad.map((t, k) => fs[(passo * 3 + k) % fs.length]);
     return `<div class="mini-mos" role="img" aria-label="${ilus ? 'Ilustrações de mulheres nos quintais' : 'Fotos de mulheres nos quintais'}">${itens.map((f, k) =>
-      `<span class="mm-${pad[k]}"><img src="${E(f.url)}" alt="" decoding="async" style="animation-delay:-${(k * 1.7).toFixed(1)}s;animation-duration:${7 + (k % 3) * 1.5}s">${pad[k] === 'g' ? `<i class="mm-leg">${E(f.legenda)}${f.ilustracao ? '' : ' · ' + E(f.uf)}</i>` : ''}</span>`).join('')}
+      `<span class="mm-${pad[k]}"><img src="${E(f.url)}" alt="" decoding="async">${pad[k] === 'g' ? `<i class="mm-leg">${E(f.legenda)}${f.ilustracao ? '' : ' · ' + E(f.uf)}</i>` : ''}</span>`).join('')}
       ${ilus ? '<span class="mos-selo">Ilustração</span>' : ''}</div>`;
   }
   function girar() {
     clearInterval(V.timer);
-    const d = V.dados; if (fotosOuIlus(d).length < 2) return;
+    const d = V.dados; if (fotosOuIlus(d).length <= 7) return;   // até 7 fotos: painel parado
     if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     V.timer = setInterval(() => {
       const box = $('#vit-foto'); if (!box) { clearInterval(V.timer); return; }
-      V.foto++; box.innerHTML = miniMosaico(d, V.foto);
-    }, 6000);
+      V.foto++; const novo = document.createElement('div'); novo.innerHTML = miniMosaico(d, V.foto);
+      // troca só as imagens e a legenda: o painel fica no mesmo lugar
+      const imgs = novo.querySelectorAll('img'), atuais = box.querySelectorAll('img');
+      atuais.forEach((im, k) => { if (imgs[k] && im.src !== imgs[k].src) { im.classList.remove('troca'); void im.offsetWidth; im.src = imgs[k].src; im.classList.add('troca'); } });
+      const lg = box.querySelector('.mm-leg'), lg2 = novo.querySelector('.mm-leg'); if (lg && lg2) lg.textContent = lg2.textContent;
+    }, 8000);
   }
 
   /* ---------- faixa da tela de entrada ---------- */
