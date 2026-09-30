@@ -1325,3 +1325,9 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .vit-amplia .fechar { position: absolute; top: -8px; right: -8px; background: var(--surface); color: var(--ink); border-radius: 50%; width: 40px; height: 40px; }
 @media (prefers-reduced-motion: reduce) { .mos-item img { transition: none; } }
 .mos-vazio { display: grid; place-items: center; min-height: 140px; padding: 20px; border: 1px dashed var(--line-2); border-radius: 12px; text-align: center; color: var(--muted); font-size: var(--t-sm); }
+/* carregando: ampulheta girando (sem a palavra) */
+.ampulheta { display: inline-flex; color: var(--muted); vertical-align: middle; }
+.ampulheta svg { animation: ampulheta 1.6s ease-in-out infinite; }
+.ampulheta.grande svg { width: 40px; height: 40px; }
+@keyframes ampulheta { 0%, 40% { transform: rotate(0); } 50%, 90% { transform: rotate(180deg); } 100% { transform: rotate(180deg); } }
+@media (prefers-reduced-motion: reduce) { .ampulheta svg { animation: none; } }

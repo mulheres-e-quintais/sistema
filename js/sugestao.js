@@ -110,7 +110,7 @@
       <h4>O que o sistema sugere</h4>
       <ul class="sug-itens">${r.itens.map(i => `<li><span class="chip ${prio[i.prio][0]}">${prio[i.prio][1]}</span><div><b>${E(i.titulo)}</b><span class="small muted">${E(i.por)}</span></div></li>`).join('')}</ul>
       <h4>Arranjo produtivo local · ${E(f.municipio)}</h4>
-      ${A.lista == null ? '<p class="small muted">Carregando…</p>' : apl && apl.apls.length
+      ${A.lista == null ? '<p class="small muted">' + MQ.ampulheta() + '</p>' : apl && apl.apls.length
         ? `<p><span class="chips-sel">${apl.apls.map(x => `<span class="chip off">${E(x)}</span>`).join(' ')}</span></p>${apl.obs ? `<p class="small">${E(apl.obs)}</p>` : ''}
            <p class="small muted">Prefira no plano o que tem comprador ou apoio no município. <button class="link" data-acao="apl-editar" data-uf="${E(f.uf)}" data-mun="${E(f.municipio)}">Alterar</button></p>`
         : `<p class="small muted">Nenhum APL cadastrado para este município. ${A.erro ? 'O cadastro de APL ainda não foi instalado no servidor (arquivo 10_apl.sql).' : `<button class="link" data-acao="apl-editar" data-uf="${E(f.uf)}" data-mun="${E(f.municipio)}">Cadastrar o que existe aqui</button> (ex.: apicultura, caprinocultura, feira agroecológica, PAA/PNAE).`}</p>`}
