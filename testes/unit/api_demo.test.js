@@ -113,7 +113,7 @@ describe('link de cadastro e aprovação', () => {
 });
 
 describe('pedidos de passagem e evento', () => {
-  const pass = { finalidade: 'intercambio', passageiros: [{ nome: 'Maria das Dores', cpf: '52998224725', nascimento: '1970-01-01', rg: '1' }] };
+  const pass = { valor_estimado: 1500, finalidade: 'intercambio', passageiros: [{ nome: 'Maria das Dores', cpf: '52998224725', nascimento: '1970-01-01', rg: '1' }] };
   test('só a articulação estadual pede', async () => {
     for (const p of ['coord_tecnico', 'coord_geral', 'agente', 'professor', 'auxiliar']) { await como(p); await falha(api.salvarPedido(null, 'passagem', 'Viagem teste', diaMais(50), pass), /articulação estadual/); }
   });
@@ -147,7 +147,7 @@ describe('pedidos de passagem e evento', () => {
     await falha(api.moverPedido(id, 'recusar', 'mudou de ideia'), /não pode ser recusado/);
   });
   test('recusa exige motivo; quem pediu cancela antes da conferência; ação inventada falha', async () => {
-    await como('bolsista'); const a = await api.salvarPedido(null, 'evento', 'Encontro PI', diaMais(60), {}); const b = await api.salvarPedido(null, 'evento', 'Encontro 2', diaMais(60), {});
+    await como('bolsista'); const a = await api.salvarPedido(null, 'evento', 'Encontro PI', diaMais(60), { valor_estimado: 500 }); const b = await api.salvarPedido(null, 'evento', 'Encontro 2', diaMais(60), { valor_estimado: 500 });
     await como('coord_geral'); await falha(api.moverPedido(a, 'recusar'), /motivo/); await api.moverPedido(a, 'recusar', 'Evento duplicado');
     await falha(api.moverPedido(a, 'pagar'), /inválida/);
     await como('coord_tecnico'); await falha(api.moverPedido(b, 'cancelar'), /quem pediu/);
@@ -155,7 +155,7 @@ describe('pedidos de passagem e evento', () => {
     assert.equal((await api.listarPedidos()).find(x => x.id === b).situacao, 'cancelado');
   });
   test('quem vê: a bolsista vê só os dela; agente e auxiliar não veem nenhum', async () => {
-    await como('bolsista'); await api.salvarPedido(null, 'evento', 'Encontro PI', diaMais(60), {});
+    await como('bolsista'); await api.salvarPedido(null, 'evento', 'Encontro PI', diaMais(60), { valor_estimado: 500 });
     assert.equal((await api.listarPedidos()).length, 1);
     await como('coord_tecnico'); assert.equal((await api.listarPedidos()).length, 1);
     for (const p of ['agente', 'auxiliar', 'professor']) { await como(p); assert.equal((await api.listarPedidos()).length, 0, p); }

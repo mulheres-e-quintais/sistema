@@ -252,6 +252,7 @@
       const dias = Math.round((new Date(data + 'T12:00:00') - new Date(R.hoje() + 'T12:00:00')) / 864e5);
       if (dias < ant && String(justificativa || '').trim().length < 15) throw falha('Pedido fora do prazo (' + ant + ' dias antes). Escreva a justificativa.');
       if (tipo === 'passagem' && !((dados && dados.passageiros) || []).length) throw falha('Informe pelo menos uma passageira ou passageiro.');
+      if (!(+(dados || {}).valor_estimado > 0)) throw falha('Informe o valor estimado do pedido (R$).');   // 35
       const agora = new Date().toISOString(); let p;
       if (!id) { p = { id: uid(), tipo, uf: eu.uf, solicitante_id: eu.id, criado_em: agora }; d.pedidos.push(p); }
       else {
@@ -263,6 +264,19 @@
       const aud = Object.assign({}, p); delete aud.dados;
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'pedidos_apoio', registro_id: p.id, acao: id ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: null, depois: aud });
       gravar(); return p.id;
+    },
+    /* tetos (mesmas regras do 35_tetos_passagens_eventos.sql) */
+    async definirValorPedido(id, valor) {
+      const d = ler(); const eu = euMesmo(); const p = (d.pedidos || []).find(x => x.id === id);
+      if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral define o valor autorizado.');
+      if (!(+valor > 0)) throw falha('Informe um valor maior que zero.');
+      if (!p || p.situacao !== 'conferido') throw falha('Só dá para definir o valor de pedido conferido, antes de autorizar.');
+      p.valor_autorizado = Math.round(+valor * 100) / 100; gravar();
+    },
+    async saldoPedidos() {
+      const d = ler(); const aut = (d.pedidos || []).filter(p => p.situacao === 'autorizado');
+      const ev = {}; aut.filter(p => p.tipo === 'evento').forEach(p => { ev[p.uf] = (ev[p.uf] || 0) + (+p.valor_autorizado || 0); });
+      return { passagem_teto: MQ.TETOS.passagem, passagem_usado: aut.filter(p => p.tipo === 'passagem').reduce((t, p) => t + (+p.valor_autorizado || 0), 0), evento_teto: MQ.TETOS.evento, evento_usado: ev };
     },
     async moverPedido(id, acao, obs, protocolo) {
       const d = ler(); const eu = euMesmo(); const p = (d.pedidos || []).find(x => x.id === id);
@@ -283,6 +297,12 @@
         if (papel !== 'coord_geral') throw falha('Quem autoriza e manda para a FUNCERN é a coordenação geral.');
         if (p.situacao !== 'conferido') throw falha('Só pedido conferido pode ser autorizado.');
         if (p.conferido_por === eu.id && conferente !== 'coord_geral') throw falha('Quem conferiu não autoriza o mesmo pedido. Devolva para ' + nomeConf + '.');
+        const v = +p.valor_autorizado || +(p.dados || {}).valor_estimado || 0;   // 35: teto por estado (evento) e do projeto (passagem)
+        if (!(v > 0)) throw falha('Informe o valor para autorizar.');
+        const outros = (d.pedidos || []).filter(y => y.id !== p.id && y.situacao === 'autorizado' && y.tipo === p.tipo && (p.tipo === 'passagem' || y.uf === p.uf)).reduce((t, y) => t + (+y.valor_autorizado || 0), 0);
+        const teto = MQ.TETOS[p.tipo];
+        if (outros + v > teto) throw falha((p.tipo === 'evento' ? 'Passa do teto de eventos de ' + p.uf + ' (R$ 6.000,00)' : 'Passa do teto de passagens do projeto (R$ 70.000,00)') + ': já autorizado ' + R.fmtBRL(outros) + ', saldo ' + R.fmtBRL(teto - outros) + '.');
+        p.valor_autorizado = v;
         Object.assign(p, { situacao: 'autorizado', decidido_por: eu.id, decidido_em: agora, obs: o || null, funcern_protocolo: String(protocolo || '').trim() || null });
       } else if (acao === 'recusar') {
         if (papel !== 'coord_geral') throw falha('Quem recusa é a coordenação geral.');

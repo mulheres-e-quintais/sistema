@@ -8,7 +8,7 @@ const R = []; const ok = (n, c, d = '') => R.push([c ? 'PASSOU' : 'FALHOU', n, d
     await p.goto('http://localhost:8766/'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector('.resumo');
     const perfil = async pf => { await p.evaluate(pf => { MQ.ui.fecharPainel(); document.querySelector(`button[data-p=${pf}]`).click(); }, pf); await p.waitForTimeout(500); await p.evaluate(() => MQ.ui.fecharPainel()); };
     const pedir = () => p.evaluate(async () => { const d = new Date(Date.now() + 50 * 864e5).toISOString().slice(0, 10);
-      const id = await MQ.apiDemo.salvarPedido(null, 'passagem', 'Intercâmbio em Juazeiro', d, { finalidade: 'intercambio', passageiros: [{ nome: 'Maria das Dores', cpf: '52998224725', nascimento: '1970-01-01', rg: '1' }] });
+      const id = await MQ.apiDemo.salvarPedido(null, 'passagem', 'Intercâmbio em Juazeiro', d, { valor_estimado: 1500, finalidade: 'intercambio', passageiros: [{ nome: 'Maria das Dores', cpf: '52998224725', nascimento: '1970-01-01', rg: '1' }] });
       await MQ.ui.carregar(); MQ.ui.render(); return id; });
     // com técnica
     await perfil('bolsista'); const id1 = await pedir();

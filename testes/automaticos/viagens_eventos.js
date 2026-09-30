@@ -26,7 +26,7 @@ const dia = n => { const d = new Date(Date.now() + n * 864e5 - new Date().getTim
   await submit();
   const nErr = await p.$$eval('form[data-form=viag-salvar] .tem-erro', l => l.length);
   ok('Enviar vazio marca viagem e passageira', nErr >= 10, nErr + ' marcados · ' + await p.textContent('form[data-form=viag-salvar] [data-erro]'));
-  await p.fill('#vg-tit', 'Intercâmbio das agricultoras de Picos em Juazeiro');
+  await p.fill('#vg-tit', 'Intercâmbio das agricultoras de Picos em Juazeiro'); await p.fill('#vg-valor', '1.800,00');
   await p.selectOption('#vg-fin', 'intercambio'); await p.fill('#vg-ori', 'Teresina/PI'); await p.fill('#vg-des', 'Petrolina/PE');
   await p.fill('#vg-ida', dia(20)); await p.dispatchEvent('#vg-ida', 'change'); await p.waitForTimeout(100);
   ok('Data com 20 dias avisa "fora do prazo" e FUNCERN 30 dias', /fora do prazo/.test(await p.textContent('[data-prazo]')) && /30 dias/.test(await p.textContent('[data-prazo]')));
@@ -66,7 +66,7 @@ const dia = n => { const d = new Date(Date.now() + n * 864e5 - new Date().getTim
   await larg('Formulário de evento');
   await submit();
   ok('Evento vazio: pede local, hora, participantes, responsável e um item', (await p.$$eval('form .tem-erro', l => l.length)) >= 5 && /Corrija|Marque/.test(await p.textContent('form[data-form=viag-salvar] [data-erro]')), (await p.$$eval('form .tem-erro', l => l.length)) + ' ' + await p.textContent('form[data-form=viag-salvar] [data-erro]'));
-  await p.fill('#vg-tit', 'Encontro de troca de conhecimentos do Piauí'); await p.fill('#vg-dia', dia(60)); await p.fill('#vg-hora', '08:00'); await p.fill('#vg-dur', '8 horas');
+  await p.fill('#vg-tit', 'Encontro de troca de conhecimentos do Piauí'); await p.fill('#vg-valor', '3500'); await p.fill('#vg-dia', dia(60)); await p.fill('#vg-hora', '08:00'); await p.fill('#vg-dur', '8 horas');
   await p.fill('#vg-loc', 'Sede da associação, Rua A, 10, Picos/PI'); await p.fill('#vg-pm', '60'); await p.fill('#vg-pe', '5');
   await p.check('[name=est_tenda]'); await p.check('[name=est_som]'); await p.fill('#vg-cad', '65'); await p.fill('#vg-alm', '65');
   await submit();
