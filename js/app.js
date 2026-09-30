@@ -319,7 +319,7 @@
       : 'Cadastre as bolsistas indicadas pelo MPA: uma de articulação estadual e uma de apoio estadual por estado.';
     let corpo = '';
     if (aba === 'visao') corpo = MQ.painelUI ? MQ.painelUI.visaoGeral(S) : '';
-    else if (aba === 'equipe') corpo = secaoPedidosAcesso() + (MQ.convitesUI ? MQ.convitesUI.secaoPendentes() : '') + `
+    else if (aba === 'equipe') corpo = (!R.temProfessorHabilitado(S.equipe) ? `<div class="aviso erro" role="status"><b>Cadastre e habilite primeiro um professor do FIC.</b> Sem professor com cadastro no Arlo e termo assinado, o sistema não cadastra coordenação técnica, bolsistas nem agentes de campo (a matrícula no curso depende dele).</div>` : '') + secaoPedidosAcesso() + (MQ.convitesUI ? MQ.convitesUI.secaoPendentes() : '') + `
       <div class="cab"><div><span class="eyebrow">Equipe do projeto</span><h1>Coordenação e bolsistas</h1><p>${intro}</p></div>${prazoChip()}</div>
       <div class="resumo" aria-label="Resumo da equipe">
         <div><span class="v num">${ct ? 1 : 0}<small> de 1</small></span><span class="l">coordenação técnica cadastrada</span></div>
@@ -966,6 +966,13 @@
     const cabP = `<div class="painel-cab"><div class="t"><span class="eyebrow">${titulo}</span>
         <h2 id="painel-t">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(nomeUF(m.uf)) : ''}</h2></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>`;
+    // 33: técnica, bolsistas e agentes só com professor do FIC habilitado (a matrícula no curso depende dele)
+    if (!edit && R.PRECISA_PROFESSOR.includes(m.papel) && !R.temProfessorHabilitado(S.equipe)) {
+      const prof = (S.equipe || []).find(x => x.papel === 'professor_fic' && x.status === 'ativa');
+      return cabP + `<div class="painel-corpo"><div class="aviso erro sem-professor"><b>Ainda não dá para cadastrar.</b> ${esc(R.MSG_SEM_PROFESSOR)}</div>
+        <p class="small muted">${prof ? `${esc(nomeDe(prof))} já está cadastrado(a) como professor(a): falta registrar o cadastro no Arlo e o termo assinado, na ficha dele(a).` : 'Nenhum professor do FIC cadastrado ainda. Quem cadastra professor é a coordenação geral, na aba Equipe.'}</p>
+        ${prof && S.eu.papel === 'coord_geral' ? `<div class="acoes"><button class="btn pri" data-acao="ver" data-id="${esc(prof.id)}">Abrir a ficha de ${esc(nomeDe(prof).split(' ')[0])}</button></div>` : ''}</div>`;
+    }
     // cadastro novo: primeiro escolhe como (link para a pessoa preencher ou à mão)
     if (!edit && !pre && MQ.convitesUI && p.modo !== 'manual') {
       if (p.modo === 'link') return cabP + `<div class="painel-corpo"><button type="button" class="cad-modo cad-modo-2 cad-modo-topo" data-acao="cad-modo" data-m="manual"><b>Prefere digitar os dados você mesmo?</b><span>Abra o formulário e preencha agora, sem mandar link.</span></button>${MQ.convitesUI.blocoLink(p)}</div>`;
