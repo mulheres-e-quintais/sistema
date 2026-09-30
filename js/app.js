@@ -298,7 +298,7 @@
     const aval = MQ.pagUI ? MQ.pagUI.contaAval() : 0;
     const equipe = (S.pre || []).length + (S.pedidosAcesso || []).length;   // cadastros do link para conferir + pedidos de novo acesso
     return [['visao', 'Visão geral', 0], ['equipe', 'Equipe', equipe], ['selecao', 'Seleção', aguard], ['campo', 'Campo', diagAguard], ['fic', 'Curso FIC', 0],
-      ['pagamentos', 'Pagamentos', aval], ['viagens', 'Viagens e eventos', MQ.viagUI ? MQ.viagUI.contaMinha() : 0], ['custos', 'Custos', 0], ['execucao', 'Execução financeira', 0], ['documentos', 'Documentos', 0], ['historico', 'Histórico', 0]].filter(([id]) => pode.includes(id));
+      ['pagamentos', 'Pagamentos', aval], ['viagens', 'Viagens e eventos', MQ.viagUI ? MQ.viagUI.contaMinha() : 0], ['custos', 'Custos', 0], ['execucao', 'Execução', 0], ['documentos', 'Documentos', 0], ['historico', 'Histórico', 0]].filter(([id]) => pode.includes(id));
   }
   function abaAtual() { const pode = abasDoPapel(); return pode.includes(S.aba) ? S.aba : pode[0]; }
   function telaCoordenacao() {

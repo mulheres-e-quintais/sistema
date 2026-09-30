@@ -222,7 +222,7 @@
       ]
     },
     execucao: {
-      t: 'Execução financeira',
+      t: 'Execução',
       intro: 'Previsto × executado de cada rubrica do TED, com gráficos. Bolsas e ajudas de custo lançadas no Arlo, passagens e eventos autorizados entram sozinhos; o resto e os repasses do MDA a coordenação geral lança. Só a coordenação geral vê esta aba.',
       tarefas: [
         ['Lançar uma despesa paga', ['Toque em <b>Lançar despesa ou repasse</b>.', 'Deixe marcado <b>Despesa paga</b> e escolha o item do orçamento.', 'Informe o valor, a data do pagamento e, se tiver, o documento (nota fiscal, ordem bancária).', 'Toque em <b>Lançar</b>.']],

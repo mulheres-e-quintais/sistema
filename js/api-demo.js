@@ -202,14 +202,14 @@
     async reler() { mem = null; ler(); return euMesmo(); },   // lê de novo o que está guardado no aparelho (outra aba mudou; testes)
     async recomecar() { mem = null; try { localStorage.removeItem(CHAVE); } catch (e) {} ler(); gravar(); return euMesmo(); },
 
-    /* ---------- Execução financeira (mesmas regras do 36_execucao_financeira.sql): só a coordenação geral; nada se altera, erro vira estorno ---------- */
+    /* ---------- Execução (mesmas regras do 36_execucao_financeira.sql): só a coordenação geral; nada se altera, erro vira estorno ---------- */
     async listarLancamentos() {
       const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') return [];
       return copia((ler().lancamentos || []).slice().sort((a, b) => String(b.data).localeCompare(String(a.data)) || String(b.criado_em).localeCompare(String(a.criado_em))));
     },
     async lancarExecucao(dd) {
       const d = ler(); const eu = euMesmo();
-      if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral lança a execução financeira.');
+      if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral lança a execução.');
       const erros = MQ.execUI ? MQ.execUI.validar(dd) : {};
       if (Object.keys(erros).length) { const e = falha(Object.values(erros)[0]); e.campos = erros; throw e; }
       const x = { id: uid(), tipo: dd.tipo, item: dd.item, valor: Math.round(+dd.valor * 100) / 100, data: dd.data, documento: dd.documento || null, descricao: dd.descricao || null,
@@ -220,7 +220,7 @@
     },
     async estornarLancamento(id, motivo) {
       const d = ler(); const eu = euMesmo();
-      if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral lança a execução financeira.');
+      if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral lança a execução.');
       const o = (d.lancamentos || []).find(x => x.id === id);
       if (!o) throw falha('Lançamento a estornar não encontrado.');
       if (o.estorno_de) throw falha('Não se estorna um estorno.');
