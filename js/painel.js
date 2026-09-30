@@ -524,7 +524,7 @@
       <text x="${ax + esc * 3}" y="${ay - esc * 2.2}" class="sede-rot" font-size="${esc * 3.4}">Apodi</text>`;
     const nMun = muns.length;
     const siglas = ufsProj.concat(['RN']).map(uf => { const g = MQ.GEO.uf[uf]; if (!g || !g.c) return ''; const [x, y] = px(g.c);
-      return `<text x="${x}" y="${y}" class="uf-sigla" font-size="${esc * 3.6}" text-anchor="middle">${uf}</text>`; }).join('');
+      return `<text x="${x}" y="${y}" class="uf-sigla${uf === 'RN' ? ' sigla-sede' : ''}" font-size="${esc * 3.6}" text-anchor="middle">${uf}</text>`; }).join('');
     return `<svg class="mapa mapa-pub" viewBox="${vb.join(' ')}" role="img" aria-label="Mapa dos estados do projeto: ${ufsProj.map(u => u + ' ' + nMunUF(u) + ' municípios').join(', ')}; ${nMun} municípios que receberão os quintais, ligados a Apodi/RN, sede do IFRN" preserveAspectRatio="xMidYMid meet">${estados}${siglas}<g class="rotas">${rotas}</g>${pontos}${sede}</svg>
       <p class="mun-nome" aria-live="polite"><span data-mun-nome></span></p>
       <ul class="mapa-lista">${ordem.map(uf => { const nm = nMunUF(uf);

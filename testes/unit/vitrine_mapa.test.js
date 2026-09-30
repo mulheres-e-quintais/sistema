@@ -47,3 +47,12 @@ test('situação que o sistema ainda não conhece não derruba a tela (viagens e
   let hb; assert.doesNotThrow(() => { hb = b.MQ.viagUI.secaoBolsista(); });
   assert.ok(/situacao_nova&lt;b&gt;/.test(hb), 'na lista de quem pediu aparece a situação crua, escapada');
 });
+
+test('carregando: mulher regando (sem a palavra na tela, mas o leitor de tela ouve "Carregando"); RN com sigla própria', async () => {
+  const t = await montar('coord_geral'); const h = t.MQ.ampulheta(); const g = t.MQ.ampulheta(true);
+  assert.ok(/role="status"/.test(h) && /aria-label="Carregando"/.test(h));
+  assert.equal((h.match(/class="gota/g) || []).length, 3, 'três gotas caindo');
+  assert.ok(!/>\s*Carregando/.test(h), 'sem a palavra visível');
+  assert.ok(/class="ampulheta grande"/.test(g));
+  assert.ok(/class="uf-sigla sigla-sede"[^>]*>RN</.test(t.MQ.painelUI.mapaUFs()));
+});

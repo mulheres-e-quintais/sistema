@@ -1317,12 +1317,13 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .vit-amplia .fechar { position: absolute; top: -8px; right: -8px; background: var(--surface); color: var(--ink); border-radius: 50%; width: 40px; height: 40px; }
 @media (prefers-reduced-motion: reduce) { .mos-item img { transition: none; } }
 .mos-vazio { display: grid; place-items: center; min-height: 140px; padding: 20px; border: 1px dashed var(--line-2); border-radius: 12px; text-align: center; color: var(--muted); font-size: var(--t-sm); }
-/* carregando: ampulheta girando (sem a palavra) */
+/* carregando: mulher regando um broto; as gotas caem do regador (sem a palavra) */
 .ampulheta { display: inline-flex; color: var(--muted); vertical-align: middle; }
-.ampulheta svg { animation: ampulheta 1.6s ease-in-out infinite; }
-.ampulheta.grande svg { width: 40px; height: 40px; }
-@keyframes ampulheta { 0%, 40% { transform: rotate(0); } 50%, 90% { transform: rotate(180deg); } 100% { transform: rotate(180deg); } }
-@media (prefers-reduced-motion: reduce) { .ampulheta svg { animation: none; } }
+.ampulheta.grande svg { width: 48px; height: 48px; }
+.ampulheta .gota { opacity: 0; transform-box: fill-box; animation: gota 1.2s ease-in infinite; }
+.ampulheta .g2 { animation-delay: .4s; } .ampulheta .g3 { animation-delay: .8s; }
+@keyframes gota { 0% { opacity: 0; transform: translateY(0); } 15% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(15px); } }
+@media (prefers-reduced-motion: reduce) { .ampulheta .gota { animation: none; opacity: 1; } .ampulheta .g2 { transform: translateY(5px); } .ampulheta .g3 { transform: translateY(10px); } }
 .mos-ilus .mos-item { cursor: default; }
 .mos-selo { position: absolute; top: 6px; left: 6px; padding: 2px 8px; border-radius: 999px; font-size: var(--t-2xs); font-weight: 600; background: rgba(255,255,255,.88); color: #3B2A20; }
 .mos-ilus .mos-leg { opacity: 1; }
@@ -1338,14 +1339,14 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 /* as fotos crescem e diminuem devagar */
 /* painel fixo: passar o mouse aproxima a foto; a troca de foto é um esmaecer suave */
 .mini-mos img { transition: transform .4s ease; }
-.mini-mos > span:hover img, .mosaico .mos-item:hover img, .mosaico .mos-item:focus-visible img { transform: scale(1.15); }
+.mini-mos > span:hover img, .mosaico .mos-item:hover img, .mosaico .mos-item:focus-visible img { transform: scale(1.3); }   /* amplia em volta do rosto */
 @media (prefers-reduced-motion: no-preference) { .mini-mos img.troca { animation: troca .8s ease-out; } @keyframes troca { from { opacity: 0; } to { opacity: 1; } } }
 @media (prefers-reduced-motion: reduce) { .mini-mos img, .mosaico .mos-item img { transition: none; } .mini-mos > span:hover img, .mosaico .mos-item:hover img { transform: none; } }
 .mos-l { grid-column: span 2; }
 /* mosaico de retratos: quadros em pé, com o rosto no alto da foto preservado */
 .mosaico { grid-auto-rows: 170px; }
 @media (max-width: 520px) { .mosaico { grid-auto-rows: 40vw; } }
-.mosaico .mos-item img, .mini-mos img { object-position: 50% 22%; }
+.mosaico .mos-item img, .mini-mos img { object-position: 50% 22%; transform-origin: 50% 30%; }
 /* entrada: no computador o mosaico tem a mesma altura do quadro do mapa */
 @media (min-width: 561px) { #vit-foto { height: auto; min-height: 300px; align-self: stretch; } }
 @media (max-width: 560px) { #vit-foto { height: 340px; } }
@@ -1378,11 +1379,14 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .mapa-lista .lg-mun { color: var(--ocre); font-weight: 600; }
 
 /* cada estado com uma cor (paleta validada para daltonismo; a sigla vai escrita no mapa e na legenda) */
-:root { --uf-PI: #2E6FB0; --uf-PE: #C9542C; --uf-BA: #1F9E86; --uf-SE: #D8A21C; --uf-AL: #9A4FA8; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --uf-PI: #3E7FD0; --uf-PE: #D26A40; --uf-BA: #1E9A7C; --uf-SE: #B98617; --uf-AL: #B067C2; } }
-:root[data-theme="dark"] { --uf-PI: #3E7FD0; --uf-PE: #D26A40; --uf-BA: #1E9A7C; --uf-SE: #B98617; --uf-AL: #B067C2; }
+/* cores do MDA (marca do Governo Federal: verde-amazônia, azul-atlântico, amarelo-sol, vermelho-urucum) em versão suave;
+   5 estados e 4 cores: o SE usa um verde mais claro que o do PI (não fazem divisa). Vizinhos conferidos no validador, inclusive para daltonismo. */
+:root { --uf-PI: #6CBB62; --uf-BA: #8FA3F5; --uf-PE: #FFE27A; --uf-AL: #F2918A; --uf-SE: #9FDA90; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --uf-PI: #4F9A47; --uf-BA: #8195DC; --uf-PE: #D2B955; --uf-AL: #D2807A; --uf-SE: #A4D196; } }
+:root[data-theme="dark"] { --uf-PI: #4F9A47; --uf-BA: #8195DC; --uf-PE: #D2B955; --uf-AL: #D2807A; --uf-SE: #A4D196; }
 .mapa-pub .uf-pub { stroke: var(--surface); }
-.mapa-pub .uf-sigla { fill: #fff; font-weight: 700; paint-order: stroke; stroke: rgba(0,0,0,.45); stroke-width: .08px; pointer-events: none; }
+.mapa-pub .uf-sigla { fill: #1E1510; font-weight: 700; paint-order: stroke; stroke: rgba(255,255,255,.4); stroke-width: .12px; pointer-events: none; }   /* estados em tom suave nos dois temas: sigla sempre escura (contraste ≥ 5:1) */
+.mapa-pub .uf-sigla.sigla-sede { fill: var(--ink); stroke: var(--surface); }   /* RN: fundo segue o tema, sigla também */
 .mapa-pub .mun-pt .mun-dot { fill: #fff; stroke: #2b1d14; }
 .mapa-pub .mun-pt .mun-onda { fill: #fff; }
 .mapa-pub .rota { stroke: #2b1d14; opacity: .3; }
