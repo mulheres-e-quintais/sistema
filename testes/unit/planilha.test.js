@@ -50,3 +50,26 @@ test('números e datas no jeito brasileiro', async () => {
   assert.equal(n('R$ 1.234,56'), 1234.56); assert.equal(n('1234.56'), 1234.56); assert.equal(n('1.234'), 1234); assert.equal(n('(350,00)'), -350); assert.equal(n('-10'), -10); assert.equal(n(''), null);
   assert.equal(d('05/09/2026'), '2026-09-05'); assert.equal(d('5/9/26'), '2026-09-05'); assert.equal(d('2026-09-05T00:00'), '2026-09-05'); assert.equal(d(46288), '2026-09-23'); assert.equal(d('ontem'), null);
 });
+
+/* revisão 01/10/2026: casos que antes davam número errado sem aviso */
+test('total com o rótulo fora da coluna Item não conta duas vezes; "Valor total" vence "Valor unitário"; linha do Excel certa', async () => {
+  const t = await montar('coord_geral'); const P = t.MQ.planilha;
+  const a = P.interpretar(await P.ler(arquivo('total_na_coluna_A.xlsx'))); assert.equal(P.resumo(a).gasto, 100); assert.equal(a.ignoradas, 1);
+  const b = P.interpretar(await P.ler(arquivo('valor_unitario_e_total.xlsx'))); assert.equal(b.linhas[0].valor, 4000);
+  const c = P.interpretar(await P.ler(arquivo('linhas_com_buracos.xlsx'))); assert.deepEqual(c.linhas.map(l => l.linha).join(','), '2,5,9');
+});
+test('números e datas: sinal depois do R$, menos tipográfico, 3 casas decimais, datas impossíveis e ordem americana', async () => {
+  const t = await montar('coord_geral'); const P = t.MQ.planilha;
+  const n = { 'R$ -1.234,56': -1234.56, '−1.234,56': -1234.56, '0,125': 0.125, '0.001': 0.001, '1234,567': 1234.567, '1.234': 1234, '12.5': 12.5, '(1.200,00)': -1200, '1.234,56-': -1234.56, '12.345.678,90': 12345678.9, 'R$ 1.234,56': 1234.56 };
+  for (const [k, v] of Object.entries(n)) assert.equal(P.numeroBR(k), v, k);
+  assert.equal(P.dataDe('09/25/2026'), '2026-09-25'); assert.equal(P.dataDe('31/02/2026'), null); assert.equal(P.dataDe('2026-13-01'), null); assert.equal(P.dataDe('29/02/2028'), '2028-02-29');
+  const r = P.interpretar({ aba: 'x', linhas: [['Data', 'Item', 'Valor'], ['31/02/2026', 'Diárias', 10], ['10/09/2026', 'Diárias', 5]] });
+  assert.ok(r.avisos.some(x => /não reconheci/.test(x)), 'avisa a data impossível');
+});
+test('CSV com título de vírgula na 1ª linha usa o ; dos dados; nome genérico não cai num item específico', async () => {
+  const t = await montar('coord_geral'); const P = t.MQ.planilha;
+  const r = P.interpretar(await P.ler(csv('a.csv', 'Relatório de gastos, set/2026\nData;Item;Valor\n10/09/2026;Diárias;1.234,56\n')));
+  assert.equal(r.linhas[0].valor, 1234.56); assert.equal(r.linhas[0].linha, 3);
+  assert.deepEqual(JSON.stringify(P.classificar('Passagens')), JSON.stringify({ item: null, rubrica: 'r6' }));
+  assert.equal(P.classificar('Coordenador').item, null);
+});

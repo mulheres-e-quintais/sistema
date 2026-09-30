@@ -38,7 +38,7 @@ language plpgsql security definer set search_path = public as $$
 begin
   if tg_op <> 'INSERT' then raise exception 'Planilha enviada não se altera nem se apaga. Envie uma nova: a mais recente é a que vale.'; end if;
   new.enviado_por := public.meu_id(); new.enviado_em := now();
-  if new.posicao_em > current_date then raise exception 'A data da planilha não pode ser no futuro.'; end if;
+  if new.posicao_em > (now() at time zone 'America/Fortaleza')::date then raise exception 'A data da planilha não pode ser no futuro.'; end if;
   if new.posicao_em < date '2026-01-01' then raise exception 'Data da planilha fora do período do projeto.'; end if;
   if new.arquivo_path !~ '^\d{4}/[\w.-]+$' then raise exception 'Caminho do arquivo inválido.'; end if;
   return new;

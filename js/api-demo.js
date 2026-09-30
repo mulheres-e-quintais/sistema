@@ -174,6 +174,11 @@
   const copia = o => JSON.parse(JSON.stringify(o));
   const falha = msg => { const e = new Error(msg); e.regra = true; return e; };
 
+  // 38: quem estava matriculado na turma na data do encontro; mês com a bolsa do professor pedida (ou com aval) fica fechado
+  const matriculadosEm = (d, turma, data) => (d.matriculas || []).filter(m => m.turma_id === turma && String(m.matriculado_em || '').slice(0, 10) <= data
+    && (!m.cancelada_em || R.diaLocal(m.cancelada_em) > data)).map(m => m.equipe_id);
+  const ficMesFechado = (d, prof, data) => (d.solicitacoes || []).some(s => s.tipo === 'bolsa' && s.equipe_id === prof && String(s.mes).slice(0, 7) === String(data).slice(0, 7)
+    && ['solicitada', 'avalizada', 'lancada'].includes(s.situacao));
   function euMesmo() {
     const d = ler();
     const id = d.eu[d.perfil];
@@ -372,12 +377,12 @@
       } else if (String(relatorio || '').trim().length < 50) throw falha('Escreva o relatório de atividades do mês (pelo menos algumas linhas).');
       const agora = new Date().toISOString(); let alvo = s;
       if (tipo === 'bolsa' && eu.papel === 'professor_fic') {   // 38: relatório com os encontros do mês e a presença, gravado pelo sistema
-        const enc = (d.ficEncontros || []).filter(e => e.professor_id === eu.id && String(e.data).slice(0, 7) === m.slice(0, 7)).sort((a, b) => String(a.data).localeCompare(String(b.data)));
+        const enc = (d.ficEncontros || []).filter(e => e.professor_id === eu.id && !e.cancelado_em && String(e.data).slice(0, 7) === m.slice(0, 7)).sort((a, b) => String(a.data).localeCompare(String(b.data)));
         if (!enc.length && String((detalhe || {}).justificativa_sem_encontro || '').trim().length < 30) throw falha('Nenhum encontro do curso registrado neste mês: explique por quê (pelo menos 30 letras), por exemplo, mês de preparação do curso.');
         const nomeP = id => { const q = d.equipe.find(y => y.id === id) || {}; return { nome: q.nome_social || q.nome, papel: q.papel, uf: q.uf }; };
         detalhe = Object.assign({}, detalhe || {}, { fic_carga_horaria: enc.reduce((t, e) => t + (+e.carga_horaria || 0), 0), fic_gerado_em: new Date().toISOString(),
           fic_encontros: enc.map(e => ({ id: e.id, data: e.data, turma: ((d.turmas || []).find(t => t.id === e.turma_id) || {}).nome, carga_horaria: e.carga_horaria, modalidade: e.modalidade, conteudo: e.conteudo,
-            presencas: (d.ficPresencas || []).filter(p => p.encontro_id === e.id).map(p => Object.assign(nomeP(p.equipe_id), { presente: p.presente, confirmado_em: p.confirmado_em })).sort((a, b) => String(a.nome).localeCompare(String(b.nome))) })) });
+            presencas: (d.ficPresencas || []).filter(p => p.encontro_id === e.id && (p.presente || matriculadosEm(d, e.turma_id, e.data).includes(p.equipe_id))).map(p => Object.assign(nomeP(p.equipe_id), { presente: p.presente, confirmado_em: p.confirmado_em })).sort((a, b) => String(a.nome).localeCompare(String(b.nome))) })) });
       }
       if (!alvo) { alvo = { id: uid(), tipo, equipe_id: eu.id, mes: m }; d.solicitacoes.push(alvo); }
       Object.assign(alvo, { situacao: 'solicitada', valor_solicitado: valor, valor_avalizado: null, relatorio: relatorio || null, detalhe: detalhe || {}, solicitada_em: agora, aval_por: null, aval_em: null });
@@ -440,38 +445,61 @@
     async salvarEncontroFic(x) {
       const d = ler(); const eu = euMesmo(); d.ficEncontros = d.ficEncontros || []; d.ficPresencas = d.ficPresencas || [];
       if (!eu || !['professor_fic', 'coord_geral'].includes(eu.papel)) throw falha('Quem registra os encontros do curso é o professor do FIC.');
-      if (!(d.turmas || []).some(t => t.id === x.turma_id)) throw falha('Turma não encontrada.');
+      const t = (d.turmas || []).find(y => y.id === x.turma_id);
+      if (!t) throw falha('Turma não encontrada.');
+      if (!t.professor_id) throw falha('Esta turma não tem professor(a): ajuste a turma antes.');
+      if (eu.papel === 'professor_fic' && t.professor_id !== eu.id) throw falha('Esta turma é de outro(a) professor(a): só dá para registrar encontros das suas turmas.');
+      const antes = x.id ? d.ficEncontros.find(y => y.id === x.id) : null;
+      if (antes && antes.turma_id !== x.turma_id) throw falha('A turma de um encontro não muda. Cancele este e registre de novo na turma certa.');
       if (!x.data || x.data > R.hoje()) throw falha('A data do encontro não pode ser no futuro.');
       if (x.data < '2026-09-01') throw falha('Data antes do início do projeto.');
-      if (!(+x.carga_horaria > 0 && +x.carga_horaria <= 12)) throw falha('Informe a carga horária do encontro (até 12 horas).');
+      if (!(Math.round(+x.carga_horaria * 10) > 0 && +x.carga_horaria <= 12)) throw falha('Informe a carga horária do encontro (até 12 horas).');
       if (!['presencial', 'online', 'ava'].includes(x.modalidade)) throw falha('Modalidade inválida.');
-      if (String(x.conteudo || '').trim().length < 10) throw falha('Escreva o que foi trabalhado no encontro (pelo menos 10 letras).');
-      const mats = (d.matriculas || []).filter(m => m.turma_id === x.turma_id && !m.cancelada_em).map(m => m.equipe_id);
+      const cont = String(x.conteudo || '').trim();
+      if (cont.length < 10) throw falha('Escreva o que foi trabalhado no encontro (pelo menos 10 letras).');
+      if (cont.length > 2000) throw falha('O texto do que foi trabalhado passou de 2.000 letras.');
+      const mats = matriculadosEm(d, x.turma_id, x.data);
       const pres = x.presentes || [];
-      if (pres.some(id => !mats.includes(id))) throw falha('Só entra na lista de presença quem está matriculado nesta turma.');
-      const fechado = (prof, data) => (d.solicitacoes || []).some(s => s.tipo === 'bolsa' && s.equipe_id === prof && String(s.mes).slice(0, 7) === String(data).slice(0, 7) && ['avalizada', 'lancada'].includes(s.situacao));
+      if (pres.some(id => !mats.includes(id))) throw falha('Só entra na lista de presença quem estava matriculado nesta turma na data do encontro.');
       const agora = new Date().toISOString(); let e;
       if (!x.id) {
-        const prof = eu.papel === 'professor_fic' ? eu.id : ((d.turmas || []).find(t => t.id === x.turma_id) || {}).professor_id;   // o encontro é sempre do professor da turma
-        if (fechado(prof, x.data)) throw falha('A bolsa deste mês do professor já teve aval: não dá para incluir encontro neste mês.');
-        e = { id: uid(), professor_id: prof, criado_em: agora };
+        if (ficMesFechado(d, t.professor_id, x.data)) throw falha('A bolsa deste mês do professor já foi pedida: não dá para incluir encontro neste mês (se a coordenação devolver o pedido, reabre).');
+        if (d.ficEncontros.some(y => y.turma_id === x.turma_id && y.data === x.data && !y.cancelado_em && String(y.conteudo).trim().toLowerCase() === cont.toLowerCase())) throw falha('Este encontro já está registrado (mesma turma, data e conteúdo).');
+        e = { id: uid(), professor_id: t.professor_id, criado_em: agora };   // sempre em nome do professor da turma
       } else {
-        e = d.ficEncontros.find(y => y.id === x.id); if (!e) throw falha('Encontro não encontrado.');
-        if (fechado(e.professor_id, e.data) || fechado(e.professor_id, x.data)) throw falha('A bolsa deste mês já teve aval: o encontro não muda mais.');
-        if (e.turma_id !== x.turma_id && d.ficPresencas.some(p => p.encontro_id === e.id && p.confirmado_em)) throw falha('Já há presença confirmada neste encontro: a turma não pode mudar.');
+        e = antes; if (!e) throw falha('Encontro não encontrado.');
+        if (eu.papel === 'professor_fic' && e.professor_id !== eu.id) throw falha('Este encontro é de outro(a) professor(a).');
+        if (e.cancelado_em) throw falha('Este encontro foi cancelado e não muda mais.');
+        if (ficMesFechado(d, e.professor_id, e.data) || ficMesFechado(d, e.professor_id, x.data)) throw falha('A bolsa deste mês já foi pedida: o encontro não muda mais (se a coordenação devolver o pedido, reabre).');
+        if (d.ficPresencas.some(p => p.encontro_id === e.id && p.confirmado_em && (!pres.includes(p.equipe_id) || !mats.includes(p.equipe_id))))
+          throw falha('Alguém que já confirmou a presença foi desmarcado (ou ficou fora da lista pela nova data). Quem confirmou continua presente.');
       }
-      for (const id of mats) { const p = d.ficPresencas.find(y => y.encontro_id === e.id && y.equipe_id === id);
-        if (p && p.confirmado_em && !pres.includes(id)) throw falha('Alguém que já confirmou a presença foi desmarcado. Quem confirmou continua presente.'); }
       if (!x.id) d.ficEncontros.push(e);
-      Object.assign(e, { turma_id: x.turma_id, data: x.data, carga_horaria: +x.carga_horaria, modalidade: x.modalidade, conteudo: String(x.conteudo).trim(), atualizado_em: agora });
+      Object.assign(e, { turma_id: x.turma_id, data: x.data, carga_horaria: Math.round(+x.carga_horaria * 10) / 10, modalidade: x.modalidade, conteudo: cont, atualizado_em: agora });
       mats.forEach(id => { const p = d.ficPresencas.find(y => y.encontro_id === e.id && y.equipe_id === id); const v = pres.includes(id);
         if (!p) d.ficPresencas.push({ id: uid(), encontro_id: e.id, equipe_id: id, presente: v, marcado_por: eu.id, marcado_em: agora, confirmado_em: null });
         else if (p.presente !== v) Object.assign(p, { presente: v, marcado_por: eu.id, marcado_em: agora }); });
+      d.ficPresencas.filter(p => p.encontro_id === e.id && p.presente && !p.confirmado_em && !mats.includes(p.equipe_id))   // saiu da lista pela nova data: fica ausente
+        .forEach(p => Object.assign(p, { presente: false, marcado_por: eu.id, marcado_em: agora }));
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'fic_encontros', registro_id: e.id, acao: x.id ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: null, depois: copia(e) });
       gravar(); return e.id;
     },
+    async cancelarEncontroFic(id, motivo) {
+      const d = ler(); const eu = euMesmo(); const e = (d.ficEncontros || []).find(y => y.id === id);
+      if (!eu || !['professor_fic', 'coord_geral'].includes(eu.papel)) throw falha('Quem cancela um encontro é o professor do FIC.');
+      if (!e) throw falha('Encontro não encontrado.');
+      if (eu.papel === 'professor_fic' && e.professor_id !== eu.id) throw falha('Este encontro é de outro(a) professor(a).');
+      if (e.cancelado_em) throw falha('Este encontro já foi cancelado.');
+      if (ficMesFechado(d, e.professor_id, e.data)) throw falha('A bolsa deste mês já foi pedida: o encontro não muda mais (se a coordenação devolver o pedido, reabre).');
+      if (String(motivo || '').trim().length < 10) throw falha('Escreva o motivo do cancelamento (pelo menos 10 letras).');
+      const agora = new Date().toISOString(); Object.assign(e, { cancelado_em: agora, cancelado_por: eu.id, motivo_cancelamento: String(motivo).trim(), atualizado_em: agora });
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'fic_encontros', registro_id: e.id, acao: 'UPDATE', por: eu.id, em: agora, antes: null, depois: copia(e) });
+      gravar();
+    },
     async confirmarPresencaFic(encontro_id) {
-      const d = ler(); const eu = euMesmo(); const p = (d.ficPresencas || []).find(y => y.encontro_id === encontro_id && y.equipe_id === (eu || {}).id && y.presente && !y.confirmado_em);
+      const d = ler(); const eu = euMesmo(); const e = (d.ficEncontros || []).find(y => y.id === encontro_id);
+      if (!e || e.cancelado_em) throw falha('Este encontro não está disponível para confirmar (foi cancelado?).');
+      const p = (d.ficPresencas || []).find(y => y.encontro_id === encontro_id && y.equipe_id === (eu || {}).id && y.presente && !y.confirmado_em);
       if (!p) throw falha('Não há presença sua para confirmar neste encontro (ou já está confirmada).');
       p.confirmado_em = new Date().toISOString(); gravar();
     },

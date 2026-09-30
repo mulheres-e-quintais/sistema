@@ -112,6 +112,8 @@
   };
 
   R.hoje = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+  // dia local (Brasil) de um carimbo de data e hora gravado em UTC ("2026-10-01T01:00Z" é 30/09 à noite aqui)
+  R.diaLocal = v => { if (!v) return null; const s = String(v); if (s.length <= 10) return s; const t = new Date(s); return isNaN(t) ? s.slice(0, 10) : new Date(t.getTime() - t.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
   R.fmtData = d => (d ? d.slice(0, 10).split('-').reverse().join('/') : '');
   R.fmtBRL = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   // dias de calendário até a data: hoje = 0, amanhã = 1, ontem = -1 (não depende da hora do dia)
