@@ -213,7 +213,6 @@
     .filter(m => m.status === 'desligada' && m.papel === papel && (uf ? m.uf === uf : true))
     .filter(m => !S.equipe.some(x => x.substitui_id === m.id))
     .sort((a, b) => String(b.data_fim).localeCompare(String(a.data_fim)))[0];
-  const somaUF = (uf, campo) => ativos().filter(m => m.uf === uf).reduce((s, m) => s + (+m[campo] || 0), 0);
 
   /* ---------- desenho ---------- */
   function render() {
@@ -288,8 +287,9 @@
     coord_tecnico: ['selecao', 'equipe', 'campo', 'pagamentos', 'viagens', 'custos']
   };
   /* seções da coordenação com o número de pendências de cada uma (abas no computador, menu ☰ no celular) */
+  const abasDoPapel = () => ABAS_PAPEL[S.eu.papel] || ABAS_PAPEL.coord_tecnico;
   function abasCoord() {
-    const pode = ABAS_PAPEL[S.eu.papel] || ABAS_PAPEL.coord_tecnico;
+    const pode = abasDoPapel();
     const aguard = (S.fichas || []).filter(f => f.situacao === 'aguardando').length;
     const diagAguard = (S.diagnosticos || []).filter(x => x.situacao === 'aguardando').length;
     const aval = MQ.pagUI ? MQ.pagUI.contaAval() : 0;
@@ -297,15 +297,14 @@
     return [['visao', 'Visão geral', 0], ['equipe', 'Equipe', equipe], ['selecao', 'Seleção', aguard], ['campo', 'Campo', diagAguard], ['fic', 'Curso FIC', 0],
       ['pagamentos', 'Pagamentos', aval], ['viagens', 'Viagens e eventos', MQ.viagUI ? MQ.viagUI.contaMinha() : 0], ['custos', 'Custos', 0], ['documentos', 'Documentos', 0], ['historico', 'Histórico', 0]].filter(([id]) => pode.includes(id));
   }
-  function abaAtual() { const pode = ABAS_PAPEL[S.eu.papel] || ABAS_PAPEL.coord_tecnico; return pode.includes(S.aba) ? S.aba : pode[0]; }
+  function abaAtual() { const pode = abasDoPapel(); return pode.includes(S.aba) ? S.aba : pode[0]; }
   function telaCoordenacao() {
     const souGeral = S.eu.papel === 'coord_geral';
     const ct = naVaga('coord_tecnico');
     const bols = ativos().filter(m => R.ehBolsista(m.papel));
     const pagaveis = ativos().filter(m => m.papel === 'coord_tecnico' || R.ehBolsista(m.papel));
     const aptas = pagaveis.filter(m => R.situacao(m).cod === 'ok').length;
-    const pode = ABAS_PAPEL[S.eu.papel] || ABAS_PAPEL.coord_tecnico;
-    const aba = pode.includes(S.aba) ? S.aba : pode[0];
+    const aba = abaAtual();
     const lista = abasCoord();
     // número na aba = coisas esperando uma ação SUA ali (quem lê tela ouve "3 esperando você")
     const abas = lista.map(([id, t, n]) => [id, `<span class="aba-t" data-t="${esc(t)}">${t}</span>` + (n ? ` <span class="conta" aria-hidden="true">${n}</span><span class="so-leitor"> (${n} esperando você)</span>` : '')]);

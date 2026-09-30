@@ -26,7 +26,6 @@
   function totais(d) {
     const t = { fichas: 0, selecionadas: 0, diagnosticos: 0, planos: 0, implantados: 0, acompanhamentos: 0 };
     (d.por_uf || []).forEach(u => Object.keys(t).forEach(k => { t[k] += +u[k] || 0; }));
-    t.porUF = k => Object.fromEntries((d.por_uf || []).map(u => [u.uf, +u[k] || 0]));
     t.equipe = (d.equipe || {}).bolsistas + (d.equipe || {}).agentes || 0;
     return t;
   }
@@ -125,7 +124,7 @@
      quando os números chegam, nada na tela de entrada sai do lugar */
   const esqueleto = () => `<span class="eyebrow">O projeto agora</span><h2 id="vit-t" class="serif">Mulheres &amp; Quintais em números</h2>
     <div class="vts">${'<div class="vt esq"><span class="vt-n">&nbsp;</span><span class="vt-l">&nbsp;</span></div>'.repeat(4)}</div>
-    <div class="vit-duo" aria-hidden="true"><div class="vit-mapa">${MQ.painelUI && MQ.painelUI.mapaUFs ? MQ.painelUI.mapaUFs({}, 'mulheres selecionadas') : ''}</div>
+    <div class="vit-duo" aria-hidden="true"><div class="vit-mapa">${MQ.painelUI && MQ.painelUI.mapaUFs ? MQ.painelUI.mapaUFs() : ''}</div>
       <div id="vit-foto"><div class="vit-sem-foto"><span>&nbsp;</span></div></div></div>
     <p class="vit-rodape"><span>&nbsp;</span></p>`;
   function corpoEntrada(d) {
@@ -134,7 +133,7 @@
       <h2 id="vit-t" class="serif">Mulheres &amp; Quintais em números</h2>
       <div class="vts">${tiles(t).map(tile).join('')}</div>
       <div class="vit-duo">
-        <div class="vit-mapa">${MQ.painelUI.mapaUFs(t.porUF('selecionadas'), 'mulheres selecionadas')}</div>
+        <div class="vit-mapa">${MQ.painelUI.mapaUFs()}</div>
         <div id="vit-foto">${miniMosaico(d, V.foto) || `<div class="vit-sem-foto"><span>As fotos dos quintais aparecem aqui quando a coordenação aprovar, só de quem autorizou.</span></div>`}</div>
       </div>
       <p class="vit-rodape"><span>Totais sem nomes nem endereços${quando() ? ' · atualizado ' + quando() : ''}</span></p>`;
@@ -171,7 +170,7 @@
             ${(d.por_uf || []).map(u => `<div class="pub-l" role="row"><span role="cell"><b>${E(U().nomeUF(u.uf))}</b></span>${linhas.map(([k, rot, alvo]) =>
               `<span role="cell" class="pub-c" data-rot="${E(rot)}"><span class="num">${fmt(u[k])}</span><span class="barra-mini" aria-hidden="true"><i style="width:${Math.min(100, (+u[k] || 0) / alvo * 100)}%"></i></span></span>`).join('')}</div>`).join('')}
           </div></div>
-        <div class="bloco"><h2 class="serif">Onde</h2><div class="vit-mapa">${MQ.painelUI.mapaUFs(t.porUF('selecionadas'), 'mulheres selecionadas')}</div>
+        <div class="bloco"><h2 class="serif">Onde</h2><div class="vit-mapa">${MQ.painelUI.mapaUFs()}</div>
           <p class="small muted">Os pontos são os municípios que receberão os quintais. O mapa não mostra onde cada uma mora.</p></div>
       </section>
       ${(d.fotos || []).length ? `<section class="secao"><h2 class="serif">Mulheres nos quintais</h2><div class="mosaico">${d.fotos.map((f, i) =>

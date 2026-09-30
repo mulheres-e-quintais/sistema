@@ -498,21 +498,20 @@
     const r = svg.querySelector(`.rota[data-rota="${CSS.escape ? CSS.escape(g.dataset.mun) : g.dataset.mun}"]`); if (r) r.classList.add('ativa'); };
   document.addEventListener('mouseover', mostrarMun); document.addEventListener('focusin', mostrarMun); document.addEventListener('click', mostrarMun);
   const APODI = [-37.7989, -5.6649];   // IFRN Campus Apodi: de onde sai a equipe do projeto
-  function mapaUFs(valores, rotulo) {
+  function mapaUFs() {   // mapa fixo: os 5 estados (cor própria), o RN sede e os municípios que receberão os quintais
     const ufsProj = MQ.UFS.map(u => u.uf);
     // quadro justo nos 5 estados e no RN (nenhum estado cortado); o mapa fica grande pela altura, não pelo corte
     const vb = (() => { const c = caixa(ufsProj.concat(['RN'])); const m = Math.max(c[2], c[3]) * 0.035; return [c[0] + m, c[1] + m, c[2] - 2 * m, c[3] - 2 * m]; })();
     const esc = Math.max(vb[2], vb[3]) / 100;
-    const max = Math.max(1, ...ufsProj.map(u => valores[u] || 0));
-    const tom = v => !v ? 'var(--mapa-0)' : `color-mix(in oklab, var(--mapa-1) ${Math.round(25 + 75 * v / max)}%, var(--mapa-0))`;
+    const nMunUF = uf => Object.keys((MQ.GEO.mun || {})[uf] || {}).length;
     const path = anel => 'M' + anel.map(p => px(p).map(v => v.toFixed(3)).join(',')).join('L') + 'Z';
-    // vizinhos (CE, PB…) só de fundo; RN destacado como sede; os 5 estados coloridos pelo número de selecionadas
+    // vizinhos (CE, PB…) só de fundo; RN destacado como sede; cada um dos 5 estados com sua cor
     const estados = Object.entries(MQ.GEO.uf).map(([uf, g]) => {
-      if (ufsProj.includes(uf)) return `<path d="${g.r.map(path).join('')}" class="uf-pub" style="fill:var(--uf-${uf})" stroke-width="${esc * 0.25}"><title>${U.nomeUF(uf)}: ${valores[uf] || 0} ${rotulo}</title></path>`;
+      if (ufsProj.includes(uf)) return `<path d="${g.r.map(path).join('')}" class="uf-pub" style="fill:var(--uf-${uf})" stroke-width="${esc * 0.25}"><title>${U.nomeUF(uf)}: ${nMunUF(uf)} ${nMunUF(uf) === 1 ? 'município' : 'municípios'}</title></path>`;
       if (uf === 'RN') return `<path d="${g.r.map(path).join('')}" class="uf-sede" stroke-width="${esc * 0.3}"><title>Rio Grande do Norte: IFRN Campus Apodi</title></path>`;
       return `<path d="${g.r.map(path).join('')}" class="uf-fundo" stroke-width="${esc * 0.2}"/>`;
     }).join('');
-    const ordem = ufsProj.slice().sort((x, y) => (valores[y] || 0) - (valores[x] || 0) || x.localeCompare(y));
+    const ordem = ufsProj.slice().sort((x, y) => nMunUF(y) - nMunUF(x) || x.localeCompare(y));
     // rotas: de Apodi até cada município (curvas), e os pontos dos municípios que receberão os quintais
     const [ax, ay] = px(APODI);
     const muns = ufsProj.flatMap(uf => Object.entries((MQ.GEO.mun || {})[uf] || {}).map(([nome, c]) => ({ uf, nome, xy: px(c) })));
@@ -526,9 +525,9 @@
     const nMun = muns.length;
     const siglas = ufsProj.concat(['RN']).map(uf => { const g = MQ.GEO.uf[uf]; if (!g || !g.c) return ''; const [x, y] = px(g.c);
       return `<text x="${x}" y="${y}" class="uf-sigla" font-size="${esc * 3.6}" text-anchor="middle">${uf}</text>`; }).join('');
-    return `<svg class="mapa mapa-pub" viewBox="${vb.join(' ')}" role="img" aria-label="${E(rotulo)} por estado: ${ufsProj.map(u => u + ' ' + (valores[u] || 0)).join(', ')}; ${nMun} municípios que receberão os quintais, ligados a Apodi/RN, sede do IFRN" preserveAspectRatio="xMidYMid meet">${estados}${siglas}<g class="rotas">${rotas}</g>${pontos}${sede}</svg>
+    return `<svg class="mapa mapa-pub" viewBox="${vb.join(' ')}" role="img" aria-label="Mapa dos estados do projeto: ${ufsProj.map(u => u + ' ' + nMunUF(u) + ' municípios').join(', ')}; ${nMun} municípios que receberão os quintais, ligados a Apodi/RN, sede do IFRN" preserveAspectRatio="xMidYMid meet">${estados}${siglas}<g class="rotas">${rotas}</g>${pontos}${sede}</svg>
       <p class="mun-nome" aria-live="polite"><span data-mun-nome></span></p>
-      <ul class="mapa-lista">${ordem.map(uf => { const nm = Object.keys((MQ.GEO.mun || {})[uf] || {}).length;
+      <ul class="mapa-lista">${ordem.map(uf => { const nm = nMunUF(uf);
         return `<li><span class="lg-q" style="background:var(--uf-${uf})"></span>${uf} <span class="lg-mun">${nm} ${nm === 1 ? 'município' : 'municípios'}</span></li>`; }).join('')}<li><span class="lg-q lg-sede"></span>RN <span class="muted">sede (Apodi)</span></li></ul>`;
   }
 

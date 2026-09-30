@@ -1,4 +1,5 @@
 -- Testes da etapa 2. Rodar depois de stub, 01 (com CPF preenchido) e 02.
+\ir _professor_habilitado.sql
 \set QUIET 1
 create or replace function pg_temp.como(p_email text) returns void language plpgsql as $$
 declare u uuid;
