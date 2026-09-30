@@ -92,7 +92,8 @@
   }
   /* mosaico pequeno da tela de entrada: painel fixo com 7 fotos em tamanhos diferentes; o desenho não muda,
      só as fotos trocam a cada 8 s (se houver mais de 7). Passar o mouse aproxima a foto. */
-  const PADROES = [['g', 'a', 'n', 'n', 'l', 'n', 'n'], ['n', 'n', 'g', 'l', 'a', 'n', 'n'], ['l', 'n', 'n', 'g', 'n', 'a', 'n']];
+  // quadros em pé (retrato), para não cortar o rosto: grande à esquerda, dois altos e uma fileira de pequenos
+  const PADROES = [['g', 'a', 'a', 'n', 'n', 'n', 'n']];
   function miniMosaico(d, passo) {
     const fs = fotosOuIlus(d); if (!fs.length) return '';
     const ilus = !!fs[0].ilustracao; const pad = PADROES[0];
@@ -133,7 +134,7 @@
       <h2 id="vit-t" class="serif">Mulheres &amp; Quintais em números</h2>
       <div class="vts">${tiles(t).map(tile).join('')}</div>
       <div class="vit-duo">
-        <div class="vit-mapa">${MQ.painelUI.mapaUFs(t.porUF('selecionadas'), 'mulheres selecionadas')}<span class="vit-leg">Mulheres selecionadas por estado</span></div>
+        <div class="vit-mapa">${MQ.painelUI.mapaUFs(t.porUF('selecionadas'), 'mulheres selecionadas')}<span class="vit-leg">Cor do estado: mulheres selecionadas</span></div>
         <div id="vit-foto">${miniMosaico(d, V.foto) || `<div class="vit-sem-foto"><span>As fotos dos quintais aparecem aqui quando a coordenação aprovar, só de quem autorizou.</span></div>`}</div>
       </div>
       <p class="vit-rodape"><span>Totais sem nomes nem endereços${quando() ? ' · atualizado ' + quando() : ''}</span></p>`;
@@ -171,13 +172,13 @@
               `<span role="cell" class="pub-c" data-rot="${E(rot)}"><span class="num">${fmt(u[k])}</span><span class="barra-mini" aria-hidden="true"><i style="width:${Math.min(100, (+u[k] || 0) / alvo * 100)}%"></i></span></span>`).join('')}</div>`).join('')}
           </div></div>
         <div class="bloco"><h2 class="serif">Onde</h2>${MQ.painelUI.mapaUFs(t.porUF('selecionadas'), 'mulheres selecionadas')}
-          <p class="small muted">Mulheres selecionadas por estado. O mapa não mostra onde cada uma mora.</p></div>
+          <p class="small muted">A cor do estado mostra quantas mulheres foram selecionadas; os pontos são os municípios que receberão os quintais. O mapa não mostra onde cada uma mora.</p></div>
       </section>
       ${(d.fotos || []).length ? `<section class="secao"><h2 class="serif">Mulheres nos quintais</h2><div class="mosaico">${d.fotos.map((f, i) =>
-        `<button type="button" class="mos-item${i % 7 === 0 ? ' mos-g' : i % 7 === 4 ? ' mos-a' : i % 7 === 2 ? ' mos-l' : ''}" data-acao="vit-ampliar" data-i="${i}" aria-label="${E(f.legenda)} · ${E(f.uf)}"><img src="${E(f.url)}" alt="" loading="lazy" decoding="async"><span class="mos-leg">${E(f.legenda)} · ${E(f.uf)}</span></button>`).join('')}</div>
+        `<button type="button" class="mos-item${i % 7 === 0 ? ' mos-g' : i % 7 === 4 ? ' mos-a' : ''}" data-acao="vit-ampliar" data-i="${i}" aria-label="${E(f.legenda)} · ${E(f.uf)}"><img src="${E(f.url)}" alt="" loading="lazy" decoding="async"><span class="mos-leg">${E(f.legenda)} · ${E(f.uf)}</span></button>`).join('')}</div>
         <p class="small muted">Fotos de mulheres que autorizaram o uso da imagem. Toque para ampliar.</p></section>`
         : `<section class="secao"><h2 class="serif">Mulheres nos quintais</h2><div class="mosaico mos-ilus">${ilustracoes().map((f, i) =>
-          `<div class="mos-item${i % 7 === 0 ? ' mos-g' : i % 7 === 4 ? ' mos-a' : i % 7 === 2 ? ' mos-l' : ''}" role="img" aria-label="Ilustração: ${E(f.legenda)}"><img src="${E(f.url)}" alt="" loading="lazy" decoding="async"><span class="mos-selo">Ilustração</span><span class="mos-leg">${E(f.legenda)}</span></div>`).join('')}</div>
+          `<div class="mos-item${i % 7 === 0 ? ' mos-g' : i % 7 === 4 ? ' mos-a' : ''}" role="img" aria-label="Ilustração: ${E(f.legenda)}"><img src="${E(f.url)}" alt="" loading="lazy" decoding="async"><span class="mos-selo">Ilustração</span><span class="mos-leg">${E(f.legenda)}</span></div>`).join('')}</div>
           <p class="small muted">Ilustrações. As fotos das mulheres entram aqui quando a coordenação publicar, só de quem autorizou o uso da imagem.</p></section>`}
       <section class="secao nota-pub"><h2 class="serif">Como os dados são tratados</h2>
         <p>Esta página mostra só totais por estado. Nomes, endereços, CPF e a localização dos quintais ficam no sistema, com acesso só da equipe do projeto (Lei nº 13.709/2018). As fotos são escolhidas pela coordenação entre mulheres que autorizaram o uso de imagem.</p>
@@ -191,7 +192,7 @@
       .sort((a, b) => /diag_mulher/.test(b) - /diag_mulher/.test(a));   // a foto dela vem primeiro
     if (!fotos.length) return '';
     if (!f.consent_imagem) return `<div class="bloco"><h3>Vitrine pública</h3><p class="small muted">Esta mulher não autorizou uso de imagem: as fotos dela não podem ir para a vitrine.</p></div>`;
-    const nome = p => p === 'exemplo' ? 'Foto de exemplo' : { mulher: 'Ela no quintal', geral: 'Visão geral', plantio: 'Área de plantio', agua: 'Fonte de água' }[(p.match(/diag_(\w+)/) || [])[1]] || 'Foto';
+    const nome = p => p === 'exemplo' ? 'Foto de exemplo' : { mulher: 'Retrato dela', geral: 'Visão geral', plantio: 'Área de plantio', agua: 'Fonte de água' }[(p.match(/diag_(\w+)/) || [])[1]] || 'Foto';
     return `<form class="bloco" data-form="vit-publicar" data-ficha="${E(f.id)}" novalidate><h3>Publicar na vitrine pública</h3>
       <p class="small muted">A foto aparece na tela de entrada e no mosaico da página pública, sem o nome dela. Ela autorizou o uso da imagem. Olhe a foto antes: nada de rosto de criança${f.consent_criancas ? ' (ela autorizou crianças, mas evite)' : ''}, placa, número da casa ou documento.</p>
       <div class="campo"><label>Foto</label><span class="chips-sel">${fotos.map((p, i) => `<label class="sn${i ? '' : ' on'}"><input type="radio" name="origem" value="${E(p)}" ${i ? '' : 'checked'}>${nome(p)}</label>`).join('')}</span></div>

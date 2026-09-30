@@ -426,7 +426,7 @@
           <div class="campos">${MQ.DIAG.fotos.filter(([k]) => k !== 'mulher' || f.consent_imagem).map(([k, t]) => { const tem = (d.fotos || []).some(x => new RegExp('diag_' + k).test(x)) || (atual && atual.exemplo && k !== 'mulher');
             const opc = k === 'croqui' || k === 'mulher';
             return `<div class="campo ${opc ? 'inteiro' : ''}"><label for="dg-f-${k}">${E(t)}${opc ? '' : ' *'}</label><input id="dg-f-${k}" name="foto_${k}" data-foto="${k}" type="file" accept="image/*" capture="environment">
-              <span class="dica" id="dg-f-${k}-dica">${tem ? 'Já tem foto. Envie outra só para trocar.' : k === 'croqui' ? 'Desenhe no papel e fotografe.' : k === 'mulher' ? 'Só se ela quiser aparecer. A foto pode ir para a vitrine pública, sem o nome dela.' : 'Obrigatória.'}</span></div>`; }).join('')}</div>
+              <span class="dica" id="dg-f-${k}-dica">${tem ? 'Já tem foto. Envie outra só para trocar.' : k === 'croqui' ? 'Desenhe no papel e fotografe.' : k === 'mulher' ? 'Só se ela quiser. Foto do rosto, de frente, com o celular em pé e o quintal ao fundo. Pode ir para o mosaico da página pública, sem o nome dela.' : 'Obrigatória.'}</span></div>`; }).join('')}</div>
         </fieldset>
 
         <div data-parteb>
