@@ -72,6 +72,7 @@
   /* auxiliar administrativo (e coordenação geral): a conta de UMA pessoa para digitar no Arlo; cada consulta fica no histórico */
   function blocoContaArlo(m) {
     if (!S().eu || !['auxiliar_adm', 'coord_geral'].includes(S().eu.papel) || m.papel === 'coord_geral' || m.status !== 'ativa') return '';
+    if (m.cadastro_arlo) return '';   // já tem cadastro e conta no Arlo: não há conta para pedir nem mostrar
     return `<div class="bloco" id="conta-arlo"><h3>Conta para o cadastro no Arlo</h3>
       <p class="small muted">Os números só aparecem quando você pede, e cada consulta fica registrada no histórico (quem viu, de quem, quando). Não copie para outro lugar além do Arlo.</p>
       <div class="acoes"><button class="btn" data-acao="banco-ver-arlo" data-id="${E(m.id)}">Ver conta e Pix</button></div></div>`;

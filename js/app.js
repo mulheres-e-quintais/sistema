@@ -632,7 +632,7 @@
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo"><div class="bloco"><div class="cab-av">${avatar(m, 96)}<div style="display:grid;gap:6px"><h3>${esc(nomeDe(m))}</h3>${botaoFoto(m)}</div></div>${dadosDL(m)}
         ${NOTA_DADOS[m.papel] ? `<p class="small muted">Algum dado errado? Fale com ${NOTA_DADOS[m.papel]}, que corrige o cadastro.</p>` : ''}</div>
-        ${m.papel !== 'coord_geral' && MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
+        ${m.papel !== 'coord_geral' && !m.cadastro_arlo && MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
         <details class="hist trocar-senha"><summary>Trocar minha senha</summary>
           <form class="f" data-form="trocar-senha" novalidate>
             <input type="text" name="usuario" autocomplete="username" value="${esc(m.email || '')}" hidden>
@@ -828,7 +828,7 @@
     const gestao = /^coord|auxiliar_adm/.test(S.eu.papel);
     const pv = MQ.convitesUI && (S.eu.id === m.id || gestao) ? MQ.convitesUI.privado(m.id) : null;
     if (MQ.bancoUI && gestao && m.status === 'ativa' && m.papel !== 'coord_geral') {
-      const b = MQ.bancoUI.informou(m.id); if (b) linhas.push(['Conta para a FUNCERN', b.ok ? 'Informada por ela' + (b.em ? ' em ' + new Date(b.em).toLocaleDateString('pt-BR') : '') : m.cadastro_arlo ? 'No Arlo' : 'Ainda não informou']);
+      const b = MQ.bancoUI.informou(m.id); if (b) linhas.push(['Conta para a FUNCERN', m.cadastro_arlo ? 'Já está no Arlo (não precisa informar)' : b.ok ? 'Informada por ela' + (b.em ? ' em ' + new Date(b.em).toLocaleDateString('pt-BR') : '') : 'Ainda não informou']);
     }
     if (pv) linhas.push(['Nascimento', pv.data_nascimento && R.fmtData(pv.data_nascimento)], ['PIS/NIS', pv.nis], ['Endereço', MQ.convitesUI.textoEndereco(pv.endereco)],
       ['Socioeconômico', pv.socioeconomico ? 'Respondido' : null],
@@ -875,7 +875,7 @@
         ${linhaUltimoAcesso(m)}
         ${avisoAcesso(m, editaDados || /^coord|auxiliar_adm/.test(S.eu.papel))}
         ${plano}
-        ${m.id === S.eu.id && m.papel !== 'coord_geral' && MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
+        ${m.id === S.eu.id && m.papel !== 'coord_geral' && !m.cadastro_arlo && MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
         ${m.id !== S.eu.id && MQ.bancoUI ? MQ.bancoUI.blocoContaArlo(m) : ''}
 
         <div class="bloco"><h3>Habilitação</h3>${m.papel === 'coord_geral' ? '<p class="small muted">Não se aplica.</p>' : passos(m)}
