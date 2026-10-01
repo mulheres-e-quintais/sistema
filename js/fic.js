@@ -99,7 +99,7 @@
       <div class="secao-cab"><div><h2 id="t-prof">Professores do curso FIC</h2><p>IFRN · cadastrados pela coordenação geral · criam as turmas e matriculam a coordenação técnica, as bolsistas e as agentes</p></div></div>
       ${l.map(m => U().cartaoPessoa(m)).join('')}
       ${U().vagaAberta ? U().vagaAberta(l.length ? `<b>${l.length} professor${l.length > 1 ? 'es' : ''} cadastrado${l.length > 1 ? 's' : ''}.</b> Pode cadastrar mais, se o curso tiver outro professor.` : 'Nenhum professor do FIC cadastrado. Digite os dados ou gere um link para ele preencher.', souGeral,
-        '<button class="btn pri btn-cad" data-acao="novo" data-papel="professor_fic">Cadastrar professor</button>', l.length ? 'Pode ter mais' : 'Vaga aberta') : ''}
+        MQ.botaoAcao({ acao: 'novo', icone: 'capelo', texto: 'Cadastrar professor(a) do FIC', curto: 'Cadastrar', attrs: 'data-papel="professor_fic"' }), l.length ? 'Pode ter mais' : 'Vaga aberta') : ''}
     </section>`;
   }
 

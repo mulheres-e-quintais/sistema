@@ -167,9 +167,7 @@
     return `<div class="cab"><div><span class="eyebrow">Execução</span><h1>Execução do orçamento</h1>
         <p>Previsto × executado de cada rubrica do TED (R$ ${(T / 1e6).toLocaleString('pt-BR')} milhões). O executado vem da <b>planilha de gastos</b> mais recente; o comprometido, do que o sistema já sabe e a planilha ainda não trouxe. Só você vê esta aba.</p>
         <p class="small muted">Base do previsto: ${E(O().fonte)}, com o remanejamento aprovado pelo MDA.</p></div></div>
-      <div class="viag-botoes">
-        <button type="button" class="cad-modo" data-acao="exec-enviar"><b>Enviar planilha de gastos</b><span>Pelo menos uma vez por mês. Retrato completo desde o início: a mais nova substitui as anteriores.</span></button>
-      </div>
+      <div class="acoes-pag">${MQ.acaoComDica({ acao: 'exec-enviar', icone: 'enviar', texto: 'Enviar planilha de gastos', curto: 'Enviar planilha' }, 'Pelo menos uma vez por mês. Retrato completo desde o início: a mais nova substitui as anteriores.')}</div>
       <p class="small ${n.pl ? 'muted' : ''}">${n.pl ? `Planilha vigente: <b>${E(n.pl.arquivo_nome)}</b>, gastos até ${R.fmtData(n.pl.posicao_em)} (enviada em ${R.fmtData(String(n.pl.enviado_em).slice(0, 10))}).` : '<b>Nenhuma planilha enviada ainda.</b>'}</p>
       <section class="fin-resumo" aria-label="Execução financeira">
         <span class="dx-rot">Execução financeira</span>
