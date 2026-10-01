@@ -1956,23 +1956,24 @@ table.fin .fin-comp > td { padding-left: 28px; }
 
 /* ======================================================================
    BOTÃO DE AÇÃO (design system, 01/10/2026): um componente só para cadastrar, enviar, registrar, pedir.
-   [ ícone | texto → ]  ·  altura fixa (72 / 66 / 58)  ·  raio 16  ·  texto numa linha só
-   Principal: terracota. Segunda ação do grupo (.sec): clara com borda. Dentro de cartões (.peq): 52 px.
+   [ ícone | texto → ]  ·  altura fixa (56 / 52 / 48)  ·  raio 12  ·  texto numa linha só
+   Principal: terracota. Segunda ação do grupo (.sec): clara com borda. Dentro de cartões (.peq): 44 px.
    ====================================================================== */
 .btn-acao {
-  --h: 72px;
-  display: flex; align-items: center; gap: 12px; box-sizing: border-box;
-  height: var(--h); width: 100%; max-width: 480px; min-width: 0; padding: 0 22px 0 20px; margin: 0;
-  border: 1px solid var(--accent); border-radius: 16px; background: var(--accent); color: var(--accent-ink);
-  font: 600 18px/1.2 var(--sans); letter-spacing: 0; text-transform: none; text-align: left; white-space: nowrap;
+  --h: 56px;
+  display: flex; align-items: center; gap: 10px; box-sizing: border-box;
+  height: var(--h); width: 100%; max-width: 420px; min-width: 0; padding: 0 18px 0 16px; margin: 0;
+  border: 1px solid var(--accent); border-radius: 12px; background: var(--accent); color: var(--accent-ink);
+  font: 600 16px/1.2 var(--sans); letter-spacing: 0; text-transform: none; text-align: left; white-space: nowrap;
   cursor: pointer; box-shadow: 0 3px 8px color-mix(in srgb, var(--ink) 14%, transparent);
   transition: background-color .22s ease, border-color .22s ease, transform .22s ease, box-shadow .22s ease;
 }
-.btn-acao .ba-ic { flex: 0 0 32px; height: 32px; display: grid; place-items: center; padding-right: 12px; border-right: 1px solid color-mix(in srgb, currentColor 32%, transparent); box-sizing: content-box; }
+.btn-acao .ba-ic { flex: 0 0 24px; height: 24px; display: grid; place-items: center; padding-right: 10px; border-right: 1px solid color-mix(in srgb, currentColor 32%, transparent); box-sizing: content-box; }
 .btn-acao .ba-tx { flex: 1 1 0; width: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.btn-acao .ba-seta { flex: 0 0 24px; display: grid; place-items: center; transition: transform .22s ease; }
-.btn-acao .ba-seta svg { width: 24px; height: 24px; }
-.btn-acao:hover { background: color-mix(in srgb, var(--accent) 86%, #000); border-color: color-mix(in srgb, var(--accent) 86%, #000); transform: translateY(-2px); box-shadow: 0 6px 14px color-mix(in srgb, var(--ink) 18%, transparent); }
+.btn-acao .ba-seta { flex: 0 0 20px; display: grid; place-items: center; transition: transform .22s ease; }
+.btn-acao .ba-ic svg { width: 21px; height: 21px; }
+.btn-acao .ba-seta svg { width: 20px; height: 20px; }
+.btn-acao:hover { background: color-mix(in srgb, var(--accent) 86%, #000); border-color: color-mix(in srgb, var(--accent) 86%, #000); transform: translateY(-1px); box-shadow: 0 5px 12px color-mix(in srgb, var(--ink) 18%, transparent); }
 .btn-acao:hover .ba-seta { transform: translateX(3px); }
 .btn-acao:active { transform: translateY(0); box-shadow: 0 2px 5px color-mix(in srgb, var(--ink) 14%, transparent); }
 .btn-acao:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
@@ -1980,32 +1981,32 @@ table.fin .fin-comp > td { padding-left: 28px; }
 .btn-acao.sec .ba-ic, .btn-acao.sec .ba-seta { color: var(--accent); }
 .btn-acao.sec .ba-ic { border-right-color: var(--line); }
 .btn-acao.sec:hover { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); border-color: var(--accent); box-shadow: 0 6px 14px color-mix(in srgb, var(--ink) 12%, transparent); }
-.btn-acao.peq { --h: 52px; font-size: 16px; padding: 0 16px 0 14px; gap: 12px; max-width: none; }
-.btn-acao.peq .ba-ic { flex-basis: 26px; height: 26px; padding-right: 12px; }
-.btn-acao.peq .ba-ic svg { width: 22px; height: 22px; }
-.btn-acao.peq .ba-seta svg { width: 20px; height: 20px; }
+.btn-acao.peq { --h: 44px; font-size: 15px; padding: 0 14px 0 12px; gap: 10px; max-width: none; border-radius: 10px; }
+.btn-acao.peq .ba-ic { flex-basis: 20px; height: 20px; padding-right: 10px; }
+.btn-acao.peq .ba-ic svg { width: 19px; height: 19px; }
+.btn-acao.peq .ba-seta svg { width: 18px; height: 18px; }
 @media (prefers-reduced-motion: reduce) { .btn-acao, .btn-acao .ba-seta { transition: none; } .btn-acao:hover, .btn-acao:hover .ba-seta { transform: none; } }
 
 /* grupo de ações da página: botão + explicação curta embaixo */
 .acoes-pag { display: flex; flex-wrap: wrap; gap: 16px 24px; margin: 8px 0 18px; }
-.acao-item { flex: 0 1 480px; min-width: 0; display: grid; gap: 8px; align-content: start; }
+.acao-item { flex: 0 1 420px; min-width: 0; display: grid; gap: 8px; align-content: start; }
 .acao-dica { margin: 0 4px; color: var(--ink-2); font-size: var(--t-sm); line-height: 1.45; }
 
 /* cartões de vaga (coordenação técnica, auxiliar, professor do FIC): mesma altura, mesmo recheio, botão à direita */
-.vaga-aberta { min-height: 128px; padding: 20px 24px; gap: 16px 28px; align-items: center; justify-content: space-between; border: 1px dashed var(--line-2); border-radius: 16px; }
-.vaga-aberta > .btn-acao { flex: 0 1 480px; margin-left: auto; }
+.vaga-aberta { min-height: 104px; padding: 18px 22px; gap: 14px 24px; align-items: center; justify-content: space-between; border: 1px dashed var(--line-2); border-radius: 14px; }
+.vaga-aberta > .btn-acao { flex: 0 1 420px; margin-left: auto; }
 .btn-acao .ba-c { display: none; }
 /* vaga livre de bolsista dentro do cartão do estado */
 .vaga-slot { display: grid; gap: 8px; padding: 10px 12px; border: 1px dashed var(--line-2); border-radius: 12px; background: var(--vaga-bg); }
 .vaga-slot .sub { font-size: var(--t-sm); color: var(--muted); }
 .grade-uf .cartao > .btn-acao { align-self: end; }
 
-@media (max-width: 1024px) { .btn-acao { --h: 66px; } }
+@media (max-width: 1024px) { .btn-acao { --h: 52px; } }
 @media (max-width: 640px) {
-  .btn-acao { --h: 58px; font-size: 16px; padding: 0 16px 0 14px; gap: 10px; max-width: none; }
+  .btn-acao { --h: 48px; font-size: 15px; padding: 0 14px 0 12px; gap: 10px; max-width: none; }
   .btn-acao .ba-l { display: none; } .btn-acao .ba-c { display: inline; }
-  .btn-acao .ba-ic { flex-basis: 28px; height: 28px; padding-right: 10px; }
-  .btn-acao.peq { --h: 50px; }
+  .btn-acao .ba-ic { flex-basis: 22px; height: 22px; padding-right: 10px; }
+  .btn-acao.peq { --h: 44px; }
   .acao-item, .vaga-aberta > .btn-acao { flex: 1 1 100%; }
   .vaga-aberta { padding: 16px; min-height: 0; }
 }
