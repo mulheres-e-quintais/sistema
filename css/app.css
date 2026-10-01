@@ -1609,3 +1609,11 @@ form[data-form=exec-lancar] .sn-par .sn:has(input:checked)::before { content: "�
 .marco.perto .marco-prazo { background: color-mix(in srgb, var(--m-aguarda) 18%, transparent); color: var(--ink); font-weight: 600; }
 .marco.passou .marco-prazo { background: color-mix(in srgb, var(--m-agua) 15%, transparent); color: var(--ink); font-weight: 600; }
 .marco.passou .marco-cal { opacity: .7; }
+/* município: mapa pequeno no canto com o contorno do estado e a área que está aparecendo */
+.mapa-local { margin: 0; width: 150px; padding: 8px 8px 6px; background: var(--m-fundo); border: 1px solid var(--m-borda); border-radius: 10px; display: grid; gap: 4px; }
+.mapa-local svg { width: 100%; height: 120px; display: block; }
+.mapa-local .ml-uf { fill: var(--m-uf); stroke: var(--m-sigla); stroke-linejoin: round; }
+.mapa-local .ml-janela { fill: none; stroke: var(--m-agua); }
+.mapa-local .ml-pt { fill: var(--m-ok); stroke: #fff; }
+.mapa-local figcaption { font-size: var(--t-2xs); color: var(--m-texto); text-align: center; line-height: 1.2; }
+

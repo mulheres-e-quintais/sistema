@@ -204,6 +204,14 @@
     const naoAtende = d.fichas.filter(f => f.resultado === 'nao_atende' && (!foco || f.uf === foco) && (!focoMun || f.uf + '|' + norm(f.municipio) === focoMun)).length;
     const btn = (uf, t) => `<button type="button" data-acao="mapa-uf" data-uf="${uf}" aria-pressed="${foco === uf && !focoMun}">${t}</button>`;
     const nomeMun = focoMun && grupos[focoMun] ? baseDe(grupos[focoMun]).nome : '';
+    // no município o desenho fica todo dentro do estado: um mapa pequeno mostra o contorno do estado e onde fica o município
+    const localizador = (() => { if (!focoMun || !MQ.GEO.uf[foco]) return '';
+      const v2 = caixa([foco]); const e2 = Math.max(v2[2], v2[3]) / 100; const g = grupos[focoMun]; const b = g && baseDe(g).base; const [mx, my] = b ? px(b) : [vb[0] + vb[2] / 2, vb[1] + vb[3] / 2];
+      return `<figure class="mapa-local" aria-label="${E(nomeMun)} no mapa de ${E(U.nomeUF(foco))}"><svg viewBox="${v2.join(' ')}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+          <path d="${MQ.GEO.uf[foco].r.map(path).join('')}" class="ml-uf" stroke-width="${e2 * 0.9}"/>
+          <rect x="${vb[0]}" y="${vb[1]}" width="${vb[2]}" height="${vb[3]}" class="ml-janela" stroke-width="${e2 * 0.7}"/>
+          <circle cx="${mx}" cy="${my}" r="${e2 * 3.4}" class="ml-pt" stroke-width="${e2 * 1}"/></svg>
+        <figcaption>${E(nomeMun)} · ${foco}</figcaption></figure>`; })();
     const onde = focoMun ? E(nomeMun) + '/' + foco : foco ? E(U.nomeUF(foco)) : 'nos 5 estados';
     const munLista = !focoMun && lista.length ? `<div class="mun-lista"><h3 class="mapa-h3">${foco ? 'Municípios' : 'Municípios com mais fichas'}</h3>
         ${lista.slice(0, foco ? 20 : 8).map(g => `<button type="button" class="link" data-acao="mapa-mun" data-uf="${g.uf}" data-mun="${E(g.k)}"><span>${E(baseDe(g).nome)}${foco ? '' : '/' + g.uf}</span><i class="pontilhado" aria-hidden="true"></i><b class="num">${g.itens.length}</b></button>`).join('')}</div>` : '';
@@ -223,6 +231,7 @@
         <div class="mapa-dica" id="mapa-dica" hidden></div>
         <div class="mapa-cartao" id="mapa-cartao" role="dialog" aria-label="Informações do ponto" hidden></div>
         <div class="mapa-lado">
+        ${localizador}
         ${pts.length ? `<div class="mapa-destaque"><b class="num">${pts.length}</b><span>mulher${pts.length > 1 ? 'es' : ''}</span><small>${foco ? 'em ' + onde : nUF + ' estado' + (nUF === 1 ? '' : 's') + ' do Nordeste'}</small></div>` : ''}
         <h3 class="mapa-h3">Status das fichas</h3>
         <ul class="legenda">${CATS.map(k => `<li><span class="lg-pt" style="background:${k.cor}"></span>${E(k.nome)} <b class="num">${cont[k.id] || 0}</b></li>`).join('')}
