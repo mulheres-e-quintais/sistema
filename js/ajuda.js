@@ -79,7 +79,7 @@
         ['Cadastrar pelo link (recomendado)', ['Na aba <b>Equipe</b>, toque na vaga ou em <b>Cadastrar</b>.', 'Toque em <b>Gerar link de cadastro</b>.', 'Toque em <b>Enviar pelo WhatsApp</b> e escolha a pessoa.', 'Quando ela enviar, abra <b>Cadastros enviados pelo link</b>.', 'Confira os dados e toque em <b>Conferir e cadastrar</b> → <b>Cadastrar</b>.']],
         ['Cadastrar digitando', ['Toque na vaga ou em <b>Cadastrar</b> → <b>Digitar os dados agora</b>.', 'Preencha nome, CPF, celular e e-mail.', 'Responda se a pessoa já tem cadastro no Arlo e, para quem vai a campo, o perfil no campo.', 'Marque a ciência sobre o uso dos dados.', 'Toque em <b>Cadastrar</b>.']],
         ['Mandar o acesso para a pessoa', ['Abra a ficha da pessoa.', 'Toque em <b>Gerar código de acesso</b>.', 'Toque em <b>Mandar por WhatsApp</b>: a mensagem já leva endereço, e-mail e código.']],
-        ['Registrar a habilitação', ['Abra a ficha da pessoa.', 'Toque em <b>Registrar passos da habilitação</b>.', 'Em cada passo feito, toque em <b>Hoje</b> (ou escolha a data).', 'Toque em <b>Salvar habilitação</b>.']],
+        ['Registrar a habilitação', ['Abra a ficha da pessoa.', 'Toque em <b>Registrar passos da habilitação</b>.', 'Em cada passo feito, toque em <b>Hoje</b> (ou escolha a data).', 'Toque em <b>Salvar</b>.']],
         ['Desligar e pôr substituta', ['Abra a ficha da pessoa → <b>Desligar</b>.', 'Escolha o motivo e explique em uma frase.', 'Toque em <b>Confirmar desligamento</b> (não tem volta).', 'Na vaga que abriu, toque em <b>Cadastrar substituta</b>.']]
       ],
       passos: [
@@ -105,7 +105,7 @@
       intro: 'Cada mulher indicada pela comunidade tem uma ficha de indicação, preenchida pela bolsista do estado, com os critérios do edital e o termo de consentimento. Aqui a coordenação aprova ou devolve.',
       tarefas: [
         ['Aprovar ou devolver uma ficha', ['Na aba <b>Seleção</b>, abra uma ficha que aguarda.', 'Confira dados, critérios e a foto do termo assinado.', 'Toque em <b>Aprovar</b>, ou escreva o que corrigir e toque em <b>Devolver para correção</b>.']],
-        ['Baixar as fichas', ['Toque em <b>Baixar planilha (CSV)</b>.', 'Abra o arquivo no Excel ou no Google Planilhas.']]
+        ['Baixar as fichas', ['Toque em <b>Baixar CSV</b>.', 'Abra o arquivo no Excel ou no Google Planilhas.']]
       ],
       passos: [
         'A tabela mostra, por estado, as fichas lançadas e a situação: <b>selecionadas aprovadas</b> (as que ocupam as 40 vagas), <b>lista de espera</b>, <b>sem água</b>, <b>não atende</b> e as que <b>aguardam</b> decisão.',
@@ -146,7 +146,7 @@
       intro: 'Turmas do curso FIC do IFRN, matrículas da coordenação técnica, das bolsistas e das agentes e o acesso mensal ao AVA. A matrícula é um dos passos da habilitação; o acesso ao AVA é uma das entregas do mês das bolsistas.',
       tarefas: [
         ['Criar uma turma', ['Toque em <b>+ Nova turma</b>.', 'Dê o nome, o estado (ou vários estados) e as datas.', 'Toque em <b>Criar turma</b>.']],
-        ['Matricular', ['Na turma, toque em <b>+ Matricular</b>.', 'Marque as pessoas e digite o número da matrícula no SUAP de cada uma.', 'Confira a data e toque em <b>Salvar matrículas</b>.']],
+        ['Matricular', ['Na turma, toque em <b>+ Matricular</b>.', 'Marque as pessoas e digite o número da matrícula no SUAP de cada uma.', 'Confira a data e toque em <b>Salvar</b>.']],
         ['Confirmar o acesso ao AVA', ['Em <b>Acesso ao AVA no mês</b>, confira o mês (use ‹ › para mudar).', 'Marque quem entrou e fez as atividades. Salva na hora.']]
       ],
       passos: [
@@ -165,7 +165,7 @@
       t: 'Pagamentos',
       intro: 'Pedidos de ajuda de custo (visitas de campo) e de bolsa mensal. O caminho é sempre: a pessoa pede → a coordenação dá o aval → o auxiliar lança no Arlo (FUNCERN).',
       tarefas: [
-        ['Dar o aval', ['Em <b>Esperando o seu aval</b>, abra o pedido.', 'Confira as visitas e o km (ajuda de custo) ou o relatório e as entregas do mês (bolsa).', 'Toque em <b>Dar aval</b>, ou escreva o que corrigir e toque em <b>Devolver para corrigir</b>.']]
+        ['Dar o aval', ['Em <b>Esperando o seu aval</b>, abra o pedido.', 'Confira as visitas e o km (ajuda de custo) ou o relatório e as entregas do mês (bolsa).', 'Toque em <b>Dar aval</b>, ou escreva o que corrigir e toque em <b>Devolver para correção</b>.']]
       ],
       passos: [
         'Em <b>Esperando o seu aval</b>, abra o pedido e confira: na ajuda de custo, as visitas e o km; na bolsa, o relatório e as <b>entregas do mês</b> (fotos, lista de presença, fichas, AVA e metas).',
@@ -185,7 +185,7 @@
       intro: 'Cálculo da ajuda de custo de cada visita e planejamento do orçamento de campo do projeto.',
       tarefas: [
         ['Conferir o km de uma visita', ['Em <b>Pagamento do mês</b>, escolha o mês com ‹ ›.', 'Na linha da visita, digite o <b>Km conferido</b> (só a ida).', 'Saia do campo: salva sozinho e o valor da visita muda na hora.']],
-        ['Mudar os valores usados', ['Abra <b>Valores usados</b>.', 'Ajuste hora, horas por etapa, consumo, gasolina ou refeição.', 'Toque em <b>Salvar valores</b>.']],
+        ['Mudar os valores usados', ['Abra <b>Valores usados</b>.', 'Ajuste hora, horas por etapa, consumo, gasolina ou refeição.', 'Toque em <b>Salvar</b>.']],
         ['Ver se o projeto cabe no orçamento', ['Toque em <b>Proposta de roteiro</b>.', 'Veja o custo projetado e, em <b>Caber no orçamento</b>, quanto cada medida economiza.']]
       ],
       passos: [
@@ -202,7 +202,7 @@
       t: 'Viagens e eventos',
       intro: 'Pedidos de passagem aérea (intercâmbio e acompanhamento pedagógico) e de estrutura de evento, feitos pela bolsista de articulação estadual. A FUNCERN só compra ou contrata depois da autorização.',
       tarefas: [
-        ['Conferir um pedido (coordenação técnica; sem ela, o auxiliar administrativo)', ['Em <b>Esperando a sua conferência</b>, abra o pedido.', 'Confira nomes iguais ao documento, CPF, RG, datas e quantidades.', 'Toque em <b>Conferido</b>, ou escreva o que corrigir e toque em <b>Devolver para corrigir</b>.']],
+        ['Conferir um pedido (coordenação técnica; sem ela, o auxiliar administrativo)', ['Em <b>Esperando a sua conferência</b>, abra o pedido.', 'Confira nomes iguais ao documento, CPF, RG, datas e quantidades.', 'Toque em <b>Conferido</b>, ou escreva o que corrigir e toque em <b>Devolver para correção</b>.']],
         ['Autorizar e mandar à FUNCERN (coordenação geral)', ['Em <b>Esperando a sua autorização</b>, abra o pedido.', 'Se já tiver, digite o protocolo da FUNCERN.', 'Toque em <b>Autorizar</b> (ou devolva, ou recuse com o motivo).', 'Toque em <b>Copiar texto</b> e cole no e-mail ou sistema da FUNCERN.']]
       ],
       passos: [
@@ -247,8 +247,8 @@
       tarefas: [
         ['Anexar um documento', ['Toque em <b>Anexar documento</b>.', 'Escolha o tipo, a data e escreva o título (o estado é opcional).', 'Escolha o arquivo: PDF, Word, planilha ou foto, até 20 MB.', 'Toque em <b>Anexar</b>.']],
         ['Abrir um documento', ['Toque no documento na lista.', 'Toque em <b>Abrir o arquivo</b>: ele abre numa aba nova por alguns minutos.']],
-        ['Arquivar um documento errado', ['Abra o documento.', 'Em <b>Arquivar</b>, escreva o motivo.', 'Toque em <b>Arquivar documento</b>. Ele sai da lista, mas não é apagado.']],
-        ['Gerar o relatório da ação', ['Toque em <b>Gerar relatório da ação</b>.', 'Escolha o período e, se quiser, um estado; toque em <b>Atualizar o relatório</b>.', 'Toque em <b>Imprimir ou salvar em PDF</b> ou em <b>Baixar para o Word</b>.']]
+        ['Arquivar um documento errado', ['Abra o documento.', 'Em <b>Arquivar</b>, escreva o motivo.', 'Toque em <b>Arquivar</b>. Ele sai da lista, mas não é apagado.']],
+        ['Gerar o relatório da ação', ['Toque em <b>Gerar relatório da ação</b>.', 'Escolha o período e, se quiser, um estado; toque em <b>Atualizar o relatório</b>.', 'Toque em <b>Imprimir</b> ou em <b>Baixar para o Word</b>.']]
       ],
       passos: [
         'O relatório junta equipe, seleção, campo, curso FIC, pagamentos, viagens e eventos e a lista de documentos do período, só com números: nenhum nome, CPF ou endereço das mulheres.',
@@ -284,7 +284,7 @@
       t: 'Sua tela (bolsista)',
       intro: 'Tudo o que você faz no estado: indicar as mulheres, registrar o trabalho de campo, acompanhar as entregas do mês e pedir os pagamentos.',
       tarefas: [
-        ['Lançar a ficha de uma mulher', ['No topo, toque em <b>+ Nova ficha de mulher</b>.', 'Preencha os dados e os critérios com a mulher.', 'Fotografe a ficha e o termo assinado.', 'Toque em <b>Registrar localização</b> e depois em <b>Salvar ficha</b>. Sem internet, ela sobe sozinha depois.']],
+        ['Lançar a ficha de uma mulher', ['No topo, toque em <b>+ Nova ficha de mulher</b>.', 'Preencha os dados e os critérios com a mulher.', 'Fotografe a ficha e o termo assinado.', 'Toque em <b>Registrar localização</b> e depois em <b>Salvar</b>. Sem internet, ela sobe sozinha depois.']],
         ['Registrar diagnóstico ou visita', ['No topo, toque em <b>Visitas e diagnósticos</b>.', 'Em <b>Para fazer agora</b>, toque no botão da visita (<b>Registrar diagnóstico</b>, <b>Registrar visita feita</b> ou <b>Registrar avaliação</b>).', 'Faça as fotos, registre a localização e salve.']],
         ['Marcar a lista de presença', ['No topo, toque em <b>Entregas do mês</b>.', 'Na lista de presença, toque em <b>Entreguei</b>.']],
         ['Pedir a bolsa e a ajuda de custo', ['No topo, toque em <b>Pedir pagamento</b>.', 'Na ajuda de custo, marque as visitas feitas e toque em <b>Solicitar</b>.', 'Na bolsa, escreva o relatório do mês (pode usar <b>Falar</b>) e toque em <b>Solicitar bolsa</b>.']],
@@ -396,7 +396,7 @@
       t: 'Sua tela (professor do FIC)',
       intro: 'Turmas do curso FIC, matrículas da coordenação técnica, das bolsistas e das agentes de campo e a confirmação mensal do acesso ao AVA.',
       tarefas: [
-        ['Matricular alunas', ['No topo, toque em <b>Matricular alunas</b>.', 'Na turma, toque em <b>+ Matricular</b> (se não houver turma, crie em <b>+ Nova turma</b>).', 'Marque as pessoas, digite o número do SUAP e toque em <b>Salvar matrículas</b>.']],
+        ['Matricular alunas', ['No topo, toque em <b>Matricular alunas</b>.', 'Na turma, toque em <b>+ Matricular</b> (se não houver turma, crie em <b>+ Nova turma</b>).', 'Marque as pessoas, digite o número do SUAP e toque em <b>Salvar</b>.']],
         ['Confirmar o AVA do mês', ['No topo, toque em <b>Confirmar acesso ao AVA</b>.', 'Marque quem acessou. Salva na hora.']]
       ],
       passos: [
@@ -413,7 +413,7 @@
       t: 'Sua tela (auxiliar administrativo)',
       intro: 'Cadastro da equipe no Arlo (FUNCERN), registro do termo de compromisso e lançamento dos pagamentos no Arlo.',
       tarefas: [
-        ['Registrar o cadastro no Arlo', ['No topo, toque em <b>Cadastrar no Arlo</b>.', 'Abra a pessoa e, se precisar, toque em <b>Ver conta e Pix</b>.', 'Cadastre no Arlo, volte e toque em <b>Registrar passos da habilitação</b> → <b>Hoje</b> → <b>Salvar habilitação</b>.']],
+        ['Registrar o cadastro no Arlo', ['No topo, toque em <b>Cadastrar no Arlo</b>.', 'Abra a pessoa e, se precisar, toque em <b>Ver conta e Pix</b>.', 'Cadastre no Arlo, volte e toque em <b>Registrar passos da habilitação</b> → <b>Hoje</b> → <b>Salvar</b>.']],
         ['Lançar um pagamento no Arlo', ['No topo, toque em <b>Lançar pagamentos no Arlo</b>.', 'Abra o pedido, lance o valor no Arlo e digite o protocolo.', 'Toque em <b>Registrar: lançado no Arlo</b>.']]
       ],
       passos: [

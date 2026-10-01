@@ -12,7 +12,7 @@
       { t: 'Entrar no sistema', p: ['Você já entrou usando o e-mail, o código que chegou pelo WhatsApp e a senha que criou.'], v: 'Você está vendo a sua tela, com o seu nome em cima.', pergunta: 'Foi fácil entrar pela primeira vez?' },
       { t: 'Ler o aviso "Antes de começar"', p: ['Na sua tela, procure o quadro "Antes de começar".', 'Leia os pontos.', 'Toque no botão "Li e entendi".'], v: 'O quadro some e não aparece de novo.' },
       { t: 'Abrir os seus dados', p: ['Toque na sua foto ou nas suas iniciais, no alto da tela, à direita.'], v: 'Abre a tela "Meus dados", com seu celular e endereço.' },
-      { t: 'Fazer uma ficha de indicação', p: ['Toque em "+ Nova ficha".', 'Preencha com dados inventados (nunca de uma mulher de verdade).', 'Tire as fotos de qualquer papel, só para testar.', 'Toque em "Salvar ficha".'], v: 'A ficha aparece na lista com "Aguardando aprovação".' },
+      { t: 'Fazer uma ficha de indicação', p: ['Toque em "+ Nova ficha".', 'Preencha com dados inventados (nunca de uma mulher de verdade).', 'Tire as fotos de qualquer papel, só para testar.', 'Toque em "Salvar".'], v: 'A ficha aparece na lista com "Aguardando aprovação".' },
       { t: 'Marcar a localização', p: ['Numa ficha nova, toque em "Registrar localização".', 'Se o celular perguntar, toque em "Permitir".'], v: 'Aparece "Localização registrada ✓" com uns números embaixo.' },
       { t: 'Fazer uma ficha sem internet', p: ['Ligue o modo avião do celular.', 'Faça outra ficha com dados inventados e salve.', 'Desligue o modo avião e espere um pouco.'], v: 'Sem internet aparece "guardado neste aparelho". Com a internet de volta, a ficha sobe sozinha (ou toque em "Enviar agora").' },
       { t: 'Falar em vez de digitar', p: ['Com internet, abra uma ficha nova e vá até "Justificativa / observações".', 'Toque em "Falar" e diga uma frase. No fim, diga "ponto final".', 'Toque em "Parar".'], v: 'O que você falou aparece escrito no campo.' },
@@ -44,7 +44,7 @@
     auxiliar: { nome: 'Auxiliar administrativo', tarefas: [
       { t: 'Entrar no sistema', p: ['Você já entrou usando o e-mail, o código de acesso e a senha que criou.'], v: 'Você está vendo a sua tela.', pergunta: 'Foi fácil entrar pela primeira vez?' },
       { t: 'Achar quem falta cadastrar no Arlo', p: ['Procure a lista "Falta cadastrar no Arlo".'], v: 'Aparecem as pessoas que ainda não têm a data do Arlo.' },
-      { t: 'Registrar Arlo e termo', p: ['Toque numa pessoa da lista.', 'Em "Registrar passos da habilitação", toque em "Hoje" nas duas datas.', 'Anexe um arquivo qualquer como termo e toque em "Salvar habilitação".'], v: 'A pessoa sai da lista de pendentes.' },
+      { t: 'Registrar Arlo e termo', p: ['Toque numa pessoa da lista.', 'Em "Registrar passos da habilitação", toque em "Hoje" nas duas datas.', 'Anexe um arquivo qualquer como termo e toque em "Salvar".'], v: 'A pessoa sai da lista de pendentes.' },
       { t: 'Ver uma conta bancária', p: ['Numa pessoa que informou a conta, toque em "Ver conta e Pix".'], v: 'Aparece a conta. (Essa consulta fica registrada no histórico.)' },
       { t: 'Achar ajuda', p: ['Toque no "?" no alto da tela.'], v: 'Abre a ajuda da sua tela.' }
     ] },
@@ -65,7 +65,7 @@
       { t: 'Liberar novo acesso (esqueceu a senha)', p: ['Abra a ficha de alguém que já entrou.', 'Toque em "Liberar novo primeiro acesso" e confirme.'], v: 'Aparece um código novo para mandar à pessoa.' },
       { t: 'Ver a equipe na visão geral', p: ['Abra a aba Visão geral e procure "Quem é a equipe de execução".'], v: 'Os números batem com a aba Equipe.' },
       { t: 'Ver o histórico', p: ['Abra a aba Histórico.'], v: 'Aparecem as ações feitas nos testes, com nome e hora.' },
-      { t: 'Atender um "Esqueci a senha"', p: ['Peça para alguém da equipe de teste tocar em "Esqueci a senha" na tela de entrada.', 'Veja o número na aba Equipe e abra "Pedidos de novo acesso".', 'Toque em "Abrir ficha" e em "Liberar novo primeiro acesso".'], v: 'O pedido some da lista e aparece o código para mandar pelo WhatsApp.' },
+      { t: 'Atender um "Esqueci a senha"', p: ['Peça para alguém da equipe de teste tocar em "Esqueci a senha" na tela de entrada.', 'Veja o número na aba Equipe e abra "Pedidos de novo acesso".', 'Toque em "Ver detalhes" e em "Liberar novo primeiro acesso".'], v: 'O pedido some da lista e aparece o código para mandar pelo WhatsApp.' },
       { t: 'Autorizar um pedido de passagem', p: ['Na aba "Viagens e eventos", abra um pedido já conferido.', 'Toque em "Autorizar".'], v: 'O pedido fica "Autorizado" e aparece o texto para mandar à FUNCERN.' }
     ] }
   };

@@ -191,7 +191,7 @@ let seq = 100000000; const cpf = () => { const b = String(seq++).padStart(9, '0'
   ok('Coord. geral: auxiliar ocupado, sem botão', !(await vis('[data-acao=novo][data-papel=auxiliar_adm]')));
   // professor pelo FIC
   await aba('equipe');
-  ok('Coord. geral vê "Cadastrar professor(a) do FIC"', await vis('[data-acao=novo][data-papel=professor_fic]'));
+  ok('Coord. geral vê "Cadastrar professor"', await vis('[data-acao=novo][data-papel=professor_fic]'));
   ok('Abre cadastro de professor', await abrirManual('[data-acao=novo][data-papel=professor_fic]'));
   ok('Professor: sem perfil no campo', !(await p.$('.perfil-campo')));
   ok('Professor: sem previsão de atividades', !(await p.$('#c-md')));
@@ -225,7 +225,7 @@ let seq = 100000000; const cpf = () => { const b = String(seq++).padStart(9, '0'
   await aba('equipe'); await abrirManual('[data-acao=novo][data-papel=agente][data-uf=BA]');
   await preencher({ nome: 'Quitéria Rede Fraca', cpf: cpf(), email: 'quiteria@gmail.com', arlo: false, perfil: pf, exp: 'ate2', nasc: '1970-01-01' }); await salvar();
   const tq = await toastTxt();
-  ok('Internet cai depois de cadastrar: avisa que a pessoa FOI cadastrada e o que refazer', /foi cadastrada/.test(tq) && /Editar dados/.test(tq), tq);
+  ok('Internet cai depois de cadastrar: avisa que a pessoa FOI cadastrada e o que refazer', /foi cadastrada/.test(tq) && /"Editar"/.test(tq), tq);
   ok('...e abre a ficha dela (não o formulário de novo)', !(await p.$('form[data-form=cadastro]')) && /Quitéria/.test(await p.textContent('#painel-t').catch(() => '')));
   await p.evaluate(() => { MQ.ui.S.api.salvarPrivado = MQ.ui.S.api._sp; MQ.ui.fecharPainel(); });
   // histórico

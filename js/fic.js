@@ -68,7 +68,7 @@
     const pode = podeNaTurma(t); const prof = pessoa(t.professor_id);
     return `<div class="bloco fic-turma"><div class="ft-cab"><div><h3>${E(t.nome)}</h3>
         <span class="small muted">${E(ondeT(t))} · ${E(periodo(t))} · Professor(a): ${E(nomeDe(prof))}</span></div>
-        ${pode ? `<span class="acoes"><button class="btn pri peq" data-acao="fic-matricular" data-id="${E(t.id)}">+ Matricular</button><button class="btn peq" data-acao="fic-turma-editar" data-id="${E(t.id)}">Editar turma</button></span>` : ''}</div>
+        ${pode ? `<span class="acoes"><button class="btn pri peq" data-acao="fic-matricular" data-id="${E(t.id)}">+ Matricular</button><button class="btn peq" data-acao="fic-turma-editar" data-id="${E(t.id)}">Editar</button></span>` : ''}</div>
       ${t.obs ? `<p class="small">${E(t.obs)}</p>` : ''}
       ${ms.length ? `<div class="fic-lista">${ms.map(({ x, m }) => linhaPessoa(m, `<span class="small num">Nº ${E(x.numero)} · ${R.fmtData(x.matriculado_em)}</span>${pode ? `<button class="link small" data-acao="fic-cancelar" data-id="${E(x.id)}">Cancelar</button>` : ''}`)).join('')}</div>`
         : '<p class="small muted">Ninguém matriculado nesta turma ainda.</p>'}
@@ -99,7 +99,7 @@
       <div class="secao-cab"><div><h2 id="t-prof">Professores do curso FIC</h2><p>IFRN · cadastrados pela coordenação geral · criam as turmas e matriculam a coordenação técnica, as bolsistas e as agentes</p></div></div>
       ${l.map(m => U().cartaoPessoa(m)).join('')}
       ${U().vagaAberta ? U().vagaAberta(l.length ? `<b>${l.length} professor${l.length > 1 ? 'es' : ''} cadastrado${l.length > 1 ? 's' : ''}.</b> Pode cadastrar mais, se o curso tiver outro professor.` : 'Nenhum professor do FIC cadastrado. Digite os dados ou gere um link para ele preencher.', souGeral,
-        '<button class="btn pri btn-cad" data-acao="novo" data-papel="professor_fic">Cadastrar professor(a) do FIC</button>', l.length ? 'Pode ter mais' : 'Vaga aberta') : ''}
+        '<button class="btn pri btn-cad" data-acao="novo" data-papel="professor_fic">Cadastrar professor</button>', l.length ? 'Pode ter mais' : 'Vaga aberta') : ''}
     </section>`;
   }
 
@@ -116,7 +116,7 @@
     const t = p.id ? turmas().find(x => x.id === p.id) || {} : { professor_id: souProf() ? S().eu.id : '' };
     const v = k => E(t[k] == null ? '' : t[k]);
     const op = (val, txt, atual) => `<option value="${E(val)}" ${String(val) === String(atual || '') ? 'selected' : ''}>${E(txt)}</option>`;
-    return cab('Curso FIC', p.id ? 'Editar turma' : 'Nova turma') + `<div class="painel-corpo"><form class="f" data-form="fic-turma" data-id="${E(p.id || '')}" novalidate>
+    return cab('Curso FIC', p.id ? 'Editar' : 'Nova turma') + `<div class="painel-corpo"><form class="f" data-form="fic-turma" data-id="${E(p.id || '')}" novalidate>
       <div class="campos">
         <div class="campo inteiro"><label for="ft-nome">Nome da turma</label><input id="ft-nome" name="nome" value="${v('nome')}" placeholder="Ex.: FIC Agroecologia e Quintais – Piauí" autofocus required></div>
         <div class="campo"><label for="ft-uf">Estado</label><select id="ft-uf" name="uf">${op('', 'Vários estados', t.uf)}${MQ.UFS.map(u => op(u.uf, u.nome, t.uf)).join('')}</select>
@@ -147,7 +147,7 @@
         : '<p class="muted">Ninguém disponível para esta turma.</p>'}
       ${fora ? `<p class="small muted">${fora} pessoa${fora > 1 ? 's' : ''} de outro estado ou já em outra turma não aparece${fora > 1 ? 'm' : ''} aqui.</p>` : ''}
       <div class="aviso erro" data-erro hidden></div>
-      <div class="acoes"><button class="btn pri" type="submit">Salvar matrículas</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div></form></div>`;
+      <div class="acoes"><button class="btn pri" type="submit">Salvar</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div></form></div>`;
   }
 
   function painelCancelar(p) {

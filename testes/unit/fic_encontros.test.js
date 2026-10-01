@@ -63,7 +63,7 @@ test('bolsa do professor: relatório com os encontros e a presença; mês sem en
   await t.trocar('coord_geral');
   const p = texto(t.painel({ tipo: 'pag-ver', id }));
   assert.match(p, /Relatório mensal do professor do curso FIC/); assert.match(p, /Encontros e lista de presença/); assert.match(p, /aguardando/);
-  assert.match(p, /Bolsa do perfil\s*R\$\s?2\.200,00/); assert.match(p, /Imprimir ou salvar em PDF/);
+  assert.match(p, /Bolsa do perfil\s*R\$\s?2\.200,00/); assert.match(t.painel({ tipo: "pag-ver", id }), /data-acao="enc-imprimir"[^>]*>Imprimir</);
   assert.match(t.painel({ tipo: 'pag-ver', id }), /name="valor"[^>]*value="2200,00"/, 'valor do perfil já preenchido no aval');
 });
 

@@ -120,7 +120,7 @@
         <div class="campo"><label for="av-obs">O que ela diz do quintal (em poucas palavras)</label><textarea id="av-obs" name="fala" placeholder="Registre com as palavras dela.">${v('fala')}</textarea></div>
         <input type="hidden" name="fotos_existentes" value="${E((a.fotos || []).join('|'))}">
         <div class="aviso erro" data-erro hidden></div>
-        <div class="acoes"><button class="btn pri" type="submit">Salvar avaliação</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div>
+        <div class="acoes"><button class="btn pri" type="submit">Salvar</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div>
       </form></div>`;
   }
   document.addEventListener('change', async ev => {
@@ -188,7 +188,7 @@
         <span class="small">${R.fmtData(a.data_visita)} · quintal ${({ sim: 'produzindo', em_parte: 'produzindo em parte', nao: 'sem produzir' })[a.quintal_produz]}</span></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo">
-        ${pode ? `<div class="acoes"><button class="btn" data-acao="aval-novo" data-ficha="${E(f.id)}">Corrigir avaliação</button></div>` : ''}
+        ${pode ? `<div class="acoes"><button class="btn" data-acao="aval-novo" data-ficha="${E(f.id)}">Corrigir</button></div>` : ''}
         <div class="bloco"><h3>Antes × depois</h3><table class="tab-uf"><thead><tr><th>Medida</th><th>Diagnóstico</th><th>Avaliação</th></tr></thead><tbody>
           ${lin('Alimentação (EBIA)', b && NIVEL[b.ebia_nivel], NIVEL[im.ebia_nivel])}
           ${lin('Dias por semana comendo do quintal', b && b.dias_consumo, im.dias_consumo)}

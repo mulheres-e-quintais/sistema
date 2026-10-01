@@ -97,7 +97,7 @@
         <div><span class="v num">${Object.keys(porPessoa).length}</span><span class="l">pessoas a receber</span></div>
         <div><span class="v num">${semKm}</span><span class="l">visitas feitas sem km (não somam combustível)</span></div></div>
       <div class="duas-col">
-        <section class="secao"><div class="secao-cab"><h2>Por pessoa · visitas feitas</h2>${feitas.length ? '<button class="btn peq" data-acao="custo-csv">Baixar planilha (CSV)</button>' : ''}</div>
+        <section class="secao"><div class="secao-cab"><h2>Por pessoa · visitas feitas</h2>${feitas.length ? '<button class="btn peq" data-acao="custo-csv">Baixar CSV</button>' : ''}</div>
           ${Object.keys(porPessoa).length ? `<div class="bloco"><table class="tab-uf"><thead><tr><th>Pessoa</th><th>Visitas</th><th style="text-align:right">A pagar</th></tr></thead><tbody>
             ${Object.values(porPessoa).sort((a, b) => b.total - a.total).map(x => `<tr><td><b>${E(x.p.nome || '—')}</b><br><span class="small muted">${E((MQ.PAPEIS[x.p.papel] || {}).nome || '')} · ${E(x.p.uf || '')}${x.falta ? ` · <span class="crit-txt">${x.falta} sem km</span>` : ''}</span></td>
               <td class="num">${x.n}</td><td class="num" style="text-align:right"><b>${brl(x.total)}</b></td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">Nenhuma visita feita neste mês.</p>'}
@@ -119,7 +119,7 @@
               ${num('fator_estrada', 'Fator estrada (sobre a linha reta)', p.fator_estrada, 0.05)}${num('teto', 'Teto das ajudas de custo no projeto (R$)', p.teto || MQ.CUSTO_PADRAO.teto, 100)}</div>
             <p class="nota">Preço de referência: média da gasolina no país em set/2026 ficou perto de R$ 6,52 (ANP). Confira o preço do mês no estado.</p>
             <div class="aviso erro" data-erro hidden></div>
-            ${souCoord ? '<div class="acoes"><button class="btn pri" type="submit">Salvar valores</button></div>' : ''}</form>
+            ${souCoord ? '<div class="acoes"><button class="btn pri" type="submit">Salvar</button></div>' : ''}</form>
         </aside></div>`;
   }
   const num = (k, rot, v, passo) => `<div class="campo"><label for="cp-${k}">${rot}</label><input id="cp-${k}" name="${k}" type="number" min="0" step="${passo}" inputmode="decimal" value="${E(v)}"></div>`;
@@ -315,7 +315,7 @@
         <div><span class="v num" style="color:var(--ok)">${brl(eco)}</span><span class="l">economia (${base ? Math.round(eco / base * 100) : 0}%)</span></div>
         <div><span class="v num">${nQ ? brl(prop / nQ) : '—'}</span><span class="l">por quintal, nas ${ETAPAS_PLANO.reduce((s, e) => s + e[1], 0)} visitas</span></div></div>
       ${blocoTeto()}
-      <div class="acoes">        <button class="btn peq" data-acao="custo-plano-csv">Baixar a proposta (CSV)</button></div>
+      <div class="acoes">        <button class="btn peq" data-acao="custo-plano-csv">Baixar CSV</button></div>
       <section class="secao"><h2>Por estado</h2><div class="quadro-scroll" style="display:block"><table class="quadro tab-plano"><thead><tr>
           <th>Estado</th><th>Quintais</th><th>Visitas</th><th>Viagens</th><th>Km</th><th>Combustível</th><th>Refeição</th><th>Horas pagas</th><th>Total</th><th>Sem agrupar</th></tr></thead><tbody>
         ${ufs.map(u => `<tr class="${u.visitas ? '' : 'vazia'}"><td><button class="link" data-acao="custo-plano-uf" data-uf="${u.uf}"><span class="so-largo">${E(U().nomeUF(u.uf))}</span><span class="so-cel">${u.uf}</span></button></td><td>${u.quintais}</td><td>${u.visitas}</td><td>${u.viagens.length}</td>

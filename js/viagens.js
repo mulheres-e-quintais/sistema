@@ -284,16 +284,16 @@
     if (souDono && x.situacao === 'devolvido') acoes.push(`<div class="acoes"><button class="btn pri" data-acao="viag-nova" data-t="${x.tipo}" data-id="${E(x.id)}">Corrigir e reenviar</button></div>`);
     if (souDono && ['enviado', 'devolvido'].includes(x.situacao)) acoes.push(formMover(x, 'Cancelar este pedido', [['cancelar', 'Cancelar o pedido', 'perigo']], 'Motivo (opcional)'));
     const geral = papel === 'coord_geral';
-    if (!souDono && papel !== 'coord_geral' && souConferente() && x.situacao === 'enviado') acoes.push(formMover(x, 'Conferência', [['conferir', 'Conferido: mandar para a coordenação geral', 'pri'], ['devolver', 'Devolver para corrigir', 'perigo']], 'Observação (obrigatória para devolver)'));
+    if (!souDono && papel !== 'coord_geral' && souConferente() && x.situacao === 'enviado') acoes.push(formMover(x, 'Conferência', [['conferir', 'Conferido', 'pri'], ['devolver', 'Devolver para correção', 'perigo']], 'Observação (obrigatória para devolver)'));
     if (geral && x.situacao === 'enviado') {
-      if (souConferente()) acoes.push(formMover(x, 'Conferência (sem coordenação técnica e sem auxiliar)', [['conferir', 'Conferido', 'pri'], ['devolver', 'Devolver para corrigir', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)'));
-      else if (legado()) acoes.push(formMover(x, 'Conferir no lugar da coordenação técnica', [['conferir', 'Conferido', ''], ['devolver', 'Devolver para corrigir', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)'));
+      if (souConferente()) acoes.push(formMover(x, 'Conferência (sem coordenação técnica e sem auxiliar)', [['conferir', 'Conferido', 'pri'], ['devolver', 'Devolver para correção', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)'));
+      else if (legado()) acoes.push(formMover(x, 'Conferir no lugar da coordenação técnica', [['conferir', 'Conferido', ''], ['devolver', 'Devolver para correção', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)'));
       else acoes.push(`<div class="aviso">Quem confere este pedido é ${nomeConf()}. Depois da conferência, ele volta para você autorizar.</div>` + formMover(x, 'Recusar sem esperar a conferência', [['recusar', 'Recusar', 'perigo']], 'Motivo da recusa (obrigatório)'));
     }
     if (geral && x.situacao === 'conferido') {
       const mesmo = x.conferido_por === eu.id && conf() !== 'coord_geral' && !legado();
-      if (mesmo) acoes.push(`<div class="aviso erro">Você conferiu este pedido, então não pode autorizá-lo: cada pedido passa por duas pessoas. Devolva para ${nomeConf()} conferir.</div>` + formMover(x, 'Devolver ou recusar', [['devolver', 'Devolver para corrigir', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória)'));
-      else acoes.push(formMover(x, 'Autorizar e mandar para a FUNCERN', [['autorizar', 'Autorizar', 'pri'], ['devolver', 'Devolver para corrigir', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)', true, true));
+      if (mesmo) acoes.push(`<div class="aviso erro">Você conferiu este pedido, então não pode autorizá-lo: cada pedido passa por duas pessoas. Devolva para ${nomeConf()} conferir.</div>` + formMover(x, 'Devolver ou recusar', [['devolver', 'Devolver para correção', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória)'));
+      else acoes.push(formMover(x, 'Autorizar e mandar para a FUNCERN', [['autorizar', 'Autorizar', 'pri'], ['devolver', 'Devolver para correção', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)', true, true));
     }
     if (papel === 'coord_geral' && x.situacao === 'autorizado') acoes.push(formMover(x, 'Protocolo da FUNCERN', [['protocolo', 'Salvar protocolo', 'pri']], null, true));
     const ver = x.tipo === 'passagem' ? `<div class="bloco"><h3>Viagem</h3><dl class="dl">

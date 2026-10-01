@@ -453,7 +453,7 @@
         </div>
         <input type="hidden" name="fotos_existentes" value="${E((d.fotos || []).join('|'))}">
         <div class="aviso erro" data-erro hidden></div>
-        <div class="acoes"><button class="btn pri" type="submit">Salvar diagnóstico</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div>
+        <div class="acoes"><button class="btn pri" type="submit">Salvar</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div>
       </form></div>`;
   }
 
@@ -516,7 +516,7 @@
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo">
         ${dg.situacao === 'devolvido' && dg.obs_coordenacao ? `<div class="aviso erro"><b>Devolvido:</b> ${E(dg.obs_coordenacao)}</div>` : ''}
-        ${podeCorrigir ? `<div class="acoes"><button class="btn pri" data-acao="campo-diag-novo" data-ficha="${E(f.id)}">Corrigir diagnóstico</button></div>` : ''}
+        ${podeCorrigir ? `<div class="acoes"><button class="btn pri" data-acao="campo-diag-novo" data-ficha="${E(f.id)}">Corrigir</button></div>` : ''}
         <div class="resumo" style="grid-template-columns:repeat(3,minmax(0,1fr))">
           <div><span class="v num">${d.area_m2 ?? '—'}<small> m²</small></span><span class="l">área do quintal</span></div>
           <div><span class="v num">${d.renda_quintal != null ? R.fmtBRL(+d.renda_quintal).replace(',00', '') : '—'}</span><span class="l">vendas do quintal por mês</span></div>

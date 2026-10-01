@@ -449,7 +449,7 @@
     return `<section class="secao" aria-labelledby="t-aux">
       <div class="secao-cab"><div><h2 id="t-aux">Auxiliar administrativo</h2><p>Um para o projeto · IFRN · cadastrado pela coordenação geral · cadastra a equipe no Arlo, registra o Arlo e o termo e lança os pagamentos</p></div></div>
       ${aux ? cartaoPessoa(aux) : vagaAberta(ant ? `O anterior, ${esc(ant.nome)}, foi desligado${ant.data_fim ? ' em ' + R.fmtData(ant.data_fim) : ''}.` : 'Digite os dados ou gere um link para ele preencher.', souGeral,
-        `<button class="btn pri btn-cad" data-acao="novo" data-papel="auxiliar_adm" ${ant ? `data-subst="${ant.id}"` : ''}>Cadastrar auxiliar administrativo</button>`)}
+        `<button class="btn pri btn-cad" data-acao="novo" data-papel="auxiliar_adm" ${ant ? `data-subst="${ant.id}"` : ''}>Cadastrar auxiliar</button>`)}
     </section>`;
   }
   function telaAuxiliar() {
@@ -669,7 +669,7 @@
             <div class="aviso erro" data-erro hidden></div>
             <div class="acoes"><button class="btn pri" type="submit">Trocar senha</button></div>
           </form></details>
-        ${S.api.modo === 'supabase' ? '<div class="acoes"><button class="btn" data-acao="sair">Sair do sistema</button></div>' : ''}</div>`;
+        ${S.api.modo === 'supabase' ? '<div class="acoes"><button class="btn" data-acao="sair">Sair</button></div>' : ''}</div>`;
   }
 
   /* atalhos no topo das telas pessoais: o caminho mais curto para cada tarefa, sem rolar a página inteira no celular.
@@ -885,7 +885,7 @@
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo">
         <div class="bloco"><h3>Dados</h3>${dadosDL(m)}
-          ${editaDados ? `<div class="acoes"><button class="btn" data-acao="editar" data-id="${m.id}">Editar dados</button><button class="btn perigo" data-acao="desligar-abrir">Desligar</button></div>` : ''}
+          ${editaDados ? `<div class="acoes"><button class="btn" data-acao="editar" data-id="${m.id}">Editar</button><button class="btn perigo" data-acao="desligar-abrir">Desligar</button></div>` : ''}
           </div>
 
         <form class="bloco" data-form="desligar" data-id="${m.id}" hidden novalidate>
@@ -922,8 +922,8 @@
         <p>Pessoas que tocaram em "Esqueci a senha". Abra a ficha, toque em <b>Liberar novo primeiro acesso</b> e mande o código pelo WhatsApp do cadastro. Se não foi a própria pessoa que pediu (ela não sabe do pedido), descarte.</p></div></div>
       <div class="lista-fichas">${l.map(([p, m]) => `<div class="vagabtn ficha-linha pedido-acesso">
           <span class="nm">${esc(nomeDe(m))}</span><span class="small muted">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(m.uf) : ''} · pediu em ${quandoPediu(p)}</span>
-          <span class="acoes"><button type="button" class="btn peq pri" data-acao="ver" data-id="${esc(m.id)}">Abrir ficha</button>
-            <button type="button" class="btn peq" data-acao="acesso-descartar" data-id="${esc(p.id)}">Descartar</button></span></div>`).join('')}</div></section>`;
+          <span class="acoes"><button type="button" class="btn peq" data-acao="ver" data-id="${esc(m.id)}">Ver detalhes</button>
+            <button type="button" class="btn peq perigo" data-acao="acesso-descartar" data-id="${esc(p.id)}">Descartar</button></span></div>`).join('')}</div></section>`;
   }
   /* a pessoa só entra no sistema quando alguém avisa: o sistema não manda e-mail */
   function avisoAcesso(m, pode) {
@@ -982,7 +982,7 @@
         <div class="campo inteiro"><label for="h-obs">Observações</label><textarea id="h-obs" name="obs_habilitacao" placeholder="Ex.: falta comprovante de conta; Pix informado em 02/10.">${esc(m.obs_habilitacao || '')}</textarea></div>
       </div>
       <div class="aviso erro" data-erro hidden></div>
-      <div class="acoes"><button class="btn pri" type="submit">Salvar habilitação</button></div></form></details>`;
+      <div class="acoes"><button class="btn pri" type="submit">Salvar</button></div></form></details>`;
   }
 
   function painelCadastro(p) {
@@ -1004,7 +1004,7 @@
       const prof = (S.equipe || []).find(x => x.papel === 'professor_fic' && x.status === 'ativa');
       return cabP + `<div class="painel-corpo"><div class="aviso erro sem-professor"><b>Ainda não dá para cadastrar.</b> ${esc(R.MSG_SEM_PROFESSOR)}</div>
         <p class="small muted">${prof ? `${esc(nomeDe(prof))} já está cadastrado(a) como professor(a): falta registrar o cadastro no Arlo e o termo assinado, na ficha dele(a).` : 'Nenhum professor do FIC cadastrado ainda. Quem cadastra professor é a coordenação geral, na aba Equipe.'}</p>
-        ${prof && S.eu.papel === 'coord_geral' ? `<div class="acoes"><button class="btn pri" data-acao="ver" data-id="${esc(prof.id)}">Abrir a ficha de ${esc(nomeDe(prof).split(' ')[0])}</button></div>` : ''}</div>`;
+        ${prof && S.eu.papel === 'coord_geral' ? `<div class="acoes"><button class="btn" data-acao="ver" data-id="${esc(prof.id)}" aria-label="Ver detalhes de ${esc(nomeDe(prof))}">Ver detalhes</button></div>` : ''}</div>`;
     }
     // cadastro novo: primeiro escolhe como (link para a pessoa preencher ou à mão)
     if (!edit && !pre && MQ.convitesUI && p.modo !== 'manual') {
@@ -1294,7 +1294,7 @@
             const temAlgo = priv && (priv.data_nascimento || priv.nis || Object.keys(priv.endereco).length || priv.socioeconomico || priv.perfil);
             // a pessoa já está cadastrada: uma falha daqui em diante não pode levar a cadastrar de novo (daria "CPF já ocupa vaga")
             let falhou = '';
-            try { if (temAlgo) await S.api.salvarPrivado(novo.id, priv); } catch (e) { falhou = 'os dados pessoais (nascimento, endereço, perfil) não foram salvos: abra "Editar dados" e salve de novo'; }
+            try { if (temAlgo) await S.api.salvarPrivado(novo.id, priv); } catch (e) { falhou = 'os dados pessoais (nascimento, endereço, perfil) não foram salvos: abra "Editar" e salve de novo'; }
             try { if (p.pre) await S.api.decidirPreCadastro(p.pre, 'aprovado', null, novo.id); } catch (e) { falhou = falhou || 'o cadastro enviado pelo link continua na lista: recuse-o com o motivo "já cadastrada"'; }
             try { await recarregar(); } catch (e) {}
             abrirPainel({ tipo: 'detalhe', id: novo.id });
