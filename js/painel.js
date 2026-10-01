@@ -32,6 +32,11 @@
   function alertas(S, d) {
     const a = [];
     const hoje = R.hoje();
+    // planilha de gastos do mês (o lembrete não aparece na visão geral; o aviso fica aqui)
+    if (!S.execSemBanco && +hoje.slice(8, 10) >= 20 && !(S.execPlanilhas || []).some(p => String(R.diaLocal(p.enviado_em)).slice(0, 7) === hoje.slice(0, 7))) {
+      const fim = new Date(+hoje.slice(0, 4), +hoje.slice(5, 7), 0).getDate();
+      a.push({ nivel: 'pend', prazo: hoje.slice(0, 8) + String(fim).padStart(2, '0'), texto: 'Planilha de gastos do mês ainda não enviada', det: 'Sem ela, o executado do painel fica parado na planilha anterior.', aba: 'execucao' });
+    }
     const vagas = 11 - d.pagaveis.length;
     if (vagas > 0) {
       const dias = R.diasAte(MQ.PROJETO.prazoIndicacao);
@@ -42,7 +47,7 @@
     if (semHab.length) a.push({ nivel: 'pend', texto: `${semHab.length} pessoa${semHab.length > 1 ? 's' : ''} ainda sem habilitação completa para a bolsa`,
       det: semHab.slice(0, 4).map(m => m.nome.split(' ')[0] + ' (' + R.passosHabilitacao(m).filter(p => !p.feito).map(p => p.id === 'fic' ? 'FIC' : p.id === 'funcern' ? 'FUNCERN' : 'termo').join(', ') + ')').join(' · ') + (semHab.length > 4 ? ' …' : ''), aba: 'equipe' });
     const velhas = d.fichas.filter(f => f.situacao === 'aguardando' && f.criado_em && (Date.now() - new Date(f.criado_em)) > 5 * 864e5);
-    if (velhas.length) a.push({ nivel: 'pend', prazo: new Date(Math.min(...velhas.map(f => +new Date(f.criado_em))) + 5 * 864e5).toISOString().slice(0, 10), texto: `${velhas.length} ficha${velhas.length > 1 ? 's' : ''} aguardando aprovação há mais de 5 dias`, det: 'A aprovação é da coordenação técnica. Sem ela, o diagnóstico não começa.', aba: 'selecao' });
+    if (velhas.length) a.push({ nivel: 'pend', prazo: R.somaDias(velhas.map(f => R.diaLocal(f.criado_em)).sort()[0], 5), texto: `${velhas.length} ficha${velhas.length > 1 ? 's' : ''} aguardando aprovação há mais de 5 dias`, det: 'A aprovação é da coordenação técnica. Sem ela, o diagnóstico não começa.', aba: 'selecao' });
     const nCasas = R.contarCasas(d.fichas); const casas = d.fichas.filter(f => { const k = R.chaveCasa(f); return k && nCasas.get(k) > 1; });
     if (casas.length) a.push({ nivel: 'crit', prazo: 'imediato', texto: `${casas.length} fichas com o mesmo endereço de outra ficha`, det: 'Duas pessoas da mesma casa não podem ser selecionadas (risco de questionamento da seleção).', aba: 'selecao' });
     MQ.UFS.forEach(u => {
@@ -393,7 +398,7 @@
     const MES3 = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
     return `
       <header class="dx-cab"><div><span class="eyebrow">Mulheres &amp; Quintais</span><h1>Execução do projeto</h1>
-        <p>Mês ${mes} de ${MESES.length} (${MESES[mes - 1]}) · vigência até ${R.fmtData(MQ.PROJETO.vigencia.fim)}${diasFim > 0 ? ' · faltam ' + diasFim + ' dias' : ' · encerrada'}</p></div>
+        <p>Mês ${mes} de ${MESES.length} (${MESES[mes - 1]}) · vigência até ${R.fmtData(MQ.PROJETO.vigencia.fim)}${diasFim > 0 ? ' · faltam ' + diasFim + ' dias' : diasFim === 0 ? ' · último dia' : ' · encerrada'}</p></div>
         <div class="cab-lado">
           <div class="linha-tempo-mini" role="img" aria-label="Mês ${mes} de ${MESES.length} do projeto">${MESES.map((m, i) => `<span class="${i + 1 < mes ? 'passou' : i + 1 === mes ? 'agora' : ''}" title="${m}"></span>`).join('')}</div>
           ${(MQ.ui.S.eu || {}).papel === 'coord_geral' ? `<a class="atalho" href="${E(MQ.PAINEL_FINANCEIRO)}" target="_blank" rel="noopener">

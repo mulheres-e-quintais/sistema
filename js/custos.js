@@ -29,10 +29,12 @@
   }
 
   /* ---------- distância ---------- */
+  const memoMun = {};   // nome normalizado → coordenadas (a lista de municípios é grande: não procura de novo a cada visita)
   function coordMun(uf, municipio) {
-    const muns = (MQ.GEO.mun || {})[uf] || {};
-    const k = Object.keys(muns).find(m => norm(m) === norm(municipio));
-    return k ? { lon: muns[k][0], lat: muns[k][1], como: 'centro de ' + k } : null;
+    const chave = uf + '|' + norm(municipio);
+    if (!(chave in memoMun)) { const muns = (MQ.GEO.mun || {})[uf] || {}; const k = Object.keys(muns).find(m => norm(m) === norm(municipio));
+      memoMun[chave] = k ? { lon: muns[k][0], lat: muns[k][1], como: 'centro de ' + k } : null; }
+    return memoMun[chave] ? Object.assign({}, memoMun[chave]) : null;
   }
   function destino(v) {
     const dg = (S().diagnosticos || []).find(x => x.ficha_id === v.ficha_id && x.latitude != null);
@@ -218,7 +220,9 @@
     const med = op.medidas || C.medidas;
     const par = C.par; const fichas = S().fichas || []; const equipe = (S().equipe || []).filter(m => m.status === 'ativa' && R.habilitado(m) && R.ehCampo(m.papel));
     // feitas ou já marcadas no roteiro de campo: não entram de novo na proposta
-    const contaFeitas = (fid, et) => op.tudo ? 0 : (S().visitas || []).filter(v => v.ficha_id === fid && v.etapa === et && v.situacao !== 'cancelada').length;
+    // índice das visitas por quintal (antes: cada consulta varria todas as visitas; com 1.000 visitas a aba travava)
+    const visPorFicha = {}; (S().visitas || []).forEach(v => { if (v.situacao !== 'cancelada') (visPorFicha[v.ficha_id] = visPorFicha[v.ficha_id] || []).push(v); });
+    const contaFeitas = (fid, et) => op.tudo ? 0 : (visPorFicha[fid] || []).filter(v => v.etapa === et).length;
     const semAgua = new Set((S().diagnosticos || []).filter(d => d.sem_agua).map(d => d.ficha_id));
     const mesAgora = (() => { const [a, m] = R.hoje().slice(0, 7).split('-').map(Number); return Math.max(1, (a - 2026) * 12 + m - 8); })();
     const res = { ufs: {}, semOrigem: [], semLocal: 0 };
@@ -236,7 +240,7 @@
       const pares = []; quintais.forEach((q, qi) => pessoas.forEach((p, pi) => pares.push([dp(p, q.d), qi, pi])));
       pares.sort((a, b) => a[0] - b[0]); const dono = {};
       // quem já visitou (ou já tem visita marcada) continua com o mesmo quintal: a mulher conhece a pessoa
-      if (op.cont) quintais.forEach((q, qi) => { const ult = (S().visitas || []).filter(v => v.ficha_id === q.f.id && v.situacao !== 'cancelada' && v.executor_id)
+      if (op.cont) quintais.forEach((q, qi) => { const ult = (visPorFicha[q.f.id] || []).filter(v => v.executor_id)
           .sort((a, b) => String(b.data_realizada || b.data_prevista).localeCompare(String(a.data_realizada || a.data_prevista)))[0];
         const pi = ult ? pessoas.findIndex(p => p.m.id === ult.executor_id) : -1;
         if (pi >= 0) { dono[qi] = pi; pessoas[pi].carga++; R0.continua = (R0.continua || 0) + 1; } });

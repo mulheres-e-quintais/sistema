@@ -238,9 +238,11 @@
     }
     if (tipo === 'pag-aval') {
       const ok = form.dataset.ok !== '0'; const obs = String(fd.get('obs') || '').trim();
-      const vtxt = String(fd.get('valor') || '').trim(); const valor = vtxt === '' ? null : Number(vtxt.replace(/\./g, '').replace(',', '.'));
+      const vtxt = String(fd.get('valor') || '').trim(); const valor = vtxt === '' ? null : R.valorBR(vtxt);
+      const sol = (S().solic || []).find(x => x.id === form.dataset.id) || {};
       if (!ok && obs.length < 5) return U().mostrarErros(form, { obs: 'Escreva o que precisa ser corrigido.' });
-      if (ok && valor != null && !(valor >= 0)) return U().mostrarErros(form, { valor: 'Valor inválido.' });
+      if (ok && valor != null && !(valor > 0)) return U().mostrarErros(form, { valor: 'Valor inválido: informe um valor maior que zero.' });
+      if (ok && valor != null && sol.tipo === 'bolsa' && sol.valor_solicitado != null && valor > +sol.valor_solicitado) return U().mostrarErros(form, { valor: 'O aval passa do valor pedido. Para pagar mais, devolva para a pessoa corrigir o valor.' });
       await U().ocupado(form, async () => {
         await S().api.avalizarPagamento(form.dataset.id, ok, obs, ok ? valor : null);
         await recarregar(); U().fecharPainel(); U().toast(ok ? 'Aval registrado. A solicitação foi para o auxiliar lançar no Arlo.' : 'Solicitação devolvida. A pessoa vê o motivo e pode corrigir.');

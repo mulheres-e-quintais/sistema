@@ -79,11 +79,7 @@
   /* ---------- fotos ---------- */
   // sem foto real publicada: o destaque também mostra as ilustrações (com o selo)
   const fotosOuIlus = d => (d && (d.fotos || []).length) ? d.fotos : ilustracoes();
-  function foto(d, i, cls) {
-    const fs = fotosOuIlus(d); if (!fs.length) return '';
-    const f = fs[((i % fs.length) + fs.length) % fs.length];
-    return `<figure class="${cls}${f.ilustracao ? ' e-ilus' : ''}"><img src="${E(f.url)}" alt="${f.ilustracao ? 'Ilustração: ' : ''}${E(f.legenda)}" loading="lazy" decoding="async">${f.ilustracao ? '<span class="mos-selo">Ilustração</span>' : ''}<figcaption>${E(f.legenda)}${f.ilustracao ? '' : ` <span>· ${E(f.uf)}</span>`}</figcaption></figure>`;
-  }
+
   /* mosaico pequeno da tela de entrada: painel fixo com 7 fotos em tamanhos diferentes; o desenho não muda,
      só as fotos trocam a cada 8 s (se houver mais de 7). Passar o mouse aproxima a foto. */
   // quadros em pé (retrato), para não cortar o rosto: grande à esquerda, dois altos e uma fileira de pequenos
@@ -224,7 +220,7 @@
       return '<div class="aviso">A vitrine ainda não foi instalada no servidor: a coordenação geral precisa rodar o arquivo 04_vitrine_e_custos.sql no Supabase.</div>';
     if (!V.lista.length) return '<p class="muted">Nenhuma foto publicada.</p>';
     return `<div class="galeria">${V.lista.map(v => `<figure class="gal-item"><img src="${E(v.url)}" alt="${E(v.legenda)}" loading="lazy">
-      <figcaption>${E(v.legenda)} <span>· ${E(v.uf)} · ${R.fmtData(String(v.publicada_em).slice(0, 10))}</span>
+      <figcaption>${E(v.legenda)} <span>· ${E(v.uf)} · ${R.fmtData(v.publicada_em)}</span>
       <button class="link perigo" data-acao="vit-retirar" data-id="${E(v.id)}" data-path="${E(v.path)}">Retirar</button></figcaption></figure>`).join('')}</div>`;
   }
 

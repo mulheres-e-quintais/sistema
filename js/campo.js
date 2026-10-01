@@ -94,6 +94,10 @@
     S().fila.filter(i => i.tipo === 'diagnostico').forEach(i => m.set(i.id, Object.assign({}, m.get(i.id) || {}, i.dados, { _fila: true, _erro: i.erro, situacao: (m.get(i.id) || {}).situacao || 'aguardando' })));
     return [...m.values()];
   }
+  // índices refeitos só quando a lista muda (com 1.000 visitas, procurar uma a uma deixava a aba lenta)
+  const memoIdx = new WeakMap();
+  const indice = (arr, chave) => { let m = memoIdx.get(arr); if (!m) { m = {}; memoIdx.set(arr, m); }
+    if (!m[chave]) { const x = new Map(); arr.forEach(o => { const k = o[chave]; if (!x.has(k)) x.set(k, []); x.get(k).push(o); }); m[chave] = x; } return m[chave]; };
   const ficha = id => (S().fichas || []).find(f => f.id === id);
   const pessoa = id => (S().equipe || []).find(p => p.id === id);
   const primeiroNome = n => String(n || '').split(' ')[0];
@@ -101,7 +105,7 @@
     .sort((a, b) => (a.papel === 'agente') - (b.papel === 'agente') || a.nome.localeCompare(b.nome));
   const selecionadas = uf => (S().fichas || []).filter(f => f.uf === uf && f.resultado === 'selecionada' && f.situacao === 'aprovada')
     .sort((a, b) => a.municipio.localeCompare(b.municipio) || a.nome.localeCompare(b.nome));
-  const ativasDe = (fid, etapa) => visitas().filter(v => v.ficha_id === fid && v.etapa === etapa && v.situacao !== 'cancelada')
+  const ativasDe = (fid, etapa) => (visitas(), indice(memo.v.lista, 'ficha_id').get(fid) || []).filter(v => v.etapa === etapa && v.situacao !== 'cancelada')
     .sort((a, b) => String(a.data_prevista).localeCompare(String(b.data_prevista)));
   const diasUsados = uf => visitas().filter(v => v.uf === uf && v.situacao !== 'cancelada').length;
   const mesAtual = () => R.hoje().slice(0, 7);
@@ -111,7 +115,7 @@
 
   /* etapa de cada quintal, em forma de "pílulas" */
   function pilulas(f) {
-    const dg = diagnosticos().find(d => d.ficha_id === f.id);
+    const dg = (diagnosticos(), indice(memo.d.lista, 'ficha_id').get(f.id) || [])[0];
     const p = (rot, vs, extra) => {
       const v = vs[0];
       if (!v) return `<span class="pil">${rot}</span>`;
@@ -158,7 +162,7 @@
   const semBanco = () => `<section class="secao"><div class="secao-cab"><h2>Trabalho de campo</h2></div><div class="aviso"><b>Ainda não instalado no servidor.</b> A coordenação geral precisa rodar o arquivo 03_campo.sql no Supabase. Até lá, use os modelos em papel.</div></section>`;
   /* o que precisa de ação agora: atrasadas, próximos 7 dias, planos devolvidos e quintais sem diagnóstico agendado */
   function paraFazer(uf, sel) {
-    const hoje = R.hoje(); const em7 = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+    const hoje = R.hoje(); const em7 = R.somaDias(hoje, 7);
     const itens = [];
     diagnosticos().filter(d => d.uf === uf && d.situacao === 'devolvido').forEach(d => { const f = ficha(d.ficha_id) || {};
       itens.push({ o: 0, t: `<b>${E(f.nome || '—')}</b> · plano devolvido pela coordenação`, sub: E(d.obs_coordenacao || ''), b: `<button class="btn peq pri" data-acao="campo-diag-ver" data-ficha="${E(d.ficha_id)}">Corrigir</button>` }); });
@@ -327,11 +331,7 @@
         Quem faz o diagnóstico vê a projeção do kit e o quanto falta ou passa deste valor.</p></div></div>`;
   }
   /* projeção do investimento no quintal: soma de quantidade × valor estimado de cada item */
-  const numBR = t => {
-    let s = String(t == null ? '' : t).replace(/[^\d.,-]/g, '');
-    if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');          // 1.250,50 → 1250.50
-    else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');       // 1.250 → 1250 (milhar)
-    const m = s.match(/-?\d+(\.\d+)?/); return m ? +m[0] : null; };           // 12.50 → 12.5
+  const numBR = t => R.numBR(t);   // 1.250,50 → 1250.5 · 1.250 → 1250 · 12.50 → 12.5
   const totalKit = kit => (kit || []).reduce((s, x) => s + (numBR(x.qtd) || 0) * (x.valor != null ? +x.valor : 0), 0);
   const brl = v => (+v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   function projKit(kit) {

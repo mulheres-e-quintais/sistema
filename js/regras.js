@@ -113,8 +113,22 @@
 
   R.hoje = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
   // dia local (Brasil) de um carimbo de data e hora gravado em UTC ("2026-10-01T01:00Z" é 30/09 à noite aqui)
+  /* valor em reais digitado de qualquer jeito: "1.600,50", "1600.50", "1600,5", "R$ 1.600" → número; inválido → NaN */
+  R.valorBR = v => {
+    let s = String(v == null ? '' : v).replace(/R\$|\s/g, '').replace(/[\u2212]/g, '-');
+    if (!s) return NaN;
+    const iv = s.lastIndexOf(','), ip = s.lastIndexOf('.');
+    if (iv >= 0 && ip >= 0) s = iv > ip ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
+    else if (iv >= 0) s = s.replace(/\./g, '').replace(',', '.');
+    else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');   // 1.600 = mil e seiscentos
+    return /^-?\d+(\.\d+)?$/.test(s) ? Number(s) : NaN;
+  };
+  /* número dentro de um texto ("10 kg", "2,5", "1.000 mudas") → número ou null; mesma leitura do banco (42_revisao_seguranca.sql) */
+  R.numBR = t => { const s = String(t == null ? '' : t).replace(/[^\d.,-]/g, ''); const n = R.valorBR(s); if (!isNaN(n)) return n;
+    const m = s.replace(/,/g, '.').match(/\d+(\.\d+)?/); return m ? +m[0] : null; };   // "10-20" → 10 (igual ao banco)
   R.diaLocal = v => { if (!v) return null; const s = String(v); if (s.length <= 10) return s; const t = new Date(s); return isNaN(t) ? s.slice(0, 10) : new Date(t.getTime() - t.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
-  R.fmtData = d => (d ? d.slice(0, 10).split('-').reverse().join('/') : '');
+  R.somaDias = (dia, n) => { const t = new Date(String(dia).slice(0, 10) + 'T12:00:00'); t.setDate(t.getDate() + n); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); };
+  R.fmtData = d => (d ? String(R.diaLocal(d)).slice(0, 10).split('-').reverse().join('/') : '');   // data ou data e hora (no dia de Fortaleza)
   R.fmtBRL = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   // dias de calendário até a data: hoje = 0, amanhã = 1, ontem = -1 (não depende da hora do dia)
   R.diasAte = d => Math.round((new Date(String(d).slice(0, 10) + 'T12:00:00') - new Date(R.hoje() + 'T12:00:00')) / 864e5);
@@ -228,7 +242,7 @@
       else if ((d.kit || []).some(x => x.item && !(+x.valor > 0))) e.kit = 'Informe o valor estimado de cada item (R$ por unidade): é a projeção do investimento no quintal.';
       else {
         const lim = +(((MQ.ui && MQ.ui.S.kitPar) || {}).valor_quintal) || 0;
-        const tot = d.kit_total != null ? d.kit_total : (d.kit || []).reduce((s, x) => s + (parseFloat(String(x.qtd || '').replace(',', '.')) || 0) * (+x.valor || 0), 0);
+        const tot = d.kit_total != null ? d.kit_total : (d.kit || []).reduce((s, x) => s + (R.numBR(x.qtd) || 0) * (+x.valor || 0), 0);
         if (lim && tot > lim) e.kit = 'O kit passa do valor por quintal (' + tot.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) + ' de ' + lim.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) + '). Tire ou troque itens.';
       }
       if (!d.lote) e.lote = 'Escolha o lote de implantação.';
