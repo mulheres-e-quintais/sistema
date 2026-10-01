@@ -1836,3 +1836,53 @@ form[data-form=exec-lancar] .sn-par .sn:has(input:checked)::before { content: "�
 /* agentes: cartões mais compactos, botão sempre embaixo */
 .grade-uf .cartao { padding: 10px; gap: 4px; }
 .grade-uf .cartao .btn-ag { margin-top: 6px; min-height: 38px; font-size: var(--t-sm); }
+
+/* ======================================================================
+   01/10/2026 — versão 2.0, etapa 2: o mesmo selo de status e menos caixas em todas as abas
+   ====================================================================== */
+/* selo: texto escuro e ponto colorido, como na visão geral (verde concluído · ocre atenção/pendente · vermelho requer ação · cinza não iniciado) */
+.chip { color: var(--ink); font-weight: 600; padding: 3px 10px 3px 8px; }
+.chip::before { width: 8px; height: 8px; }
+.chip.ok { background: var(--st-ok-bg); color: var(--ink); } .chip.ok::before { background: var(--st-ok); }
+.chip.pend { background: var(--st-and-bg); color: var(--ink); } .chip.pend::before { background: var(--st-and); }
+.chip.crit { background: var(--st-atr-bg); color: var(--ink); } .chip.crit::before { background: var(--st-atr); }
+.chip.desligada, .chip.off { background: var(--st-nao-bg); color: var(--ink-2); } .chip.desligada::before, .chip.off::before { background: var(--st-nao); }
+.chip.vaga { background: transparent; color: var(--ink-2); }
+/* números do topo das abas: sem caixa, só linhas (como a visão geral e a equipe) */
+.resumo { border: 0; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; box-shadow: none; }
+.resumo > div { padding: 16px 18px 16px 0; }
+.resumo > div + div { padding-left: 18px; }
+.resumo .v { color: var(--ink); }
+.bloco .resumo, .painel .resumo { border-top-width: 1px; }
+/* blocos: cartão leve (sem sombra), para agrupar só o que precisa */
+.bloco { box-shadow: none; border-color: var(--line); }
+.quadro-scroll { box-shadow: none; }
+
+/* ======================================================================
+   01/10/2026 — sistema único de botões
+   principal: terracota preenchido (44 px) · secundário/neutro: creme com borda (40 px) · pequeno: 34 px
+   risco: texto e borda vermelhos · botão é controle (cantos de 8 px), não selo: só selo/status é pílula
+   ====================================================================== */
+.btn { min-height: 40px; padding: 8px 16px; border-radius: 8px; font: 600 var(--t-md)/1.2 var(--sans); gap: 6px;
+  background: var(--surface); border: 1px solid var(--line-2); color: var(--ink); box-shadow: 0 1px 1px rgba(69, 43, 26, .04); transition: background .15s, border-color .15s, color .15s; }
+.btn:hover { transform: none; box-shadow: 0 1px 1px rgba(69, 43, 26, .04); border-color: var(--ink-2); background: var(--surface); }
+.btn:active { transform: none; background: var(--surface-2); }
+.btn.pri { min-height: 44px; background: var(--accent); border-color: var(--accent); color: var(--accent-ink); box-shadow: 0 1px 2px rgba(69, 43, 26, .12); }
+.btn.pri:hover { filter: none; background: color-mix(in srgb, var(--accent) 88%, #000); border-color: color-mix(in srgb, var(--accent) 88%, #000); box-shadow: 0 1px 2px rgba(69, 43, 26, .12); }
+.btn.peq { min-height: 34px; padding: 6px 12px; border-radius: 8px; font-size: var(--t-sm); }
+.btn.peq.pri { min-height: 34px; }
+.btn.perigo { background: var(--surface); color: var(--crit); border-color: color-mix(in srgb, var(--crit) 45%, var(--line)); }
+.btn.perigo:hover { background: var(--crit-bg); border-color: var(--crit); }
+.btn.perigo.cheio { background: var(--crit); color: #fff; border-color: var(--crit); }
+.btn-cad { width: auto; min-width: 0; }
+.btn-ag { width: auto; align-self: end; justify-self: start; min-height: 34px; padding: 6px 12px; font-size: var(--t-sm); }
+.grade-uf .cartao .btn-ag { width: auto; }
+.ent-btn { height: 48px; border-radius: 10px; }
+.btn-barra { border-radius: 8px; }
+.migalha button { border-radius: 8px; }
+.btn-voz { border-radius: 8px; }
+.al-ir { border-radius: 8px; }
+.dx-ir { min-width: 0; }
+/* grupo de ações: alinhadas ao conteúdo; no celular a principal ocupa a largura */
+.acoes { gap: 8px; }
+@media (max-width: 560px) { .acoes .btn.pri, .vaga-aberta .btn.pri { flex: 1 1 100%; } }

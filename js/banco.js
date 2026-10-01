@@ -60,7 +60,7 @@
       </div>
       <p class="nota">A conta precisa estar no seu nome (mesmo CPF do cadastro). Confira com o cartão ou o aplicativo do banco.</p>
       <div class="aviso erro" data-erro hidden></div>
-      <div class="acoes"><button class="btn pri" type="submit">Salvar dados bancários</button>${B.meus ? '<button class="btn" type="button" data-acao="banco-cancelar">Cancelar</button>' : ''}</div></form>`;
+      <div class="acoes"><button class="btn pri" type="submit">Salvar</button>${B.meus ? '<button class="btn" type="button" data-acao="banco-cancelar">Cancelar</button>' : ''}</div></form>`;
   }
 
   /* ---------- coordenações ---------- */

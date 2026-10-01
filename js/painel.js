@@ -377,7 +377,8 @@
     const mes = mesDoProjeto();
     const diasFim = R.diasAte(MQ.PROJETO.vigencia.fim);
     const al = alertas(S, d);
-    const marcos = MQ.MARCOS.filter(m => R.diasAte(m.d) >= -7).slice(0, 4);
+    const feito = { equipe: () => d.pagaveis.length >= 11, diagnostico_inicio: () => (S.diagnosticos || []).length > 0, M2: () => (S.diagnosticos || []).length >= 200 };
+    const marcos = MQ.MARCOS.filter(m => R.diasAte(m.d) >= -7 && !(m.feito && feito[m.feito] && feito[m.feito]())).slice(0, 4);   // marco já cumprido sai da lista
     const aguard = d.fichas.filter(f => f.situacao === 'aguardando').length;
     const NOME_ABA = { equipe: 'Equipe', selecao: 'Seleção', campo: 'Campo', custos: 'Custos', historico: 'Histórico', visao: 'Visão geral' };
     const NIVEL = { crit: ['st-atr', 'Requer ação'], pend: ['st-aten', 'Atenção'], info: ['st-nao', 'Informação'] };
@@ -417,7 +418,7 @@
           <div class="dx-tr dx-th" role="row"><span role="columnheader">Problema</span><span role="columnheader">Prazo</span><span role="columnheader"><span class="sr">Ação</span></span></div>
           ${al.map(x => `<div class="dx-tr" role="row"><span role="cell" class="dx-prob"><span class="st-pt ${NIVEL[x.nivel][0]}" aria-hidden="true"></span><span><span class="sr">${NIVEL[x.nivel][1]}: </span><b>${E(x.texto)}</b><small>${E(x.det)}</small></span></span>
             <span role="cell" class="dx-prazo num">${prazoTxt(x)}</span>
-            <span role="cell">${x.aba ? `<button class="btn peq dx-ir" data-acao="aba" data-aba="${x.aba}" aria-label="Resolver na aba ${NOME_ABA[x.aba] || x.aba}">Resolver<span class="small"> · ${NOME_ABA[x.aba] || x.aba}</span></button>` : ''}</span></div>`).join('')}
+            <span role="cell">${x.aba ? `<button class="btn peq dx-ir" data-acao="aba" data-aba="${x.aba}" aria-label="Resolver: ${E(x.texto)} (abre ${NOME_ABA[x.aba] || x.aba})" title="Abre ${NOME_ABA[x.aba] || x.aba}">Resolver</button>` : ''}</span></div>`).join('')}
         </div>` : `<p class="dx-ok">${chipStatus('concluida', 'Nada pendente')} nos dados do sistema.</p>`}
       </section>
 
@@ -437,7 +438,7 @@
         <div class="dx-lado">
           <section class="secao" aria-labelledby="t-marcos">
             <h2 id="t-marcos">Próximos marcos</h2>
-            <ol class="marcos">${marcos.map((m, k) => { const dd = R.diasAte(m.d);
+            ${marcos.length ? '' : '<p class="muted">Nenhum marco pendente: os do plano já foram cumpridos.</p>'}<ol class="marcos">${marcos.map((m, k) => { const dd = R.diasAte(m.d);
               const prox = k === marcos.findIndex(x => R.diasAte(x.d) >= 0);
               const tom = dd < 0 ? 'passou' : dd <= 7 ? 'perto' : 'longe';
               return `<li class="marco ${tom}${prox ? ' prox' : ''}"><time class="marco-cal" datetime="${m.d}"><b>${m.d.slice(8, 10)}</b><span>${MES3[+m.d.slice(5, 7) - 1]} ${m.d.slice(0, 4)}</span></time>
@@ -513,7 +514,7 @@
         ['Visitas feitas', String(vs)], ['Local', el.dataset.exato ? 'GPS' : 'aproximado (sem GPS)']].filter(l => l[1]);
       html = `<div class="mc-cab"><b>Quintal em ${E(f.municipio)}/${f.uf}</b><button class="fechar" data-acao="mapa-cartao-fechar" aria-label="Fechar">×</button></div>
         <dl class="dl mc-dl">${lin.map(([k, v]) => `<dt>${k}</dt><dd>${E(v)}</dd>`).join('')}</dl>
-        <div class="acoes"><button class="btn peq pri" data-acao="ficha-ver" data-id="${E(f.id)}">Abrir a ficha</button></div>`;
+        <div class="acoes"><button class="btn peq" data-acao="ficha-ver" data-id="${E(f.id)}">Ver ficha</button></div>`;
     }
     box.innerHTML = html; box.hidden = false;
     const caixa = box.parentElement.getBoundingClientRect(), r = el.getBoundingClientRect();

@@ -144,7 +144,7 @@
     return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
       <title>${E(TIPOS[tipo].titulo)} · Mulheres & Quintais</title>
       <style>${CSS}</style></head>
-      <body><div class="tela"><button type="button" onclick="window.close()">Fechar</button><button type="button" class="pri" onclick="window.print()">Imprimir ou salvar em PDF</button></div>
+      <body><div class="tela"><button type="button" onclick="window.close()">Fechar</button><button type="button" class="pri" onclick="window.print()">Imprimir</button></div>
       <main>${cabecalho(tipo)}${converter(form, true)}
         <div class="assina"><div>${linha()}<p>Local e data</p></div><div>${linha()}<p>Assinatura de quem aplicou</p></div>
           <div>${linha()}<p>Assinatura ou digital de quem respondeu</p></div><div>${linha()}<p>Lançado no sistema em (data)</p></div></div>

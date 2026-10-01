@@ -166,7 +166,7 @@ describe('Viagens e eventos: quem confere na falta da coordenação técnica', (
     await t.trocar('bolsista'); assert.ok(texto(t.aba(null)).includes('Com o auxiliar administrativo'));
     await t.trocar('auxiliar'); assert.equal(t.S.quemConfere, 'auxiliar_adm');
     const h = texto(t.aba(null)); assert.ok(h.includes('Passagens e eventos para conferir')); assert.equal(t.MQ.viagUI.contaMinha(), 1);
-    assert.ok(texto(t.painel({ tipo: 'viag-ver', id })).includes('Conferido: mandar para a coordenação geral'));
+    assert.ok(texto(t.painel({ tipo: 'viag-ver', id })).includes('Conferência') && /value="conferir"[^>]*>Conferido</.test(t.painel({ tipo: 'viag-ver', id })));
     await t.api.moverPedido(id, 'conferir');
     await t.trocar('coord_geral'); assert.equal(t.MQ.viagUI.contaMinha(), 1);
     assert.ok(texto(t.aba('viagens')).includes('quem confere os pedidos é o auxiliar administrativo'));

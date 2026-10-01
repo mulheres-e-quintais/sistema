@@ -86,7 +86,7 @@
         <form class="f" data-form="enc-cancelar" data-id="${E(e.id)}" novalidate><div class="campo inteiro"><label for="en-motivo">Motivo do cancelamento</label>
           <textarea id="en-motivo" name="motivo" rows="2" maxlength="500" placeholder="Ex.: registrado duas vezes; lançado na turma errada."></textarea></div>
           <p class="small muted">O encontro não é apagado: fica guardado como cancelado e sai do relatório e da carga horária.</p>
-          <div class="aviso erro" data-erro hidden></div><div class="acoes"><button class="btn" type="submit">Cancelar o encontro</button></div></form></details>` : ''}</div>`;
+          <div class="aviso erro" data-erro hidden></div><div class="acoes"><button class="btn perigo" type="submit">Cancelar encontro</button></div></form></details>` : ''}</div>`;
   }
 
   /* ---------- quem participou: confirmar a presença ---------- */

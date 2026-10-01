@@ -127,7 +127,7 @@
       box.innerHTML = `<form class="f" data-form="apl" data-uf="${E(el.dataset.uf)}" data-mun="${E(el.dataset.mun)}" novalidate>
         <div class="campo"><label for="apl-l">Arranjos produtivos de ${E(el.dataset.mun)} (separe por vírgula)</label><input id="apl-l" name="apls" value="${E(x.apls.join(', '))}" placeholder="apicultura, caprinocultura, feira agroecológica"></div>
         <div class="campo"><label for="apl-o">Compradores, feiras, cooperativas, PAA/PNAE</label><textarea id="apl-o" name="obs">${E(x.obs || '')}</textarea></div>
-        <div class="aviso erro" data-erro hidden></div><div class="acoes"><button class="btn pri" type="submit">Salvar APL</button></div></form>`;
+        <div class="aviso erro" data-erro hidden></div><div class="acoes"><button class="btn pri" type="submit">Salvar</button></div></form>`;
       box.querySelector('input').focus();
     }
   }

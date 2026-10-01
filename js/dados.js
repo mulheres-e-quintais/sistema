@@ -132,11 +132,12 @@ MQ.METAS = [
   { id: 'M7', nome: 'Acompanhamento pedagógico', alvo: 8, un: 'missões', ini: 4, fim: 12, fonte: null, valor: 42000 },
   { id: 'M8', nome: 'Relatório final', alvo: 1, un: 'relatório', ini: 13, fim: 13, fonte: null }
 ];
+/* feito: o marco sai da lista quando o sistema já mostra que aconteceu (equipe completa, 1º diagnóstico, Meta 2 concluída) */
 MQ.MARCOS = [
-  { d: '2026-10-09', t: 'MPA indica a coordenação técnica e as 10 bolsistas' },
+  { d: '2026-10-09', t: 'MPA indica a coordenação técnica e as 10 bolsistas', feito: 'equipe' },
   { d: '2026-10-16', t: 'Termo de referência dos kits enviado à FUNCERN' },
-  { d: '2026-10-23', t: 'Ata dos critérios de seleção assinada; início dos diagnósticos' },
-  { d: '2027-01-31', t: 'Fim dos diagnósticos (Meta 2)' },
+  { d: '2026-10-23', t: 'Ata dos critérios de seleção assinada; início dos diagnósticos', feito: 'diagnostico_inicio' },
+  { d: '2027-01-31', t: 'Fim dos diagnósticos (Meta 2)', feito: 'M2' },
   { d: '2027-04-30', t: '2º repasse do MDA previsto' },
   { d: '2027-09-30', t: 'Fim da vigência do TED' }
 ];

@@ -71,7 +71,7 @@
     return `<div class="pend-faixa" role="status"><div class="pend-in">
       <span class="pend-ic" aria-hidden="true">!</span>
       <span><b>Seu cadastro tem ${l.itens.length} pendência${l.itens.length > 1 ? 's' : ''}.</b> ${seus ? `${seus === 1 ? 'Uma depende' : seus + ' dependem'} só de você.` : 'Cobre quem precisa resolver.'} <span class="pend-cons">${E(consequencia(l))}</span></span>
-      <button class="btn peq pri" data-acao="pend-ver">Ver e resolver</button></div></div>`;
+      <button class="btn peq pri" data-acao="pend-ver">Resolver</button></div></div>`;
   }
 
   /* abre o quadro sozinho uma vez por sessão, quando tudo já carregou */

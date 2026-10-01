@@ -109,7 +109,7 @@
     return `<section class="secao" aria-labelledby="t-sel">
       <div class="cab"><div><span class="eyebrow">Seleção das mulheres</span><h1 id="t-sel">Seleção das beneficiárias</h1>
         <p>Fichas de indicação dos 5 estados. ${souTec ? 'Você aprova ou devolve cada ficha antes do diagnóstico.' : 'A aprovação é da coordenação técnica.'} O sistema impede CPF repetido e mais de ${MQ.VAGAS_UF} selecionadas aprovadas por estado.</p></div>
-        <button class="btn" data-acao="ficha-csv">Baixar planilha (CSV)</button></div>
+        <button class="btn" data-acao="ficha-csv">Baixar CSV</button></div>
       ${(() => { const u = MQ.UFS.find(x => contar(lista, x.uf).total); if (!u) return ''; const c = contar(lista, u.uf);
         const partes = [[c.aprovadas, 'selecionada'], [c.espera, 'na lista de espera'], [c.sem_agua, 'sem água'], [c.nao_atende, 'que não atende'], [c.aguardando, 'para aprovar'], [c.devolvidas, 'devolvida']].filter(x => x[0]).map(x => x[0] + ' ' + x[1]);
         return `<div class="aviso" style="margin:0"><b>Como ler:</b> a coluna <b>Fichas</b> é o total de mulheres indicadas no estado, e as colunas ao lado repartem esse total (cada mulher aparece numa só). As <b>${MQ.VAGAS_UF} vagas</b> são só a coluna <b>Selecionadas</b>; as outras não ocupam vaga.
@@ -216,7 +216,7 @@
         </fieldset>
         <input type="hidden" name="foto_termo_path" value="${v('foto_termo_path')}"><input type="hidden" name="foto_ficha_path" value="${v('foto_ficha_path')}">
         <div class="aviso erro" data-erro hidden></div>
-        <div class="acoes"><button class="btn pri" type="submit">Salvar ficha</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div>
+        <div class="acoes"><button class="btn pri" type="submit">Salvar</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div>
       </form></div>`;
   }
 
@@ -303,7 +303,7 @@
         ${f._erro ? `<div class="aviso erro"><b>Não foi enviada:</b> ${E(f._erro)}</div>` : ''}
         ${f.situacao === 'devolvida' && f.obs_coordenacao ? `<div class="aviso erro"><b>Devolvida pela coordenação técnica:</b> ${E(f.obs_coordenacao)}</div>` : ''}
         ${casas.length ? `<div class="aviso erro"><b>Mesmo endereço</b> de ${casas.map(c => E(c.nome) + ' (' + E((MQ.RESULTADOS[c.resultado] || {}).nome || '') + ')').join(', ')}. Confira se são da mesma casa antes de aprovar.</div>` : ''}
-        ${podeCorrigir ? `<div class="acoes"><button class="btn pri" data-acao="ficha-corrigir" data-id="${E(f.id)}">Corrigir ficha</button></div>` : ''}
+        ${podeCorrigir ? `<div class="acoes"><button class="btn pri" data-acao="ficha-corrigir" data-id="${E(f.id)}">Corrigir</button></div>` : ''}
         <div class="bloco"><h3>Identificação</h3>${dl([
           ['CPF', R.fmtCPF(f.cpf)], ['Nascimento', R.fmtData(f.data_nascimento) + (f.data_nascimento ? ' (' + R.idade(f.data_nascimento, f.data_ficha) + ' anos)' : '')],
           ['Celular', f.celular], ['Comunidade', f.comunidade], ['Endereço', f.endereco], ['Referência', f.ponto_referencia],

@@ -149,7 +149,7 @@
           <div class="campo"><label for="rl-ate">Até</label><input id="rl-ate" name="ate" type="date" min="${MQ.PROJETO.vigencia.inicio}" max="${R.hoje()}" value="${E(f.ate)}"></div>
           <div class="campo"><label for="rl-uf">Estado</label><select id="rl-uf" name="uf"><option value="">Todos</option>${MQ.UFS.map(u => `<option value="${u.uf}" ${f.uf === u.uf ? 'selected' : ''}>${u.nome}</option>`).join('')}</select></div>
         </div><div class="aviso erro" data-erro hidden></div><div class="acoes"><button class="btn" type="submit">Atualizar o relatório</button></div></form>
-        <div class="acoes"><button class="btn pri" type="button" data-acao="doc-rel-imprimir">Imprimir ou salvar em PDF</button><button class="btn" type="button" data-acao="doc-rel-word">Baixar para o Word</button></div>
+        <div class="acoes"><button class="btn pri" type="button" data-acao="doc-rel-imprimir">Imprimir</button><button class="btn" type="button" data-acao="doc-rel-word">Baixar para o Word</button></div>
         <div class="bloco rel-previa">${htmlRelatorio(r, nomeDe(U().porId(S().eu.id)))}</div></div>`;
     }
     const d = lista().find(x => x.id === p.id); if (!d) return '<div class="painel-corpo"><p>Documento não encontrado.</p></div>';
@@ -163,7 +163,7 @@
       ${d.arquivado_em ? '' : `<form class="bloco" data-form="doc-arquivar" data-id="${E(d.id)}" novalidate><h3>Arquivar</h3>
         <p class="small muted">O documento sai da lista, mas não é apagado: fica em "Arquivados" e no histórico. Para trocar um arquivo errado, arquive e anexe o certo.</p>
         <div class="campo"><label for="da-mot">Motivo</label><textarea id="da-mot" name="motivo" placeholder="Ex.: versão errada; substituída pela ata assinada"></textarea></div>
-        <div class="aviso erro" data-erro hidden></div><div class="acoes"><button class="btn perigo" type="submit">Arquivar documento</button></div></form>`}
+        <div class="aviso erro" data-erro hidden></div><div class="acoes"><button class="btn perigo" type="submit">Arquivar</button></div></form>`}
     </div>`;
   }
 
