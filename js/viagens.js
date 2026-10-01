@@ -90,6 +90,7 @@
     return { teto: x.teto, usado: x.usado, livre: x.livre, analise, estoura: x.usado + analise > x.teto };
   }
   const medidor = g => `<span class="medidor" title="autorizado e em análise"><i style="width:${Math.min(100, (g.usado + g.analise) / g.teto * 100)}%;opacity:.35"></i><i style="width:${Math.min(100, g.usado / g.teto * 100)}%"></i></span>`;
+  const usoTeto = g => { const p = g.teto ? Math.round(g.usado / g.teto * 1000) / 10 : 0; return `<span class="fin-exe"><span class="medidor fino" aria-hidden="true"><i class="${g.usado > 0 ? 'st-ok' : ''}" style="width:${Math.min(100, p)}%"></i></span><b class="num">${p.toLocaleString('pt-BR')}%</b></span>`; };
   function cartaoGasto(g, rot) {
     return `<div class="viag-gasto">
       <div class="vg-lin"><span>${rot}</span><b class="num">${brl(g.usado)}<small class="muted"> de ${brl(g.teto)}</small></b></div>
@@ -141,10 +142,10 @@
       <section class="secao viag-tipo" id="viag-eventos" aria-labelledby="t-ve"><div class="secao-cab"><div><h2 id="t-ve">Eventos</h2>
           <p class="small muted">Teto de ${brl(MQ.TETOS.evento)} por estado (o saldo de um estado não passa para outro). ${ufsEvento.size} de ${PREVISTO.evento} estados com evento autorizado.</p></div></div>
         <div class="bloco viag-tetos"><h3>Tetos de gasto · eventos</h3>
-          <div class="quadro-scroll"><table class="quadro viag-tab"><thead><tr><th scope="col">Estado</th><th scope="col">Autorizado</th><th scope="col">Em análise</th><th scope="col">Saldo</th><th scope="col"><span class="sr">Uso do teto</span></th></tr></thead><tbody>
-            ${ge.map(g => `<tr><th scope="row">${E(g.nome)}</th><td class="num">${brl(g.usado)}</td><td class="num muted">${brl(g.analise)}</td><td class="num"><b>${brl(g.livre)}</b>${g.estoura ? ' <span style="color:var(--crit)" title="autorizado + em análise passa do teto">!</span>' : ''}</td><td>${medidor(g)}</td></tr>`).join('')}
-            <tr class="tot"><th scope="row">Total</th><td class="num">${brl(somaE('usado'))}</td><td class="num muted">${brl(somaE('analise'))}</td><td class="num"><b>${brl(somaE('livre'))}</b></td><td class="small muted">de ${brl(MQ.TETOS.evento * MQ.UFS.length)}</td></tr>
-          </tbody></table></div></div>
+          <div class="fin-wrap"><table class="fin viag-fin"><thead><tr><th scope="col">Estado</th><th scope="col">Teto</th><th scope="col">Autorizado</th><th scope="col">Em análise</th><th scope="col">Saldo</th><th scope="col">Uso do teto</th></tr></thead><tbody>
+            ${ge.map(g => `<tr class="fin-item"><th scope="row"><span class="fin-nome sem">${E(g.nome)}</span></th><td class="num" data-rot="Teto">${brl(g.teto)}</td><td class="num" data-rot="Autorizado"><span class="${g.usado > 0 ? 'fin-exec' : 'fin-zero'}">${brl(g.usado)}</span></td><td class="num" data-rot="Em análise"><span class="${g.analise > 0 ? 'fin-comp' : 'fin-zero'}">${brl(g.analise)}</span></td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(g.livre)}</b>${g.estoura ? ' <span class="crit-txt" title="autorizado + em análise passa do teto">!</span>' : ''}</td><td data-rot="Uso do teto">${usoTeto(g)}</td></tr>`).join('')}</tbody>
+            <tfoot><tr class="fin-tot"><th scope="row">Total</th><td class="num" data-rot="Teto"><b>${brl(MQ.TETOS.evento * MQ.UFS.length)}</b></td><td class="num" data-rot="Autorizado">${brl(somaE('usado'))}</td><td class="num" data-rot="Em análise">${brl(somaE('analise'))}</td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(somaE('livre'))}</b></td><td data-rot="Uso do teto">${usoTeto({ teto: MQ.TETOS.evento * MQ.UFS.length, usado: somaE('usado'), analise: somaE('analise') })}</td></tr></tfoot>
+          </table></div></div>
         ${listas('evento')}</section>`;
   }
 

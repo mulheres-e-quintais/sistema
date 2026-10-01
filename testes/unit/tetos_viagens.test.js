@@ -55,9 +55,9 @@ test('gastos separados: evento autorizado não entra no gasto de passagens (e vi
   assert.ok(/Autorizado em passagens\s*R\$\s?3\.800,00 de R\$\s?70\.000,00/.test(P), 'passagem: só o valor autorizado da passagem');
   assert.ok(/Em análise \(valor estimado\): R\$\s?1\.200,00/.test(P), 'passagem em análise pelo estimado');
   assert.ok(!/2\.500/.test(P), 'o evento não aparece nas passagens');
-  assert.ok(/Piauí\s*R\$\s?2\.500,00/.test(Ev), 'evento no estado dele');
+  assert.ok(/Piauí\s*R\$\s?[\d.,]+\s*R\$\s?2\.500,00/.test(Ev), 'evento no estado dele (teto, depois autorizado)');
   assert.ok(!/3\.800/.test(Ev), 'a passagem não aparece nos eventos');
-  assert.ok(/Total\s*R\$\s?2\.500,00[\s\S]*de R\$\s?30\.000,00/.test(Ev));
+  assert.ok(/Total\s*R\$\s?30\.000,00\s*R\$\s?2\.500,00/.test(Ev), 'total: teto e autorizado');
   const r = texto(h.slice(h.indexOf('class="resumo"'), h.indexOf('</div></div>', h.indexOf('class="resumo"'))));
   assert.ok(/R\$\s?3\.800,00\s*gasto com passagens/.test(r) && /R\$\s?2\.500,00\s*gasto com eventos/.test(r), r);
   // a bolsista vê os dois pedidos em listas separadas, cada uma com o seu saldo
