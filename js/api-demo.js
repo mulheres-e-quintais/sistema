@@ -989,7 +989,16 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
         const dv = (d.diagnosticos || []).filter(x => x.executor_id === id && x.situacao === 'devolvido').length;
         if (vp || dv) throw falha(`Não dá para desligar ainda: ${vp} visita(s) agendada(s) com ela e ${dv} diagnóstico(s) devolvido(s) para ela corrigir. Passe as visitas para outra pessoa ou cancele, e resolva os diagnósticos.`);
       }
-      return this.atualizar(id, { status: 'desligada', data_fim, motivo_desligamento: motivo });
+      if (m && m.papel === 'professor_fic') {   // 41: turma em andamento precisa de outro professor antes
+        const ts = (d.turmas || []).filter(t => t.professor_id === id && (!t.fim || t.fim >= R.hoje())).map(t => t.nome);
+        if (ts.length) throw falha(`Não dá para desligar ainda: é professor(a) da turma em andamento ${ts.join(', ')}. Passe a turma para outro(a) professor(a) (aba Curso FIC > Editar) e desligue depois.`);
+      }
+      const r = await this.atualizar(id, { status: 'desligada', data_fim, motivo_desligamento: motivo });
+      // 41: pedidos de passagem e evento ainda não autorizados são cancelados, com o motivo registrado
+      const d2 = ler(); const quando = String(data_fim || R.hoje()).split('-').reverse().join('/');
+      (d2.pedidos || []).filter(p => p.solicitante_id === id && ['enviado', 'devolvido', 'conferido'].includes(p.situacao)).forEach(p => {
+        p.situacao = 'cancelado'; p.obs = (p.obs ? p.obs + ' · ' : '') + 'Cancelado pelo sistema: a solicitante foi desligada do projeto em ' + quando + '.'; });
+      gravar(); return r;
     },
 
     async enviarFotoEquipe(id, blob) {

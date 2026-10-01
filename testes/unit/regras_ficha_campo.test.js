@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { carregar, diaMais, simples } = require('./ambiente');
 
 let R, MQ;
-beforeEach(() => { ({ MQ } = carregar(['dados.js', 'regras.js'], { ui: { S: { kitPar: { valor_quintal: 4500 } } } })); R = MQ.regras; });
+beforeEach(() => { ({ MQ } = carregar(['dados.js', 'regras.js'], { ui: { S: { kitPar: { valor_quintal: 5000 } } } })); R = MQ.regras; });
 
 const todosCriterios = (v = true) => Object.fromEntries(MQ.CRITERIOS.map(([k]) => [k, v]));
 function fichaOk(extra = {}) {
@@ -125,13 +125,13 @@ describe('diagnóstico de campo', () => {
     assert.ok(R.validarDiagnostico(dg({ latitude: null, sem_gps_motivo: 'céu' })).sem_gps_motivo);
     assert.equal(R.validarDiagnostico(dg({ latitude: null, sem_gps_motivo: 'Sem sinal de GPS na serra' })).sem_gps_motivo, undefined);
   });
-  test('kit no limite (R$ 4.500) passa; R$ 4.500,01 não passa', () => {
-    assert.equal(R.validarDiagnostico(dg({ kit_total: 4500 })).kit, undefined);
-    assert.match(R.validarDiagnostico(dg({ kit_total: 4500.01 })).kit, /passa do valor/);
+  test('kit no limite (R$ 5.000) passa; R$ 5.000,01 não passa', () => {
+    assert.equal(R.validarDiagnostico(dg({ kit_total: 5000 })).kit, undefined);
+    assert.match(R.validarDiagnostico(dg({ kit_total: 5000.01 })).kit, /passa do valor/);
   });
   test('item do kit sem preço é recusado', () => assert.match(R.validarDiagnostico(dg({ kit: [{ item: 'Mudas', qtd: '1', valor: 0 }] })).kit, /valor estimado/));
   test('total calculado a partir de quantidade × valor (vírgula decimal)', () =>
-    assert.match(R.validarDiagnostico(dg({ kit: [{ item: 'Tela', qtd: '1,5', valor: 3100 }] })).kit, /passa do valor/));
+    assert.match(R.validarDiagnostico(dg({ kit: [{ item: 'Tela', qtd: '1,5', valor: 3400 }] })).kit, /passa do valor/));
   test('sem água: não pede kit, objetivo, lote nem compromissos', () => {
     const e = R.validarDiagnostico(dg({ agua_seca: 'nao', kit: [], objetivos: [], lote: null, compromissos: false }));
     ['kit', 'objetivos', 'lote', 'compromissos'].forEach(k => assert.equal(e[k], undefined, k));

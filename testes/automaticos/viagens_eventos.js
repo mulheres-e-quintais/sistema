@@ -82,7 +82,7 @@ const dia = n => { const d = new Date(Date.now() + n * 864e5 - new Date().getTim
   ok('Resumo: 2 esperando você', /^2$/.test((await p.textContent('.resumo .v')).trim()));
   ok('Passagens e eventos em seções separadas, cada uma com 1 esperando', /Esperando a sua conferência\s*1/.test(await p.textContent('#viag-passagens')) && /Esperando a sua conferência\s*1/.test(await p.textContent('#viag-eventos')));
   ok('Seção de passagens só tem passagem; a de eventos só evento', !/Estrutura de evento/.test(await p.textContent('#viag-passagens .pag-lista')) && !/Passagem aérea/.test(await p.textContent('#viag-eventos .pag-lista')));
-  ok('Gasto de eventos por estado, com total de 5 × R$ 6.000', /Total[\s\S]*de R\$\s?30\.000/.test(await p.textContent('#viag-eventos table')));
+  ok('Gasto de eventos por estado, com total de 5 × R$ 6.000', /Total\s*R\$\s?30\.000,00/.test(await p.textContent('#viag-eventos table')));
   ok('Em análise mostra o valor estimado do pedido', /Em análise \(valor estimado\): R\$\s?[1-9]/.test(await p.textContent('#viag-passagens')));
   const idP = (await peds()).find(x => x.tipo === 'passagem').id, idE = (await peds()).find(x => x.tipo === 'evento').id;
   await p.evaluate(id => MQ.ui.abrirPainel({ tipo: 'viag-ver', id }), idP); await p.waitForTimeout(250);

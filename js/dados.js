@@ -167,8 +167,8 @@ MQ.DIAG = {
 };
 
 /* ---------- Ajuda de custo por visita (valores padrão; a coordenação altera na aba Custos) ---------- */
-/* Kit do quintal: até R$ 4.500 por quintal (plano de trabalho; a coordenação pode ajustar na aba Campo) */
-MQ.KIT_QUINTAL = 4500;
+/* Kit do quintal: até R$ 5.000 por quintal (plano de trabalho, item 14.7: 200 × R$ 5.000 = R$ 1 milhão; confirmado pela coordenação em 01/10/2026) */
+MQ.KIT_QUINTAL = 5000;
 
 /* localização negada: o navegador não pergunta de novo sozinho, então explicamos como liberar */
 MQ.dicaGPS = (err, fim) => {
