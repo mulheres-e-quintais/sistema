@@ -2010,3 +2010,13 @@ table.fin .fin-comp > td { padding-left: 28px; }
   .acao-item, .vaga-aberta > .btn-acao { flex: 1 1 100%; }
   .vaga-aberta { padding: 16px; min-height: 0; }
 }
+
+/* versão mini do botão de ação (tabelas e faixas): [Resolver →], 36 px, largura do texto */
+.btn-acao.mini { --h: 36px; width: auto; max-width: none; flex: none; gap: 8px; padding: 0 10px 0 14px; border-radius: 10px; font-size: 14px; box-shadow: none; }
+.btn-acao.mini .ba-tx { flex: none; width: auto; overflow: visible; }
+.btn-acao.mini .ba-seta { flex-basis: 16px; }
+.btn-acao.mini .ba-seta svg { width: 16px; height: 16px; }
+.btn-acao.mini:hover { transform: none; box-shadow: none; }
+.btn-acao.mini.sec { border-color: var(--line-2); }
+.btn-acao.mini.sec:hover { border-color: var(--accent); color: var(--accent); }
+@media (max-width: 640px) { .btn-acao.mini { --h: 36px; font-size: 14px; padding: 0 10px 0 14px; } }
