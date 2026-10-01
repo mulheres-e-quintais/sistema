@@ -3,7 +3,7 @@
 const { carregar } = require('./ambiente');
 
 const ARQUIVOS = ['dados.js', 'regras.js', 'api-demo.js', 'api-supabase.js', 'fila.js', 'fichas.js', 'geo.js', 'painel.js', 'campo.js', 'vitrine.js', 'custos.js',
-  'fic.js', 'encontros.js', 'agua.js', 'pagamentos.js', 'viagens.js', 'documentos.js', 'planilha.js', 'execucao.js', 'entregas.js', 'roteiro.js', 'impacto.js', 'convites.js', 'banco.js', 'pendencias.js', 'lembretes.js', 'ajuda.js', 'mascaras.js', 'voz.js',
+  'fic.js', 'encontros.js', 'agua.js', 'venda.js', 'pagamentos.js', 'viagens.js', 'documentos.js', 'planilha.js', 'execucao.js', 'entregas.js', 'roteiro.js', 'impacto.js', 'convites.js', 'banco.js', 'pendencias.js', 'lembretes.js', 'ajuda.js', 'mascaras.js', 'voz.js',
   'sugestao.js', 'sessao.js', 'imprimir.js', 'app.js'];
 
 /* perfil: coord_geral | coord_tecnico | bolsista | agente | professor | auxiliar */

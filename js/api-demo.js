@@ -136,6 +136,12 @@
       const tu = { id: uid(), nome: 'FIC Agroecologia e Quintais Produtivos – Piauí (exemplo)', uf: 'PI', municipio: 'Paulistana', inicio: '2026-09-29', fim: '2027-03-31',
         professor_id: p1.id, obs: null, criado_por: p1.id, criado_em: t0, atualizado_em: t0 };
       mem.turmas = [tu];
+      // 44_venda.sql: canais de venda de exemplo (o município da demonstração)
+      mem.canaisVenda = [
+        { id: uid(), uf: 'PI', municipio: 'Paulistana', tipo: 'feira', nome: 'Feira da agricultura familiar (exemplo)', detalhe: 'Sábado de manhã, na praça do mercado. Banca dividida entre as mulheres do grupo.', contato: 'Dona Francisca (exemplo) · (89) 90000-0001', ativo: true, criado_em: new Date().toISOString() },
+        { id: uid(), uf: 'PI', municipio: 'Paulistana', tipo: 'grupo', nome: 'Associação de Mulheres da Lagoa (exemplo)', detalhe: 'Reúne a produção e apresenta a proposta de venda para a merenda escolar.', contato: null, ativo: true, criado_em: new Date().toISOString() },
+        { id: uid(), uf: 'PI', municipio: 'Paulistana', tipo: 'merenda', nome: 'Secretaria de Educação (exemplo)', detalhe: 'Compra hortaliças e frutas para as escolas por chamada pública.', contato: null, ativo: true, criado_em: new Date().toISOString() }];
+      mem.orientacoesVenda = [];
       mem.matriculas = mem.equipe.filter(m => m.status === 'ativa' && m.uf === 'PI' && m.matricula_fic_em)
         .map(m => ({ id: uid(), turma_id: tu.id, equipe_id: m.id, numero: m.matricula_fic_numero, matriculado_em: m.matricula_fic_em, criado_por: p1.id, criado_em: t0, cancelada_em: null }));
       mem.fic = true;
@@ -209,6 +215,50 @@
 
     /* ---------- Execução: planilha de gastos do mês (mesmas regras do 37_execucao_planilhas.sql): só a coordenação geral; nada se altera nem se apaga ---------- */
     /* ---------- acesso à água (mesmas regras do 39_agua.sql): coordenação registra cada mudança; nada se altera nem se apaga ---------- */
+    /* 44_venda.sql: canais de venda por município e orientação dada à mulher */
+    async listarCanaisVenda() {
+      const eu = euMesmo(); if (!eu) return []; const l = ler().canaisVenda || [];
+      if (['coord_geral', 'coord_tecnico'].includes(eu.papel)) return copia(l);
+      return ['articulacao', 'apoio', 'agente'].includes(eu.papel) ? copia(l.filter(c => c.uf === eu.uf)) : [];
+    },
+    async salvarCanalVenda(x) {
+      const d = ler(); const eu = euMesmo(); d.canaisVenda = d.canaisVenda || [];
+      if (!eu || !['coord_geral', 'coord_tecnico', 'articulacao', 'apoio'].includes(eu.papel)) throw falha('Quem cadastra os canais de venda é a coordenação ou a bolsista do estado.');
+      const atual = x.id ? d.canaisVenda.find(c => c.id === x.id) : null;
+      if (x.id && !atual) throw falha('Canal não encontrado.');
+      const uf = atual ? atual.uf : x.uf;
+      if (!['AL', 'BA', 'PE', 'PI', 'SE'].includes(uf)) throw falha('Escolha o estado.');
+      if (R.ehBolsista(eu.papel) && uf !== eu.uf) throw falha('Você cadastra canais só do seu estado.');
+      if (String(x.municipio || '').trim().length < 2) throw falha('Informe o município.');
+      if (!['feira', 'grupo', 'merenda', 'paa', 'comprador', 'outro'].includes(x.tipo)) throw falha('Escolha o tipo de canal.');
+      if (String(x.nome || '').trim().length < 3) throw falha('Dê um nome ao canal (pelo menos 3 letras).');
+      const igual = s => String(s || '').trim().toLowerCase();
+      if (!atual && d.canaisVenda.some(c => c.uf === uf && igual(c.municipio) === igual(x.municipio) && c.tipo === x.tipo && igual(c.nome) === igual(x.nome))) throw falha('Este canal já está cadastrado neste município.');
+      const agora = new Date().toISOString();
+      const novo = { uf, municipio: x.municipio.trim(), tipo: x.tipo, nome: x.nome.trim(), detalhe: String(x.detalhe || '').trim() || null, contato: String(x.contato || '').trim() || null, ativo: x.ativo !== false, atualizado_por: eu.id, atualizado_em: agora };
+      if (atual) Object.assign(atual, novo); else d.canaisVenda.push(Object.assign({ id: uid(), criado_por: eu.id, criado_em: agora }, novo));
+      gravar(d); return atual ? atual.id : d.canaisVenda[d.canaisVenda.length - 1].id;
+    },
+    async listarOrientacoesVenda() {
+      const eu = euMesmo(); if (!eu) return []; const l = ler().orientacoesVenda || [];
+      if (['coord_geral', 'coord_tecnico'].includes(eu.papel)) return copia(l);
+      if (R.ehBolsista(eu.papel)) return copia(l.filter(o => o.uf === eu.uf));
+      return copia(l.filter(o => o.feito_por === eu.id));
+    },
+    async registrarOrientacaoVenda(ficha_id, dados) {
+      const d = ler(); const eu = euMesmo(); d.orientacoesVenda = d.orientacoesVenda || [];
+      if (!eu || !['coord_geral', 'coord_tecnico', 'articulacao', 'apoio', 'agente'].includes(eu.papel)) throw falha('Quem registra a orientação de venda é quem visita o quintal ou a coordenação.');
+      const f = (d.fichas || []).find(x => x.id === ficha_id);
+      if (!f) throw falha('Ficha não encontrada.');
+      if (!(f.resultado === 'selecionada' && f.situacao === 'aprovada')) throw falha('A orientação de venda é para mulher selecionada e aprovada.');
+      if (['articulacao', 'apoio', 'agente'].includes(eu.papel) && f.uf !== eu.uf) throw falha('Este quintal é de outro estado.');
+      if (eu.papel === 'agente' && !(d.visitas || []).some(v => v.ficha_id === ficha_id && v.executor_id === eu.id && v.situacao !== 'cancelada')) throw falha('Você registra a orientação só dos quintais que visita.');
+      if (!(d.diagnosticos || []).some(x => x.ficha_id === ficha_id)) throw falha('Primeiro o diagnóstico do quintal.');
+      if (!Array.isArray(dados && dados.sobra)) throw falha('Marque o que está sobrando no quintal (ou registre que nada sobra).');
+      if (!['sim', 'nao', 'nao_sabe'].includes(dados.caf)) throw falha('Responda se a família tem CAF ou DAP.');
+      const o = { id: uid(), ficha_id, uf: f.uf, dados: copia(dados), feito_por: eu.id, feito_em: new Date().toISOString() };
+      d.orientacoesVenda.push(o); gravar(d); return o.id;
+    },
     async listarAgua() {
       const eu = euMesmo(); if (!eu || !['coord_geral', 'coord_tecnico'].includes(eu.papel)) return [];
       return copia(ler().aguaSituacoes || []);

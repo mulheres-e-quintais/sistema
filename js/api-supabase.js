@@ -425,6 +425,10 @@
     /* ---------- Documentos do projeto (24_documentos.sql): só a coordenação geral ---------- */
     /* execução (37): planilha de gastos do mês; só a coordenação geral; sem update nem delete */
     /* acesso à água (39): coordenação lê e registra; sem update nem delete */
+    async listarCanaisVenda() { const { data, error } = await sb.from('canais_venda').select('*').order('uf').order('municipio'); if (error) throw erro(error); return data; },
+    async salvarCanalVenda(x) { const { data, error } = await sb.rpc('salvar_canal_venda', { p_id: x.id || null, p_uf: x.uf, p_municipio: x.municipio, p_tipo: x.tipo, p_nome: x.nome, p_detalhe: x.detalhe || null, p_contato: x.contato || null, p_ativo: x.ativo !== false }); if (error) throw erro(error); return data; },
+    async listarOrientacoesVenda() { const { data, error } = await sb.from('orientacoes_venda').select('*').order('feito_em', { ascending: false }); if (error) throw erro(error); return data; },
+    async registrarOrientacaoVenda(ficha_id, dados) { const { data, error } = await sb.rpc('registrar_orientacao_venda', { p_ficha: ficha_id, p_dados: dados }); if (error) throw erro(error); return data; },
     async listarAgua() { const { data, error } = await sb.from('agua_situacoes').select('*').order('registrado_em', { ascending: true }); if (error) throw erro(error); return data; },
     async registrarSituacaoAgua(ficha_id, situacao, obs) { const { data, error } = await sb.rpc('registrar_situacao_agua', { p_ficha: ficha_id, p_situacao: situacao, p_obs: obs }); if (error) throw erro(error); return data; },
     async listarPlanilhasExec() {

@@ -95,7 +95,7 @@
     if (modoDemoAtivo()) { S.verEntrada = true; render(); return; }   // demonstração: volta para a tela de entrada
     try { await S.api.sair(); } catch (e) { /* sem internet: a sessão já foi apagada do aparelho */ }
     S.eu = null; S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.documentos = []; S.acessos = []; S.execPlanilhas = []; S.encontros = []; S.agua = [];
-    S.solic = []; S.pedidos = []; S.pre = []; S.pedidosAcesso = []; S.entregas = []; S.matriculas = []; S.turmas = []; S.avaliacoes = []; S.codigos = {}; S.confirmaAcesso = null; S.painel = null; S.solicVis = {}; S.ciencias = []; S.testes = []; S.saldoPed = null; S.quemConfere = null;   // nada da pessoa anterior fica na memória
+    S.solic = []; S.pedidos = []; S.pre = []; S.pedidosAcesso = []; S.entregas = []; S.matriculas = []; S.turmas = []; S.avaliacoes = []; S.codigos = {}; S.confirmaAcesso = null; S.painel = null; S.solicVis = {}; S.canaisVenda = []; S.orientacoesVenda = []; S.vendaFolha = null; S.ciencias = []; S.testes = []; S.saldoPed = null; S.quemConfere = null;   // nada da pessoa anterior fica na memória
     if (MQ.convitesUI && MQ.convitesUI.limparCache) MQ.convitesUI.limparCache();
     render();
   }
@@ -114,7 +114,7 @@
       const qualquer = e => !e.semRede;   // para as partes em que qualquer erro que não seja de rede só desliga a parte
       S.kitPar = { valor_quintal: MQ.KIT_QUINTAL };   // R$ 5.000 por quintal, fixado no plano de trabalho
       const campoPapel = !['professor_fic', 'auxiliar_adm'].includes(papel);
-      const [equipe, fic, fichas, visitas, diagnosticos, aval, aud, pag, docs, quem, entregas, testes, perfis, pre, exemplo, pedAcesso, acessos, lancs, encs, agua] = await Promise.all([
+      const [equipe, fic, fichas, visitas, diagnosticos, aval, aud, pag, docs, quem, entregas, testes, perfis, pre, exemplo, pedAcesso, acessos, lancs, encs, agua, venda] = await Promise.all([
         S.api.listarEquipe(),
         // curso FIC (11_fic.sql): turmas e matrículas
         (coord || papel === 'professor_fic') && S.api.listarTurmas
@@ -137,7 +137,8 @@
         papel === 'coord_geral' && S.api.listarAcessos ? talvez(() => S.api.listarAcessos(), qualquer) : [true, []],   // 30
         papel === 'coord_geral' && S.api.listarPlanilhasExec ? talvez(() => S.api.listarPlanilhasExec(), semFic) : [true, []],   // 37_execucao_planilhas.sql
         S.api.listarEncontrosFic && papel !== 'auxiliar_adm' ? talvez(() => S.api.listarEncontrosFic(), semFic) : [true, []],   // 38_fic_encontros.sql
-        coord && S.api.listarAgua ? talvez(() => S.api.listarAgua(), semFic) : [true, []]   // 39_agua.sql
+        coord && S.api.listarAgua ? talvez(() => S.api.listarAgua(), semFic) : [true, []],   // 39_agua.sql
+        campoPapel && S.api.listarCanaisVenda ? talvez(() => Promise.all([S.api.listarCanaisVenda(), S.api.listarOrientacoesVenda()]), semFic) : [true, [[], []]]   // 44_venda.sql
       ]);
       S.equipe = equipe;
       S.ficSemBanco = !fic[0]; [S.turmas, S.matriculas] = fic[0] ? fic[1] : [[], []];
@@ -150,6 +151,7 @@
       S.execSemBanco = !lancs[0]; S.execPlanilhas = lancs[0] ? lancs[1] : [];
       S.encSemBanco = !encs[0]; S.encontros = encs[0] ? encs[1] : [];
       S.aguaSemBanco = !agua[0]; S.agua = agua[0] ? agua[1] : [];
+      S.vendaSemBanco = !venda[0]; [S.canaisVenda, S.orientacoesVenda] = venda[0] ? venda[1] : [[], []];
       S.quemConfere = quem[0] ? quem[1] : null;
       S.entregasSemBanco = !entregas[0]; [S.entregas, S.ciencias] = entregas[0] ? entregas[1] : [[], []];
       S.testesSemBanco = !testes[0]; S.testes = testes[0] ? testes[1] : [];
@@ -199,12 +201,12 @@
     if (!forcar && Date.now() - atualizadoEm < ATUALIZA_MIN) return;
     atualizando = true;
     try {
-      const antes = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.solic, S.pedidos, S.pre, S.pedidosAcesso, S.entregas, S.matriculas, S.turmas, S.documentos, S.avaliacoes, S.execPlanilhas, S.encontros, S.agua]);
+      const antes = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.solic, S.pedidos, S.pre, S.pedidosAcesso, S.entregas, S.matriculas, S.turmas, S.documentos, S.avaliacoes, S.execPlanilhas, S.encontros, S.agua, S.canaisVenda, S.orientacoesVenda]);
       // dados pessoais e conta do próprio cadastro também podem ter sido resolvidos por outra pessoa (pendências)
       if (!digitando() && !S.painel) { if (MQ.convitesUI) MQ.convitesUI.esquecerPrivado(S.eu.id); if (MQ.bancoUI) MQ.bancoUI.limpar(); }
       if (S.api.reler) await S.api.reler();   // demonstração: outra aba pode ter mudado os dados guardados
       await carregar(); atualizadoEm = Date.now();
-      const depois = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.solic, S.pedidos, S.pre, S.pedidosAcesso, S.entregas, S.matriculas, S.turmas, S.documentos, S.avaliacoes, S.execPlanilhas, S.encontros, S.agua]);
+      const depois = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.solic, S.pedidos, S.pre, S.pedidosAcesso, S.entregas, S.matriculas, S.turmas, S.documentos, S.avaliacoes, S.execPlanilhas, S.encontros, S.agua, S.canaisVenda, S.orientacoesVenda]);
       if (antes !== depois && !digitando()) { const y = window.scrollY; render(); window.scrollTo(0, y); }
     } catch (e) { /* sem internet ou servidor fora: fica com o que já está na tela */ }
     finally { atualizando = false; }
@@ -370,7 +372,7 @@
     else if (aba === 'viagens') corpo = MQ.viagUI ? MQ.viagUI.abaCoord() : '';
     else if (aba === 'documentos') corpo = MQ.docsUI && souGeral ? MQ.docsUI.aba() : '';
     else if (aba === 'execucao') corpo = MQ.execUI && souGeral ? MQ.execUI.aba() : '';
-    else if (aba === 'campo') corpo = (MQ.campoUI ? MQ.campoUI.abaCoord() : '') + (MQ.vitrineUI && !S.campoSemBanco ? MQ.vitrineUI.secaoCoord() : '');
+    else if (aba === 'campo') corpo = (MQ.campoUI ? MQ.campoUI.abaCoord() : '') + (MQ.vendaUI && !S.campoSemBanco ? MQ.vendaUI.secaoCanais('') : '') + (MQ.vitrineUI && !S.campoSemBanco ? MQ.vitrineUI.secaoCoord() : '');
     else corpo = `<div class="cab"><div><span class="eyebrow">Histórico</span><h1 id="t-h">Histórico de alterações</h1>
         <p>Quem fez o quê, e quando: cadastros, aprovações, pagamentos, códigos de acesso e consultas a dados bancários. Serve para a prestação de contas.</p></div></div>
       ${secaoAcessos()}
@@ -706,6 +708,7 @@
         <div><span class="v num">${m.meta_visitas}</span><span class="l">visitas de acompanhamento (Meta 4)</span></div></div></div>` : ''}
       ${MQ.fichasUI ? MQ.fichasUI.secaoBolsista() : ''}
       ${MQ.campoUI ? MQ.campoUI.secaoBolsista() : ''}
+      ${MQ.vendaUI && !S.campoSemBanco ? MQ.vendaUI.secaoCanais(S.eu.uf) : ''}
       ${MQ.pagUI ? MQ.pagUI.secaoMinha() : ''}
       ${MQ.viagUI ? MQ.viagUI.secaoBolsista() : ''}
       <section class="secao"><div class="secao-cab"><h2>Próximos formulários</h2><span class="chip pend">Em preparação</span></div>
@@ -838,7 +841,7 @@
     let el = $('#painel');
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
     const p = S.painel;
-    const corpo = p.tipo === 'roteiro' && MQ.roteiroUI ? MQ.roteiroUI.painel(p) : p.tipo === 'ajuda' ? MQ.ajudaUI.painel(p) : p.tipo === 'meus-dados' ? painelMeusDados() : /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^viag-/.test(p.tipo) && MQ.viagUI ? MQ.viagUI.painel(p) : /^doc-/.test(p.tipo) && MQ.docsUI ? MQ.docsUI.painel(p) : /^exec-/.test(p.tipo) && MQ.execUI ? MQ.execUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : /^enc-/.test(p.tipo) && MQ.encUI ? MQ.encUI.painel(p) : /^agua-/.test(p.tipo) && MQ.aguaUI ? MQ.aguaUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
+    const corpo = p.tipo === 'roteiro' && MQ.roteiroUI ? MQ.roteiroUI.painel(p) : p.tipo === 'ajuda' ? MQ.ajudaUI.painel(p) : p.tipo === 'meus-dados' ? painelMeusDados() : /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^viag-/.test(p.tipo) && MQ.viagUI ? MQ.viagUI.painel(p) : /^doc-/.test(p.tipo) && MQ.docsUI ? MQ.docsUI.painel(p) : /^exec-/.test(p.tipo) && MQ.execUI ? MQ.execUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : /^enc-/.test(p.tipo) && MQ.encUI ? MQ.encUI.painel(p) : /^agua-/.test(p.tipo) && MQ.aguaUI ? MQ.aguaUI.painel(p) : /^venda-/.test(p.tipo) && MQ.vendaUI ? MQ.vendaUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
     el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel${/^(ficha|diag|aval)-(form|ver)$/.test(p.tipo) ? ' largo' : ''}" role="dialog" aria-modal="true" aria-labelledby="painel-t">${corpo}</aside>`;   // formulários longos do campo: painel mais largo
     restaurarRascunhoPainel(el);
     // questionário de campo: opção de imprimir em branco para aplicar no papel (só para quem preenche)
@@ -1164,6 +1167,7 @@
       else if (/^enc-/.test(a) && MQ.encUI) { if (/^enc-(novo|editar)$/.test(a)) S.voltarFoco = el; await MQ.encUI.clique(a, el); }
       else if (/^exec-/.test(a) && MQ.execUI) { S.voltarFoco = el; await MQ.execUI.clique(a, el); }
       else if (/^agua-/.test(a) && MQ.aguaUI) { S.voltarFoco = el; await MQ.aguaUI.clique(a, el); }
+      else if (/^venda-/.test(a) && MQ.vendaUI) { S.voltarFoco = el; await MQ.vendaUI.clique(a, el); }
       else if (/^doc-/.test(a) && MQ.docsUI) { if (!/^doc-rel-/.test(a)) S.voltarFoco = el; await MQ.docsUI.clique(a, el); }
       else if (/^viag-/.test(a) && MQ.viagUI) { if (!/pass$/.test(a)) S.voltarFoco = el; await MQ.viagUI.clique(a, el); }
       else if (/^(aval|imp)-/.test(a) && MQ.impactoUI) { S.voltarFoco = el; await MQ.impactoUI.clique(a, el); }
@@ -1268,6 +1272,7 @@
       if (/^exec-/.test(tipo) && MQ.execUI) await MQ.execUI.enviar(tipo, form, fd);
       if (/^enc-/.test(tipo) && MQ.encUI) await MQ.encUI.enviar(tipo, form, fd);
       if (/^agua-/.test(tipo) && MQ.aguaUI) await MQ.aguaUI.enviar(tipo, form, fd);
+      if (/^venda-/.test(tipo) && MQ.vendaUI) await MQ.vendaUI.enviar(tipo, form, fd);
       if (/^rot-/.test(tipo) && MQ.roteiroUI) await MQ.roteiroUI.enviar(tipo, form, fd);
       if (tipo === 'aval' && MQ.impactoUI) await MQ.impactoUI.enviar(tipo, form, fd);
       if (/^conv-/.test(tipo) && MQ.convitesUI) await MQ.convitesUI.enviar(tipo, form, fd);

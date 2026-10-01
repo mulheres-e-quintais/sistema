@@ -209,7 +209,7 @@
           const temDiag = diagnosticos().some(d => d.ficha_id === f.id);
           return `<div class="quintal"><div><b>${E(f.nome)}</b><br><span class="small muted">${E(f.municipio)} · ${E(f.comunidade)} · ${codigoQuintal(f)}</span></div>
             ${pilulas(f)}
-            <div class="acoes">${temDiag ? `<button class="btn peq" data-acao="campo-diag-ver" data-ficha="${E(f.id)}">Ver diagnóstico</button>`
+            <div class="acoes">${temDiag ? `<button class="btn peq" data-acao="campo-diag-ver" data-ficha="${E(f.id)}">Ver diagnóstico</button>${MQ.vendaUI ? MQ.vendaUI.botaoOrientar(f.id) : ''}`
               : `<button class="btn peq pri" data-acao="campo-diag-novo" data-ficha="${E(f.id)}">Registrar diagnóstico</button>`}</div></div>`; }).join('')}</div>`) : ''}
     </section>`;
   }
@@ -228,7 +228,7 @@
           : `<button class="btn peq pri" data-acao="campo-diag-novo" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}">Registrar diagnóstico</button>`)
           : v.etapa === 'avaliacao' ? (v.situacao === 'realizada' ? `<button class="btn peq" data-acao="aval-ver" data-ficha="${E(v.ficha_id)}">Ver avaliação</button>`
             : `<button class="btn peq pri" data-acao="aval-novo" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}">Registrar avaliação</button>`)
-          : v.situacao === 'realizada' ? `<span class="small muted">${E(String(v.relato || '').slice(0, 90))}${String(v.relato || '').length > 90 ? '…' : ''}</span>`
+          : v.situacao === 'realizada' ? `<span class="small muted">${E(String(v.relato || '').slice(0, 90))}${String(v.relato || '').length > 90 ? '…' : ''}</span>${MQ.vendaUI ? MQ.vendaUI.botaoOrientar(v.ficha_id) : ''}`
           : `<button class="btn peq pri" data-acao="campo-feita" data-id="${E(v.id)}">Registrar visita feita</button>`}</div></div>`; };
     const porMes = {}; feitas.forEach(v => { const m = String(v.data_realizada).slice(0, 7); porMes[m] = (porMes[m] || 0) + 1; });
     const pend = S().fila.filter(i => i.tipo === 'diagnostico');
