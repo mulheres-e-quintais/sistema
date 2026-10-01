@@ -694,6 +694,12 @@ MQ.ORCAMENTO = {
       const tu = { id: uid(), nome: 'FIC Agroecologia e Quintais Produtivos – Piauí (exemplo)', uf: 'PI', municipio: 'Paulistana', inicio: '2026-09-29', fim: '2027-03-31',
         professor_id: p1.id, obs: null, criado_por: p1.id, criado_em: t0, atualizado_em: t0 };
       mem.turmas = [tu];
+      // 44_venda.sql: canais de venda de exemplo (o município da demonstração)
+      mem.canaisVenda = [
+        { id: uid(), uf: 'PI', municipio: 'Paulistana', tipo: 'feira', nome: 'Feira da agricultura familiar (exemplo)', detalhe: 'Sábado de manhã, na praça do mercado. Banca dividida entre as mulheres do grupo.', contato: 'Dona Francisca (exemplo) · (89) 90000-0001', ativo: true, criado_em: new Date().toISOString() },
+        { id: uid(), uf: 'PI', municipio: 'Paulistana', tipo: 'grupo', nome: 'Associação de Mulheres da Lagoa (exemplo)', detalhe: 'Reúne a produção e apresenta a proposta de venda para a merenda escolar.', contato: null, ativo: true, criado_em: new Date().toISOString() },
+        { id: uid(), uf: 'PI', municipio: 'Paulistana', tipo: 'merenda', nome: 'Secretaria de Educação (exemplo)', detalhe: 'Compra hortaliças e frutas para as escolas por chamada pública.', contato: null, ativo: true, criado_em: new Date().toISOString() }];
+      mem.orientacoesVenda = [];
       mem.matriculas = mem.equipe.filter(m => m.status === 'ativa' && m.uf === 'PI' && m.matricula_fic_em)
         .map(m => ({ id: uid(), turma_id: tu.id, equipe_id: m.id, numero: m.matricula_fic_numero, matriculado_em: m.matricula_fic_em, criado_por: p1.id, criado_em: t0, cancelada_em: null }));
       mem.fic = true;
@@ -767,6 +773,50 @@ MQ.ORCAMENTO = {
 
     /* ---------- Execução: planilha de gastos do mês (mesmas regras do 37_execucao_planilhas.sql): só a coordenação geral; nada se altera nem se apaga ---------- */
     /* ---------- acesso à água (mesmas regras do 39_agua.sql): coordenação registra cada mudança; nada se altera nem se apaga ---------- */
+    /* 44_venda.sql: canais de venda por município e orientação dada à mulher */
+    async listarCanaisVenda() {
+      const eu = euMesmo(); if (!eu) return []; const l = ler().canaisVenda || [];
+      if (['coord_geral', 'coord_tecnico'].includes(eu.papel)) return copia(l);
+      return ['articulacao', 'apoio', 'agente'].includes(eu.papel) ? copia(l.filter(c => c.uf === eu.uf)) : [];
+    },
+    async salvarCanalVenda(x) {
+      const d = ler(); const eu = euMesmo(); d.canaisVenda = d.canaisVenda || [];
+      if (!eu || !['coord_geral', 'coord_tecnico', 'articulacao', 'apoio'].includes(eu.papel)) throw falha('Quem cadastra os canais de venda é a coordenação ou a bolsista do estado.');
+      const atual = x.id ? d.canaisVenda.find(c => c.id === x.id) : null;
+      if (x.id && !atual) throw falha('Canal não encontrado.');
+      const uf = atual ? atual.uf : x.uf;
+      if (!['AL', 'BA', 'PE', 'PI', 'SE'].includes(uf)) throw falha('Escolha o estado.');
+      if (R.ehBolsista(eu.papel) && uf !== eu.uf) throw falha('Você cadastra canais só do seu estado.');
+      if (String(x.municipio || '').trim().length < 2) throw falha('Informe o município.');
+      if (!['feira', 'grupo', 'merenda', 'paa', 'comprador', 'outro'].includes(x.tipo)) throw falha('Escolha o tipo de canal.');
+      if (String(x.nome || '').trim().length < 3) throw falha('Dê um nome ao canal (pelo menos 3 letras).');
+      const igual = s => String(s || '').trim().toLowerCase();
+      if (!atual && d.canaisVenda.some(c => c.uf === uf && igual(c.municipio) === igual(x.municipio) && c.tipo === x.tipo && igual(c.nome) === igual(x.nome))) throw falha('Este canal já está cadastrado neste município.');
+      const agora = new Date().toISOString();
+      const novo = { uf, municipio: x.municipio.trim(), tipo: x.tipo, nome: x.nome.trim(), detalhe: String(x.detalhe || '').trim() || null, contato: String(x.contato || '').trim() || null, ativo: x.ativo !== false, atualizado_por: eu.id, atualizado_em: agora };
+      if (atual) Object.assign(atual, novo); else d.canaisVenda.push(Object.assign({ id: uid(), criado_por: eu.id, criado_em: agora }, novo));
+      gravar(d); return atual ? atual.id : d.canaisVenda[d.canaisVenda.length - 1].id;
+    },
+    async listarOrientacoesVenda() {
+      const eu = euMesmo(); if (!eu) return []; const l = ler().orientacoesVenda || [];
+      if (['coord_geral', 'coord_tecnico'].includes(eu.papel)) return copia(l);
+      if (R.ehBolsista(eu.papel)) return copia(l.filter(o => o.uf === eu.uf));
+      return copia(l.filter(o => o.feito_por === eu.id));
+    },
+    async registrarOrientacaoVenda(ficha_id, dados) {
+      const d = ler(); const eu = euMesmo(); d.orientacoesVenda = d.orientacoesVenda || [];
+      if (!eu || !['coord_geral', 'coord_tecnico', 'articulacao', 'apoio', 'agente'].includes(eu.papel)) throw falha('Quem registra a orientação de venda é quem visita o quintal ou a coordenação.');
+      const f = (d.fichas || []).find(x => x.id === ficha_id);
+      if (!f) throw falha('Ficha não encontrada.');
+      if (!(f.resultado === 'selecionada' && f.situacao === 'aprovada')) throw falha('A orientação de venda é para mulher selecionada e aprovada.');
+      if (['articulacao', 'apoio', 'agente'].includes(eu.papel) && f.uf !== eu.uf) throw falha('Este quintal é de outro estado.');
+      if (eu.papel === 'agente' && !(d.visitas || []).some(v => v.ficha_id === ficha_id && v.executor_id === eu.id && v.situacao !== 'cancelada')) throw falha('Você registra a orientação só dos quintais que visita.');
+      if (!(d.diagnosticos || []).some(x => x.ficha_id === ficha_id)) throw falha('Primeiro o diagnóstico do quintal.');
+      if (!Array.isArray(dados && dados.sobra)) throw falha('Marque o que está sobrando no quintal (ou registre que nada sobra).');
+      if (!['sim', 'nao', 'nao_sabe'].includes(dados.caf)) throw falha('Responda se a família tem CAF ou DAP.');
+      const o = { id: uid(), ficha_id, uf: f.uf, dados: copia(dados), feito_por: eu.id, feito_em: new Date().toISOString() };
+      d.orientacoesVenda.push(o); gravar(d); return o.id;
+    },
     async listarAgua() {
       const eu = euMesmo(); if (!eu || !['coord_geral', 'coord_tecnico'].includes(eu.papel)) return [];
       return copia(ler().aguaSituacoes || []);
@@ -2011,6 +2061,10 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     /* ---------- Documentos do projeto (24_documentos.sql): só a coordenação geral ---------- */
     /* execução (37): planilha de gastos do mês; só a coordenação geral; sem update nem delete */
     /* acesso à água (39): coordenação lê e registra; sem update nem delete */
+    async listarCanaisVenda() { const { data, error } = await sb.from('canais_venda').select('*').order('uf').order('municipio'); if (error) throw erro(error); return data; },
+    async salvarCanalVenda(x) { const { data, error } = await sb.rpc('salvar_canal_venda', { p_id: x.id || null, p_uf: x.uf, p_municipio: x.municipio, p_tipo: x.tipo, p_nome: x.nome, p_detalhe: x.detalhe || null, p_contato: x.contato || null, p_ativo: x.ativo !== false }); if (error) throw erro(error); return data; },
+    async listarOrientacoesVenda() { const { data, error } = await sb.from('orientacoes_venda').select('*').order('feito_em', { ascending: false }); if (error) throw erro(error); return data; },
+    async registrarOrientacaoVenda(ficha_id, dados) { const { data, error } = await sb.rpc('registrar_orientacao_venda', { p_ficha: ficha_id, p_dados: dados }); if (error) throw erro(error); return data; },
     async listarAgua() { const { data, error } = await sb.from('agua_situacoes').select('*').order('registrado_em', { ascending: true }); if (error) throw erro(error); return data; },
     async registrarSituacaoAgua(ficha_id, situacao, obs) { const { data, error } = await sb.rpc('registrar_situacao_agua', { p_ficha: ficha_id, p_situacao: situacao, p_obs: obs }); if (error) throw erro(error); return data; },
     async listarPlanilhasExec() {
@@ -3555,7 +3609,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           const temDiag = diagnosticos().some(d => d.ficha_id === f.id);
           return `<div class="quintal"><div><b>${E(f.nome)}</b><br><span class="small muted">${E(f.municipio)} · ${E(f.comunidade)} · ${codigoQuintal(f)}</span></div>
             ${pilulas(f)}
-            <div class="acoes">${temDiag ? `<button class="btn peq" data-acao="campo-diag-ver" data-ficha="${E(f.id)}">Ver diagnóstico</button>`
+            <div class="acoes">${temDiag ? `<button class="btn peq" data-acao="campo-diag-ver" data-ficha="${E(f.id)}">Ver diagnóstico</button>${MQ.vendaUI ? MQ.vendaUI.botaoOrientar(f.id) : ''}`
               : `<button class="btn peq pri" data-acao="campo-diag-novo" data-ficha="${E(f.id)}">Registrar diagnóstico</button>`}</div></div>`; }).join('')}</div>`) : ''}
     </section>`;
   }
@@ -3574,7 +3628,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           : `<button class="btn peq pri" data-acao="campo-diag-novo" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}">Registrar diagnóstico</button>`)
           : v.etapa === 'avaliacao' ? (v.situacao === 'realizada' ? `<button class="btn peq" data-acao="aval-ver" data-ficha="${E(v.ficha_id)}">Ver avaliação</button>`
             : `<button class="btn peq pri" data-acao="aval-novo" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}">Registrar avaliação</button>`)
-          : v.situacao === 'realizada' ? `<span class="small muted">${E(String(v.relato || '').slice(0, 90))}${String(v.relato || '').length > 90 ? '…' : ''}</span>`
+          : v.situacao === 'realizada' ? `<span class="small muted">${E(String(v.relato || '').slice(0, 90))}${String(v.relato || '').length > 90 ? '…' : ''}</span>${MQ.vendaUI ? MQ.vendaUI.botaoOrientar(v.ficha_id) : ''}`
           : `<button class="btn peq pri" data-acao="campo-feita" data-id="${E(v.id)}">Registrar visita feita</button>`}</div></div>`; };
     const porMes = {}; feitas.forEach(v => { const m = String(v.data_realizada).slice(0, 7); porMes[m] = (porMes[m] || 0) + 1; });
     const pend = S().fila.filter(i => i.tipo === 'diagnostico');
@@ -5276,6 +5330,217 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     await U().ocupado(form, async () => { await S().api.registrarSituacaoAgua(form.dataset.id, situacao, obs); await U().carregar(); U().fecharPainel(); U().render(); U().toast('Situação da água registrada.'); });
   }
   MQ.aguaUI = { secao, painel, clique, enviar, lista, SIT };
+})();
+;
+/* ===== venda.js ===== */
+/* Mulheres & Quintais — orientação de venda do excedente do quintal (01/10/2026). Banco: supabase/44_venda.sql.
+   1) Canais de venda por município (feira, grupo, merenda escolar, PAA, comprador): a coordenação e as bolsistas cadastram.
+   2) Na visita, quem acompanha o quintal marca o que está sobrando e o sistema monta uma folha simples para a mulher,
+      com os caminhos que servem para ela NAQUELE município. A folha sai impressa ou em texto para o WhatsApp.
+   Princípios: primeiro a comida da casa (com fome em casa, a folha não fala em venda); sem preço sugerido;
+   textos poucos e revisados (data em REVISADO); tom neutro, sem marca de governo. */
+(function () {
+  const R = MQ.regras;
+  const U = () => MQ.ui; const S = () => MQ.ui.S;
+  const E = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const REVISADO = '2026-10-01';
+  const TIPOS = [['feira', 'Feira'], ['grupo', 'Grupo, associação ou cooperativa'], ['merenda', 'Merenda escolar (PNAE)'], ['paa', 'PAA (compra pública de alimentos)'],
+    ['comprador', 'Comprador local'], ['outro', 'Outro']];
+  const nomeTipo = t => (TIPOS.find(x => x[0] === t) || [, t])[1];
+  const ANIMAL = ['galinhas', 'animais'];
+  const PRODUTOS = () => MQ.DIAG.producao;
+  const nomeProd = k => (PRODUTOS().find(x => x[0] === k) || [, k])[1];
+  const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  const eu = () => S().eu || {};
+  const podeCanal = () => ['coord_geral', 'coord_tecnico', 'articulacao', 'apoio'].includes(eu().papel);
+  const canais = () => S().canaisVenda || [];
+  const canaisDe = (uf, municipio) => canais().filter(c => c.ativo && c.uf === uf && norm(c.municipio) === norm(municipio));
+
+  /* ---------- as regras da orientação (função pura: os testes conferem cada caso) ---------- */
+  function orientar(x) {
+    const sobra = (x.sobra || []).filter(s => s && s.produto);
+    const cs = x.canais || []; const de = t => cs.filter(c => c.tipo === t);
+    const r = { bloqueio: null, caminhos: [], falta: [], avisos: [], lembretes: [] };
+    if (x.ebia === 'grave') {
+      r.bloqueio = 'Hoje o mais importante é a comida da casa. O que o quintal produz deve ficar primeiro para a família. Quando a mesa estiver garantida, conversamos sobre vender o que sobrar.';
+      return r;
+    }
+    if (!sobra.length) {
+      r.avisos.push('Hoje não está sobrando produção. Tudo bem: o quintal é primeiro para a família comer bem. Quando começar a sobrar, avise na próxima visita.');
+      return r;
+    }
+    const vegetal = sobra.filter(s => !ANIMAL.includes(s.produto)); const animal = sobra.filter(s => ANIMAL.includes(s.produto));
+    const regular = vegetal.some(s => s.regular);
+    r.caminhos.push({ id: 'perto', titulo: 'Vender perto de casa', texto: 'Vizinhança, comunidade, igreja, encomendas pelo WhatsApp. É o caminho mais simples para começar: avise o que tem e em que dia colhe.', canais: de('comprador').concat(de('outro')) });
+    if (de('feira').length || sobra.length >= 2 || sobra.some(s => s.regular))
+      r.caminhos.push({ id: 'feira', titulo: 'Vender na feira', texto: de('feira').length ? 'Há feira no município. Leve produto fresco, limpo e separado por tipo; combine com outras mulheres para dividir a banca e o transporte.'
+        : 'Ainda não temos feira cadastrada neste município. Pergunte na comunidade ou à bolsista se há feira da agricultura familiar por perto.', canais: de('feira') });
+    if (regular) {
+      r.caminhos.push({ id: 'grupo', titulo: 'Vender em grupo para a merenda escolar e o PAA', texto: 'As escolas públicas e o PAA compram da agricultura familiar. Uma família sozinha quase nunca tem quantidade para atender: a venda é feita em grupo, por associação ou cooperativa, com entrega combinada.',
+        canais: de('grupo').concat(de('merenda'), de('paa')) });
+      if (x.caf !== 'sim') r.falta.push(x.caf === 'nao' ? 'Tirar o CAF (Cadastro Nacional da Agricultura Familiar): é o documento que permite vender para a merenda escolar e o PAA. Procure o sindicato de trabalhadoras e trabalhadores rurais, o órgão de assistência técnica do estado ou a secretaria de agricultura do município.'
+        : 'Conferir se a família tem CAF ou DAP válida: sem esse documento não dá para vender para a merenda escolar nem para o PAA.');
+      if (!x.grupo) r.falta.push('Entrar em um grupo, associação ou cooperativa (ou formar um grupo com as outras mulheres do projeto no município): é o grupo que apresenta a proposta de venda.');
+    } else if (vegetal.length) {
+      r.lembretes.push('Quando a sobra for certa toda semana, vale conversar sobre vender em grupo para a merenda escolar e o PAA.');
+    }
+    if (animal.length) r.avisos.push('Ovos, carne, leite e queijo: para vender a escola, mercado ou programa público, produto de origem animal precisa de inspeção sanitária. Pergunte na secretaria de agricultura do município como funciona antes de combinar a venda.');
+    r.lembretes.push('Venda só o que sobra: primeiro a comida da família.', 'Anote o que vendeu e por quanto: ajuda a saber se está valendo a pena.', 'Combine o preço olhando o que se cobra na feira e na comunidade.');
+    return r;
+  }
+
+  /* ---------- folha (tela, papel e WhatsApp) ---------- */
+  const linhaCanal = c => `<li><b>${E(c.nome)}</b> <span class="vd-tipo">${E(nomeTipo(c.tipo))}</span>${c.detalhe ? `<br>${E(c.detalhe)}` : ''}${c.contato ? `<br><span class="vd-cont">Contato: ${E(c.contato)}</span>` : ''}</li>`;
+  function folhaHTML(f, x, r) {
+    const prods = (x.sobra || []).map(s => nomeProd(s.produto) + (s.regular ? ' (toda semana)' : ' (de vez em quando)'));
+    return `<article class="vd-folha">
+      <header><p class="vd-proj">Mulheres &amp; Quintais · Quintais Produtivos para Mulheres Rurais</p>
+        <h3>Como vender o que sobra do quintal</h3>
+        <p class="vd-quem">${E(f.nome_social || f.nome || '')} · ${E(f.municipio || '')}/${E(f.uf || '')} · ${R.fmtData(R.hoje())}</p></header>
+      ${r.bloqueio ? `<p class="vd-dest">${E(r.bloqueio)}</p>` : ''}
+      ${prods.length && !r.bloqueio ? `<p><b>O que está sobrando:</b> ${E(prods.join(', '))}.</p>` : ''}
+      ${r.avisos.map(a => `<p class="vd-aviso">${E(a)}</p>`).join('')}
+      ${r.caminhos.length ? `<h4>Caminhos para vender</h4><ol class="vd-cam">${r.caminhos.map(c => `<li><b>${E(c.titulo)}</b><p>${E(c.texto)}</p>${c.canais.length ? `<ul class="vd-canais">${c.canais.map(linhaCanal).join('')}</ul>` : ''}</li>`).join('')}</ol>` : ''}
+      ${r.falta.length ? `<h4>O que falta resolver</h4><ul class="vd-falta">${r.falta.map(t => `<li>${E(t)}</li>`).join('')}</ul>` : ''}
+      ${r.lembretes.length ? `<h4>Para lembrar</h4><ul>${r.lembretes.map(t => `<li>${E(t)}</li>`).join('')}</ul>` : ''}
+      <footer>Orientação geral, revisada em ${R.fmtData(REVISADO)}. As regras dos programas e da vigilância sanitária mudam: confirme no município antes de combinar a venda. Orientou: ${E(eu().nome_social || eu().nome || '')}.</footer>
+    </article>`;
+  }
+  function folhaTexto(f, x, r) {
+    const L = ['*Como vender o que sobra do quintal*', `${f.nome_social || f.nome || ''} · ${f.municipio || ''}/${f.uf || ''}`, ''];
+    if (r.bloqueio) L.push(r.bloqueio, '');
+    r.avisos.forEach(a => L.push(a, ''));
+    r.caminhos.forEach((c, i) => { L.push(`*${i + 1}. ${c.titulo}*`, c.texto); c.canais.forEach(k => L.push(`• ${k.nome} (${nomeTipo(k.tipo)})${k.detalhe ? ': ' + k.detalhe : ''}${k.contato ? ' — contato: ' + k.contato : ''}`)); L.push(''); });
+    if (r.falta.length) { L.push('*O que falta resolver*'); r.falta.forEach(t => L.push('• ' + t)); L.push(''); }
+    if (r.lembretes.length) { L.push('*Para lembrar*'); r.lembretes.forEach(t => L.push('• ' + t)); L.push(''); }
+    L.push('Mulheres & Quintais');
+    return L.join('\n').replace(/\n{3,}/g, '\n\n');
+  }
+  const CSS_PAPEL = `@page { size: A4; margin: 16mm; } body { font: 12pt/1.5 system-ui, Arial, sans-serif; color: #2E1D15; margin: 0; }
+    .tela { padding: 10px; display: flex; gap: 8px; } .tela button { font: inherit; padding: 8px 14px; } @media print { .tela { display: none; } }
+    .vd-folha { max-width: 170mm; margin: 0 auto; } .vd-proj { font-size: 9pt; color: #634F43; margin: 0; letter-spacing: .04em; } h3 { font: 600 18pt/1.2 Georgia, serif; margin: 4px 0 2px; }
+    .vd-quem { margin: 0 0 12px; color: #634F43; } h4 { font-size: 12pt; margin: 14px 0 4px; border-bottom: 1px solid #CDB79D; padding-bottom: 2px; }
+    .vd-dest, .vd-aviso { background: #F1E7DB; padding: 8px 10px; border-radius: 4px; } ol, ul { margin: 4px 0; padding-left: 20px; } .vd-cam > li { margin-bottom: 8px; break-inside: avoid; } .vd-cam p { margin: 2px 0; }
+    .vd-tipo { font-size: 9pt; color: #634F43; } .vd-cont { font-size: 10pt; } footer { margin-top: 16px; font-size: 8.5pt; color: #634F43; border-top: 1px solid #E2D3C1; padding-top: 6px; }`;
+  function imprimir(html) {
+    const pag = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Como vender o que sobra do quintal · Mulheres & Quintais</title><style>${CSS_PAPEL}</style></head>
+      <body><div class="tela"><button type="button" onclick="window.close()">Fechar</button><button type="button" onclick="window.print()">Imprimir</button></div>${html}</body></html>`;
+    const w = window.open('', '_blank');
+    if (w) { w.document.open(); w.document.write(pag); w.document.close(); w.onload = () => { try { w.focus(); w.print(); } catch (e) {} }; return; }
+    const fr = document.createElement('iframe'); fr.style.cssText = 'position:fixed;width:0;height:0;border:0'; fr.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(fr); fr.contentDocument.open(); fr.contentDocument.write(pag); fr.contentDocument.close();
+    setTimeout(() => { fr.contentWindow.focus(); fr.contentWindow.print(); setTimeout(() => fr.remove(), 2000); }, 400);
+  }
+
+  /* ---------- seção: canais de venda (bolsista: o estado dela; coordenação: todos) ---------- */
+  function secaoCanais(ufFixo) {
+    if (S().vendaSemBanco) return `<section class="secao" aria-labelledby="t-venda"><h2 id="t-venda">Onde vender</h2>
+      <p class="aviso">A orientação de venda ainda não está instalada no servidor. A coordenação geral roda o arquivo <b>44_venda.sql</b> no Supabase.</p></section>`;
+    const l = canais().filter(c => !ufFixo || c.uf === ufFixo); const porMun = {};
+    l.forEach(c => { const k = c.uf + '|' + c.municipio; (porMun[k] = porMun[k] || []).push(c); });
+    const chaves = Object.keys(porMun).sort((a, b) => a.localeCompare(b));
+    const conteudo = `${podeCanal() ? `<div class="acoes"><button type="button" class="btn pri peq" data-acao="venda-canal-novo"${ufFixo ? ` data-uf="${E(ufFixo)}"` : ''}>+ Cadastrar canal</button></div>` : ''}
+      ${chaves.length ? chaves.map(k => { const [uf, mun] = k.split('|'); return `<div class="vd-mun"><h3><span class="etq etq-uf">${E(uf)}</span> ${E(mun)}</h3>
+        <ul class="vd-lista">${porMun[k].sort((a, b) => a.tipo.localeCompare(b.tipo) || a.nome.localeCompare(b.nome)).map(c => `<li class="${c.ativo ? '' : 'inativo'}">
+          <span class="vd-l1"><b>${E(c.nome)}</b> <span class="etq">${E(nomeTipo(c.tipo))}</span>${c.ativo ? '' : ' <span class="etq">Desativado</span>'}</span>
+          ${c.detalhe ? `<span class="small">${E(c.detalhe)}</span>` : ''}${c.contato ? `<span class="small muted">Contato: ${E(c.contato)}</span>` : ''}
+          ${podeCanal() && (!ufFixo || c.uf === ufFixo) ? `<button type="button" class="link small" data-acao="venda-canal-editar" data-id="${E(c.id)}">Editar</button>` : ''}</li>`).join('')}</ul></div>`; }).join('')
+        : `<p class="muted">Nenhum canal cadastrado${ufFixo ? ' no estado' : ''} ainda. Sem os canais do município, a folha de orientação sai só com as dicas gerais.</p>`}
+      <p class="nota">Feira (dia e local), grupo ou cooperativa, contato da merenda escolar, quem opera o PAA, compradores. O contato é o da pessoa de referência do canal.</p>`;
+    return `<section class="secao" aria-labelledby="t-venda"><div class="secao-cab"><div><h2 id="t-venda">Onde vender${ufFixo ? ' · ' + E(U().nomeUF(ufFixo)) : ''}</h2>
+      <p>Canais de venda de cada município. Entram na folha de orientação que a mulher recebe na visita.</p></div></div>
+      ${U().dobra('venda-canais', `<span><b>${l.filter(c => c.ativo).length} cana${l.filter(c => c.ativo).length === 1 ? 'l' : 'is'} em ${chaves.length} município${chaves.length === 1 ? '' : 's'}</b> <span class="small muted">· ver e cadastrar</span></span>`, conteudo)}</section>`;
+  }
+  const botaoOrientar = fid => S().vendaSemBanco ? '' : `<button type="button" class="btn peq" data-acao="venda-orientar" data-ficha="${E(fid)}">Orientação de venda</button>`;
+
+  /* ---------- painéis ---------- */
+  const cab = (eyebrow, titulo) => `<div class="painel-cab"><div class="t"><span class="eyebrow">${eyebrow}</span><h2 id="painel-t">${titulo}</h2></div>
+      <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>`;
+  function painelCanal(p) {
+    const c = p.id ? canais().find(x => x.id === p.id) || {} : {}; const bols = R.ehBolsista(eu().papel); const uf = c.uf || p.uf || (bols ? eu().uf : '');
+    const muns = Object.keys(((MQ.GEO || {}).mun || {})[uf] || {}).sort();
+    return cab('Onde vender', p.id ? 'Editar canal' : 'Cadastrar canal') + `<div class="painel-corpo"><form class="f" data-form="venda-canal" ${p.id ? `data-id="${E(p.id)}"` : ''} novalidate><div class="campos">
+        <div class="campo"><label for="vc-uf">Estado</label><select id="vc-uf" name="uf" ${bols || p.id ? 'disabled' : ''}><option value="">Escolha</option>${MQ.UFS.map(u => `<option value="${u.uf}" ${u.uf === uf ? 'selected' : ''}>${E(u.nome)}</option>`).join('')}</select>${bols || p.id ? `<input type="hidden" name="uf" value="${E(uf)}">` : ''}</div>
+        <div class="campo"><label for="vc-mun">Município</label><input id="vc-mun" name="municipio" list="vc-muns" value="${E(c.municipio || '')}" autocomplete="off" maxlength="80"><datalist id="vc-muns">${muns.map(m => `<option value="${E(m)}">`).join('')}</datalist></div>
+        <div class="campo inteiro"><label for="vc-tipo">Tipo de canal</label><select id="vc-tipo" name="tipo"><option value="">Escolha</option>${TIPOS.map(([k, t]) => `<option value="${k}" ${c.tipo === k ? 'selected' : ''}>${E(t)}</option>`).join('')}</select></div>
+        <div class="campo inteiro"><label for="vc-nome">Nome</label><input id="vc-nome" name="nome" value="${E(c.nome || '')}" maxlength="120" placeholder="Ex.: Feira da agricultura familiar de Paulistana"></div>
+        <div class="campo inteiro"><label for="vc-det">Como funciona</label><textarea id="vc-det" name="detalhe" rows="3" maxlength="400" placeholder="Dia, horário e local; o que compram; como participar.">${E(c.detalhe || '')}</textarea></div>
+        <div class="campo inteiro"><label for="vc-cont">Contato</label><input id="vc-cont" name="contato" value="${E(c.contato || '')}" maxlength="160" placeholder="Nome e telefone de quem atende"><span class="dica">Pessoa de referência do canal (não é dado das mulheres do projeto).</span></div>
+        ${p.id ? `<label class="check inteiro"><input type="checkbox" name="ativo" ${c.ativo !== false ? 'checked' : ''}> Canal ativo (desmarque se acabou; ele sai das folhas, mas continua guardado)</label>` : ''}
+      </div><div class="aviso erro" data-erro hidden></div>
+      <div class="acoes"><button class="btn pri" type="submit">Salvar</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div></form></div>`;
+  }
+  function painelOrientar(p) {
+    const f = (S().fichas || []).find(x => x.id === p.ficha); if (!f) return cab('Orientação de venda', 'Não encontrada') + '<div class="painel-corpo"><p class="muted">Quintal não encontrado.</p></div>';
+    const dg = (MQ.campoUI ? MQ.campoUI.diagnosticos() : S().diagnosticos || []).find(d => d.ficha_id === f.id) || {}; const prod = (dg.dados && dg.dados.producao) || dg.producao || {};
+    const ant = (S().orientacoesVenda || []).filter(o => o.ficha_id === f.id).sort((a, b) => String(b.feito_em).localeCompare(String(a.feito_em)));
+    const ult = ant[0] ? ant[0].dados || {} : {}; const marc = k => (ult.sobra || []).find(s => s.produto === k);
+    const nCanais = canaisDe(f.uf, f.municipio).length;
+    return cab(`Orientação de venda · ${E(f.uf)} · ${E(f.municipio || '')}`, E(f.nome_social || f.nome || 'Quintal')) + `<div class="painel-corpo">
+      <p>Converse com ela sobre o que está <b>sobrando</b> depois que a família come. O sistema monta uma folha simples com os caminhos de venda no município${nCanais ? ` (${nCanais} cana${nCanais === 1 ? 'l cadastrado' : 'is cadastrados'})` : ' (nenhum canal cadastrado ainda: a folha sai só com as dicas gerais)'}.</p>
+      ${ant.length ? `<p class="small muted">Última orientação registrada em ${R.fmtData(ant[0].feito_em)}.</p>` : ''}
+      <form class="f" data-form="venda-orientar" data-ficha="${E(f.id)}" novalidate>
+        <fieldset><legend>O que está sobrando</legend><div class="vd-sobra">${PRODUTOS().map(([k, t]) => { const m = marc(k); const on = m ? true : !ant.length && !!(prod[k] && prod[k].venda);
+          return `<div class="vd-s"><label class="mini-chk"><input type="checkbox" name="sobra_${k}" ${on ? 'checked' : ''}><b>${E(t)}</b></label>
+            <span class="vd-reg"><label class="mini-chk"><input type="radio" name="reg_${k}" value="s" ${m && m.regular ? 'checked' : ''}>Toda semana</label><label class="mini-chk"><input type="radio" name="reg_${k}" value="n" ${!(m && m.regular) ? 'checked' : ''}>De vez em quando</label></span></div>`; }).join('')}</div>
+          <span class="dica">Nada marcado: a folha diz que hoje não sobra e que a prioridade é a família.</span></fieldset>
+        <div class="campos">
+          <div class="campo"><label for="vo-caf">A família tem CAF ou DAP?</label><select id="vo-caf" name="caf"><option value="">Escolha</option>${[['sim', 'Sim'], ['nao', 'Não'], ['nao_sabe', 'Não sabe']].map(([k, t]) => `<option value="${k}" ${ult.caf === k ? 'selected' : ''}>${t}</option>`).join('')}</select>
+            <span class="dica">Documento da agricultura familiar. Sem ele não se vende para a merenda escolar nem para o PAA.</span></div>
+          <div class="campo"><label for="vo-grupo">Participa de grupo, associação ou cooperativa?</label><select id="vo-grupo" name="grupo"><option value="n" ${ult.grupo ? '' : 'selected'}>Não</option><option value="s" ${ult.grupo ? 'selected' : ''}>Sim</option></select></div>
+          <div class="campo inteiro"><label for="vo-obs">Observação (opcional)</label><textarea id="vo-obs" name="obs" rows="2" maxlength="300" placeholder="Ex.: já vende ovos na vizinhança; quer entrar na feira de sábado."></textarea></div>
+        </div><div class="aviso erro" data-erro hidden></div>
+        <div class="acoes"><button class="btn pri" type="submit">Gerar a folha</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div></form></div>`;
+  }
+  function painelFolha(p) {
+    const v = S().vendaFolha; if (!v) return cab('Orientação de venda', 'Folha') + '<div class="painel-corpo"><p class="muted">Gere a folha de novo.</p></div>';
+    return cab('Orientação de venda', 'Folha para entregar') + `<div class="painel-corpo">
+      ${v.gravada ? '<div class="aviso ok-aviso">Orientação registrada.</div>' : `<div class="aviso">${E(v.erro || 'Sem internet: a folha foi montada, mas o registro ainda não foi gravado.')} <button type="button" class="link" data-acao="venda-gravar">Tentar gravar de novo</button></div>`}
+      <div class="acoes"><button type="button" class="btn pri" data-acao="venda-imprimir">Imprimir</button><button type="button" class="btn" data-acao="venda-copiar">Copiar texto para o WhatsApp</button><button type="button" class="btn" data-acao="fechar">Fechar</button></div>
+      <div class="vd-previa">${v.html}</div></div>`;
+  }
+  function painel(p) { return p.tipo === 'venda-canal' ? painelCanal(p) : p.tipo === 'venda-orientar' ? painelOrientar(p) : p.tipo === 'venda-folha' ? painelFolha(p) : ''; }
+
+  async function gravar() {
+    const v = S().vendaFolha; if (!v || v.gravada) return;
+    try { await S().api.registrarOrientacaoVenda(v.ficha_id, v.dados); v.gravada = true; v.erro = null; await U().carregar(); }
+    catch (e) { v.erro = /fetch|network|internet|offline/i.test(String(e && e.message)) || (typeof navigator !== 'undefined' && navigator.onLine === false) ? null : String((e && e.message) || e); }
+  }
+  async function clique(a, el) {
+    if (a === 'venda-canal-novo') U().abrirPainel({ tipo: 'venda-canal', uf: el.dataset.uf || '' });
+    else if (a === 'venda-canal-editar') U().abrirPainel({ tipo: 'venda-canal', id: el.dataset.id });
+    else if (a === 'venda-orientar') U().abrirPainel({ tipo: 'venda-orientar', ficha: el.dataset.ficha });
+    else if (a === 'venda-imprimir') { const v = S().vendaFolha; if (v) imprimir(v.html); }
+    else if (a === 'venda-copiar') { const v = S().vendaFolha; if (!v) return;
+      try { await navigator.clipboard.writeText(v.texto); U().toast('Texto copiado. Cole no WhatsApp.'); } catch (e) { U().toast('Não deu para copiar neste aparelho. Use Imprimir.'); } }
+    else if (a === 'venda-gravar') { await gravar(); U().abrirPainel({ tipo: 'venda-folha' }); }
+  }
+  async function enviar(tipo, form, fd) {
+    if (tipo === 'venda-canal') {
+      const x = { id: form.dataset.id || null, uf: String(fd.get('uf') || ''), municipio: String(fd.get('municipio') || '').trim(), tipo: String(fd.get('tipo') || ''), nome: String(fd.get('nome') || '').trim(),
+        detalhe: String(fd.get('detalhe') || '').trim(), contato: String(fd.get('contato') || '').trim(), ativo: form.dataset.id ? !!fd.get('ativo') : true };
+      const e = {};
+      if (!x.uf) e.uf = 'Escolha o estado.';
+      if (x.municipio.length < 2) e.municipio = 'Informe o município.';
+      if (!x.tipo) e.tipo = 'Escolha o tipo de canal.';
+      if (x.nome.length < 3) e.nome = 'Dê um nome ao canal (pelo menos 3 letras).';
+      if (Object.keys(e).length) return U().mostrarErros(form, e);
+      return U().ocupado(form, async () => { await S().api.salvarCanalVenda(x); await U().carregar(); U().fecharPainel(); U().render(); U().toast(x.id ? 'Canal atualizado.' : 'Canal cadastrado.'); });
+    }
+    if (tipo === 'venda-orientar') {
+      const f = (S().fichas || []).find(y => y.id === form.dataset.ficha); if (!f) return;
+      const sobra = PRODUTOS().filter(([k]) => fd.get('sobra_' + k)).map(([k]) => ({ produto: k, regular: fd.get('reg_' + k) === 's' }));
+      const caf = String(fd.get('caf') || '');
+      if (!caf) return U().mostrarErros(form, { caf: 'Responda se a família tem CAF ou DAP.' });
+      const dados = { sobra, caf, grupo: fd.get('grupo') === 's', obs: String(fd.get('obs') || '').trim() || undefined };
+      const dg = (MQ.campoUI ? MQ.campoUI.diagnosticos() : S().diagnosticos || []).find(d => d.ficha_id === f.id) || {};
+      const im = (dg.dados && dg.dados.impacto) || dg.impacto || {};
+      const r = orientar({ sobra, caf, grupo: dados.grupo, ebia: im.ebia_nivel, canais: canaisDe(f.uf, f.municipio) });
+      S().vendaFolha = { ficha_id: f.id, dados, html: folhaHTML(f, dados, r), texto: folhaTexto(f, dados, r), gravada: false };
+      await U().ocupado(form, async () => { await gravar(); U().abrirPainel({ tipo: 'venda-folha' }); });
+    }
+  }
+  MQ.vendaUI = { orientar, folhaHTML, folhaTexto, secaoCanais, botaoOrientar, painel, clique, enviar, TIPOS, REVISADO };
 })();
 ;
 /* ===== pagamentos.js ===== */
@@ -9297,7 +9562,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (modoDemoAtivo()) { S.verEntrada = true; render(); return; }   // demonstração: volta para a tela de entrada
     try { await S.api.sair(); } catch (e) { /* sem internet: a sessão já foi apagada do aparelho */ }
     S.eu = null; S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.documentos = []; S.acessos = []; S.execPlanilhas = []; S.encontros = []; S.agua = [];
-    S.solic = []; S.pedidos = []; S.pre = []; S.pedidosAcesso = []; S.entregas = []; S.matriculas = []; S.turmas = []; S.avaliacoes = []; S.codigos = {}; S.confirmaAcesso = null; S.painel = null; S.solicVis = {}; S.ciencias = []; S.testes = []; S.saldoPed = null; S.quemConfere = null;   // nada da pessoa anterior fica na memória
+    S.solic = []; S.pedidos = []; S.pre = []; S.pedidosAcesso = []; S.entregas = []; S.matriculas = []; S.turmas = []; S.avaliacoes = []; S.codigos = {}; S.confirmaAcesso = null; S.painel = null; S.solicVis = {}; S.canaisVenda = []; S.orientacoesVenda = []; S.vendaFolha = null; S.ciencias = []; S.testes = []; S.saldoPed = null; S.quemConfere = null;   // nada da pessoa anterior fica na memória
     if (MQ.convitesUI && MQ.convitesUI.limparCache) MQ.convitesUI.limparCache();
     render();
   }
@@ -9316,7 +9581,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const qualquer = e => !e.semRede;   // para as partes em que qualquer erro que não seja de rede só desliga a parte
       S.kitPar = { valor_quintal: MQ.KIT_QUINTAL };   // R$ 5.000 por quintal, fixado no plano de trabalho
       const campoPapel = !['professor_fic', 'auxiliar_adm'].includes(papel);
-      const [equipe, fic, fichas, visitas, diagnosticos, aval, aud, pag, docs, quem, entregas, testes, perfis, pre, exemplo, pedAcesso, acessos, lancs, encs, agua] = await Promise.all([
+      const [equipe, fic, fichas, visitas, diagnosticos, aval, aud, pag, docs, quem, entregas, testes, perfis, pre, exemplo, pedAcesso, acessos, lancs, encs, agua, venda] = await Promise.all([
         S.api.listarEquipe(),
         // curso FIC (11_fic.sql): turmas e matrículas
         (coord || papel === 'professor_fic') && S.api.listarTurmas
@@ -9339,7 +9604,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         papel === 'coord_geral' && S.api.listarAcessos ? talvez(() => S.api.listarAcessos(), qualquer) : [true, []],   // 30
         papel === 'coord_geral' && S.api.listarPlanilhasExec ? talvez(() => S.api.listarPlanilhasExec(), semFic) : [true, []],   // 37_execucao_planilhas.sql
         S.api.listarEncontrosFic && papel !== 'auxiliar_adm' ? talvez(() => S.api.listarEncontrosFic(), semFic) : [true, []],   // 38_fic_encontros.sql
-        coord && S.api.listarAgua ? talvez(() => S.api.listarAgua(), semFic) : [true, []]   // 39_agua.sql
+        coord && S.api.listarAgua ? talvez(() => S.api.listarAgua(), semFic) : [true, []],   // 39_agua.sql
+        campoPapel && S.api.listarCanaisVenda ? talvez(() => Promise.all([S.api.listarCanaisVenda(), S.api.listarOrientacoesVenda()]), semFic) : [true, [[], []]]   // 44_venda.sql
       ]);
       S.equipe = equipe;
       S.ficSemBanco = !fic[0]; [S.turmas, S.matriculas] = fic[0] ? fic[1] : [[], []];
@@ -9352,6 +9618,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       S.execSemBanco = !lancs[0]; S.execPlanilhas = lancs[0] ? lancs[1] : [];
       S.encSemBanco = !encs[0]; S.encontros = encs[0] ? encs[1] : [];
       S.aguaSemBanco = !agua[0]; S.agua = agua[0] ? agua[1] : [];
+      S.vendaSemBanco = !venda[0]; [S.canaisVenda, S.orientacoesVenda] = venda[0] ? venda[1] : [[], []];
       S.quemConfere = quem[0] ? quem[1] : null;
       S.entregasSemBanco = !entregas[0]; [S.entregas, S.ciencias] = entregas[0] ? entregas[1] : [[], []];
       S.testesSemBanco = !testes[0]; S.testes = testes[0] ? testes[1] : [];
@@ -9401,12 +9668,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (!forcar && Date.now() - atualizadoEm < ATUALIZA_MIN) return;
     atualizando = true;
     try {
-      const antes = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.solic, S.pedidos, S.pre, S.pedidosAcesso, S.entregas, S.matriculas, S.turmas, S.documentos, S.avaliacoes, S.execPlanilhas, S.encontros, S.agua]);
+      const antes = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.solic, S.pedidos, S.pre, S.pedidosAcesso, S.entregas, S.matriculas, S.turmas, S.documentos, S.avaliacoes, S.execPlanilhas, S.encontros, S.agua, S.canaisVenda, S.orientacoesVenda]);
       // dados pessoais e conta do próprio cadastro também podem ter sido resolvidos por outra pessoa (pendências)
       if (!digitando() && !S.painel) { if (MQ.convitesUI) MQ.convitesUI.esquecerPrivado(S.eu.id); if (MQ.bancoUI) MQ.bancoUI.limpar(); }
       if (S.api.reler) await S.api.reler();   // demonstração: outra aba pode ter mudado os dados guardados
       await carregar(); atualizadoEm = Date.now();
-      const depois = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.solic, S.pedidos, S.pre, S.pedidosAcesso, S.entregas, S.matriculas, S.turmas, S.documentos, S.avaliacoes, S.execPlanilhas, S.encontros, S.agua]);
+      const depois = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.solic, S.pedidos, S.pre, S.pedidosAcesso, S.entregas, S.matriculas, S.turmas, S.documentos, S.avaliacoes, S.execPlanilhas, S.encontros, S.agua, S.canaisVenda, S.orientacoesVenda]);
       if (antes !== depois && !digitando()) { const y = window.scrollY; render(); window.scrollTo(0, y); }
     } catch (e) { /* sem internet ou servidor fora: fica com o que já está na tela */ }
     finally { atualizando = false; }
@@ -9572,7 +9839,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     else if (aba === 'viagens') corpo = MQ.viagUI ? MQ.viagUI.abaCoord() : '';
     else if (aba === 'documentos') corpo = MQ.docsUI && souGeral ? MQ.docsUI.aba() : '';
     else if (aba === 'execucao') corpo = MQ.execUI && souGeral ? MQ.execUI.aba() : '';
-    else if (aba === 'campo') corpo = (MQ.campoUI ? MQ.campoUI.abaCoord() : '') + (MQ.vitrineUI && !S.campoSemBanco ? MQ.vitrineUI.secaoCoord() : '');
+    else if (aba === 'campo') corpo = (MQ.campoUI ? MQ.campoUI.abaCoord() : '') + (MQ.vendaUI && !S.campoSemBanco ? MQ.vendaUI.secaoCanais('') : '') + (MQ.vitrineUI && !S.campoSemBanco ? MQ.vitrineUI.secaoCoord() : '');
     else corpo = `<div class="cab"><div><span class="eyebrow">Histórico</span><h1 id="t-h">Histórico de alterações</h1>
         <p>Quem fez o quê, e quando: cadastros, aprovações, pagamentos, códigos de acesso e consultas a dados bancários. Serve para a prestação de contas.</p></div></div>
       ${secaoAcessos()}
@@ -9908,6 +10175,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <div><span class="v num">${m.meta_visitas}</span><span class="l">visitas de acompanhamento (Meta 4)</span></div></div></div>` : ''}
       ${MQ.fichasUI ? MQ.fichasUI.secaoBolsista() : ''}
       ${MQ.campoUI ? MQ.campoUI.secaoBolsista() : ''}
+      ${MQ.vendaUI && !S.campoSemBanco ? MQ.vendaUI.secaoCanais(S.eu.uf) : ''}
       ${MQ.pagUI ? MQ.pagUI.secaoMinha() : ''}
       ${MQ.viagUI ? MQ.viagUI.secaoBolsista() : ''}
       <section class="secao"><div class="secao-cab"><h2>Próximos formulários</h2><span class="chip pend">Em preparação</span></div>
@@ -10040,7 +10308,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     let el = $('#painel');
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
     const p = S.painel;
-    const corpo = p.tipo === 'roteiro' && MQ.roteiroUI ? MQ.roteiroUI.painel(p) : p.tipo === 'ajuda' ? MQ.ajudaUI.painel(p) : p.tipo === 'meus-dados' ? painelMeusDados() : /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^viag-/.test(p.tipo) && MQ.viagUI ? MQ.viagUI.painel(p) : /^doc-/.test(p.tipo) && MQ.docsUI ? MQ.docsUI.painel(p) : /^exec-/.test(p.tipo) && MQ.execUI ? MQ.execUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : /^enc-/.test(p.tipo) && MQ.encUI ? MQ.encUI.painel(p) : /^agua-/.test(p.tipo) && MQ.aguaUI ? MQ.aguaUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
+    const corpo = p.tipo === 'roteiro' && MQ.roteiroUI ? MQ.roteiroUI.painel(p) : p.tipo === 'ajuda' ? MQ.ajudaUI.painel(p) : p.tipo === 'meus-dados' ? painelMeusDados() : /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^viag-/.test(p.tipo) && MQ.viagUI ? MQ.viagUI.painel(p) : /^doc-/.test(p.tipo) && MQ.docsUI ? MQ.docsUI.painel(p) : /^exec-/.test(p.tipo) && MQ.execUI ? MQ.execUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : /^enc-/.test(p.tipo) && MQ.encUI ? MQ.encUI.painel(p) : /^agua-/.test(p.tipo) && MQ.aguaUI ? MQ.aguaUI.painel(p) : /^venda-/.test(p.tipo) && MQ.vendaUI ? MQ.vendaUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
     el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel${/^(ficha|diag|aval)-(form|ver)$/.test(p.tipo) ? ' largo' : ''}" role="dialog" aria-modal="true" aria-labelledby="painel-t">${corpo}</aside>`;   // formulários longos do campo: painel mais largo
     restaurarRascunhoPainel(el);
     // questionário de campo: opção de imprimir em branco para aplicar no papel (só para quem preenche)
@@ -10366,6 +10634,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       else if (/^enc-/.test(a) && MQ.encUI) { if (/^enc-(novo|editar)$/.test(a)) S.voltarFoco = el; await MQ.encUI.clique(a, el); }
       else if (/^exec-/.test(a) && MQ.execUI) { S.voltarFoco = el; await MQ.execUI.clique(a, el); }
       else if (/^agua-/.test(a) && MQ.aguaUI) { S.voltarFoco = el; await MQ.aguaUI.clique(a, el); }
+      else if (/^venda-/.test(a) && MQ.vendaUI) { S.voltarFoco = el; await MQ.vendaUI.clique(a, el); }
       else if (/^doc-/.test(a) && MQ.docsUI) { if (!/^doc-rel-/.test(a)) S.voltarFoco = el; await MQ.docsUI.clique(a, el); }
       else if (/^viag-/.test(a) && MQ.viagUI) { if (!/pass$/.test(a)) S.voltarFoco = el; await MQ.viagUI.clique(a, el); }
       else if (/^(aval|imp)-/.test(a) && MQ.impactoUI) { S.voltarFoco = el; await MQ.impactoUI.clique(a, el); }
@@ -10470,6 +10739,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (/^exec-/.test(tipo) && MQ.execUI) await MQ.execUI.enviar(tipo, form, fd);
       if (/^enc-/.test(tipo) && MQ.encUI) await MQ.encUI.enviar(tipo, form, fd);
       if (/^agua-/.test(tipo) && MQ.aguaUI) await MQ.aguaUI.enviar(tipo, form, fd);
+      if (/^venda-/.test(tipo) && MQ.vendaUI) await MQ.vendaUI.enviar(tipo, form, fd);
       if (/^rot-/.test(tipo) && MQ.roteiroUI) await MQ.roteiroUI.enviar(tipo, form, fd);
       if (tipo === 'aval' && MQ.impactoUI) await MQ.impactoUI.enviar(tipo, form, fd);
       if (/^conv-/.test(tipo) && MQ.convitesUI) await MQ.convitesUI.enviar(tipo, form, fd);
