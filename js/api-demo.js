@@ -208,6 +208,26 @@
     async recomecar() { mem = null; try { localStorage.removeItem(CHAVE); } catch (e) {} ler(); gravar(); return euMesmo(); },
 
     /* ---------- Execução: planilha de gastos do mês (mesmas regras do 37_execucao_planilhas.sql): só a coordenação geral; nada se altera nem se apaga ---------- */
+    /* ---------- acesso à água (mesmas regras do 39_agua.sql): coordenação registra cada mudança; nada se altera nem se apaga ---------- */
+    async listarAgua() {
+      const eu = euMesmo(); if (!eu || !['coord_geral', 'coord_tecnico'].includes(eu.papel)) return [];
+      return copia(ler().aguaSituacoes || []);
+    },
+    async registrarSituacaoAgua(ficha_id, situacao, obs) {
+      const d = ler(); const eu = euMesmo(); d.aguaSituacoes = d.aguaSituacoes || [];
+      if (!eu || !['coord_geral', 'coord_tecnico'].includes(eu.papel)) throw falha('Quem registra a situação da água é a coordenação.');
+      const f = (d.fichas || []).find(x => x.id === ficha_id);
+      if (!(f && f.resultado === 'sem_agua') && !(d.diagnosticos || []).some(x => x.ficha_id === ficha_id && x.sem_agua)) throw falha('Esta mulher não está na lista de quem precisa de solução de água.');
+      if (!['sem_solucao', 'encaminhada', 'em_andamento', 'concluida'].includes(situacao)) throw falha('Situação inválida.');
+      const t = String(obs || '').trim();
+      if (t.length < 10) throw falha('Escreva o que aconteceu (pelo menos 10 letras): programa, órgão, o que foi feito.');
+      if (t.length > 500) throw falha('A observação passou de 500 letras.');
+      const atual = d.aguaSituacoes.filter(x => x.ficha_id === ficha_id).sort((a, b) => String(b.registrado_em).localeCompare(String(a.registrado_em)))[0];
+      if (atual && atual.situacao === situacao) throw falha('A situação já é esta. Escolha a nova situação.');
+      const r = { id: uid(), ficha_id, situacao, obs: t, registrado_por: eu.id, registrado_em: new Date().toISOString() };
+      d.aguaSituacoes.push(r); d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'agua_situacoes', registro_id: r.id, acao: 'INSERT', por: eu.id, em: r.registrado_em, antes: null, depois: copia(r) });
+      gravar(); return r.id;
+    },
     async listarPlanilhasExec() {
       const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') return [];
       return copia(ler().execPlanilhas || []);

@@ -117,15 +117,19 @@ MQ.TERMO = {
   direitos: 'Você pode, a qualquer momento e sem custo, saber quais dados o projeto tem sobre você, pedir correção e retirar este consentimento. A retirada não apaga os registros que o projeto é obrigado a guardar para a prestação de contas. Os dados não serão vendidos nem repassados para outros fins (Lei nº 13.709/2018).'
 };
 
-/* ---------- Metas do plano de trabalho (versão final, 13 meses; mês 1 = set/2026) ---------- */
+/* ---------- Metas do plano de trabalho (versão final, 13 meses; mês 1 = set/2026) ----------
+   valor: o que o Plano de Trabalho destina diretamente à meta (itens 14.4 a 14.7 com "META n").
+   M2: ajuda de custo do diagnóstico 50 mil · M3: implantação dos quintais 1 milhão + ajuda de custo 50 mil ·
+   M4: ajuda de custo do acompanhamento 100 mil · M5: eventos 30 mil · M6: passagens do intercâmbio 70 mil ·
+   M7: diárias 11,2 mil + passagens 22,4 mil + veículo 8,4 mil. M1 e M8 usam itens de TODAS as metas (bolsas, despesas operacionais). */
 MQ.METAS = [
   { id: 'M1', nome: 'Equipe e coordenação', alvo: 12, un: 'meses com equipe ativa', ini: 1, fim: 13, fonte: 'equipe' },
-  { id: 'M2', nome: 'Diagnósticos socioeconômicos e ambientais', alvo: 200, un: 'diagnósticos', ini: 2, fim: 5, fonte: 'diagnostico' },
-  { id: 'M3', nome: 'Implantação dos quintais', alvo: 200, un: 'quintais implantados', ini: 5, fim: 10, fonte: 'implantacao' },
-  { id: 'M4', nome: 'Visitas de acompanhamento', alvo: 400, un: 'visitas', ini: 5, fim: 12, fonte: 'visitas' },
-  { id: 'M5', nome: 'Eventos de troca de saberes', alvo: 5, un: 'eventos', ini: 6, fim: 11, fonte: null },
-  { id: 'M6', nome: 'Intercâmbio de experiências', alvo: 1, un: 'intercâmbio', ini: 5, fim: 11, fonte: null },
-  { id: 'M7', nome: 'Acompanhamento pedagógico', alvo: 8, un: 'missões', ini: 4, fim: 12, fonte: null },
+  { id: 'M2', nome: 'Diagnósticos socioeconômicos e ambientais', alvo: 200, un: 'diagnósticos', ini: 2, fim: 5, fonte: 'diagnostico', valor: 50000 },
+  { id: 'M3', nome: 'Implantação dos quintais', alvo: 200, un: 'quintais implantados', ini: 5, fim: 10, fonte: 'implantacao', valor: 1050000 },
+  { id: 'M4', nome: 'Visitas de acompanhamento', alvo: 400, un: 'visitas', ini: 5, fim: 12, fonte: 'visitas', valor: 100000 },
+  { id: 'M5', nome: 'Eventos de troca de saberes', alvo: 5, un: 'eventos', ini: 6, fim: 11, fonte: null, valor: 30000 },
+  { id: 'M6', nome: 'Intercâmbio de experiências', alvo: 1, un: 'intercâmbio', ini: 5, fim: 11, fonte: null, valor: 70000 },
+  { id: 'M7', nome: 'Acompanhamento pedagógico', alvo: 8, un: 'missões', ini: 4, fim: 12, fonte: null, valor: 42000 },
   { id: 'M8', nome: 'Relatório final', alvo: 1, un: 'relatório', ini: 13, fim: 13, fonte: null }
 ];
 MQ.MARCOS = [
