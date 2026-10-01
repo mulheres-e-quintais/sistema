@@ -339,9 +339,9 @@ fieldset > .fixo { margin: 0; }
 .crit-txt { color: var(--crit); } .pend-txt { color: var(--pend); }
 
 /* ---------- mapa dos quintais ---------- */
-:root { --m-ok: #2F7D32; --m-espera: #2A6FB5; --m-aguarda: #C98A0B; --m-agua: #B23A2E; --m-uf: #EFE4D6; --m-uf-viz: #F7F0E8; --m-borda: #CDB79D; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --m-ok: #3F9A44; --m-espera: #4A8FD6; --m-aguarda: #C08410; --m-agua: #E0607A; --m-uf: #2E2520; --m-uf-viz: #1B1512; --m-borda: #54453B; } }
-:root[data-theme="dark"] { --m-ok: #3F9A44; --m-espera: #4A8FD6; --m-aguarda: #C08410; --m-agua: #E0607A; --m-uf: #2E2520; --m-uf-viz: #1B1512; --m-borda: #54453B; }
+:root { --m-ok: #2E7D43; --m-espera: #3478B9; --m-aguarda: #D39116; --m-agua: #B83A32; --m-uf: #EDE5D8; --m-uf-viz: #F7F0E8; --m-borda: #CDBDA8; --m-fundo: #FAF7F1; --m-sigla: #6B594A; --m-texto: #4A3022; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --m-ok: #3F9A44; --m-espera: #4A8FD6; --m-aguarda: #C08410; --m-agua: #E0607A; --m-uf: #2E2520; --m-uf-viz: #1B1512; --m-borda: #54453B; --m-fundo: var(--surface); --m-sigla: #BCA99A; --m-texto: var(--ink); } }
+:root[data-theme="dark"] { --m-ok: #3F9A44; --m-espera: #4A8FD6; --m-aguarda: #C08410; --m-agua: #E0607A; --m-uf: #2E2520; --m-uf-viz: #1B1512; --m-borda: #54453B; --m-fundo: var(--surface); --m-sigla: #BCA99A; --m-texto: var(--ink); }
 .mapa-caixa { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 16px; align-items: start; }
 @media (max-width: 760px) { .mapa-caixa { grid-template-columns: 1fr; } }
 .mapa { width: 100%; height: auto; max-height: 520px; display: block; }
@@ -1575,3 +1575,37 @@ form[data-form=exec-lancar] .sn-par .sn:has(input:checked)::before { content: "�
 .mapa-leg-info .pt { flex: none; width: 9px; height: 9px; border-radius: 50%; background: #315C45; box-shadow: 0 0 0 1.5px #FAF7F1, 0 0 0 2.5px #315C45; }
 .vit-rodape-fim { justify-content: flex-end; }
 @media (max-width: 560px) { .mapa-leg-info { position: static; justify-self: start; max-width: none; } .vit-mapa.vit-info { align-content: start; } }
+
+/* 01/10/2026 — visão geral: "Onde estão os quintais produtivos" como infográfico (mapa ~65%, painel ~35%, estados num bege só) */
+.mapa-caixa { background: var(--m-fundo); grid-template-columns: minmax(0, 1.85fr) minmax(220px, 1fr); padding: 16px; }
+@media (max-width: 760px) { .mapa-caixa { grid-template-columns: 1fr; } }
+.mapa-caixa .uf-proj { fill: var(--m-uf); stroke: var(--m-borda); }
+.mapa-caixa .uf-rot { fill: var(--m-sigla); }
+.mapa-lado { display: grid; gap: 12px; align-content: start; color: var(--m-texto); }
+.mapa-destaque { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: baseline; padding-bottom: 12px; border-bottom: 1px solid var(--m-borda); }
+.mapa-destaque b { grid-row: span 2; font-size: 2.6rem; line-height: 1; color: var(--m-ok); font-weight: 700; letter-spacing: -.02em; }
+.mapa-destaque span { text-transform: uppercase; letter-spacing: .08em; font-size: var(--t-xs); font-weight: 700; color: var(--m-texto); }
+.mapa-destaque small { font-size: var(--t-xs); color: var(--m-sigla); }
+.mapa-h3 { margin: 4px 0 0; font-family: var(--serif); font-size: var(--t-md); font-weight: 600; color: var(--m-texto); }
+.mapa-caixa .legenda { color: var(--m-texto); }
+.mapa-caixa .lg-pt { box-shadow: 0 0 0 2px var(--m-fundo); }
+.mun-lista .link { border-bottom: 0; align-items: baseline; color: var(--m-texto); }
+.mun-lista .link .pontilhado { flex: 1; border-bottom: 1.5px dotted var(--m-borda); transform: translateY(-3px); min-width: 12px; }
+.mun-lista .link b { color: var(--m-texto); }
+.q-tam-c { fill: none; stroke: var(--m-sigla); }
+.q-tam-t { fill: var(--m-sigla); font-family: var(--sans); font-weight: 600; }
+.mapa-tam-nota { margin: 8px 0 0; font-size: var(--t-xs); color: var(--muted); }
+/* 01/10/2026 — próximos marcos como linha do tempo: data em "folhinha", linha ligando os marcos, o próximo em destaque, prazo em selo */
+.marcos li.marco { position: relative; grid-template-columns: 52px minmax(0, 1fr); gap: 14px; padding: 12px 0; border-top: 0; align-items: start; }
+.marcos li.marco::before { content: ""; position: absolute; left: 25px; top: 0; bottom: 0; width: 2px; background: var(--line); z-index: 0; }
+.marcos li.marco:first-child::before { top: 24px; } .marcos li.marco:last-child::before { bottom: calc(100% - 24px); }
+.marco-cal { position: relative; z-index: 1; display: grid; justify-items: center; align-content: center; width: 52px; height: 52px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); line-height: 1.05; }
+.marco-cal b { font-size: var(--t-lg); color: var(--ink); font-weight: 700; }
+.marco-cal span { font-size: var(--t-2xs); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.marco.prox .marco-cal { background: var(--accent); border-color: var(--accent); } .marco.prox .marco-cal b, .marco.prox .marco-cal span { color: var(--accent-ink); }
+.marco-txt { display: grid; gap: 4px; justify-items: start; color: var(--ink); font-size: var(--t-md); }
+.marco-tag { font-size: var(--t-2xs); text-transform: uppercase; letter-spacing: .08em; font-weight: 700; color: var(--accent); }
+.marco-prazo { font-size: var(--t-xs); padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); }
+.marco.perto .marco-prazo { background: color-mix(in srgb, var(--m-aguarda) 18%, transparent); color: var(--ink); font-weight: 600; }
+.marco.passou .marco-prazo { background: color-mix(in srgb, var(--m-agua) 15%, transparent); color: var(--ink); font-weight: 600; }
+.marco.passou .marco-cal { opacity: .7; }

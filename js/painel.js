@@ -165,11 +165,13 @@
     const baseDe = g => { const muns = MQ.GEO.mun[g.uf] || {}; const chave = Object.keys(muns).find(m => norm(m) === norm(g.mun));
       return { base: chave ? muns[chave] : (MQ.GEO.uf[g.uf] || {}).c, nome: chave || g.mun }; };
     const resumo = g => ordem.slice().reverse().map(id => [id, g.itens.filter(x => x.cat === id).length]).filter(([, q]) => q);
+    // tamanho proporcional às fichas (área ~ número), com mínimo bem visível para o município de 1 ficha
+    const raio = n => esc * ((foco ? 1.3 : 1.0) + (foco ? 0.55 : 0.5) * Math.sqrt(n));
     let marcas;
     if (!focoMun) {
       marcas = lista.map(g => {
         const { base, nome } = baseDe(g); if (!base) return '';
-        const [cx, cy] = px(base); const n = g.itens.length; const R = esc * ((foco ? 0.9 : 0.6) + (foco ? 0.38 : 0.33) * Math.sqrt(n));
+        const [cx, cy] = px(base); const n = g.itens.length; const R = raio(n);
         ULTIMO.geo[g.k] = { cx, cy, R };
         const por = resumo(g);
         let ang = -Math.PI / 2; const fatias = por.length === 1
@@ -179,8 +181,8 @@
               return `<path d="M${cx},${cy}L${p0[0]},${p0[1]}A${R},${R} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${p1[0]},${p1[1]}Z" fill="${CATS.find(k => k.id === id).cor}"/>`; }).join('');
         const txt = `${nome}/${g.uf} · ${n} mulher${n > 1 ? 'es' : ''} com ficha: ${por.map(([id, q]) => q + ' ' + CATS.find(k => k.id === id).nome.toLowerCase()).join(', ')} · clique para ver ${foco ? 'cada quintal' : 'o estado'}`;
         // área de toque invisível maior que o círculo: no celular o dedo acerta mesmo em município pequeno
-        return `<g class="q-pt q-grupo" data-acao="mapa-info" data-uf="${g.uf}" data-mun="${E(g.k)}" data-dica="${E(txt)}"><circle cx="${cx}" cy="${cy}" r="${Math.max(R, esc * (foco ? 4.5 : 3.8))}" fill="transparent" class="q-alvo"/>${fatias}<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--surface)" stroke-width="${esc * 0.3}"/>
-          ${n > 1 ? `<text x="${cx}" y="${cy + R * 0.34}" text-anchor="middle" font-size="${Math.min(R * 1.05, esc * 3)}" class="q-num">${n}</text>` : ''}<title>${E(txt)}</title></g>`;
+        return `<g class="q-pt q-grupo" data-acao="mapa-info" data-uf="${g.uf}" data-mun="${E(g.k)}" data-dica="${E(txt)}"><circle cx="${cx}" cy="${cy}" r="${Math.max(R, esc * (foco ? 4.5 : 3.8))}" fill="transparent" class="q-alvo"/>${fatias}<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#fff" stroke-width="${esc * 0.22}"/>
+          <text x="${cx}" y="${cy + R * 0.34}" text-anchor="middle" font-size="${Math.min(R * (n > 9 ? 0.95 : 1.1), esc * 3)}" class="q-num">${n}</text><title>${E(txt)}</title></g>`;
       }).join('');
     } else {
       const r = esc * 1.4;
@@ -194,15 +196,21 @@
       }).join('');
     }
     const cont = {}; pts.forEach(x => { cont[x.cat] = (cont[x.cat] || 0) + 1; });
+    // legenda de tamanho no próprio desenho (mesma escala dos círculos): 5, 10 e 20 fichas, no canto livre de baixo à esquerda
+    const tamanhos = !foco && lista.length ? (() => { const Rn = raio; let x = vb[0] + esc * 5; const yb = vb[1] + vb[3] - esc * 7;
+      return `<g class="q-tam" aria-hidden="true">${[5, 10, 20].map(n => { const r = Rn(n); const cx = x + r; x += 2 * r + esc * 3.2;
+        return `<circle cx="${cx}" cy="${yb - r}" r="${r}" class="q-tam-c" stroke-width="${esc * 0.25}"/><text x="${cx}" y="${yb + esc * 3.6}" font-size="${esc * 2.6}" text-anchor="middle" class="q-tam-t">${n}</text>`; }).join('')}</g>`; })() : '';
+    const nUF = new Set(todos.map(x => x.f.uf)).size;
     const naoAtende = d.fichas.filter(f => f.resultado === 'nao_atende' && (!foco || f.uf === foco) && (!focoMun || f.uf + '|' + norm(f.municipio) === focoMun)).length;
     const btn = (uf, t) => `<button type="button" data-acao="mapa-uf" data-uf="${uf}" aria-pressed="${foco === uf && !focoMun}">${t}</button>`;
     const nomeMun = focoMun && grupos[focoMun] ? baseDe(grupos[focoMun]).nome : '';
     const onde = focoMun ? E(nomeMun) + '/' + foco : foco ? E(U.nomeUF(foco)) : 'nos 5 estados';
-    const munLista = !focoMun && lista.length ? `<div class="mun-lista"><span class="small muted">${foco ? 'Municípios' : 'Municípios com mais fichas'}</span>
-        ${lista.slice(0, foco ? 20 : 8).map(g => `<button type="button" class="link" data-acao="mapa-mun" data-uf="${g.uf}" data-mun="${E(g.k)}">${E(baseDe(g).nome)}${foco ? '' : '/' + g.uf} <b class="num">${g.itens.length}</b></button>`).join('')}</div>` : '';
+    const munLista = !focoMun && lista.length ? `<div class="mun-lista"><h3 class="mapa-h3">${foco ? 'Municípios' : 'Municípios com mais fichas'}</h3>
+        ${lista.slice(0, foco ? 20 : 8).map(g => `<button type="button" class="link" data-acao="mapa-mun" data-uf="${g.uf}" data-mun="${E(g.k)}"><span>${E(baseDe(g).nome)}${foco ? '' : '/' + g.uf}</span><i class="pontilhado" aria-hidden="true"></i><b class="num">${g.itens.length}</b></button>`).join('')}</div>` : '';
     return `<section class="secao" aria-labelledby="t-mapa">
-      <div class="secao-cab"><div><h2 id="t-mapa">Quintais no mapa</h2>
-        <p>${pts.length ? `${pts.length} mulher${pts.length > 1 ? 'es' : ''} com ficha ${onde}${focoMun ? ` · ${exatos} com localização do GPS, ${pts.length - exatos} aproximada${pts.length - exatos === 1 ? '' : 's'}` : ' · círculo = município, número = fichas; clique para aproximar'}` : 'Cada ficha lançada aparece aqui.'}</p></div>
+      <div class="secao-cab"><div><h2 id="t-mapa">Onde estão os quintais produtivos</h2>
+        <p>${pts.length ? (foco ? `${pts.length} mulher${pts.length > 1 ? 'es' : ''} com ficha ${onde}${focoMun ? ` · ${exatos} com localização do GPS, ${pts.length - exatos} aproximada${pts.length - exatos === 1 ? '' : 's'}` : ''}`
+          : `${pts.length} mulher${pts.length > 1 ? 'es' : ''} cadastrada${pts.length > 1 ? 's' : ''} em ${nUF} estado${nUF === 1 ? '' : 's'} do Nordeste`) : 'Cada ficha lançada aparece aqui.'}</p></div>
         <span class="seg" role="group" aria-label="Estado no mapa">${btn('', 'Todos')}${MQ.UFS.map(u => btn(u.uf, u.uf)).join('')}</span></div>
       ${foco ? `<nav class="migalha" aria-label="Onde você está no mapa">
         <button type="button" data-acao="mapa-uf" data-uf=""><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>5 estados</button>
@@ -210,16 +218,19 @@
           : `<span aria-hidden="true">›</span><b aria-current="page">${E(U.nomeUF(foco))}</b>`}</nav>` : ''}
       <div class="mapa-caixa">
         <svg class="mapa" viewBox="${vb.join(' ')}" role="img" aria-label="Mapa com ${pts.length} quintais ${onde}" preserveAspectRatio="xMidYMid meet">
-          ${estados}${rotulos}${marcas}
+          ${estados}${rotulos}${marcas}${tamanhos}
         </svg>
         <div class="mapa-dica" id="mapa-dica" hidden></div>
         <div class="mapa-cartao" id="mapa-cartao" role="dialog" aria-label="Informações do ponto" hidden></div>
-        <div style="display:grid;gap:14px;align-content:start">
+        <div class="mapa-lado">
+        ${pts.length ? `<div class="mapa-destaque"><b class="num">${pts.length}</b><span>mulher${pts.length > 1 ? 'es' : ''}</span><small>${foco ? 'em ' + onde : nUF + ' estado' + (nUF === 1 ? '' : 's') + ' do Nordeste'}</small></div>` : ''}
+        <h3 class="mapa-h3">Status das fichas</h3>
         <ul class="legenda">${CATS.map(k => `<li><span class="lg-pt" style="background:${k.cor}"></span>${E(k.nome)} <b class="num">${cont[k.id] || 0}</b></li>`).join('')}
           ${focoMun ? '<li><span class="lg-pt oco"></span>Contorno vazio: posição aproximada (sem GPS)</li>' : ''}
           ${naoAtende ? `<li class="muted">${naoAtende} que não atende${naoAtende > 1 ? 'm' : ''} aos critérios fica${naoAtende > 1 ? 'm' : ''} fora do mapa</li>` : ''}</ul>
         ${munLista}</div>
       </div>
+      ${tamanhos ? '<p class="mapa-tam-nota">Cada círculo representa um município. O tamanho indica o número de fichas/mulheres (exemplos no canto do mapa: 5, 10 e 20).</p>' : ''}
       <p class="nota">O mapa mostra onde moram as mulheres: use só dentro do sistema. Em relatórios e divulgação, mostre números por município.</p>
     </section>`;
   }
@@ -409,8 +420,12 @@
 
           <section class="secao" aria-labelledby="t-marcos">
             <h2 id="t-marcos">Próximos marcos</h2>
-            <ul class="marcos">${marcos.map(m => { const dd = R.diasAte(m.d);
-              return `<li><time datetime="${m.d}">${R.fmtData(m.d)}</time><span>${E(m.t)}<br><span class="small ${dd < 0 ? 'crit-txt' : dd <= 7 ? 'pend-txt' : 'muted'}">${dd < 0 ? 'passou há ' + (-dd) + ' dia' + (dd === -1 ? '' : 's') : dd === 0 ? 'hoje' : 'em ' + dd + ' dia' + (dd === 1 ? '' : 's')}</span></span></li>`; }).join('')}</ul>
+            <ol class="marcos">${marcos.map((m, k) => { const dd = R.diasAte(m.d); const MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+              const prox = k === marcos.findIndex(x => R.diasAte(x.d) >= 0);   // o próximo a vencer fica em destaque
+              const tom = dd < 0 ? 'passou' : dd <= 7 ? 'perto' : 'longe';
+              return `<li class="marco ${tom}${prox ? ' prox' : ''}"><time class="marco-cal" datetime="${m.d}"><b>${m.d.slice(8, 10)}</b><span>${MES[+m.d.slice(5, 7) - 1]}/${m.d.slice(2, 4)}</span></time>
+                <span class="marco-txt">${prox ? '<span class="marco-tag">Próximo</span>' : ''}${E(m.t)}
+                <span class="marco-prazo">${dd < 0 ? 'passou há ' + (-dd) + ' dia' + (dd === -1 ? '' : 's') : dd === 0 ? 'hoje' : 'em ' + dd + ' dia' + (dd === 1 ? '' : 's')}</span></span></li>`; }).join('')}</ol>
           </section>
         </div>
       </div>`;
