@@ -2084,3 +2084,77 @@ table.fin .fin-detalhe > td { padding-left: 28px; }
 .vd-cam > li { margin-bottom: 8px; } .vd-cam p { margin: 2px 0; }
 .vd-tipo { font-size: var(--t-xs); color: var(--muted); } .vd-cont { font-size: var(--t-sm); }
 .vd-folha footer { margin-top: 14px; padding-top: 8px; border-top: 1px solid var(--line); font-size: var(--t-xs); color: var(--muted); }
+
+/* ======================================================================
+   LINGUAGEM VISUAL ÚNICA (01/10/2026) — a aba Visão geral é a referência.
+   O que muda nas outras telas: listas em linhas com divisor (sem caixa dentro de caixa), tabelas com cabeçalho
+   discreto e só linhas horizontais, cartões com o mesmo raio e a mesma borda, avisos e etiquetas de um jeito só,
+   títulos de bloco na mesma família dos títulos de seção, rodapé de ações fixo nos painéis.
+   Nada de cor nova: só as variáveis que já existem.
+   ====================================================================== */
+
+/* --- 1. cartões: um raio, uma borda, sem sombra --- */
+.bloco, details.hist, .quadro-scroll, .pessoa, .cartao, .vd-previa, .fic-turma { border-radius: 14px; }
+.bloco { padding: 18px 20px; gap: 12px; }
+.bloco > h2, .bloco > h3, .bloco > .ft-cab h3, form.bloco > h2 { font: 600 var(--t-lg)/1.25 var(--serif); letter-spacing: -.005em; color: var(--ink); margin: 0; }
+details.hist > summary { padding: 14px 20px; align-items: baseline; }
+details.hist > summary::after { font-weight: 500; }
+.dobra-in { padding: 0 20px 16px; }
+
+/* --- 2. listas: linhas compactas com divisor suave --- */
+.lista-fichas, .pag-lista, .lista-custo, .vd-lista { display: grid; gap: 0; }
+.lista-fichas > *, .pag-lista > *, .lista-custo > .custo-l, .vd-lista > li {
+  border: 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); border-radius: 0; background: transparent; box-shadow: none;
+  padding: 10px 4px; min-height: 0; }
+.lista-fichas > *:last-child, .pag-lista > *:last-child, .lista-custo > .custo-l:last-child, .vd-lista > li:last-child { border-bottom: 0; }
+.lista-fichas > .ficha-linha:hover, .pag-lista > .pag-l:hover { background: color-mix(in srgb, var(--surface-2) 60%, transparent); border-color: color-mix(in srgb, var(--line) 70%, transparent); }
+.lista-custo > .custo-l.prev { border-style: solid; opacity: .92; }
+.ficha-linha .nm, .pag-l .nm { font-weight: 600; }
+.quintal { padding: 10px 4px; border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.vd-mun { padding: 12px 0 4px; }
+.vd-mun h3 { font-family: var(--sans); }
+
+/* --- 3. tabelas: cabeçalho discreto, só linhas horizontais --- */
+.quadro-scroll { border: 0; border-top: 1px solid var(--line-2); border-radius: 0; background: transparent; }
+.quadro th { background: transparent; font: 700 var(--t-2xs)/1.25 var(--sans); letter-spacing: .1em; color: var(--muted); padding: 10px 12px; border-bottom: 1px solid var(--line-2); }
+.quadro td { padding: 10px 12px; border-bottom: 1px solid color-mix(in srgb, var(--line) 75%, transparent); font-variant-numeric: tabular-nums lining-nums; }
+.quadro td.uf { padding: 12px; }
+.quadro tr:last-child td { border-bottom: 0; }
+.quadro-sel .sep { border-left: 1px solid var(--line); }
+.quadro-sel .grupo th { border-bottom: 0; padding-bottom: 2px; color: var(--ink-2); }
+.quadro tbody tr:hover td { background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
+.bloco .quadro-scroll, details.hist .quadro-scroll { border-top-color: var(--line); }
+
+/* --- 4. avisos: fundo neutro e um fio de cor à esquerda --- */
+.aviso { background: var(--surface-2); color: var(--ink); border-left: 3px solid var(--st-aten); border-radius: 0 8px 8px 0; padding: 10px 14px; }
+.aviso.erro { background: color-mix(in srgb, var(--crit-bg) 55%, var(--surface)); color: var(--ink); border-left-color: var(--crit); }
+.aviso.erro b:first-child { color: var(--crit); }
+.aviso.ok, .aviso.ok-aviso, .ok-aviso { background: color-mix(in srgb, var(--ok-bg) 60%, var(--surface)); color: var(--ink); border-left: 3px solid var(--st-ok); border-radius: 0 8px 8px 0; }
+
+/* --- 5. etiquetas de situação: mesmo tamanho e peso em todo o sistema --- */
+.chip, .st-chip, .pil { font: 600 var(--t-xs)/1.3 var(--sans); padding: 3px 10px 3px 8px; border-radius: 999px; }
+.pil { border: 0; }
+
+/* --- 6. seções: mesmo ritmo vertical da Visão geral --- */
+main .secao { gap: 14px; }
+main .secao + .secao, main .secao + .bloco, main .bloco + .secao { margin-top: 12px; }
+.secao-cab { align-items: flex-end; gap: 10px 20px; }
+.secao-cab h2 { font-size: var(--t-xl); }
+.secao-cab p, .cab p { font-size: var(--t-md); line-height: 1.5; }
+.cab { align-items: flex-end; padding-bottom: 2px; }
+.cab-sub h2, .secao h2 { letter-spacing: -.005em; }
+
+/* --- 7. painéis: rodapé de ações sempre à vista em tela alta --- */
+@media (min-height: 700px) {
+  .painel-corpo > form.f:last-child > .acoes:last-child, .painel-corpo > form.f:only-of-type > .acoes:last-child {
+    position: sticky; bottom: calc(-28px - env(safe-area-inset-bottom, 0px)); box-shadow: 0 6px 0 var(--bg); z-index: 2; margin: 4px -4px 0; padding: 12px 4px calc(16px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg); border-top: 1px solid var(--line); }
+}
+.painel fieldset { gap: 12px; padding-top: 4px; }
+.painel legend { margin-bottom: 10px; padding-bottom: 6px; width: 100%; border-bottom: 1px solid var(--line); color: var(--ink-2); }
+.painel-corpo { gap: 22px; }
+
+/* --- 8. campos: mesma altura e foco discreto --- */
+.campo input:not([type=checkbox]):not([type=radio]):not([type=file]), .campo select { min-height: 42px; }
+.campo input:focus-visible, .campo select:focus-visible, .campo textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.campo .dica { color: var(--muted); }
