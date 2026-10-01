@@ -2,7 +2,7 @@
 const { chromium } = require(process.argv[2]);
 const fs = require('fs');
 const R = []; const ok = (g, n, c, d = '') => R.push([g, c ? 'PASSOU' : 'FALHOU', n, d]);
-const SRC = fs.readdirSync('/home/claude/sistema/js').filter(f => f !== 'ajuda.js').map(f => fs.readFileSync('/home/claude/sistema/js/' + f, 'utf8')).join('\n');
+const SRC = fs.readdirSync('/home/claude/sistema/js').filter(f => f.endsWith('.js') && !['ajuda.js', 'tudo.js'].includes(f)).map(f => fs.readFileSync('/home/claude/sistema/js/' + f, 'utf8')).join('\n');
 (async () => { const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true, locale: 'pt-BR' }); const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
   await ctx.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: "window.MQ=window.MQ||{};MQ.CONFIG={supabaseUrl:'',supabaseAnonKey:'',semServiceWorker:true};" }));
