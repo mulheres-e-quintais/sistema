@@ -122,7 +122,7 @@
         </tbody></table></div><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p>
       ${aguardando.length ? `<div class="bloco"><h3>${souTec ? 'Para você aprovar' : 'Aguardando a coordenação técnica'} (${aguardando.length})</h3>
         <div class="lista-fichas">${aguardando.slice(0, 30).map(f => linhaFicha(f, true)).join('')}</div></div>` : ''}
-      <details class="hist"><summary>Todas as fichas (${lista.length})</summary><div style="padding:0 18px 16px;display:grid;gap:12px">
+      <details class="hist" data-lembrar="fichas-coord" ${(U().S.aberto || {})['fichas-coord'] || filtro.uf || filtro.situacao || filtro.busca ? 'open' : ''}><summary>Todas as fichas (${lista.length})</summary><div style="padding:0 18px 16px;display:grid;gap:12px">
         <div class="campos" style="grid-template-columns:repeat(3,minmax(0,1fr))">
           <div class="campo"><label for="ff-uf">Estado</label><select id="ff-uf" data-filtro="uf">${op('', 'Todos', filtro.uf)}${MQ.UFS.map(u => op(u.uf, u.nome, filtro.uf)).join('')}</select></div>
           <div class="campo"><label for="ff-sit">Situação</label><select id="ff-sit" data-filtro="situacao">${op('', 'Todas', filtro.situacao)}
@@ -465,7 +465,8 @@
       const c = ev.target.closest('.campo'); if (c) { c.classList.remove('tem-erro'); c.querySelectorAll('.erro').forEach(x => x.remove()); }
     }
     const flt = ev.target.closest('[data-filtro]');
-    if (flt && flt.tagName === 'SELECT') { filtro[flt.dataset.filtro] = flt.value; U().render(); }
+    if (flt && flt.tagName === 'SELECT') { filtro[flt.dataset.filtro] = flt.value; const id = flt.id; (U().S.aberto = U().S.aberto || {})['fichas-coord'] = true;   // a lista continua aberta, com o resultado à vista
+      U().render(); const n = document.getElementById(id); if (n) n.focus(); }
   });
   document.addEventListener('input', ev => {
     const form = ev.target.closest('form[data-form=ficha]');
