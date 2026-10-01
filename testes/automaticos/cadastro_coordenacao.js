@@ -8,7 +8,7 @@ let seq = 100000000; const cpf = () => { const b = String(seq++).padStart(9, '0'
   const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
   await ctx.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: "window.MQ=window.MQ||{};MQ.CONFIG={supabaseUrl:'',supabaseAnonKey:'',semServiceWorker:true};" }));
   await ctx.route('**/cdn.jsdelivr.net/**', r => r.abort()); await ctx.route('**/fonts.g*/**', r => r.abort()); await ctx.route('**/viacep.com.br/**', r => r.abort());
-  await p.goto('http://localhost:8766/'); await p.evaluate(() => { localStorage.clear(); sessionStorage.clear(); }); await p.reload(); await p.waitForSelector('.resumo');
+  await p.goto('http://localhost:8766/'); await p.evaluate(() => { localStorage.clear(); sessionStorage.clear(); }); await p.reload(); await p.waitForSelector('.dx-topo, .eq-kpis, .resumo');
   const como = async papel => { await p.click(`button[data-p=${papel}]`); await p.waitForTimeout(400); await p.evaluate(() => MQ.ui.fecharPainel && MQ.ui.fecharPainel()); await p.waitForTimeout(150); };
   const aba = async a => { await p.evaluate(a => { const b = document.querySelector(`[data-acao=aba][data-aba=${a}]`); b && b.click(); }, a); await p.waitForTimeout(300); };
   const equipe = () => p.evaluate(() => MQ.ui.S.equipe);
@@ -162,7 +162,7 @@ let seq = 100000000; const cpf = () => { const b = String(seq++).padStart(9, '0'
   ok('Agente preenche o link', await preenchePub(tk, { nome: 'Luana Link Alagoas', cpf: cpfL, email: 'luana@gmail.com' }));
   ok('Articulação SE preenche o link', await preenchePub(tk2, { nome: 'Sara Link Sergipe', cpf: cpf(), email: 'sara@gmail.com' }));
   await pub.close();
-  await p.reload(); await p.waitForSelector('.resumo'); await p.evaluate(() => MQ.ui.fecharPainel && MQ.ui.fecharPainel()); await aba('equipe'); await p.waitForTimeout(300);
+  await p.reload(); await p.waitForSelector('.dx-topo, .eq-kpis, .resumo'); await p.evaluate(() => MQ.ui.fecharPainel && MQ.ui.fecharPainel()); await aba('equipe'); await p.waitForTimeout(300);
   ok('Coord. técnica vê "Cadastros enviados pelo link" (2)', /Cadastros enviados pelo link\s*2/.test(await p.textContent('#t-pre').catch(() => '')), await p.textContent('#t-pre').catch(() => 'sem seção'));
   await p.click('.pre-linha:has-text("Luana")'); await p.waitForTimeout(250);
   const dl = await p.textContent('.painel-corpo .dl');

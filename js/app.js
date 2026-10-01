@@ -216,7 +216,7 @@
   /* sem coordenação técnica ativa (vaga aberta, desligada): a coordenação geral assume a vez dela
      nos contadores e listas, para nenhum pedido ficar parado sem aviso. Só vale para quem vê a equipe toda. */
   const semTecnica = () => !!(S.eu && S.eu.papel === 'coord_geral') && !(S.equipe || []).some(m => m.papel === 'coord_tecnico' && m.status === 'ativa');
-  MQ.ui = { S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: () => render(), abrirPainel: p => abrirPainel(p), fecharPainel: () => fecharPainel(),
+  MQ.ui = { vagaAberta, S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: () => render(), abrirPainel: p => abrirPainel(p), fecharPainel: () => fecharPainel(),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), sincronizar: a => sincronizar(a),
     porId: id => porId(id), avatar: (m, t) => avatar(m, t), passos: m => passos(m), dadosDL: m => dadosDL(m), botaoFoto: m => botaoFoto(m), cartaoPessoa: m => cartaoPessoa(m),
     atualizar: f => atualizarEmSegundoPlano(f), aparelho: () => aparelho(), ipCurto: ip => ipCurto(ip), sair: a => sairDoSistema(a) };
@@ -343,21 +343,21 @@
     let corpo = '';
     if (aba === 'visao') corpo = MQ.painelUI ? MQ.painelUI.visaoGeral(S) : '';
     else if (aba === 'equipe') corpo = (!R.temProfessorHabilitado(S.equipe) ? `<div class="aviso erro" role="status"><b>Cadastre e habilite primeiro um professor do FIC.</b> Sem professor com cadastro no Arlo e termo assinado, o sistema não cadastra coordenação técnica, bolsistas nem agentes de campo (a matrícula no curso depende dele).</div>` : '') + secaoPedidosAcesso() + (MQ.convitesUI ? MQ.convitesUI.secaoPendentes() : '') + `
-      <div class="cab"><div><span class="eyebrow">Equipe do projeto</span><h1>Coordenação e bolsistas</h1><p>${intro}</p></div>${prazoChip()}</div>
-      <div class="resumo" aria-label="Resumo da equipe">
-        <div><span class="v num">${ct ? 1 : 0}<small> de 1</small></span><span class="l">coordenação técnica cadastrada</span></div>
-        <div><span class="v num">${bols.length}<small> de 10</small></span><span class="l">bolsistas cadastradas</span></div>
-        <div><span class="v num">${aptas}<small> de ${pagaveis.length || 0}</small></span><span class="l">habilitadas (FIC, FUNCERN e termo)</span></div>
-        <div><span class="v num">${(S.fichas || []).filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada').length}<small> de 200</small></span><span class="l">mulheres selecionadas e aprovadas</span></div>
+      <div class="cab eq-cab"><div><span class="eyebrow">Equipe do projeto</span><h1>Coordenação e bolsistas</h1><p class="eq-intro">${intro}</p>${prazoChip()}</div></div>
+      <div class="eq-kpis" aria-label="Resumo da equipe">
+        ${kpiEq(ct ? 1 : 0, 1, 'coordenação técnica cadastrada')}
+        ${kpiEq(bols.length, 10, 'bolsistas cadastradas')}
+        ${kpiEq(aptas, pagaveis.length || 0, 'habilitadas (FIC, FUNCERN e termo)')}
+        ${kpiEq((S.fichas || []).filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada').length, 200, 'mulheres selecionadas e aprovadas')}
       </div>
       <section class="secao" aria-labelledby="t-ct">
-        <div class="secao-cab"><h2 id="t-ct">Coordenação técnica</h2><p>Uma para os 5 estados · indicada pelo MPA · cadastrada pela coordenação geral</p></div>
+        <div class="secao-cab"><div><h2 id="t-ct">Coordenação técnica</h2><p>Uma para os 5 estados · indicada pelo MPA · cadastrada pela coordenação geral</p></div></div>
         ${ct ? cartaoPessoa(ct) : vagaCoordTecnica(souGeral)}
       </section>
       ${secaoAuxiliares(souGeral)}
       ${MQ.ficUI && !S.ficSemBanco ? MQ.ficUI.secaoEquipe() : ''}
       <section class="secao" aria-labelledby="t-b">
-        <div class="secao-cab"><h2 id="t-b">Bolsistas por estado</h2><p>1 de articulação e 1 de apoio por estado · cadastradas pela coordenação técnica · meta de 40 quintais por estado</p></div>
+        <div class="secao-cab"><div><h2 id="t-b">Bolsistas por estado</h2><p>1 de articulação e 1 de apoio por estado · cadastradas pela coordenação técnica · meta de 40 quintais por estado</p></div></div>
         ${quadroTabela()}${quadroCartoes()}
       </section>
       ${secaoAgentes()}`;
@@ -381,7 +381,7 @@
 
   const nomeDe = m => m.nome_social ? m.nome_social : m.nome;
   /* foto pequena ao lado do nome; sem foto (ou link vencido), mostra as iniciais */
-  const CORES_AV = ['#A44934', '#885B44', '#6B7A3A', '#2F6B66', '#8A5A00', '#6A4E7A', '#4F6A8A'];
+  const CORES_AV = ['#6B7A3A', '#A44934', '#885B44', '#8A5A00', '#2F6B66', '#6A4E7A'];   // terrosos: oliva, terracota, marrom, ocre, petróleo, roxo suave
   function avatar(m, tam) {
     const p = String(m.nome || '?').replace(/\(.*?\)/g, ' ').trim().split(/\s+/).filter(x => x && !/^(d[aeo]s?|e)$/i.test(x));
     const ini = ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
@@ -393,17 +393,24 @@
 
   function cartaoPessoa(m) {
     const s = R.situacao(m);
-    return `<div class="pessoa com-foto">${avatar(m, 80)}<div style="display:grid;gap:6px;min-width:0">
+    return `<div class="pessoa com-foto pessoa-c">${avatar(m, 60)}<div style="display:grid;gap:6px;min-width:0">
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="nm">${esc(nomeDe(m))}</span><span class="chip ${s.cod}">${esc(s.rot)}</span></div>
         <div class="dd"><span>${esc(m.email)}</span><span class="num">${esc(m.telefone)}</span>${m.municipio ? `<span>${esc(m.municipio)}</span>` : ''}${m.organizacao ? `<span>${esc(m.organizacao)}</span>` : ''}</div></div>
-      <div class="acts"><button class="btn" data-acao="ver" data-id="${m.id}">Ver detalhes</button></div></div>`;
+      <div class="acts"><button class="btn peq" data-acao="ver" data-id="${m.id}">Ver detalhes</button></div></div>`;
+  }
+  /* vaga sem pessoa: o mesmo componente para coordenação técnica, auxiliar e professores (não é erro: é uma vaga a preencher) */
+  function vagaAberta(texto, pode, botao, rotulo) {
+    return `<div class="vaga-aberta"><div><span class="st-chip ${rotulo && rotulo !== 'Vaga aberta' ? 'st-nao' : 'st-aten'}">${rotulo || 'Vaga aberta'}</span><p>${texto}</p>${pode ? '' : '<p class="small muted">Só a coordenação geral pode fazer este cadastro.</p>'}</div>${pode ? botao : ''}</div>`;
+  }
+  /* indicador da equipe: número grande, denominador menor, descrição; "completo" em verde quando chega lá */
+  function kpiEq(n, de, rot) {
+    return `<div class="eq-kpi"><span class="eq-n num"><b>${n}</b><small> de ${de}</small></span><span class="eq-l">${rot}</span>${de && n >= de ? '<span class="eq-ok">completo</span>' : ''}</div>`;
   }
 
   function vagaCoordTecnica(souGeral) {
     const ant = ultimaDesligada('coord_tecnico');
-    return `<div class="vazio"><div><b>Vaga aberta.</b> ${ant ? `A anterior, ${esc(ant.nome)}, foi desligada${ant.data_fim ? " em " + R.fmtData(ant.data_fim) : ""}.` : 'O MPA ainda não indicou a coordenação técnica.'}
-      ${souGeral ? '' : '<br><span class="small">Só a coordenação geral pode fazer este cadastro.</span>'}</div>
-      ${souGeral ? `<button class="btn pri btn-cad" data-acao="novo" data-papel="coord_tecnico" ${ant ? `data-subst="${ant.id}"` : ''}>Cadastrar coordenação técnica</button>` : ''}</div>`;
+    return vagaAberta(ant ? `A anterior, ${esc(ant.nome)}, foi desligada${ant.data_fim ? ' em ' + R.fmtData(ant.data_fim) : ''}.` : 'O MPA ainda não indicou a coordenação técnica.', souGeral,
+      `<button class="btn pri btn-cad" data-acao="novo" data-papel="coord_tecnico" ${ant ? `data-subst="${ant.id}"` : ''}>Cadastrar coordenação técnica</button>`);
   }
 
   function botaoVaga(papel, uf) {
@@ -440,10 +447,9 @@
   function secaoAuxiliares(souGeral) {
     const aux = naVaga('auxiliar_adm'); const ant = ultimaDesligada('auxiliar_adm');
     return `<section class="secao" aria-labelledby="t-aux">
-      <div class="secao-cab"><h2 id="t-aux">Auxiliar administrativo</h2><p>Um para o projeto · IFRN · cadastrado pela coordenação geral · cadastra a equipe no Arlo, registra o Arlo e o termo e lança os pagamentos</p></div>
-      ${aux ? cartaoPessoa(aux) : `<div class="vazio"><div><b>Vaga aberta.</b> ${ant ? `O anterior, ${esc(ant.nome)}, foi desligado${ant.data_fim ? " em " + R.fmtData(ant.data_fim) : ""}.` : 'Digite os dados ou gere um link para ele preencher.'}
-        ${souGeral ? '' : '<br><span class="small">Só a coordenação geral pode fazer este cadastro.</span>'}</div>
-        ${souGeral ? `<button class="btn pri btn-cad" data-acao="novo" data-papel="auxiliar_adm" ${ant ? `data-subst="${ant.id}"` : ''}>Cadastrar auxiliar administrativo</button>` : ''}</div>`}
+      <div class="secao-cab"><div><h2 id="t-aux">Auxiliar administrativo</h2><p>Um para o projeto · IFRN · cadastrado pela coordenação geral · cadastra a equipe no Arlo, registra o Arlo e o termo e lança os pagamentos</p></div></div>
+      ${aux ? cartaoPessoa(aux) : vagaAberta(ant ? `O anterior, ${esc(ant.nome)}, foi desligado${ant.data_fim ? ' em ' + R.fmtData(ant.data_fim) : ''}.` : 'Digite os dados ou gere um link para ele preencher.', souGeral,
+        `<button class="btn pri btn-cad" data-acao="novo" data-papel="auxiliar_adm" ${ant ? `data-subst="${ant.id}"` : ''}>Cadastrar auxiliar administrativo</button>`)}
     </section>`;
   }
   function telaAuxiliar() {

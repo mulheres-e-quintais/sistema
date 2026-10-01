@@ -1801,3 +1801,38 @@ form[data-form=exec-lancar] .sn-par .sn:has(input:checked)::before { content: "�
 .pub-fotos.n-2 { grid-template-columns: 1.4fr 1fr; grid-template-rows: 1fr; } .pub-fotos.n-2 .pf-prin { grid-row: auto; }
 .pub-fotos.n-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; } .pub-fotos.n-1 .pf-prin { grid-row: auto; }
 @media (max-width: 560px) { .pub-fotos.n-2 { grid-template-columns: 1fr; grid-template-rows: 1.4fr 1fr; } .pub-fotos.n-2 .pf-prin { grid-column: auto; } }
+
+/* ======================================================================
+   01/10/2026 — página Equipe refinada (3º briefing)
+   ====================================================================== */
+.eq-cab h1 { font-size: clamp(30px, 3.6vw, 40px); }
+.eq-intro { font-size: var(--t-md); color: var(--ink-2); max-width: 64ch; margin: 8px 0 12px; line-height: 1.55; }
+.eq-cab .prazo { display: inline-flex; background: var(--st-and-bg); color: var(--ink); border: 0; font-size: var(--t-sm); }
+.eq-cab .prazo.crit { background: var(--st-aten-bg); }
+/* indicadores: um painel só, separadores sutis, número em destaque */
+.eq-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 2px solid var(--ink); border-bottom: 1px solid var(--line); }
+.eq-kpi { display: grid; gap: 4px; align-content: start; padding: 18px 20px; }
+.eq-kpi:first-child { padding-left: 0; }
+.eq-kpi + .eq-kpi { border-left: 1px solid var(--line); }
+.eq-n b { font: 600 clamp(32px, 3.4vw, 42px)/1 var(--serif); color: var(--ink); letter-spacing: -.02em; }
+.eq-n small { font: 500 var(--t-md) var(--sans); color: var(--muted); }
+.eq-l { font-size: var(--t-sm); color: var(--ink-2); }
+.eq-ok { display: inline-flex; align-items: center; gap: 6px; font: 600 var(--t-xs) var(--sans); color: var(--ok); }
+.eq-ok::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--st-ok); }
+@media (max-width: 760px) { .eq-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .eq-kpi { padding: 14px 12px 14px 0; } .eq-kpi + .eq-kpi { border-left: 0; }
+  .eq-kpi:nth-child(even) { padding-left: 14px; border-left: 1px solid var(--line); } .eq-kpi:nth-child(n+3) { border-top: 1px solid var(--line); } }
+/* vaga aberta: mesmo componente para coordenação técnica, auxiliar e professores; não parece erro */
+.vaga-aberta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; padding: 16px 18px; border: 1px dashed var(--line-2); border-radius: var(--r); background: var(--surface); }
+.vaga-aberta > div { display: grid; gap: 6px; justify-items: start; min-width: 0; flex: 1 1 320px; }
+.vaga-aberta p { margin: 0; color: var(--ink-2); font-size: var(--t-md); }
+/* cartão de pessoa compacto: nome em destaque, contato secundário, botão discreto */
+.pessoa.pessoa-c { padding: 12px 16px; gap: 6px 16px; box-shadow: none; }
+.pessoa.pessoa-c .nm { font-size: var(--t-xl); color: var(--ink); }
+.pessoa.pessoa-c .dd { font-size: var(--t-sm); color: var(--muted); gap: 2px 14px; }
+.pessoa.pessoa-c .chip { font-size: var(--t-xs); }
+.secao + .secao { margin-top: 4px; }
+/* seleção no estado: barra verde */
+.plano .bar i { background: var(--st-ok); }
+/* agentes: cartões mais compactos, botão sempre embaixo */
+.grade-uf .cartao { padding: 10px; gap: 4px; }
+.grade-uf .cartao .btn-ag { margin-top: 6px; min-height: 38px; font-size: var(--t-sm); }
