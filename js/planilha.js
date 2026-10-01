@@ -176,7 +176,10 @@
       const l = tab.linhas[i] || []; const pega = k => c.col[k] == null ? null : l[c.col[k]];
       const texto = pega('item'); const valor = numeroBR(pega('valor'));
       if ((texto == null || String(texto).trim() === '') && valor == null) continue;   // linha em branco
-      if (l.some(x => typeof x === 'string' && /^(sub ?)?total\b|^soma\b|^saldo\b/.test(norm(x)))) { ignoradas++; continue; }   // linha de total (em qualquer coluna): não entra (contaria duas vezes)
+      // linha de total (em qualquer coluna): não entra (contaria duas vezes). "Total Distribuidora Ltda" com data é gasto de verdade.
+      const rotTotal = x => typeof x === 'string' && /^((sub ?)?total|soma|saldo)( (geral|final|anterior|d[aeo]s? [a-z0-9 ]{1,40}))?( r\$?)?:?$/.test(norm(x).trim());
+      const comData = !!dataDe(pega('data'));
+      if (l.some(rotTotal) || (!comData && l.some(x => typeof x === 'string' && /^((sub ?)?total|soma|saldo)\b/.test(norm(x))))) { ignoradas++; continue; }
       if (valor == null || valor === 0) { ignoradas++; continue; }
       const cls = classificar(texto);
       const dt = dataDe(pega('data')); if (!dt && pega('data') != null && String(pega('data')).trim() !== '') datasRuins++;

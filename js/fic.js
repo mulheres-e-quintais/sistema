@@ -47,6 +47,7 @@
       ${outras.length ? `<section class="secao"><div class="secao-cab"><h2>Turmas de outros professores</h2><p>Você também pode matricular nelas.</p></div>${outras.map(cartaoTurma).join('')}</section>` : ''}
       ${avulsas.length ? `<section class="secao"><div class="secao-cab"><div><h2>Matrícula registrada sem turma</h2><p>Lançadas à mão na habilitação, antes das turmas existirem no sistema. Para organizar, matricule a pessoa numa turma (o número e a data vêm preenchidos).</p></div></div>
         <div class="fic-lista">${avulsas.map(m => linhaPessoa(m, `<span class="small muted num">${E(m.matricula_fic_numero || '')} · ${R.fmtData(m.matricula_fic_em)}</span>`)).join('')}</div></section>` : ''}
+      ${S().eu.papel === 'coord_geral' && MQ.encUI ? MQ.encUI.secaoProfessor() : ''}
       ${MQ.entregasUI ? MQ.entregasUI.secaoAva() : ''}`;
   }
 

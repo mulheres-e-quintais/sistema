@@ -34,7 +34,7 @@
     l.forEach(e => { const k = String(e.data).slice(0, 7); (porMes[k] = porMes[k] || []).push(e); });
     const semTurma = !turmasMinhas().length;
     return `<section class="secao" id="t-encontros" aria-labelledby="t-enc"><div class="secao-cab"><div><h2 id="t-enc">Encontros do curso e lista de presença</h2>
-        <p>Registre cada encontro (aula presencial, online ou atividade no AVA) e marque quem participou. Cada pessoa confirma no próprio acesso. Os encontros do mês entram no relatório da sua bolsa.</p></div></div>
+        <p>Registre cada encontro (aula presencial, online ou atividade no AVA) e marque quem participou. Cada pessoa confirma no próprio acesso. ${ehProf() ? 'Os encontros do mês entram no relatório da sua bolsa.' : 'Você pode registrar no lugar do professor: o encontro fica no nome dele e entra no relatório da bolsa dele.'}</p></div></div>
       ${semTurma ? '<p class="muted">Crie uma turma e matricule as pessoas antes de registrar encontros.</p>' : `<div class="acoes-pag">${MQ.acaoComDica({ acao: 'enc-novo', icone: 'calendario', texto: 'Registrar encontro' }, 'Data, carga horária, o que foi trabalhado e a lista de presença.')}</div>`}
       ${Object.keys(porMes).length ? Object.entries(porMes).map(([ym, xs]) => { const at = ativos(xs); return `<h3 class="viag-sub">${nomeMes(ym)} · ${at.length} encontro${at.length === 1 ? '' : 's'} · ${fmtH(at.reduce((t, e) => t + (+e.carga_horaria || 0), 0))}</h3>
         <div class="pag-lista">${xs.map(linha).join('')}</div>`; }).join('') : (semTurma ? '' : '<p class="muted">Nenhum encontro registrado ainda.</p>')}
@@ -178,6 +178,11 @@
     const tid = String(fd.get('turma_id') || '');
     const x = { id: form.dataset.id || null, turma_id: tid, data: String(fd.get('data') || ''), carga_horaria: numBR(fd.get('carga_horaria')), modalidade: String(fd.get('modalidade') || ''),
       conteudo: String(fd.get('conteudo') || '').trim(), presentes: [...form.querySelectorAll(`input[name="presente_${tid}"]`)].filter(c => c.checked).map(c => c.value) };
+    if (x.id) {   // quem já saiu da turma (matrícula cancelada ou desligada) não aparece no formulário: a presença dela no encontro fica como estava
+      const naTela = new Set([...form.querySelectorAll(`input[name="presente_${tid}"]`)].map(c => c.value));
+      const ant = (S().encontros || []).find(y => y.id === x.id);
+      ((ant && ant.presencas) || []).filter(p => p.presente && !naTela.has(p.equipe_id) && (ant.data === x.data || p.confirmado_em)).forEach(p => x.presentes.push(p.equipe_id));
+    }
     const e = {};
     if (!tid) e.turma_id = 'Escolha a turma.';
     if (!x.data) e.data = 'Informe a data.'; else if (x.data > R.hoje()) e.data = 'A data não pode ser no futuro.';

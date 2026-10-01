@@ -32,7 +32,7 @@
   const podeVer = papel => ['articulacao', 'coord_tecnico', 'coord_geral'].includes(papel);
   /* ---------- tetos: R$ 6.000 por estado para eventos; R$ 70.000 para passagens (35_tetos_passagens_eventos.sql) ---------- */
   const brl = v => R.fmtBRL(+v || 0);
-  const valorBR = t => { const x = String(t || '').replace(/[^\d,.]/g, ''); if (!x) return null; const n = /,\d{1,2}$/.test(x) ? +x.replace(/\./g, '').replace(',', '.') : +x.replace(/[.,](?=\d{3}(\D|$))/g, '').replace(',', '.'); return isFinite(n) ? n : null; };
+  const valorBR = t => { const n = R.valorBR(String(t || '').replace(/[^\d,.]/g, '')); return isNaN(n) ? null : n; };
   function saldo(tipo, uf, semId) {
     const teto = MQ.TETOS[tipo]; const sd = S().saldoPed;
     let usado;
@@ -70,7 +70,7 @@
     const d = diasAte(p.data_ref);
     const quando = p.tipo === 'passagem' ? 'Ida ' + R.fmtData(p.data_ref) : 'Evento ' + R.fmtData(p.data_ref);
     const extra = p.tipo === 'passagem' ? ` · ${nPass(p)} passageira${nPass(p) === 1 ? '' : 's'}` : '';
-    const alerta = ['enviado', 'conferido'].includes(p.situacao) && d < 30 ? ` · <b style="color:var(--crit)">faltam ${d} dias</b>` : '';
+    const alerta = ['enviado', 'conferido'].includes(p.situacao) && d < 30 ? ` · <b style="color:var(--crit)">${d < 0 ? 'a data já passou' : d === 0 ? 'é hoje' : 'faltam ' + d + ' dia' + (d > 1 ? 's' : '')}</b>` : '';
     return `<button class="vagabtn ficha-linha viag-linha" data-acao="viag-ver" data-id="${E(p.id)}">
       <span class="nm">${E(TIPO[p.tipo])} · ${E(p.uf)}</span>
       <span class="small muted">${comPessoa ? E(nomeDe(pessoa(p.solicitante_id))) + ' · ' : ''}${quando}${extra}${alerta}</span>
@@ -271,7 +271,7 @@
     const eu = S().eu; const souDono = x.solicitante_id === eu.id; const papel = eu.papel; const d = x.dados || {};
     const dias = diasAte(x.data_ref);
     const dl = [['Situação', chip(x)], ['Estado', E(x.uf)], ['Quem pediu', E(nomeDe(pessoa(x.solicitante_id)))],
-      [x.tipo === 'passagem' ? 'Ida' : 'Dia do evento', `${R.fmtData(x.data_ref)}${['enviado', 'conferido'].includes(x.situacao) ? ` · faltam ${dias} dias${dias < PRAZO[x.tipo] ? ' <b style="color:var(--crit)">(fora do prazo)</b>' : ''}` : ''}`],
+      [x.tipo === 'passagem' ? 'Ida' : 'Dia do evento', `${R.fmtData(x.data_ref)}${['enviado', 'conferido'].includes(x.situacao) ? (dias < 0 ? ' · <b style="color:var(--crit)">a data já passou</b>' : ` · faltam ${dias} dia${dias === 1 ? '' : 's'}${dias < PRAZO[x.tipo] ? ' <b style="color:var(--crit)">(fora do prazo)</b>' : ''}`) : ''}`],
       ['Valor estimado', d.valor_estimado ? brl(d.valor_estimado) : '<span class="muted">não informado</span>'],
       x.valor_autorizado ? ['Valor autorizado', '<b>' + brl(x.valor_autorizado) + '</b>'] : null,
       ['Enviado em', new Date(x.enviado_em).toLocaleString('pt-BR')],

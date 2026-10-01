@@ -33,7 +33,7 @@
   /* números do relatório, a partir do que o sistema já tem (sem nome nem CPF das mulheres) */
   function dadosRelatorio(s, f) {
     const de = f.de || MQ.PROJETO.vigencia.inicio, ate = f.ate || R.hoje(), uf = f.uf || null;
-    const noPeriodo = d => { const x = String(d || '').slice(0, 10); return !!x && x >= de && x <= ate; };
+    const noPeriodo = d => { const x = String(R.diaLocal(d) || '').slice(0, 10); return !!x && x >= de && x <= ate; };
     const daUF = x => !uf || x.uf === uf;
     const ufs = uf ? MQ.UFS.filter(u => u.uf === uf) : MQ.UFS;
     const equipe = (s.equipe || []).filter(m => m.papel !== 'coord_geral' && (!uf || !m.uf || m.uf === uf));

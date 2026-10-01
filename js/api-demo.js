@@ -420,7 +420,10 @@
       const quem = s.tipo === 'bolsa' && ['coord_tecnico', 'professor_fic', 'auxiliar_adm'].includes(pe.papel) ? 'coord_geral' : 'coord_tecnico';
       if (!(eu.papel === 'coord_geral' || eu.papel === quem)) throw falha('O aval desta solicitação é da ' + (quem === 'coord_geral' ? 'coordenação geral.' : 'coordenação técnica.'));
       const agora = new Date().toISOString();
-      if (ok) Object.assign(s, { situacao: 'avalizada', valor_avalizado: valor != null ? valor : s.valor_solicitado, aval_por: eu.id, aval_em: agora, obs_aval: obs || null });
+      const vAval = valor != null ? valor : s.valor_solicitado;
+      if (ok && !(vAval > 0)) throw falha('Informe o valor do aval (maior que zero).');
+      if (ok && s.tipo === 'bolsa' && s.valor_solicitado != null && vAval > s.valor_solicitado) throw falha('O aval passa do valor pedido. Para pagar mais, devolva para a pessoa corrigir o valor.');
+      if (ok) Object.assign(s, { situacao: 'avalizada', valor_avalizado: vAval, aval_por: eu.id, aval_em: agora, obs_aval: obs || null });
       else {
         if (String(obs || '').trim().length < 5) throw falha('Para devolver, escreva o que precisa ser corrigido.');
         Object.assign(s, { situacao: 'devolvida', aval_por: eu.id, aval_em: agora, obs_aval: obs });
@@ -674,9 +677,7 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
         if (!Object.keys(patch).every(k => ['docs_funcern_em', 'termo_path', 'termo_assinado_em', 'obs_habilitacao'].includes(k))) throw falha('O auxiliar administrativo só registra o cadastro no Arlo e o termo. Dados pessoais são de quem cadastrou a pessoa.');
       }
       const pode = R.podeEditarDados(eu && eu.papel, antes.papel) || (soHab && R.podeEditarHabilitacao(eu && eu.papel, antes.papel));
-      if (!pode) throw falha(eu && eu.papel === 'coord_geral' && R.ehBolsista(antes.papel)
-        ? 'A coordenação geral só altera a habilitação das bolsistas. Dados pessoais e desligamento são da coordenação técnica.'
-        : 'Seu perfil não tem permissão para esta ação.');
+      if (!pode) throw falha('Seu perfil não tem permissão para esta ação.');
       if (antes.status === 'desligada' && patch.status === 'ativa') throw falha('Registro desligado não pode ser reativado. Faça um novo cadastro.');
       ['papel', 'uf', 'cpf'].forEach(k => { if (k in patch && patch[k] !== antes[k]) throw falha('Papel, estado e CPF não podem ser alterados. Desligue e cadastre novamente.'); });
       const depois = Object.assign({}, antes, patch, { atualizado_em: new Date().toISOString() });

@@ -189,7 +189,7 @@
     return `<section class="secao" aria-labelledby="t-pre"><div class="secao-cab"><div><h2 id="t-pre">Cadastros enviados pelo link <span class="conta-t">${lista.length}</span></h2>
         <p>Confira os dados, complete o que falta e aprove. Só depois de aprovada a pessoa entra na equipe e pode fazer o primeiro acesso.</p></div></div>
       <div class="lista-fichas">${lista.map(x => `<button class="vagabtn ficha-linha pre-linha" data-acao="conv-ver" data-id="${E(x.id)}">
-          <span class="nm">${E(x.nome)}</span><span class="small muted">${E(funcao(x.papel, x.uf))} · enviado em ${R.fmtData(String(x.enviado_em).slice(0, 10))}</span>
+          <span class="nm">${E(x.nome)}</span><span class="small muted">${E(funcao(x.papel, x.uf))} · enviado em ${R.fmtData(x.enviado_em)}</span>
           <span><span class="chip pend">Aguardando conferência</span></span></button>`).join('')}</div></section>`;
   }
   function painel(p) {
@@ -301,11 +301,7 @@
 
   /* ---------- ações ---------- */
   async function clique(a, el) {
-    if (a === 'conv-gerar') {
-      const tk = await S().api.criarConvite(el.dataset.papel, el.dataset.uf || null, el.dataset.subst || null);
-      C.links[[el.dataset.papel, el.dataset.uf || '', el.dataset.subst || ''].join('|')] = tk;
-      const box = el.closest('.conv-bloco'); if (box) box.outerHTML = blocoLink({ papel: el.dataset.papel, uf: el.dataset.uf, subst: el.dataset.subst });
-    } else if (a === 'conv-copiar') {
+    if (a === 'conv-copiar') {
       try { await navigator.clipboard.writeText(el.dataset.url); U().toast('Link copiado.'); }
       catch (e) { const i = el.parentElement.querySelector('input'); i.select(); U().toast('Selecione e copie o link.'); }
     } else if (a === 'conv-ver') U().abrirPainel({ tipo: 'pre-ver', id: el.dataset.id });
@@ -337,5 +333,5 @@
     }
   }
 
-  MQ.convitesUI = { resumoPerfil, temPerfil, gerarLink, blocoLink, secaoPendentes, painel, dadosPre, pagina, clique, enviar, camposPessoais, lerPessoais, validarPessoais, privado, esquecerPrivado, textoEndereco };
+  MQ.convitesUI = { resumoPerfil, temPerfil, gerarLink, blocoLink, secaoPendentes, painel, dadosPre, pagina, clique, enviar, camposPessoais, lerPessoais, validarPessoais, privado, esquecerPrivado, textoEndereco, limparCache: () => { Object.keys(privCache).forEach(k => delete privCache[k]); } };
 })();

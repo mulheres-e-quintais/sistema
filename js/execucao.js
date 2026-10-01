@@ -11,7 +11,6 @@
   const O = () => MQ.ORCAMENTO;
   const brl = v => R.fmtBRL(+v || 0);
   const itens = () => O().rubricas.flatMap(r => r.itens.map(i => Object.assign({ rubrica: r.id }, i)));
-  const itemPorId = id => itens().find(i => i.id === id);
   // vale a última ENVIADA ("a mais nova passa a valer"), mesmo que corrija uma data anterior
   const planilhas = () => (S().execPlanilhas || []).slice().sort((a, b) => String(b.enviado_em).localeCompare(String(a.enviado_em)) || String(b.posicao_em).localeCompare(String(a.posicao_em)));
   const vigente = () => planilhas()[0] || null;
@@ -161,14 +160,14 @@
     const linhaItem = i => { const x = n.porItem[i.id];
       return `<tr class="fin-item${x.passou ? ' passou' : ''}"><th scope="row"><button type="button" class="fin-nome" data-acao="exec-comp" data-id="${E(i.id)}" aria-expanded="false" aria-controls="exc-${E(i.id)}">${E(i.nome)}</button></th>
         <td class="num" data-rot="Previsto">${brl(i.total)}</td><td class="num" data-rot="Executado">${vExec(x.exec)}</td><td class="num" data-rot="Comprometido">${vComp(x.comp)}</td><td class="num fin-saldo" data-rot="Saldo">${brl(x.saldo)}</td><td data-rot="Execução">${celExec(x.exec, i.total)}</td></tr>
-        <tr class="fin-comp" id="exc-${E(i.id)}" hidden><td colspan="6"><dl class="fin-det"><div><dt>Composição</dt><dd>${E(composicao(i))}</dd></div><div><dt>Previsto</dt><dd class="num">${brl(i.total)}</dd></div>
+        <tr class="fin-detalhe" id="exc-${E(i.id)}" hidden><td colspan="6"><dl class="fin-det"><div><dt>Composição</dt><dd>${E(composicao(i))}</dd></div><div><dt>Previsto</dt><dd class="num">${brl(i.total)}</dd></div>
           <div><dt>Executado</dt><dd class="num">${brl(x.exec)}</dd></div><div><dt>Comprometido</dt><dd class="num">${brl(x.comp)}</dd></div><div><dt>Saldo</dt><dd class="num"><b>${brl(x.saldo)}</b></dd></div></dl></td></tr>`; };
     const semItem = x => x.semItem ? `<tr class="fin-item"><th scope="row"><span class="fin-nome sem">Sem item definido na planilha</span><span class="small muted">a planilha disse só a rubrica</span></th><td class="num" data-rot="Previsto">—</td><td class="num" data-rot="Executado">${vExec(x.semItem)}</td><td class="num" data-rot="Comprometido">—</td><td class="num" data-rot="Saldo">—</td><td></td></tr>` : '';
     return `<div class="cab"><div><span class="eyebrow">Execução</span><h1>Execução do orçamento</h1>
         <p>Previsto × executado de cada rubrica do TED (R$ ${(T / 1e6).toLocaleString('pt-BR')} milhões). O executado vem da <b>planilha de gastos</b> mais recente; o comprometido, do que o sistema já sabe e a planilha ainda não trouxe. Só você vê esta aba.</p>
         <p class="small muted">Base do previsto: ${E(O().fonte)}, com o remanejamento aprovado pelo MDA.</p></div></div>
       <div class="acoes-pag">${MQ.acaoComDica({ acao: 'exec-enviar', icone: 'enviar', texto: 'Enviar planilha de gastos', curto: 'Enviar planilha' }, 'Pelo menos uma vez por mês. Retrato completo desde o início: a mais nova substitui as anteriores.')}</div>
-      <p class="small ${n.pl ? 'muted' : ''}">${n.pl ? `Planilha vigente: <b>${E(n.pl.arquivo_nome)}</b>, gastos até ${R.fmtData(n.pl.posicao_em)} (enviada em ${R.fmtData(String(n.pl.enviado_em).slice(0, 10))}).` : '<b>Nenhuma planilha enviada ainda.</b>'}</p>
+      <p class="small ${n.pl ? 'muted' : ''}">${n.pl ? `Planilha vigente: <b>${E(n.pl.arquivo_nome)}</b>, gastos até ${R.fmtData(n.pl.posicao_em)} (enviada em ${R.fmtData(n.pl.enviado_em)}).` : '<b>Nenhuma planilha enviada ainda.</b>'}</p>
       <section class="fin-resumo" aria-label="Execução financeira">
         <span class="dx-rot">Execução financeira</span>
         <div class="fin-nums">
@@ -198,7 +197,7 @@
     const nao = (pl.linhas || []).filter(l => l.item !== 'repasse_mda' && !l.rubrica);
     return `<div class="exec-lanc${vale ? '' : ' antiga'}">
       <span class="nm">${E(pl.arquivo_nome)} ${vale ? '<span class="chip ok">vigente</span>' : '<span class="chip">substituída</span>'}</span><b class="num">${brl(pl.total_gasto)}</b>
-      <span class="small muted">Gastos até ${R.fmtData(pl.posicao_em)} · enviada em ${R.fmtData(String(pl.enviado_em).slice(0, 10))} · ${(pl.linhas || []).length} linhas · recebido ${brl(pl.total_recebido)}</span>
+      <span class="small muted">Gastos até ${R.fmtData(pl.posicao_em)} · enviada em ${R.fmtData(pl.enviado_em)} · ${(pl.linhas || []).length} linhas · recebido ${brl(pl.total_recebido)}</span>
       ${pl.obs ? `<span class="small">${E(pl.obs)}</span>` : ''}
       ${nao.length ? `<details class="small"><summary>${nao.length} linha${nao.length > 1 ? 's' : ''} fora do orçamento</summary><ul>${nao.slice(0, 30).map(l => `<li>Linha ${l.linha}: “${E(l.texto)}” · ${brl(l.valor)}${l.descricao ? ' · ' + E(l.descricao) : ''}</li>`).join('')}</ul></details>` : ''}
       <button type="button" class="link small" data-acao="exec-baixar" data-path="${E(pl.arquivo_path)}">Baixar o arquivo enviado</button></div>`;
