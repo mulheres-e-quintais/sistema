@@ -3749,7 +3749,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <fieldset><legend>4. O que produz hoje</legend>
           <div class="prod">${MQ.DIAG.producao.map(([k, t]) => { const x = prod[k] || {};
             return `<div class="prod-l"><b>${E(t)}</b><input name="pr_${k}_qtd" placeholder="Quantidade (pés, canteiros, cabeças)" value="${E(x.qtd || '')}" aria-label="${E(t)}: quantidade">
-              <label class="mini-chk"><input type="checkbox" name="pr_${k}_consumo" ${x.consumo ? 'checked' : ''}>Consumo</label><label class="mini-chk"><input type="checkbox" name="pr_${k}_venda" ${x.venda ? 'checked' : ''}>Venda/troca</label>
+              <span class="prod-usos"><label class="mini-chk"><input type="checkbox" name="pr_${k}_consumo" ${x.consumo ? 'checked' : ''}>Consumo</label><label class="mini-chk"><input type="checkbox" name="pr_${k}_venda" ${x.venda ? 'checked' : ''}>Venda/troca</label></span>
               <input name="pr_${k}_onde" placeholder="Onde vende" value="${E(x.onde || '')}" aria-label="${E(t)}: onde vende"></div>`; }).join('')}</div>
           <div class="campo"><label for="dg-rq">Quanto ganha com vendas do quintal por mês (R$)</label><input id="dg-rq" name="renda_quintal" type="number" min="0" step="10" inputmode="numeric" value="${v('renda_quintal')}"><span class="dica">Zero se não vende. É a linha de base: a visita final vai perguntar a mesma coisa.</span></div>
         </fieldset>

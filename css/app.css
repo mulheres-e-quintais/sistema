@@ -2040,3 +2040,18 @@ table.fin .fin-detalhe > td { padding-left: 28px; }
   .painel-corpo { padding: 22px 28px calc(28px + env(safe-area-inset-bottom, 0px)); }
   .painel .campos { column-gap: 20px; }
 }
+
+/* diagnóstico, "O que produz hoje" (01/10/2026): cada produto em duas linhas, sem rolar para o lado.
+   linha 1: nome + Consumo / Venda · linha 2: quantidade | onde vende */
+.prod { gap: 0; }
+.prod-l { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "nome usos" "qtd onde"; gap: 6px 12px; padding: 10px 0; }
+.prod-l > b { grid-area: nome; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.prod-l > .prod-usos { grid-area: usos; display: flex; flex-wrap: wrap; gap: 4px 14px; justify-content: flex-end; }
+.prod-l > input[name$="_qtd"] { grid-area: qtd; }
+.prod-l > input[name$="_onde"] { grid-area: onde; }
+.prod-l input:not([type=checkbox]) { min-width: 0; width: 100%; }
+@media (max-width: 640px) {
+  .prod-l { grid-template-columns: minmax(0, 1fr); grid-template-areas: "nome" "usos" "qtd" "onde"; }
+  .prod-l > b, .prod-l > input:not([type]) { grid-column: auto; }
+  .prod-l > .prod-usos { justify-content: flex-start; }
+}
