@@ -111,10 +111,8 @@
     const porTipo = Object.keys(TIPOS).map(k => [k, ativos.filter(d => d.tipo === k).length]).filter(x => x[1]);
     return `<div class="cab"><div><span class="eyebrow">Documentos</span><h1>Documentos do projeto</h1>
         <p>Atas, ofícios, relatórios e outros documentos da ação, guardados numa pasta que só a coordenação geral acessa. E o relatório da ação do projeto, gerado com os dados do sistema.</p></div></div>
-      <div class="viag-botoes">
-        <button type="button" class="cad-modo" data-acao="doc-novo"><b>Anexar documento</b><span>PDF, Word, planilha ou foto, até 20 MB. Ata, ofício, lista de presença…</span></button>
-        <button type="button" class="cad-modo" data-acao="doc-relatorio"><b>Gerar relatório da ação</b><span>Equipe, seleção, campo, FIC, pagamentos, viagens e documentos, por período e estado.</span></button>
-      </div>
+      <div class="acoes-pag">${MQ.acaoComDica({ acao: 'doc-novo', icone: 'anexo', texto: 'Anexar documento' }, 'PDF, Word, planilha ou foto, até 20 MB. Ata, ofício, lista de presença…')}
+        ${MQ.acaoComDica({ acao: 'doc-relatorio', icone: 'relatorio', texto: 'Gerar relatório da ação', curto: 'Gerar relatório', sec: true }, 'Equipe, seleção, campo, FIC, pagamentos, viagens e documentos, por período e estado.')}</div>
       <div class="resumo">
         <div><span class="v num">${ativos.length}</span><span class="l">documentos anexados</span></div>
         ${porTipo.slice(0, 3).map(([k, n]) => `<div><span class="v num">${n}</span><span class="l">${E(TIPOS[k].toLowerCase())}${n > 1 && !/s$/.test(TIPOS[k]) ? 's' : ''}</span></div>`).join('')}

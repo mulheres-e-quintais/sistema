@@ -35,7 +35,7 @@
     const semTurma = !turmasMinhas().length;
     return `<section class="secao" id="t-encontros" aria-labelledby="t-enc"><div class="secao-cab"><div><h2 id="t-enc">Encontros do curso e lista de presença</h2>
         <p>Registre cada encontro (aula presencial, online ou atividade no AVA) e marque quem participou. Cada pessoa confirma no próprio acesso. Os encontros do mês entram no relatório da sua bolsa.</p></div></div>
-      ${semTurma ? '<p class="muted">Crie uma turma e matricule as pessoas antes de registrar encontros.</p>' : `<div class="viag-botoes"><button type="button" class="cad-modo" data-acao="enc-novo"><b>Registrar encontro</b><span>Data, carga horária, o que foi trabalhado e a lista de presença.</span></button></div>`}
+      ${semTurma ? '<p class="muted">Crie uma turma e matricule as pessoas antes de registrar encontros.</p>' : `<div class="acoes-pag">${MQ.acaoComDica({ acao: 'enc-novo', icone: 'calendario', texto: 'Registrar encontro' }, 'Data, carga horária, o que foi trabalhado e a lista de presença.')}</div>`}
       ${Object.keys(porMes).length ? Object.entries(porMes).map(([ym, xs]) => { const at = ativos(xs); return `<h3 class="viag-sub">${nomeMes(ym)} · ${at.length} encontro${at.length === 1 ? '' : 's'} · ${fmtH(at.reduce((t, e) => t + (+e.carga_horaria || 0), 0))}</h3>
         <div class="pag-lista">${xs.map(linha).join('')}</div>`; }).join('') : (semTurma ? '' : '<p class="muted">Nenhum encontro registrado ainda.</p>')}
     </section>`;

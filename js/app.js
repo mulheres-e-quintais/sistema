@@ -410,7 +410,7 @@
   function vagaCoordTecnica(souGeral) {
     const ant = ultimaDesligada('coord_tecnico');
     return vagaAberta(ant ? `A anterior, ${esc(ant.nome)}, foi desligada${ant.data_fim ? ' em ' + R.fmtData(ant.data_fim) : ''}.` : 'O MPA ainda não indicou a coordenação técnica.', souGeral,
-      `<button class="btn pri btn-cad" data-acao="novo" data-papel="coord_tecnico" ${ant ? `data-subst="${ant.id}"` : ''}>Cadastrar coordenação técnica</button>`);
+      MQ.botaoAcao({ acao: 'novo', icone: 'equipe', texto: 'Cadastrar coordenação técnica', curto: 'Cadastrar', attrs: `data-papel="coord_tecnico"${ant ? ` data-subst="${ant.id}"` : ''}` }));
   }
 
   function botaoVaga(papel, uf) {
@@ -426,8 +426,10 @@
     const ant = ultimaDesligada(papel, uf);
     const posso = R.podeCadastrar(S.eu.papel, papel);
     const quem = ant ? `Substituta de ${esc(ant.nome)}, desligada em ${R.fmtData(ant.data_fim)}` : 'Aguardando indicação do MPA';
-    return `<button class="vagabtn livre" ${posso ? `data-acao="novo" data-papel="${papel}" data-uf="${uf}" ${ant ? `data-subst="${ant.id}"` : ''}` : 'disabled'}>
-      <span class="add">${posso ? '+ Cadastrar ' + (ant ? 'substituta' : P[papel].curto.toLowerCase()) : 'Vaga aberta'}</span><span class="sub">${quem}</span></button>`;
+    if (!posso) return `<button class="vagabtn livre" disabled><span class="add">Vaga aberta</span><span class="sub">${quem}</span></button>`;
+    return `<div class="vaga-slot"><span class="sub">${quem}</span>${MQ.botaoAcao({ acao: 'novo', icone: 'pessoa_mais', sec: true, peq: true,
+      texto: 'Cadastrar ' + (ant ? 'substituta' : P[papel].curto.toLowerCase()), curto: 'Cadastrar', rotulo: 'Cadastrar ' + (ant ? 'substituta' : P[papel].curto.toLowerCase()) + ' em ' + uf,
+      attrs: `data-papel="${papel}" data-uf="${uf}"${ant ? ` data-subst="${ant.id}"` : ''}` })}</div>`;
   }
 
   function secaoAgentes() {
@@ -439,7 +441,7 @@
         return `<div class="cartao"><div class="cab-uf"><span class="uf"><span class="sigla">${u.uf}</span></span><span class="nomeuf muted">${u.nome}</span></div>
           ${l.map(m => { const s = R.situacao(m); const nv = (S.visitas || []).filter(v => v.executor_id === m.id && v.situacao === 'realizada').length;
             return `<button class="vagabtn com-foto" data-acao="ver" data-id="${m.id}">${avatar(m, 48)}<span class="vb-t"><span class="nm">${esc(nomeDe(m))}</span><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span><span class="sub">${nv ? nv + ' visita' + (nv > 1 ? 's' : '') + ' feita' + (nv > 1 ? 's' : '') : 'Nenhuma visita ainda'}</span></span></button>`; }).join('') || '<p class="small muted" style="padding:4px">Nenhuma agente.</p>'}
-          ${podeCad ? `<button class="btn btn-ag" data-acao="novo" data-papel="agente" data-uf="${u.uf}">+ Agente em ${u.uf}</button>` : ''}</div>`; }).join('')}</div>
+          ${podeCad ? MQ.botaoAcao({ acao: 'novo', icone: 'pessoa_mais', texto: 'Adicionar agente', rotulo: 'Adicionar agente em ' + u.uf, sec: true, peq: true, attrs: `data-papel="agente" data-uf="${u.uf}"` }) : ''}</div>`; }).join('')}</div>
     </section>`;
   }
 
@@ -449,7 +451,7 @@
     return `<section class="secao" aria-labelledby="t-aux">
       <div class="secao-cab"><div><h2 id="t-aux">Auxiliar administrativo</h2><p>Um para o projeto · IFRN · cadastrado pela coordenação geral · cadastra a equipe no Arlo, registra o Arlo e o termo e lança os pagamentos</p></div></div>
       ${aux ? cartaoPessoa(aux) : vagaAberta(ant ? `O anterior, ${esc(ant.nome)}, foi desligado${ant.data_fim ? ' em ' + R.fmtData(ant.data_fim) : ''}.` : 'Digite os dados ou gere um link para ele preencher.', souGeral,
-        `<button class="btn pri btn-cad" data-acao="novo" data-papel="auxiliar_adm" ${ant ? `data-subst="${ant.id}"` : ''}>Cadastrar auxiliar</button>`)}
+        MQ.botaoAcao({ acao: 'novo', icone: 'pasta', texto: 'Cadastrar auxiliar administrativo', curto: 'Cadastrar', attrs: `data-papel="auxiliar_adm"${ant ? ` data-subst="${ant.id}"` : ''}` }))}
     </section>`;
   }
   function telaAuxiliar() {

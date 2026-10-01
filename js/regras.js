@@ -246,3 +246,27 @@
     return antigo(err);
   };
 })();
+
+/* Botão de ação (design system, 01/10/2026): [ícone | texto →], altura fixa, mesmo componente em todo o sistema.
+   o = { acao, texto, curto (rótulo do celular), icone, sec (versão clara, para a segunda ação do grupo), peq (dentro de cartões), attrs, rotulo (aria-label) } */
+(function () {
+  const p = d => `<svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
+  const ICONES = {
+    equipe: p('<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14.2c2.4-.2 4.1 1.3 4.6 4.3"/>'),
+    pasta: p('<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M8.5 10h7M8.5 13.5h7M8.5 17h4"/>'),
+    capelo: p('<path d="M2.5 9 12 5l9.5 4L12 13z"/><path d="M6.5 11v4.2c1.4 1.4 3.3 2.1 5.5 2.1s4.1-.7 5.5-2.1V11"/><path d="M21.5 9v5"/>'),
+    pessoa_mais: p('<circle cx="10" cy="8" r="3.4"/><path d="M3.5 20c.7-3.6 3.2-5.6 6.5-5.6 1.5 0 2.8.4 3.9 1.1"/><path d="M18.5 14v6M15.5 17h6"/>'),
+    enviar: p('<path d="M12 15V4"/><path d="m7.5 8.5 4.5-4.5 4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/>'),
+    calendario: p('<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="m9 15 2 2 4-4"/>'),
+    anexo: p('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 11.5v6M9 14.5h6"/>'),
+    relatorio: p('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 17v-3M12 17v-5M15 17v-2"/>'),
+    aviao: p('<path d="M10.5 13.5 4 11l1.2-1.2 7.3.8 4.6-4.6c.8-.8 2.2-.9 2.9-.2.7.7.6 2.1-.2 2.9l-4.6 4.6.8 7.3L14.8 21l-2.5-6.5"/><path d="m7 17-3 .5L3.5 19 6 18.5"/>'),
+    tenda: p('<path d="M12 4 3 19h18z"/><path d="M12 4v15M12 19l-3-6M12 19l3-6"/><path d="M2 19h20"/>')
+  };
+  const SETA = p('<path d="M5 12h13"/><path d="m13 6.5 5.5 5.5-5.5 5.5"/>');
+  MQ.ICONES = ICONES;
+  MQ.botaoAcao = o => `<button type="button" class="btn-acao${o.sec ? ' sec' : ''}${o.peq ? ' peq' : ''}" data-acao="${o.acao}"${o.rotulo || o.curto ? ` aria-label="${o.rotulo || o.texto}"` : ''} ${o.attrs || ''}>`
+    + `<span class="ba-ic">${ICONES[o.icone] || ICONES.pessoa_mais}</span><span class="ba-tx">${o.curto ? `<span class="ba-l">${o.texto}</span><span class="ba-c" aria-hidden="true">${o.curto}</span>` : o.texto}</span><span class="ba-seta">${SETA}</span></button>`;
+  /* botão de ação com a explicação curta embaixo (substitui os antigos cartões "cad-modo" das páginas) */
+  MQ.acaoComDica = (o, dica) => `<div class="acao-item">${MQ.botaoAcao(o)}${dica ? `<p class="acao-dica">${dica}</p>` : ''}</div>`;
+})();

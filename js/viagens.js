@@ -57,10 +57,8 @@
       <div class="secao-cab"><div><h2 id="t-viag">Passagens aéreas e eventos</h2>
         <p>Você pede, ${nomeConf()} confere e a coordenação geral autoriza e manda para a FUNCERN. <b>Nunca compre, contrate ou pague nada por conta própria:</b> despesa sem autorização não é reembolsada.</p></div></div>
       ${dev.length ? `<div class="aviso erro"><b>${dev.length} pedido${dev.length > 1 ? 's' : ''} devolvido${dev.length > 1 ? 's' : ''} para corrigir.</b> Abra, veja o motivo e reenvie.</div>` : ''}
-      <div class="viag-botoes">
-        <button type="button" class="cad-modo" data-acao="viag-nova" data-t="passagem"><b>Pedir passagem aérea</b><span>Intercâmbio ou acompanhamento pedagógico. Envie <b>${PRAZO.passagem} dias antes</b> da viagem.</span></button>
-        <button type="button" class="cad-modo" data-acao="viag-nova" data-t="evento"><b>Pedir estrutura de evento</b><span>Espaço, cadeiras, tenda, som, alimentação. Envie <b>${PRAZO.evento} dias antes</b> do evento.</span></button>
-      </div>
+      <div class="acoes-pag">${MQ.acaoComDica({ acao: 'viag-nova', icone: 'aviao', texto: 'Pedir passagem aérea', curto: 'Pedir passagem', attrs: 'data-t="passagem"' }, `Intercâmbio ou acompanhamento pedagógico. Envie <b>${PRAZO.passagem} dias antes</b> da viagem.`)}
+        ${MQ.acaoComDica({ acao: 'viag-nova', icone: 'tenda', texto: 'Pedir estrutura de evento', curto: 'Pedir evento', sec: true, attrs: 'data-t="evento"' }, `Espaço, cadeiras, tenda, som, alimentação. Envie <b>${PRAZO.evento} dias antes</b> do evento.`)}</div>
       ${['passagem', 'evento'].map(tipo => { const xs = meus.filter(p => p.tipo === tipo);
         return `<div class="viag-meus"><h3 class="viag-sub">Meus pedidos de ${tipo === 'passagem' ? 'passagem aérea' : 'evento'} (${xs.length})</h3>
           <p class="small muted">${rotSaldo(tipo, eu.uf)}</p>
