@@ -1756,3 +1756,48 @@ form[data-form=exec-lancar] .sn-par .sn:has(input:checked)::before { content: "�
 @media (max-width: 1180px) { .abas.abas-grupos { gap: 0 10px; } .abas-grupos .aba-grupo + .aba-grupo { padding-left: 10px; } .abas-grupos button { padding: 8px 6px 10px; } }
 @media (max-width: 1000px) { .abas.abas-grupos { display: none; } }
 @media (max-width: 1180px) { .abas.abas-grupos { flex-wrap: wrap; row-gap: 6px; } }
+
+/* ======================================================================
+   01/10/2026 — versão 2.0 (2º briefing): login mais leve, vitrine com o mapa em destaque, página pública com narrativa
+   ====================================================================== */
+/* login: mensagem curta e forte; estados como informação secundária; cartão mais leve */
+.ent-s { display: grid; gap: 8px; max-width: 40ch; }
+.ent-s1 { display: block; font-size: clamp(1.25rem, 2vw, 1.6rem); line-height: 1.25; font-weight: 500; color: var(--ink); font-style: italic; }
+.ent-s2 { font-size: var(--t-base); color: var(--ink-2); }
+@media (min-width: 901px) { .ent-ufs b { width: 24px; height: 24px; font-size: 10px; } .ent-ufs li { padding: 3px 10px 3px 3px; font-size: var(--t-sm); } }
+.ent-card.login { padding: clamp(18px, 2.4vw, 28px); gap: 14px; box-shadow: 0 1px 2px rgba(69, 43, 26, .05), 0 6px 18px rgba(69, 43, 26, .06); }
+.ent-card h2 { font-size: clamp(22px, 2.4vw, 28px); }
+.ent-card input:not([type=checkbox]):not([type=radio]):not([type=file]), .ent-card select { height: 44px; }
+/* vitrine: 3 indicadores; o mapa pesa mais que as imagens */
+.vts.vts-3, .vit-duo ~ .vts, .vitrine .vts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 560px) { .vitrine .vts, .vts.vts-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; } .vitrine .vt { padding: 10px 8px; } .vitrine .vt-n { font-size: var(--t-2xl); } }
+.vt:nth-child(2) .vt-n { color: var(--verde); }
+@media (min-width: 561px) { .ent-hero .vit-duo { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); } }
+.mini-mos { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: minmax(0, 1.7fr) minmax(0, 1fr); }
+.mini-mos .mm-g { grid-column: span 2; grid-row: span 1; }
+/* círculos por município (página pública) */
+.mapa-pub.mapa-info .mun-q .mun-dot { fill: #315C45; stroke: #FAF7F1; }
+.mapa-pub.mapa-info .mun-n { fill: #FAF7F1; font-family: var(--sans); font-weight: 700; pointer-events: none; }
+.mapa-pub.mapa-info .mun-vazio { fill: #FAF7F1; stroke: #315C45; opacity: .7; }
+.mapa-leg-info { display: grid; gap: 4px; }
+.mapa-leg-info p { margin: 0; display: flex; align-items: center; gap: 8px; }
+.mapa-leg-info .pt.pt-vazio { background: #FAF7F1; box-shadow: 0 0 0 1.5px #315C45; width: 7px; height: 7px; margin: 0 1px; }
+.mapa-leg-info { max-width: 30ch; }
+/* página pública */
+.pub-mapa-caixa > svg.mapa-pub { height: clamp(380px, 52vw, 560px) !important; }
+.pub-fotos { display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; gap: 10px; height: clamp(280px, 34vw, 420px); }
+.pub-fotos > * { position: relative; overflow: hidden; border-radius: var(--r); margin: 0; border: 0; padding: 0; background: var(--surface-2); }
+.pub-fotos .pf-prin { grid-row: span 2; }
+.pub-fotos img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%; display: block; }
+.pub-fotos figcaption, .pub-fotos .mos-leg { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 12px 8px; font-size: var(--t-xs); color: #fff; background: rgba(30, 20, 14, .58); text-align: left; padding-top: 8px; }
+@media (max-width: 560px) { .pub-fotos { grid-template-columns: 1fr 1fr; grid-template-rows: 1.6fr 1fr; height: 360px; } .pub-fotos .pf-prin { grid-column: span 2; grid-row: span 1; } }
+.parceiros { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--line); }
+.parceiros li { display: grid; gap: 2px; padding: 14px 16px 0 0; }
+.parceiros b { font: 600 var(--t-lg) var(--serif); color: var(--ink); }
+.parceiros span { font-size: var(--t-xs); color: var(--muted); }
+@media (max-width: 760px) { .parceiros { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* rodapé: o texto jurídico mais leve */
+.rodape-lgpd p { font-size: var(--t-2xs); opacity: .78; }
+.pub-fotos.n-2 { grid-template-columns: 1.4fr 1fr; grid-template-rows: 1fr; } .pub-fotos.n-2 .pf-prin { grid-row: auto; }
+.pub-fotos.n-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; } .pub-fotos.n-1 .pf-prin { grid-row: auto; }
+@media (max-width: 560px) { .pub-fotos.n-2 { grid-template-columns: 1fr; grid-template-rows: 1.4fr 1fr; } .pub-fotos.n-2 .pf-prin { grid-column: auto; } }

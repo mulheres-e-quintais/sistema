@@ -36,14 +36,9 @@
     return { n: 1, nome: 'Seleção das mulheres', txt: 'As equipes estaduais visitam as comunidades e indicam as mulheres pelos critérios do edital.' };
   }
   function tiles(t) {
-    const lista = [
-      { v: t.selecionadas, de: 200, l: 'mulheres selecionadas', sempre: true },
-      { v: t.diagnosticos, l: 'quintais com diagnóstico e plano' },
-      { v: t.implantados, l: 'quintais implantados' },
-      { v: t.acompanhamentos, l: 'visitas de acompanhamento' },
-      { v: t.equipe, l: 'pessoas na equipe de campo', sempre: true },
-      { v: 5, l: 'estados do Nordeste', sempre: true }];
-    return lista.filter(x => x.sempre || x.v > 0).slice(0, 4);
+    // três indicadores; o primeiro nunca fica em zero quando há dado real: antes da seleção mostra as indicadas, antes disso a meta
+    const mulheres = t.selecionadas ? { v: t.selecionadas, de: 200, l: 'mulheres selecionadas' } : t.fichas ? { v: t.fichas, l: 'mulheres indicadas pelo MPA' } : { v: 200, l: 'quintais previstos no projeto' };
+    return [mulheres, { v: t.equipe, l: 'pessoas na equipe de campo' }, { v: 5, l: 'estados do Nordeste' }].filter((x, i) => i !== 1 || x.v > 0);
   }
   const tile = x => `<div class="vt"><span class="vt-n num">${fmt(x.v)}${x.de ? `<small> de ${x.de}</small>` : ''}</span><span class="vt-l">${E(x.l)}</span></div>`;
   const quando = () => V.em ? new Date(V.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
@@ -92,7 +87,7 @@
   /* mosaico pequeno da tela de entrada: painel fixo com 7 fotos em tamanhos diferentes; o desenho não muda,
      só as fotos trocam a cada 8 s (se houver mais de 7). Passar o mouse aproxima a foto. */
   // quadros em pé (retrato), para não cortar o rosto: grande à esquerda, dois altos e uma fileira de pequenos
-  const PADROES = [['g', 'a', 'a', 'n', 'n', 'n', 'n']];
+  const PADROES = [['g', 'n', 'n']];   // 01/10/2026: uma imagem principal e duas menores (o mapa é o destaque)
   function miniMosaico(d, passo) {
     const fs = fotosOuIlus(d); if (!fs.length) return '';
     const ilus = !!fs[0].ilustracao; const pad = PADROES[0];
@@ -103,7 +98,7 @@
   }
   function girar() {
     clearInterval(V.timer);
-    const d = V.dados; if (fotosOuIlus(d).length <= 7) return;   // até 7 fotos: painel parado
+    const d = V.dados; if (fotosOuIlus(d).length <= 3) return;   // até 3 fotos: painel parado
     if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     V.timer = setInterval(() => {
       const box = $('#vit-foto'); if (!box) { clearInterval(V.timer); return; }
@@ -123,7 +118,7 @@
   /* esqueleto com a MESMA altura do conteúdo final (números, mapa vazio, espaço da foto e rodapé):
      quando os números chegam, nada na tela de entrada sai do lugar */
   const esqueleto = () => `<span class="eyebrow">O projeto agora</span><h2 id="vit-t" class="serif">Mulheres &amp; Quintais em números</h2>
-    <div class="vts">${'<div class="vt esq"><span class="vt-n">&nbsp;</span><span class="vt-l">&nbsp;</span></div>'.repeat(4)}</div>
+    <div class="vts">${'<div class="vt esq"><span class="vt-n">&nbsp;</span><span class="vt-l">&nbsp;</span></div>'.repeat(3)}</div>
     <div class="vit-duo" aria-hidden="true"><div class="vit-mapa vit-info">${MQ.painelUI && MQ.painelUI.mapaUFs ? MQ.painelUI.mapaUFs({ entrada: true }) : ''}</div>
       <div id="vit-foto"><div class="vit-sem-foto"><span>&nbsp;</span></div></div></div>
     <p class="vit-rodape vit-rodape-fim"><span>&nbsp;</span></p>`;
@@ -139,7 +134,7 @@
       <h2 id="vit-t" class="serif">Mulheres &amp; Quintais em números</h2>
       <div class="vts">${tiles(t).map(tile).join('')}</div>
       <div class="vit-duo">
-        <div class="vit-mapa vit-info">${MQ.painelUI.mapaUFs({ entrada: true, animar: rotasSaindo() })}</div>
+        <div class="vit-mapa vit-info">${MQ.painelUI.mapaUFs({ entrada: true, animar: rotasSaindo(), municipios: d.municipios })}</div>
         <div id="vit-foto">${miniMosaico(d, V.foto) || `<div class="vit-sem-foto"><span>As fotos dos quintais aparecem aqui quando a coordenação aprovar, só de quem autorizou.</span></div>`}</div>
       </div>
       <p class="vit-rodape vit-rodape-fim"><span>${quando() ? 'atualizado ' + quando() : ''}</span></p>`;
@@ -156,38 +151,47 @@
     return `<main class="wrap publico" id="numeros">${V.dados ? corpoPagina(V.dados) : '<p class="carregando">' + MQ.ampulheta(true) + '</p>'}</main>`;
   }
   function corpoPagina(d) {
+    // narrativa: o projeto → números → onde estão os quintais → por estado → mulheres e produção → informações → parceiros
     const t = totais(d); const et = etapa(t);
     const linhas = [['selecionadas', 'Selecionadas', 40], ['diagnosticos', 'Diagnósticos', 40], ['implantados', 'Implantados', 40], ['acompanhamentos', 'Acompanhamentos', 80]];
     const passos = ['Seleção', 'Diagnóstico e plano', 'Implantação', 'Acompanhamento'];
+    const fs = fotosOuIlus(d).slice(0, 3); const ilus = fs.length && fs[0].ilustracao;
+    const nMun = Object.values(MQ.GEO && MQ.GEO.mun || {}).reduce((x, m) => x + Object.keys(m).length, 0);
     return `<section class="hero-pub">
         <a href="#" class="vit-link voltar">← Entrar no sistema</a>
-        <span class="eyebrow">Projeto Quintais Produtivos para Mulheres Rurais · IFRN · MDA</span>
+        <span class="eyebrow">Projeto Quintais Produtivos para Mulheres Rurais</span>
         <h1 class="serif">O projeto em números</h1>
-        <p class="lead">200 quintais agroecológicos de mulheres rurais em Alagoas, Bahia, Pernambuco, Piauí e Sergipe, de setembro de 2026 a setembro de 2027. Os números abaixo saem direto dos registros de campo.</p>
+        <p class="lead">200 quintais agroecológicos de mulheres rurais em Alagoas, Bahia, Pernambuco, Piauí e Sergipe, de setembro de 2026 a setembro de 2027. Os números saem direto dos registros de campo.</p>
+      </section>
+      <div class="vts grande vts-3">${tiles(t).map(tile).join('')}</div>
+      <section class="secao pub-mapa" aria-labelledby="t-pub-onde">
+        <div class="secao-cab"><div><h2 id="t-pub-onde" class="serif">Onde estão os quintais</h2><p>${nMun} municípios em 5 estados do Nordeste, com a equipe saindo do IFRN Campus Apodi (RN).</p></div></div>
+        <div class="vit-mapa vit-info pub-mapa-caixa">${MQ.painelUI.mapaUFs({ entrada: true, municipios: d.municipios })}</div>
+        <p class="small muted">O mapa mostra totais por município, não onde cada mulher mora. Município com menos de 3 mulheres aparece sem o número.</p>
+      </section>
+      <section class="secao" aria-labelledby="t-pub-uf">
+        <div class="secao-cab"><div><h2 id="t-pub-uf" class="serif">Distribuição por estado</h2><p>Meta de 40 quintais em cada estado.</p></div></div>
+        <div class="pub-tab" role="table">
+          <div class="pub-l cab" role="row"><span role="columnheader">Estado</span>${linhas.map(l => `<span role="columnheader">${l[1]}</span>`).join('')}</div>
+          ${(d.por_uf || []).map(u => `<div class="pub-l" role="row"><span role="cell"><b>${E(U().nomeUF(u.uf))}</b></span>${linhas.map(([k, rot, alvo]) =>
+            `<span role="cell" class="pub-c" data-rot="${E(rot)}"><span class="num">${fmt(u[k])}</span><span class="barra-mini" aria-hidden="true"><i style="width:${Math.min(100, (+u[k] || 0) / alvo * 100)}%"></i></span></span>`).join('')}</div>`).join('')}
+        </div>
+      </section>
+      ${fs.length ? `<section class="secao" aria-labelledby="t-pub-mul"><div class="secao-cab"><div><h2 id="t-pub-mul" class="serif">Mulheres e produção</h2></div></div>
+        <div class="pub-fotos n-${fs.length}">${fs.map((f, i) => f.ilustracao
+          ? `<figure class="pf-${i ? 'sec' : 'prin'}" role="img" aria-label="Ilustração: ${E(f.legenda)}"><img src="${E(f.url)}" alt="" loading="lazy" decoding="async"><span class="mos-selo">Ilustração</span><figcaption>${E(f.legenda)}</figcaption></figure>`
+          : `<button type="button" class="pf-${i ? 'sec' : 'prin'}" data-acao="vit-ampliar" data-i="${i}" aria-label="${E(f.legenda)} · ${E(f.uf)}"><img src="${E(f.url)}" alt="" loading="lazy" decoding="async"><span class="mos-leg">${E(f.legenda)} · ${E(f.uf)}</span></button>`).join('')}</div>
+        <p class="small muted">${ilus ? 'Ilustrações. As fotos das mulheres entram aqui quando a coordenação publicar, só de quem autorizou o uso da imagem.' : 'Fotos de mulheres que autorizaram o uso da imagem. Toque para ampliar.'}</p></section>` : ''}
+      <section class="secao pub-info" aria-labelledby="t-pub-info">
+        <h2 id="t-pub-info" class="serif">Como o projeto anda</h2>
         <ol class="passos" aria-label="Etapas do projeto">${passos.map((p, i) => `<li class="${i + 1 < et.n ? 'feito' : i + 1 === et.n ? 'agora' : ''}"><span>${i + 1}</span>${p}</li>`).join('')}</ol>
+        <p class="small">Esta página mostra só totais. Nomes, endereços, CPF e a localização dos quintais ficam no sistema, com acesso só da equipe do projeto (Lei nº 13.709/2018). As fotos são escolhidas pela coordenação entre mulheres que autorizaram o uso de imagem.</p>
       </section>
-      <div class="vts grande">${[
-        { v: t.selecionadas, de: 200, l: 'mulheres selecionadas' }, { v: t.diagnosticos, de: 200, l: 'quintais com diagnóstico' },
-        { v: t.implantados, de: 200, l: 'quintais implantados' }, { v: t.acompanhamentos, de: 400, l: 'visitas de acompanhamento' }].map(tile).join('')}</div>
-      <section class="secao duas-col perfil-cols pub-onde">
-        <div class="bloco"><h2 class="serif">Por estado</h2><p class="small muted">Meta de 40 quintais em cada estado.</p>
-          <div class="pub-tab" role="table">
-            <div class="pub-l cab" role="row"><span role="columnheader">Estado</span>${linhas.map(l => `<span role="columnheader">${l[1]}</span>`).join('')}</div>
-            ${(d.por_uf || []).map(u => `<div class="pub-l" role="row"><span role="cell"><b>${E(U().nomeUF(u.uf))}</b></span>${linhas.map(([k, rot, alvo]) =>
-              `<span role="cell" class="pub-c" data-rot="${E(rot)}"><span class="num">${fmt(u[k])}</span><span class="barra-mini" aria-hidden="true"><i style="width:${Math.min(100, (+u[k] || 0) / alvo * 100)}%"></i></span></span>`).join('')}</div>`).join('')}
-          </div></div>
-        <div class="bloco"><h2 class="serif">Onde</h2><div class="vit-mapa">${MQ.painelUI.mapaUFs()}</div>
-          <p class="small muted">Os pontos são os municípios que receberão os quintais. O mapa não mostra onde cada uma mora.</p></div>
-      </section>
-      ${(d.fotos || []).length ? `<section class="secao"><h2 class="serif">Mulheres nos quintais</h2><div class="mosaico">${d.fotos.map((f, i) =>
-        `<button type="button" class="mos-item${i % 7 === 0 ? ' mos-g' : i % 7 === 4 ? ' mos-a' : ''}" data-acao="vit-ampliar" data-i="${i}" aria-label="${E(f.legenda)} · ${E(f.uf)}"><img src="${E(f.url)}" alt="" loading="lazy" decoding="async"><span class="mos-leg">${E(f.legenda)} · ${E(f.uf)}</span></button>`).join('')}</div>
-        <p class="small muted">Fotos de mulheres que autorizaram o uso da imagem. Toque para ampliar.</p></section>`
-        : `<section class="secao"><h2 class="serif">Mulheres nos quintais</h2><div class="mosaico mos-ilus">${ilustracoes().map((f, i) =>
-          `<div class="mos-item${i % 7 === 0 ? ' mos-g' : i % 7 === 4 ? ' mos-a' : ''}" role="img" aria-label="Ilustração: ${E(f.legenda)}"><img src="${E(f.url)}" alt="" loading="lazy" decoding="async"><span class="mos-selo">Ilustração</span><span class="mos-leg">${E(f.legenda)}</span></div>`).join('')}</div>
-          <p class="small muted">Ilustrações. As fotos das mulheres entram aqui quando a coordenação publicar, só de quem autorizou o uso da imagem.</p></section>`}
-      <section class="secao nota-pub"><h2 class="serif">Como os dados são tratados</h2>
-        <p>Esta página mostra só totais por estado. Nomes, endereços, CPF e a localização dos quintais ficam no sistema, com acesso só da equipe do projeto (Lei nº 13.709/2018). As fotos são escolhidas pela coordenação entre mulheres que autorizaram o uso de imagem.</p>
-        <p class="small muted">${quando() ? 'Atualizado em ' + quando() + '. ' : ''}Execução: IFRN Campus Apodi, com recursos do Ministério do Desenvolvimento Agrário e Agricultura Familiar (MDA), em parceria com o MPA e a FUNCERN.</p></section>`;
+      <section class="secao pub-parceiros" aria-labelledby="t-pub-parc">
+        <h2 id="t-pub-parc" class="serif">Instituições</h2>
+        <ul class="parceiros"><li><b>IFRN Campus Apodi</b><span>execução</span></li><li><b>MDA</b><span>recursos (Ministério do Desenvolvimento Agrário e Agricultura Familiar)</span></li><li><b>MPA</b><span>parceria e indicação da equipe</span></li><li><b>FUNCERN</b><span>gestão financeira</span></li></ul>
+        <p class="small muted">${quando() ? 'Atualizado em ' + quando() + '.' : ''}</p>
+      </section>`;
   }
 
   /* ---------- coordenação: publicar e retirar fotos ---------- */

@@ -955,7 +955,11 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       const ativos = d.equipe.filter(m => m.status === 'ativa');
       const fotos = (d.vitrine || []).filter(v => { const f = d.fichas.find(x => x.id === v.ficha_id); return f && f.consent_imagem && (f.consent_criancas || v.sem_criancas); })
         .slice(0, 24).map(v => ({ path: v.path, legenda: v.legenda, uf: v.uf, url: ilustracao(v.path) }));
-      return { atualizado_em: new Date().toISOString(), por_uf, fotos,
+      // 40: mulheres com ficha válida por município; menos de 3 vai sem o número (LGPD), nenhuma situação individual
+      const porMun = {}; d.fichas.filter(f => f.resultado !== 'nao_atende' && String(f.municipio || '').trim()).forEach(f => {
+        const k = f.uf + '|' + String(f.municipio).trim().toLowerCase(); (porMun[k] = porMun[k] || { uf: f.uf, municipio: String(f.municipio).trim(), n: 0 }).n++; });
+      const municipios = Object.values(porMun).map(x => ({ uf: x.uf, municipio: x.municipio, n: x.n >= 3 ? x.n : null, menos_de_3: x.n < 3 }));
+      return { atualizado_em: new Date().toISOString(), por_uf, fotos, municipios,
         equipe: { bolsistas: n(ativos, m => R.ehBolsista(m.papel)), agentes: n(ativos, m => m.papel === 'agente') } };
     },
     async listarVitrine() { return copia(ler().vitrine || []).map(v => Object.assign(v, { url: ilustracao(v.path) })); },

@@ -247,7 +247,7 @@
     else if (!S.eu) h += modoDemo ? '<main class="wrap"><p class="carregando">' + MQ.ampulheta(true) + '</p></main>' : (S.api.temSessao ? semCadastro() : login());
     else {
       if (MQ.pendUI) h += MQ.pendUI.faixa();   // pendências do próprio cadastro, em todas as telas
-      if (MQ.lembreteUI && (!/^coord/.test(S.eu.papel) || abaAtual() === abasDoPapel()[0])) h += MQ.lembreteUI.quadro();   // prazo, data com roda de conversa ou número do projeto
+      if (MQ.lembreteUI && (!/^coord/.test(S.eu.papel) || (abaAtual() === abasDoPapel()[0] && abaAtual() !== 'visao'))) h += MQ.lembreteUI.quadro();   // na visão geral, os prazos já estão no painel   // prazo, data com roda de conversa ou número do projeto
       if (/^coord/.test(S.eu.papel)) h += (S.eu.papel === 'coord_tecnico' && MQ.encUI && MQ.encUI.paraConfirmar().length ? `<div class="wrap">${MQ.encUI.blocoConfirmar()}</div>` : '') + telaCoordenacao();
       else if (S.eu.papel === 'agente' && MQ.campoUI) h += MQ.campoUI.telaAgente();
       else if (S.eu.papel === 'professor_fic' && MQ.ficUI) h += MQ.ficUI.telaProfessor();
@@ -723,7 +723,8 @@
       <section class="ent-hero">
         <div class="ent-marca"><img src="assets/isotipo.svg" alt="" width="34" height="48"><span><b class="serif">Mulheres &amp; Quintais</b><small>Quintais Produtivos para Mulheres Rurais</small></span></div>
         <h1 class="ent-t serif">O quintal<br><em>nunca</em> foi pouco.</h1>
-        <p class="ent-s">É ali que mulheres rurais do Nordeste produzem comida e renda e constroem autonomia. O projeto vai até 200 delas, onde elas estão.</p>
+        <p class="ent-s"><b class="ent-s1 serif">É onde produção, renda e autonomia começam.</b>
+          <span class="ent-s2">Mulheres rurais de cinco estados do Nordeste estão construindo seus quintais produtivos.</span></p>
         <ul class="ent-ufs" aria-label="Estados do projeto">${ufs}</ul>
         ${MQ.vitrineUI ? MQ.vitrineUI.entrada() : ''}
         ${broto}

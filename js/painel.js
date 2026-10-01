@@ -545,7 +545,7 @@
   const mostrarMun = ev => { const g = ev.target.closest && ev.target.closest('.mun-pt'); if (!g) return; const svg = g.closest('svg');
     const box = svg.parentElement.querySelector('[data-mun-nome]'); if (box) box.textContent = g.dataset.mun;
     svg.querySelectorAll('.rota.ativa').forEach(r => r.classList.remove('ativa'));
-    const r = svg.querySelector(`.rota[data-rota="${CSS.escape ? CSS.escape(g.dataset.mun) : g.dataset.mun}"]`); if (r) r.classList.add('ativa'); };
+    const k = g.dataset.rotaDe || g.dataset.mun; const r = svg.querySelector(`.rota[data-rota="${CSS.escape ? CSS.escape(k) : k}"]`); if (r) r.classList.add('ativa'); };
   document.addEventListener('mouseover', mostrarMun); document.addEventListener('focusin', mostrarMun); document.addEventListener('click', mostrarMun);
   const APODI = [-37.7989, -5.6649];   // IFRN Campus Apodi: de onde sai a equipe do projeto
   function mapaUFs(op) {   // op.entrada: tela de entrada (sem legenda, nº de cidades em cada estado); op.animar: rotas saindo de Apodi
@@ -571,7 +571,17 @@
       const cx = mx - dy / d * d * 0.18, cy = my + dx / d * d * 0.18;   // curva para o lado, como rota de voo
       let len = 0, px0 = ax, py0 = ay; for (let i = 1; i <= 12; i++) { const u = i / 12, qx = (1 - u) * (1 - u) * ax + 2 * (1 - u) * u * cx + u * u * x, qy = (1 - u) * (1 - u) * ay + 2 * (1 - u) * u * cy + u * u * y; len += Math.hypot(qx - px0, qy - py0); px0 = qx; py0 = qy; }
       return `<path class="rota" data-rota="${E(nome)}/${uf}" d="M${ax.toFixed(3)},${ay.toFixed(3)}Q${cx.toFixed(3)},${cy.toFixed(3)} ${x.toFixed(3)},${y.toFixed(3)}" stroke-width="${esc * 0.28}" stroke-dasharray="${esc * 1.2} ${esc * 1}" style="animation-delay:-${(k * 0.23).toFixed(2)}s;--len:${(len * 1.02).toFixed(2)};--i:${k}"/>`; }).join('');
-    const pontos = muns.map(({ uf, nome, xy: [x, y] }, k) =>
+    // 40: com os totais por município (página pública), cada círculo tem o tamanho do número de mulheres cadastradas;
+    // município previsto ainda sem cadastro fica como ponto vazado. Menos de 3: sem o número (LGPD).
+    const dadosMun = Array.isArray(op.municipios) ? op.municipios : null;
+    const qMun = (uf, nome) => dadosMun && dadosMun.find(m => m.uf === uf && norm(m.municipio) === norm(nome));
+    const semCadastro = dadosMun ? muns.filter(m => !qMun(m.uf, m.nome)).length : 0;
+    const pontoMun = ({ uf, nome, xy: [x, y] }, k) => { const q = qMun(uf, nome); const n = q ? (q.n || 2) : 0;
+      const r = esc * (1.15 + 0.42 * Math.sqrt(n)); const txt = q ? (q.menos_de_3 ? 'menos de 3 mulheres cadastradas' : q.n + ' mulheres cadastradas') : 'previsto, ainda sem cadastro';
+      return `<g class="mun-pt${q ? ' mun-q' : ' mun-prev'}" data-mun="${E(nome)}/${uf} · ${txt}" data-rota-de="${E(nome)}/${uf}" tabindex="0" style="--i:${k}"><circle cx="${x}" cy="${y}" r="${Math.max(r, esc * 3.2)}" class="mun-alvo"/>`
+        + (q ? `<circle cx="${x}" cy="${y}" r="${r}" class="mun-dot" stroke-width="${esc * 0.35}"/>${q.n ? `<text x="${x}" y="${y + r * 0.36}" text-anchor="middle" font-size="${Math.min(r * 1.05, esc * 2.8)}" class="mun-n">${q.n}</text>` : ''}`
+          : `<circle cx="${x}" cy="${y}" r="${esc * 1}" class="mun-vazio" stroke-width="${esc * 0.35}"/>`) + `<title>${E(nome)}/${uf}: ${txt}</title></g>`; };
+    const pontos = dadosMun ? muns.map(pontoMun).join('') : muns.map(({ uf, nome, xy: [x, y] }, k) =>
       `<g class="mun-pt" data-mun="${E(nome)}/${uf}" tabindex="0" style="animation-delay:${((k * 0.37) % 2.4).toFixed(2)}s;--i:${k}"><circle cx="${x}" cy="${y}" r="${esc * 3.2}" class="mun-alvo"/><circle cx="${x}" cy="${y}" r="${esc * 2.2}" class="mun-onda"/><circle cx="${x}" cy="${y}" r="${esc * 1.4}" class="mun-dot" stroke-width="${esc * 0.35}"/><title>${E(nome)}/${uf}</title></g>`).join('');
     const sede = op.entrada   // entrada (infográfico): Apodi como origem, marcador maior em terracota com halo discreto
       ? `<g class="mun-pt sede-pt" data-mun="Apodi/RN · IFRN Campus Apodi, de onde sai a equipe" tabindex="0"><circle cx="${ax}" cy="${ay}" r="${esc * 3.8}" class="sede-halo"/><circle cx="${ax}" cy="${ay}" r="${esc * 3.4}" class="mun-alvo"/><circle cx="${ax}" cy="${ay}" r="${esc * 2.2}" class="sede-dot" stroke-width="${esc * 0.55}"/><title>Apodi/RN: IFRN Campus Apodi</title></g>
@@ -589,7 +599,8 @@
         + (op.entrada && uf !== 'RN' ? `<text x="${x}" y="${y + esc * 3.4}" class="uf-sigla uf-num${anc === 'start' ? ' sigla-mar' : ''}" font-size="${esc * 2.5}" text-anchor="${anc}">${n} ${n === 1 ? 'cidade' : 'cidades'}</text>` : ''); }).join('');
     return `<svg class="mapa mapa-pub${op.entrada ? ' mapa-info' : ''}${op.animar ? ' saindo' : ''}" viewBox="${vb.join(' ')}" role="img" aria-label="Mapa dos estados do projeto: ${ufsProj.map(u => u + ' ' + nMunUF(u) + ' municípios').join(', ')}; ${nMun} municípios que receberão os quintais, ligados a Apodi/RN, sede do IFRN" preserveAspectRatio="xMidYMid meet">${estados}${siglas}<g class="rotas">${rotas}</g>${pontos}${sede}</svg>
       <p class="mun-nome" aria-live="polite"><span data-mun-nome></span></p>
-      ${op.entrada ? `<p class="mapa-leg-info"><span class="pt" aria-hidden="true"></span>Cada ponto representa 1 município atendido pelo projeto.</p>` : `<ul class="mapa-lista">${ordem.map(uf => { const nm = nMunUF(uf);
+      ${op.entrada ? (dadosMun ? `<div class="mapa-leg-info"><p><span class="pt" aria-hidden="true"></span>Cada círculo representa um município. O tamanho indica o número de mulheres cadastradas.</p>${semCadastro ? `<p><span class="pt pt-vazio" aria-hidden="true"></span>Município previsto, ainda sem cadastro.</p>` : ''}</div>`
+        : `<p class="mapa-leg-info"><span class="pt" aria-hidden="true"></span>Cada ponto representa 1 município atendido pelo projeto.</p>`) : `<ul class="mapa-lista">${ordem.map(uf => { const nm = nMunUF(uf);
         return `<li><span class="lg-q" style="background:var(--uf-${uf})"></span>${uf} <span class="lg-mun">${nm} ${nm === 1 ? 'município' : 'municípios'}</span></li>`; }).join('')}<li><span class="lg-q lg-sede"></span>RN <span class="muted">sede (Apodi)</span></li></ul>`}`;
   }
 
