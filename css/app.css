@@ -2055,3 +2055,7 @@ table.fin .fin-detalhe > td { padding-left: 28px; }
   .prod-l > b, .prod-l > input:not([type]) { grid-column: auto; }
   .prod-l > .prod-usos { justify-content: flex-start; }
 }
+
+/* formulários longos do campo (ficha, diagnóstico, avaliação): painel ainda mais largo em tela grande */
+@media (min-width: 1100px) { .painel.largo { width: min(920px, 68vw); } }
+@media (min-width: 900px) and (max-width: 1099px) { .painel { width: min(680px, 100%); } }
