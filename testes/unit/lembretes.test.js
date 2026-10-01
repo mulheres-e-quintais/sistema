@@ -47,10 +47,11 @@ test('"Entendi" esconde aquele lembrete e no máximo duas linhas aparecem', asyn
   t.MQ.lembreteUI.dispensar(d.id); assert.ok(!t.MQ.lembreteUI.itens().some(i => i.id === d.id));
 });
 
-test('coordenação: o lembrete só aparece na primeira aba (não repete em todas)', async () => {
+test('coordenação: sem faixa de lembrete na visão geral (os prazos já estão no painel) nem nas outras abas; a técnica vê na primeira aba', async () => {
   const t = await montar('coord_geral'); fixar(t, '2026-09-30');
-  assert.ok(t.aba('visao').includes('class="lembrete"'));
+  assert.ok(!t.aba('visao').includes('class="lembrete"'));
   assert.ok(!t.aba('equipe').includes('class="lembrete"'));
+  const tec = await montar('coord_tecnico'); fixar(tec, '2026-09-30'); assert.ok(tec.aba('selecao').includes('class="lembrete"'), 'técnica: lembrete na primeira aba');
 });
 
 test('sem prazo e sem data: número real do projeto ou nada (nunca frase genérica)', async () => {

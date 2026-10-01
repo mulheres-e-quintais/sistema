@@ -331,6 +331,7 @@
       const { data, error } = await sb.rpc('vitrine');
       if (error) throw erro(error);
       (data.fotos || []).forEach(f => { f.url = sb.storage.from('vitrine').getPublicUrl(f.path).data.publicUrl; });
+      try { const r = await sb.rpc('vitrine_municipios'); if (!r.error) data.municipios = r.data; } catch (e) {}   // 40: sem o script, o mapa mostra só os municípios previstos
       return data;
     },
     async listarVitrine() {
