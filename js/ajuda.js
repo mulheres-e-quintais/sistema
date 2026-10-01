@@ -226,7 +226,7 @@
       intro: 'Previsto × executado de cada rubrica do TED, com gráficos. O executado vem da planilha de gastos que você envia pelo menos uma vez por mês; o comprometido, do que o sistema já sabe e a planilha ainda não trouxe. Só a coordenação geral vê esta aba.',
       tarefas: [
         ['Enviar a planilha do mês', ['Toque em <b>Enviar planilha de gastos</b> e escolha o arquivo (.xlsx ou .csv).', 'Toque em <b>Ler a planilha</b> e confira a prévia: total, rubricas e linhas fora do orçamento.', 'Confira a data <b>Gastos até</b> e toque em <b>Enviar e usar esta planilha</b>.']],
-        ['Preparar a planilha', ['Toque em <b>Baixar o modelo</b>.', 'Uma linha por pagamento (e por repasse do MDA), com o item escolhido na lista.', 'A planilha é o retrato completo: todos os gastos desde o início, não só os do mês. Não escreva linhas de total.']],
+        ['Preparar a planilha', ['Em <b>Enviar planilha de gastos</b>, toque em <b>Baixar o modelo</b> (abaixo do campo do arquivo).', 'Uma linha por pagamento (e por repasse do MDA), com o item escolhido na lista.', 'A planilha é o retrato completo: todos os gastos desde o início, não só os do mês. Não escreva linhas de total.']],
         ['Ler os gráficos', ['<b>Ritmo do gasto</b>: passe o mouse ou toque num mês para ver previsto, executado e recebido até ali.', '<b>Uso de cada rubrica</b>: a barra cheia é o executado; a clara, o comprometido; o traço vertical, o tempo de vigência já passado. Toque numa rubrica para ver os itens na tabela.']]
       ],
       passos: [

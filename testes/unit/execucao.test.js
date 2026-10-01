@@ -34,7 +34,7 @@ test('só a coordenação geral tem a aba, lê e envia planilhas', async () => {
 test('sem planilha: executado zerado e aviso para enviar; não há lançamento à mão', async () => {
   const t = await montar('coord_geral'); const h = texto(t.aba('execucao'));
   assert.equal(t.MQ.execUI.numeros().exec, 0);
-  assert.match(h, /Nenhuma planilha de gastos enviada ainda/); assert.ok(h.includes('Enviar planilha de gastos') && h.includes('Baixar o modelo'));
+  assert.match(h, /Nenhuma planilha de gastos enviada ainda/); assert.ok(h.includes('Enviar planilha de gastos') && !h.includes('Baixar o modelo'));
   assert.ok(!/Lançar despesa/.test(h), 'lançamento à mão saiu');
 });
 

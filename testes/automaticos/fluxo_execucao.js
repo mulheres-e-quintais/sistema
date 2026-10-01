@@ -13,9 +13,10 @@ const R = []; const ok = (c, cond, det = '') => { R.push([cond ? 'PASSOU' : 'FAL
     await p.evaluate(() => document.querySelector('[data-aba=execucao]').click()); await p.waitForTimeout(300);
     ok(`${w}: aba Execução com o nome curto`, (await p.textContent('[data-aba=execucao]')).trim().startsWith('Execução') && !/financeira/.test(await p.textContent('[data-aba=execucao]')));
     ok(`${w}: sem planilha, aviso para enviar`, /Nenhuma planilha de gastos enviada ainda/.test(await p.textContent('main')));
-    const [dl] = await Promise.all([p.waitForEvent('download'), p.click('a[href*="Modelo_planilha_de_gastos"]')]);
-    ok(`${w}: baixar o modelo`, /Modelo_planilha_de_gastos.*\.xlsx$/.test(dl.suggestedFilename()), dl.suggestedFilename());
+    ok(`${w}: modelo fora da aba (só no painel de envio)`, !(await p.$('main a[href*="Modelo_planilha_de_gastos"]')));
     await p.click('[data-acao=exec-enviar]'); await p.waitForTimeout(300);
+    const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#painel a[href*="Modelo_planilha_de_gastos"]')]);
+    ok(`${w}: baixar o modelo no painel de envio`, /Modelo_planilha_de_gastos.*\.xlsx$/.test(dl.suggestedFilename()), dl.suggestedFilename());
     await p.click('form[data-form=exec-ler] button[type=submit]'); await p.waitForTimeout(200);
     ok(`${w}: sem arquivo, pede o arquivo`, /Escolha o arquivo/.test(await p.textContent('#painel')));
     await p.setInputFiles('#ex-arq', FIX('modelo_preenchido.xlsx')); await p.click('form[data-form=exec-ler] button[type=submit]'); await p.waitForTimeout(800);
