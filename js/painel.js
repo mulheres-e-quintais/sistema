@@ -35,16 +35,16 @@
     const vagas = 11 - d.pagaveis.length;
     if (vagas > 0) {
       const dias = R.diasAte(MQ.PROJETO.prazoIndicacao);
-      a.push({ nivel: dias < 0 ? 'crit' : 'pend', texto: `${vagas} vaga${vagas > 1 ? 's' : ''} da equipe sem pessoa cadastrada`,
+      a.push({ nivel: dias < 0 ? 'crit' : 'pend', prazo: MQ.PROJETO.prazoIndicacao, texto: `${vagas} vaga${vagas > 1 ? 's' : ''} da equipe sem pessoa cadastrada`,
         det: dias < 0 ? `O prazo de indicação do MPA venceu em ${R.fmtData(MQ.PROJETO.prazoIndicacao)}.` : `Prazo de indicação do MPA: ${R.fmtData(MQ.PROJETO.prazoIndicacao)}.`, aba: 'equipe' });
     }
     const semHab = d.pagaveis.filter(m => R.situacao(m).cod !== 'ok');
     if (semHab.length) a.push({ nivel: 'pend', texto: `${semHab.length} pessoa${semHab.length > 1 ? 's' : ''} ainda sem habilitação completa para a bolsa`,
       det: semHab.slice(0, 4).map(m => m.nome.split(' ')[0] + ' (' + R.passosHabilitacao(m).filter(p => !p.feito).map(p => p.id === 'fic' ? 'FIC' : p.id === 'funcern' ? 'FUNCERN' : 'termo').join(', ') + ')').join(' · ') + (semHab.length > 4 ? ' …' : ''), aba: 'equipe' });
     const velhas = d.fichas.filter(f => f.situacao === 'aguardando' && f.criado_em && (Date.now() - new Date(f.criado_em)) > 5 * 864e5);
-    if (velhas.length) a.push({ nivel: 'pend', texto: `${velhas.length} ficha${velhas.length > 1 ? 's' : ''} aguardando aprovação há mais de 5 dias`, det: 'A aprovação é da coordenação técnica. Sem ela, o diagnóstico não começa.', aba: 'selecao' });
+    if (velhas.length) a.push({ nivel: 'pend', prazo: new Date(Math.min(...velhas.map(f => +new Date(f.criado_em))) + 5 * 864e5).toISOString().slice(0, 10), texto: `${velhas.length} ficha${velhas.length > 1 ? 's' : ''} aguardando aprovação há mais de 5 dias`, det: 'A aprovação é da coordenação técnica. Sem ela, o diagnóstico não começa.', aba: 'selecao' });
     const nCasas = R.contarCasas(d.fichas); const casas = d.fichas.filter(f => { const k = R.chaveCasa(f); return k && nCasas.get(k) > 1; });
-    if (casas.length) a.push({ nivel: 'crit', texto: `${casas.length} fichas com o mesmo endereço de outra ficha`, det: 'Duas pessoas da mesma casa não podem ser selecionadas (risco de questionamento da seleção).', aba: 'selecao' });
+    if (casas.length) a.push({ nivel: 'crit', prazo: 'imediato', texto: `${casas.length} fichas com o mesmo endereço de outra ficha`, det: 'Duas pessoas da mesma casa não podem ser selecionadas (risco de questionamento da seleção).', aba: 'selecao' });
     MQ.UFS.forEach(u => {
       const fs = d.fichas.filter(f => f.uf === u.uf);
       const semAgua = fs.filter(f => f.resultado === 'sem_agua').length;
@@ -52,16 +52,24 @@
         a.push({ nivel: 'crit', texto: `${u.nome}: ${Math.round(semAgua / fs.length * 100)}% das fichas sem água no período seco`,
           det: 'Acima de 30% é o sinal de alerta do risco "quintal sem água". Rever o território ou buscar parceria com programa de cisternas.', aba: 'selecao' });
       if (hoje >= MQ.PROJETO.inicioDiagnosticos && fs.length === 0)
-        a.push({ nivel: 'pend', texto: `${u.nome}: nenhuma ficha de indicação lançada`, det: 'Os diagnósticos já deveriam ter começado.', aba: 'selecao' });
+        a.push({ nivel: 'pend', prazo: MQ.PROJETO.inicioDiagnosticos, texto: `${u.nome}: nenhuma ficha de indicação lançada`, det: 'Os diagnósticos já deveriam ter começado.', aba: 'selecao' });
     });
     const semImagem = d.fichas.filter(f => f.consent_dados && !f.consent_imagem).length;
     if (semImagem) a.push({ nivel: 'info', texto: `${semImagem} mulher${semImagem > 1 ? 'es' : ''} não autorizou uso de imagem`, det: 'Não use fotos delas em divulgação. O sistema mostra o aviso na ficha de cada uma.', aba: 'selecao' });
     return a;
   }
 
-  function linhaMeta(meta, S, d, mes) {
+  /* ---------- padrão único de status (o mesmo em todo o sistema) ---------- */
+  const STATUS = {
+    concluida: { t: 'Concluída', cls: 'st-ok' }, andamento: { t: 'Em andamento', cls: 'st-and' }, atencao: { t: 'Atenção', cls: 'st-aten' },
+    atrasada: { t: 'Atrasada', cls: 'st-atr' }, nao: { t: 'Não iniciada', cls: 'st-nao' }, fora: { t: 'Sem registro no sistema', cls: 'st-nao' }
+  };
+  const chipStatus = (k, texto) => { const s = STATUS[k] || STATUS.nao; return `<span class="st-chip ${s.cls}">${E(texto || s.t)}</span>`; };
+
+  /* o que o sistema sabe de cada meta: realizado, previsto até o mês passado e o status (sem inventar nada) */
+  function infoMeta(meta, S, d, mes) {
     const prev = previsto(meta, mes);
-    let atual = null, rotulo = '', nota = '', alvo = meta.alvo, un = meta.un;
+    let atual = null, nota = '', alvo = meta.alvo, un = meta.un;
     if (meta.fonte === 'equipe') {
       atual = d.aptas.length; alvo = 11; un = 'pessoas habilitadas';
       nota = `${d.pagaveis.length} de 11 cadastradas (1 coordenação técnica e 10 bolsistas). Meta: ${meta.alvo} ${meta.un}.`;
@@ -76,29 +84,47 @@
       atual = vs.filter(v => v.situacao === 'realizada').length;
       const prevs = vs.filter(v => v.situacao === 'prevista').length;
       nota = `Visitas de ${etapa === 'implantacao' ? 'implantação' : 'acompanhamento'} marcadas como feitas no roteiro${prevs ? ` · ${prevs} agendada${prevs > 1 ? 's' : ''}` : ''}. O relatório de visita ainda é em papel.`;
-    } else if (meta.fonte) {
-      nota = 'O formulário desta etapa ainda não está no sistema. Por enquanto o registro é em papel.';
-    } else {
-      nota = 'Acompanhada fora deste sistema, no painel financeiro e de entregas.';
-    }
-    const pctAtual = atual == null ? 0 : Math.min(100, atual / alvo * 100);
-    const pctPrev = meta.fonte === 'equipe' ? null : Math.min(100, prev / alvo * 100);
+    } else if (meta.fonte) nota = 'O formulário desta etapa ainda não está no sistema. Por enquanto o registro é em papel.';
+    else nota = 'Acompanhada fora deste sistema, no painel financeiro e de entregas.';
+    const antes = mes - 1 < meta.ini, depois = mes - 1 >= meta.fim;
     let st;
-    if (atual == null) st = mes - 1 < meta.ini ? { cls: 'off', t: 'Começa em ' + MESES[meta.ini - 1] } : { cls: 'off', t: 'Sem registro no sistema' };
-    else if (meta.fonte === 'equipe') st = atual >= 11 ? { cls: 'ok', t: 'Completa' } : mes >= 2 ? { cls: 'crit', t: 'Incompleta' } : { cls: 'pend', t: 'Montando' };
-    else if (atual >= alvo) st = { cls: 'ok', t: 'Concluída' };
-    else if (mes - 1 < meta.ini) st = { cls: 'off', t: atual ? 'Adiantada' : 'Começa em ' + MESES[meta.ini - 1] };
-    else st = atual >= prev ? { cls: 'ok', t: 'No ritmo' } : { cls: 'crit', t: 'Abaixo do previsto' };
-    return `<div class="meta-linha">
-      <div class="meta-cab"><span class="meta-id">${meta.id}</span><span class="meta-nome">${E(meta.nome)}</span><span class="chip ${st.cls}">${E(st.t)}</span></div>
-      <div class="medidor" role="img" aria-label="${atual == null ? 'sem registro' : atual + ' de ' + alvo}${pctPrev != null ? ', previsto até agora ' + prev : ''}">
-        <i style="width:${pctAtual}%"></i>${pctPrev != null && prev > 0 ? `<b class="previsto" style="left:${pctPrev}%"></b>` : ''}</div>
-      <div class="meta-num"><span class="num"><b>${atual == null ? '—' : atual}</b> de ${alvo} ${E(un)}</span>
-        ${pctPrev != null && mes - 1 >= meta.ini ? `<span class="muted num">previsto até ${MESES[Math.max(0, mes - 2)]}: ${prev}</span>` : ''}</div>
-      <p class="nota">${E(nota)} <span class="muted">Período: ${MESES[meta.ini - 1]} a ${MESES[meta.fim - 1]}.</span></p>
-    </div>`;
+    if (atual == null) st = antes ? 'nao' : 'fora';
+    else if (meta.fonte === 'equipe') st = atual >= 11 ? 'andamento' : R.diasAte(MQ.PROJETO.prazoIndicacao) < 0 ? 'atrasada' : 'atencao';
+    else if (atual >= alvo) st = 'concluida';
+    else if (antes) st = atual > 0 ? 'andamento' : 'nao';
+    else if (depois) st = 'atrasada';
+    else st = atual >= prev ? 'andamento' : atual >= prev * 0.7 ? 'atencao' : 'atrasada';
+    return { meta, atual, alvo, un, prev, nota, st, pct: atual == null ? 0 : Math.min(100, atual / alvo * 100), pctPrev: meta.fonte === 'equipe' ? null : Math.min(100, prev / alvo * 100) };
+  }
+  function linhaMeta(meta, S, d, mes) {
+    const x = infoMeta(meta, S, d, mes);
+    return `<details class="dx-meta">
+      <summary><span class="meta-id">${meta.id}</span><span class="meta-nome">${E(meta.nome)}</span>${chipStatus(x.st, x.st === 'nao' && mes - 1 < meta.ini ? 'Começa em ' + MESES[meta.ini - 1] : null)}
+        <span class="medidor" role="img" aria-label="${x.atual == null ? 'sem registro' : x.atual + ' de ' + x.alvo}${x.pctPrev != null && x.prev > 0 ? ', previsto até agora ' + x.prev : ''}"><i class="${STATUS[x.st].cls}" style="width:${x.pct}%"></i>${x.pctPrev != null && x.prev > 0 ? `<b class="previsto" style="left:${x.pctPrev}%"></b>` : ''}</span>
+        <span class="meta-num num"><b>${x.atual == null ? '—' : x.atual}</b> de ${x.alvo} <span class="muted">${E(x.un)}</span></span></summary>
+      <div class="dx-meta-mais"><p>${E(x.nota)}</p><p class="muted">Período: ${MESES[meta.ini - 1]} a ${MESES[meta.fim - 1]}${x.pctPrev != null && mes - 1 >= meta.ini ? ` · previsto até ${MESES[Math.max(0, mes - 2)]}: ${x.prev}` : ''}${meta.valor ? ` · valor no plano: ${R.fmtBRL(meta.valor).replace(',00', '')}` : ''}.</p></div>
+    </details>`;
   }
 
+  /* execução física do projeto: cada meta pesa o que o Plano de Trabalho destina a ela (não é média simples).
+     Entram as metas com registro no sistema (M2, M3 e M4); M5 a M7 ainda são acompanhadas fora dele. */
+  function execucaoGeral(S, d, mes) {
+    const med = MQ.METAS.filter(m => m.valor && m.fonte && m.fonte !== 'equipe').map(m => infoMeta(m, S, d, mes)).filter(x => x.atual != null);
+    const fora = MQ.METAS.filter(m => m.valor && !med.some(x => x.meta.id === m.id));
+    const peso = med.reduce((t, x) => t + x.meta.valor, 0), pesoTot = MQ.METAS.reduce((t, m) => t + (m.valor || 0), 0);
+    const real = peso ? med.reduce((t, x) => t + x.meta.valor * Math.min(1, x.atual / x.alvo), 0) / peso * 100 : 0;
+    const prev = peso ? med.reduce((t, x) => t + x.meta.valor * Math.min(1, x.prev / x.alvo), 0) / peso * 100 : 0;
+    const st = real >= 99.5 ? 'concluida' : real >= prev ? 'andamento' : real >= prev * 0.7 ? 'atencao' : 'atrasada';
+    const fmt = v => (Math.round(v * 10) / 10).toLocaleString('pt-BR', { maximumFractionDigits: v < 10 && v > 0 ? 1 : 0 });
+    return { real, prev, st, peso, pesoTot, med, fora, html: `<div class="dx-exec">
+      <span class="dx-rot">Execução física do projeto</span>
+      <div class="dx-exec-num"><b class="num">${fmt(real)}%</b>${chipStatus(st, st === 'andamento' ? 'No ritmo' : st === 'atencao' ? 'Pouco abaixo do previsto' : st === 'atrasada' ? 'Abaixo do previsto' : null)}</div>
+      <div class="medidor grosso" role="img" aria-label="Executado ${fmt(real)}%, previsto até o mês passado ${fmt(prev)}%"><i class="${STATUS[st].cls}" style="width:${Math.min(100, real)}%"></i>${prev > 0 ? `<b class="previsto" style="left:${Math.min(100, prev)}%"></b>` : ''}</div>
+      <p class="dx-exec-sub"><span>previsto até ${MESES[Math.max(0, mes - 2)]}: <b class="num">${fmt(prev)}%</b></span><span>mês <b class="num">${mes}</b> de ${MESES.length}</span></p>
+      <details class="dx-como"><summary>Como é calculado</summary><p>Média ponderada pelo valor que o Plano de Trabalho destina a cada meta: ${med.map(x => `${x.meta.id} (${R.fmtBRL(x.meta.valor).replace(',00', '')}): ${Math.round(Math.min(1, x.atual / x.alvo) * 100)}%`).join(' · ')}.
+        Juntas, valem ${Math.round(peso / pesoTot * 100)}% do valor das metas com orçamento próprio. ${fora.length ? fora.map(m => m.id).join(', ') + ' ainda são registradas fora do sistema e não entram.' : ''} O traço é o previsto pelo cronograma até o mês passado. Bolsas, coordenação e despesas operacionais servem a todas as metas e não entram no cálculo.</p></details>
+    </div>` };
+  }
 
   /* ---------- mapa dos quintais (SVG próprio: funciona sem internet e sem serviço de mapas) ---------- */
   const CATS = [
@@ -202,6 +228,7 @@
         return `<circle cx="${cx}" cy="${yb - r}" r="${r}" class="q-tam-c" stroke-width="${esc * 0.25}"/><text x="${cx}" y="${yb + esc * 3.6}" font-size="${esc * 2.6}" text-anchor="middle" class="q-tam-t">${n}</text>`; }).join('')}</g>`; })() : '';
     const nUF = new Set(todos.map(x => x.f.uf)).size;
     const naoAtende = d.fichas.filter(f => f.resultado === 'nao_atende' && (!foco || f.uf === foco) && (!focoMun || f.uf + '|' + norm(f.municipio) === focoMun)).length;
+    const semLocal = foco ? 0 : d.fichas.filter(f => catDe(f) && !pontoDaFicha(f)).length; const foraMapa = foco ? 0 : naoAtende + semLocal;
     const btn = (uf, t) => `<button type="button" data-acao="mapa-uf" data-uf="${uf}" aria-pressed="${foco === uf && !focoMun}">${t}</button>`;
     const nomeMun = focoMun && grupos[focoMun] ? baseDe(grupos[focoMun]).nome : '';
     // no município o desenho fica todo dentro do estado: um mapa pequeno mostra o contorno do estado e onde fica o município
@@ -218,7 +245,7 @@
     return `<section class="secao" aria-labelledby="t-mapa">
       <div class="secao-cab"><div><h2 id="t-mapa">Onde estão os quintais produtivos</h2>
         <p>${pts.length ? (foco ? `${pts.length} mulher${pts.length > 1 ? 'es' : ''} com ficha ${onde}${focoMun ? ` · ${exatos} com localização do GPS, ${pts.length - exatos} aproximada${pts.length - exatos === 1 ? '' : 's'}` : ''}`
-          : `${pts.length} mulher${pts.length > 1 ? 'es' : ''} cadastrada${pts.length > 1 ? 's' : ''} em ${nUF} estado${nUF === 1 ? '' : 's'} do Nordeste`) : 'Cada ficha lançada aparece aqui.'}</p></div>
+          : `${pts.length} mulher${pts.length > 1 ? 'es' : ''} com ficha válida em ${nUF} estado${nUF === 1 ? '' : 's'} do Nordeste · ${d.fichas.length} fichas lançadas${foraMapa ? ` (${foraMapa} fora do mapa: ${naoAtende ? naoAtende + ' não atende' + (naoAtende > 1 ? 'm' : '') + ' aos critérios' : ''}${naoAtende && semLocal ? ', ' : ''}${semLocal ? semLocal + ' sem município reconhecido' : ''})` : ''}`) : 'Cada ficha lançada aparece aqui.'}</p></div>
         <span class="seg" role="group" aria-label="Estado no mapa">${btn('', 'Todos')}${MQ.UFS.map(u => btn(u.uf, u.uf)).join('')}</span></div>
       ${foco ? `<nav class="migalha" aria-label="Onde você está no mapa">
         <button type="button" data-acao="mapa-uf" data-uf=""><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>5 estados</button>
@@ -232,7 +259,7 @@
         <div class="mapa-cartao" id="mapa-cartao" role="dialog" aria-label="Informações do ponto" hidden></div>
         <div class="mapa-lado">
         ${localizador}
-        ${pts.length ? `<div class="mapa-destaque"><b class="num">${pts.length}</b><span>mulher${pts.length > 1 ? 'es' : ''}</span><small>${foco ? 'em ' + onde : nUF + ' estado' + (nUF === 1 ? '' : 's') + ' do Nordeste'}</small></div>` : ''}
+        ${pts.length ? `<div class="mapa-destaque"><b class="num">${pts.length}</b><span>mulher${pts.length > 1 ? 'es' : ''}</span><small>${foco ? 'com ficha em ' + onde : 'com ficha válida · ' + nUF + ' estado' + (nUF === 1 ? '' : 's') + ' do Nordeste'}</small></div>` : ''}
         <h3 class="mapa-h3">Status das fichas</h3>
         <ul class="legenda">${CATS.map(k => `<li><span class="lg-pt" style="background:${k.cor}"></span>${E(k.nome)} <b class="num">${cont[k.id] || 0}</b></li>`).join('')}
           ${focoMun ? '<li><span class="lg-pt oco"></span>Contorno vazio: posição aproximada (sem GPS)</li>' : ''}
@@ -255,7 +282,7 @@
     ];
     const barras = base.length ? itens.map(([k, t]) => {
       const n = base.filter(f => f[k]).length, pct = Math.round(n / base.length * 100);
-      return `<li><span class="pf-rot">${E(t)}</span><span class="pf-bar"><i style="width:${pct}%"></i></span><span class="num pf-v"><b>${pct}%</b> <span class="muted">(${n})</span></span></li>`;
+      return `<li><span class="pf-rot">${E(t)}</span><span class="pf-bar"><i style="width:${pct}%"></i></span><span class="num pf-v"><b>${n}</b> mulher${n === 1 ? '' : 'es'} <span class="muted">· ${pct}%</span></span></li>`;
     }).join('') : '';
     const diags = (S.diagnosticos || []).filter(x => x.renda_quintal != null || x.renda_familiar != null);
     const mediana = arr => { const a = arr.filter(v => v != null && !isNaN(v)).map(Number).sort((x, y) => x - y); if (!a.length) return null; const m = Math.floor(a.length / 2); return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; };
@@ -351,95 +378,94 @@
     const diasFim = R.diasAte(MQ.PROJETO.vigencia.fim);
     const al = alertas(S, d);
     const marcos = MQ.MARCOS.filter(m => R.diasAte(m.d) >= -7).slice(0, 4);
-    const selPct = Math.min(100, d.selAprov.length / 200 * 100);
     const aguard = d.fichas.filter(f => f.situacao === 'aguardando').length;
-    const svg = d => `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
-    const icone = n => n === 'crit' ? svg('<path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17.5v.01"/>')
-      : n === 'pend' ? svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>') : svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.01"/>');
     const NOME_ABA = { equipe: 'Equipe', selecao: 'Seleção', campo: 'Campo', custos: 'Custos', historico: 'Histórico', visao: 'Visão geral' };
-    const rotNivel = { crit: 'Crítico', pend: 'Atenção', info: 'Informação' };
+    const NIVEL = { crit: ['st-atr', 'Requer ação'], pend: ['st-aten', 'Atenção'], info: ['st-nao', 'Informação'] };
+    const ex = execucaoGeral(S, d, mes);
+    const dg = S.diagnosticos || [];
+    const impl = (S.visitas || []).filter(v => v.etapa === 'implantacao' && v.situacao === 'realizada').length;
+    const acomp = (S.visitas || []).filter(v => v.etapa === 'acompanhamento' && v.situacao === 'realizada').length;
+    const kpi = (n, de, rot, sub, st) => `<div class="dx-kpi"><span class="dx-kpi-n num"><b>${n}</b><small> / ${de}</small></span><span class="dx-kpi-r">${rot}</span>
+        <span class="medidor fino" aria-hidden="true"><i class="${STATUS[st].cls}" style="width:${Math.min(100, n / de * 100)}%"></i></span>${sub ? `<span class="dx-kpi-s">${sub}</span>` : ''}</div>`;
+    const stK = (n, de, ini) => n >= de ? 'concluida' : n > 0 ? 'andamento' : 'nao';
+    const prazoTxt = x => !x.prazo ? '—' : x.prazo === 'imediato' ? 'Imediato' : `${R.fmtData(x.prazo)}<small>${R.diasAte(x.prazo) < 0 ? 'venceu há ' + (-R.diasAte(x.prazo)) + ' dia' + (R.diasAte(x.prazo) === -1 ? '' : 's') : R.diasAte(x.prazo) === 0 ? 'hoje' : 'em ' + R.diasAte(x.prazo) + ' dia' + (R.diasAte(x.prazo) === 1 ? '' : 's')}</small>`;
+    const MES3 = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
     return `
-      <div class="cab"><div><span class="eyebrow">Visão geral</span><h1>Mulheres &amp; Quintais</h1>
-        <p>Vigência até ${R.fmtData(MQ.PROJETO.vigencia.fim)} · ${diasFim > 0 ? 'faltam ' + diasFim + ' dias' : 'encerrada'}.</p></div>
+      <header class="dx-cab"><div><span class="eyebrow">Mulheres &amp; Quintais</span><h1>Execução do projeto</h1>
+        <p>Mês ${mes} de ${MESES.length} (${MESES[mes - 1]}) · vigência até ${R.fmtData(MQ.PROJETO.vigencia.fim)}${diasFim > 0 ? ' · faltam ' + diasFim + ' dias' : ' · encerrada'}</p></div>
         <div class="cab-lado">
-          <div class="ltm"><span class="small muted"><b>Mês ${Math.min(Math.max(mes, 1), MESES.length)} de ${MESES.length}</b> do projeto (${MESES[Math.min(Math.max(mes, 1), MESES.length) - 1]})</span>
-          <div class="linha-tempo-mini" role="img" aria-label="Mês ${mes} de ${MESES.length} do projeto">${MESES.map((m, i) => `<span class="${i + 1 < mes ? 'passou' : i + 1 === mes ? 'agora' : ''}" title="${m}"></span>`).join('')}</div></div>
-          ${(MQ.ui.S.eu || {}).papel === 'coord_geral' ? `          <a class="atalho" href="${E(MQ.PAINEL_FINANCEIRO)}" target="_blank" rel="noopener">
+          <div class="linha-tempo-mini" role="img" aria-label="Mês ${mes} de ${MESES.length} do projeto">${MESES.map((m, i) => `<span class="${i + 1 < mes ? 'passou' : i + 1 === mes ? 'agora' : ''}" title="${m}"></span>`).join('')}</div>
+          ${(MQ.ui.S.eu || {}).papel === 'coord_geral' ? `<a class="atalho" href="${E(MQ.PAINEL_FINANCEIRO)}" target="_blank" rel="noopener">
             <span class="atalho-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
             <span><b>Financeiro e entregas</b><span class="small muted">Recursos, rubricas e metas físicas</span></span>
             <span class="atalho-seta" aria-hidden="true">↗</span></a>` : ''}
-        </div></div>
+        </div></header>
 
-      <div class="resumo" aria-label="Números do projeto">
-        <div><span class="v num">${d.pagaveis.length}<small> de 11</small></span><span class="l">na equipe (coordenação técnica e bolsistas)</span></div>
-        <div><span class="v num">${d.aptas.length}<small> de 11</small></span><span class="l">habilitadas (FIC, FUNCERN e termo)</span></div>
-        <div><span class="v num">${d.fichas.length}</span><span class="l">fichas de indicação lançadas${aguard ? ` · <b>${aguard}</b> aguardando` : ''}</span></div>
-        <div><span class="v num">${d.selAprov.length}<small> de 200</small></span><span class="l">mulheres selecionadas e aprovadas</span></div>
-      </div>
-
-      <section class="secao" aria-labelledby="t-alertas">
-        <h2 id="t-alertas">O que pede atenção</h2>
-        ${al.length ? `<ul class="alertas">${al.map(x => `<li class="al-${x.nivel}"><span class="al-ic" aria-hidden="true">${icone(x.nivel)}</span>
-          <span><span class="sr">${rotNivel[x.nivel]}: </span><b>${E(x.texto)}</b><br><span class="small muted">${E(x.det)}</span></span>
-          ${x.aba ? `<button class="al-ir" data-acao="aba" data-aba="${x.aba}" title="Resolver na aba ${NOME_ABA[x.aba] || x.aba}" aria-label="Resolver na aba ${NOME_ABA[x.aba] || x.aba}"><span>${NOME_ABA[x.aba] || x.aba}</span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>` : ''}</li>`).join('')}</ul>`
-          : '<p class="aviso" style="background:var(--ok-bg)">Nada pendente nos dados do sistema.</p>'}
+      <section class="dx-topo" aria-label="Indicadores principais">
+        ${ex.html}
+        <div class="dx-kpis">
+          ${kpi(d.selAprov.length, 200, 'mulheres selecionadas e aprovadas', `${d.fichas.length} fichas lançadas${aguard ? ' · ' + aguard + ' aguardando' : ''}`, stK(d.selAprov.length, 200))}
+          ${kpi(dg.length, 200, 'diagnósticos', `${dg.filter(x => x.situacao === 'aprovado').length} com plano aprovado`, stK(dg.length, 200))}
+          ${kpi(impl, 200, 'quintais implantados', null, stK(impl, 200))}
+          ${kpi(acomp, 400, 'visitas de acompanhamento', null, stK(acomp, 400))}
+        </div>
       </section>
 
-      ${MQ.GEO ? mapa(S, d) : ''}
+      <section class="secao dx-atencao" aria-labelledby="t-alertas">
+        <div class="secao-cab"><div><h2 id="t-alertas">O que pede atenção</h2></div>${al.length ? `<span class="dx-conta">${al.filter(x => x.nivel === 'crit').length} requer${al.filter(x => x.nivel === 'crit').length === 1 ? '' : 'em'} ação · ${al.filter(x => x.nivel === 'pend').length} atenção</span>` : ''}</div>
+        ${al.length ? `<div class="dx-tab" role="table" aria-label="Pendências">
+          <div class="dx-tr dx-th" role="row"><span role="columnheader">Problema</span><span role="columnheader">Prazo</span><span role="columnheader"><span class="sr">Ação</span></span></div>
+          ${al.map(x => `<div class="dx-tr" role="row"><span role="cell" class="dx-prob"><span class="st-pt ${NIVEL[x.nivel][0]}" aria-hidden="true"></span><span><span class="sr">${NIVEL[x.nivel][1]}: </span><b>${E(x.texto)}</b><small>${E(x.det)}</small></span></span>
+            <span role="cell" class="dx-prazo num">${prazoTxt(x)}</span>
+            <span role="cell">${x.aba ? `<button class="btn peq dx-ir" data-acao="aba" data-aba="${x.aba}" aria-label="Resolver na aba ${NOME_ABA[x.aba] || x.aba}">Resolver<span class="small"> · ${NOME_ABA[x.aba] || x.aba}</span></button>` : ''}</span></div>`).join('')}
+        </div>` : `<p class="dx-ok">${chipStatus('concluida', 'Nada pendente')} nos dados do sistema.</p>`}
+      </section>
 
-      ${perfil(S, d)}
-      ${equipeExec(S)}
-
-      <div class="duas-col">
+      <div class="dx-duas">
         <section class="secao" aria-labelledby="t-metas">
-          <div class="secao-cab"><h2 id="t-metas">Metas do plano de trabalho</h2><p>Barra: realizado · traço: previsto até o mês passado</p></div>
-          <div class="bloco metas">
+          <div class="secao-cab"><div><h2 id="t-metas">Metas do plano de trabalho</h2><p>Barra: realizado · traço: previsto até o mês passado · toque na meta para ver o detalhe</p></div></div>
+          <div class="dx-metas">
             ${linhaMeta(MQ.METAS[0], S, d, mes)}
-            <div class="meta-linha">
-              <div class="meta-cab"><span class="meta-id">Sel.</span><span class="meta-nome">Seleção das beneficiárias (antes da Meta 2)</span>
-                <span class="chip ${d.selAprov.length >= 200 ? 'ok' : d.fichas.length ? 'pend' : 'off'}">${d.selAprov.length >= 200 ? 'Completa' : d.fichas.length ? 'Em andamento' : 'Não começou'}</span></div>
-              <div class="medidor" role="img" aria-label="${d.selAprov.length} de 200"><i style="width:${selPct}%"></i></div>
-              <div class="meta-num"><span class="num"><b>${d.selAprov.length}</b> de 200 selecionadas e aprovadas</span><span class="muted num">${aguard} aguardando aprovação</span></div>
-              <p class="nota">Registrada no sistema (ficha de indicação e termo de consentimento).</p>
-            </div>
+            <details class="dx-meta"><summary><span class="meta-id">Sel.</span><span class="meta-nome">Seleção das beneficiárias</span>${chipStatus(d.selAprov.length >= 200 ? 'concluida' : d.fichas.length ? 'andamento' : 'nao')}
+              <span class="medidor" role="img" aria-label="${d.selAprov.length} de 200"><i class="${d.selAprov.length >= 200 ? 'st-ok' : 'st-and'}" style="width:${Math.min(100, d.selAprov.length / 2)}%"></i></span>
+              <span class="meta-num num"><b>${d.selAprov.length}</b> de 200 <span class="muted">selecionadas</span></span></summary>
+              <div class="dx-meta-mais"><p>Antes da Meta 2. Registrada no sistema (ficha de indicação e termo de consentimento). ${aguard} aguardando aprovação.</p></div></details>
             ${MQ.METAS.filter(m => m.fonte && m.fonte !== 'equipe').map(m => linhaMeta(m, S, d, mes)).join('')}
+            ${MQ.METAS.filter(m => !m.fonte).map(m => linhaMeta(m, S, d, mes)).join('')}
           </div>
-          <details class="hist"><summary>Metas acompanhadas no painel financeiro (M5 a M8)</summary>
-            <div class="metas" style="padding:0 18px 8px">${MQ.METAS.filter(m => !m.fonte).map(m => linhaMeta(m, S, d, mes)).join('')}</div></details>
         </section>
-
-        <div style="display:grid;gap:28px;align-content:start">
+        <div class="dx-lado">
+          <section class="secao" aria-labelledby="t-marcos">
+            <h2 id="t-marcos">Próximos marcos</h2>
+            <ol class="marcos">${marcos.map((m, k) => { const dd = R.diasAte(m.d);
+              const prox = k === marcos.findIndex(x => R.diasAte(x.d) >= 0);
+              const tom = dd < 0 ? 'passou' : dd <= 7 ? 'perto' : 'longe';
+              return `<li class="marco ${tom}${prox ? ' prox' : ''}"><time class="marco-cal" datetime="${m.d}"><b>${m.d.slice(8, 10)}</b><span>${MES3[+m.d.slice(5, 7) - 1]} ${m.d.slice(0, 4)}</span></time>
+                <span class="marco-txt">${E(m.t)}
+                <span class="marco-prazo">${dd < 0 ? 'passou há ' + (-dd) + ' dia' + (dd === -1 ? '' : 's') : dd === 0 ? 'hoje' : 'em ' + dd + ' dia' + (dd === 1 ? '' : 's')}</span></span></li>`; }).join('')}</ol>
+          </section>
           <section class="secao" aria-labelledby="t-uf">
             <h2 id="t-uf">Por estado</h2>
-            <div class="bloco" style="padding:6px 16px">
-              <table class="tab-uf"><thead><tr><th>UF</th><th>Equipe</th><th>Selecionadas</th><th>Sem água</th></tr></thead><tbody>
+            <table class="tab-uf dx-uf"><thead><tr><th scope="col">UF</th><th scope="col">Equipe</th><th scope="col">Selecionadas</th><th scope="col">Sem água</th></tr></thead><tbody>
               ${MQ.UFS.map(u => {
                 const eq = d.bols.filter(m => m.uf === u.uf);
                 const fs = d.fichas.filter(f => f.uf === u.uf);
                 const sel = fs.filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada').length;
                 const sa = fs.filter(f => f.resultado === 'sem_agua').length;
                 const pSa = fs.length ? Math.round(sa / fs.length * 100) : null;
-                return `<tr><td><b>${u.uf}</b></td>
-                  <td>${eq.length === 2 ? '<span class="chip ok">2 de 2</span>' : `<span class="chip ${eq.length ? 'pend' : 'crit'}">${eq.length} de 2</span>`}</td>
-                  <td><div class="mini"><span class="medidor fino"><i style="width:${Math.min(100, sel / MQ.VAGAS_UF * 100)}%"></i></span><span class="num">${sel}/${MQ.VAGAS_UF}</span></div></td>
-                  <td class="num">${pSa == null ? '<span class="muted">—</span>' : pSa > 30 ? `<b style="color:var(--crit)">${pSa}%</b>` : pSa + '%'}</td></tr>`;
+                return `<tr><th scope="row">${u.uf}</th>
+                  <td>${chipStatus(eq.length >= 2 ? 'concluida' : eq.length ? 'atencao' : 'atrasada', eq.length + ' de 2')}</td>
+                  <td><div class="mini"><span class="medidor fino"><i class="${sel >= MQ.VAGAS_UF ? 'st-ok' : 'st-and'}" style="width:${Math.min(100, sel / MQ.VAGAS_UF * 100)}%"></i></span><span class="num">${sel}/${MQ.VAGAS_UF}</span></div></td>
+                  <td class="num">${pSa == null ? '<span class="muted">—</span>' : pSa > 30 ? `<b class="crit-txt">${sa} · ${pSa}%</b>` : `${sa} <span class="muted">· ${pSa}%</span>`}</td></tr>`;
               }).join('')}</tbody></table>
-            </div>
-          </section>
-
-          <section class="secao" aria-labelledby="t-marcos">
-            <h2 id="t-marcos">Próximos marcos</h2>
-            <ol class="marcos">${marcos.map((m, k) => { const dd = R.diasAte(m.d); const MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
-              const prox = k === marcos.findIndex(x => R.diasAte(x.d) >= 0);   // o próximo a vencer fica em destaque
-              const tom = dd < 0 ? 'passou' : dd <= 7 ? 'perto' : 'longe';
-              return `<li class="marco ${tom}${prox ? ' prox' : ''}"><time class="marco-cal" datetime="${m.d}"><b>${m.d.slice(8, 10)}</b><span>${MES[+m.d.slice(5, 7) - 1]}/${m.d.slice(2, 4)}</span></time>
-                <span class="marco-txt">${prox ? '<span class="marco-tag">Próximo</span>' : ''}${E(m.t)}
-                <span class="marco-prazo">${dd < 0 ? 'passou há ' + (-dd) + ' dia' + (dd === -1 ? '' : 's') : dd === 0 ? 'hoje' : 'em ' + dd + ' dia' + (dd === 1 ? '' : 's')}</span></span></li>`; }).join('')}</ol>
           </section>
         </div>
-      </div>`;
+      </div>
+      ${MQ.GEO ? mapa(S, d) : ''}
+      ${MQ.aguaUI && /^coord/.test((S.eu || {}).papel || '') ? MQ.aguaUI.secao() : ''}
+      ${perfil(S, d)}
+      ${equipeExec(S)}`;
   }
-
   document.addEventListener('click', ev => {
     const m = ev.target.closest('[data-acao="mapa-mun"]');
     if (m) { const S = MQ.ui.S; S.mapaUF = m.dataset.uf; S.mapaMun = m.dataset.mun; MQ.ui.render(); const t = document.getElementById('t-mapa'); if (t) t.scrollIntoView({ block: 'start' }); return; }
@@ -567,5 +593,5 @@
         return `<li><span class="lg-q" style="background:var(--uf-${uf})"></span>${uf} <span class="lg-mun">${nm} ${nm === 1 ? 'município' : 'municípios'}</span></li>`; }).join('')}<li><span class="lg-q lg-sede"></span>RN <span class="muted">sede (Apodi)</span></li></ul>`}`;
   }
 
-  MQ.painelUI = { visaoGeral, mesDoProjeto, mapaUFs };
+  MQ.painelUI = { visaoGeral, mesDoProjeto, mapaUFs, infoMeta, execucaoGeral, chipStatus, STATUS };
 })();

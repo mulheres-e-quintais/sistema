@@ -421,6 +421,9 @@
 
     /* ---------- Documentos do projeto (24_documentos.sql): só a coordenação geral ---------- */
     /* execução (37): planilha de gastos do mês; só a coordenação geral; sem update nem delete */
+    /* acesso à água (39): coordenação lê e registra; sem update nem delete */
+    async listarAgua() { const { data, error } = await sb.from('agua_situacoes').select('*').order('registrado_em', { ascending: true }); if (error) throw erro(error); return data; },
+    async registrarSituacaoAgua(ficha_id, situacao, obs) { const { data, error } = await sb.rpc('registrar_situacao_agua', { p_ficha: ficha_id, p_situacao: situacao, p_obs: obs }); if (error) throw erro(error); return data; },
     async listarPlanilhasExec() {
       const { data, error } = await sb.from('execucao_planilhas').select('*').order('posicao_em', { ascending: false }).order('enviado_em', { ascending: false }); if (error) throw erro(error); return data;
     },
