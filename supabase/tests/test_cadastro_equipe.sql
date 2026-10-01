@@ -129,7 +129,7 @@ select t('T não edita professor', :T, $q$do $x$ begin update public.equipe set 
 
 -- ===== 6. Quem vê o quê
 select t('bolsista PI não vê bolsista BA', :B, $q$do $x$ begin if exists(select 1 from public.equipe where uf='BA') then raise exception 'VIU BA'; end if; end $x$ $q$, 'ok');
-select t('bolsista PI vê agentes do PI', :B, $q$do $x$ begin if (select count(*) from public.equipe where papel='agente') < 2 then raise exception 'não viu'; end if; end $x$ $q$, 'ok');
+select t('bolsista PI vê agentes do PI (pela lista de trabalho, sem CPF)', :B, $q$do $x$ begin if (select count(*) from public.equipe_do_estado() where papel='agente') < 2 then raise exception 'não viu'; end if; end $x$ $q$, 'ok');
 select t('agente só vê a si mesma', :A, $q$do $x$ begin if (select count(*) from public.equipe) <> 1 then raise exception 'viu %', (select count(*) from public.equipe); end if; end $x$ $q$, 'ok');
 select t('professor só vê a si mesmo na equipe', :P, $q$do $x$ begin if (select count(*) from public.equipe) <> 1 then raise exception 'viu %', (select count(*) from public.equipe); end if; end $x$ $q$, 'ok');
 

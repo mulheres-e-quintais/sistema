@@ -1,8 +1,7 @@
 /* Guarda o sistema no aparelho para abrir e preencher fichas sem internet.
    Os dados vão para o servidor pela fila do próprio app quando a conexão volta. */
-const VERSAO = 'mq-v166';
-const ARQUIVOS = ['./', 'index.html', 'css/app.css', 'js/config.js', 'js/dados.js', 'js/regras.js',
-  'js/api-demo.js', 'js/api-supabase.js', 'js/fila.js', 'js/fichas.js', 'js/geo.js', 'js/painel.js', 'js/campo.js', 'js/vitrine.js', 'js/custos.js', 'js/fic.js', 'js/encontros.js', 'js/agua.js', 'js/pagamentos.js', 'js/viagens.js', 'js/documentos.js', 'js/planilha.js', 'js/execucao.js', 'js/entregas.js', 'js/roteiro.js', 'js/impacto.js', 'js/convites.js', 'js/banco.js', 'js/pendencias.js', 'js/lembretes.js', 'js/ajuda.js', 'js/mascaras.js', 'js/voz.js', 'js/sugestao.js', 'js/sessao.js', 'js/imprimir.js', 'js/app.js',
+const VERSAO = 'mq-v167';
+const ARQUIVOS = ['./', 'index.html', 'css/app.css', 'js/config.js', 'js/tudo.js',
   'assets/logo-claro.svg', 'assets/isotipo.svg', 'assets/icon-192.png', 'manifest.webmanifest'];
 const EXTERNOS = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 // cada versão nova baixa tudo de novo, sem passar pelo cache do navegador (senão podia guardar arquivo velho)

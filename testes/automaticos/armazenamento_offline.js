@@ -8,8 +8,8 @@ const R = []; const ok = (n, c, d = '') => R.push([c ? 'PASSOU' : 'FALHOU', n, d
   await p.evaluate(async () => { await navigator.serviceWorker.register('sw.js'); await navigator.serviceWorker.ready; });
   await p.reload(); await p.waitForSelector('main');
   ok('service worker controla a página', await p.evaluate(() => !!navigator.serviceWorker.controller));
-  const guardados = await p.evaluate(async () => { const k = await caches.keys(); const c = await caches.open(k[0]); return [k[0], (await c.keys()).length]; });
-  ok('pacote da versão guardado (' + guardados[0] + ')', guardados[1] >= 30, String(guardados[1]));
+  const guardados = await p.evaluate(async () => { const k = await caches.keys(); const c = await caches.open(k[0]); const ks = (await c.keys()).map(r => new URL(r.url).pathname); return [k[0], ks.length, ks.some(u => /js\/tudo\.js$/.test(u)) && ks.some(u => /css\/app\.css$/.test(u))]; });
+  ok('pacote da versão guardado (' + guardados[0] + '): sistema num arquivo só + estilo', guardados[2] && guardados[1] >= 8, String(guardados[1]));
   await ctx.setOffline(true);
   const t0 = Date.now(); await p.reload(); await p.waitForSelector('main', { timeout: 15000 });
   ok('sem internet: abre o sistema do aparelho', true, (Date.now() - t0) + ' ms');

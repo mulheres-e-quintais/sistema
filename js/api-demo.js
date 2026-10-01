@@ -646,7 +646,15 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     async listarEquipe() {
       const d = ler(); const eu = euMesmo(); if (!eu) return [];
       if (eu.papel === 'coord_geral' || eu.papel === 'coord_tecnico' || eu.papel === 'auxiliar_adm') return copia(d.equipe);
-      if (R.ehBolsista(eu.papel)) return copia(d.equipe.filter(x => x.id === eu.id || x.uf === eu.uf));
+      if (R.ehBolsista(eu.papel)) {   // como o banco (43_lgpd_equipe.sql): colegas do estado só com os dados de trabalho
+        const ativa = m => m.status === 'ativa';
+        return copia(d.equipe.filter(x => x.id === eu.id || x.uf === eu.uf).map(m => m.id === eu.id ? m : {
+          id: m.id, papel: m.papel, uf: m.uf, nome: m.nome, nome_social: m.nome_social, municipio: m.municipio, organizacao: m.organizacao,
+          telefone: ativa(m) ? m.telefone : null, data_inicio: m.data_inicio, data_fim: m.data_fim, status: m.status, substitui_id: m.substitui_id, criado_em: m.criado_em,
+          foto_path: ativa(m) ? m.foto_path : null, foto_url: ativa(m) ? m.foto_url : null, matricula_fic_em: ativa(m) ? m.matricula_fic_em : null,
+          docs_funcern_em: ativa(m) ? m.docs_funcern_em : null, termo_assinado_em: ativa(m) ? m.termo_assinado_em : null,
+          meta_diagnosticos: m.meta_diagnosticos, meta_quintais: m.meta_quintais, meta_visitas: m.meta_visitas }));
+      }
       return copia(d.equipe.filter(x => x.id === eu.id));
     },
     async auditoria() {

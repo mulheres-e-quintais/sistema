@@ -383,6 +383,8 @@
     async listarEquipe() {
       const { data, error } = await sb.from('equipe').select('*').order('criado_em');
       if (error) throw erro(error);
+      // 43_lgpd_equipe.sql: a bolsista vê as colegas do estado só com os dados de trabalho (sem CPF, e-mail, SIAPE)
+      try { const r = await sb.rpc('equipe_do_estado'); if (!r.error && Array.isArray(r.data)) { const ja = new Set(data.map(m => m.id)); r.data.forEach(m => { if (!ja.has(m.id)) data.push(m); }); } } catch (e) { /* 43 ainda não instalado */ }
       // fotos: links temporários (1 h) de uma vez só; se a etapa 7 não foi instalada, segue com as iniciais
       data.forEach(m => { const x = /^exemplo:(\d+)$/.exec(m.foto_path || ''); if (x) m.foto_url = 'assets/exemplo/pessoa-' + x[1] + '.svg'; });   // ilustrações dos dados de exemplo
       const com = data.filter(m => m.foto_path && !m.foto_url);
