@@ -2032,3 +2032,11 @@ table.fin .fin-detalhe > td { padding-left: 28px; }
   .ft-mat { grid-area: mat; display: flex; align-items: baseline; gap: 8px; }
   .ft-obs, .ft-vazio { padding-left: 16px; padding-right: 16px; }
 }
+
+/* painel lateral mais largo em tela grande (01/10/2026): 720 px, campos em duas colunas com folga */
+@media (min-width: 1100px) {
+  .painel { width: min(720px, 100%); }
+  .painel-cab { padding: 20px 28px 16px; }
+  .painel-corpo { padding: 22px 28px calc(28px + env(safe-area-inset-bottom, 0px)); }
+  .painel .campos { column-gap: 20px; }
+}
