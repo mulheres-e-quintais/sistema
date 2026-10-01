@@ -1548,3 +1548,30 @@ form[data-form=exec-lancar] .sn-par .sn:has(input:checked)::before { content: "�
   @keyframes ponto-chega { from { opacity: 0; transform: scale(.2); } to { opacity: 1; transform: scale(1); } }
 }
 .mapa-pub .uf-sigla.sigla-mar { fill: var(--ink); stroke: var(--surface); }   /* rótulo no mar: cor do texto da página, nos dois temas */
+
+/* 01/10/2026 — mapa da entrada como infográfico institucional: estados como fundo territorial (cores suaves),
+   municípios em verde escuro (o elemento principal), Apodi/RN como origem, rotas quase apagadas, fundo creme nos dois temas */
+.vit-mapa.vit-info { background: #FAF7F1; border-color: #E8E0D2; position: relative; }
+.mapa-info { --uf-RN: #C96B4B; --uf-PI: #75A878; --uf-PE: #D3B45A; --uf-AL: #D9877D; --uf-SE: #6FA3A3; --uf-BA: #7B8FCE; }
+.mapa-pub.mapa-info .uf-pub { fill-opacity: .8; stroke: #FAF7F1; }
+.mapa-pub.mapa-info .uf-sede { fill: var(--uf-RN); fill-opacity: .8; stroke: #FAF7F1; }
+.mapa-pub.mapa-info .uf-fundo { fill: #EEE8DD; stroke: #E0D7C8; opacity: 1; }
+.mapa-pub.mapa-info .uf-sigla, .mapa-pub.mapa-info .uf-sigla.sigla-sede, .mapa-pub.mapa-info .uf-sigla.sigla-mar { fill: #3D3935; stroke: #FAF7F1; stroke-width: .15px; paint-order: stroke; font-weight: 700; }
+.mapa-pub.mapa-info .uf-num { font-weight: 600; }
+.mapa-pub.mapa-info .mun-pt .mun-dot { fill: #315C45; stroke: #FAF7F1; opacity: 1; }
+.mapa-pub.mapa-info .mun-pt .mun-onda { display: none; }
+.mapa-pub.mapa-info .sede-halo { fill: #C96B4B; opacity: .14; pointer-events: none; }
+.mapa-pub.mapa-info .sede-dot { fill: #C96B4B; stroke: #fff; }
+.mapa-pub.mapa-info .sede-rot { fill: #3D3935; stroke: #FAF7F1; stroke-width: .15px; paint-order: stroke; font-weight: 700; }
+.mapa-pub.mapa-info .sede-rot .sede-uf { font-weight: 600; fill: #6B635B; }
+.mapa-pub.mapa-info .rota { stroke: #AFA59A; opacity: .28; animation: none; }
+.mapa-pub.mapa-info .rota.ativa { opacity: .7; }
+@media (prefers-reduced-motion: no-preference) {
+  .mapa-pub.mapa-info.saindo .rota { opacity: .28; animation: rota-sai 1.1s cubic-bezier(.3, .7, .3, 1) forwards; animation-delay: calc(var(--i) * 55ms + .2s); }
+}
+.vit-info .mun-nome { color: #3D3935; }
+.mapa-leg-info { margin: 0; position: absolute; right: 12px; bottom: 12px; display: flex; align-items: center; gap: 8px; max-width: 21ch; padding: 6px 10px; border: 1px solid #E3DACB; border-radius: 8px;
+  background: #F3EEE4; color: #3D3935; font-size: var(--t-2xs); line-height: 1.35; }
+.mapa-leg-info .pt { flex: none; width: 9px; height: 9px; border-radius: 50%; background: #315C45; box-shadow: 0 0 0 1.5px #FAF7F1, 0 0 0 2.5px #315C45; }
+.vit-rodape-fim { justify-content: flex-end; }
+@media (max-width: 560px) { .mapa-leg-info { position: static; justify-self: start; max-width: none; } .vit-mapa.vit-info { align-content: start; } }

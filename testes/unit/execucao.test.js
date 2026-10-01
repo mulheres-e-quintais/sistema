@@ -78,6 +78,7 @@ test('prévia avisa quando a nova planilha tem total menor que a vigente (retrat
 
 test('alerta de planilha velha (mais de 35 dias) e lembrete do mês para a coordenação geral', async () => {
   const t = await montar('coord_geral'); await enviarFixture(t, 'modelo_preenchido.xlsx', '2026-09-25');
+  t.S.execPlanilhas.forEach(p => { p.enviado_em = '2026-09-25T15:00:00.000Z'; });   // enviada em setembro (o teste não depende do dia em que roda)
   t.MQ.regras.hoje = () => '2026-11-05'; assert.match(texto(t.aba('execucao')), /Envie a planilha deste mês/);
   t.MQ.regras.hoje = () => '2026-10-22'; assert.ok(t.MQ.lembreteUI.itens().some(i => /^planilha-2026-10$/.test(i.id)), 'lembrete a partir do dia 20 sem planilha do mês');
   t.MQ.regras.hoje = () => '2026-10-10'; assert.ok(!t.MQ.lembreteUI.itens().some(i => /^planilha/.test(i.id)), 'antes do dia 20, sem lembrete');
