@@ -96,11 +96,10 @@
     const l = professores();
     // mesmo desenho da coordenação técnica: cartão da pessoa e, embaixo, a vaga para cadastrar
     return `<section class="secao" aria-labelledby="t-prof">
-      <div class="secao-cab"><h2 id="t-prof">Professores do curso FIC</h2><p>IFRN · cadastrados pela coordenação geral · criam as turmas e matriculam a coordenação técnica, as bolsistas e as agentes</p></div>
+      <div class="secao-cab"><div><h2 id="t-prof">Professores do curso FIC</h2><p>IFRN · cadastrados pela coordenação geral · criam as turmas e matriculam a coordenação técnica, as bolsistas e as agentes</p></div></div>
       ${l.map(m => U().cartaoPessoa(m)).join('')}
-      <div class="vazio"><div>${l.length ? `<b>${l.length} professor${l.length > 1 ? 'es' : ''} cadastrado${l.length > 1 ? 's' : ''}.</b> Pode cadastrar mais, se o curso tiver outro professor.` : '<b>Nenhum professor do FIC cadastrado.</b> Digite os dados ou gere um link para ele preencher.'}
-        ${souGeral ? '' : '<br><span class="small">Só a coordenação geral pode fazer este cadastro.</span>'}</div>
-        ${souGeral ? '<button class="btn pri btn-cad" data-acao="novo" data-papel="professor_fic">Cadastrar professor(a) do FIC</button>' : ''}</div>
+      ${U().vagaAberta ? U().vagaAberta(l.length ? `<b>${l.length} professor${l.length > 1 ? 'es' : ''} cadastrado${l.length > 1 ? 's' : ''}.</b> Pode cadastrar mais, se o curso tiver outro professor.` : 'Nenhum professor do FIC cadastrado. Digite os dados ou gere um link para ele preencher.', souGeral,
+        '<button class="btn pri btn-cad" data-acao="novo" data-papel="professor_fic">Cadastrar professor(a) do FIC</button>', l.length ? 'Pode ter mais' : 'Vaga aberta') : ''}
     </section>`;
   }
 
