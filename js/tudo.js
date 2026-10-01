@@ -4832,13 +4832,22 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const ms = matriculas().filter(x => x.turma_id === t.id).map(x => ({ x, m: pessoa(x.equipe_id) })).filter(o => o.m)
       .sort((a, b) => String(a.m.uf).localeCompare(String(b.m.uf)) || nomeDe(a.m).localeCompare(nomeDe(b.m)));
     const pode = podeNaTurma(t); const prof = pessoa(t.professor_id);
-    return `<div class="bloco fic-turma"><div class="ft-cab"><div><h3>${E(t.nome)}</h3>
-        <span class="small muted">${E(ondeT(t))} · ${E(periodo(t))} · Professor(a): ${E(nomeDe(prof))}</span></div>
-        ${pode ? `<span class="acoes"><button class="btn pri peq" data-acao="fic-matricular" data-id="${E(t.id)}">+ Matricular</button><button class="btn peq" data-acao="fic-turma-editar" data-id="${E(t.id)}">Editar</button></span>` : ''}</div>
-      ${t.obs ? `<p class="small">${E(t.obs)}</p>` : ''}
-      ${ms.length ? `<div class="fic-lista">${ms.map(({ x, m }) => linhaPessoa(m, `<span class="small num">Nº ${E(x.numero)} · ${R.fmtData(x.matriculado_em)}</span>${pode ? `<button class="link small" data-acao="fic-cancelar" data-id="${E(x.id)}">Cancelar</button>` : ''}`)).join('')}</div>`
-        : '<p class="small muted">Ninguém matriculado nesta turma ainda.</p>'}
-      <p class="small muted" style="margin:0">${ms.length} matriculada${ms.length === 1 ? '' : 's'}</p></div>`;
+    const nMat = `${ms.length} matriculada${ms.length === 1 ? '' : 's'}`;
+    return `<section class="fic-turma" aria-label="${E(t.nome)}">
+      <header class="ft-cab">
+        <div class="ft-tit"><h3>${E(t.nome)}</h3>
+          <p class="ft-meta">${E(ondeT(t))} · ${E(periodo(t))} · Professor(a): ${E(nomeDe(prof))}</p></div>
+        <div class="ft-dir"><span class="ft-total"><b class="num">${ms.length}</b> ${nMat.replace(/^\d+ /, '')}</span>
+          ${pode ? `<span class="acoes"><button class="btn pri peq" data-acao="fic-matricular" data-id="${E(t.id)}">+ Matricular</button><button class="btn peq" data-acao="fic-turma-editar" data-id="${E(t.id)}">Editar</button></span>` : ''}</div>
+      </header>
+      ${t.obs ? `<p class="ft-obs small">${E(t.obs)}</p>` : ''}
+      ${ms.length ? `<ul class="ft-lista">${ms.map(({ x, m }) => `<li class="ft-linha">${U().avatar(m, 30)}
+          <span class="ft-pes"><span class="ft-nome">${E(nomeDe(m))}</span>
+            <span class="ft-sub"><span class="etq">${E(P[m.papel] ? P[m.papel].nome : m.papel)}</span>${m.uf ? `<span class="etq etq-uf">${E(m.uf)}</span>` : ''}${m.municipio ? `<span class="ft-mun">${E(m.municipio)}</span>` : ''}</span></span>
+          <span class="ft-mat"><span class="num">Nº ${E(x.numero)}</span><span class="ft-data num">${R.fmtData(x.matriculado_em)}</span></span>
+          ${pode ? `<button class="ft-cancelar" data-acao="fic-cancelar" data-id="${E(x.id)}" aria-label="Cancelar a matrícula de ${E(nomeDe(m))}">Cancelar</button>` : '<span></span>'}</li>`).join('')}</ul>`
+        : '<p class="ft-vazio small muted">Ninguém matriculado nesta turma ainda.</p>'}
+    </section>`;
   }
 
   /* ---------- tela do professor ---------- */
