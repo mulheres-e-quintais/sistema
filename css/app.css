@@ -2158,3 +2158,19 @@ main .secao + .secao, main .secao + .bloco, main .bloco + .secao { margin-top: 1
 .campo input:not([type=checkbox]):not([type=radio]):not([type=file]), .campo select { min-height: 42px; }
 .campo input:focus-visible, .campo select:focus-visible, .campo textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 .campo .dica { color: var(--muted); }
+
+/* --- tabelas por estado: linha única, compacta (01/10/2026) --- */
+.quadro-sel td.uf, .tab-campo-uf td.uf { padding: 9px 12px; width: auto; white-space: nowrap; }
+.quadro-sel .uf .sigla, .tab-campo-uf .uf .sigla { display: inline-block; min-width: 30px; font: 700 var(--t-sm)/1.2 var(--sans, inherit); letter-spacing: .04em; color: var(--ink); }
+.quadro-sel .uf .nomeuf, .tab-campo-uf .uf .nomeuf { font-size: var(--t-sm); color: var(--ink-2); }
+.quadro-sel td, .tab-campo-uf td { padding-top: 9px; padding-bottom: 9px; }
+@media (min-width: 1100px) {
+  .tab-campo-uf .dias-cel { display: grid; grid-template-columns: auto minmax(70px, 120px) auto; align-items: center; gap: 12px; max-width: none; }
+  .tab-campo-uf .dias-cel .medidor { height: 6px; }
+  .tab-campo-uf .dias-cel .num { white-space: nowrap; min-width: 118px; }
+}
+@media (min-width: 1100px) {
+  .tab-campo-uf .dias-cel .small { white-space: nowrap; }
+  .tab-campo-uf tr > :nth-child(2) { width: 40%; }
+  .tab-campo-uf .dias-cel { grid-template-columns: auto minmax(60px, 1fr) auto; }
+}
