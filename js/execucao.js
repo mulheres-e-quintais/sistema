@@ -169,7 +169,6 @@
         <p class="small muted">Base do previsto: ${E(O().fonte)}, com o remanejamento aprovado pelo MDA.</p></div></div>
       <div class="viag-botoes">
         <button type="button" class="cad-modo" data-acao="exec-enviar"><b>Enviar planilha de gastos</b><span>Pelo menos uma vez por mês. Retrato completo desde o início: a mais nova substitui as anteriores.</span></button>
-        <a class="cad-modo" href="modelos/Modelo_planilha_de_gastos_Mulheres_e_Quintais.xlsx" download><b>Baixar o modelo</b><span>Planilha com a lista de itens do orçamento para escolher. Para a FUNCERN ou o auxiliar preencherem.</span></a>
       </div>
       <p class="small ${n.pl ? 'muted' : ''}">${n.pl ? `Planilha vigente: <b>${E(n.pl.arquivo_nome)}</b>, gastos até ${R.fmtData(n.pl.posicao_em)} (enviada em ${R.fmtData(String(n.pl.enviado_em).slice(0, 10))}).` : '<b>Nenhuma planilha enviada ainda.</b>'}</p>
       <section class="fin-resumo" aria-label="Execução financeira">
@@ -232,7 +231,7 @@
     return cab('Execução', 'Enviar planilha de gastos') + `<div class="painel-corpo">
       <form class="f" data-form="exec-ler" novalidate><div class="campos">
         <div class="campo inteiro"><label for="ex-arq">Planilha (.xlsx ou .csv)</label><input id="ex-arq" name="arquivo" type="file" accept=".xlsx,.csv">
-          <span class="dica">Todos os gastos desde o início, até a data de hoje (ou da última atualização da FUNCERN). Colunas: Data, Item do orçamento, Descrição, Documento, Valor. Use o modelo.</span></div></div>
+          <span class="dica">Todos os gastos desde o início, até a data de hoje (ou da última atualização da FUNCERN). Colunas: Data, Item do orçamento, Descrição, Documento, Valor. <a href="modelos/Modelo_planilha_de_gastos_Mulheres_e_Quintais.xlsx" download>Baixar o modelo</a>.</span></div></div>
         <div class="aviso erro" data-erro hidden></div>
         <div class="acoes"><button class="btn${pr ? '' : ' pri'}" type="submit">${pr ? 'Ler outro arquivo' : 'Ler a planilha'}</button></div></form>
       ${pr ? previaHTML(pr) + `<form class="f" data-form="exec-confirmar" novalidate><div class="campos">
