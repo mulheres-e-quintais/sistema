@@ -502,7 +502,8 @@
     op = op || {};   // mapa fixo: os 5 estados (cor própria), o RN sede e os municípios que receberão os quintais
     const ufsProj = MQ.UFS.map(u => u.uf);
     // quadro justo nos 5 estados e no RN (nenhum estado cortado); o mapa fica grande pela altura, não pelo corte
-    const vb = (() => { const c = caixa(ufsProj.concat(['RN'])); const m = Math.max(c[2], c[3]) * 0.035; return [c[0] + m, c[1] + m, c[2] - 2 * m, c[3] - 2 * m]; })();
+    const vb = (() => { const c = caixa(ufsProj.concat(['RN'])); const m = Math.max(c[2], c[3]) * 0.035; const extra = op.entrada ? Math.max(c[2], c[3]) * 0.09 : 0;   // entrada: espaço à direita para "3 cidades" de AL e SE no mar
+      return [c[0] + m, c[1] + m, c[2] - 2 * m + extra, c[3] - 2 * m]; })();
     const esc = Math.max(vb[2], vb[3]) / 100;
     const nMunUF = uf => Object.keys((MQ.GEO.mun || {})[uf] || {}).length;
     const path = anel => 'M' + anel.map(p => px(p).map(v => v.toFixed(3)).join(',')).join('L') + 'Z';
@@ -522,19 +523,23 @@
       return `<path class="rota" data-rota="${E(nome)}/${uf}" d="M${ax.toFixed(3)},${ay.toFixed(3)}Q${cx.toFixed(3)},${cy.toFixed(3)} ${x.toFixed(3)},${y.toFixed(3)}" stroke-width="${esc * 0.28}" stroke-dasharray="${esc * 1.2} ${esc * 1}" style="animation-delay:-${(k * 0.23).toFixed(2)}s;--len:${(len * 1.02).toFixed(2)};--i:${k}"/>`; }).join('');
     const pontos = muns.map(({ uf, nome, xy: [x, y] }, k) =>
       `<g class="mun-pt" data-mun="${E(nome)}/${uf}" tabindex="0" style="animation-delay:${((k * 0.37) % 2.4).toFixed(2)}s;--i:${k}"><circle cx="${x}" cy="${y}" r="${esc * 3.2}" class="mun-alvo"/><circle cx="${x}" cy="${y}" r="${esc * 2.2}" class="mun-onda"/><circle cx="${x}" cy="${y}" r="${esc * 1.4}" class="mun-dot" stroke-width="${esc * 0.35}"/><title>${E(nome)}/${uf}</title></g>`).join('');
-    const sede = `<g class="mun-pt sede-pt" data-mun="Apodi/RN · IFRN Campus Apodi, de onde sai a equipe" tabindex="0"><circle cx="${ax}" cy="${ay}" r="${esc * 3.4}" class="mun-alvo"/><circle cx="${ax}" cy="${ay}" r="${esc * 2.1}" class="sede-dot" stroke-width="${esc * 0.5}"/><circle cx="${ax}" cy="${ay}" r="${esc * 0.8}" class="sede-miolo"/><title>Apodi/RN: IFRN Campus Apodi</title></g>
+    const sede = op.entrada   // entrada (infográfico): Apodi como origem, marcador maior em terracota com halo discreto
+      ? `<g class="mun-pt sede-pt" data-mun="Apodi/RN · IFRN Campus Apodi, de onde sai a equipe" tabindex="0"><circle cx="${ax}" cy="${ay}" r="${esc * 3.8}" class="sede-halo"/><circle cx="${ax}" cy="${ay}" r="${esc * 3.4}" class="mun-alvo"/><circle cx="${ax}" cy="${ay}" r="${esc * 2.2}" class="sede-dot" stroke-width="${esc * 0.55}"/><title>Apodi/RN: IFRN Campus Apodi</title></g>
+      <text x="${ax + esc * 3.4}" y="${ay - esc * 2.4}" class="sede-rot" font-size="${esc * 3.4}">Apodi <tspan class="sede-uf" font-size="${esc * 2.6}">RN</tspan></text>`
+      : `<g class="mun-pt sede-pt" data-mun="Apodi/RN · IFRN Campus Apodi, de onde sai a equipe" tabindex="0"><circle cx="${ax}" cy="${ay}" r="${esc * 3.4}" class="mun-alvo"/><circle cx="${ax}" cy="${ay}" r="${esc * 2.1}" class="sede-dot" stroke-width="${esc * 0.5}"/><circle cx="${ax}" cy="${ay}" r="${esc * 0.8}" class="sede-miolo"/><title>Apodi/RN: IFRN Campus Apodi</title></g>
       <text x="${ax + esc * 3}" y="${ay - esc * 2.2}" class="sede-rot" font-size="${esc * 3.4}">Apodi</text>`;
     const nMun = muns.length;
     // rótulos longe dos pontos das cidades: PI desce; AL e SE vão para o mar, ao lado (em unidades de "esc")
     const DESLOC = op.entrada ? { PI: [0, 12, 'middle'], AL: [7, -1.5, 'start'], SE: [6.5, 3, 'start'] } : {};
-    const siglas = ufsProj.concat(['RN']).map(uf => { const g = MQ.GEO.uf[uf]; if (!g || !g.c) return ''; const [x0, y0] = px(g.c);
+    // entrada: o RN já está no rótulo "Apodi RN"
+    const siglas = ufsProj.concat(op.entrada ? [] : ['RN']).map(uf => { const g = MQ.GEO.uf[uf]; if (!g || !g.c) return ''; const [x0, y0] = px(g.c);
       const [ddx, ddy, anc] = DESLOC[uf] || [0, 0, 'middle']; const x = x0 + ddx * esc, y = y0 + ddy * esc;
       const n = nMunUF(uf);
       return `<text x="${x}" y="${y}" class="uf-sigla${uf === 'RN' ? ' sigla-sede' : ''}${DESLOC[uf] && anc === 'start' ? ' sigla-mar' : ''}" font-size="${esc * 3.6}" text-anchor="${anc}">${uf}</text>`
         + (op.entrada && uf !== 'RN' ? `<text x="${x}" y="${y + esc * 3.4}" class="uf-sigla uf-num${anc === 'start' ? ' sigla-mar' : ''}" font-size="${esc * 2.5}" text-anchor="${anc}">${n} ${n === 1 ? 'cidade' : 'cidades'}</text>` : ''); }).join('');
-    return `<svg class="mapa mapa-pub${op.animar ? ' saindo' : ''}" viewBox="${vb.join(' ')}" role="img" aria-label="Mapa dos estados do projeto: ${ufsProj.map(u => u + ' ' + nMunUF(u) + ' municípios').join(', ')}; ${nMun} municípios que receberão os quintais, ligados a Apodi/RN, sede do IFRN" preserveAspectRatio="xMidYMid meet">${estados}${siglas}<g class="rotas">${rotas}</g>${pontos}${sede}</svg>
+    return `<svg class="mapa mapa-pub${op.entrada ? ' mapa-info' : ''}${op.animar ? ' saindo' : ''}" viewBox="${vb.join(' ')}" role="img" aria-label="Mapa dos estados do projeto: ${ufsProj.map(u => u + ' ' + nMunUF(u) + ' municípios').join(', ')}; ${nMun} municípios que receberão os quintais, ligados a Apodi/RN, sede do IFRN" preserveAspectRatio="xMidYMid meet">${estados}${siglas}<g class="rotas">${rotas}</g>${pontos}${sede}</svg>
       <p class="mun-nome" aria-live="polite"><span data-mun-nome></span></p>
-      ${op.entrada ? '' : `<ul class="mapa-lista">${ordem.map(uf => { const nm = nMunUF(uf);
+      ${op.entrada ? `<p class="mapa-leg-info"><span class="pt" aria-hidden="true"></span>Cada ponto representa 1 município atendido pelo projeto.</p>` : `<ul class="mapa-lista">${ordem.map(uf => { const nm = nMunUF(uf);
         return `<li><span class="lg-q" style="background:var(--uf-${uf})"></span>${uf} <span class="lg-mun">${nm} ${nm === 1 ? 'município' : 'municípios'}</span></li>`; }).join('')}<li><span class="lg-q lg-sede"></span>RN <span class="muted">sede (Apodi)</span></li></ul>`}`;
   }
 
