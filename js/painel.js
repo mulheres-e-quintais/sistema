@@ -418,7 +418,7 @@
           <div class="dx-tr dx-th" role="row"><span role="columnheader">Problema</span><span role="columnheader">Prazo</span><span role="columnheader"><span class="sr">Ação</span></span></div>
           ${al.map(x => `<div class="dx-tr" role="row"><span role="cell" class="dx-prob"><span class="st-pt ${NIVEL[x.nivel][0]}" aria-hidden="true"></span><span><span class="sr">${NIVEL[x.nivel][1]}: </span><b>${E(x.texto)}</b><small>${E(x.det)}</small></span></span>
             <span role="cell" class="dx-prazo num">${prazoTxt(x)}</span>
-            <span role="cell">${x.aba ? `<button class="btn peq dx-ir" data-acao="aba" data-aba="${x.aba}" aria-label="Resolver: ${E(x.texto)} (abre ${NOME_ABA[x.aba] || x.aba})" title="Abre ${NOME_ABA[x.aba] || x.aba}">Resolver</button>` : ''}</span></div>`).join('')}
+            <span role="cell">${x.aba ? MQ.botaoAcao({ acao: 'aba', texto: 'Resolver', icone: false, sec: true, mini: true, cls: 'dx-ir', rotulo: `Resolver: ${E(x.texto)} (abre ${NOME_ABA[x.aba] || x.aba})`, attrs: `data-aba="${x.aba}" title="Abre ${NOME_ABA[x.aba] || x.aba}"` }) : ''}</span></div>`).join('')}
         </div>` : `<p class="dx-ok">${chipStatus('concluida', 'Nada pendente')} nos dados do sistema.</p>`}
       </section>
 

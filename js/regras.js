@@ -248,7 +248,7 @@
 })();
 
 /* Botão de ação (design system, 01/10/2026): [ícone | texto →], altura fixa, mesmo componente em todo o sistema.
-   o = { acao, texto, curto (rótulo do celular), icone, sec (versão clara, para a segunda ação do grupo), peq (dentro de cartões), attrs, rotulo (aria-label) } */
+   o = { acao, texto, curto (rótulo do celular), icone, sec (versão clara, para a segunda ação do grupo), peq (dentro de cartões), mini (em tabelas e faixas, só texto →; icone: false), attrs, rotulo (aria-label) } */
 (function () {
   const p = d => `<svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
   const ICONES = {
@@ -265,8 +265,8 @@
   };
   const SETA = p('<path d="M5 12h13"/><path d="m13 6.5 5.5 5.5-5.5 5.5"/>');
   MQ.ICONES = ICONES;
-  MQ.botaoAcao = o => `<button type="button" class="btn-acao${o.sec ? ' sec' : ''}${o.peq ? ' peq' : ''}" data-acao="${o.acao}"${o.rotulo || o.curto ? ` aria-label="${o.rotulo || o.texto}"` : ''} ${o.attrs || ''}>`
-    + `<span class="ba-ic">${ICONES[o.icone] || ICONES.pessoa_mais}</span><span class="ba-tx">${o.curto ? `<span class="ba-l">${o.texto}</span><span class="ba-c" aria-hidden="true">${o.curto}</span>` : o.texto}</span><span class="ba-seta">${SETA}</span></button>`;
+  MQ.botaoAcao = o => `<button type="button" class="btn-acao${o.sec ? ' sec' : ''}${o.peq ? ' peq' : ''}${o.mini ? ' mini' : ''}${o.cls ? ' ' + o.cls : ''}" data-acao="${o.acao}"${o.rotulo || o.curto ? ` aria-label="${o.rotulo || o.texto}"` : ''} ${o.attrs || ''}>`
+    + `${o.icone === false ? '' : `<span class="ba-ic">${ICONES[o.icone] || ICONES.pessoa_mais}</span>`}<span class="ba-tx">${o.curto ? `<span class="ba-l">${o.texto}</span><span class="ba-c" aria-hidden="true">${o.curto}</span>` : o.texto}</span><span class="ba-seta">${SETA}</span></button>`;
   /* botão de ação com a explicação curta embaixo (substitui os antigos cartões "cad-modo" das páginas) */
   MQ.acaoComDica = (o, dica) => `<div class="acao-item">${MQ.botaoAcao(o)}${dica ? `<p class="acao-dica">${dica}</p>` : ''}</div>`;
 })();
