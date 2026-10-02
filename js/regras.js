@@ -74,6 +74,7 @@
   };
   R.modeloTermo = x => { const m = (MQ.MODELOS_TERMO || {})[R.tipoTermo(x)]; return m && m.arquivo ? m : null; };
   R.MSG_TERMO_SEM_ARQUIVO = 'Sem o termo anexado não há o que conferir: a data só é registrada depois que o termo preenchido e assinado estiver anexado.';
+  R.MSG_TERMO_SEM_DATA = 'Você anexou o termo: confira no documento a data da assinatura e preencha aqui.';
   R.TERMO_EXT = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
   R.nomeArquivo = p => String(p || '').split('/').pop();
   R.situacao = m => {

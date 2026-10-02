@@ -70,6 +70,11 @@ describe('Termo de compromisso anexado pela própria pessoa', () => {
     assert.match(h, /data-acao="termo-abrir" data-path="equipe\/[^"]+\/termo_1\.pdf"/); assert.ok(texto(h).includes('Termo anexado: falta conferir'));
     assert.ok(texto(h).includes('Termo anexado pela pessoa: falta conferir e registrar a data'), 'a lista de passos mostra que o termo chegou');
   });
+  test('ficha de quem confere: o campo é a data de assinatura que está no documento; data sem anexo e anexo sem data têm mensagem própria', async () => {
+    const t = await montar('auxiliar'); const alvo = semTermo(t); const h = texto(t.painel({ tipo: 'detalhe', id: alvo.id }));
+    assert.ok(h.includes('Termo assinado em (a data que está no documento)')); assert.ok(h.includes('data sem anexo não é aceita'));
+    assert.match(t.MQ.regras.MSG_TERMO_SEM_DATA, /confira no documento a data da assinatura/); assert.match(t.MQ.regras.MSG_TERMO_SEM_ARQUIVO, /Sem o termo anexado/);
+  });
   test('"Meus dados" mostra a situação do termo (menos para a coordenação geral)', async () => {
     let t = await montar('professor'); assert.match(t.painel({ tipo: 'meus-dados' }), /id="meu-termo"/);
     t = await montar('coord_geral'); assert.ok(!/id="meu-termo"/.test(t.painel({ tipo: 'meus-dados' })));

@@ -395,6 +395,7 @@ MQ.ORCAMENTO = {
   };
   R.modeloTermo = x => { const m = (MQ.MODELOS_TERMO || {})[R.tipoTermo(x)]; return m && m.arquivo ? m : null; };
   R.MSG_TERMO_SEM_ARQUIVO = 'Sem o termo anexado não há o que conferir: a data só é registrada depois que o termo preenchido e assinado estiver anexado.';
+  R.MSG_TERMO_SEM_DATA = 'Você anexou o termo: confira no documento a data da assinatura e preencha aqui.';
   R.TERMO_EXT = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
   R.nomeArquivo = p => String(p || '').split('/').pop();
   R.situacao = m => {
@@ -12135,7 +12136,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           ${termo === 'falta' ? `<div class="aviso" role="status"><b>${esc(nomeDe(m).split(' ')[0])} ainda não anexou o termo.</b> Cada pessoa baixa o modelo, preenche, assina e anexa no próprio cadastro (em Pendências ou em Meus dados). A data só é registrada depois, com o termo aberto e conferido.</div>`
             : `<div class="termo-arq"><span><b>${termo === 'conferido' ? 'Termo conferido' : 'Termo anexado: falta conferir'}</b><br><span class="small muted">${esc(R.nomeArquivo(m.termo_path))}</span></span>
                 <button type="button" class="btn peq${termo === 'enviado' ? ' pri' : ''}" data-acao="termo-abrir" data-path="${esc(m.termo_path)}">Abrir o termo</button></div><div id="termo-vista" aria-live="polite"></div>`}
-          ${dataPasso('h-ter', 'termo_assinado_em', 'Conferido (preenchido e assinado) em', m, termo === 'falta' ? 'Fica em branco até o termo estar anexado.' : 'Abra o termo, confira os dados e as assinaturas e só então registre a data.')}
+          ${dataPasso('h-ter', 'termo_assinado_em', 'Termo assinado em (a data que está no documento)', m, termo === 'falta' ? 'Fica em branco até o termo estar anexado: data sem anexo não é aceita.' : 'Abra o termo, confira os dados, as assinaturas e a data que está no documento, e preencha aqui.')}
           <details class="explica"><summary>${m.termo_path ? 'Trocar o arquivo do termo' : 'Recebeu o termo por fora (papel ou WhatsApp)? Anexe aqui'}</summary>
             <div class="campo"><div class="rot-com-link"><label for="h-arq">Termo preenchido e assinado (PDF ou foto)</label>${MQ.pendUI ? MQ.pendUI.linkModelo(m) : ''}</div>
               <input id="h-arq" name="termo" type="file" accept="application/pdf,image/*">
@@ -12742,6 +12743,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         else if (temArq && MQ.arquivoConfere) { const falso = await MQ.arquivoConfere(arq, ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'], { rotulo: 'PDF ou foto (JPG, PNG)' }); if (falso) erros.termo = falso; }
         // 48: a data do termo só é salva com o termo anexado (pela pessoa, antes, ou por quem confere, agora)
         if (!erros.termo && patch.termo_assinado_em && !m.termo_path && !temArq) erros.termo_assinado_em = R.MSG_TERMO_SEM_ARQUIVO;
+        // anexo sem data também não passa: quem anexa confere no documento a data da assinatura e preenche
+        const dataTermo = String(fd.get('termo_assinado_em') || '').trim();
+        if (!erros.termo && !erros.termo_assinado_em && temArq && !dataTermo) erros.termo_assinado_em = R.MSG_TERMO_SEM_DATA;
         if (erros.termo) { const dt = form.querySelector('details.explica'); if (dt) dt.open = true; }
         if (Object.keys(erros).length) return mostrarErros(form, erros);
         await ocupado(form, async () => {
