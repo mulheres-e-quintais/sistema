@@ -55,8 +55,12 @@
         d: 'Procure os professores do curso FIC para fazer a matrícula e receber o acesso ao AVA.' });
       if (p.id === 'funcern') itens.push({ id: 'arlo', t: 'Cadastro no Arlo (FUNCERN) ainda não registrado',
         d: (m.cadastro_arlo ? 'Você informou que já tem cadastro no Arlo: ' + quemHab + ' precisa conferir e registrar.' : 'Quem faz o seu cadastro no Arlo é ' + quemHab + ', com os seus dados e a sua conta.') + ' Se pedirem algum documento, envie logo.' });
-      if (p.id === 'termo') itens.push({ id: 'termo', t: 'Termo de compromisso ainda não assinado',
-        d: 'Assine o termo de compromisso e entregue ' + quemHab.replace(/^a /, 'à ').replace(/^o /, 'ao ') + ', que registra no sistema.' });
+      // 47: o termo é anexado pela própria pessoa (modelo preenchido e assinado); quem confere abre o arquivo e registra a data
+      if (p.id === 'termo') itens.push(p.enviado
+        ? { id: 'termo', t: 'Termo de compromisso enviado: aguardando conferência',
+            d: 'Você anexou o termo. Agora ' + quemHab + ' abre o arquivo, confere se está preenchido e assinado e registra a data.', acao: 'pend-termo', btn: 'Ver ou trocar' }
+        : { id: 'termo', seu: true, t: 'Envie o seu termo de compromisso',
+            d: 'Baixe o modelo, preencha com os seus dados, assine e anexe aqui. Depois ' + quemHab + ' confere.', acao: 'pend-termo', btn: 'Enviar termo' });
     });
     return { itens, carregando, m };
   }
@@ -96,6 +100,7 @@
       <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>`;
     if (p.tipo === 'pend-banco') return cab('Conta bancária') + `<div class="painel-corpo">${MQ.bancoUI.secaoMinha(true)}
       <div class="acoes"><button class="btn" type="button" data-acao="pend-ver">Voltar</button></div></div>`;
+    if (p.tipo === 'pend-termo') return cab('Termo de compromisso') + `<div class="painel-corpo">${formTermo(l.m || eu())}</div>`;
     if (p.tipo === 'pend-dados') return cab(l.m && l.m.cadastro_arlo ? 'Cidade onde mora' : 'Dados pessoais') + `<div class="painel-corpo">${formDados(l.m)}</div>`;
     if (!l.itens.length) return cab('Tudo em dia') + `<div class="painel-corpo"><p>Nenhuma pendência no seu cadastro.</p>
       <div class="acoes"><button class="btn pri" data-acao="fechar">Fechar</button></div></div>`;
@@ -132,7 +137,66 @@
       <div class="acoes"><button class="btn pri" type="submit">Salvar</button><button class="btn" type="button" data-acao="pend-ver">Voltar</button></div></form>`;
   }
 
+  /* ---------- termo de compromisso: a própria pessoa anexa (47) ---------- */
+  const quemConfere = m => m && m.papel === 'auxiliar_adm' ? 'a coordenação geral' : 'o auxiliar administrativo';
+  /* link do modelo (fica ao lado do campo de anexar); sem arquivo configurado em dados.js, orienta a pedir */
+  function linkModelo(m) {
+    const mod = m ? R.modeloTermo(m.papel) : null;
+    return mod
+      ? `<a class="btn peq termo-modelo" href="${E(mod.arquivo)}" download target="_blank" rel="noopener" title="Modelo: ${E(mod.nome)}">Baixar o modelo do termo</a>`
+      : `<span class="small muted termo-modelo">Peça o modelo do termo ${m ? quemConfere(m).replace(/^a /, 'à ').replace(/^o /, 'ao ') : 'à coordenação'}.</span>`;
+  }
+  function formTermo(m) {
+    if (!m) return '';
+    const sit = R.termoSituacao(m);
+    if (sit === 'conferido') return `<div class="aviso ok"><b>Termo conferido em ${R.fmtData(m.termo_assinado_em)}.</b> Não há mais nada a fazer aqui.</div>
+      <p class="small muted">Arquivo: ${E(R.nomeArquivo(m.termo_path) || 'registrado sem arquivo')}. Para trocar, fale com ${quemConfere(m)}.</p>
+      <div class="acoes"><button class="btn" type="button" data-acao="pend-ver">Voltar</button></div>`;
+    return `<form class="f" data-form="pend-termo" novalidate>
+      ${sit === 'enviado' ? `<div class="aviso ok" role="status"><b>Termo enviado: ${E(R.nomeArquivo(m.termo_path))}.</b> Falta ${quemConfere(m)} conferir. Se mandou o arquivo errado, anexe outro: ele substitui o anterior.</div>` : ''}
+      <ol class="conv-passos termo-passos">
+        <li><span><b>Baixe o modelo</b>: ${E((R.modeloTermo(m.papel) || { nome: 'termo de compromisso' }).nome)}.</span></li>
+        <li><span><b>Preencha e assine.</b> ${E((R.modeloTermo(m.papel) || { como: 'Preencha com os seus dados e assine.' }).como)}</span></li>
+        <li><span><b>Anexe aqui</b> o termo preenchido e assinado, em PDF ou foto do papel inteiro.</span></li></ol>
+      <div class="campo" id="w-termo"><div class="rot-com-link"><label for="pt-arq">Termo preenchido e assinado (PDF ou foto)</label>${linkModelo(m)}</div>
+        <input id="pt-arq" name="termo" type="file" accept="application/pdf,image/*" data-termo-arq required>
+        <span class="dica">Até 10 MB. Em foto, pegue a folha inteira, com a assinatura legível.</span></div>
+      <div class="aviso erro" data-erro hidden></div>
+      <div class="acoes"><button class="btn pri" type="submit" data-termo-salvar disabled>${sit === 'enviado' ? 'Trocar o termo' : 'Enviar termo'}</button><button class="btn" type="button" data-acao="pend-ver">Voltar</button></div>
+      <p class="small muted" data-termo-nota>O botão libera quando você escolher o arquivo.</p></form>`;
+  }
+  /* bloco em "Meus dados": situação do termo e o caminho para anexar */
+  function secaoTermo() {
+    const m = eu(); if (!m || m.status !== 'ativa') return '';
+    const sit = R.termoSituacao(m);
+    const chip = sit === 'conferido' ? ['ok', 'Conferido'] : sit === 'enviado' ? ['pend', 'Aguardando conferência'] : ['pend', 'Falta enviar'];
+    return `<div class="bloco" id="meu-termo"><div class="banco-cab"><h3>Termo de compromisso</h3><span class="chip ${chip[0]}">${chip[1]}</span></div>
+      <p class="small muted">${sit === 'conferido' ? 'Conferido em ' + R.fmtData(m.termo_assinado_em) + '.' : sit === 'enviado' ? 'Você anexou ' + E(R.nomeArquivo(m.termo_path)) + '. Falta ' + quemConfere(m) + ' conferir.' : 'Baixe o modelo, preencha com os seus dados, assine e anexe. Sem o termo conferido, a FUNCERN não paga.'}</p>
+      ${sit === 'conferido' ? '' : `<div class="acoes">${sit === 'falta' ? linkModelo(m) : ''}<button class="btn ${sit === 'falta' ? 'pri' : ''} peq" type="button" data-acao="pend-termo">${sit === 'falta' ? 'Enviar termo' : 'Ver ou trocar'}</button></div>`}</div>`;
+  }
+  async function enviarTermo(form, fd) {
+    const m = eu(); const arq = fd.get('termo'); const e = {};
+    if (!arq || !arq.name) e.termo = 'Anexe o termo preenchido e assinado: sem o arquivo não dá para enviar.';
+    else if (arq.size > 10 * 1024 * 1024) e.termo = 'Arquivo acima de 10 MB. Envie um PDF menor ou uma foto.';
+    else if (MQ.arquivoConfere) { const falso = await MQ.arquivoConfere(arq, R.TERMO_EXT, { rotulo: 'PDF ou foto (JPG, PNG)' }); if (falso) e.termo = falso; }
+    if (Object.keys(e).length) return U().mostrarErros(form, e);
+    await U().ocupado(form, async () => {
+      await S().api.enviarMeuTermo(m.id, arq);
+      await U().recarregar();
+      U().toast('Termo enviado. Falta ' + quemConfere(m) + ' conferir.');
+      U().abrirPainel({ tipo: 'pend' });
+    });
+  }
+  // o botão de enviar só libera com o arquivo escolhido
+  if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('change', ev => {
+    const t = ev.target; if (!t || !t.matches || !t.matches('[data-termo-arq]')) return;
+    const f = t.closest('form'); if (!f) return; const tem = !!(t.files && t.files.length);
+    const b = f.querySelector('[data-termo-salvar]'); if (b) b.disabled = !tem;
+    const n = f.querySelector('[data-termo-nota]'); if (n) n.hidden = tem;
+  });
+
   async function enviar(tipo, form, fd) {
+    if (tipo === 'pend-termo') return enviarTermo(form, fd);
     if (tipo !== 'pend-dados') return;
     const m = eu(); const arlo = !!m.cadastro_arlo;
     const t = k => String(fd.get(k) || '').trim();
@@ -168,7 +232,8 @@
     if (a === 'pend-ver') U().abrirPainel({ tipo: 'pend' });
     else if (a === 'pend-dados') U().abrirPainel({ tipo: 'pend-dados' });
     else if (a === 'pend-banco') U().abrirPainel({ tipo: 'pend-banco' });
+    else if (a === 'pend-termo') U().abrirPainel({ tipo: 'pend-termo' });
   }
 
-  MQ.pendUI = { lista, faixa, cobrar, painel, clique, enviar };
+  MQ.pendUI = { lista, faixa, cobrar, painel, clique, enviar, secaoTermo, linkModelo, formTermo };
 })();

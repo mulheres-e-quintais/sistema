@@ -54,7 +54,7 @@ select t('sem professor FIC habilitado: técnica bloqueada', :G, ins('coord_tecn
 select f(:G, ins('professor_fic','','Zeca Professor Base','98765432100','prof0@t.com'));
 select t('professor cadastrado mas sem Arlo e termo: ainda bloqueia', :G, ins('coord_tecnico','','Maria Técnica Silva','11144477735','tecnica@t.com'), 'professor do FIC');
 select t('link (convite) também bloqueia', :G, $q$select public.criar_convite('articulacao', 'PI', null)$q$, 'professor do FIC');
-select f(:G, $q$update public.equipe set docs_funcern_em = current_date, termo_assinado_em = current_date where email = 'prof0@t.com'$q$);
+select f(:G, $q$update public.equipe set docs_funcern_em = current_date, termo_path = 'equipe/prof0/termo_1.pdf', termo_assinado_em = current_date where email = 'prof0@t.com'$q$);
 -- ===== 1. Coordenação geral cadastra coordenação técnica
 select t('G cadastra coord_tecnico', :G, ins('coord_tecnico','','Maria Técnica Silva','11144477735','tecnica@t.com'), 'ok');
 select f(:G, ins('coord_tecnico','','Maria Técnica Silva','11144477735','tecnica@t.com'));

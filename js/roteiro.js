@@ -44,7 +44,7 @@
     auxiliar: { nome: 'Auxiliar administrativo', tarefas: [
       { t: 'Entrar no sistema', p: ['Você já entrou usando o e-mail, o código de acesso e a senha que criou.'], v: 'Você está vendo a sua tela.', pergunta: 'Foi fácil entrar pela primeira vez?' },
       { t: 'Achar quem falta cadastrar no Arlo', p: ['Procure a lista "Falta cadastrar no Arlo".'], v: 'Aparecem as pessoas que ainda não têm a data do Arlo.' },
-      { t: 'Registrar Arlo e termo', p: ['Toque numa pessoa da lista.', 'Em "Registrar passos da habilitação", toque em "Hoje" nas duas datas.', 'Anexe um arquivo qualquer como termo e toque em "Salvar".'], v: 'A pessoa sai da lista de pendentes.' },
+      { t: 'Registrar Arlo e termo', p: ['Toque numa pessoa da lista.', 'Em "Registrar passos da habilitação", toque em "Hoje" na data do Arlo.', 'No quadro "Termo de compromisso", abra "Recebeu o termo por fora?", anexe um PDF ou foto qualquer e toque em "Hoje" na data do termo.', 'Toque em "Salvar".'], v: 'A pessoa sai da lista de pendentes.' },
       { t: 'Ver uma conta bancária', p: ['Numa pessoa que informou a conta, toque em "Ver conta e Pix".'], v: 'Aparece a conta. (Essa consulta fica registrada no histórico.)' },
       { t: 'Achar ajuda', p: ['Toque no "?" no alto da tela.'], v: 'Abre a ajuda da sua tela.' }
     ] },

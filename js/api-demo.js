@@ -840,6 +840,8 @@
       const pode = R.podeEditarDados(eu && eu.papel, antes.papel) || (soHab && R.podeEditarHabilitacao(eu && eu.papel, antes.papel));
       if (!pode) throw falha('Seu perfil não tem permissão para esta ação.');
       if (antes.status === 'desligada' && patch.status === 'ativa') throw falha('Registro desligado não pode ser reativado. Faça um novo cadastro.');
+      // 47: a data do termo só entra com o termo anexado (pela pessoa, no cadastro dela, ou por quem confere, neste mesmo envio)
+      if (patch.termo_assinado_em && patch.termo_assinado_em !== antes.termo_assinado_em && !(patch.termo_path || antes.termo_path)) throw falha(R.MSG_TERMO_SEM_ARQUIVO);
       // 46: cadastro desligado não é mais alterado (só a coordenação geral corrige); "substitui" nunca a própria pessoa nem pessoa ativa de outro estado
       if (antes.status === 'desligada' && eu && eu.papel !== 'coord_geral' && Object.keys(patch).some(k => !['atualizado_em', 'user_id'].includes(k) && (patch[k] == null ? null : patch[k]) !== (antes[k] == null ? null : antes[k])))
         throw falha('Este cadastro está desligado e não é mais alterado. Se houver erro, peça à coordenação geral para corrigir.');
@@ -1268,6 +1270,17 @@
       m.foto_path = 'demo/' + id + '.jpg'; m.foto_url = url; gravar(); return m.foto_path;
     },
     async enviarTermo(id, arquivo) { return arquivo.name; },   // no demo guarda só o nome
+    /* 47: a própria pessoa anexa o termo preenchido e assinado (só o arquivo: a data é de quem confere) */
+    async enviarMeuTermo(id, arquivo) {
+      const d = ler(); const eu = euMesmo();
+      if (!eu || eu.id !== id) throw falha('Cada pessoa anexa o próprio termo, no cadastro dela.');
+      const i = d.equipe.findIndex(x => x.id === id); const antes = d.equipe[i];
+      if (antes.termo_assinado_em) throw falha('O seu termo já foi conferido em ' + R.fmtData(antes.termo_assinado_em) + '. Para trocar o arquivo, fale com quem conferiu.');
+      d.equipe[i] = Object.assign({}, antes, { termo_path: arquivo.name, atualizado_em: new Date().toISOString() });
+      auditar('UPDATE', antes, d.equipe[i]); gravar();
+      return arquivo.name;
+    },
+    async linkTermo() { return null; },   // no demo o arquivo não é guardado
     async linkTermo(path) { return null; },
     async entrar() { throw falha('No modo demonstração não há login: use o seletor de perfil.'); },
     async entrarSenha() { throw falha('Na demonstração não há login: escolha um perfil acima.'); },

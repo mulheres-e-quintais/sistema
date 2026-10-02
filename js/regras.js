@@ -58,8 +58,17 @@
     { id: 'dados',     nome: ['professor_fic', 'auxiliar_adm', 'coord_tecnico'].includes(m.papel) ? 'Dados cadastrados pela coordenação geral' : 'Dados enviados pela coordenação técnica', feito: true, quando: m.criado_em && m.criado_em.slice(0, 10) },
     R.fazFIC(m.papel) ? { id: 'fic', nome: 'Matrícula no curso FIC (IFRN)', feito: !!m.matricula_fic_em, quando: m.matricula_fic_em, extra: m.matricula_fic_numero } : null,
     { id: 'funcern',   nome: 'Cadastro no Arlo (FUNCERN)', feito: !!m.docs_funcern_em, quando: m.docs_funcern_em },
-    { id: 'termo',     nome: 'Termo de compromisso assinado', feito: !!m.termo_assinado_em, quando: m.termo_assinado_em, extra: m.termo_path }
+    { id: 'termo',     nome: 'Termo de compromisso assinado', feito: !!m.termo_assinado_em, quando: m.termo_assinado_em, extra: m.termo_path, enviado: !!m.termo_path && !m.termo_assinado_em }
   ].filter(Boolean);
+  /* termo de compromisso: a pessoa anexa o termo preenchido e assinado no próprio cadastro; quem confere abre o arquivo e só então registra a data.
+     'falta' (nada anexado) → 'enviado' (anexado, esperando conferência) → 'conferido' (data registrada) */
+  R.termoSituacao = m => m.termo_assinado_em ? 'conferido' : m.termo_path ? 'enviado' : 'falta';
+  /* qual termo cada função assina: servidor do IFRN (professor do FIC, auxiliar) ou bolsista/agente (MPA) */
+  R.tipoTermo = papel => ['professor_fic', 'auxiliar_adm'].includes(papel) ? 'servidor' : 'bolsista';
+  R.modeloTermo = papel => { const x = (MQ.MODELOS_TERMO || {})[R.tipoTermo(papel)]; return x && x.arquivo ? x : null; };
+  R.MSG_TERMO_SEM_ARQUIVO = 'Sem o termo anexado não há o que conferir: a data só é registrada depois que o termo preenchido e assinado estiver anexado.';
+  R.TERMO_EXT = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
+  R.nomeArquivo = p => String(p || '').split('/').pop();
   R.situacao = m => {
     if (m.status === 'desligada') return { cod: 'desligada', rot: 'Desligada' };
     if (m.papel === 'coord_geral') return { cod: 'ok', rot: 'Ativa' };
