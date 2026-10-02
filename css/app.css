@@ -2300,3 +2300,40 @@ main .secao + .secao, main .secao + .bloco, main .bloco + .secao { margin-top: 1
   #painel .painel-cab { border-bottom: 1px solid #bbb; margin-bottom: 8px; }
   @page { margin: 14mm 12mm; }
 }
+
+/* --- EQUIPE: quadro Coordenação e bolsistas (01/10/2026): um componente só — tabela + cartões + progresso --- */
+.quadro-scroll.eq-cx { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 6px 18px rgba(69, 43, 26, .05); overflow: hidden; }
+.eq-quadro { table-layout: fixed; }
+.eq-quadro col.c-uf { width: 150px; } .eq-quadro col.c-plano { width: 270px; }
+.eq-quadro thead th { background: var(--surface-2); border: 0; border-bottom: 1px solid var(--line); padding: 13px 20px; font-size: var(--t-xs); font-weight: 600; letter-spacing: .08em; color: var(--ink-2); }
+.eq-quadro tbody td { padding: 16px 20px; border: 0; border-top: 1px solid var(--line); vertical-align: middle; background: transparent; }
+.eq-quadro tbody tr:first-child td { border-top: 0; }
+.eq-quadro tbody tr:hover td { background: color-mix(in srgb, var(--surface-2) 38%, transparent); }
+.eq-quadro td.uf { padding: 16px 20px 16px 24px; width: auto; white-space: normal; }
+.eq-quadro td.uf .sigla { display: block; font: 600 var(--t-2xl)/1 var(--serif); color: var(--verde); letter-spacing: 0; }
+.eq-quadro td.uf .nomeuf { display: block; margin-top: 4px; font-size: var(--t-sm); color: var(--ink-2); }
+/* vaga: cartão claro, sem hachura */
+.vaga-slot { gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--bg); }
+.vaga-slot .vs-quem { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center; }
+.vaga-slot .sub { font-size: var(--t-sm); line-height: 1.35; color: var(--ink-2); }
+.vaga-slot .av.vs-vazio { display: inline-grid; place-items: center; width: var(--av); height: var(--av); border-radius: 50%; background: var(--surface-2); color: var(--muted); font-weight: 700; }
+.vaga-slot .btn-acao { width: 100%; max-width: none; min-height: 50px; border: 1px solid var(--accent); background: var(--surface); border-radius: 12px; font-weight: 600; }
+.vaga-slot .btn-acao:hover { background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
+/* pessoa na vaga: mesma caixa discreta, para as duas colunas alinharem */
+.eq-quadro .vagabtn.com-foto, .eq-cartoes .vagabtn.com-foto { border: 1px solid var(--line); border-radius: 14px; background: var(--bg); padding: 12px 14px; }
+.eq-quadro .vagabtn.com-foto:hover, .eq-cartoes .vagabtn.com-foto:hover { border-color: var(--line-2); background: var(--surface); }
+/* seleção no estado: pequeno painel de progresso */
+.eq-quadro .plano, .eq-cartoes .plano { gap: 8px; padding: 0; font-size: var(--t-sm); }
+.eq-quadro .plano .ln, .eq-cartoes .plano .ln { gap: 12px; }
+.eq-quadro .plano .bar, .eq-cartoes .plano .bar { height: 8px; border-radius: 4px; overflow: hidden; }
+.eq-quadro .plano .bar i, .eq-cartoes .plano .bar i { border-radius: 4px; }
+.eq-quadro .plano .num, .eq-cartoes .plano .num { font-size: var(--t-md); font-weight: 600; color: var(--ink); text-align: right; }
+/* celular: um bloco por estado, dentro do mesmo componente */
+.eq-cartoes { gap: 0; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); overflow: hidden; }
+.eq-cartoes .cartao { border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; box-shadow: none; padding: 16px; display: grid; gap: 8px; }
+.eq-cartoes .cartao:first-child { border-top: 0; }
+.eq-cartoes .fn { margin-top: 6px; font-size: var(--t-xs); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+@media (max-width: 1100px) { .eq-quadro col.c-uf { width: 110px; } .eq-quadro col.c-plano { width: 210px; } .eq-quadro thead th, .eq-quadro tbody td { padding-left: 14px; padding-right: 14px; } }
+.eq-quadro col.c-uf { width: 132px; } .eq-quadro col.c-plano { width: 250px; }
+.vaga-slot .btn-acao .ba-tx { white-space: normal; overflow: visible; text-overflow: clip; font-size: var(--t-md); line-height: 1.2; }
+.eq-quadro .vagabtn .nm, .eq-cartoes .vagabtn .nm { font-weight: 600; }
