@@ -18,6 +18,13 @@ test('mapa público: círculo proporcional por município, vazado onde ainda nã
   assert.match(h, /Cada círculo representa um município\. O tamanho indica o número de mulheres cadastradas\./); assert.match(h, /Município previsto, ainda sem cadastro/);
   assert.match(P.mapaUFs({ entrada: true }), /Cada ponto representa 1 município atendido/, 'servidor sem o script 40: volta aos pontos');
 });
+test('login: no mapa da entrada todos os municípios são pontos fixos e iguais, com ou sem cadastro (02/10/2026)', async () => {
+  const t = await montar('coord_geral'); t.S.verEntrada = true; t.S.modoLogin = 'entrar'; t.MQ.ui.render(); await new Promise(r => setTimeout(r, 60)); const h = t.html();
+  const mapa = h.slice(h.indexOf('class="mapa mapa-pub'), h.indexOf('</svg>', h.indexOf('class="mapa mapa-pub')));
+  assert.equal((mapa.match(/class="mun-pt"/g) || []).length, 29, 'os 29 municípios do projeto');
+  assert.ok(!/mun-q|mun-prev|mun-vazio|class="mun-n"/.test(mapa), 'sem círculo por número de cadastradas e sem ponto vazado');
+  assert.ok(!/O tamanho indica o número de mulheres cadastradas/.test(h)); assert.match(h, /Cada ponto representa 1 município atendido/);
+});
 test('login: frase do projeto mantida e mensagem curta', async () => {
   const t = await montar('coord_geral'); t.S.verEntrada = true; t.S.modoLogin = 'entrar'; t.MQ.ui.render(); const x = texto(t.html());
   assert.match(x, /O quintal\s*nunca\s*foi pouco/); assert.match(x, /É onde produção, renda e autonomia começam/); assert.match(x, /Mulheres rurais de cinco estados do Nordeste/);
