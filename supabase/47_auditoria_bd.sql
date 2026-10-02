@@ -1564,6 +1564,9 @@ end $$;
 notify pgrst, 'reload schema';
 notify pgrst, 'reload config';
 
+-- o script 20 (IA) é opcional: sem a tabela dele, a função de limite de uso não fica instalada
+do $$ begin if to_regclass('public.ia_usos') is null then drop function if exists public.registrar_uso_ia(); end if; end $$;
+
 commit;
 
 select 'Correções da auditoria do banco instaladas' as resultado,
