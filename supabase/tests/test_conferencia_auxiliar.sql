@@ -4,7 +4,8 @@
 truncate res;
 create temp table pid2(k text, id uuid); grant all on pid2 to authenticated;
 select f(:BB, format('insert into pid2 select %L, (%s)', 'a', sp('', null, 'passagem', 50, :'PASS')));
-select f(:BB, format('insert into pid2 select %L, (%s)', 'b', sp('', null, 'passagem', 50, :'PASS')));
+-- (47: pedido idêntico da mesma pessoa em menos de 2 minutos devolve o que já existe; o segundo pedido do teste tem outra data)
+select f(:BB, format('insert into pid2 select %L, (%s)', 'b', sp('', null, 'passagem', 51, :'PASS')));
 select f(:BB, format('insert into pid2 select %L, (%s)', 'c', sp('', null, 'evento', 60, '{"local":"Sede"}')));
 \set PA '(select id from pid2 where k=''a'')'
 \set PB '(select id from pid2 where k=''b'')'

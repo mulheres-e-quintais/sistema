@@ -93,7 +93,10 @@
   const fotosAv = {};
   function painelForm(p) {
     const f = (S().fichas || []).find(x => x.id === p.ficha); if (!f) return '<div class="painel-corpo"><p>Ficha não encontrada.</p></div>';
-    const atual = avaliacoes().find(a => a.ficha_id === f.id);
+    // 47: avaliação que ainda está só no aparelho (sem internet, ou recusada porque outra pessoa alterou antes) abre com o que foi preenchido
+    const naFila = (S().fila || []).find(i => i.tipo === 'avaliacao' && i.dados && i.dados.ficha_id === f.id);
+    const noServ = avaliacoes().find(a => a.ficha_id === f.id);
+    const atual = naFila ? MQ.juntarFila(noServ, naFila) : noServ;
     const dg = (S().diagnosticos || []).find(x => x.ficha_id === f.id);
     const base = dg && dg.dados && dg.dados.impacto;
     const a = atual ? Object.assign({}, atual, atual.dados || {}) : { id: MQ.novoId(), data_visita: R.hoje(), latitude: dg ? dg.latitude : null, longitude: dg ? dg.longitude : null };
@@ -269,7 +272,8 @@
       U().toast(enviado ? 'Avaliação registrada. A visita conta como feita e pode entrar na ajuda de custo.' : 'Avaliação guardada no aparelho. Será enviada quando houver internet.');
     });
   }
+  function conferir(it) { Object.keys(fotosAv).forEach(k => delete fotosAv[k]); Object.assign(fotosAv, it.fotos || {}); U().abrirPainel({ tipo: 'aval-form', ficha: it.dados.ficha_id, visita: it.dados.visita_id || '' }); }
   function painel(p) { return p.tipo === 'aval-ver' ? painelVer(p) : painelForm(p); }
 
-  MQ.impactoUI = { bloco, ler, validar, classificar, menorDaFamilia, secaoCoord, painel, clique, enviar, indicadores, avaliacoes };
+  MQ.impactoUI = { conferir, bloco, ler, validar, classificar, menorDaFamilia, secaoCoord, painel, clique, enviar, indicadores, avaliacoes };
 })();

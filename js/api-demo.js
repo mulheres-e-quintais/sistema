@@ -193,6 +193,9 @@
   const usadoPassagem = (d, pedag, semId) => (d.pedidos || []).filter(y => y.id !== semId && y.situacao === 'autorizado' && y.tipo === 'passagem' && ehPedagogico(y) === pedag).reduce((t, y) => t + (+y.valor_autorizado || 0), 0);
   const visitaPaga = (d, vid) => { const sid = (d.solic_visitas || {})[vid]; return !!sid && ((d.solicitacoes || []).find(x => x.id === sid) || {}).situacao === 'lancada'; };
   const MSG_ALTERADO = 'Este registro foi alterado enquanto você lia. Abra de novo e confira.';
+  /* 47: versão do registro, como no banco: a tela manda a marca (atualizado_em que leu); se o registro mudou depois, recusa. Sem marca, grava como antes. */
+  const conferirVersao = (lista, id, op) => { const marca = op && op.marca; if (!marca) return;
+    const x = (lista || []).find(y => y.id === id); if (x && x.atualizado_em && x.atualizado_em !== marca) throw falha(R.MSG_CONFLITO); };
   function euMesmo() {
     const d = ler();
     const id = d.eu[d.perfil];
@@ -870,8 +873,8 @@
       if (eu.papel === 'agente') { const ids = new Set((d.visitas || []).filter(v => v.executor_id === eu.id && v.situacao !== 'cancelada').map(v => v.ficha_id)); return copia(d.fichas.filter(f => ids.has(f.id))); }
       return copia(d.fichas.filter(f => f.uf === eu.uf));
     },
-    async salvarFicha(dados, fotos) {
-      const d = ler(); d.fichas = d.fichas || []; const eu = euMesmo();
+    async salvarFicha(dados, fotos, op) {
+      const d = ler(); d.fichas = d.fichas || []; const eu = euMesmo(); conferirVersao(d.fichas, dados.id, op);
       if (!eu || !R.ehBolsista(eu.papel) || dados.uf !== eu.uf) throw falha('Seu perfil não tem permissão para esta ação.');
       const i = d.fichas.findIndex(x => x.id === dados.id);
       const antes = i >= 0 ? d.fichas[i] : null;
@@ -937,9 +940,9 @@
       if (R.ehBolsista(eu.papel)) return copia(d.visitas.filter(v => v.uf === eu.uf));
       return copia(d.visitas.filter(v => v.executor_id === eu.id));
     },
-    async salvarVisita(v, fotos) {
+    async salvarVisita(v, fotos, op) {
       if (fotos && Object.keys(fotos).length) v = Object.assign({}, v, { fotos: Object.keys(fotos).map(k => 'visita_' + v.id + '_' + k + '.jpg') });
-      const d = ler(); d.visitas = d.visitas || []; const eu = euMesmo();
+      const d = ler(); d.visitas = d.visitas || []; const eu = euMesmo(); conferirVersao(d.visitas, v.id, op);
       const i = d.visitas.findIndex(x => x.id === v.id); const antes = i >= 0 ? d.visitas[i] : null;
       const f = d.fichas.find(x => x.id === v.ficha_id);
       if (!f) throw falha('Ficha não encontrada.');
@@ -987,8 +990,8 @@
       if (R.ehBolsista(eu.papel)) return copia(l.filter(a => a.uf === eu.uf));
       return copia(l.filter(a => a.executor_id === eu.id));
     },
-    async salvarAvaliacao(dados, fotos) {
-      const d = ler(); const eu = euMesmo(); d.avaliacoes = d.avaliacoes || [];
+    async salvarAvaliacao(dados, fotos, op) {
+      const d = ler(); const eu = euMesmo(); d.avaliacoes = d.avaliacoes || []; conferirVersao(d.avaliacoes, dados.id, op);
       const v = (d.visitas || []).find(x => x.id === dados.visita_id);
       if (!v || v.etapa !== 'avaliacao' || v.ficha_id !== dados.ficha_id) throw falha('A avaliação precisa estar ligada à visita de avaliação desta mulher.');
       if (v.situacao === 'cancelada') throw falha('A visita de avaliação foi cancelada.');
@@ -1017,8 +1020,8 @@
       if (R.ehBolsista(eu.papel)) return copia(d.diagnosticos.filter(x => x.uf === eu.uf));
       return copia(d.diagnosticos.filter(x => x.executor_id === eu.id));
     },
-    async salvarDiagnostico(dados, fotos) {
-      const d = ler(); d.diagnosticos = d.diagnosticos || []; const eu = euMesmo();
+    async salvarDiagnostico(dados, fotos, op) {
+      const d = ler(); d.diagnosticos = d.diagnosticos || []; const eu = euMesmo(); conferirVersao(d.diagnosticos, dados.id, op);
       const v = (d.visitas || []).find(x => x.id === dados.visita_id);
       if (!v || v.etapa !== 'diagnostico' || v.ficha_id !== dados.ficha_id) throw falha('O diagnóstico precisa estar ligado à visita de diagnóstico desta mulher.');
       if (!eu || !((R.ehBolsista(eu.papel) && v.uf === eu.uf) || v.executor_id === eu.id)) throw falha('Seu perfil não tem permissão para esta ação.');
@@ -1146,6 +1149,19 @@
     async listarPreCadastros() {
       const eu = euMesmo(); if (!eu) return [];
       return copia((ler().pre_cadastros || []).filter(x => x.situacao === 'aguardando' && R.podeCadastrar(eu.papel, x.papel)));
+    },
+    /* 47 (aprovar_pre_cadastro): pessoa na equipe + dados pessoais + cadastro enviado aprovado, tudo ou nada */
+    async aprovarPreCadastro(pre, m, priv) {
+      const d0 = ler(); const x = (d0.pre_cadastros || []).find(y => y.id === pre);
+      if (!x) throw falha('Cadastro enviado não encontrado (ou o seu perfil não pode aprová-lo).');
+      if (x.situacao !== 'aguardando') throw falha('Este pré-cadastro já foi decidido.');
+      const antes = JSON.stringify(mem);
+      try {
+        const novo = await this.criar(m);
+        if (priv) await this.salvarPrivado(novo.id, priv);
+        await this.decidirPreCadastro(pre, 'aprovado', null, novo.id);
+        return novo;
+      } catch (e) { mem = JSON.parse(antes); gravar(); throw e; }   // falhou no meio: nada fica gravado
     },
     async decidirPreCadastro(id, situacao, obs, equipe_id) {
       const d = ler(); const eu = euMesmo(); const x = (d.pre_cadastros || []).find(y => y.id === id);
