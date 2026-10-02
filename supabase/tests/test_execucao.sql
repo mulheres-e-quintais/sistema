@@ -18,7 +18,7 @@ select t('quem lançou é o sistema que marca (não dá para forjar)', :G, $q$do
   insert into public.execucao_lancamentos (tipo, item, valor, data, criado_por, criado_em) values ('despesa', 'diarias', 400, current_date, null, '2020-01-01');
   if exists (select 1 from public.execucao_lancamentos where item = 'diarias' and (criado_por is null or criado_em < now() - interval '1 minute')) then raise exception 'forjou'; end if; end $x$ $q$, 'ok');
 select t('valor negativo sem estorno é recusado', :G, $q$insert into public.execucao_lancamentos (tipo, item, valor, data) values ('despesa', 'quintais', -10, current_date)$q$, 'negativo');
-select t('valor zero é recusado', :G, $q$insert into public.execucao_lancamentos (tipo, item, valor, data) values ('despesa', 'quintais', 0, current_date)$q$, 'check');
+select t('valor zero é recusado', :G, $q$insert into public.execucao_lancamentos (tipo, item, valor, data) values ('despesa', 'quintais', 0, current_date)$q$, 'precisa ser de R$ 0,01 a R$ 2.000.000,00');
 select t('data no futuro é recusada', :G, $q$insert into public.execucao_lancamentos (tipo, item, valor, data) values ('despesa', 'quintais', 10, current_date + 5)$q$, 'futuro');
 select t('item com código inválido é recusado', :G, $q$insert into public.execucao_lancamentos (tipo, item, valor, data) values ('despesa', 'Quintais <b>', 10, current_date)$q$, 'check');
 select t('ninguém altera um lançamento (nem a geral)', :G, $q$update public.execucao_lancamentos set valor = 1$q$, 'permission denied');
@@ -30,7 +30,7 @@ select t('estorno anula exatamente o original (valor, item e tipo vêm do origin
   if (select sum(valor) from public.execucao_lancamentos where id = o or estorno_de = o) <> 0 then raise exception 'não zerou'; end if;
   if (select item from public.execucao_lancamentos where estorno_de = o) <> 'quintais' then raise exception 'mudou item'; end if; end $x$ $q$, 'ok');
 select f(:G, $q$insert into public.execucao_lancamentos (tipo, item, valor, data, estorno_de, descricao) select 'despesa', 'combustivel', 1, current_date, id, 'Abastecimento era de outro projeto' from public.execucao_lancamentos where item = 'combustivel'$q$);
-select t('o mesmo lançamento não se estorna duas vezes', :G, $q$insert into public.execucao_lancamentos (tipo, item, valor, data, estorno_de, descricao) select 'despesa', 'quintais', 1, current_date, estorno_de, 'Tentando estornar de novo' from public.execucao_lancamentos where estorno_de is not null limit 1$q$, 'duplicate');
+select t('o mesmo lançamento não se estorna duas vezes', :G, $q$insert into public.execucao_lancamentos (tipo, item, valor, data, estorno_de, descricao) select 'despesa', 'quintais', 1, current_date, estorno_de, 'Tentando estornar de novo' from public.execucao_lancamentos where estorno_de is not null limit 1$q$, 'já foi estornado');
 select t('não se estorna um estorno', :G, $q$insert into public.execucao_lancamentos (tipo, item, valor, data, estorno_de, descricao) select 'despesa', 'quintais', 1, current_date, id, 'Estorno do estorno aqui' from public.execucao_lancamentos where estorno_de is not null limit 1$q$, 'estorna um estorno');
 select t('cada lançamento vai para o histórico', :G, $q$do $x$ begin if (select count(*) from public.auditoria where tabela = 'execucao_lancamentos') < 4 then raise exception 'sem histórico'; end if; end $x$ $q$, 'ok');
 select t('pode_matricular fechada para o público', null, $q$select public.pode_matricular(gen_random_uuid())$q$, 'permission denied');

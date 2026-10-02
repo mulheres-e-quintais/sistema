@@ -12,6 +12,7 @@
   const matriculas = () => S().matriculas || [];
   const souProf = () => S().eu.papel === 'professor_fic';
   const podeCriarTurma = () => R.podeMatricular(S().eu.papel);
+  const podeEditarTurma = t => S().eu.papel === 'coord_geral' || (souProf() && t.professor_id === S().eu.id);   // a turma é de quem dá a aula: o colega matricula nela, mas não altera
   const podeNaTurma = t => souProf() || S().eu.papel === 'coord_geral';   // qualquer professor do FIC, em qualquer turma (ninguém trava na ausência do outro)
   const deCampo = () => (S().equipe || []).filter(m => m.status === 'ativa' && R.matriculaFIC(m.papel));   // coordenação técnica, bolsistas e agentes
   const professores = () => (S().equipe || []).filter(m => m.status === 'ativa' && m.papel === 'professor_fic');
@@ -73,7 +74,7 @@
         <div class="ft-tit"><h3>${E(t.nome)}</h3>
           <p class="ft-meta">${E(ondeT(t))} · ${E(periodo(t))} · Professor(a): ${E(nomeDe(prof))}</p></div>
         <div class="ft-dir"><span class="ft-total"><b class="num">${ms.length}</b> ${nMat.replace(/^\d+ /, '')}</span>
-          ${pode ? `<span class="acoes"><button class="btn pri peq" data-acao="fic-matricular" data-id="${E(t.id)}">+ Matricular</button><button class="btn peq" data-acao="fic-turma-editar" data-id="${E(t.id)}">Editar</button></span>` : ''}</div>
+          ${pode ? `<span class="acoes"><button class="btn pri peq" data-acao="fic-matricular" data-id="${E(t.id)}">+ Matricular</button>${podeEditarTurma(t) ? `<button class="btn peq" data-acao="fic-turma-editar" data-id="${E(t.id)}">Editar</button>` : ''}</span>` : ''}</div>
       </header>
       ${t.obs ? `<p class="ft-obs small">${E(t.obs)}</p>` : ''}
       ${ms.length ? `<ul class="ft-lista">${ms.map(({ x, m }) => `<li class="ft-linha">${U().avatar(m, 30)}
@@ -187,6 +188,7 @@
     const txt = k => String(fd.get(k) || '').trim();
     if (tipo === 'fic-turma') {
       const id = form.dataset.id || null; const antes = id ? turmas().find(x => x.id === id) : null;
+      if (antes && !podeEditarTurma(antes)) return U().mostrarErros(form, {}, 'Esta turma é de outro(a) professor(a): só ele(a) ou a coordenação geral altera.');
       const t = { id, nome: txt('nome'), uf: txt('uf') || null, municipio: txt('municipio') || null, inicio: txt('inicio') || null, fim: txt('fim') || null, obs: txt('obs') || null,
         professor_id: souProf() ? (antes ? antes.professor_id : S().eu.id) : txt('professor_id') || (antes && antes.professor_id) };
       const e = {};
@@ -204,6 +206,7 @@
       const marcados = fd.getAll('p'); const e = {};
       if (!data) e.data = 'Informe a data.'; else if (!dataExiste(data)) e.data = 'Data inválida.'; else if (data > R.hoje()) e.data = 'Data no futuro. Registre só a matrícula já feita.';
       else if (data < DATA_MIN) e.data = 'Data antes de 2026: confira o ano da matrícula.';
+      else { const tu = turmas().find(x => x.id === turma); if (tu && tu.inicio && data < tu.inicio) e.data = 'A turma começa em ' + R.fmtData(tu.inicio) + ': a data da matrícula não pode ser antes disso.'; }
       if (!marcados.length) return U().mostrarErros(form, e, 'Marque pelo menos uma pessoa.');
       const faltaNum = marcados.filter(id => txt('n_' + id).length < 3);
       if (faltaNum.length) return U().mostrarErros(form, e, 'Falta o número da matrícula (SUAP) de: ' + faltaNum.map(id => nomeDe(pessoa(id))).join(', ') + '.');

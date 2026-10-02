@@ -5,6 +5,11 @@
   const U = () => MQ.ui; const S = () => MQ.ui.S; const E = s => MQ.ui.esc(s);
   const R = MQ.regras;
   const CHAVE = 'mq-pend-visto-';
+  /* limites dos dados pessoais (os mesmos do cadastro pelo link, em convites.js): nascimento de 1900 até hoje menos 16 anos; textos com tamanho máximo */
+  const NASC_MIN = '1900-01-01';
+  const nascMax = () => { const h = R.hoje(); return (+h.slice(0, 4) - 16) + h.slice(4); };
+  const LIM = { logradouro: 120, bairro: 120, complemento: 120, cidade: 120, numero: 20, cep: 9, nis: 14 };
+  const ROT = { logradouro: 'Logradouro', bairro: 'Bairro', complemento: 'Complemento', cidade: 'Cidade', numero: 'Número' };
 
   function eu() {
     const s = S(); if (!s.eu || s.eu.papel === 'coord_geral') return null;
@@ -80,7 +85,9 @@
     const k = CHAVE + l.m.id;
     try { if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1'); } catch (e) { if (S().pendVisto) return; }
     S().pendVisto = true;
-    U().abrirPainel({ tipo: 'pend' });
+    // abre sozinho: ao fechar, o foco vai para o botão "Resolver" da faixa (não fica solto na página)
+    const quem = document.querySelector('.pend-faixa [data-acao="pend-ver"]'); if (quem) S().acionador = quem;
+    try { U().abrirPainel({ tipo: 'pend' }); } finally { if (S().acionador === quem) S().acionador = null; }
   }
 
   function painel(p) {
@@ -110,15 +117,15 @@
     const arlo = !!m.cadastro_arlo;
     return `<form class="f" data-form="pend-dados" novalidate>
       ${arlo ? '<p class="small muted">Você tem cadastro no Arlo: os outros dados ficam lá. Aqui só a cidade, para calcular a ajuda de custo das visitas.</p>' : `<div class="campos">
-        <div class="campo"><label for="dp-nasc">Data de nascimento</label><input id="dp-nasc" name="data_nascimento" type="date" value="${v(pv.data_nascimento)}" max="${R.hoje()}" required></div>
-        <div class="campo"><label for="dp-nis">PIS/NIS/PASEP <span class="muted">(se tiver)</span></label><input id="dp-nis" name="nis" inputmode="numeric" value="${v(pv.nis)}"></div></div>`}
+        <div class="campo"><label for="dp-nasc">Data de nascimento</label><input id="dp-nasc" name="data_nascimento" type="date" value="${v(pv.data_nascimento)}" min="${NASC_MIN}" max="${nascMax()}" required></div>
+        <div class="campo"><label for="dp-nis">PIS/NIS/PASEP <span class="muted">(se tiver)</span></label><input id="dp-nis" name="nis" inputmode="numeric" value="${v(pv.nis)}" maxlength="${LIM.nis}"></div></div>`}
       <div class="campos">
-        ${arlo ? '' : `<div class="campo"><label for="dp-cep">CEP</label><input id="dp-cep" name="cep" inputmode="numeric" value="${v(en.cep)}" placeholder="00000-000" data-cep><span class="dica" id="dp-cep-dica">Preenche o resto sozinho quando há internet.</span></div>
-        <div class="campo"><label for="dp-num">Número</label><input id="dp-num" name="numero" value="${v(en.numero)}" placeholder="s/n se não tiver"></div>
-        <div class="campo inteiro"><label for="dp-log">Logradouro (rua, sítio, estrada)</label><input id="dp-log" name="logradouro" value="${v(en.logradouro)}" required></div>
-        <div class="campo"><label for="dp-comp">Complemento</label><input id="dp-comp" name="complemento" value="${v(en.complemento)}"></div>
-        <div class="campo"><label for="dp-bai">Bairro ou comunidade</label><input id="dp-bai" name="bairro" value="${v(en.bairro)}"></div>`}
-        <div class="campo"><label for="dp-cid">Cidade</label><input id="dp-cid" name="cidade" value="${v(en.cidade)}" required></div>
+        ${arlo ? '' : `<div class="campo"><label for="dp-cep">CEP</label><input id="dp-cep" name="cep" inputmode="numeric" value="${v(en.cep)}" placeholder="00000-000" maxlength="${LIM.cep}" data-cep><span class="dica" id="dp-cep-dica">Preenche o resto sozinho quando há internet.</span></div>
+        <div class="campo"><label for="dp-num">Número</label><input id="dp-num" name="numero" value="${v(en.numero)}" maxlength="${LIM.numero}" placeholder="s/n se não tiver"></div>
+        <div class="campo inteiro"><label for="dp-log">Logradouro (rua, sítio, estrada)</label><input id="dp-log" name="logradouro" value="${v(en.logradouro)}" maxlength="${LIM.logradouro}" required></div>
+        <div class="campo"><label for="dp-comp">Complemento</label><input id="dp-comp" name="complemento" value="${v(en.complemento)}" maxlength="${LIM.complemento}"></div>
+        <div class="campo"><label for="dp-bai">Bairro ou comunidade</label><input id="dp-bai" name="bairro" value="${v(en.bairro)}" maxlength="${LIM.bairro}"></div>`}
+        <div class="campo"><label for="dp-cid">Cidade</label><input id="dp-cid" name="cidade" value="${v(en.cidade)}" maxlength="${LIM.cidade}" required></div>
         <div class="campo"><label for="dp-uf">Estado</label><select id="dp-uf" name="uf_end">${op(en.uf)}</select></div>
       </div>
       <div class="aviso erro" data-erro hidden></div>
@@ -137,7 +144,13 @@
       endereco: en, socioeconomico: pv.socioeconomico || null };
     const e = {};
     if (!arlo && !d.data_nascimento) e.data_nascimento = 'Informe a data de nascimento.';
-    else if (!arlo && (d.data_nascimento > R.hoje() || R.idade(d.data_nascimento) < 16)) e.data_nascimento = 'Data de nascimento inválida.';
+    else if (!arlo && d.data_nascimento !== (pv.data_nascimento || null)) {   // data antiga que não mudou não trava
+      if (!R.dataValida(d.data_nascimento) || d.data_nascimento > R.hoje()) e.data_nascimento = 'Data de nascimento inválida.';
+      else if (d.data_nascimento < NASC_MIN) e.data_nascimento = 'Confira o ano: a data de nascimento não pode ser antes de 1900.';
+      else if (d.data_nascimento > nascMax()) e.data_nascimento = 'Confira o ano: é preciso ter pelo menos 16 anos.';
+    }
+    // tamanho dos textos do endereço (o que já estava gravado e não mudou não trava)
+    Object.keys(ROT).forEach(k => { const antes = (pv.endereco || {})[k] || ''; if (en[k] && en[k] !== antes && String(en[k]).length > LIM[k]) e[k] = ROT[k] + ': texto muito longo (máximo ' + LIM[k] + ' caracteres).'; });
     if (d.nis && d.nis.length !== 11) e.nis = 'O PIS/NIS tem 11 números.';
     if (en.cep && en.cep.length !== 8) e.cep = 'O CEP tem 8 números.';
     if (!arlo && !en.logradouro) e.logradouro = 'Informe a rua, sítio ou estrada.';

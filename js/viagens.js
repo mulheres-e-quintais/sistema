@@ -16,6 +16,12 @@
   const legado = () => !S().quemConfere;                            // 26 ainda não instalado: regra antiga
   const nomeConf = () => NOME_CONF[conf()];
   const souConferente = () => !!(S().eu && S().eu.papel === conf());
+  /* passagens: um teto por finalidade (46). A passagem antiga, sem finalidade, conta no intercâmbio.
+     O pedido de acompanhamento pedagógico só a coordenação geral confere (e autoriza). */
+  const finDe = p => p && p.tipo === 'passagem' && (p.dados || {}).finalidade === 'pedagogico' ? 'pedagogico' : 'intercambio';
+  const ehPedag = p => !!p && p.tipo === 'passagem' && finDe(p) === 'pedagogico';
+  const confDe = p => ehPedag(p) ? 'coord_geral' : conf();          // quem confere ESTE pedido
+  const NOME_FIN = { intercambio: 'intercâmbio', pedagogico: 'acompanhamento pedagógico' };
   const SIT = {
     enviado: ['pend', 'Com a coordenação técnica'], devolvido: ['crit', 'Devolvido para corrigir'], conferido: ['pend', 'Com a coordenação geral'],
     autorizado: ['ok', 'Autorizado · enviado à FUNCERN'], recusado: ['crit', 'Recusado'], cancelado: ['', 'Cancelado']
@@ -27,7 +33,7 @@
   const pessoa = id => U().porId(id) || {};
   const nomeDe = m => (m && (m.nome_social || m.nome)) || '—';
   const sit = p => SIT[p.situacao] || ['', E(p.situacao || '—')];   // situação nova no banco não derruba a tela
-  const rotSit = p => p.situacao === 'enviado' ? 'Com ' + nomeConf() : sit(p)[1];
+  const rotSit = p => p.situacao === 'enviado' ? 'Com ' + NOME_CONF[confDe(p)] : sit(p)[1];
   const chip = p => `<span class="chip ${sit(p)[0]}">${rotSit(p)}</span>`;
   const podeVer = papel => ['articulacao', 'coord_tecnico', 'coord_geral'].includes(papel);
   /* ---------- tetos: R$ 6.000 por estado para eventos; R$ 70.000 para passagens (35_tetos_passagens_eventos.sql) ---------- */
@@ -44,18 +50,25 @@
     if (t < '1900-01-01') return 'Data de nascimento inválida: confira o ano.';
     return null; };
   let seqPass = 0;   // número único de cada bloco de passageira, para ligar cada rótulo (label for) ao seu campo
-  function saldo(tipo, uf, semId) {
-    const teto = MQ.TETOS[tipo]; const sd = S().saldoPed;
+  function saldo(tipo, uf, semId, finalidade) {
+    const fin = finalidade === 'pedagogico' ? 'pedagogico' : 'intercambio';
+    const teto = tipo === 'passagem' ? MQ.tetoPassagem(fin) : MQ.TETOS[tipo]; const sd = S().saldoPed;
+    const daLista = () => lista().filter(p => p.situacao === 'autorizado' && p.tipo === tipo && (tipo === 'passagem' ? finDe(p) === fin : p.uf === uf) && p.id !== semId).reduce((t, p) => t + (+p.valor_autorizado || 0), 0);
     let usado;
-    if (sd && !semId) usado = tipo === 'passagem' ? +sd.passagem_usado || 0 : +((sd.evento_usado || {})[uf]) || 0;
-    else usado = lista().filter(p => p.situacao === 'autorizado' && p.tipo === tipo && (tipo === 'passagem' || p.uf === uf) && p.id !== semId).reduce((t, p) => t + (+p.valor_autorizado || 0), 0);
+    if (sd && !semId && tipo === 'evento') usado = +((sd.evento_usado || {})[uf]) || 0;
+    else if (sd && !semId && fin === 'intercambio' && sd.passagem_pedagogico_usado != null) usado = +sd.passagem_usado || 0;
+    else if (sd && !semId && fin === 'pedagogico' && sd.passagem_pedagogico_usado != null) usado = +sd.passagem_pedagogico_usado || 0;
+    else usado = daLista();   // servidor ainda sem o 46 (um número só para todas as passagens): soma pela lista
     return { teto, usado, livre: Math.max(0, teto - usado) };
   }
-  const rotSaldo = (tipo, uf) => { const x = saldo(tipo, uf); return tipo === 'evento' ? `Teto de eventos de ${uf}: ${brl(x.teto)} · já autorizado ${brl(x.usado)} · saldo <b>${brl(x.livre)}</b>` : `Teto de passagens do projeto: ${brl(x.teto)} · já autorizado ${brl(x.usado)} · saldo <b>${brl(x.livre)}</b>`; };
+  const rotSaldoPass = fin => { const x = saldo('passagem', null, null, fin); return `Teto de passagens de ${NOME_FIN[fin]}: ${brl(x.teto)} · já autorizado ${brl(x.usado)} · saldo <b>${brl(x.livre)}</b>`; };
+  /* passagem sem finalidade escolhida (formulário novo, lista da bolsista): mostra os dois saldos */
+  const rotSaldo = (tipo, uf, finalidade) => { if (tipo === 'passagem') return finalidade ? rotSaldoPass(finalidade) : rotSaldoPass('intercambio') + '<br>' + rotSaldoPass('pedagogico');
+    const x = saldo(tipo, uf); return `Teto de eventos de ${uf}: ${brl(x.teto)} · já autorizado ${brl(x.usado)} · saldo <b>${brl(x.livre)}</b>`; };
   const semBanco = () => '<div class="aviso">Os pedidos de passagem e de evento ainda não estão instalados no servidor. A coordenação geral roda o arquivo <b>22_passagens_eventos.sql</b> no Supabase.</div>';
   const diasAte = R.diasAte;
   const minhaVez = p => { const eu = S().eu;
-    return (souConferente() && p.situacao === 'enviado' && p.solicitante_id !== eu.id) || (eu.papel === 'coord_geral' && p.situacao === 'conferido'); };
+    return (eu.papel === confDe(p) && p.situacao === 'enviado' && p.solicitante_id !== eu.id) || (eu.papel === 'coord_geral' && p.situacao === 'conferido'); };
   const nPass = p => p.tipo === 'passagem' ? ((p.dados && p.dados.passageiros) || []).length : 0;
 
   /* ---------- bolsista de articulação ---------- */
@@ -83,7 +96,7 @@
     const extra = p.tipo === 'passagem' ? ` · ${nPass(p)} passageira${nPass(p) === 1 ? '' : 's'}` : '';
     const alerta = ['enviado', 'conferido'].includes(p.situacao) && d < 30 ? ` · <b style="color:var(--crit)">${d < 0 ? 'a data já passou' : d === 0 ? 'é hoje' : 'faltam ' + d + ' dia' + (d > 1 ? 's' : '')}</b>` : '';
     return `<button class="vagabtn ficha-linha viag-linha" data-acao="viag-ver" data-id="${E(p.id)}">
-      <span class="nm">${E(TIPO[p.tipo])} · ${E(p.uf)}</span>
+      <span class="nm">${E(TIPO[p.tipo])}${ehPedag(p) ? ' (acompanhamento pedagógico)' : ''} · ${E(p.uf)}</span>
       <span class="small muted">${comPessoa ? E(nomeDe(pessoa(p.solicitante_id))) + ' · ' : ''}${quando}${extra}${alerta}</span>
       <span class="small">${E(p.titulo)}</span>
       <span>${chip(p)}</span></button>`;
@@ -92,9 +105,9 @@
   /* ---------- gastos separados: passagens (teto do projeto) e eventos (teto por estado) ---------- */
   const EM_ANALISE = ['enviado', 'conferido', 'devolvido'];
   const estimado = p => +((p.dados || {}).valor_estimado) || 0;
-  function gastos(tipo, uf) {   // autorizado = valor da coordenação; em análise = valor estimado de quem pediu
-    const xs = lista().filter(p => p.tipo === tipo && (!uf || p.uf === uf));
-    const x = saldo(tipo, uf);
+  function gastos(tipo, uf, finalidade) {   // autorizado = valor da coordenação; em análise = valor estimado de quem pediu
+    const xs = lista().filter(p => p.tipo === tipo && (!uf || p.uf === uf) && (tipo !== 'passagem' || finDe(p) === (finalidade || 'intercambio')));
+    const x = saldo(tipo, uf, null, finalidade);
     const analise = xs.filter(p => EM_ANALISE.includes(p.situacao)).reduce((t, p) => t + estimado(p), 0);
     return { teto: x.teto, usado: x.usado, livre: x.livre, analise, estoura: x.usado + analise > x.teto };
   }
@@ -124,27 +137,27 @@
       const vez = t.filter(minhaVez), outros = t.filter(p => ['enviado', 'conferido'].includes(p.situacao) && !minhaVez(p));
       const dev = t.filter(p => p.situacao === 'devolvido'), au = t.filter(p => p.situacao === 'autorizado'), fim = t.filter(p => ['recusado', 'cancelado'].includes(p.situacao));
       return `${bloco(tituloVez, vez, 'Nada esperando você.')}
-        ${outros.length ? bloco(souGeral ? 'Com ' + nomeConf() + (legado() ? ' (você pode conferir se ela não puder)' : '') : 'Com a coordenação geral', outros, '') : ''}
+        ${outros.length ? bloco(souGeral ? 'Com ' + nomeConf() + (legado() ? ' (você pode conferir se ela não puder)' : '') : outros.some(p => p.situacao === 'enviado') && !outros.some(p => p.situacao === 'conferido') ? 'Aguardando a coordenação geral (acompanhamento pedagógico)' : 'Com a coordenação geral', outros, '') : ''}
         ${dev.length ? bloco('Devolvidos para a bolsista corrigir', dev, '') : ''}
         <details class="hist"><summary>Autorizados (${au.length})</summary><div class="pag-lista" style="padding:0 18px 16px">${au.map(p => linha(p, true)).join('') || '<p class="muted">Nenhum ainda.</p>'}</div></details>
         ${fim.length ? `<details class="hist"><summary>Recusados e cancelados (${fim.length})</summary><div class="pag-lista" style="padding:0 18px 16px">${fim.map(p => linha(p, true)).join('')}</div></details>` : ''}`; };
-    const gp = gastos('passagem');
+    const gp = gastos('passagem', null, 'intercambio'), gpp = gastos('passagem', null, 'pedagogico');
     const ge = MQ.UFS.map(u => Object.assign({ uf: u.uf, nome: u.nome }, gastos('evento', u.uf)));
     const somaE = k => ge.reduce((t, g) => t + g[k], 0);
     const nVez = tipo => vezTodos.filter(p => p.tipo === tipo).length;
     return `<div class="cab"><div><span class="eyebrow">Viagens e eventos</span><h1>Passagens e eventos</h1>
         <p>A bolsista de articulação estadual pede; ${souGeral ? (conf() === 'coord_geral' ? 'você confere e autoriza' : nomeConf() + ' confere; você autoriza') + ' e manda para a FUNCERN, que compra ou contrata.' : 'você confere e manda para a coordenação geral, que autoriza e manda para a FUNCERN.'}
-        Prazos: passagem ${PRAZO.passagem} dias antes da viagem (a FUNCERN exige 30); evento ${PRAZO.evento} dias antes. <b>Os gastos são separados:</b> passagens têm um teto para o projeto todo; eventos, um teto por estado.</p></div></div>
+        Prazos: passagem ${PRAZO.passagem} dias antes da viagem (a FUNCERN exige 30); evento ${PRAZO.evento} dias antes. <b>Os gastos são separados:</b> passagens têm um teto para cada finalidade (intercâmbio e acompanhamento pedagógico), no projeto todo; eventos, um teto por estado.</p></div></div>
       <div class="resumo">
         <div><span class="v num" ${vezTodos.length ? 'style="color:var(--crit)"' : ''}>${vezTodos.length}</span><span class="l">esperando você</span></div>
-        <div><span class="v num">${brl(gp.usado)}</span><span class="l">gasto com passagens</span></div>
+        <div><span class="v num">${brl(gp.usado + gpp.usado)}</span><span class="l">gasto com passagens</span></div>
         <div><span class="v num">${brl(somaE('usado'))}</span><span class="l">gasto com eventos</span></div></div>
       <nav class="viag-ir small" aria-label="Ir para"><a href="#viag-passagens">Passagens aéreas${nVez('passagem') ? ` (${nVez('passagem')} esperando)` : ''}</a><a href="#viag-eventos">Eventos${nVez('evento') ? ` (${nVez('evento')} esperando)` : ''}</a></nav>
       ${souGeral && conf() === 'auxiliar_adm' ? '<div class="aviso">Sem coordenação técnica ativa: quem confere os pedidos é o auxiliar administrativo; você autoriza. Assim cada pedido passa por duas pessoas. Quando a técnica for cadastrada, ela volta a conferir.</div>' : ''}
       ${souGeral && conf() === 'coord_geral' && !legado() ? '<div class="aviso erro">Sem coordenação técnica e sem auxiliar administrativo: você confere e autoriza sozinho (fica registrado). Cadastre a técnica ou o auxiliar para voltar a ter duas pessoas em cada pedido.</div>' : ''}
       <section class="secao viag-tipo" id="viag-passagens" aria-labelledby="t-vp"><div class="secao-cab"><div><h2 id="t-vp">Passagens aéreas</h2>
-          <p class="small muted">Teto de ${brl(MQ.TETOS.passagem)} para o projeto todo, somando os 5 estados. Passagens contadas por pessoa (ida e volta).</p></div></div>
-        <div class="bloco viag-tetos"><h3>Tetos de gasto · passagens</h3>${cartaoGasto(gp, 'Autorizado em passagens')}
+          <p class="small muted">Dois tetos para o projeto todo, somando os 5 estados: ${brl(MQ.tetoPassagem('intercambio'))} para o intercâmbio e ${brl(MQ.tetoPassagem('pedagogico'))} para o acompanhamento pedagógico (um não cobre o outro). Passagens contadas por pessoa (ida e volta). ${souGeral ? 'O pedido de acompanhamento pedagógico é conferido e autorizado só por você.' : 'O pedido de acompanhamento pedagógico é conferido só pela coordenação geral.'}</p></div></div>
+        <div class="bloco viag-tetos"><h3>Tetos de gasto · passagens</h3>${cartaoGasto(gp, 'Autorizado em passagens de intercâmbio')}${cartaoGasto(gpp, 'Autorizado em passagens de acompanhamento pedagógico')}
           <ul class="pp"><li><span>Intercâmbio entre as beneficiárias</span><b class="num">${usados('intercambio')}<small class="muted"> de ${PREVISTO.intercambio} passagens</small></b></li>
             <li><span>Acompanhamento pedagógico</span><b class="num">${usados('pedagogico')}<small class="muted"> de ${PREVISTO.pedagogico} passagens</small></b></li></ul></div>
         ${listas('passagem')}</section>
@@ -192,7 +205,7 @@
     if (tipo === 'passagem') {
       const ps = (d.passageiros && d.passageiros.length) ? d.passageiros : [{}];
       corpo = `<fieldset><legend>Viagem</legend><div class="campos">${comum}
-          <div class="campo inteiro"><label for="vg-fin">Para quê</label><select id="vg-fin" name="finalidade"><option value="">Selecione…</option>${Object.entries(FINALIDADE).map(([k, t]) => `<option value="${k}" ${d.finalidade === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+          <div class="campo inteiro"><label for="vg-fin">Para quê</label><select id="vg-fin" name="finalidade" aria-describedby="vg-fin-dica"><option value="">Selecione…</option>${Object.entries(FINALIDADE).map(([k, t]) => `<option value="${k}" ${d.finalidade === k ? 'selected' : ''}>${t}</option>`).join('')}</select><span class="dica" id="vg-fin-dica">Cada finalidade tem o seu teto. O pedido de acompanhamento pedagógico é conferido só pela coordenação geral.</span></div>
           <div class="campo"><label for="vg-ori">Cidade de origem</label><input id="vg-ori" name="origem" value="${v('origem')}" placeholder="Ex.: Teresina/PI"></div>
           <div class="campo"><label for="vg-des">Cidade de destino</label><input id="vg-des" name="destino" value="${v('destino')}" placeholder="Ex.: Salvador/BA"></div>
           <div class="campo"><label for="vg-ida">Data de ida</label><input id="vg-ida" name="data_ref" type="date" min="${R.hoje()}" max="${FIM_PROJETO}" value="${E(x ? x.data_ref : '')}"></div>
@@ -294,14 +307,18 @@
     if (souDono && x.situacao === 'devolvido') acoes.push(`<div class="acoes"><button class="btn pri" data-acao="viag-nova" data-t="${x.tipo}" data-id="${E(x.id)}">Corrigir e reenviar</button></div>`);
     if (souDono && ['enviado', 'devolvido'].includes(x.situacao)) acoes.push(formMover(x, 'Cancelar este pedido', [['cancelar', 'Cancelar o pedido', 'perigo']], 'Motivo (opcional)'));
     const geral = papel === 'coord_geral';
-    if (!souDono && papel !== 'coord_geral' && souConferente() && x.situacao === 'enviado') acoes.push(formMover(x, 'Conferência', [['conferir', 'Conferido', 'pri'], ['devolver', 'Devolver para correção', 'perigo']], 'Observação (obrigatória para devolver)'));
+    const pedag = ehPedag(x);
+    if (!souDono && papel !== 'coord_geral' && pedag && x.situacao === 'enviado' && (souConferente() || papel === 'coord_tecnico'))
+      acoes.push('<div class="aviso" data-viag-pedag><b>Pedido de acompanhamento pedagógico: aguardando a coordenação geral.</b> Só ela confere e autoriza este tipo de pedido.</div>');
+    if (!souDono && papel !== 'coord_geral' && !pedag && souConferente() && x.situacao === 'enviado') acoes.push(formMover(x, 'Conferência', [['conferir', 'Conferido', 'pri'], ['devolver', 'Devolver para correção', 'perigo']], 'Observação (obrigatória para devolver)'));
     if (geral && x.situacao === 'enviado') {
-      if (souConferente()) acoes.push(formMover(x, 'Conferência (sem coordenação técnica e sem auxiliar)', [['conferir', 'Conferido', 'pri'], ['devolver', 'Devolver para correção', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)'));
+      if (pedag && !souDono) acoes.push(formMover(x, 'Conferência (acompanhamento pedagógico: só a coordenação geral confere)', [['conferir', 'Conferido', 'pri'], ['devolver', 'Devolver para correção', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)'));
+      else if (souConferente()) acoes.push(formMover(x, 'Conferência (sem coordenação técnica e sem auxiliar)', [['conferir', 'Conferido', 'pri'], ['devolver', 'Devolver para correção', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)'));
       else if (legado()) acoes.push(formMover(x, 'Conferir no lugar da coordenação técnica', [['conferir', 'Conferido', ''], ['devolver', 'Devolver para correção', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)'));
       else acoes.push(`<div class="aviso">Quem confere este pedido é ${nomeConf()}. Depois da conferência, ele volta para você autorizar.</div>` + formMover(x, 'Recusar sem esperar a conferência', [['recusar', 'Recusar', 'perigo']], 'Motivo da recusa (obrigatório)'));
     }
     if (geral && x.situacao === 'conferido') {
-      const mesmo = x.conferido_por === eu.id && conf() !== 'coord_geral' && !legado();
+      const mesmo = x.conferido_por === eu.id && confDe(x) !== 'coord_geral' && !legado();
       if (mesmo) acoes.push(`<div class="aviso erro">Você conferiu este pedido, então não pode autorizá-lo: cada pedido passa por duas pessoas. Devolva para ${nomeConf()} conferir.</div>` + formMover(x, 'Devolver ou recusar', [['devolver', 'Devolver para correção', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória)'));
       else acoes.push(formMover(x, 'Autorizar e mandar para a FUNCERN', [['autorizar', 'Autorizar', 'pri'], ['devolver', 'Devolver para correção', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)', true, true));
     }
@@ -324,9 +341,9 @@
   }
   function formMover(x, titulo, botoes, rotObs, protocolo, valor) {
     const vl = +x.valor_autorizado || +(x.dados || {}).valor_estimado || '';
-    return `<form class="bloco" data-form="viag-mover" data-id="${E(x.id)}" data-tipo="${E(x.tipo)}" data-uf="${E(x.uf)}" novalidate><h3>${titulo}</h3>
+    return `<form class="bloco" data-form="viag-mover" data-id="${E(x.id)}" data-tipo="${E(x.tipo)}" data-uf="${E(x.uf)}" data-fin="${finDe(x)}" novalidate><h3>${titulo}</h3>
       ${valor ? `<div class="campo"><label for="vm-valor">Valor autorizado (R$)</label><input id="vm-valor" name="valor" inputmode="decimal" value="${E(vl ? String(vl).replace('.', ',') : '')}">
-        <span class="dica">Vem o estimado pela bolsista; ajuste pelo orçamento da FUNCERN, se tiver.</span></div><p class="small muted">${rotSaldo(x.tipo, x.uf)}</p>` : ''}
+        <span class="dica">Vem o estimado pela bolsista; ajuste pelo orçamento da FUNCERN, se tiver.</span></div><p class="small muted">${rotSaldo(x.tipo, x.uf, finDe(x))}</p>` : ''}
       ${protocolo ? `<div class="campo"><label for="vm-prot">Protocolo ou número do pedido na FUNCERN <span class="muted">(se já tiver)</span></label><input id="vm-prot" name="protocolo" value="${E(x.funcern_protocolo || '')}"></div>` : ''}
       ${rotObs ? `<div class="campo"><label for="vm-obs-${E(x.id)}">${rotObs}</label><textarea id="vm-obs-${E(x.id)}" name="obs"></textarea></div>` : ''}
       <div class="aviso erro" data-erro hidden></div>
@@ -423,7 +440,7 @@
       const e = validar(t, titulo, data, just, d);
       if (d.valor_estimado < 0) e.valor_estimado = 'O valor não pode ser negativo.';
       else if (!(d.valor_estimado > 0)) e.valor_estimado = 'Informe o valor estimado (R$).';
-      else { const sd = saldo(t, S().eu.uf); if (d.valor_estimado > sd.livre) e.valor_estimado = 'Passa do saldo: restam ' + brl(sd.livre) + (t === 'evento' ? ' para eventos em ' + S().eu.uf : ' para passagens no projeto') + '.'; }
+      else { const sd = saldo(t, S().eu.uf, null, d.finalidade); if (d.valor_estimado > sd.livre) e.valor_estimado = 'Passa do saldo: restam ' + brl(sd.livre) + (t === 'evento' ? ' para eventos em ' + S().eu.uf : ' para passagens de ' + NOME_FIN[d.finalidade === 'pedagogico' ? 'pedagogico' : 'intercambio'] + ' no projeto') + '.'; }
       const lp = e._pass || []; const geral = e._geral; delete e._pass; delete e._geral;
       if (Object.keys(e).length || lp.length || geral) {
         const total = Object.keys(e).length + lp.length;
@@ -436,7 +453,7 @@
       await U().ocupado(form, async () => {
         await S().api.salvarPedido(form.dataset.id || null, t, titulo, data, d, just || null);
         await recarregar(); U().fecharPainel();
-        U().toast((form.dataset.id ? 'Pedido reenviado' : 'Pedido enviado') + ' para ' + nomeConf() + ' conferir.');
+        U().toast((form.dataset.id ? 'Pedido reenviado' : 'Pedido enviado') + ' para ' + NOME_CONF[t === 'passagem' && d.finalidade === 'pedagogico' ? 'coord_geral' : conf()] + ' conferir.');
       });
     }
     if (tipo === 'viag-mover') {
@@ -446,7 +463,7 @@
       if (acao === 'autorizar' && form.querySelector('[name=valor]')) {
         if (valor < 0) return U().mostrarErros(form, { valor: 'O valor não pode ser negativo.' });
         if (!(valor > 0)) return U().mostrarErros(form, { valor: 'Informe o valor para autorizar.' });
-        const sd = saldo(form.dataset.tipo, form.dataset.uf);
+        const sd = saldo(form.dataset.tipo, form.dataset.uf, null, form.dataset.fin);
         if (valor > sd.livre) return U().mostrarErros(form, { valor: 'Passa do teto: o saldo é ' + brl(sd.livre) + '. Ajuste o valor, devolva ou recuse.' });
       }
       await U().ocupado(form, async () => {

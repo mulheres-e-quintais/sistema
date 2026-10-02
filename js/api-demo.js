@@ -85,6 +85,8 @@
 
   function fichasExemplo(ana, maria, ct, gerarCPF) {
     const tudoSim = {}; MQ.CRITERIOS.forEach(([c]) => { tudoSim[c] = true; });
+    // 46: a data da ficha de exemplo nunca fica no futuro (a visita não pode ter data anterior à da ficha)
+    const dataFicha = (fixa, diasAtras) => fixa <= R.hoje() ? fixa : R.somaDias(R.hoje(), -diasAtras);
     const f = (n, o) => Object.assign({
       id: 'f' + n + 'x' + Math.random().toString(36).slice(2, 8), uf: 'PI', municipio: 'Paulistana', comunidade: 'Comunidade Lagoa do Mato',
       nome: '', cpf: gerarCPF(700000000 + n * 7919), data_nascimento: '1979-03-12', celular: '(89) 99' + String(4000000 + n).slice(-7),
@@ -94,14 +96,14 @@
       resultado: 'selecionada', posicao_espera: null, encaminhada_para: null, justificativa: '',
       foto_ficha_path: 'exemplo', foto_termo_path: 'exemplo', latitude: null, longitude: null,
       situacao: 'aprovada', aprovada_por: ct.id, aprovada_em: '2026-10-22T14:00:00.000Z', obs_coordenacao: null,
-      bolsista_id: ana.id, data_ficha: '2026-10-20', criado_em: '2026-10-20T13:00:00.000Z', atualizado_em: '2026-10-22T14:00:00.000Z', exemplo: true
+      bolsista_id: ana.id, data_ficha: dataFicha('2026-10-20', 12), criado_em: '2026-10-20T13:00:00.000Z', atualizado_em: '2026-10-22T14:00:00.000Z', exemplo: true
     }, tudoSim, o);
     const lista = [
       f(1, { nome: 'Francisca Alves de Sousa (exemplo)', p_sustento: true, latitude: -8.1102, longitude: -41.1187 }),
       f(2, { nome: 'Raimunda Nonata Ribeiro (exemplo)', comunidade: 'Assentamento Novo Horizonte', endereco: 'Rua do Açude, 3', p_raca_povo: true, latitude: -8.1731, longitude: -41.1649 }),
       f(3, { nome: 'Antônia Pereira Lima (exemplo)', municipio: 'Pio IX', comunidade: 'Comunidade Barra', endereco: 'Sítio Barra, s/n', data_nascimento: '1998-07-02', p_jovem: true, bolsista_id: null, latitude: -6.8121, longitude: -40.5903 }),
-      f(4, { nome: 'Josefa Maria da Conceição (exemplo)', situacao: 'aguardando', aprovada_por: null, aprovada_em: null, data_ficha: '2026-10-24', criado_em: '2026-10-24T12:00:00.000Z' }),
-      f(5, { nome: 'Luzia Gomes Ferreira (exemplo)', situacao: 'aguardando', aprovada_por: null, aprovada_em: null, endereco: 'Sitio Lagoa do Mato 11', data_ficha: '2026-10-24', criado_em: '2026-10-24T12:30:00.000Z' }),
+      f(4, { nome: 'Josefa Maria da Conceição (exemplo)', situacao: 'aguardando', aprovada_por: null, aprovada_em: null, data_ficha: dataFicha('2026-10-24', 8), criado_em: '2026-10-24T12:00:00.000Z' }),
+      f(5, { nome: 'Luzia Gomes Ferreira (exemplo)', situacao: 'aguardando', aprovada_por: null, aprovada_em: null, endereco: 'Sitio Lagoa do Mato 11', data_ficha: dataFicha('2026-10-24', 8), criado_em: '2026-10-24T12:30:00.000Z' }),
       f(6, { nome: 'Maria do Socorro Silva (exemplo)', resultado: 'lista_espera', posicao_espera: 1, p_cadunico: false, p_sem_ater: false }),
       f(7, { nome: 'Cícera Rodrigues Nunes (exemplo)', resultado: 'sem_agua', c_agua: false, encaminhada_para: 'Programa Cisternas (ASA) – Paulistana', justificativa: 'Só tem cisterna de consumo; na seca usa carro-pipa.' }),
       f(8, { nome: 'Ivonete Barbosa (exemplo)', situacao: 'devolvida', aprovada_por: null, aprovada_em: null, obs_coordenacao: 'A foto do termo está cortada: falta a assinatura. Fotografe de novo.' }),
@@ -185,6 +187,12 @@
     && (!m.cancelada_em || R.diaLocal(m.cancelada_em) > data)).map(m => m.equipe_id);
   const ficMesFechado = (d, prof, data) => (d.solicitacoes || []).some(s => s.tipo === 'bolsa' && s.equipe_id === prof && String(s.mes).slice(0, 7) === String(data).slice(0, 7)
     && ['solicitada', 'avalizada', 'lancada'].includes(s.situacao));
+  /* 46_regras_decididas.sql: o que o modo demonstração precisa para espelhar as regras novas do banco */
+  const dataExiste = t => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(t || '')); if (!m) return false; const x = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return x.getUTCFullYear() === +m[1] && x.getUTCMonth() === +m[2] - 1 && x.getUTCDate() === +m[3]; };
+  const ehPedagogico = p => p.tipo === 'passagem' && ((p.dados || {}).finalidade) === 'pedagogico';
+  const usadoPassagem = (d, pedag, semId) => (d.pedidos || []).filter(y => y.id !== semId && y.situacao === 'autorizado' && y.tipo === 'passagem' && ehPedagogico(y) === pedag).reduce((t, y) => t + (+y.valor_autorizado || 0), 0);
+  const visitaPaga = (d, vid) => { const sid = (d.solic_visitas || {})[vid]; return !!sid && ((d.solicitacoes || []).find(x => x.id === sid) || {}).situacao === 'lancada'; };
+  const MSG_ALTERADO = 'Este registro foi alterado enquanto você lia. Abra de novo e confira.';
   function euMesmo() {
     const d = ler();
     const id = d.eu[d.perfil];
@@ -233,7 +241,11 @@
       if (!['feira', 'grupo', 'merenda', 'paa', 'comprador', 'outro'].includes(x.tipo)) throw falha('Escolha o tipo de canal.');
       if (String(x.nome || '').trim().length < 3) throw falha('Dê um nome ao canal (pelo menos 3 letras).');
       const igual = s => String(s || '').trim().toLowerCase();
-      if (!atual && d.canaisVenda.some(c => c.uf === uf && igual(c.municipio) === igual(x.municipio) && c.tipo === x.tipo && igual(c.nome) === igual(x.nome))) throw falha('Este canal já está cadastrado neste município.');
+      const mesmo = c => c.uf === uf && igual(c.municipio) === igual(x.municipio) && c.tipo === x.tipo && igual(c.nome) === igual(x.nome);
+      if (!atual && d.canaisVenda.some(mesmo)) throw falha('Este canal já está cadastrado neste município.');
+      // 46: ao mudar o nome, o tipo ou o município, o canal não pode virar repetido de outro
+      if (atual && (igual(x.nome) !== igual(atual.nome) || x.tipo !== atual.tipo || igual(x.municipio) !== igual(atual.municipio)) && d.canaisVenda.some(c => c.id !== atual.id && mesmo(c)))
+        throw falha('Já existe outro canal com este nome e tipo neste município.');
       const agora = new Date().toISOString();
       const novo = { uf, municipio: x.municipio.trim(), tipo: x.tipo, nome: x.nome.trim(), detalhe: String(x.detalhe || '').trim() || null, contato: String(x.contato || '').trim() || null, ativo: x.ativo !== false, atualizado_por: eu.id, atualizado_em: agora };
       if (atual) Object.assign(atual, novo); else d.canaisVenda.push(Object.assign({ id: uid(), criado_por: eu.id, criado_em: agora }, novo));
@@ -309,6 +321,7 @@
       if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral anexa documentos do projeto.');
       const erros = MQ.docsUI ? MQ.docsUI.validarDocumento(dd, arquivo) : {};
       if (Object.keys(erros).length) { const e = falha(Object.values(erros)[0]); e.campos = erros; throw e; }
+      if (String(dd.data_documento) < '2025-01-01' || String(dd.data_documento) > R.somaDias(R.hoje(), 365)) throw falha('Confira a data do documento: precisa ser a partir de 01/01/2025 e no máximo um ano à frente.');   // 46
       const agora = new Date().toISOString(); const path = String(dd.data_documento).slice(0, 4) + '/' + uid() + '_' + arquivo.name;
       try { if (typeof URL !== 'undefined' && URL.createObjectURL && arquivo instanceof Blob) fotosMemoria.set(path, URL.createObjectURL(arquivo)); } catch (e) { /* sem arquivo na demonstração */ }
       const x = Object.assign({ id: uid() }, copia(dd), { arquivo_path: path, arquivo_nome: arquivo.name, tamanho: arquivo.size, mime: arquivo.type || null,
@@ -349,14 +362,35 @@
       const dias = Math.round((new Date(data + 'T12:00:00') - new Date(R.hoje() + 'T12:00:00')) / 864e5);
       if (dias < ant && String(justificativa || '').trim().length < 15) throw falha('Pedido fora do prazo (' + ant + ' dias antes). Escreva a justificativa.');
       if (tipo === 'passagem' && !((dados && dados.passageiros) || []).length) throw falha('Informe pelo menos uma passageira ou passageiro.');
-      if (!(+(dados || {}).valor_estimado > 0)) throw falha('Informe o valor estimado do pedido (R$).');   // 35
-      const agora = new Date().toISOString(); let p;
-      if (!id) { p = { id: uid(), tipo, uf: eu.uf, solicitante_id: eu.id, criado_em: agora }; d.pedidos.push(p); }
-      else {
+      const ve = +(dados || {}).valor_estimado;
+      if (!(ve > 0)) throw falha('Informe o valor estimado do pedido (R$).');   // 35
+      // 46: valor de R$ 0,01 a R$ 1.000.000,00 já no envio; nascimento de verdade; ninguém duas vezes na lista
+      if (!(Math.round(ve * 100) / 100 >= 0.01 && ve <= 1000000)) throw falha('O valor estimado precisa ficar entre R$ 0,01 e R$ 1.000.000,00 (veio ' + R.fmtBRL(ve) + '). Confira.');
+      if (tipo === 'passagem') {
+        const cpfs = [];
+        for (const x of dados.passageiros) {
+          const nome = String((x || {}).nome || '').trim().slice(0, 60), nasc = (x || {}).nascimento;
+          if (nasc) {
+            if (!dataExiste(nasc)) throw falha('A data de nascimento de ' + nome + ' não é uma data que existe. Confira dia, mês e ano.');
+            if (nasc > R.hoje()) throw falha('A data de nascimento de ' + nome + ' está no futuro. Confira.');
+            if (nasc < '1901-01-01') throw falha('Confira a data de nascimento de ' + nome + ': o ano está antigo demais.');
+          }
+          const c = R.soDigitos((x || {}).cpf);
+          if (c && cpfs.includes(c)) throw falha('A mesma pessoa (CPF) aparece duas vezes na lista de passageiras. Deixe cada pessoa uma vez só.');
+          if (c) cpfs.push(c);
+        }
+        if (dados.volta && !dataExiste(dados.volta)) throw falha('A data da volta não é uma data que existe. Confira dia, mês e ano.');
+      }
+      const agora = new Date().toISOString(); let p = null;
+      if (id) {
         p = d.pedidos.find(x => x.id === id);
         if (!p || p.solicitante_id !== eu.id) throw falha('Pedido não encontrado.');
         if (p.situacao !== 'devolvido') throw falha('Só dá para corrigir pedido devolvido.');
       }
+      // 46: passagem nova (ou quando a finalidade muda) diz para quê; pedido antigo sem finalidade não trava
+      if (tipo === 'passagem' && (!p || (dados.finalidade || null) !== ((p.dados || {}).finalidade || null)) && !['intercambio', 'pedagogico'].includes(dados.finalidade))
+        throw falha('Escolha para que é a passagem: intercâmbio ou acompanhamento pedagógico.');
+      if (!p) { p = { id: uid(), tipo, uf: eu.uf, solicitante_id: eu.id, criado_em: agora }; d.pedidos.push(p); }
       Object.assign(p, { titulo, data_ref: data, dados: copia(dados), justificativa_prazo: justificativa || null, situacao: 'enviado', enviado_em: agora, conferido_por: null, conferido_em: null, decidido_por: null, decidido_em: null, valor_autorizado: null });
       const aud = Object.assign({}, p); delete aud.dados;
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'pedidos_apoio', registro_id: p.id, acao: id ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: null, depois: aud });
@@ -367,20 +401,28 @@
       const d = ler(); const eu = euMesmo(); const p = (d.pedidos || []).find(x => x.id === id);
       if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral define o valor autorizado.');
       if (!(+valor > 0)) throw falha('Informe um valor maior que zero.');
+      if (!(Math.round(+valor * 100) / 100 >= 0.01)) throw falha('Informe um valor maior que zero (pelo menos R$ 0,01).');   // 46
+      if (!(+valor <= 1000000)) throw falha('Valor acima do esperado (' + R.fmtBRL(+valor) + '; o máximo é R$ 1.000.000,00). Confira.');
       if (!p || p.situacao !== 'conferido') throw falha('Só dá para definir o valor de pedido conferido, antes de autorizar.');
       p.valor_autorizado = Math.round(+valor * 100) / 100; gravar();
     },
     async saldoPedidos() {
       const d = ler(); const aut = (d.pedidos || []).filter(p => p.situacao === 'autorizado');
       const ev = {}; aut.filter(p => p.tipo === 'evento').forEach(p => { ev[p.uf] = (ev[p.uf] || 0) + (+p.valor_autorizado || 0); });
-      return { passagem_teto: MQ.TETOS.passagem, passagem_usado: aut.filter(p => p.tipo === 'passagem').reduce((t, p) => t + (+p.valor_autorizado || 0), 0), evento_teto: MQ.TETOS.evento, evento_usado: ev };
+      // 46: um saldo por finalidade; os nomes antigos (passagem_*) valem para o intercâmbio, onde conta a passagem antiga sem finalidade
+      const inter = usadoPassagem(d, false), pedag = usadoPassagem(d, true);
+      return { passagem_teto: MQ.TETOS.passagem, passagem_usado: inter, passagem_saldo: Math.max(MQ.TETOS.passagem - inter, 0),
+        passagem_pedagogico_teto: MQ.TETOS.passagem_pedagogico, passagem_pedagogico_usado: pedag, passagem_pedagogico_saldo: Math.max(MQ.TETOS.passagem_pedagogico - pedag, 0),
+        evento_teto: MQ.TETOS.evento, evento_usado: ev };
     },
     async moverPedido(id, acao, obs, protocolo) {
       const d = ler(); const eu = euMesmo(); const p = (d.pedidos || []).find(x => x.id === id);
       if (!eu || !p) throw falha('Pedido não encontrado.');
       const papel = eu.papel; const agora = new Date().toISOString(); const o = String(obs || '').trim();
-      const conferente = await this.quemConferePedidos();
+      const pedag = ehPedagogico(p);   // 46: passagem de acompanhamento pedagógico: só a coordenação geral confere (e autoriza)
+      const conferente = pedag ? 'coord_geral' : await this.quemConferePedidos();
       const nomeConf = { coord_tecnico: 'a coordenação técnica', auxiliar_adm: 'o auxiliar administrativo', coord_geral: 'a coordenação geral' }[conferente];
+      if (pedag && ['conferir', 'devolver'].includes(acao) && papel !== 'coord_geral') throw falha('Pedido de acompanhamento pedagógico: só a coordenação geral confere.');
       if (acao === 'conferir') {
         if (papel !== conferente) throw falha('Quem confere agora é ' + nomeConf + '.');
         if (p.solicitante_id === eu.id) throw falha('Ninguém confere o próprio pedido.');
@@ -396,9 +438,11 @@
         if (p.conferido_por === eu.id && conferente !== 'coord_geral') throw falha('Quem conferiu não autoriza o mesmo pedido. Devolva para ' + nomeConf + '.');
         const v = +p.valor_autorizado || +(p.dados || {}).valor_estimado || 0;   // 35: teto por estado (evento) e do projeto (passagem)
         if (!(v > 0)) throw falha('Informe o valor para autorizar.');
-        const outros = (d.pedidos || []).filter(y => y.id !== p.id && y.situacao === 'autorizado' && y.tipo === p.tipo && (p.tipo === 'passagem' || y.uf === p.uf)).reduce((t, y) => t + (+y.valor_autorizado || 0), 0);
-        const teto = MQ.TETOS[p.tipo];
-        if (outros + v > teto) throw falha((p.tipo === 'evento' ? 'Passa do teto de eventos de ' + p.uf + ' (R$ 6.000,00)' : 'Passa do teto de passagens do projeto (R$ 70.000,00)') + ': já autorizado ' + R.fmtBRL(outros) + ', saldo ' + R.fmtBRL(teto - outros) + '.');
+        // 46: passagens têm um teto por finalidade (a antiga, sem finalidade, conta no intercâmbio)
+        const outros = p.tipo === 'evento' ? (d.pedidos || []).filter(y => y.id !== p.id && y.situacao === 'autorizado' && y.tipo === 'evento' && y.uf === p.uf).reduce((t, y) => t + (+y.valor_autorizado || 0), 0)
+          : usadoPassagem(d, pedag, p.id);
+        const teto = p.tipo === 'evento' ? MQ.TETOS.evento : MQ.tetoPassagem(pedag ? 'pedagogico' : 'intercambio');
+        if (outros + v > teto) throw falha((p.tipo === 'evento' ? 'Passa do teto de eventos de ' + p.uf + ' (R$ 6.000,00)' : pedag ? 'Passa do teto de passagens de acompanhamento pedagógico (R$ 22.400,00)' : 'Passa do teto de passagens de intercâmbio (R$ 70.000,00)') + ': já autorizado ' + R.fmtBRL(outros) + ', saldo ' + R.fmtBRL(teto - outros) + '.');
         p.valor_autorizado = v;
         Object.assign(p, { situacao: 'autorizado', decidido_por: eu.id, decidido_em: agora, obs: o || null, funcern_protocolo: String(protocolo || '').trim() || null });
       } else if (acao === 'recusar') {
@@ -431,20 +475,34 @@
     async solicitarPagamento(tipo, mes, valor, relatorio, visitas, detalhe) {
       const d = ler(); const eu = euMesmo(); d.solicitacoes = d.solicitacoes || []; d.solic_visitas = d.solic_visitas || {};
       if (!eu) throw falha('Entre no sistema para solicitar.');
+      if (!['ajuda_custo', 'bolsa'].includes(tipo)) throw falha('Tipo de pagamento inválido: escolha ajuda de custo ou bolsa.');   // 46
+      if (!mes) throw falha('Informe o mês do pedido.');
       if (tipo === 'ajuda_custo' && !R.ehCampo(eu.papel)) throw falha('Ajuda de custo é só para bolsistas e agentes de campo que fazem visitas.');
       if (tipo === 'bolsa' && !['coord_tecnico', 'articulacao', 'apoio', 'professor_fic', 'auxiliar_adm'].includes(eu.papel)) throw falha('Seu perfil não recebe bolsa mensal pelo projeto.');
       if (!R.habilitado(eu)) throw falha('Sua habilitação ainda não está completa: sem ela não há pagamento.');
       const m = String(mes).slice(0, 7) + '-01'; if (m.slice(0, 7) > R.hoje().slice(0, 7)) throw falha('Só dá para solicitar o mês atual ou meses anteriores.');
       const ini = (d.equipe.find(x => x.id === eu.id) || eu).data_inicio;   // 32: nada antes do mês de início
       if (ini && m.slice(0, 7) < String(ini).slice(0, 7)) throw falha('Você começou no projeto em ' + String(ini).slice(5, 7) + '/' + String(ini).slice(0, 4) + ': só dá para solicitar a partir desse mês.');
-      const s = d.solicitacoes.find(x => x.tipo === tipo && x.equipe_id === eu.id && x.mes === m);
-      if (s && s.situacao !== 'devolvida') throw falha('Você já solicitou este mês. Acompanhe a situação na lista.');
+      // 46: a ajuda de custo pode ter mais de um pedido no mês (complementar); o devolvido é corrigido e reenviado (o mesmo registro).
+      //     A bolsa continua uma por mês por pessoa.
+      const doMes = d.solicitacoes.filter(x => x.tipo === tipo && x.equipe_id === eu.id && x.mes === m);
+      const s = tipo === 'ajuda_custo' ? doMes.filter(x => x.situacao === 'devolvida').sort((a, b) => String(b.aval_em || '').localeCompare(String(a.aval_em || '')))[0] : doMes[0];
+      if (tipo === 'bolsa' && s && s.situacao !== 'devolvida') throw falha('Você já solicitou este mês. Acompanhe a situação na lista.');
+      const complementar = tipo === 'ajuda_custo' && (s ? !!(s.detalhe || {}).complementar : doMes.some(x => x.situacao !== 'devolvida'));
       if (tipo === 'ajuda_custo') {
         if (!(visitas || []).length) throw falha('Marque as visitas feitas no mês.');
+        if (new Set(visitas).size !== visitas.length) throw falha('A mesma visita apareceu duas vezes no pedido. Marque cada visita uma vez só.');
         const ruim = visitas.some(id => { const v = (d.visitas || []).find(x => x.id === id); const sid = d.solic_visitas[id];
           return !v || v.executor_id !== eu.id || v.situacao !== 'realizada' || String(v.data_realizada).slice(0, 7) !== m.slice(0, 7) || (sid && (!s || sid !== s.id)); });
         if (ruim) throw falha('Há visita que não é sua, não está feita, é de outro mês ou já foi solicitada.');
-        if (!(+valor > 0)) throw falha('Valor inválido.');   // 32: ajuda de custo com valor zero, negativo ou vazio
+        if (!(+valor > 0)) throw falha('Valor inválido: informe um valor maior que zero.');   // 32: ajuda de custo com valor zero, negativo ou vazio
+        if (+valor > 2000 * visitas.length) throw falha('Valor acima do esperado para a ajuda de custo de ' + visitas.length + ' visita(s) (' + R.fmtBRL(+valor) + '; o máximo é R$ 2.000,00 por visita). Confira.');   // 45
+        // 46: o valor pedido não passa do total detalhado por visita (1 centavo de tolerância); sem detalhe, vale só o teto por visita
+        const det = detalhe && typeof detalhe === 'object' ? detalhe : {};
+        const total = typeof det.total === 'number' ? det.total : typeof det.total === 'string' ? R.numBR(det.total)
+          : Array.isArray(det.visitas) && det.visitas.length && det.visitas.every(x => x && typeof x.total === 'number') ? det.visitas.reduce((t, x) => t + x.total, 0) : null;
+        if (total != null && Math.round(+valor * 100) > Math.round(total * 100) + 1) throw falha('O valor pedido (' + R.fmtBRL(+valor) + ') passa do total das visitas detalhadas (' + R.fmtBRL(total) + '). Confira o pedido.');
+        detalhe = Object.assign({}, det); delete detalhe.complementar; if (complementar) detalhe.complementar = true;   // quem diz se é complementar é o sistema
       } else if (String(relatorio || '').trim().length < 50) throw falha('Escreva o relatório de atividades do mês (pelo menos algumas linhas).');
       const agora = new Date().toISOString(); let alvo = s;
       if (tipo === 'bolsa' && eu.papel === 'professor_fic') {   // 38: relatório com os encontros do mês e a presença, gravado pelo sistema
@@ -473,10 +531,10 @@
       const agora = new Date().toISOString();
       const vAval = valor != null ? valor : s.valor_solicitado;
       if (ok && !(vAval > 0)) throw falha('Informe o valor do aval (maior que zero).');
-      if (ok && s.tipo === 'ajuda_custo') {   // teto de R$ 600 por visita da solicitação (erro de digitação de um zero não vira pagamento)
+      if (ok && s.tipo === 'ajuda_custo') {   // teto de R$ 2.000,00 por visita da solicitação, como no banco (45) e na tela: erro de digitação de um zero não vira pagamento
         const nVis = Object.values(d.solic_visitas || {}).filter(sid => sid === s.id).length || ((s.detalhe || {}).visitas || []).length;
-        const teto = nVis ? 600 * nVis : MQ.CUSTO_PADRAO.teto;
-        if (vAval > teto) throw falha('Valor muito acima do pedido (' + R.fmtBRL(+s.valor_solicitado || 0) + '). Confira o valor: o aval da ajuda de custo vai até R$ 600,00 por visita.');
+        const teto = nVis ? 2000 * nVis : MQ.CUSTO_PADRAO.teto;
+        if (vAval > teto) throw falha('Valor muito acima do pedido (' + R.fmtBRL(+s.valor_solicitado || 0) + '). Confira o valor: o aval da ajuda de custo vai até R$ 2.000,00 por visita.');
       }
       if (ok && s.tipo === 'bolsa' && s.valor_solicitado != null && vAval > s.valor_solicitado) throw falha('O aval passa do valor pedido. Para pagar mais, devolva para a pessoa corrigir o valor.');
       if (ok) Object.assign(s, { situacao: 'avalizada', valor_avalizado: vAval, aval_por: eu.id, aval_em: agora, obs_aval: obs || null });
@@ -553,6 +611,16 @@
         if (d.ficPresencas.some(p => p.encontro_id === e.id && p.confirmado_em && (!pres.includes(p.equipe_id) || !mats.includes(p.equipe_id))))
           throw falha('Alguém que já confirmou a presença foi desmarcado (ou ficou fora da lista pela nova data). Quem confirmou continua presente.');
       }
+      { // 46: mesma turma, dia e modalidade = o mesmo encontro; os encontros da turma no dia somam até 12 horas.
+        //     No encontro que já existe, vale só quando o dia ou a modalidade mudam, ou quando as horas aumentam.
+        const outrosDia = d.ficEncontros.filter(y => y.turma_id === x.turma_id && y.data === x.data && !y.cancelado_em && y.id !== e.id);
+        const ch = Math.round(+x.carga_horaria * 10) / 10;
+        if ((!x.id || x.data !== e.data || x.modalidade !== e.modalidade) && outrosDia.some(y => y.modalidade === x.modalidade))
+          throw falha('Esta turma já tem encontro registrado neste dia nesta modalidade. Se houve mais horas, altere o encontro que já existe.');
+        const soma = outrosDia.reduce((t, y) => t + (+y.carga_horaria || 0), 0) + ch;
+        if ((!x.id || x.data !== e.data || ch > +e.carga_horaria) && soma > 12)
+          throw falha('Os encontros desta turma neste dia somariam ' + soma.toFixed(1).replace('.', ',') + ' horas: o máximo é 12 horas por dia.');
+      }
       if (!x.id) d.ficEncontros.push(e);
       Object.assign(e, { turma_id: x.turma_id, data: x.data, carga_horaria: Math.round(+x.carga_horaria * 10) / 10, modalidade: x.modalidade, conteudo: cont, atualizado_em: agora });
       mats.forEach(id => { const p = d.ficPresencas.find(y => y.encontro_id === e.id && y.equipe_id === id); const v = pres.includes(id);
@@ -589,6 +657,23 @@
       if (String(t.nome || '').trim().length < 3) throw falha('Dê um nome à turma.');
       if (t.inicio && t.fim && t.fim < t.inicio) throw falha('O fim da turma é antes do início.');
       d.turmas = d.turmas || []; const agora = new Date().toISOString(); const i = d.turmas.findIndex(x => x.id === t.id);
+      { // 46: início e fim dentro do período do projeto (só ao criar ou quando a data muda)
+        const a0 = i >= 0 ? d.turmas[i] : {}; const fora = v => v < '2026-01-01' || v > '2027-12-31';
+        if (t.inicio && t.inicio !== a0.inicio && fora(t.inicio)) throw falha('O início da turma fica entre 01/01/2026 e 31/12/2027.');
+        if (t.fim && t.fim !== a0.fim && fora(t.fim)) throw falha('O fim da turma fica entre 01/01/2026 e 31/12/2027.');
+      }
+      // 46: o professor altera (e cria) só a turma em que ELE é o professor; só a coordenação geral passa a turma para outro
+      if (eu.papel === 'professor_fic') {
+        if (i >= 0 && d.turmas[i].professor_id !== eu.id) throw falha('Esta turma é de outro(a) professor(a): só ele(a) ou a coordenação geral altera.');
+        if (i >= 0 && t.professor_id !== d.turmas[i].professor_id) throw falha('Só a coordenação geral passa a turma para outro(a) professor(a).');
+        if (i < 0 && t.professor_id !== eu.id) throw falha('Você cria turmas só no seu nome. Turma de outro(a) professor(a) é criada por ele(a) ou pela coordenação geral.');
+      }
+      { // 46: turma repetida (mesmo nome, estado, professor e início), só ao criar ou quando um desses muda
+        const ig = v => String(v || '').trim().replace(/\s+/g, ' ').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); const a = i >= 0 ? d.turmas[i] : null;
+        const mudou = !a || ig(a.nome) !== ig(t.nome) || (a.uf || null) !== (t.uf || null) || a.professor_id !== t.professor_id || (a.inicio || null) !== (t.inicio || null);
+        if (mudou && d.turmas.some(x => x.id !== t.id && ig(x.nome) === ig(t.nome) && (x.uf || null) === (t.uf || null) && x.professor_id === t.professor_id && (x.inicio || null) === (t.inicio || null)))
+          throw falha('Já existe uma turma com este nome, estado, professor(a) e data de início. Use a que já existe ou mude o nome.');
+      }
       if (i >= 0) { const antes = d.turmas[i]; d.turmas[i] = Object.assign({}, antes, t, { atualizado_em: agora }); }
       else d.turmas.push(Object.assign({}, t, { id: uid(), criado_por: eu.id, criado_em: agora, atualizado_em: agora }));
       gravar(); return copia(i >= 0 ? d.turmas[i] : d.turmas[d.turmas.length - 1]);
@@ -604,6 +689,14 @@
       if (!data || data > R.hoje()) throw falha('Data da matrícula vazia ou no futuro.');
       d.matriculas = d.matriculas || []; const atual = d.matriculas.find(x => x.equipe_id === equipe_id && !x.cancelada_em);
       if (atual && atual.turma_id !== turma_id) throw falha(p.nome + ' já está matriculada em outra turma. Cancele lá antes de trocar.');
+      { // 46: o número de matrícula é de uma pessoa só; ninguém é matriculado antes de a turma começar (só ao matricular ou quando o campo muda)
+        const num = String(numero).trim().toLowerCase();
+        if (!atual || String(atual.numero).trim().toLowerCase() !== num) {
+          const dono = d.matriculas.find(x => !x.cancelada_em && x.equipe_id !== equipe_id && String(x.numero).trim().toLowerCase() === num);
+          if (dono) { const q = d.equipe.find(y => y.id === dono.equipe_id) || {}; throw falha('O número de matrícula ' + String(numero).trim() + ' já é de ' + (q.nome_social || q.nome || 'outra pessoa') + '. Cada pessoa tem o seu número: confira no SUAP.'); }
+        }
+        if (t.inicio && data < t.inicio && (!atual || atual.matriculado_em !== data)) throw falha('A turma começa em ' + R.fmtData(t.inicio) + ': a data da matrícula não pode ser antes disso.');
+      }
       if (atual) Object.assign(atual, { numero: String(numero).trim(), matriculado_em: data });
       else d.matriculas.push({ id: uid(), turma_id, equipe_id, numero: String(numero).trim(), matriculado_em: data, criado_por: eu.id, criado_em: new Date().toISOString(), cancelada_em: null });
       const antes = copia(p); Object.assign(p, { matricula_fic_em: data, matricula_fic_numero: String(numero).trim(), atualizado_em: new Date().toISOString() });
@@ -642,7 +735,11 @@
         if (p.data_inicio && m7 < String(p.data_inicio).slice(0, 7)) throw falha((p.nome_social || p.nome) + ' começou no projeto em ' + String(p.data_inicio).slice(5, 7) + '/' + String(p.data_inicio).slice(0, 4) + ': não há entrega antes desse mês.');
         if (item === 'ava' && (!p.matricula_fic_em || m7 < String(p.matricula_fic_em).slice(0, 7))) throw falha('Acesso ao AVA só a partir do mês da matrícula no FIC.');
       }
-d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes && x.item === item));
+      // 46: depois da bolsa lançada no Arlo, a entrega daquele mês não se desmarca
+      if (!marcar && d.entregas.some(x => x.equipe_id === equipe_id && x.mes === mes && x.item === item)
+          && (d.solicitacoes || []).some(x => x.tipo === 'bolsa' && x.equipe_id === equipe_id && String(x.mes).slice(0, 7) === String(mes).slice(0, 7) && x.situacao === 'lancada'))
+        throw falha('A bolsa de ' + String(mes).slice(5, 7) + '/' + String(mes).slice(0, 4) + ' já foi lançada no Arlo: a entrega deste mês não pode mais ser desmarcada.');
+      d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes && x.item === item));
       if (marcar) d.entregas.push({ equipe_id, mes, item, marcado_por: eu.id, marcado_em: new Date().toISOString() });
       gravar();
     },
@@ -743,6 +840,14 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       const pode = R.podeEditarDados(eu && eu.papel, antes.papel) || (soHab && R.podeEditarHabilitacao(eu && eu.papel, antes.papel));
       if (!pode) throw falha('Seu perfil não tem permissão para esta ação.');
       if (antes.status === 'desligada' && patch.status === 'ativa') throw falha('Registro desligado não pode ser reativado. Faça um novo cadastro.');
+      // 46: cadastro desligado não é mais alterado (só a coordenação geral corrige); "substitui" nunca a própria pessoa nem pessoa ativa de outro estado
+      if (antes.status === 'desligada' && eu && eu.papel !== 'coord_geral' && Object.keys(patch).some(k => !['atualizado_em', 'user_id'].includes(k) && (patch[k] == null ? null : patch[k]) !== (antes[k] == null ? null : antes[k])))
+        throw falha('Este cadastro está desligado e não é mais alterado. Se houver erro, peça à coordenação geral para corrigir.');
+      if (patch.substitui_id && patch.substitui_id !== antes.substitui_id) {
+        if (patch.substitui_id === id) throw falha('A pessoa não pode substituir a si mesma. Escolha quem saiu da vaga.');
+        const alvo = d.equipe.find(x => x.id === patch.substitui_id);
+        if (alvo && alvo.status === 'ativa' && (alvo.uf || null) !== (antes.uf || null)) throw falha((alvo.nome_social || alvo.nome) + ' está ativa em outro estado: a substituição é de quem saiu da mesma vaga.');
+      }
       ['papel', 'uf', 'cpf'].forEach(k => { if (k in patch && patch[k] !== antes[k]) throw falha('Papel, estado e CPF não podem ser alterados. Desligue e cadastre novamente.'); });
       const depois = Object.assign({}, antes, patch, { atualizado_em: new Date().toISOString() });
       if (depois.status === 'desligada' && (!depois.data_fim || String(depois.motivo_desligamento || '').trim().length < 5))
@@ -772,6 +877,21 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       const antes = i >= 0 ? d.fichas[i] : null;
       if (antes && antes.situacao === 'aprovada') throw falha('Ficha já aprovada pela coordenação técnica. Para corrigir, peça que ela devolva a ficha.');
       if (d.fichas.some(x => x.id !== dados.id && x.cpf === R.soDigitos(dados.cpf))) throw falha(R.mensagemErro('fichas_cpf_unico'));
+      { // 46: CPF de pessoa ativa da equipe, testemunha igual à mulher e posição na lista de espera (só na ficha nova ou quando o campo muda)
+        const cpf = R.soDigitos(dados.cpf), test = R.soDigitos(dados.testemunha_cpf || '');
+        if ((!antes || antes.cpf !== cpf) && d.equipe.some(m => m.status === 'ativa' && m.cpf === cpf))
+          throw falha('Este CPF é de uma pessoa ativa da equipe do projeto: quem trabalha no projeto não entra como beneficiária. Confira o CPF.');
+        if (test && test === cpf && (!antes || R.soDigitos(antes.testemunha_cpf || '') !== test || antes.cpf !== cpf))
+          throw falha('A testemunha da assinatura não pode ser a própria mulher (mesmo CPF). Informe o CPF de quem assistiu.');
+        if (dados.posicao_espera != null && dados.posicao_espera !== '') {
+          if (dados.resultado !== 'lista_espera') {
+            if (antes && antes.posicao_espera === dados.posicao_espera) { if (antes.resultado === 'lista_espera') dados = Object.assign({}, dados, { posicao_espera: null }); }
+            else throw falha('A posição na lista de espera só vale para quem está na lista de espera.');
+          } else if ((!antes || antes.posicao_espera !== dados.posicao_espera || antes.resultado !== 'lista_espera')
+              && d.fichas.some(x => x.id !== dados.id && x.uf === dados.uf && x.resultado === 'lista_espera' && +x.posicao_espera === +dados.posicao_espera))
+            throw falha('Já há outra mulher na posição ' + dados.posicao_espera + ' da lista de espera de ' + dados.uf + '. Escolha outra posição.');
+        }
+      }
       if (!dados.consent_dados) throw falha(R.mensagemErro('consent_dados'));
       if (['selecionada', 'lista_espera'].includes(dados.resultado) && !(R.criteriosOk(dados) && dados.autodeclaracao)) throw falha(R.mensagemErro('criterios_para_selecao'));
       const f = Object.assign({}, antes || {}, dados);
@@ -787,11 +907,16 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'fichas', registro_id: f.id, acao: antes ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: antes && copia(antes), depois: copia(f) });
       gravar(); return copia(f);
     },
-    async decidirFicha(id, situacao, obs) {
+    async decidirFicha(id, situacao, obs, marca) {
       const d = ler(); const eu = euMesmo();
       if (!eu || !R.decideCampo(eu.papel)) throw falha('Só a coordenação aprova ou devolve fichas.');
       const i = d.fichas.findIndex(x => x.id === id); if (i < 0) throw falha('Ficha não encontrada.');
       const antes = d.fichas[i];
+      // 46: a tela manda a marca (atualizado_em) da ficha que leu; se a ficha mudou depois, a aprovação é recusada. Sem a marca, aprova como antes.
+      if (situacao === 'aprovada' && antes.situacao !== 'aprovada' && marca && marca !== antes.atualizado_em) throw falha(MSG_ALTERADO);
+      // 46: quintal em andamento (com diagnóstico): a ficha não é devolvida
+      if (situacao === 'devolvida' && antes.situacao !== 'devolvida' && (d.diagnosticos || []).some(x => x.ficha_id === id))
+        throw falha('Este quintal já está em andamento (tem diagnóstico registrado): a ficha não pode ser devolvida nem mudar de resultado. Para corrigir um dado da ficha, a coordenação geral altera direto. Se a mulher saiu do projeto, cancele antes as visitas agendadas e registre a saída na observação.');
       if (situacao === 'devolvida' && String(obs || '').trim().length < 5) throw falha('Para devolver, escreva o que a bolsista precisa corrigir.');
       if (situacao === 'aprovada' && antes.resultado === 'selecionada' &&
           d.fichas.filter(x => x.uf === antes.uf && x.resultado === 'selecionada' && x.situacao === 'aprovada' && x.id !== id).length >= MQ.VAGAS_UF)
@@ -832,7 +957,14 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
         if (mesmas >= MQ.ETAPAS[v.etapa].max) throw falha(v.etapa === 'acompanhamento' ? 'Este quintal já tem as 2 visitas de acompanhamento.' : 'Este quintal já tem essa visita agendada ou feita.');
         if (v.etapa !== 'diagnostico' && !d.visitas.some(x => x.ficha_id === v.ficha_id && x.etapa === 'diagnostico' && x.situacao === 'realizada')) throw falha('Primeiro o diagnóstico: implantação, acompanhamento e avaliação só depois dele.');
         if (v.etapa === 'avaliacao' && !d.visitas.some(x => x.ficha_id === v.ficha_id && x.etapa === 'implantacao' && x.situacao === 'realizada')) throw falha('A avaliação é feita depois da implantação do quintal.');
+        // 46: cada etapa exige a anterior (só ao agendar visita NOVA: a que já existe não trava aqui)
+        if (v.situacao !== 'cancelada') { const mot = MQ.etapaMotivo(v.etapa, v.ficha_id, d, { veTudo: true, visitaId: v.id, data: v.situacao === 'realizada' ? v.data_realizada : null }); if (mot) throw falha(mot); }
         if (d.visitas.filter(x => x.uf === f.uf && x.situacao !== 'cancelada').length >= MQ.DIAS_CAMPO_UF) throw falha('O estado ' + f.uf + ' já usou os ' + MQ.DIAS_CAMPO_UF + ' dias de campo previstos.');
+      }
+      // 46: marcar como feita exige a etapa anterior e a data em ordem; corrigir a data de visita já feita confere só a ordem das datas
+      if (antes && v.situacao === 'realizada') {
+        const et = antes.etapa, virou = antes.situacao !== 'realizada';
+        if (virou || (v.data_realizada || null) !== (antes.data_realizada || null)) { const mot = MQ.etapaMotivo(et, antes.ficha_id, d, { veTudo: true, visitaId: antes.id, data: v.data_realizada, soData: !virou }); if (mot) throw falha(mot); }
       }
       if (v.situacao === 'realizada' && (!antes || antes.situacao !== 'realizada') && ['implantacao', 'acompanhamento'].includes(v.etapa)) {
         if (!v.data_realizada || v.data_realizada > R.hoje()) throw falha('Informe a data em que a visita foi feita (não pode ser no futuro).');
@@ -862,6 +994,15 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       if (v.situacao === 'cancelada') throw falha('A visita de avaliação foi cancelada.');
       if (!eu || !((R.ehBolsista(eu.papel) && eu.uf === v.uf) || v.executor_id === eu.id)) throw falha('Seu perfil não tem permissão para esta ação.');
       if (dados.data_visita > R.hoje()) throw falha('A data da avaliação não pode ser no futuro.');
+      { // 46: data a partir de 01/01/2026, nunca antes da ficha nem da implantação (só ao registrar ou quando a data muda)
+        const ja = d.avaliacoes.find(a => a.id === dados.id);
+        if (!ja || ja.data_visita !== dados.data_visita) {
+          const fx = (d.fichas || []).find(x => x.id === dados.ficha_id) || {};
+          if (dados.data_visita < '2026-01-01') throw falha('A data da visita não pode ser anterior a 01/01/2026 (o projeto ainda não tinha começado).');
+          if (fx.data_ficha && dados.data_visita < fx.data_ficha) throw falha('A data da visita (' + R.fmtData(dados.data_visita) + ') não pode ser anterior à data da ficha desta mulher (' + R.fmtData(fx.data_ficha) + ').');
+          const mot = MQ.etapaMotivo('avaliacao', dados.ficha_id, d, { visitaId: v.id, data: dados.data_visita }); if (mot) throw falha(mot);
+        }
+      }
       if (dados.latitude == null && String(dados.sem_gps_motivo || '').trim().length < 5) throw falha('Registre a localização ou explique por que não foi possível.');
       const fts = Object.keys(fotos || {}).filter(k => fotos[k]).map(k => v.uf + '/' + v.ficha_id + '/aval_' + k + '.jpg');
       const i = d.avaliacoes.findIndex(a => a.id === dados.id); const agora = new Date().toISOString();
@@ -886,6 +1027,11 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       if (antes && antes.situacao === 'aprovado') throw falha('Plano já aprovado pela coordenação técnica. Peça que ela devolva para corrigir.');
       if (dados.data_visita && String(dados.data_visita).slice(0, 10) > R.hoje() && (!antes || dados.data_visita !== antes.data_visita)) throw falha('A data da visita não pode ser no futuro.');   // 42: ao criar ou ao mudar a data
       if (v.situacao === 'cancelada') throw falha('A visita de diagnóstico foi cancelada.');
+      if (dados.data_visita && (!antes || dados.data_visita !== antes.data_visita)) {   // 46: a partir de 01/01/2026 e nunca antes da ficha
+        const fx = (d.fichas || []).find(x => x.id === dados.ficha_id) || {};
+        if (dados.data_visita < '2026-01-01') throw falha('A data da visita não pode ser anterior a 01/01/2026 (o projeto ainda não tinha começado).');
+        if (fx.data_ficha && dados.data_visita < fx.data_ficha) throw falha('A data da visita (' + R.fmtData(dados.data_visita) + ') não pode ser anterior à data da ficha desta mulher (' + R.fmtData(fx.data_ficha) + ').');
+      }
       const kit = (dados.dados && dados.dados.kit) || dados.kit;   // o plano fica em dados.dados (como na produção)
       if (!dados.sem_agua && Array.isArray(kit)) {   // 42: kit até R$ 5.000,00 por quintal; quantidade tem de ser maior que zero
         let tot = 0;
@@ -906,10 +1052,12 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'diagnosticos', registro_id: n.id, acao: antes ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: antes && copia(antes), depois: copia(n) });
       gravar(); return copia(n);
     },
-    async decidirDiagnostico(id, situacao, obs) {
+    async decidirDiagnostico(id, situacao, obs, marca) {
       const d = ler(); const eu = euMesmo();
       if (!eu || !R.decideCampo(eu.papel)) throw falha('Só a coordenação aprova ou devolve o plano.');
       const i = d.diagnosticos.findIndex(x => x.id === id); if (i < 0) throw falha('Diagnóstico não encontrado.');
+      // 46: aprovar com a marca do que foi lido; se o plano mudou depois, recusa. Sem a marca, aprova como antes.
+      if (situacao === 'aprovado' && d.diagnosticos[i].situacao !== 'aprovado' && marca && marca !== d.diagnosticos[i].atualizado_em) throw falha(MSG_ALTERADO);
       if (situacao === 'devolvido' && String(obs || '').trim().length < 5) throw falha('Para devolver, escreva o que precisa ser corrigido.');
       const agora = new Date().toISOString(); const antes = d.diagnosticos[i];
       // mesmas regras do 31_validacao_diagnostico.sql
@@ -950,6 +1098,14 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       if (!dados.consentimento_lgpd) throw falha('É preciso aceitar o uso dos dados para o cadastro.');
       if (!dados.cadastro_arlo && !dados.data_nascimento) throw falha('Informe a data de nascimento.');
       const cpf = R.soDigitos(dados.cpf), email = String(dados.email || '').trim().toLowerCase();
+      // 46: o que vem do formulário é conferido antes de gravar
+      if (!/^[0-9]{11}$/.test(cpf)) throw falha('O CPF precisa ter 11 números. Confira.');
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw falha('E-mail inválido. Confira (sem espaços).');
+      if (dados.data_nascimento) {
+        if (!dataExiste(dados.data_nascimento)) throw falha('A data de nascimento não é uma data que existe. Confira dia, mês e ano.');
+        if (dados.data_nascimento > R.hoje()) throw falha('A data de nascimento não pode ser no futuro.');
+        if (dados.data_nascimento < '1901-01-01') throw falha('Confira a data de nascimento: o ano está antigo demais.');
+      }
       if (d.equipe.some(m => m.status === 'ativa' && (m.cpf === cpf || String(m.email).toLowerCase() === email))) throw falha('Já existe pessoa ativa na equipe com este CPF ou e-mail. Fale com a coordenação.');
       if ((d.pre_cadastros || []).some(x => x.situacao === 'aguardando' && (x.cpf === cpf || String(x.email).toLowerCase() === email)))
         throw falha('Seus dados já foram enviados e estão com a coordenação para conferir. Não precisa enviar de novo.');
@@ -1003,6 +1159,18 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     async lerParametros(chave) { const d = ler(); return copia((d.parametros || {})[chave] || MQ.CUSTO_PADRAO); },
     async salvarParametros(chave, valor) {
       const eu = euMesmo(); if (!eu || !/^coord/.test(eu.papel)) throw falha('Só a coordenação altera valores de pagamento.');
+      if (chave === 'custo_visita') {   // 46: números de verdade, dentro do que faz sentido (como no banco)
+        if (!valor || typeof valor !== 'object' || Array.isArray(valor)) throw falha('Os valores do custo da visita vieram num formato que o sistema não entende. Abra a aba Custos e salve os valores de novo.');
+        const ROT = { valor_hora: 'O valor da hora', refeicao: 'O valor da refeição', km_por_litro: 'O consumo do carro (km por litro)', preco_litro: 'O preço do litro da gasolina', fator_estrada: 'O fator estrada', teto: 'O teto das ajudas de custo' };
+        for (const k of Object.keys(ROT)) { if (!(k in valor)) continue; const x = valor[k];
+          if (typeof x !== 'number' || !isFinite(x)) throw falha(ROT[k] + ' precisa ser um número.');
+          if (['valor_hora', 'refeicao', 'teto'].includes(k) && x < 0) throw falha(ROT[k] + ' não pode ser negativo.');
+          if (['km_por_litro', 'preco_litro'].includes(k) && !(x > 0)) throw falha(ROT[k] + ' precisa ser maior que zero.');
+          if (k === 'fator_estrada' && x < 1) throw falha('O fator estrada precisa ser 1 ou mais (a estrada nunca é mais curta que a linha reta).'); }
+        if ('horas' in valor) { const h = valor.horas;
+          if (!h || typeof h !== 'object' || Array.isArray(h)) throw falha('As horas por etapa vieram num formato que o sistema não entende. Abra a aba Custos e salve os valores de novo.');
+          if (Object.values(h).some(x => typeof x !== 'number' || !(x >= 0 && x <= 24))) throw falha('As horas de cada etapa precisam ser um número entre 0 e 24.'); }
+      }
       const d = ler(); d.parametros = d.parametros || {}; d.parametros[chave] = copia(valor); gravar(); return copia(valor);
     },
     async listarCustos() {
@@ -1014,7 +1182,15 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     async salvarKm(visita_id, km_ida) {
       const eu = euMesmo(); if (!eu || !/^coord/.test(eu.papel)) throw falha('Só a coordenação altera valores de pagamento.');
       if (km_ida != null && !(km_ida >= 0 && km_ida < 1000)) throw falha('Distância inválida (0 a 999 km).');
-      const d = ler(); d.custos = (d.custos || []).filter(c => c.visita_id !== visita_id);
+      const d = ler();
+      { // 46: km de visita em pedido lançado no Arlo não muda mais, nem se apaga
+        const atual = (d.custos || []).find(c => c.visita_id === visita_id);
+        if (visitaPaga(d, visita_id)) {
+          if (km_ida == null) { if (atual) throw falha('Esta visita já foi paga (o pedido foi lançado no Arlo): a distância conferida não pode mais ser apagada.'); }
+          else if (!atual || +atual.km_ida !== +km_ida) throw falha('Esta visita já está num pedido lançado no Arlo: a distância (km) não muda mais.');
+        }
+      }
+      d.custos = (d.custos || []).filter(c => c.visita_id !== visita_id);
       if (km_ida != null) d.custos.push({ visita_id, km_ida, definido_em: new Date().toISOString() });
       gravar(); return km_ida;
     },
@@ -1034,7 +1210,9 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
         .slice(0, 24).map(v => ({ path: v.path, legenda: v.legenda, uf: v.uf, url: ilustracao(v.path) }));
       // 40: mulheres com ficha válida por município; menos de 3 vai sem o número (LGPD), nenhuma situação individual
       const porMun = {}; d.fichas.filter(f => f.resultado !== 'nao_atende' && String(f.municipio || '').trim()).forEach(f => {
-        const k = f.uf + '|' + String(f.municipio).trim().toLowerCase(); (porMun[k] = porMun[k] || { uf: f.uf, municipio: String(f.municipio).trim(), n: 0 }).n++; });
+        const nome = String(f.municipio).trim().replace(/\s+/g, ' '); const k = f.uf + '|' + nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');   // 46: com e sem acento é o mesmo município
+        const x = (porMun[k] = porMun[k] || { uf: f.uf, municipio: nome, n: 0 }); x.n++;
+        if (nome.normalize('NFD').length - nome.length > x.municipio.normalize('NFD').length - x.municipio.length) x.municipio = nome; });   // mostra a grafia com acento
       const municipios = Object.values(porMun).map(x => ({ uf: x.uf, municipio: x.municipio, n: x.n >= 3 ? x.n : null, menos_de_3: x.n < 3 }));
       return { atualizado_em: new Date().toISOString(), por_uf, fotos, municipios,
         equipe: { bolsistas: n(ativos, m => R.ehBolsista(m.papel)), agentes: n(ativos, m => m.papel === 'agente') } };
@@ -1075,6 +1253,9 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       const d2 = ler(); const quando = String(data_fim || R.hoje()).split('-').reverse().join('/');
       (d2.pedidos || []).filter(p => p.solicitante_id === id && ['enviado', 'devolvido', 'conferido'].includes(p.situacao)).forEach(p => {
         p.situacao = 'cancelado'; p.obs = (p.obs ? p.obs + ' · ' : '') + 'Cancelado pelo sistema: a solicitante foi desligada do projeto em ' + quando + '.'; });
+      // 46: a matrícula do FIC ainda ativa passa a cancelada (a presença nos encontros anteriores continua valendo)
+      (d2.matriculas || []).filter(x => x.equipe_id === id && !x.cancelada_em).forEach(x => {
+        x.cancelada_em = new Date().toISOString(); x.motivo_cancelamento = 'Cancelada pelo sistema: a pessoa foi desligada do projeto em ' + quando + '.'; });
       gravar(); return r;
     },
 
@@ -1089,7 +1270,8 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     async enviarTermo(id, arquivo) { return arquivo.name; },   // no demo guarda só o nome
     async linkTermo(path) { return null; },
     async entrar() { throw falha('No modo demonstração não há login: use o seletor de perfil.'); },
-    async entrarSenha() { throw falha('Na demonstração não há login: escolha um perfil acima.'); },   // a tela chama S.api.entrarSenha: sem isto aparecia "is not a function"
+    async entrarSenha() { throw falha('Na demonstração não há login: escolha um perfil acima.'); },
+    async criarSenha() { throw falha('Na demonstração não há primeiro acesso nem senha: escolha um perfil acima para conhecer o sistema.'); },   // 46: "Primeiro acesso" mostrava "Não deu certo…"   // a tela chama S.api.entrarSenha: sem isto aparecia "is not a function"
     async sair() {}
   };
 })();

@@ -120,25 +120,34 @@
     </section>`;
   }
 
+  const APL_MAX_ITEM = 80, APL_MAX_ITENS = 30;
   async function clique(a, el) {
     if (a === 'apl-editar') {
       const x = aplDe(el.dataset.uf, el.dataset.mun) || { apls: [], obs: '' };
       const box = $('#apl-form'); if (!box) return;
       box.innerHTML = `<form class="f" data-form="apl" data-uf="${E(el.dataset.uf)}" data-mun="${E(el.dataset.mun)}" novalidate>
-        <div class="campo"><label for="apl-l">Arranjos produtivos de ${E(el.dataset.mun)} (separe por vírgula)</label><input id="apl-l" name="apls" value="${E(x.apls.join(', '))}" placeholder="apicultura, caprinocultura, feira agroecológica"></div>
-        <div class="campo"><label for="apl-o">Compradores, feiras, cooperativas, PAA/PNAE</label><textarea id="apl-o" name="obs">${E(x.obs || '')}</textarea></div>
+        <div class="campo"><label for="apl-l">Arranjos produtivos de ${E(el.dataset.mun)} (separe por vírgula)</label><input id="apl-l" name="apls" value="${E(x.apls.join(', '))}" placeholder="apicultura, caprinocultura, feira agroecológica"><span class="dica">Até ${APL_MAX_ITENS} arranjos, cada um com até ${APL_MAX_ITEM} letras.</span></div>
+        <div class="campo"><label for="apl-o">Compradores, feiras, cooperativas, PAA/PNAE</label><textarea id="apl-o" name="obs" maxlength="2000">${E(x.obs || '')}</textarea></div>
         <div class="aviso erro" data-erro hidden></div><div class="acoes"><button class="btn pri" type="submit">Salvar</button></div></form>`;
       box.querySelector('input').focus();
     }
   }
   async function enviar(tipo, form, fd) {
     if (tipo !== 'apl') return;
-    const apls = String(fd.get('apls') || '').split(',').map(x => x.trim()).filter(Boolean);
+    const apls = String(fd.get('apls') || '').split(',').map(x => x.trim().replace(/\s+/g, ' ')).filter(Boolean);
+    const obs = String(fd.get('obs') || '').trim();
+    // limites: cada arranjo com até 80 letras, no máximo 30 arranjos por município
+    const e = {};
+    const longo = apls.find(x => x.length > APL_MAX_ITEM);
+    if (longo) e.apls = 'Cada arranjo pode ter no máximo ' + APL_MAX_ITEM + ' letras. Este passou: "' + longo.slice(0, 30) + '…". Escreva só o nome (ex.: apicultura) e separe por vírgula.';
+    else if (apls.length > APL_MAX_ITENS) e.apls = 'No máximo ' + APL_MAX_ITENS + ' arranjos por município (você escreveu ' + apls.length + '). Deixe só os principais.';
+    if (obs.length > 2000) e.obs = 'Texto muito longo (máximo 2.000 caracteres).';
+    if (Object.keys(e).length) return U().mostrarErros(form, e);
     await U().ocupado(form, async () => {
-      await S().api.salvarAPL(form.dataset.uf, form.dataset.mun, apls, String(fd.get('obs') || '').trim() || null);
+      await S().api.salvarAPL(form.dataset.uf, form.dataset.mun, apls, obs || null);
       A.lista = null; carregarAPL(); U().toast('Arranjo produtivo salvo para ' + form.dataset.mun + '.');
     });
   }
 
-  MQ.sugestaoUI = { bloco, sugerir, clique, enviar };
+  MQ.sugestaoUI = { bloco, sugerir, clique, enviar, APL_MAX_ITEM, APL_MAX_ITENS };
 })();

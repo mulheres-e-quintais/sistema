@@ -107,6 +107,11 @@
     .sort((a, b) => a.municipio.localeCompare(b.municipio) || a.nome.localeCompare(b.nome));
   const ativasDe = (fid, etapa) => (visitas(), indice(memo.v.lista, 'ficha_id').get(fid) || []).filter(v => v.etapa === etapa && v.situacao !== 'cancelada')
     .sort((a, b) => String(a.data_prevista).localeCompare(String(b.data_prevista)));
+  /* por que esta etapa ainda não pode ser registrada neste quintal (null = pode). A mesma regra vale no servidor. */
+  const motivoEtapa = (v, op) => MQ.etapaMotivo(v.etapa, v.ficha_id, { visitas: visitas(), diagnosticos: diagnosticos() },
+    Object.assign({ visitaId: v.id, veTudo: (S().eu || {}).papel !== 'agente' }, op || {}));
+  const botaoFeita = v => { const m = motivoEtapa(v);
+    return m ? `<span class="small muted" data-etapa-trava>${E(m)}</span>` : `<button class="btn peq pri" data-acao="campo-feita" data-id="${E(v.id)}">Registrar visita feita</button>`; };
   const diasUsados = uf => visitas().filter(v => v.uf === uf && v.situacao !== 'cancelada').length;
   const mesAtual = () => R.hoje().slice(0, 7);
   const nomeMes = m => { const [a, b] = m.split('-'); return ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][+b - 1] + '/' + a; };
@@ -147,7 +152,7 @@
             : v.etapa === 'avaliacao' ? (feita ? b('aval-ver', 'Ver avaliação') : podeMudar ? b('aval-novo', 'Registrar avaliação', true) : '')
             : v.etapa === 'diagnostico' ? (temDg ? b('campo-diag-ver', 'Ver diagnóstico') : podeMudar ? b('campo-diag-novo', 'Registrar diagnóstico', true) : '')
             : feita ? (v.relato ? `<span class="small muted" title="${E(v.relato)}">${E(String(v.relato).slice(0, 60))}${String(v.relato).length > 60 ? '…' : ''}</span>` : '')
-            : podeMudar ? b('campo-feita', 'Registrar visita feita', true) : '';
+            : podeMudar ? botaoFeita(v) : '';
           return `<tr><td class="num">${R.fmtData(v.data_realizada || v.data_prevista)}</td>${uf ? '' : `<td>${E(v.uf)}</td>`}<td>${E(f.nome || '—')}<br><span class="small muted">${E(f.municipio || '')}</span></td>
             <td>${E(MQ.ETAPAS[v.etapa].nome)}</td><td>${E(q.nome || '—')}<br><span class="small muted">${E((MQ.PAPEIS[q.papel] || {}).curto || '')}</span></td>
             <td>${feita ? '<span class="chip ok">Feita</span>' : v._fila ? '<span class="chip pend">No aparelho</span>' : v.data_prevista < R.hoje() ? '<span class="chip crit">Atrasada</span>' : '<span class="chip pend">Prevista</span>'}</td>
@@ -170,7 +175,7 @@
       const f = ficha(v.ficha_id) || {}; const atras = v.data_prevista < hoje;
       const acao = v.etapa === 'diagnostico' ? `<button class="btn peq pri" data-acao="campo-diag-novo" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}">Registrar diagnóstico</button>`
         : v.etapa === 'avaliacao' ? `<button class="btn peq pri" data-acao="aval-novo" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}">Registrar avaliação</button>`
-        : `<button class="btn peq pri" data-acao="campo-feita" data-id="${E(v.id)}">Registrar visita feita</button>`;
+        : botaoFeita(v);
       itens.push({ o: atras ? 1 : 2, t: `<b>${E(f.nome || '—')}</b> · ${E(MQ.ETAPAS[v.etapa].nome)} ${atras ? `<span class="chip crit">atrasada desde ${R.fmtData(v.data_prevista)}</span>` : 'em ' + R.fmtData(v.data_prevista)}`,
         sub: E(((pessoa(v.executor_id) || {}).nome || '')), b: acao }); });
     const semAgenda = sel.filter(f => !diagnosticos().some(d => d.ficha_id === f.id) && !ativasDe(f.id, 'diagnostico').length);
@@ -229,7 +234,7 @@
           : v.etapa === 'avaliacao' ? (v.situacao === 'realizada' ? `<button class="btn peq" data-acao="aval-ver" data-ficha="${E(v.ficha_id)}">Ver avaliação</button>`
             : `<button class="btn peq pri" data-acao="aval-novo" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}">Registrar avaliação</button>`)
           : v.situacao === 'realizada' ? `<span class="small muted">${E(String(v.relato || '').slice(0, 90))}${String(v.relato || '').length > 90 ? '…' : ''}</span>${MQ.vendaUI ? MQ.vendaUI.botaoOrientar(v.ficha_id) : ''}`
-          : `<button class="btn peq pri" data-acao="campo-feita" data-id="${E(v.id)}">Registrar visita feita</button>`}</div></div>`; };
+          : botaoFeita(v)}</div></div>`; };
     const porMes = {}; feitas.forEach(v => { const m = String(v.data_realizada).slice(0, 7); porMes[m] = (porMes[m] || 0) + 1; });
     const pend = S().fila.filter(i => i.tipo === 'diagnostico');
     return `<main class="wrap" id="principal">
@@ -545,7 +550,7 @@
         ${MQ.sugestaoUI && !dg._fila ? MQ.sugestaoUI.bloco(f, dg) : ''}
         ${MQ.vitrineUI && !dg._fila ? MQ.vitrineUI.blocoPublicar(f, dg) : ''}
         ${souTec && !dg._fila ? (() => { const loc = localDiag(dg, f); const alterei = dg.conteudo_alterado_por && dg.conteudo_alterado_por === eu.id;
-          return `<form class="bloco" data-form="diag-decisao" data-id="${E(dg.id)}" data-conferir="${loc.alerta ? '1' : ''}" novalidate><h3>Decisão da coordenação</h3>
+          return `<form class="bloco" data-form="diag-decisao" data-id="${E(dg.id)}" data-marca="${E(dg.atualizado_em || '')}" data-conferir="${loc.alerta ? '1' : ''}" novalidate><h3>Decisão da coordenação</h3>
           <p class="small muted">${dg.sem_agua ? 'Confirme o encaminhamento por falta de água.' : 'Aprove se o kit está na lista aprovada e cabe no valor por quintal, e se o cronograma é viável.'}</p>
           ${alterei && dg.situacao !== 'aprovado' ? '<div class="aviso"><b>Você alterou este diagnóstico, então não aprova.</b> Quem aprova é a coordenação técnica. Sem técnica, devolva para quem aplicou corrigir: depois da correção dela, você pode aprovar.</div>' : ''}
           <div class="campo"><label for="dd-obs">${loc.alerta && dg.situacao !== 'aprovado' ? 'Observação: como você confirmou que a visita aconteceu?' : 'Observação'}</label><textarea id="dd-obs" name="obs" maxlength="2000">${dg.situacao === 'aprovado' ? E(dg.obs_coordenacao || '') : ''}</textarea>
@@ -672,6 +677,8 @@
         else if (v.etapa !== 'diagnostico' && !ativasDe(v.ficha_id, 'diagnostico').some(x => x.situacao === 'realizada')) e.etapa = 'Primeiro o diagnóstico.';
         const f = ficha(v.ficha_id); if (f && diasUsados(f.uf) >= MQ.DIAS_CAMPO_UF) e.ficha_id = 'O estado já usou os ' + MQ.DIAS_CAMPO_UF + ' dias de campo.';
         if (v.etapa === 'avaliacao' && !ativasDe(v.ficha_id, 'implantacao').some(x => x.situacao === 'realizada')) e.etapa = 'A avaliação é feita depois da implantação.';
+        // implantação só com o plano aprovado e com água; acompanhamento só depois da implantação feita
+        if (!e.etapa) { const m = motivoEtapa(v); if (m) e.etapa = m; }
       }
       if (Object.keys(e).length) return U().mostrarErros(form, e);
       await U().ocupado(form, async () => {
@@ -722,6 +729,7 @@
       if (relato.length < 20) e.relato = 'Conte em poucas linhas o que foi feito (pelo menos 20 letras).';
       else if (relato.length > 2000) e.relato = 'Texto muito longo (máximo 2.000 caracteres).';
       if (!fotosVis[1]) e.foto = 'Faça pelo menos 1 foto do que foi feito.';
+      if (v0 && !e.data_realizada) { const m = motivoEtapa(v0, { data }); if (m) e.data_realizada = m; }   // etapa na ordem e data depois da etapa anterior
       if (Object.keys(e).length) { const geral = e.foto; delete e.foto; return U().mostrarErros(form, e, geral && !Object.keys(e).length ? geral : undefined); }
       await U().ocupado(form, async () => {
         const v = Object.assign({}, v0, { situacao: 'realizada', data_realizada: data, relato });
@@ -736,7 +744,8 @@
       if (dec === 'devolvido' && obs.length < 5) return U().mostrarErros(form, { obs: 'Escreva o que precisa ser corrigido.' });
       if (dec === 'aprovado' && form.dataset.conferir && obs.length < 10) return U().mostrarErros(form, { obs: 'Escreva como você confirmou que a visita aconteceu (pelo menos 10 letras).' });
       await U().ocupado(form, async () => {
-        await S().api.decidirDiagnostico(form.dataset.id, dec, obs);
+        // a marca diz o que a coordenação leu: se o diagnóstico mudou depois, o servidor recusa a aprovação
+        await S().api.decidirDiagnostico(form.dataset.id, dec, obs, form.dataset.marca || undefined);
         await U().carregar(); U().fecharPainel(); U().render();
         U().toast(dec === 'aprovado' ? 'Plano aprovado.' : 'Diagnóstico devolvido para correção.');
       });

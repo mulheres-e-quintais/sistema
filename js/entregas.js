@@ -144,7 +144,7 @@
     }
     if (a === 'ent-ciencia') {
       el.disabled = true;
-      try { await S().api.darCiencia(eu.id, el.dataset.doc); S().ciencias = (S().ciencias || []).concat([{ equipe_id: eu.id, documento: el.dataset.doc, em: new Date().toISOString() }]); U().toast('Obrigada! Leitura registrada.'); }
+      try { await S().api.darCiencia(eu.id, el.dataset.doc); S().ciencias = (S().ciencias || []).concat([{ equipe_id: eu.id, documento: el.dataset.doc, em: new Date().toISOString() }]); U().toast('Leitura registrada.'); }
       catch (e) { el.disabled = false; U().toast(e.message || String(e)); }
       U().render();
     }

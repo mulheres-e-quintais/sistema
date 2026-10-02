@@ -70,15 +70,33 @@
       <span class="sub">${mostrarUF ? E(f.uf) + ' · ' : ''}${E(f.municipio)} · ${E(f.comunidade)} · <span class="num">${R.pontosFicha(f)}</span> ponto${R.pontosFicha(f) === 1 ? '' : 's'} de prioridade${f._erro ? ' · <b style="color:var(--crit)">' + E(f._erro) + '</b>' : ''}</span></button>`;
   }
 
+  /* ---------- fichas que ainda estão só neste aparelho (sem internet, ou recusadas pelo servidor) ---------- */
+  const ROTULO_FILA = 'No aparelho: envia quando tiver internet';
+  function blocoAparelho(filaF, comErro) {
+    const pend = filaF.length;
+    const item = it => { const d = it.dados || {}; const onde = [d.municipio, d.comunidade].filter(Boolean).map(E).join(' · ');
+      return `<li class="fila-item${it.erro ? ' com-erro' : ''}"><div class="fila-txt"><b class="nm">${E(d.nome || 'Ficha sem nome')}</b>
+          ${it.erro ? '<span class="chip crit">Não enviada: corrigir</span>' : `<span class="chip pend">${ROTULO_FILA}</span>`}
+          ${onde ? `<span class="sub">${onde}</span>` : ''}
+          ${it.erro ? `<span class="fila-motivo"><b>Motivo:</b> ${E(it.erro)}</span>` : ''}</div>
+        ${it.erro ? `<button type="button" class="btn peq pri" data-acao="ficha-corrigir" data-id="${E(it.id)}" aria-label="Corrigir a ficha de ${E(d.nome || '')}">Corrigir</button>`
+          : `<button type="button" class="btn peq" data-acao="ficha-ver" data-id="${E(it.id)}" aria-label="Ver a ficha de ${E(d.nome || '')}">Ver</button>`}</li>`; };
+    return `<div class="bloco fila-aparelho${comErro ? ' com-erro' : ''}" role="status">
+      <div class="fila-cab"><span><b>${pend} ficha${pend > 1 ? 's' : ''} guardada${pend > 1 ? 's' : ''} neste aparelho</b>${comErro ? `, ${comErro} com problema para corrigir` : ', aguardando internet para enviar'}.</span>
+        ${navigator.onLine ? '<button type="button" class="btn peq" data-acao="ficha-enviar">Enviar agora</button>' : ''}</div>
+      <ul class="fila-lista">${filaF.slice().sort((a, b) => (b.erro ? 1 : 0) - (a.erro ? 1 : 0)).map(item).join('')}</ul></div>`;
+  }
+
   /* ---------- tela da bolsista ---------- */
   function secaoBolsista() {
     const S = U().S; const uf = S.eu.uf;
     const lista = todas().filter(f => f.uf === uf);
     const c = contar(lista, uf);
     const filaF = S.fila.filter(i => !i.tipo || i.tipo === 'ficha'); const pend = filaF.length, comErro = filaF.filter(i => i.erro).length;
-    const vis = lista;
-    const devolvidas = vis.filter(f => f.situacao === 'devolvida' || f._erro);
-    const resto = vis.filter(f => !(f.situacao === 'devolvida' || f._erro));
+    // o que ainda está só no aparelho aparece num bloco à parte, no topo (não se mistura com as fichas que já chegaram ao servidor)
+    const vis = lista.filter(f => !f._fila);
+    const devolvidas = vis.filter(f => f.situacao === 'devolvida');
+    const resto = vis.filter(f => f.situacao !== 'devolvida');
     return `<section class="secao" aria-labelledby="t-fichas">
       <div class="secao-cab"><div><h2 id="t-fichas">Seleção das mulheres · ${E(U().nomeUF(uf))}</h2>
         <p>Para cada mulher indicada pela comunidade você preenche uma <b>ficha de indicação</b>: dados dela, critérios do edital e o termo de consentimento assinado. A coordenação técnica aprova; as ${MQ.VAGAS_UF} primeiras aprovadas recebem o quintal e as outras ficam na lista de espera.</p></div>
@@ -89,9 +107,7 @@
         <div><span class="v num">${c.espera}</span><span class="l">na lista de espera</span></div>
         <div><span class="v num">${c.sem_agua}</span><span class="l">sem água: encaminhadas</span></div>
       </div>
-      ${pend ? `<div class="aviso${comErro ? ' erro' : ''}" style="display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap">
-        <span><b>${pend} ficha${pend > 1 ? 's' : ''} guardada${pend > 1 ? 's' : ''} neste aparelho</b>${comErro ? `, ${comErro} com problema para corrigir` : ', aguardando internet para enviar'}.</span>
-        ${navigator.onLine ? '<button class="btn peq" data-acao="ficha-enviar">Enviar agora</button>' : ''}</div>` : ''}
+      ${pend ? blocoAparelho(filaF, comErro) : ''}
       ${devolvidas.length ? `<div class="bloco" style="border-color:var(--crit)"><h3>Para corrigir (${devolvidas.length})</h3><div class="lista-fichas">${devolvidas.map(f => linhaFicha(f)).join('')}</div></div>` : ''}
       ${resto.length ? U().dobra('fichas-todas', `<span><b>Ver as ${resto.length} fichas</b> <span class="small muted">· procurar por nome ou CPF</span></span>`,
           `${resto.length > 6 ? `<div class="campo"><label for="f-busca">Procurar por nome ou CPF</label><input id="f-busca" data-procura="lista-fichas-uf" autocomplete="off"></div>` : ''}
@@ -141,7 +157,9 @@
             ${Object.entries(MQ.SITUACOES).map(([k, v]) => op(k, v.nome, filtro.situacao)).join('')}${Object.entries(MQ.RESULTADOS).map(([k, v]) => op(k, v.nome, filtro.situacao)).join('')}</select></div>
           <div class="campo"><label for="ff-busca">Nome ou CPF</label><input id="ff-busca" data-filtro="busca" value="${E(filtro.busca)}" autocomplete="off"></div>
         </div>
-        <div class="lista-fichas">${filtradas.slice(0, 200).map(f => linhaFicha(f, true)).join('') || '<p class="muted">Nenhuma ficha com esses filtros.</p>'}</div>
+        ${temFiltro() && filtradas.length ? `<p class="small muted filtro-estado" role="status">Mostrando ${filtradas.length} de ${lista.length} fichas. <button type="button" class="link" data-acao="ficha-limpar-filtros">Limpar filtros</button></p>` : ''}
+        ${filtradas.length ? `<div class="lista-fichas">${filtradas.slice(0, 200).map(f => linhaFicha(f, true)).join('')}</div>`
+          : `<div class="vazio filtro-vazio" role="status"><span>${temFiltro() ? 'Nenhuma ficha com esses filtros.' : 'Nenhuma ficha ainda.'}</span>${temFiltro() ? '<button type="button" class="btn peq" data-acao="ficha-limpar-filtros">Limpar filtros</button>' : ''}</div>`}
       </div></details>
     </section>`;
   }
@@ -308,10 +326,12 @@
     const sim = b => b ? '✓' : '✗';
     const podeCorrigir = souBolsista && f.situacao !== 'aprovada';
     const podeDecidir = souTec && !f._fila;
+    const ver = E(versaoDe(f));   // como a ficha estava quando esta tela foi desenhada (ver "duas abas", em enviar)
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">Ficha de indicação · ${E(f.uf)} · ${E(f.municipio)}</span>
         <h2 id="painel-t">${E(f.nome)}</h2><span style="display:flex;gap:6px;flex-wrap:wrap">${chipRes(f)}${chipSit(f)}</span></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo">
+        ${p.aviso ? `<div class="aviso erro ficha-mudou" role="alert">${E(p.aviso)}</div>` : ''}
         ${f._erro ? `<div class="aviso erro"><b>Não foi enviada:</b> ${E(f._erro)}</div>` : ''}
         ${f.situacao === 'devolvida' && f.obs_coordenacao ? `<div class="aviso erro"><b>Devolvida pela coordenação técnica:</b> ${E(f.obs_coordenacao)}</div>` : ''}
         ${casas.length ? `<div class="aviso erro"><b>Mesmo endereço</b> de ${casas.map(c => E(c.nome) + ' (' + E((MQ.RESULTADOS[c.resultado] || {}).nome || '') + ')').join(', ')}. Confira se são da mesma casa antes de aprovar.</div>` : ''}
@@ -338,20 +358,25 @@
           <div class="acoes">${f.foto_termo_path ? `<button class="btn peq" data-acao="ficha-foto" data-path="${E(f.foto_termo_path)}">Ver termo assinado</button>` : ''}
             ${f.foto_ficha_path ? `<button class="btn peq" data-acao="ficha-foto" data-path="${E(f.foto_ficha_path)}">Ver ficha em papel</button>` : ''}</div>
           <div id="fi-foto-vista"></div></div>
-        ${podeDecidir && f.situacao !== 'aprovada' ? `<form class="bloco" data-form="ficha-decisao" data-id="${E(f.id)}" novalidate><h3>Decisão da coordenação</h3>
+        ${podeDecidir && f.situacao !== 'aprovada' ? `<form class="bloco" data-form="ficha-decisao" data-id="${E(f.id)}" data-ver="${ver}" novalidate><h3>Decisão da coordenação</h3>
           <p class="small muted">A bolsista marcou o resultado (${E(((MQ.RESULTADOS[f.resultado] || {}).nome || '').toLowerCase())}). Aqui você confere: aprove se os papéis fotografados batem com a ficha e os critérios foram aplicados como aprovado em ata. Se algo estiver errado, devolva dizendo o que corrigir.</p>
           <div class="campo"><label for="fd-obs">Observação para a bolsista</label><textarea id="fd-obs" name="obs">${E(f.obs_coordenacao || '')}</textarea></div>
           <div class="aviso erro" data-erro hidden></div>
           <div class="acoes"><button class="btn pri" type="submit" name="decisao" value="aprovada">Aprovar</button>
             <button class="btn perigo" type="submit" name="decisao" value="devolvida">Devolver para correção</button></div></form>` : ''}
         ${podeDecidir && f.situacao === 'aprovada' ? `<details class="hist reabrir-ficha"><summary>Achou um erro depois de aprovar? Reabrir esta ficha</summary>
-          <form class="f" data-form="ficha-decisao" data-id="${E(f.id)}" novalidate>
+          <form class="f" data-form="ficha-decisao" data-id="${E(f.id)}" data-ver="${ver}" novalidate>
           <p class="small muted">A ficha já foi conferida e aprovada: não há nada a fazer aqui. Só use isto se descobrir um erro. Ela volta para a bolsista corrigir e sai da contagem de aprovadas até ser aprovada de novo.</p>
           <div class="campo"><label for="fd-obs">O que precisa ser corrigido</label><textarea id="fd-obs" name="obs"></textarea></div>
           <div class="aviso erro" data-erro hidden></div>
           <div class="acoes"><button class="btn perigo" type="submit" name="decisao" value="devolvida">Reabrir: devolver para correção</button></div></form></details>` : ''}
       </div>`;
   }
+
+  /* "Versão" da ficha: o que muda quando outra pessoa (ou outra aba) aprova, devolve ou corrige. Serve para a tela
+     desatualizada não gravar por cima: antes de aprovar ou devolver, a ficha é lida de novo e comparada com a que foi aberta. */
+  const versaoDe = f => f ? [f.situacao || '', f.resultado || '', f.atualizado_em || '', f.aprovada_em || '', f.obs_coordenacao || '', f.cpf || '', f.nome || ''].join('|') : '';
+  const MSG_MUDOU = 'Esta ficha foi alterada em outra tela. Atualizamos os dados: confira antes de decidir.';
 
   /* ---------- ações ---------- */
   async function clique(a, el) {
@@ -386,11 +411,15 @@
       if (el.dataset.path === 'exemplo') { box.innerHTML = '<p class="nota">Ficha de exemplo: não há foto.</p>'; return; }
       try {
         const url = await S.api.linkFoto(el.dataset.path);
-        box.innerHTML = url ? (/\.pdf$/.test(el.dataset.path) ? `<a class="btn peq" href="${E(url)}" target="_blank" rel="noopener">Abrir PDF</a>` : `<a href="${E(url)}" target="_blank" rel="noopener"><img src="${E(url)}" alt="Documento fotografado" style="border-radius:8px;border:1px solid var(--line);margin-top:8px"></a>`)
+        box.innerHTML = url ? (/\.pdf$/.test(el.dataset.path) ? `<a class="btn peq" href="${E(url)}" target="_blank" rel="noopener">Abrir PDF</a>` : `<a href="${E(url)}" target="_blank" rel="noopener" aria-label="Abrir a foto do documento em tamanho grande"><img src="${E(url)}" alt="Documento fotografado" style="border-radius:8px;border:1px solid var(--line);margin-top:8px"></a>`)
           : '<p class="nota">A foto ainda está só no aparelho de quem preencheu.</p>';
       } catch (e) { box.innerHTML = `<p class="nota">${E(e.message)}</p>`; }
     }
     else if (a === 'ficha-csv') baixarCSV();
+    else if (a === 'ficha-limpar-filtros') {
+      filtro.uf = filtro.situacao = filtro.busca = ''; (S.aberto = S.aberto || {})['fichas-coord'] = true;   // a lista continua aberta, agora inteira
+      U().render(); const n = document.getElementById('ff-busca'); if (n) n.focus();
+    }
   }
 
   async function enviar(tipo, form, fd) {
@@ -421,7 +450,21 @@
       const obs = String(fd.get('obs') || '').trim();
       if (decisao === 'devolvida' && obs.length < 5) return U().mostrarErros(form, { obs: 'Escreva o que a bolsista precisa corrigir.' });
       await U().ocupado(form, async () => {
-        await S.api.decidirFicha(form.dataset.id, decisao, obs);
+        // duas abas (ou duas pessoas): relê a ficha; se mudou desde que foi aberta aqui, avisa, mostra o dado novo e NÃO grava
+        if (form.dataset.ver != null) {
+          let frescas = null;
+          try { if (S.api.reler) await S.api.reler(); frescas = await S.api.listarFichas(); } catch (e) { if (!e || !e.semRede) throw e; }   // sem internet: segue (o servidor decide)
+          if (frescas) {
+            const atual = frescas.find(x => x.id === form.dataset.id);
+            if (!atual || versaoDe(atual) !== form.dataset.ver) {
+              S.fichas = frescas;
+              if (atual) U().abrirPainel(Object.assign({}, S.painel, { aviso: MSG_MUDOU })); else U().fecharPainel();
+              U().render(); U().toast(MSG_MUDOU); return;
+            }
+          }
+        }
+        const lida = (S.fichas || []).find(x => x.id === form.dataset.id);   // marca do que a coordenação leu: o banco recusa se a ficha mudou depois
+        await S.api.decidirFicha(form.dataset.id, decisao, obs, lida && lida.atualizado_em || null);
         await U().carregar(); U().fecharPainel(); U().render();
         U().toast(decisao === 'aprovada' ? 'Ficha aprovada.' : 'Ficha devolvida para a bolsista corrigir.');
       });
@@ -468,7 +511,7 @@
     const r = montarCSV();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([r.texto], { type: 'text/csv;charset=utf-8' }));
-    a.download = r.nome;
+    a.download = r.nome; a.hidden = true; a.setAttribute('aria-hidden', 'true'); a.tabIndex = -1;   // link só para disparar o download: não aparece nem entra na ordem do Tab
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
     U().toast((r.filtrado ? `Planilha gerada com ${r.n} de ${r.total} fichas (filtro da tela).` : 'Planilha gerada.') + ' Ela tem dados pessoais: guarde em pasta restrita.');
   }
@@ -483,7 +526,10 @@
         const dica = form.querySelector('#fi-' + (campo === 'termo' ? 'ft' : 'ff') + '-dica');
         if (arq.size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; ev.target.value = ''; return; }
         dica.textContent = 'Preparando foto…';
-        if (arq.type === 'application/pdf' && arq.size > 0) { fotosTemp[campo] = arq; dica.textContent = 'Arquivo pronto (' + Math.round(arq.size / 1024) + ' KB). Fica no aparelho até enviar.'; return; }   // ficha digitalizada em PDF: vai como está
+        if (arq.type === 'application/pdf' || /\.pdf$/i.test(arq.name || '')) {   // ficha digitalizada em PDF: vai como está, se for PDF de verdade
+          const falso = MQ.arquivoConfere ? await MQ.arquivoConfere(arq, ['pdf']) : (arq.size > 0 ? '' : 'O arquivo está vazio. Escolha outro.');
+          if (falso) { fotosTemp[campo] = null; ev.target.value = ''; dica.textContent = falso; return; }
+          fotosTemp[campo] = arq; dica.textContent = 'Arquivo pronto (' + Math.max(1, Math.round(arq.size / 1024)) + ' KB). Fica no aparelho até enviar.'; return; }
         try { fotosTemp[campo] = await MQ.comprimirFoto(arq, undefined, undefined, { semAviso: true }); }
         catch (e) { fotosTemp[campo] = null; ev.target.value = ''; dica.textContent = e.message; return; }   // não é foto (txt renomeado, vazio, corrompido)
         dica.textContent = 'Foto pronta (' + Math.round(fotosTemp[campo].size / 1024) + ' KB). Fica no aparelho até enviar.';
@@ -516,5 +562,5 @@
     if (b) b.form.dataset.decisao = b.value;
   }, true);
 
-  MQ.fichasUI = { secaoBolsista, secaoCoord, painel, clique, enviar, contar, casaBusca, filtrar, filtro, montarCSV, celCSV };
+  MQ.fichasUI = { secaoBolsista, secaoCoord, painel, clique, enviar, contar, casaBusca, filtrar, filtro, montarCSV, celCSV, versaoDe, MSG_MUDOU, ROTULO_FILA };
 })();

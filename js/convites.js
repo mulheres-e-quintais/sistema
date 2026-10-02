@@ -63,21 +63,21 @@
         <p class="small muted" data-arlo-nota ${arlo ? '' : 'hidden'}>Então bastam os dados básicos: nome, CPF, celular e e-mail${campo ? ', mais o município onde mora (o sistema não lê o Arlo e calcula a ajuda de custo das visitas pela distância do município até os quintais)' : ''}. Nascimento, NIS, endereço e conta bancária ficam no Arlo.</p>
       </fieldset>
       <div data-arlo-opc ${arlo ? 'hidden' : ''}><fieldset><legend>Mais dados pessoais</legend><div class="campos">
-        <div class="campo"><label for="dp-soc">Nome social <span class="muted">(se usar)</span></label><input id="dp-soc" name="nome_social" value="${v(d.nome_social)}" placeholder="Como prefere ser chamada"></div>
-        <div class="campo"><label for="dp-nasc">Data de nascimento</label><input id="dp-nasc" name="data_nascimento" type="date" value="${v(d.data_nascimento)}" max="${R.hoje()}"></div>
-        <div class="campo inteiro"><label for="dp-nis">PIS/NIS/PASEP <span class="muted">(se tiver)</span></label><input id="dp-nis" name="nis" inputmode="numeric" value="${v(d.nis)}" placeholder="000.00000.00-0"></div>
+        <div class="campo"><label for="dp-soc">Nome social <span class="muted">(se usar)</span></label><input id="dp-soc" name="nome_social" value="${v(d.nome_social)}" maxlength="120" placeholder="Como prefere ser chamada"></div>
+        <div class="campo"><label for="dp-nasc">Data de nascimento</label><input id="dp-nasc" name="data_nascimento" type="date" value="${v(d.data_nascimento)}" min="1900-01-01" max="${(h => (+h.slice(0, 4) - 16) + h.slice(4))(R.hoje())}"></div>
+        <div class="campo inteiro"><label for="dp-nis">PIS/NIS/PASEP <span class="muted">(se tiver)</span></label><input id="dp-nis" name="nis" inputmode="numeric" value="${v(d.nis)}" maxlength="14" placeholder="000.00000.00-0"></div>
       </div></fieldset></div>
       ${campo ? '<input type="hidden" name="_campo" value="1">' : ''}<fieldset ${campo ? '' : `data-arlo-opc ${arlo ? 'hidden' : ''}`} data-endereco><legend data-arlo-opc ${arlo ? 'hidden' : ''}>Endereço</legend>
         ${campo ? `<legend data-arlo-so ${arlo ? '' : 'hidden'}>Município onde mora</legend>` : ''}
         <p class="small muted" style="margin-top:-6px" data-arlo-opc ${arlo ? 'hidden' : ''}>Usado para calcular a ajuda de custo das visitas (distância até os quintais) e para a FUNCERN.</p>
         ${campo ? `<p class="small muted" style="margin-top:-6px" data-arlo-so ${arlo ? '' : 'hidden'}>O endereço e a conta ficam no Arlo. Só o município fica aqui: é dele que o sistema calcula a distância até os quintais e a ajuda de custo das visitas.</p>` : ''}
         <div class="campos">
-        <div class="campo" data-arlo-opc ${arlo ? 'hidden' : ''}><label for="dp-cep">CEP</label><input id="dp-cep" name="cep" inputmode="numeric" value="${v(en.cep)}" placeholder="00000-000" data-cep><span class="dica" id="dp-cep-dica">Preenche o resto sozinho quando há internet.</span></div>
-        <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo"><label for="dp-num">Número</label><input id="dp-num" name="numero" value="${v(en.numero)}" placeholder="s/n se não tiver"></div>
-        <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo inteiro"><label for="dp-log">Logradouro (rua, sítio, estrada)</label><input id="dp-log" name="logradouro" value="${v(en.logradouro)}"></div>
-        <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo"><label for="dp-comp">Complemento</label><input id="dp-comp" name="complemento" value="${v(en.complemento)}"></div>
-        <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo"><label for="dp-bai">Bairro ou comunidade</label><input id="dp-bai" name="bairro" value="${v(en.bairro)}"></div>
-        <div class="campo"><label for="dp-cid">Município onde mora</label><input id="dp-cid" name="cidade" value="${v(en.cidade || d.municipio)}" ${munis && munis.length ? 'list="lista-mun"' : ''} autocomplete="address-level2">
+        <div class="campo" data-arlo-opc ${arlo ? 'hidden' : ''}><label for="dp-cep">CEP</label><input id="dp-cep" name="cep" inputmode="numeric" value="${v(en.cep)}" placeholder="00000-000" maxlength="9" data-cep><span class="dica" id="dp-cep-dica">Preenche o resto sozinho quando há internet.</span></div>
+        <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo"><label for="dp-num">Número</label><input id="dp-num" name="numero" value="${v(en.numero)}" maxlength="20" placeholder="s/n se não tiver"></div>
+        <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo inteiro"><label for="dp-log">Logradouro (rua, sítio, estrada)</label><input id="dp-log" name="logradouro" value="${v(en.logradouro)}" maxlength="120"></div>
+        <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo"><label for="dp-comp">Complemento</label><input id="dp-comp" name="complemento" value="${v(en.complemento)}" maxlength="120"></div>
+        <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo"><label for="dp-bai">Bairro ou comunidade</label><input id="dp-bai" name="bairro" value="${v(en.bairro)}" maxlength="120"></div>
+        <div class="campo"><label for="dp-cid">Município onde mora</label><input id="dp-cid" name="cidade" value="${v(en.cidade || d.municipio)}" maxlength="120" ${munis && munis.length ? 'list="lista-mun"' : ''} autocomplete="address-level2">
           ${munis && munis.length ? `<datalist id="lista-mun">${munis.map(x => `<option value="${E(x)}">`).join('')}</datalist><span class="dica">A lista traz os municípios do projeto no estado.</span>` : ''}</div>
         <div class="campo" data-arlo-opc ${arlo ? 'hidden' : ''}><label for="dp-uf">Estado</label><select id="dp-uf" name="uf_end">${op(['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE', 'Outro'], en.uf)}</select></div>
       </div></fieldset>

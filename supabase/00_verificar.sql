@@ -2,7 +2,7 @@
 -- Mulheres & Quintais — VERIFICAR o banco (só lê, não muda nada)
 -- Supabase > SQL Editor > New query > cole este arquivo inteiro > Run.
 -- Mostra, etapa por etapa, o que já está instalado. Onde aparecer "FALTA", rode aquele script
--- (na ordem 01, 02, 03, 04, 07, 08, 09, 10, 11, 12, 13, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45). Todos podem rodar de novo sem estragar nada.
+-- (na ordem 01, 02, 03, 04, 07, 08, 09, 10, 11, 12, 13, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46). Todos podem rodar de novo sem estragar nada.
 -- =====================================================================
 with col as (select table_name, column_name from information_schema.columns where table_schema = 'public'),
 fn as (select proname from pg_proc where pronamespace = 'public'::regnamespace),
@@ -38,10 +38,10 @@ chk as (
   union all select '24_documentos', to_regclass('public.documentos_projeto') is not null and exists (select 1 from storage.buckets where id = 'documentos')
   union all select '23_fic_coordenacao_tecnica', exists (select 1 from pg_proc where proname = 'matricular_fic' and prosrc like '%coord_tecnico%')
   -- rodar 01, 03, 07 ou 11 de novo fora de ordem volta regras antigas da equipe: estes dois itens acusam.
-  -- Conserto: rodar de novo, em ordem, 11, 12, 13, 15, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44 (nunca 05, 06, 14 ou 16).
-  union all select 'regras da equipe (se FALTA: rode de novo, em ordem, do 11 ao 45)',
+  -- Conserto: rodar de novo, em ordem, 11, 12, 13, 15, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46 (nunca 05, 06, 14 ou 16).
+  union all select 'regras da equipe (se FALTA: rode de novo, em ordem, do 11 ao 46)',
                    exists (select 1 from pg_proc where proname = 'equipe_antes' and prosrc like '%só registra o cadastro no Arlo%' and prosrc like '%coordenação geral altera%')
-  union all select 'auxiliar ver e registrar Arlo (se FALTA: rode de novo, em ordem, do 11 ao 45)',
+  union all select 'auxiliar ver e registrar Arlo (se FALTA: rode de novo, em ordem, do 11 ao 46)',
                    exists (select 1 from pg_policy where polname = 'equipe_ler' and pg_get_expr(polqual, polrelid) like '%auxiliar_adm%')
                    and exists (select 1 from pg_policy where polname = 'equipe_alterar' and pg_get_expr(polqual, polrelid) like '%auxiliar_adm%')
   union all select '29_desempenho (rode depois do 11 ao 28)', to_regclass('public.auditoria_em') is not null
@@ -95,6 +95,35 @@ chk as (
                    not exists (select 1 from pg_policy where polname in ('parametros_ler', 'apl_ler') and pg_get_expr(polqual, polrelid) = 'true')
                    and exists (select 1 from pg_policy where polname = 'parametros_ler')
                    and exists (select 1 from pg_policy where polname = 'equipe_ler' and pg_get_expr(polqual, polrelid) like '%ativa%')
+  union all select '46_regras_decididas (regras decididas pela coordenação geral e pendências da auditoria)', exists (select 1 from fn where proname = 'visita_etapa_motivo')
+                   and (select count(*) from pg_trigger where not tgisinternal and tgname in ('a1_versao', 'diagnosticos_a1_versao', 'diagnosticos_a2_limites', 'fichas_c_regras', 'equipe_c_regras',
+                          'custos_visita_a0_travas', 'parametros_a0_validar', 'convites_a0_travas', 'entregas_a0_travas', 'equipe_desligada_matricula', 'equipe_privado_auditoria',
+                          'solicitacao_visitas_auditoria', 'entregas_mes_auditoria', 'apl_municipios_auditoria')) = 14
+  -- as linhas abaixo voltam a FALTA se o 45 (ou outro script anterior) for rodado de novo depois do 46: nesse caso, rode o 46 de novo
+  union all select 'etapas do campo em ordem: implantação só com plano aprovado, acompanhamento só depois dela (se FALTA: rode o 46)',
+                   exists (select 1 from pg_proc where proname = 'visitas_antes' and prosrc like '%visita_etapa_motivo%')
+                   and exists (select 1 from pg_proc where proname = 'visitas_feita' and prosrc like '%visita_etapa_motivo%')
+  union all select 'pedido complementar de ajuda de custo; bolsa continua uma por mês (se FALTA: rode o 46)',
+                   not exists (select 1 from pg_constraint where conname = 'uma_por_mes')
+                   and exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'uma_por_mes' and indexdef ilike '%where%bolsa%')
+                   and exists (select 1 from pg_proc where proname = 'solicitar_pagamento' and prosrc like '%complementar%' and prosrc like '%passa do total das visitas detalhadas%')
+  union all select 'passagens: teto por finalidade (R$ 70.000,00 e R$ 22.400,00) e pedagógico só com a coordenação geral (se FALTA: rode o 46)',
+                   exists (select 1 from pg_proc where proname = 'pedidos_apoio_valor' and prosrc like '%22400%')
+                   and exists (select 1 from pg_proc where proname = 'saldo_passagens_eventos' and prosrc like '%passagem_pedagogico_teto%')
+                   and exists (select 1 from pg_proc where proname = 'mover_pedido_apoio' and prosrc like '%só a coordenação geral confere%')
+                   and exists (select 1 from pg_proc where proname = 'salvar_pedido_apoio' and prosrc like '%1.000.000,00%')
+  union all select 'professor do FIC só altera a própria turma (se FALTA: rode o 46)',
+                   exists (select 1 from pg_policy where polname = 'turmas_alterar' and pg_get_expr(polqual, polrelid) like '%professor_id%')
+                   and exists (select 1 from pg_proc where proname = 'turmas_fic_antes' and prosrc like '%Só a coordenação geral passa a turma%')
+  union all select 'FIC: matrícula sem número repetido, encontros até 12 horas por dia (se FALTA: rode o 46)',
+                   exists (select 1 from pg_proc where proname = 'matricular_fic' and prosrc like '%Cada pessoa tem o seu número%')
+                   and exists (select 1 from pg_proc where proname = 'registrar_encontro_fic' and prosrc like '%máximo é 12 horas por dia%')
+  union all select 'datas de hoje no fuso de Fortaleza em todas as funções (se FALTA: rode o 46)',
+                   not exists (select 1 from pg_proc where pronamespace = 'public'::regnamespace and (prosrc ~* 'current_date' or prosrc ~* 'date_trunc\(''month'', now\(\)\)'))
+  union all select 'documento arquivado não muda; link de cadastro com dados conferidos; mapa sem repetir município (se FALTA: rode o 46)',
+                   exists (select 1 from pg_proc where proname = 'documentos_antes' and prosrc like '%o título e a data não mudam mais%')
+                   and exists (select 1 from pg_proc where proname = 'enviar_pre_cadastro' and prosrc like '%não é uma data que existe%')
+                   and exists (select 1 from pg_proc where proname = 'vitrine_municipios' and prosrc like '%sem_acento%')
   -- regras que VOLTAM AO ANTIGO se um script velho for rodado de novo fora de ordem (se FALTA, rode de novo o número indicado)
   union all select 'primeiro acesso só com código (se FALTA: rode o 18 e depois o 43)', exists (select 1 from pg_proc where proname = 'bloquear_conta_nao_cadastrada' and prosrc like '%codigo_hash%')
   union all select '200 dias de campo e avaliação (se FALTA: rode o 13 e depois o 15)', exists (select 1 from pg_proc where proname = 'visitas_antes' and prosrc like '%200 dias de campo%')
