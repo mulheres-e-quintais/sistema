@@ -2437,3 +2437,7 @@ p.carregando:has(.carregando-t) { flex-direction: column; gap: 12px; }
 /* foco pelo teclado nos seletores de duas opções ("Já tenho senha / Primeiro acesso" e demais): o contorno ficava cortado pela borda arredondada */
 .seg button:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; border-radius: inherit; position: relative; z-index: 1; box-shadow: inset 0 0 0 5px var(--surface); }
 .seg button[aria-pressed="true"]:focus-visible, .seg button.ativo:focus-visible, .seg button[aria-selected="true"]:focus-visible { box-shadow: inset 0 0 0 5px color-mix(in srgb, var(--surface) 55%, transparent); }
+/* ícone nos botões pequenos ("Resolver"): mesmo desenho dos botões de cadastro, em tamanho menor */
+.btn-acao.mini .ba-ic { flex: 0 0 18px; height: 18px; padding-right: 8px; }
+.btn-acao.mini .ba-ic svg { width: 18px; height: 18px; }
+.btn-acao.mini { padding: 0 14px 0 12px; }
