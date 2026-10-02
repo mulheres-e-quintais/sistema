@@ -8013,6 +8013,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <div class="acoes"><button class="btn pri" type="submit">Enviar e ir para a próxima</button></div></form>
       ${tf.pergunta ? `<p class="small muted">${E(tf.pergunta)} Se foi difícil, toque em "Não deu certo" e conte.</p>` : ''}
       <button class="link small" data-acao="rot-pular">Pular esta tarefa</button>
+      <button class="link small" data-acao="rot-sair">Sair do modo teste</button>
       ${lista(g, n, i, m)}</div>`;
   }
   const cab = t => `<div class="painel-cab"><div class="t"><span class="eyebrow">Teste do sistema</span><h2 id="painel-t">${E(t)}</h2></div>
