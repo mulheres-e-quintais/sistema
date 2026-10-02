@@ -98,20 +98,122 @@
     return e;
   };
 
-  /* Traduz erros do banco para a linguagem de quem usa */
+  /* Traduz erros do banco para a linguagem de quem usa (auditoria de 01/10/2026).
+     Regra: a pessoa só lê a mensagem original quando ela é do projeto (escrita em português, vinda de
+     "raise exception" no banco, código P0001, ou das regras da tela). Texto técnico do Postgres/Supabase,
+     erro de programação e objeto sem mensagem viram um aviso simples. Nunca "[object Object]". */
+  R.MSG_GENERICA = 'Não deu certo. Tente de novo; se continuar, avise a coordenação.';
+  R.MSG_SEM_REDE = 'Sem internet agora. O que você preencheu continua na tela: tente de novo quando o sinal melhorar.';
+  R.MSG_SESSAO = 'Sua sessão venceu. Entre de novo.';
+  const str = v => (typeof v === 'string' ? v : '');
+  /* texto do erro (mensagem + detalhes), sem nunca transformar objeto em "[object Object]" */
+  R.textoErro = err => {
+    if (err == null) return '';
+    if (typeof err === 'string') return err;
+    if (typeof err !== 'object') return typeof err === 'number' && err ? String(err) : '';
+    return [str(err.message), str(err.details), str(err.hint)].filter(Boolean).join(' ');
+  };
+  const TECNICO = /Cannot read|is not a function|is not defined|is not iterable|\bundefined\b|\bnull\b|\[object|violates|constraint|duplicate key|\bJWT\b|syntax|relation "|column "|\b(Type|Reference|Range|Syntax)Error\b|PGRST|schema cache|invalid input|permission denied|Internal Server Error|Bad Gateway|Service Unavailable|Gateway Time|statement timeout|unexpected|^\s*[{<]|\bat [A-Za-z_$][\w$]*\.|\bstack\b|\bNaN\b/i;
+  const INGLES = /\b(the|is|are|was|were|not|of|with|error|failed|invalid|cannot|unable|missing|required|expired|denied|found|token|request|server|timeout|timed|value|key|already|exists|must|should|too|large|payload|resource|bucket|object|row|table)\b/i;
+  const PORTUGUES = /[áàâãéêíóôõúç]|\b(nao|que|para|com|uma|um|em|ou|ja|ela|ele|voce|foi|esta|sem|mais|pelo|pela|dos|das|qualquer|coisa)\b/i;
+  /* a mensagem é do projeto? (português, sem cara de texto técnico) */
+  R.mensagemDoProjeto = m => { const t = String(m || '').trim();
+    return !!t && t.length <= 600 && /[a-zà-ú]{3}/i.test(t) && !TECNICO.test(t) && !(INGLES.test(t) && !PORTUGUES.test(t)); };
+  /* erro de rede de verdade: o navegador não conseguiu falar com o servidor (não é qualquer texto com "fetch") */
+  R.erroDeRede = err => { const m = str(err && typeof err === 'object' ? err.message : err).trim();
+    return /^(TypeError:\s*)?(Failed to fetch|NetworkError when attempting to fetch resource\.?|NetworkError|Load failed|Network request failed|The network connection was lost\.?)$/i.test(m); };
+  const DUPLICADO = [
+    [/uma_por_mes/, 'Você já solicitou este mês.'],
+    [/solicitacao_visitas_pkey/, 'Esta visita já está em outro pedido de pagamento.'],
+    [/entregas_mes_pkey/, 'Esta entrega do mês já estava marcada.'],
+    [/documentos_projeto_arquivo_path_key/, 'Este arquivo já foi anexado. Escolha outro arquivo.'],
+    [/execucao_um_estorno/, 'Este lançamento já foi estornado.'],
+    [/avaliacoes_visita_id_key/, 'Esta visita já tem avaliação registrada.']
+  ];
   R.mensagemErro = function (err) {
-    const s = String((err && (err.message || err.details)) || err || '');
+    if (err == null || err === '' || err === 0 || err === false) return 'Não foi possível salvar. Tente de novo.';
+    const o = typeof err === 'object' ? err : (typeof err === 'string' ? { message: err } : {});   // número ou verdadeiro/falso soltos não são mensagem
+    const s = R.textoErro(o), cod = String(o.code == null ? '' : o.code), msg = str(o.message).trim();
     if (/equipe_uma_bolsista_por_uf/.test(s)) return 'Já existe bolsista ativa nessa função e estado. Desligue a atual antes de cadastrar outra.';
     if (/meta_(diagnosticos|quintais|visitas)/.test(s) && /check/.test(s)) return 'Previsão de atividades fora do limite: até 40 diagnósticos, 40 quintais e 80 visitas.';
     if (/equipe_uma_coordenacao/.test(s)) return 'Já existe coordenação técnica ativa. Desligue a atual antes de cadastrar outra.';
     if (/equipe_cpf_ativo/.test(s)) return 'Esta pessoa (CPF) já ocupa outra vaga ativa.';
     if (/equipe_email_ativo/.test(s)) return 'Este e-mail já está em uso por outra pessoa ativa.';
+    for (const [re, t] of DUPLICADO) if (re.test(s)) return t;
     if (/row-level security|permission denied/i.test(s)) return 'Seu perfil não tem permissão para esta ação.';
-    if (/Failed to fetch|NetworkError|Load failed|network|fetch/i.test(s)) return 'Sem internet agora. O que você preencheu continua na tela: tente de novo quando o sinal melhorar.';
-    return s || 'Não foi possível salvar. Tente de novo.';
+    if (cod === 'P0001' && R.mensagemDoProjeto(msg)) return msg;   // "raise exception" do banco: já está em português
+    if (cod === '42501' || cod === 'PGRST301' || cod === 'PGRST302' || /JWT expired|invalid JWT|JWT.*(expired|invalid)/i.test(s)) return R.MSG_SESSAO;
+    if (cod === '23505' || /duplicate key/i.test(s)) return 'Este registro já existe. Confira se ele já não foi salvo.';
+    if (cod === '23514' || cod === '23502' || /violates (check|not-null) constraint/i.test(s)) return 'Algum campo está com valor que o sistema não aceita. Confira e tente de novo.';
+    if (cod === '22003') return 'Valor grande demais.';
+    if (cod === '22007' || cod === '22008') return 'Data inválida.';
+    if (cod === '57014' || /statement timeout|canceling statement/i.test(s)) return 'O sistema demorou demais para responder. Tente de novo daqui a pouco.';
+    if (R.erroDeRede(o)) return R.MSG_SEM_REDE;
+    if (/^(Type|Reference|Range|Syntax|Eval)Error$/.test(str(o.name))) return R.MSG_GENERICA;   // erro de programação
+    if (!cod && R.mensagemDoProjeto(msg || str(o.details))) return msg || str(o.details).trim();   // regra da tela ou da demonstração
+    return R.MSG_GENERICA;
+  };
+  /* o que vai para a tela a partir de um erro apanhado: o que a API já traduziu (e.original) e as regras da
+     demonstração (e.regra) passam como estão; o resto é traduzido aqui. Nunca devolve vazio nem "undefined". */
+  R.mensagemParaTela = function (e) {
+    let m = '';
+    if (e && typeof e === 'object' && (e.original || e.regra) && typeof e.message === 'string') m = e.message.trim();
+    if (!m || /^(undefined|null|\[object [^\]]*\])$/i.test(m)) m = R.mensagemErro(e && typeof e === 'object' && e.original && !str(e.message).trim() ? e.original : e);
+    return m || R.MSG_GENERICA;
   };
 
   R.hoje = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+  /* Limites de data e de número: os MESMOS do banco (supabase/45_auditoria_qa.sql). A tela avisa antes; o banco garante. */
+  R.LIM = { visitaMin: '2026-01-01', visitaMax: '2027-12-31', equipeMin: '2025-01-01', inicioFuturoDias: 365,
+    rendaMax: 100000, areaMax: 100000, idadeMax: 120, familiaMax: 30, esperaMax: 999, nome: 120, texto: 2000 };
+  const dataOk = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) && !isNaN(new Date(d + 'T12:00:00'));
+  R.dataValida = dataOk;
+  /* data prevista de uma visita (agendar ou remarcar): de hoje até 31/12/2027. "antiga" = a data que já estava gravada (não mudou: não trava). */
+  R.erroDataPrevista = (d, antiga) => {
+    if (!d) return 'Informe a data.';
+    if (!dataOk(d)) return 'Data inválida.';
+    if (antiga && d === antiga) return null;
+    if (d < R.hoje()) return 'Esta data já passou. Escolha de hoje em diante.';
+    if (d > R.LIM.visitaMax) return 'A data vai só até 31/12/2027.';
+    return null;
+  };
+  /* dia em que a visita (ou o diagnóstico, a avaliação) foi feita: de 01/01/2026 até hoje */
+  R.erroDataFeita = d => {
+    if (!d) return 'Informe o dia.';
+    if (!dataOk(d)) return 'Data inválida.';
+    if (d > R.hoje()) return 'Não pode ser no futuro.';
+    if (d < R.LIM.visitaMin) return 'Não pode ser antes de 01/01/2026 (o projeto ainda não tinha começado).';
+    return null;
+  };
+  /* datas da equipe: início (de 01/01/2025 até um ano à frente) e passos da habilitação (de 01/01/2025 até hoje) */
+  R.erroDataInicio = d => {
+    if (!d) return 'Informe a data de início.';
+    if (!dataOk(d)) return 'Data inválida.';
+    if (d < R.LIM.equipeMin) return 'Confira o ano: o início precisa ser a partir de 01/01/2025.';
+    if (d > R.somaDias(R.hoje(), R.LIM.inicioFuturoDias)) return 'Confira o ano: o início pode ser no máximo um ano à frente.';
+    return null;
+  };
+  R.erroDataPasso = d => {
+    if (!d) return null;   // passo ainda não feito: fica em branco
+    if (!dataOk(d)) return 'Data inválida.';
+    if (d > R.hoje()) return 'Data no futuro. Registre só o que já aconteceu.';
+    if (d < R.LIM.equipeMin) return 'Confira o ano: não pode ser antes de 01/01/2025.';
+    return null;
+  };
+  R.erroDataDesligamento = (d, inicio) => {
+    if (!d) return 'Informe o último dia.';
+    if (!dataOk(d)) return 'Data inválida.';
+    if (inicio && d < inicio) return 'Antes do início da bolsa (' + R.fmtData(inicio) + ').';
+    if (d > R.hoje()) return 'Não pode ser no futuro. Desligue no dia em que a pessoa sair.';
+    return null;
+  };
+  /* celular: 10 ou 11 números, com DDD de 11 a 99 */
+  R.celularValido = t => { const c = R.soDigitos(t); return (c.length === 10 || c.length === 11) && +c.slice(0, 2) >= 11; };
+  const inteiro = v => v !== '' && v != null && typeof v !== 'boolean' && Number.isInteger(Number(v));
+  R.inteiro = inteiro;
+  /* número dentro da faixa? (null/vazio = não informado, passa) */
+  R.foraDaFaixa = (v, min, max, soInteiro) => { if (v == null || v === '') return false; const n = Number(v);
+    return !isFinite(n) || n < min || n > max || (!!soInteiro && !Number.isInteger(n)); };
   // dia local (Brasil) de um carimbo de data e hora gravado em UTC ("2026-10-01T01:00Z" é 30/09 à noite aqui)
   /* valor em reais digitado de qualquer jeito: "1.600,50", "1600.50", "1600,5", "R$ 1.600" → número; inválido → NaN */
   R.valorBR = v => {
@@ -123,9 +225,26 @@
     else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');   // 1.600 = mil e seiscentos
     return /^-?\d+(\.\d+)?$/.test(s) ? Number(s) : NaN;
   };
-  /* número dentro de um texto ("10 kg", "2,5", "1.000 mudas") → número ou null; mesma leitura do banco (42_revisao_seguranca.sql) */
-  R.numBR = t => { const s = String(t == null ? '' : t).replace(/[^\d.,-]/g, ''); const n = R.valorBR(s); if (!isNaN(n)) return n;
-    const m = s.replace(/,/g, '.').match(/\d+(\.\d+)?/); return m ? +m[0] : null; };   // "10-20" → 10 (igual ao banco)
+  /* número dentro de um texto ("10 kg", "2,5", "1.000 mudas") → número ou null.
+     Vale o PRIMEIRO número do texto: "2 de 500 ml" é 2, "3 a 4" é 3, "10-20" é 10.
+     Fração simples: "1/2" é 0,5 e "1 1/2" é 1,5. (Antes os números eram colados: "1/2" virava 12.) */
+  R.numBR = t => {
+    if (typeof t === 'number') return isFinite(t) ? t : null;
+    const s = String(t == null ? '' : t).replace(/−/g, '-').trim(); if (!s) return null;
+    const i = s.search(/\d/); if (i < 0) return null;
+    const neg = i > 0 && s[i - 1] === '-' && (i === 1 || /[\s(]/.test(s[i - 2]));
+    const r = s.slice(i);
+    let m = /^(\d+)\s+(\d+)\s*\/\s*(\d+)(?![\d/])/.exec(r), n;
+    if (m && +m[3] > 0) n = +m[1] + (+m[2]) / (+m[3]);
+    else if ((m = /^(\d+)\s*\/\s*(\d+)(?![\d/.,])/.exec(r)) && +m[2] > 0) n = (+m[1]) / (+m[2]);
+    else { const tok = /^\d[\d.,]*/.exec(r)[0].replace(/[.,]+$/, ''); n = R.valorBR(tok); if (isNaN(n)) { const x = /^\d+([.,]\d+)?/.exec(tok); n = x ? +x[0].replace(',', '.') : NaN; } }
+    if (isNaN(n) || !isFinite(n)) return null;
+    return neg ? -n : n;
+  };
+  /* leitura do banco (public.num_br, 42_revisao_seguranca.sql): tira tudo o que não é número e cola o resto.
+     Serve só para saber quando o banco leria um número diferente do da tela (ver campo.js: quantidade do kit). */
+  R.numBanco = t => { const s = String(t == null ? '' : t).replace(/[^\d.,-]/g, ''); if (!s) return null; const n = R.valorBR(s); if (!isNaN(n)) return n;
+    const m = s.replace(/,/g, '.').match(/\d+(\.\d+)?/); return m ? +m[0] : null; };
   R.diaLocal = v => { if (!v) return null; const s = String(v); if (s.length <= 10) return s; const t = new Date(s); return isNaN(t) ? s.slice(0, 10) : new Date(t.getTime() - t.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
   R.somaDias = (dia, n) => { const t = new Date(String(dia).slice(0, 10) + 'T12:00:00'); t.setDate(t.getDate() + n); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); };
   R.fmtData = d => (d ? String(R.diaLocal(d)).slice(0, 10).split('-').reverse().join('/') : '');   // data ou data e hora (no dia de Fortaleza)
@@ -179,7 +298,8 @@
     if (!f.comunidade || f.comunidade.trim().length < 3) e.comunidade = 'Informe a comunidade ou assentamento.';
     if (!f.endereco || f.endereco.trim().length < 3) e.endereco = 'Informe o endereço (rua, sítio, nº).';
     if (f.nis && R.soDigitos(f.nis).length !== 11) e.nis = 'O NIS tem 11 números. Deixe em branco se ela não souber.';
-    if (f.pessoas_familia != null && (f.pessoas_familia < 1 || f.pessoas_familia > 30)) e.pessoas_familia = 'Entre 1 e 30.';
+    if (f.pessoas_familia != null && f.pessoas_familia !== '' && R.foraDaFaixa(f.pessoas_familia, 1, R.LIM.familiaMax, true)) e.pessoas_familia = 'Entre 1 e 30.';   // número inteiro
+    if (f.celular && !R.celularValido(f.celular)) e.celular = 'Celular com DDD: 10 ou 11 números (ex.: (89) 90000-0000).';
     if (!f.consent_dados) e.consent_dados = 'Sem a autorização de uso dos dados, a ficha não pode ser registrada.';
     if (f.assinatura === 'digital') {
       if (!f.testemunha_nome || f.testemunha_nome.trim().split(/\s+/).length < 2) e.testemunha_nome = 'Nome completo da testemunha.';
@@ -190,6 +310,7 @@
     if (!f.resultado) e.resultado = 'Escolha o resultado.';
     else if (!R.resultadosPossiveis(f).includes(f.resultado)) e.resultado = 'Resultado incompatível com os critérios marcados.';
     if (f.resultado === 'lista_espera' && !(f.posicao_espera >= 1)) e.posicao_espera = 'Informe a posição na lista.';
+    else if (f.resultado === 'lista_espera' && R.foraDaFaixa(f.posicao_espera, 1, R.LIM.esperaMax, true)) e.posicao_espera = 'Posição de 1 a 999 (número inteiro).';
     if (f.resultado === 'sem_agua' && (!f.encaminhada_para || f.encaminhada_para.trim().length < 3)) e.encaminhada_para = 'Para onde ela foi encaminhada (programa de cisternas, órgão)?';
     if (!f.data_ficha) e.data_ficha = 'Informe a data.';
     else if (f.data_ficha > R.hoje()) e.data_ficha = 'Data no futuro.';
@@ -199,7 +320,7 @@
   };
   const antigo = R.mensagemErro;
   R.mensagemErro = function (err) {
-    const s = String((err && (err.message || err.details)) || err || '');
+    const s = R.textoErro(err);
     if (/fichas_cpf_unico/.test(s)) return 'Esta mulher (CPF) já tem ficha no projeto, possivelmente em outro estado. Fale com a coordenação técnica.';
     if (/criterios_para_selecao/.test(s)) return 'Selecionada ou lista de espera só com todos os critérios obrigatórios e a autodeclaração assinada.';
     if (/sem_agua_encaminhada/.test(s)) return 'Informe para onde ela foi encaminhada por falta de água.';
@@ -222,27 +343,53 @@
   R.decideCampo = papel => papel === 'coord_tecnico' || papel === 'coord_geral';   // aprova ou devolve fichas e diagnósticos, agenda visitas   // sempre um dos professores do FIC, em qualquer turma
   /* sem água na seca (ou só carro-pipa): a visita para na Parte A */
   R.semAgua = d => d.agua_seca === 'nao' || (Array.isArray(d.fontes_agua) && d.fontes_agua.length > 0 && d.fontes_agua.every(f => f === 'carro_pipa'));
+  /* projeção do kit: quantidade × valor de cada item. Item com quantidade ou valor negativo NÃO abate o total. */
+  R.totalKit = kit => (Array.isArray(kit) ? kit : []).reduce((s, x) => { const q = R.numBR(x && x.qtd), v = x && x.valor != null && x.valor !== '' ? Number(x.valor) : 0;
+    return s + (q > 0 && v > 0 ? q * v : 0); }, 0);
+  /* confere o kit item por item (as mesmas travas do banco, 45): valor ≥ 0, quantidade > 0 em item com valor */
+  R.erroKit = kit => {
+    for (const x of (kit || [])) {
+      if (!x || !String(x.item || '').trim()) continue;
+      const nome = String(x.item).trim().slice(0, 60), q = R.numBR(x.qtd), v = x.valor == null || x.valor === '' ? null : Number(x.valor);
+      if (v != null && (isNaN(v) || v < 0)) return 'O valor de ' + nome + ' não pode ser negativo.';
+      if (q != null && q < 0) return 'A quantidade de ' + nome + ' não pode ser negativa.';
+      if (!(v > 0)) return 'Informe o valor estimado de cada item (R$ por unidade): é a projeção do investimento no quintal.';
+      if (!(q > 0)) return 'Informe a quantidade de ' + nome + ' (um número maior que zero).';
+    }
+    return null;
+  };
   R.validarDiagnostico = function (d) {
-    const e = {};
+    const e = {}, L = R.LIM, fora = R.foraDaFaixa;
     if (!d.data_visita) e.data_visita = 'Informe a data da visita.'; else if (d.data_visita > R.hoje()) e.data_visita = 'Data no futuro.';
+    else if (R.dataValida(d.data_visita) && d.data_visita < L.visitaMin) e.data_visita = 'A data não pode ser antes de 01/01/2026.';
     if (d.latitude == null) {   // sem GPS: motivo escolhido e explicação com as próprias palavras (31_validacao_diagnostico.sql)
       const det = String(d.sem_gps_detalhe != null ? d.sem_gps_detalhe : d.sem_gps_motivo || '').trim();
       if (d.sem_gps_detalhe != null && !String(d.sem_gps_tipo || '').trim()) e.sem_gps_motivo = 'Registre a localização no quintal ou escolha por que não foi possível.';
       else if (det.length < 15) e.sem_gps_motivo = 'Registre a localização no quintal ou explique, em pelo menos 15 letras, por que não foi possível.';
     }
     if (!(d.familia || []).some(x => String(x.nome || '').trim())) e.familia = 'Registre pelo menos a própria mulher na família.';
+    else if ((d.familia || []).some(x => fora(x.idade, 0, L.idadeMax, true))) e.familia = 'Confira as idades da família: de 0 a 120 anos, sem vírgula.';
     if (!d.agua_seca) e.agua_seca = 'Informe se a água dá para o quintal no período seco.';
     if (!(d.fontes_agua || []).length) e.fontes_agua = 'Marque as fontes de água.';
     if (d.area_m2 != null && !(d.area_m2 > 0)) e.area_m2 = 'Área inválida.';
+    else if (d.area_m2 != null && d.area_m2 > L.areaMax) e.area_m2 = 'Área grande demais: no máximo 100.000 m² (10 hectares). Confira o número.';
+    // números fora do possível (o campo aceita qualquer coisa digitada; aqui é que se confere)
+    if (fora(d.renda_familiar, 0, L.rendaMax)) e.renda_familiar = 'Renda de R$ 0 a R$ 100.000 por mês. Confira o número.';
+    if (fora(d.renda_quintal, 0, L.rendaMax)) e.renda_quintal = 'Vendas de R$ 0 a R$ 100.000 por mês. Confira o número.';
+    if (fora(d.capacidade_litros, 0, 1e9)) e.capacidade_litros = 'A capacidade não pode ser negativa.';
+    if (fora(d.distancia_m, 0, 1e6)) e.distancia_m = 'A distância não pode ser negativa.';
+    if (fora(d.meses_seca, 0, 12)) e.meses_seca = 'De 0 a 12 meses.';
+    if (fora(d.horas_dia, 0, 24)) e.horas_dia = 'De 0 a 24 horas por dia.';
     if ((d.fotos_ok || 0) < 3) e.fotos = 'Faça pelo menos 3 fotos: visão geral, fonte de água e área de plantio.';
     if (d.impacto !== undefined && MQ.impactoUI) Object.assign(e, MQ.impactoUI.validar(d.impacto));   // linha de base para medir o impacto
     if (!R.semAgua(d)) {
       if (!(d.objetivos || []).length) e.objetivos = 'Marque o objetivo do quintal.';
+      const ek = R.erroKit(d.kit);
       if (!(d.kit || []).some(x => String(x.item || '').trim())) e.kit = 'Escolha pelo menos um item do kit.';
-      else if ((d.kit || []).some(x => x.item && !(+x.valor > 0))) e.kit = 'Informe o valor estimado de cada item (R$ por unidade): é a projeção do investimento no quintal.';
+      else if (ek) e.kit = ek;
       else {
         const lim = +(((MQ.ui && MQ.ui.S.kitPar) || {}).valor_quintal) || 0;
-        const tot = d.kit_total != null ? d.kit_total : (d.kit || []).reduce((s, x) => s + (R.numBR(x.qtd) || 0) * (+x.valor || 0), 0);
+        const tot = Math.round((d.kit_total != null ? Math.max(0, +d.kit_total || 0) : R.totalKit(d.kit)) * 100) / 100;   // em centavos, como o banco compara
         if (lim && tot > lim) e.kit = 'O kit passa do valor por quintal (' + tot.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) + ' de ' + lim.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) + '). Tire ou troque itens.';
       }
       if (!d.lote) e.lote = 'Escolha o lote de implantação.';
@@ -252,7 +399,7 @@
   };
   const antigo = R.mensagemErro;
   R.mensagemErro = function (err) {
-    const s = String((err && (err.message || err.details)) || err || '');
+    const s = R.textoErro(err);
     if (/visitas_etapa_unica/.test(s)) return 'Este quintal já tem essa visita agendada ou feita.';
     if (/diagnosticos_ficha_id_key|diagnosticos_visita_id_key/.test(s)) return 'Este quintal já tem diagnóstico registrado.';
     if (/gps_ou_motivo/.test(s)) return 'Registre a localização ou explique por que não foi possível.';

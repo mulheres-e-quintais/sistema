@@ -368,20 +368,122 @@ MQ.ORCAMENTO = {
     return e;
   };
 
-  /* Traduz erros do banco para a linguagem de quem usa */
+  /* Traduz erros do banco para a linguagem de quem usa (auditoria de 01/10/2026).
+     Regra: a pessoa só lê a mensagem original quando ela é do projeto (escrita em português, vinda de
+     "raise exception" no banco, código P0001, ou das regras da tela). Texto técnico do Postgres/Supabase,
+     erro de programação e objeto sem mensagem viram um aviso simples. Nunca "[object Object]". */
+  R.MSG_GENERICA = 'Não deu certo. Tente de novo; se continuar, avise a coordenação.';
+  R.MSG_SEM_REDE = 'Sem internet agora. O que você preencheu continua na tela: tente de novo quando o sinal melhorar.';
+  R.MSG_SESSAO = 'Sua sessão venceu. Entre de novo.';
+  const str = v => (typeof v === 'string' ? v : '');
+  /* texto do erro (mensagem + detalhes), sem nunca transformar objeto em "[object Object]" */
+  R.textoErro = err => {
+    if (err == null) return '';
+    if (typeof err === 'string') return err;
+    if (typeof err !== 'object') return typeof err === 'number' && err ? String(err) : '';
+    return [str(err.message), str(err.details), str(err.hint)].filter(Boolean).join(' ');
+  };
+  const TECNICO = /Cannot read|is not a function|is not defined|is not iterable|\bundefined\b|\bnull\b|\[object|violates|constraint|duplicate key|\bJWT\b|syntax|relation "|column "|\b(Type|Reference|Range|Syntax)Error\b|PGRST|schema cache|invalid input|permission denied|Internal Server Error|Bad Gateway|Service Unavailable|Gateway Time|statement timeout|unexpected|^\s*[{<]|\bat [A-Za-z_$][\w$]*\.|\bstack\b|\bNaN\b/i;
+  const INGLES = /\b(the|is|are|was|were|not|of|with|error|failed|invalid|cannot|unable|missing|required|expired|denied|found|token|request|server|timeout|timed|value|key|already|exists|must|should|too|large|payload|resource|bucket|object|row|table)\b/i;
+  const PORTUGUES = /[áàâãéêíóôõúç]|\b(nao|que|para|com|uma|um|em|ou|ja|ela|ele|voce|foi|esta|sem|mais|pelo|pela|dos|das|qualquer|coisa)\b/i;
+  /* a mensagem é do projeto? (português, sem cara de texto técnico) */
+  R.mensagemDoProjeto = m => { const t = String(m || '').trim();
+    return !!t && t.length <= 600 && /[a-zà-ú]{3}/i.test(t) && !TECNICO.test(t) && !(INGLES.test(t) && !PORTUGUES.test(t)); };
+  /* erro de rede de verdade: o navegador não conseguiu falar com o servidor (não é qualquer texto com "fetch") */
+  R.erroDeRede = err => { const m = str(err && typeof err === 'object' ? err.message : err).trim();
+    return /^(TypeError:\s*)?(Failed to fetch|NetworkError when attempting to fetch resource\.?|NetworkError|Load failed|Network request failed|The network connection was lost\.?)$/i.test(m); };
+  const DUPLICADO = [
+    [/uma_por_mes/, 'Você já solicitou este mês.'],
+    [/solicitacao_visitas_pkey/, 'Esta visita já está em outro pedido de pagamento.'],
+    [/entregas_mes_pkey/, 'Esta entrega do mês já estava marcada.'],
+    [/documentos_projeto_arquivo_path_key/, 'Este arquivo já foi anexado. Escolha outro arquivo.'],
+    [/execucao_um_estorno/, 'Este lançamento já foi estornado.'],
+    [/avaliacoes_visita_id_key/, 'Esta visita já tem avaliação registrada.']
+  ];
   R.mensagemErro = function (err) {
-    const s = String((err && (err.message || err.details)) || err || '');
+    if (err == null || err === '' || err === 0 || err === false) return 'Não foi possível salvar. Tente de novo.';
+    const o = typeof err === 'object' ? err : (typeof err === 'string' ? { message: err } : {});   // número ou verdadeiro/falso soltos não são mensagem
+    const s = R.textoErro(o), cod = String(o.code == null ? '' : o.code), msg = str(o.message).trim();
     if (/equipe_uma_bolsista_por_uf/.test(s)) return 'Já existe bolsista ativa nessa função e estado. Desligue a atual antes de cadastrar outra.';
     if (/meta_(diagnosticos|quintais|visitas)/.test(s) && /check/.test(s)) return 'Previsão de atividades fora do limite: até 40 diagnósticos, 40 quintais e 80 visitas.';
     if (/equipe_uma_coordenacao/.test(s)) return 'Já existe coordenação técnica ativa. Desligue a atual antes de cadastrar outra.';
     if (/equipe_cpf_ativo/.test(s)) return 'Esta pessoa (CPF) já ocupa outra vaga ativa.';
     if (/equipe_email_ativo/.test(s)) return 'Este e-mail já está em uso por outra pessoa ativa.';
+    for (const [re, t] of DUPLICADO) if (re.test(s)) return t;
     if (/row-level security|permission denied/i.test(s)) return 'Seu perfil não tem permissão para esta ação.';
-    if (/Failed to fetch|NetworkError|Load failed|network|fetch/i.test(s)) return 'Sem internet agora. O que você preencheu continua na tela: tente de novo quando o sinal melhorar.';
-    return s || 'Não foi possível salvar. Tente de novo.';
+    if (cod === 'P0001' && R.mensagemDoProjeto(msg)) return msg;   // "raise exception" do banco: já está em português
+    if (cod === '42501' || cod === 'PGRST301' || cod === 'PGRST302' || /JWT expired|invalid JWT|JWT.*(expired|invalid)/i.test(s)) return R.MSG_SESSAO;
+    if (cod === '23505' || /duplicate key/i.test(s)) return 'Este registro já existe. Confira se ele já não foi salvo.';
+    if (cod === '23514' || cod === '23502' || /violates (check|not-null) constraint/i.test(s)) return 'Algum campo está com valor que o sistema não aceita. Confira e tente de novo.';
+    if (cod === '22003') return 'Valor grande demais.';
+    if (cod === '22007' || cod === '22008') return 'Data inválida.';
+    if (cod === '57014' || /statement timeout|canceling statement/i.test(s)) return 'O sistema demorou demais para responder. Tente de novo daqui a pouco.';
+    if (R.erroDeRede(o)) return R.MSG_SEM_REDE;
+    if (/^(Type|Reference|Range|Syntax|Eval)Error$/.test(str(o.name))) return R.MSG_GENERICA;   // erro de programação
+    if (!cod && R.mensagemDoProjeto(msg || str(o.details))) return msg || str(o.details).trim();   // regra da tela ou da demonstração
+    return R.MSG_GENERICA;
+  };
+  /* o que vai para a tela a partir de um erro apanhado: o que a API já traduziu (e.original) e as regras da
+     demonstração (e.regra) passam como estão; o resto é traduzido aqui. Nunca devolve vazio nem "undefined". */
+  R.mensagemParaTela = function (e) {
+    let m = '';
+    if (e && typeof e === 'object' && (e.original || e.regra) && typeof e.message === 'string') m = e.message.trim();
+    if (!m || /^(undefined|null|\[object [^\]]*\])$/i.test(m)) m = R.mensagemErro(e && typeof e === 'object' && e.original && !str(e.message).trim() ? e.original : e);
+    return m || R.MSG_GENERICA;
   };
 
   R.hoje = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+  /* Limites de data e de número: os MESMOS do banco (supabase/45_auditoria_qa.sql). A tela avisa antes; o banco garante. */
+  R.LIM = { visitaMin: '2026-01-01', visitaMax: '2027-12-31', equipeMin: '2025-01-01', inicioFuturoDias: 365,
+    rendaMax: 100000, areaMax: 100000, idadeMax: 120, familiaMax: 30, esperaMax: 999, nome: 120, texto: 2000 };
+  const dataOk = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) && !isNaN(new Date(d + 'T12:00:00'));
+  R.dataValida = dataOk;
+  /* data prevista de uma visita (agendar ou remarcar): de hoje até 31/12/2027. "antiga" = a data que já estava gravada (não mudou: não trava). */
+  R.erroDataPrevista = (d, antiga) => {
+    if (!d) return 'Informe a data.';
+    if (!dataOk(d)) return 'Data inválida.';
+    if (antiga && d === antiga) return null;
+    if (d < R.hoje()) return 'Esta data já passou. Escolha de hoje em diante.';
+    if (d > R.LIM.visitaMax) return 'A data vai só até 31/12/2027.';
+    return null;
+  };
+  /* dia em que a visita (ou o diagnóstico, a avaliação) foi feita: de 01/01/2026 até hoje */
+  R.erroDataFeita = d => {
+    if (!d) return 'Informe o dia.';
+    if (!dataOk(d)) return 'Data inválida.';
+    if (d > R.hoje()) return 'Não pode ser no futuro.';
+    if (d < R.LIM.visitaMin) return 'Não pode ser antes de 01/01/2026 (o projeto ainda não tinha começado).';
+    return null;
+  };
+  /* datas da equipe: início (de 01/01/2025 até um ano à frente) e passos da habilitação (de 01/01/2025 até hoje) */
+  R.erroDataInicio = d => {
+    if (!d) return 'Informe a data de início.';
+    if (!dataOk(d)) return 'Data inválida.';
+    if (d < R.LIM.equipeMin) return 'Confira o ano: o início precisa ser a partir de 01/01/2025.';
+    if (d > R.somaDias(R.hoje(), R.LIM.inicioFuturoDias)) return 'Confira o ano: o início pode ser no máximo um ano à frente.';
+    return null;
+  };
+  R.erroDataPasso = d => {
+    if (!d) return null;   // passo ainda não feito: fica em branco
+    if (!dataOk(d)) return 'Data inválida.';
+    if (d > R.hoje()) return 'Data no futuro. Registre só o que já aconteceu.';
+    if (d < R.LIM.equipeMin) return 'Confira o ano: não pode ser antes de 01/01/2025.';
+    return null;
+  };
+  R.erroDataDesligamento = (d, inicio) => {
+    if (!d) return 'Informe o último dia.';
+    if (!dataOk(d)) return 'Data inválida.';
+    if (inicio && d < inicio) return 'Antes do início da bolsa (' + R.fmtData(inicio) + ').';
+    if (d > R.hoje()) return 'Não pode ser no futuro. Desligue no dia em que a pessoa sair.';
+    return null;
+  };
+  /* celular: 10 ou 11 números, com DDD de 11 a 99 */
+  R.celularValido = t => { const c = R.soDigitos(t); return (c.length === 10 || c.length === 11) && +c.slice(0, 2) >= 11; };
+  const inteiro = v => v !== '' && v != null && typeof v !== 'boolean' && Number.isInteger(Number(v));
+  R.inteiro = inteiro;
+  /* número dentro da faixa? (null/vazio = não informado, passa) */
+  R.foraDaFaixa = (v, min, max, soInteiro) => { if (v == null || v === '') return false; const n = Number(v);
+    return !isFinite(n) || n < min || n > max || (!!soInteiro && !Number.isInteger(n)); };
   // dia local (Brasil) de um carimbo de data e hora gravado em UTC ("2026-10-01T01:00Z" é 30/09 à noite aqui)
   /* valor em reais digitado de qualquer jeito: "1.600,50", "1600.50", "1600,5", "R$ 1.600" → número; inválido → NaN */
   R.valorBR = v => {
@@ -393,9 +495,26 @@ MQ.ORCAMENTO = {
     else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');   // 1.600 = mil e seiscentos
     return /^-?\d+(\.\d+)?$/.test(s) ? Number(s) : NaN;
   };
-  /* número dentro de um texto ("10 kg", "2,5", "1.000 mudas") → número ou null; mesma leitura do banco (42_revisao_seguranca.sql) */
-  R.numBR = t => { const s = String(t == null ? '' : t).replace(/[^\d.,-]/g, ''); const n = R.valorBR(s); if (!isNaN(n)) return n;
-    const m = s.replace(/,/g, '.').match(/\d+(\.\d+)?/); return m ? +m[0] : null; };   // "10-20" → 10 (igual ao banco)
+  /* número dentro de um texto ("10 kg", "2,5", "1.000 mudas") → número ou null.
+     Vale o PRIMEIRO número do texto: "2 de 500 ml" é 2, "3 a 4" é 3, "10-20" é 10.
+     Fração simples: "1/2" é 0,5 e "1 1/2" é 1,5. (Antes os números eram colados: "1/2" virava 12.) */
+  R.numBR = t => {
+    if (typeof t === 'number') return isFinite(t) ? t : null;
+    const s = String(t == null ? '' : t).replace(/−/g, '-').trim(); if (!s) return null;
+    const i = s.search(/\d/); if (i < 0) return null;
+    const neg = i > 0 && s[i - 1] === '-' && (i === 1 || /[\s(]/.test(s[i - 2]));
+    const r = s.slice(i);
+    let m = /^(\d+)\s+(\d+)\s*\/\s*(\d+)(?![\d/])/.exec(r), n;
+    if (m && +m[3] > 0) n = +m[1] + (+m[2]) / (+m[3]);
+    else if ((m = /^(\d+)\s*\/\s*(\d+)(?![\d/.,])/.exec(r)) && +m[2] > 0) n = (+m[1]) / (+m[2]);
+    else { const tok = /^\d[\d.,]*/.exec(r)[0].replace(/[.,]+$/, ''); n = R.valorBR(tok); if (isNaN(n)) { const x = /^\d+([.,]\d+)?/.exec(tok); n = x ? +x[0].replace(',', '.') : NaN; } }
+    if (isNaN(n) || !isFinite(n)) return null;
+    return neg ? -n : n;
+  };
+  /* leitura do banco (public.num_br, 42_revisao_seguranca.sql): tira tudo o que não é número e cola o resto.
+     Serve só para saber quando o banco leria um número diferente do da tela (ver campo.js: quantidade do kit). */
+  R.numBanco = t => { const s = String(t == null ? '' : t).replace(/[^\d.,-]/g, ''); if (!s) return null; const n = R.valorBR(s); if (!isNaN(n)) return n;
+    const m = s.replace(/,/g, '.').match(/\d+(\.\d+)?/); return m ? +m[0] : null; };
   R.diaLocal = v => { if (!v) return null; const s = String(v); if (s.length <= 10) return s; const t = new Date(s); return isNaN(t) ? s.slice(0, 10) : new Date(t.getTime() - t.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
   R.somaDias = (dia, n) => { const t = new Date(String(dia).slice(0, 10) + 'T12:00:00'); t.setDate(t.getDate() + n); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); };
   R.fmtData = d => (d ? String(R.diaLocal(d)).slice(0, 10).split('-').reverse().join('/') : '');   // data ou data e hora (no dia de Fortaleza)
@@ -449,7 +568,8 @@ MQ.ORCAMENTO = {
     if (!f.comunidade || f.comunidade.trim().length < 3) e.comunidade = 'Informe a comunidade ou assentamento.';
     if (!f.endereco || f.endereco.trim().length < 3) e.endereco = 'Informe o endereço (rua, sítio, nº).';
     if (f.nis && R.soDigitos(f.nis).length !== 11) e.nis = 'O NIS tem 11 números. Deixe em branco se ela não souber.';
-    if (f.pessoas_familia != null && (f.pessoas_familia < 1 || f.pessoas_familia > 30)) e.pessoas_familia = 'Entre 1 e 30.';
+    if (f.pessoas_familia != null && f.pessoas_familia !== '' && R.foraDaFaixa(f.pessoas_familia, 1, R.LIM.familiaMax, true)) e.pessoas_familia = 'Entre 1 e 30.';   // número inteiro
+    if (f.celular && !R.celularValido(f.celular)) e.celular = 'Celular com DDD: 10 ou 11 números (ex.: (89) 90000-0000).';
     if (!f.consent_dados) e.consent_dados = 'Sem a autorização de uso dos dados, a ficha não pode ser registrada.';
     if (f.assinatura === 'digital') {
       if (!f.testemunha_nome || f.testemunha_nome.trim().split(/\s+/).length < 2) e.testemunha_nome = 'Nome completo da testemunha.';
@@ -460,6 +580,7 @@ MQ.ORCAMENTO = {
     if (!f.resultado) e.resultado = 'Escolha o resultado.';
     else if (!R.resultadosPossiveis(f).includes(f.resultado)) e.resultado = 'Resultado incompatível com os critérios marcados.';
     if (f.resultado === 'lista_espera' && !(f.posicao_espera >= 1)) e.posicao_espera = 'Informe a posição na lista.';
+    else if (f.resultado === 'lista_espera' && R.foraDaFaixa(f.posicao_espera, 1, R.LIM.esperaMax, true)) e.posicao_espera = 'Posição de 1 a 999 (número inteiro).';
     if (f.resultado === 'sem_agua' && (!f.encaminhada_para || f.encaminhada_para.trim().length < 3)) e.encaminhada_para = 'Para onde ela foi encaminhada (programa de cisternas, órgão)?';
     if (!f.data_ficha) e.data_ficha = 'Informe a data.';
     else if (f.data_ficha > R.hoje()) e.data_ficha = 'Data no futuro.';
@@ -469,7 +590,7 @@ MQ.ORCAMENTO = {
   };
   const antigo = R.mensagemErro;
   R.mensagemErro = function (err) {
-    const s = String((err && (err.message || err.details)) || err || '');
+    const s = R.textoErro(err);
     if (/fichas_cpf_unico/.test(s)) return 'Esta mulher (CPF) já tem ficha no projeto, possivelmente em outro estado. Fale com a coordenação técnica.';
     if (/criterios_para_selecao/.test(s)) return 'Selecionada ou lista de espera só com todos os critérios obrigatórios e a autodeclaração assinada.';
     if (/sem_agua_encaminhada/.test(s)) return 'Informe para onde ela foi encaminhada por falta de água.';
@@ -492,27 +613,53 @@ MQ.ORCAMENTO = {
   R.decideCampo = papel => papel === 'coord_tecnico' || papel === 'coord_geral';   // aprova ou devolve fichas e diagnósticos, agenda visitas   // sempre um dos professores do FIC, em qualquer turma
   /* sem água na seca (ou só carro-pipa): a visita para na Parte A */
   R.semAgua = d => d.agua_seca === 'nao' || (Array.isArray(d.fontes_agua) && d.fontes_agua.length > 0 && d.fontes_agua.every(f => f === 'carro_pipa'));
+  /* projeção do kit: quantidade × valor de cada item. Item com quantidade ou valor negativo NÃO abate o total. */
+  R.totalKit = kit => (Array.isArray(kit) ? kit : []).reduce((s, x) => { const q = R.numBR(x && x.qtd), v = x && x.valor != null && x.valor !== '' ? Number(x.valor) : 0;
+    return s + (q > 0 && v > 0 ? q * v : 0); }, 0);
+  /* confere o kit item por item (as mesmas travas do banco, 45): valor ≥ 0, quantidade > 0 em item com valor */
+  R.erroKit = kit => {
+    for (const x of (kit || [])) {
+      if (!x || !String(x.item || '').trim()) continue;
+      const nome = String(x.item).trim().slice(0, 60), q = R.numBR(x.qtd), v = x.valor == null || x.valor === '' ? null : Number(x.valor);
+      if (v != null && (isNaN(v) || v < 0)) return 'O valor de ' + nome + ' não pode ser negativo.';
+      if (q != null && q < 0) return 'A quantidade de ' + nome + ' não pode ser negativa.';
+      if (!(v > 0)) return 'Informe o valor estimado de cada item (R$ por unidade): é a projeção do investimento no quintal.';
+      if (!(q > 0)) return 'Informe a quantidade de ' + nome + ' (um número maior que zero).';
+    }
+    return null;
+  };
   R.validarDiagnostico = function (d) {
-    const e = {};
+    const e = {}, L = R.LIM, fora = R.foraDaFaixa;
     if (!d.data_visita) e.data_visita = 'Informe a data da visita.'; else if (d.data_visita > R.hoje()) e.data_visita = 'Data no futuro.';
+    else if (R.dataValida(d.data_visita) && d.data_visita < L.visitaMin) e.data_visita = 'A data não pode ser antes de 01/01/2026.';
     if (d.latitude == null) {   // sem GPS: motivo escolhido e explicação com as próprias palavras (31_validacao_diagnostico.sql)
       const det = String(d.sem_gps_detalhe != null ? d.sem_gps_detalhe : d.sem_gps_motivo || '').trim();
       if (d.sem_gps_detalhe != null && !String(d.sem_gps_tipo || '').trim()) e.sem_gps_motivo = 'Registre a localização no quintal ou escolha por que não foi possível.';
       else if (det.length < 15) e.sem_gps_motivo = 'Registre a localização no quintal ou explique, em pelo menos 15 letras, por que não foi possível.';
     }
     if (!(d.familia || []).some(x => String(x.nome || '').trim())) e.familia = 'Registre pelo menos a própria mulher na família.';
+    else if ((d.familia || []).some(x => fora(x.idade, 0, L.idadeMax, true))) e.familia = 'Confira as idades da família: de 0 a 120 anos, sem vírgula.';
     if (!d.agua_seca) e.agua_seca = 'Informe se a água dá para o quintal no período seco.';
     if (!(d.fontes_agua || []).length) e.fontes_agua = 'Marque as fontes de água.';
     if (d.area_m2 != null && !(d.area_m2 > 0)) e.area_m2 = 'Área inválida.';
+    else if (d.area_m2 != null && d.area_m2 > L.areaMax) e.area_m2 = 'Área grande demais: no máximo 100.000 m² (10 hectares). Confira o número.';
+    // números fora do possível (o campo aceita qualquer coisa digitada; aqui é que se confere)
+    if (fora(d.renda_familiar, 0, L.rendaMax)) e.renda_familiar = 'Renda de R$ 0 a R$ 100.000 por mês. Confira o número.';
+    if (fora(d.renda_quintal, 0, L.rendaMax)) e.renda_quintal = 'Vendas de R$ 0 a R$ 100.000 por mês. Confira o número.';
+    if (fora(d.capacidade_litros, 0, 1e9)) e.capacidade_litros = 'A capacidade não pode ser negativa.';
+    if (fora(d.distancia_m, 0, 1e6)) e.distancia_m = 'A distância não pode ser negativa.';
+    if (fora(d.meses_seca, 0, 12)) e.meses_seca = 'De 0 a 12 meses.';
+    if (fora(d.horas_dia, 0, 24)) e.horas_dia = 'De 0 a 24 horas por dia.';
     if ((d.fotos_ok || 0) < 3) e.fotos = 'Faça pelo menos 3 fotos: visão geral, fonte de água e área de plantio.';
     if (d.impacto !== undefined && MQ.impactoUI) Object.assign(e, MQ.impactoUI.validar(d.impacto));   // linha de base para medir o impacto
     if (!R.semAgua(d)) {
       if (!(d.objetivos || []).length) e.objetivos = 'Marque o objetivo do quintal.';
+      const ek = R.erroKit(d.kit);
       if (!(d.kit || []).some(x => String(x.item || '').trim())) e.kit = 'Escolha pelo menos um item do kit.';
-      else if ((d.kit || []).some(x => x.item && !(+x.valor > 0))) e.kit = 'Informe o valor estimado de cada item (R$ por unidade): é a projeção do investimento no quintal.';
+      else if (ek) e.kit = ek;
       else {
         const lim = +(((MQ.ui && MQ.ui.S.kitPar) || {}).valor_quintal) || 0;
-        const tot = d.kit_total != null ? d.kit_total : (d.kit || []).reduce((s, x) => s + (R.numBR(x.qtd) || 0) * (+x.valor || 0), 0);
+        const tot = Math.round((d.kit_total != null ? Math.max(0, +d.kit_total || 0) : R.totalKit(d.kit)) * 100) / 100;   // em centavos, como o banco compara
         if (lim && tot > lim) e.kit = 'O kit passa do valor por quintal (' + tot.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) + ' de ' + lim.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) + '). Tire ou troque itens.';
       }
       if (!d.lote) e.lote = 'Escolha o lote de implantação.';
@@ -522,7 +669,7 @@ MQ.ORCAMENTO = {
   };
   const antigo = R.mensagemErro;
   R.mensagemErro = function (err) {
-    const s = String((err && (err.message || err.details)) || err || '');
+    const s = R.textoErro(err);
     if (/visitas_etapa_unica/.test(s)) return 'Este quintal já tem essa visita agendada ou feita.';
     if (/diagnosticos_ficha_id_key|diagnosticos_visita_id_key/.test(s)) return 'Este quintal já tem diagnóstico registrado.';
     if (/gps_ou_motivo/.test(s)) return 'Registre a localização ou explique por que não foi possível.';
@@ -915,7 +1062,7 @@ MQ.ORCAMENTO = {
         if (!p || p.solicitante_id !== eu.id) throw falha('Pedido não encontrado.');
         if (p.situacao !== 'devolvido') throw falha('Só dá para corrigir pedido devolvido.');
       }
-      Object.assign(p, { titulo, data_ref: data, dados: copia(dados), justificativa_prazo: justificativa || null, situacao: 'enviado', enviado_em: agora, conferido_por: null, conferido_em: null, decidido_por: null, decidido_em: null });
+      Object.assign(p, { titulo, data_ref: data, dados: copia(dados), justificativa_prazo: justificativa || null, situacao: 'enviado', enviado_em: agora, conferido_por: null, conferido_em: null, decidido_por: null, decidido_em: null, valor_autorizado: null });
       const aud = Object.assign({}, p); delete aud.dados;
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'pedidos_apoio', registro_id: p.id, acao: id ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: null, depois: aud });
       gravar(); return p.id;
@@ -947,7 +1094,7 @@ MQ.ORCAMENTO = {
       } else if (acao === 'devolver') {
         if (!((papel === conferente && p.situacao === 'enviado') || (papel === 'coord_geral' && p.situacao === 'conferido'))) throw falha('Este pedido não pode ser devolvido agora.');
         if (o.length < 5) throw falha('Para devolver, escreva o que precisa ser corrigido.');
-        Object.assign(p, { situacao: 'devolvido', obs: o, decidido_por: eu.id, decidido_em: agora });
+        Object.assign(p, { situacao: 'devolvido', obs: o, decidido_por: eu.id, decidido_em: agora, valor_autorizado: null });   // 42: pedido devolvido perde o valor autorizado
       } else if (acao === 'autorizar') {
         if (papel !== 'coord_geral') throw falha('Quem autoriza e manda para a FUNCERN é a coordenação geral.');
         if (p.situacao !== 'conferido') throw falha('Só pedido conferido pode ser autorizado.');
@@ -1002,13 +1149,14 @@ MQ.ORCAMENTO = {
         const ruim = visitas.some(id => { const v = (d.visitas || []).find(x => x.id === id); const sid = d.solic_visitas[id];
           return !v || v.executor_id !== eu.id || v.situacao !== 'realizada' || String(v.data_realizada).slice(0, 7) !== m.slice(0, 7) || (sid && (!s || sid !== s.id)); });
         if (ruim) throw falha('Há visita que não é sua, não está feita, é de outro mês ou já foi solicitada.');
+        if (!(+valor > 0)) throw falha('Valor inválido.');   // 32: ajuda de custo com valor zero, negativo ou vazio
       } else if (String(relatorio || '').trim().length < 50) throw falha('Escreva o relatório de atividades do mês (pelo menos algumas linhas).');
       const agora = new Date().toISOString(); let alvo = s;
       if (tipo === 'bolsa' && eu.papel === 'professor_fic') {   // 38: relatório com os encontros do mês e a presença, gravado pelo sistema
         const enc = (d.ficEncontros || []).filter(e => e.professor_id === eu.id && !e.cancelado_em && String(e.data).slice(0, 7) === m.slice(0, 7)).sort((a, b) => String(a.data).localeCompare(String(b.data)));
         if (!enc.length && String((detalhe || {}).justificativa_sem_encontro || '').trim().length < 30) throw falha('Nenhum encontro do curso registrado neste mês: explique por quê (pelo menos 30 letras), por exemplo, mês de preparação do curso.');
         const nomeP = id => { const q = d.equipe.find(y => y.id === id) || {}; return { nome: q.nome_social || q.nome, papel: q.papel, uf: q.uf }; };
-        detalhe = Object.assign({}, detalhe || {}, { fic_carga_horaria: enc.reduce((t, e) => t + (+e.carga_horaria || 0), 0), fic_gerado_em: new Date().toISOString(),
+        detalhe = Object.assign({}, detalhe || {}, { fic_carga_horaria: Math.round(enc.reduce((t, e) => t + (+e.carga_horaria || 0), 0) * 10) / 10, fic_gerado_em: new Date().toISOString(),
           fic_encontros: enc.map(e => ({ id: e.id, data: e.data, turma: ((d.turmas || []).find(t => t.id === e.turma_id) || {}).nome, carga_horaria: e.carga_horaria, modalidade: e.modalidade, conteudo: e.conteudo,
             presencas: (d.ficPresencas || []).filter(p => p.encontro_id === e.id && (p.presente || matriculadosEm(d, e.turma_id, e.data).includes(p.equipe_id))).map(p => Object.assign(nomeP(p.equipe_id), { presente: p.presente, confirmado_em: p.confirmado_em })).sort((a, b) => String(a.nome).localeCompare(String(b.nome))) })) });
       }
@@ -1030,6 +1178,11 @@ MQ.ORCAMENTO = {
       const agora = new Date().toISOString();
       const vAval = valor != null ? valor : s.valor_solicitado;
       if (ok && !(vAval > 0)) throw falha('Informe o valor do aval (maior que zero).');
+      if (ok && s.tipo === 'ajuda_custo') {   // teto de R$ 600 por visita da solicitação (erro de digitação de um zero não vira pagamento)
+        const nVis = Object.values(d.solic_visitas || {}).filter(sid => sid === s.id).length || ((s.detalhe || {}).visitas || []).length;
+        const teto = nVis ? 600 * nVis : MQ.CUSTO_PADRAO.teto;
+        if (vAval > teto) throw falha('Valor muito acima do pedido (' + R.fmtBRL(+s.valor_solicitado || 0) + '). Confira o valor: o aval da ajuda de custo vai até R$ 600,00 por visita.');
+      }
       if (ok && s.tipo === 'bolsa' && s.valor_solicitado != null && vAval > s.valor_solicitado) throw falha('O aval passa do valor pedido. Para pagar mais, devolva para a pessoa corrigir o valor.');
       if (ok) Object.assign(s, { situacao: 'avalizada', valor_avalizado: vAval, aval_por: eu.id, aval_em: agora, obs_aval: obs || null });
       else {
@@ -1277,7 +1430,7 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       const erros = R.validar(m, d.equipe);
       if (Object.keys(erros).length) { const e = falha(Object.values(erros)[0]); e.campos = erros; throw e; }
       const agora = new Date().toISOString();
-      const novo = Object.assign({}, m, { id: uid(), cpf: R.soDigitos(m.cpf), email: m.email.trim(), status: 'ativa', user_id: null,
+      const novo = Object.assign({}, m, { id: uid(), cpf: R.soDigitos(m.cpf), email: m.email.trim().toLowerCase(), status: 'ativa', user_id: null,
         data_fim: null, motivo_desligamento: null, criado_por: eu.id, criado_em: agora, atualizado_em: agora });
       d.equipe.push(novo); auditar('INSERT', null, novo); gravar();
       return copia(novo);
@@ -1370,6 +1523,8 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       const i = d.visitas.findIndex(x => x.id === v.id); const antes = i >= 0 ? d.visitas[i] : null;
       const f = d.fichas.find(x => x.id === v.ficha_id);
       if (!f) throw falha('Ficha não encontrada.');
+      if (!Object.prototype.hasOwnProperty.call(MQ.ETAPAS, antes ? antes.etapa : v.etapa) || (antes && v.etapa != null && v.etapa !== antes.etapa && !Object.prototype.hasOwnProperty.call(MQ.ETAPAS, v.etapa))) throw falha('Etapa da visita inválida.');
+      if (antes && antes.situacao === 'cancelada' && (v.situacao || antes.situacao) !== 'cancelada') throw falha('Visita cancelada não volta. Agende outra.');   // 03_campo.sql
       if (!eu || !(R.decideCampo(eu.papel) || (R.ehBolsista(eu.papel) && f.uf === eu.uf) || (antes && antes.executor_id === eu.id))) throw falha('Seu perfil não tem permissão para esta ação.');
       if (eu.papel === 'agente' && antes && (v.executor_id !== antes.executor_id || v.data_prevista !== antes.data_prevista || v.situacao === 'cancelada')) throw falha('O agente de campo não reagenda nem cancela visitas. Fale com a bolsista do estado.');
       if (!(f.resultado === 'selecionada' && f.situacao === 'aprovada')) throw falha('Só há visita para mulher selecionada e aprovada pela coordenação técnica.');
@@ -1434,6 +1589,16 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       const i = d.diagnosticos.findIndex(x => x.id === dados.id); const antes = i >= 0 ? d.diagnosticos[i] : null;
       if (!antes && d.diagnosticos.some(x => x.ficha_id === dados.ficha_id)) throw falha('Este quintal já tem diagnóstico registrado.');
       if (antes && antes.situacao === 'aprovado') throw falha('Plano já aprovado pela coordenação técnica. Peça que ela devolva para corrigir.');
+      if (dados.data_visita && String(dados.data_visita).slice(0, 10) > R.hoje() && (!antes || dados.data_visita !== antes.data_visita)) throw falha('A data da visita não pode ser no futuro.');   // 42: ao criar ou ao mudar a data
+      if (v.situacao === 'cancelada') throw falha('A visita de diagnóstico foi cancelada.');
+      const kit = (dados.dados && dados.dados.kit) || dados.kit;   // o plano fica em dados.dados (como na produção)
+      if (!dados.sem_agua && Array.isArray(kit)) {   // 42: kit até R$ 5.000,00 por quintal; quantidade tem de ser maior que zero
+        let tot = 0;
+        for (const it of kit) { if (!it || !String(it.item || '').trim()) continue; const q = R.numBR(it.qtd);
+          if (q != null && !(q > 0)) throw falha('Quantidade inválida no kit (' + String(it.item).trim().slice(0, 60) + '): informe um número maior que zero.');
+          tot += (q || 0) * (+it.valor || 0); }
+        if (tot > 5000) throw falha('O kit passa do valor por quintal (' + R.fmtBRL(tot) + ', o teto é R$ 5.000,00). Tire ou troque itens.');
+      }
       if (dados.latitude == null && String(dados.sem_gps_motivo || '').trim().length < 15) throw falha('Sem localização: explique em pelo menos 15 letras por que não foi possível registrar no quintal.');   // 31
       const caminhos = new Set(dados.fotos || (antes && antes.fotos) || []);
       Object.entries(fotos || {}).forEach(([campo, blob]) => { if (!blob) return; const path = v.uf + '/' + v.ficha_id + '/diag_' + campo; fotosMemoria.set(path, URL.createObjectURL(blob)); caminhos.add(path); });
@@ -1589,7 +1754,7 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       const leg = String(legenda || '').trim();
       if (leg.length < 5 || leg.length > 140) throw falha('Escreva uma legenda de 5 a 140 caracteres.');
       const pn = String(f.nome || '').split(' ')[0];
-      if (pn.length >= 3 && new RegExp('(^|[^\\p{L}])' + pn + '($|[^\\p{L}])', 'iu').test(leg)) throw falha('A legenda não pode trazer o nome da mulher.');
+      if (pn.length >= 3 && new RegExp('(^|[^\\p{L}])' + pn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|[^\\p{L}])', 'iu').test(leg)) throw falha('A legenda não pode trazer o nome da mulher.');
       const v = { id: MQ.novoId(), path: MQ.novoId() + '.jpg', ficha_id, uf: f.uf, legenda: leg, sem_criancas: !!sem_criancas, publicada_por: eu.id, publicada_em: new Date().toISOString(), origem };
       d.vitrine = [v].concat(d.vitrine || []); gravar(); return copia(v);
     },
@@ -1629,6 +1794,7 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     async enviarTermo(id, arquivo) { return arquivo.name; },   // no demo guarda só o nome
     async linkTermo(path) { return null; },
     async entrar() { throw falha('No modo demonstração não há login: use o seletor de perfil.'); },
+    async entrarSenha() { throw falha('Na demonstração não há login: escolha um perfil acima.'); },   // a tela chama S.api.entrarSenha: sem isto aparecia "is not a function"
     async sair() {}
   };
 })();
@@ -2228,7 +2394,8 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       return (todos || []).filter(x => !dono || x.dono === dono).sort((a, b) => a.criado - b.criado);
     },
     async salvar(item) {
-      item.criado = item.criado || Date.now();
+      // regravar (corrigir um item que já estava na fila) mantém a data original: a ordem de envio não muda
+      if (!item.criado) { const antes = await tx('readonly', l => l ? l.get(item.id) : { result: memoria.get(item.id) }); item.criado = (antes && antes.criado) || Date.now(); }
       await tx('readwrite', l => { if (l) l.put(item); else memoria.set(item.id, item); });
       return item;
     },
@@ -2251,7 +2418,7 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
             await F.remover(it.id); enviados++;
           } catch (e) {
             if (e.semRede) break;
-            it.erro = e.message; it.reenviar = false; await F.salvar(it);
+            it.erro = (MQ.regras && MQ.regras.mensagemErro ? MQ.regras.mensagemErro(e) : e.message) || 'Não foi possível enviar. Tente de novo.'; it.reenviar = false; await F.salvar(it);   // mensagem já traduzida, não o texto cru do servidor
           }
         }
       } finally { F.enviando = false; }
@@ -2259,21 +2426,41 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     }
   });
 
-  /* Reduz a foto antes de guardar: papel fotografado em 1600px continua legível e ocupa ~300 KB */
-  MQ.comprimirFoto = function (arquivo, max = 1600, qualidade = 0.8) {
-    return new Promise(res => {
-      if (!arquivo || !/^image\//.test(arquivo.type)) return res(arquivo);
-      const img = new Image(); const url = URL.createObjectURL(arquivo);
-      img.onload = () => {
-        const esc = Math.min(1, max / Math.max(img.width, img.height));
-        const c = document.createElement('canvas');
-        c.width = Math.round(img.width * esc); c.height = Math.round(img.height * esc);
-        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-        URL.revokeObjectURL(url);
-        c.toBlob(b => res(b && b.size < arquivo.size ? b : arquivo), 'image/jpeg', qualidade);
-      };
-      img.onerror = () => { URL.revokeObjectURL(url); res(arquivo); };
-      img.src = url;
+  /* Reduz a foto antes de guardar: papel fotografado em 1600px continua legível e ocupa ~300 KB.
+     Só aceita foto de verdade: tipo de imagem (JPEG, PNG, WebP, HEIC), tamanho maior que zero e que o navegador consiga abrir.
+     Arquivo que não é foto (txt renomeado para .png, vazio, .exe) é RECUSADO: a promessa falha com a mensagem para a tela. */
+  MQ.MSG_NAO_E_FOTO = 'Este arquivo não é uma foto. Tire a foto de novo ou escolha outra imagem.';
+  const TIPO_FOTO = /^image\/(jpeg|png|webp|heic|heif)$/i;
+  MQ.fotoValida = arquivo => !!(arquivo && TIPO_FOTO.test(String(arquivo.type || '')) && arquivo.size > 0);
+  // HEIC de verdade (iPhone) que este navegador não sabe abrir: confere a assinatura do arquivo ("ftyp" + marca) antes de aceitar o original
+  async function ehHeic(arquivo) {
+    try { const b = new Uint8Array(await arquivo.slice(0, 12).arrayBuffer()); const t = String.fromCharCode(...b);
+      return t.slice(4, 8) === 'ftyp' && /^(heic|heix|hevc|hevx|heim|heis|mif1|msf1)$/.test(t.slice(8, 12)); } catch (e) { return false; }
+  }
+  MQ.comprimirFoto = function (arquivo, max = 1600, qualidade = 0.8, op) {
+    return new Promise((res, rej) => {
+      const recusar = () => { const e = new Error(MQ.MSG_NAO_E_FOTO); e.naoEhFoto = true;
+        if (!(op && op.semAviso) && MQ.ui && MQ.ui.toast) { try { MQ.ui.toast(e.message); } catch (x) { /* sem tela */ } }
+        rej(e); };
+      if (!MQ.fotoValida(arquivo)) return recusar();
+      let url; const soltar = () => { try { URL.revokeObjectURL(url); } catch (e) { /* nada */ } };
+      try {
+        const img = new Image(); url = URL.createObjectURL(arquivo);
+        img.onload = () => {
+          try {
+            if (!(img.width > 0 && img.height > 0)) { soltar(); return recusar(); }
+            const esc = Math.min(1, max / Math.max(img.width, img.height));
+            const c = document.createElement('canvas');
+            c.width = Math.round(img.width * esc); c.height = Math.round(img.height * esc);
+            c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+            soltar();
+            c.toBlob(b => { if (!b || !(b.size > 0)) return recusar(); res(b.size < arquivo.size ? b : arquivo); }, 'image/jpeg', qualidade);
+          } catch (e) { soltar(); recusar(); }
+        };
+        img.onerror = () => { soltar();
+          if (/hei[cf]$/i.test(arquivo.type)) ehHeic(arquivo).then(ok => ok ? res(arquivo) : recusar()); else recusar(); };
+        img.src = url;
+      } catch (e) { soltar(); recusar(); }
     });
   };
 
@@ -2292,6 +2479,20 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
   const E = s => MQ.ui.esc(s);
   const fotosTemp = { ficha: null, termo: null };
   const filtro = { uf: '', situacao: '', busca: '' };
+  const MAX_NOME = 120;
+  /* busca: sem acento, sem diferença de maiúsculas e com espaços repetidos reduzidos ("antonia" acha "Antônia").
+     Só compara com o CPF quando o que foi digitado é só número e pontuação de CPF, com 3 dígitos ou mais ("Inexistente 2" não casa com CPF). */
+  const semAcento = s => String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  function casaBusca(f, texto) {
+    const b = semAcento(texto); if (!b) return true;
+    if (semAcento(f.nome).includes(b)) return true;
+    const dig = R.soDigitos(texto);
+    return /^[\d.\-\s]+$/.test(String(texto).trim()) && dig.length >= 3 && String(f.cpf || '').includes(dig);
+  }
+  const temFiltro = () => !!(filtro.uf || filtro.situacao || semAcento(filtro.busca));
+  const filtrar = lista => lista.filter(f => (!filtro.uf || f.uf === filtro.uf) && (!filtro.situacao || f.situacao === filtro.situacao || f.resultado === filtro.situacao) && casaBusca(f, filtro.busca));
+  /* célula de CSV: aspas dobradas e, se começar por = + - @ (tab ou enter), apóstrofo na frente para o Excel não executar como fórmula */
+  const celCSV = v => { let t = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(t) && !/^-?\d+([.,]\d+)?$/.test(t)) t = "'" + t; return '"' + t.replace(/"/g, '""') + '"'; };
 
   /* ---------- dados combinados: servidor + fila do aparelho ---------- */
   function todas() {
@@ -2310,7 +2511,7 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
        primeiro a situação (ainda com a coordenação técnica?), depois o resultado das já aprovadas. */
     l.forEach(f => {
       if (f.resultado === 'selecionada') c.selecionadas++;
-      if (f.situacao === 'aguardando') c.aguardando++;
+      if (f.situacao !== 'aprovada' && f.situacao !== 'devolvida') c.aguardando++;   // situação vazia ou desconhecida ainda não é aprovada
       else if (f.situacao === 'devolvida') c.devolvidas++;
       else if (f.resultado === 'selecionada') c.aprovadas++;
       else if (f.resultado === 'lista_espera') c.espera++;
@@ -2346,7 +2547,6 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     const lista = todas().filter(f => f.uf === uf);
     const c = contar(lista, uf);
     const filaF = S.fila.filter(i => !i.tipo || i.tipo === 'ficha'); const pend = filaF.length, comErro = filaF.filter(i => i.erro).length;
-    const busca = filtro.busca.trim().toLowerCase();
     const vis = lista;
     const devolvidas = vis.filter(f => f.situacao === 'devolvida' || f._erro);
     const resto = vis.filter(f => !(f.situacao === 'devolvida' || f._erro));
@@ -2386,14 +2586,13 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
         <td class="num sep">${c.aguardando ? `<b>${c.aguardando}</b>` : 0}</td><td class="num">${c.devolvidas}</td></tr>`;
     };
     const aguardando = lista.filter(f => f.situacao === 'aguardando').sort((a, b) => String(a.criado_em).localeCompare(String(b.criado_em)));
-    const busca = filtro.busca.trim().toLowerCase();
-    const filtradas = lista.filter(f => (!filtro.uf || f.uf === filtro.uf) && (!filtro.situacao || f.situacao === filtro.situacao || f.resultado === filtro.situacao)
-      && (!busca || f.nome.toLowerCase().includes(busca) || f.cpf.includes(R.soDigitos(busca) || '#')));
+    const filtradas = filtrar(lista);
+    const conta = temFiltro() ? filtradas.length + ' de ' + lista.length : String(lista.length);
     const op = (v, t, atual) => `<option value="${v}" ${v === atual ? 'selected' : ''}>${t}</option>`;
     return `<section class="secao" aria-labelledby="t-sel">
       <div class="cab"><div><span class="eyebrow">Seleção das mulheres</span><h1 id="t-sel">Seleção das beneficiárias</h1>
         <p>Fichas de indicação dos 5 estados. ${souTec ? 'Você aprova ou devolve cada ficha antes do diagnóstico.' : 'A aprovação é da coordenação técnica.'} O sistema impede CPF repetido e mais de ${MQ.VAGAS_UF} selecionadas aprovadas por estado.</p></div>
-        <button class="btn" data-acao="ficha-csv">Baixar CSV</button></div>
+        <button class="btn" data-acao="ficha-csv">Baixar CSV${temFiltro() ? ' (' + conta + ')' : ''}</button></div>
       ${(() => { const u = MQ.UFS.find(x => contar(lista, x.uf).total); if (!u) return ''; const c = contar(lista, u.uf);
         const partes = [[c.aprovadas, 'selecionada'], [c.espera, 'na lista de espera'], [c.sem_agua, 'sem água'], [c.nao_atende, 'que não atende'], [c.aguardando, 'para aprovar'], [c.devolvidas, 'devolvida']].filter(x => x[0]).map(x => x[0] + ' ' + x[1]);
         return `<div class="aviso" style="margin:0"><b>Como ler:</b> a coluna <b>Fichas</b> é o total de mulheres indicadas no estado, e as colunas ao lado repartem esse total (cada mulher aparece numa só). As <b>${MQ.VAGAS_UF} vagas</b> são só a coluna <b>Selecionadas</b>; as outras não ocupam vaga.
@@ -2406,7 +2605,7 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
         </tbody></table></div><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p>
       ${aguardando.length ? `<div class="bloco"><h3>${souTec ? 'Para você aprovar' : 'Aguardando a coordenação técnica'} (${aguardando.length})</h3>
         <div class="lista-fichas">${aguardando.slice(0, 30).map(f => linhaFicha(f, true)).join('')}</div></div>` : ''}
-      <details class="hist" data-lembrar="fichas-coord" ${(U().S.aberto || {})['fichas-coord'] || filtro.uf || filtro.situacao || filtro.busca ? 'open' : ''}><summary>Todas as fichas (${lista.length})</summary><div style="padding:0 18px 16px;display:grid;gap:12px">
+      <details class="hist" data-lembrar="fichas-coord" ${(U().S.aberto || {})['fichas-coord'] || filtro.uf || filtro.situacao || filtro.busca ? 'open' : ''}><summary>Todas as fichas (${conta})</summary><div style="padding:0 18px 16px;display:grid;gap:12px">
         <div class="campos" style="grid-template-columns:repeat(3,minmax(0,1fr))">
           <div class="campo"><label for="ff-uf">Estado</label><select id="ff-uf" data-filtro="uf">${op('', 'Todos', filtro.uf)}${MQ.UFS.map(u => op(u.uf, u.nome, filtro.uf)).join('')}</select></div>
           <div class="campo"><label for="ff-sit">Situação</label><select id="ff-sit" data-filtro="situacao">${op('', 'Todas', filtro.situacao)}
@@ -2669,7 +2868,9 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     const S = U().S;
     if (tipo === 'ficha') {
       const f = lerForm(form);
-      const erros = R.validarFicha(f, todas());
+      // tamanho do texto conferido aqui (o formulário é novalidate); o nome vem primeiro na lista de erros
+      const erros = Object.assign(String(f.nome || '').trim().length > MAX_NOME ? { nome: `Nome: texto muito longo (máximo ${MAX_NOME} caracteres).` } : {}, R.validarFicha(f, todas()));
+      if (String(f.justificativa || '').length > 2000) erros.justificativa = 'Justificativa: texto muito longo (máximo 2.000 caracteres).';
       // "Não autorizo" no uso dos dados: a ficha não é guardada
       if (Object.keys(erros).length) {
         const m = {}; Object.entries(erros).forEach(([k, v]) => { m[k] = v; });
@@ -2712,23 +2913,35 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     const primeiro = form.querySelector('.tem-erro'); if (primeiro) primeiro.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }
 
-  function baixarCSV() {
-    const S = U().S;
+  /* CSV das fichas: respeita o filtro da tela (estado, situação, busca), cabeçalho legível, datas em dd/mm/aaaa e células protegidas contra fórmula */
+  const ROTULO_CSV = { uf: 'Estado', municipio: 'Município', comunidade: 'Comunidade', nome: 'Nome', cpf: 'CPF', data_nascimento: 'Data de nascimento', celular: 'Celular', endereco: 'Endereço', ponto_referencia: 'Ponto de referência',
+    nis: 'NIS', caf: 'CAF', pessoas_familia: 'Pessoas na família', indicada_por: 'Indicada por', data_ficha: 'Data da ficha', autodeclaracao: 'Autodeclaração assinada', pontos: 'Pontos de prioridade', resultado: 'Resultado',
+    posicao_espera: 'Posição na lista de espera', encaminhada_para: 'Encaminhada para', situacao: 'Situação', aprovada_em: 'Aprovada em', bolsista: 'Bolsista', consent_imagem: 'Autoriza uso de imagem' };
+  const DATAS_CSV = ['data_nascimento', 'data_ficha', 'aprovada_em'];
+  function montarCSV() {
     const col = ['uf', 'municipio', 'comunidade', 'nome', 'cpf', 'data_nascimento', 'celular', 'endereco', 'ponto_referencia', 'nis', 'caf', 'pessoas_familia', 'indicada_por', 'data_ficha',
       ...MQ.CRITERIOS.map(c => c[0]), 'autodeclaracao', 'pontos', 'resultado', 'posicao_espera', 'encaminhada_para', 'situacao', 'aprovada_em', 'bolsista', 'consent_imagem'];
-    const linhas = todas().map(f => col.map(c => {
+    const rot = c => ROTULO_CSV[c] || ((MQ.CRITERIOS.find(x => x[0] === c) || [])[1]) || c;
+    const tudo = todas(); const lista = filtrar(tudo);
+    const linhas = lista.map(f => col.map(c => {
       let v = c === 'pontos' ? R.pontosFicha(f) : c === 'bolsista' ? ((U().porId(f.bolsista_id) || {}).nome || '') : f[c];
       if (v === true) v = 'Sim'; if (v === false) v = 'Não';
       if (c === 'resultado') v = (MQ.RESULTADOS[v] || {}).nome || v;
       if (c === 'situacao') v = (MQ.SITUACOES[v] || {}).nome || v;
-      return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+      if (DATAS_CSV.includes(c)) v = R.fmtData(v);   // dd/mm/aaaa, no dia de Fortaleza
+      return celCSV(v);
     }).join(';'));
-    const csv = '﻿' + col.join(';') + '\n' + linhas.join('\n');
+    const partes = [filtro.uf, filtro.situacao, semAcento(filtro.busca) ? 'busca' : ''].filter(Boolean).map(x => String(x).replace(/[^a-zA-Z0-9_]+/g, ''));
+    return { texto: '\ufeff' + col.map(c => celCSV(rot(c))).join(';') + '\n' + linhas.join('\n'), n: lista.length, total: tudo.length, filtrado: temFiltro(),
+      nome: 'fichas_mulheres_e_quintais_' + (partes.length ? 'filtro_' + partes.join('_') + '_' : '') + R.hoje() + '.csv' };
+  }
+  function baixarCSV() {
+    const r = montarCSV();
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    a.download = 'fichas_mulheres_e_quintais_' + R.hoje() + '.csv';
+    a.href = URL.createObjectURL(new Blob([r.texto], { type: 'text/csv;charset=utf-8' }));
+    a.download = r.nome;
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-    U().toast('Planilha gerada. Ela tem dados pessoais: guarde em pasta restrita.');
+    U().toast((r.filtrado ? `Planilha gerada com ${r.n} de ${r.total} fichas (filtro da tela).` : 'Planilha gerada.') + ' Ela tem dados pessoais: guarde em pasta restrita.');
   }
 
   /* reatividade do formulário e dos filtros */
@@ -2741,7 +2954,9 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
         const dica = form.querySelector('#fi-' + (campo === 'termo' ? 'ft' : 'ff') + '-dica');
         if (arq.size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; ev.target.value = ''; return; }
         dica.textContent = 'Preparando foto…';
-        fotosTemp[campo] = await MQ.comprimirFoto(arq);
+        if (arq.type === 'application/pdf' && arq.size > 0) { fotosTemp[campo] = arq; dica.textContent = 'Arquivo pronto (' + Math.round(arq.size / 1024) + ' KB). Fica no aparelho até enviar.'; return; }   // ficha digitalizada em PDF: vai como está
+        try { fotosTemp[campo] = await MQ.comprimirFoto(arq, undefined, undefined, { semAviso: true }); }
+        catch (e) { fotosTemp[campo] = null; ev.target.value = ''; dica.textContent = e.message; return; }   // não é foto (txt renomeado, vazio, corrompido)
         dica.textContent = 'Foto pronta (' + Math.round(fotosTemp[campo].size / 1024) + ' KB). Fica no aparelho até enviar.';
       }
       atualizarForm(form);
@@ -2772,7 +2987,7 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     if (b) b.form.dataset.decisao = b.value;
   }, true);
 
-  MQ.fichasUI = { secaoBolsista, secaoCoord, painel, clique, enviar };
+  MQ.fichasUI = { secaoBolsista, secaoCoord, painel, clique, enviar, contar, casaBusca, filtrar, filtro, montarCSV, celCSV };
 })();
 ;
 /* ===== geo.js ===== */
@@ -3366,17 +3581,22 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const dadosMun = Array.isArray(op.municipios) ? op.municipios : null;
     const qMun = (uf, nome) => dadosMun && dadosMun.find(m => m.uf === uf && norm(m.municipio) === norm(nome));
     const semCadastro = dadosMun ? muns.filter(m => !qMun(m.uf, m.nome)).length : 0;
+    /* Pontos do mapa: cada um tem nome para o leitor de tela (município e o que ele mostra). Na página pública (#numeros)
+       entram na ordem do Tab; na tela de entrada ficam fora dela (tabindex -1), para o teclado chegar logo ao login
+       em vez de passar por ~30 pontos. op.tab força um dos dois. */
+    const tab = op.tab != null ? op.tab : ((typeof location !== 'undefined' && location.hash === '#numeros') ? 0 : -1);
+    const acess = rot => `role="img" aria-label="${E(rot)}" tabindex="${tab}"`;
     const pontoMun = ({ uf, nome, xy: [x, y] }, k) => { const q = qMun(uf, nome); const n = q ? (q.n || 2) : 0;
       const r = esc * (1.15 + 0.42 * Math.sqrt(n)); const txt = q ? (q.menos_de_3 ? 'menos de 3 mulheres cadastradas' : q.n + ' mulheres cadastradas') : 'previsto, ainda sem cadastro';
-      return `<g class="mun-pt${q ? ' mun-q' : ' mun-prev'}" data-mun="${E(nome)}/${uf} · ${txt}" data-rota-de="${E(nome)}/${uf}" tabindex="0" style="--i:${k}"><circle cx="${x}" cy="${y}" r="${Math.max(r, esc * 3.2)}" class="mun-alvo"/>`
+      return `<g class="mun-pt${q ? ' mun-q' : ' mun-prev'}" data-mun="${E(nome)}/${uf} · ${txt}" data-rota-de="${E(nome)}/${uf}" ${acess(nome + '/' + uf + ': ' + txt)} style="--i:${k}"><circle cx="${x}" cy="${y}" r="${Math.max(r, esc * 3.2)}" class="mun-alvo"/>`
         + (q ? `<circle cx="${x}" cy="${y}" r="${r}" class="mun-dot" stroke-width="${esc * 0.35}"/>${q.n ? `<text x="${x}" y="${y + r * 0.36}" text-anchor="middle" font-size="${Math.min(r * 1.05, esc * 2.8)}" class="mun-n">${q.n}</text>` : ''}`
           : `<circle cx="${x}" cy="${y}" r="${esc * 1}" class="mun-vazio" stroke-width="${esc * 0.35}"/>`) + `<title>${E(nome)}/${uf}: ${txt}</title></g>`; };
     const pontos = dadosMun ? muns.map(pontoMun).join('') : muns.map(({ uf, nome, xy: [x, y] }, k) =>
-      `<g class="mun-pt" data-mun="${E(nome)}/${uf}" tabindex="0" style="animation-delay:${((k * 0.37) % 2.4).toFixed(2)}s;--i:${k}"><circle cx="${x}" cy="${y}" r="${esc * 3.2}" class="mun-alvo"/><circle cx="${x}" cy="${y}" r="${esc * 2.2}" class="mun-onda"/><circle cx="${x}" cy="${y}" r="${esc * 1.4}" class="mun-dot" stroke-width="${esc * 0.35}"/><title>${E(nome)}/${uf}</title></g>`).join('');
+      `<g class="mun-pt" data-mun="${E(nome)}/${uf}" ${acess(nome + '/' + uf)} style="animation-delay:${((k * 0.37) % 2.4).toFixed(2)}s;--i:${k}"><circle cx="${x}" cy="${y}" r="${esc * 3.2}" class="mun-alvo"/><circle cx="${x}" cy="${y}" r="${esc * 2.2}" class="mun-onda"/><circle cx="${x}" cy="${y}" r="${esc * 1.4}" class="mun-dot" stroke-width="${esc * 0.35}"/><title>${E(nome)}/${uf}</title></g>`).join('');
     const sede = op.entrada   // entrada (infográfico): Apodi como origem, marcador maior em terracota com halo discreto
-      ? `<g class="mun-pt sede-pt" data-mun="Apodi/RN · IFRN Campus Apodi, de onde sai a equipe" tabindex="0"><circle cx="${ax}" cy="${ay}" r="${esc * 3.8}" class="sede-halo"/><circle cx="${ax}" cy="${ay}" r="${esc * 3.4}" class="mun-alvo"/><circle cx="${ax}" cy="${ay}" r="${esc * 2.2}" class="sede-dot" stroke-width="${esc * 0.55}"/><title>Apodi/RN: IFRN Campus Apodi</title></g>
+      ? `<g class="mun-pt sede-pt" data-mun="Apodi/RN · IFRN Campus Apodi, de onde sai a equipe" ${acess('Apodi/RN: IFRN Campus Apodi, de onde sai a equipe')}><circle cx="${ax}" cy="${ay}" r="${esc * 3.8}" class="sede-halo"/><circle cx="${ax}" cy="${ay}" r="${esc * 3.4}" class="mun-alvo"/><circle cx="${ax}" cy="${ay}" r="${esc * 2.2}" class="sede-dot" stroke-width="${esc * 0.55}"/><title>Apodi/RN: IFRN Campus Apodi</title></g>
       <text x="${ax + esc * 3.4}" y="${ay - esc * 2.4}" class="sede-rot" font-size="${esc * 3.4}">Apodi <tspan class="sede-uf" font-size="${esc * 2.6}">RN</tspan></text>`
-      : `<g class="mun-pt sede-pt" data-mun="Apodi/RN · IFRN Campus Apodi, de onde sai a equipe" tabindex="0"><circle cx="${ax}" cy="${ay}" r="${esc * 3.4}" class="mun-alvo"/><circle cx="${ax}" cy="${ay}" r="${esc * 2.1}" class="sede-dot" stroke-width="${esc * 0.5}"/><circle cx="${ax}" cy="${ay}" r="${esc * 0.8}" class="sede-miolo"/><title>Apodi/RN: IFRN Campus Apodi</title></g>
+      : `<g class="mun-pt sede-pt" data-mun="Apodi/RN · IFRN Campus Apodi, de onde sai a equipe" ${acess('Apodi/RN: IFRN Campus Apodi, de onde sai a equipe')}><circle cx="${ax}" cy="${ay}" r="${esc * 3.4}" class="mun-alvo"/><circle cx="${ax}" cy="${ay}" r="${esc * 2.1}" class="sede-dot" stroke-width="${esc * 0.5}"/><circle cx="${ax}" cy="${ay}" r="${esc * 0.8}" class="sede-miolo"/><title>Apodi/RN: IFRN Campus Apodi</title></g>
       <text x="${ax + esc * 3}" y="${ay - esc * 2.2}" class="sede-rot" font-size="${esc * 3.4}">Apodi</text>`;
     const nMun = muns.length;
     // rótulos longe dos pontos das cidades: PI desce; AL e SE vão para o mar, ao lado (em unidades de "esc")
@@ -3693,10 +3913,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <div class="campos">
           <div class="campo inteiro"><label for="vi-f">Mulher (quintal)</label><select id="vi-f" name="ficha_id" ${p.id ? 'disabled' : ''}><option value="">Escolha…</option>${opF}</select></div>
           <div class="campo"><label for="vi-e">Etapa</label><select id="vi-e" name="etapa" ${p.id ? 'disabled' : ''}>${Object.entries(MQ.ETAPAS).map(([k, e]) => `<option value="${k}" ${k === v.etapa ? 'selected' : ''}>${E(e.nome)}</option>`).join('')}</select></div>
-          <div class="campo"><label for="vi-d">Data prevista</label><input id="vi-d" name="data_prevista" type="date" value="${E(v.data_prevista || '')}" min="${MQ.PROJETO.inicioDiagnosticos}" max="${MQ.PROJETO.vigencia.fim}"></div>
+          <div class="campo"><label for="vi-d">Data prevista</label><input id="vi-d" name="data_prevista" type="date" value="${E(v.data_prevista || '')}" min="${R.hoje()}" max="${R.LIM.visitaMax}"></div>
           <div class="campo inteiro"><label for="vi-p">Quem faz a visita</label><select id="vi-p" name="executor_id"><option value="">Escolha…</option>${opP}</select>
             <span class="dica">Só aparece quem está habilitada (FIC, FUNCERN e termo). Sem isso, o dia de campo não pode ser pago.</span></div>
-          <div class="campo inteiro"><label for="vi-o">Observação</label><input id="vi-o" name="obs" value="${E(v.obs || '')}"></div>
+          <div class="campo inteiro"><label for="vi-o">Observação</label><input id="vi-o" name="obs" value="${E(v.obs || '')}" maxlength="300"></div>
         </div>
         <p class="small muted">Dias de campo no estado: <b class="num">${diasUsados(uf)}</b> de ${MQ.DIAS_CAMPO_UF}.</p>
         <div class="aviso erro" data-erro hidden></div>
@@ -3710,15 +3930,15 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const chk = (nome, lista, marcados) => `<div class="chips-sel">${lista.map(([k, t]) => `<label class="sn${(marcados || []).includes(k) ? ' on' : ''}"><input type="checkbox" name="${nome}" value="${k}" ${(marcados || []).includes(k) ? 'checked' : ''}>${E(t)}</label>`).join('')}</div>`;
   const rad = (nome, ops, val) => `<span class="sn-par" style="flex-wrap:wrap">${ops.map(([k, t]) => `<label class="sn${val === k ? ' on' : ''}"><input type="radio" name="${nome}" value="${k}" ${val === k ? 'checked' : ''}>${E(t)}</label>`).join('')}</span>`;
   const linhaFamilia = (x = {}) => `<div class="linha-din" data-linha="familia">
-    <input name="fam_nome" placeholder="Nome" value="${E(x.nome || '')}" aria-label="Nome"><input name="fam_idade" type="number" min="0" max="120" inputmode="numeric" placeholder="Idade" value="${E(x.idade ?? '')}" aria-label="Idade">
+    <input name="fam_nome" placeholder="Nome" value="${E(x.nome || '')}" aria-label="Nome" maxlength="120"><input name="fam_idade" type="number" min="0" max="120" inputmode="numeric" placeholder="Idade" value="${E(x.idade ?? '')}" aria-label="Idade">
     <select name="fam_par" aria-label="Parentesco">${MQ.DIAG.parentesco.map(p => `<option ${x.parentesco === p ? 'selected' : ''}>${p}</option>`).join('')}</select>
-    <input name="fam_ocup" placeholder="Estuda / trabalha?" value="${E(x.ocupacao || '')}" aria-label="Estuda ou trabalha">
+    <input name="fam_ocup" placeholder="Estuda / trabalha?" value="${E(x.ocupacao || '')}" aria-label="Estuda ou trabalha" maxlength="120">
     <label class="mini-chk"><input type="checkbox" name="fam_ajuda" ${x.ajuda ? 'checked' : ''}>Ajuda no quintal</label>
     <button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`;
   const linhaKit = (x = {}) => `<div class="linha-din kit kit5" data-linha="kit">
-    <input name="kit_item" placeholder="Item (da lista aprovada)" value="${E(x.item || '')}" aria-label="Item"><input name="kit_qtd" placeholder="Qtd." inputmode="decimal" value="${E(x.qtd || '')}" aria-label="Quantidade">
-    <input name="kit_valor" placeholder="R$ unid." inputmode="decimal" value="${E(x.valor != null ? String(x.valor).replace('.', ',') : '')}" aria-label="Valor estimado de cada unidade (R$)">
-    <input name="kit_para" placeholder="Para quê" value="${E(x.para || '')}" aria-label="Para quê"><button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`;
+    <input name="kit_item" placeholder="Item (da lista aprovada)" value="${E(x.item || '')}" aria-label="Item" maxlength="120"><input name="kit_qtd" placeholder="Qtd." inputmode="decimal" value="${E(x.qtd_txt || x.qtd || '')}" aria-label="Quantidade" maxlength="40">
+    <input name="kit_valor" placeholder="R$ unid." inputmode="decimal" value="${E(x.valor != null ? String(x.valor).replace('.', ',') : '')}" aria-label="Valor estimado de cada unidade (R$)" maxlength="20">
+    <input name="kit_para" placeholder="Para quê" value="${E(x.para || '')}" aria-label="Para quê" maxlength="200"><button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`;
   /* coordenação: valor do kit por quintal e o total projetado pelos planos */
   function blocoKitPar() {
     const lim = +((S().kitPar || {}).valor_quintal) || 0;
@@ -3732,21 +3952,23 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
   /* projeção do investimento no quintal: soma de quantidade × valor estimado de cada item */
   const numBR = t => R.numBR(t);   // 1.250,50 → 1250.5 · 1.250 → 1250 · 12.50 → 12.5
-  const totalKit = kit => (kit || []).reduce((s, x) => s + (numBR(x.qtd) || 0) * (x.valor != null ? +x.valor : 0), 0);
+  const totalKit = kit => R.totalKit(kit);   // item com quantidade ou valor negativo não abate o total (regras.js)
   const brl = v => (+v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   function projKit(kit) {
     const tot = totalKit(kit); const lim = +((S().kitPar || {}).valor_quintal) || 0;
     const semValor = (kit || []).filter(x => x.item && (x.valor == null || !(+x.valor > 0))).length;
+    const semQtd = (kit || []).filter(x => x.item && +x.valor > 0 && !(numBR(x.qtd) > 0));   // o banco recusa item com valor e sem quantidade: avisa já
     const pct = lim ? Math.min(100, Math.round(tot / lim * 100)) : 0;
     return `<div class="kit-proj ${lim && tot > lim ? 'passou' : ''}"><div class="kp-l"><span class="small muted">Projeção do investimento no quintal</span><b class="num">${brl(tot)}</b></div>
       ${lim ? `<span class="bar" role="img" aria-label="${pct}% do valor por quintal"><i class="${tot > lim ? 'cheio' : ''}" style="width:${pct}%"></i></span>
         <span class="small">${tot > lim ? `<b>Passa ${brl(tot - lim)}</b> do valor por quintal (${brl(lim)}). Tire ou troque itens.` : `Valor por quintal: ${brl(lim)} · sobram ${brl(lim - tot)}`}</span>`
         : '<span class="small muted">A coordenação ainda não definiu o valor por quintal (aba Campo).</span>'}
-      ${semValor ? `<span class="small">${semValor === 1 ? '1 item sem valor' : semValor + ' itens sem valor'}: informe o preço estimado de cada unidade.</span>` : ''}</div>`;
+      ${semValor ? `<span class="small">${semValor === 1 ? '1 item sem valor' : semValor + ' itens sem valor'}: informe o preço estimado de cada unidade.</span>` : ''}
+      ${semQtd.length ? `<span class="small kit-sem-qtd">Informe a quantidade de ${E(semQtd.slice(0, 3).map(x => x.item).join(', '))}${semQtd.length > 3 ? ' e de mais ' + (semQtd.length - 3) : ''} (um número maior que zero).</span>` : ''}</div>`;
   }
   const linhaCron = (x = {}) => `<div class="linha-din kit" data-linha="cron">
-    <input name="cr_oque" placeholder="O que fazer" value="${E(x.oque || '')}" aria-label="O que fazer"><input name="cr_ini" placeholder="Mês início" value="${E(x.inicio || '')}" aria-label="Mês de início">
-    <input name="cr_fim" placeholder="Mês fim" value="${E(x.fim || '')}" aria-label="Mês de fim"><input name="cr_quem" placeholder="Quem faz" value="${E(x.quem || '')}" aria-label="Quem faz">
+    <input name="cr_oque" placeholder="O que fazer" value="${E(x.oque || '')}" aria-label="O que fazer" maxlength="200"><input name="cr_ini" placeholder="Mês início" value="${E(x.inicio || '')}" aria-label="Mês de início" maxlength="40">
+    <input name="cr_fim" placeholder="Mês fim" value="${E(x.fim || '')}" aria-label="Mês de fim" maxlength="40"><input name="cr_quem" placeholder="Quem faz" value="${E(x.quem || '')}" aria-label="Quem faz" maxlength="120">
     <button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`;
 
   function painelDiag(p) {
@@ -3763,7 +3985,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <div class="painel-corpo"><form class="f" data-form="diag" data-id="${E(d.id)}" data-ficha="${E(f.id)}" data-visita="${E(d.visita_id || '')}" novalidate>
         ${!f.consent_imagem ? '<div class="aviso"><b>Ela não autorizou uso de imagem:</b> fotografe o quintal sem que ela apareça.</div>' : ''}
         <fieldset><legend>Visita</legend><div class="campos">
-          <div class="campo"><label for="dg-data">Data da visita</label><input id="dg-data" name="data_visita" type="date" value="${v('data_visita')}" max="${R.hoje()}"></div>
+          <div class="campo"><label for="dg-data">Data da visita</label><input id="dg-data" name="data_visita" type="date" value="${v('data_visita')}" min="${R.LIM.visitaMin}" max="${R.hoje()}"></div>
           <div class="campo"><label>Localização do quintal</label><button type="button" class="btn peq" data-acao="campo-gps">${d.latitude ? 'Localização registrada ✓' : 'Registrar localização'}</button>
             <input type="hidden" name="latitude" value="${v('latitude')}"><input type="hidden" name="longitude" value="${v('longitude')}">
             <input type="hidden" name="gps_precisao" value="${v('gps_precisao')}"><input type="hidden" name="gps_em" value="${v('gps_em')}">
@@ -3772,7 +3994,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
             return `<div class="campo inteiro sem-gps" id="w-sem_gps_motivo"><label for="dg-semgps-tipo">Sem localização? Por quê</label>
               <select id="dg-semgps-tipo" name="sem_gps_tipo"><option value="">Escolha, se não conseguiu registrar…</option>${MOTIVOS_SEM_GPS.map(x => `<option${x === tipo ? ' selected' : ''}>${E(x)}</option>`).join('')}</select>
               <label for="dg-semgps" class="so-leitor">Explique com suas palavras</label>
-              <input id="dg-semgps" name="sem_gps_detalhe" value="${E(det)}" placeholder="Explique com suas palavras: onde fica o quintal e o que aconteceu">
+              <input id="dg-semgps" name="sem_gps_detalhe" value="${E(det)}" maxlength="500" placeholder="Explique com suas palavras: onde fica o quintal e o que aconteceu">
               <span class="dica">Sem localização, a coordenação só aprova depois de confirmar a visita de outro jeito.</span></div>`; })()}
         </div></fieldset>
 
@@ -3782,12 +4004,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <fieldset><legend>2. Renda e políticas públicas</legend>
           ${chk('politicas', MQ.DIAG.politicas, d.politicas)}
           <div class="campos">
-            <div class="campo"><label for="dg-rf">Renda da família por mês (R$)</label><input id="dg-rf" name="renda_familiar" type="number" min="0" step="10" inputmode="numeric" value="${v('renda_familiar')}"></div>
-            <div class="campo"><label for="dg-fr">De onde vem a maior parte</label><input id="dg-fr" name="fonte_renda" value="${v('fonte_renda')}"></div>
+            <div class="campo"><label for="dg-rf">Renda da família por mês (R$)</label><input id="dg-rf" name="renda_familiar" type="number" min="0" max="${R.LIM.rendaMax}" step="10" inputmode="numeric" value="${v('renda_familiar')}"></div>
+            <div class="campo"><label for="dg-fr">De onde vem a maior parte</label><input id="dg-fr" name="fonte_renda" value="${v('fonte_renda')}" maxlength="200"></div>
           </div></fieldset>
 
         <fieldset><legend>3. O quintal e a água</legend><div class="campos">
-          <div class="campo"><label for="dg-area">Área aproximada (m²)</label><input id="dg-area" name="area_m2" type="number" min="1" inputmode="numeric" value="${v('area_m2')}"></div>
+          <div class="campo"><label for="dg-area">Área aproximada (m²)</label><input id="dg-area" name="area_m2" type="number" min="1" max="${R.LIM.areaMax}" inputmode="numeric" value="${v('area_m2')}"></div>
           <div class="campo"><label>A terra é</label>${rad('terra', [['propria', 'Própria'], ['cedida', 'Cedida'], ['outra', 'Outra']], d.terra)}</div>
           <div class="campo"><label>Cercado?</label>${rad('cercado', [['sim', 'Sim'], ['nao', 'Não'], ['em_parte', 'Em parte']], d.cercado)}</div>
           <div class="campo inteiro" id="w-fontes_agua"><label>Fontes de água</label>${chk('fontes_agua', MQ.DIAG.fontes_agua, d.fontes_agua)}</div>
@@ -3798,15 +4020,15 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <div class="campo"><label>Água de pia/tanque/banho reaproveitável?</label>${rad('reuso', [['sim', 'Sim'], ['nao', 'Não']], d.reuso === true ? 'sim' : d.reuso === false ? 'nao' : '')}</div>
           <div class="campo"><label>Irrigação</label>${rad('irrigacao', [['nao', 'Não tem'], ['regador', 'Regador/balde'], ['gotejamento', 'Gotejamento'], ['outra', 'Outra']], d.irrigacao)}</div>
           <div class="campo"><label>Solo</label>${rad('solo', [['arenoso', 'Arenoso'], ['argiloso', 'Argiloso'], ['pedregoso', 'Pedregoso'], ['nao_sabe', 'Não sabe']], d.solo)}</div>
-          <div class="campo inteiro"><label for="dg-chuva">Meses em que costuma chover</label><input id="dg-chuva" name="meses_chuva" value="${v('meses_chuva')}" placeholder="Ex.: janeiro a abril"></div>
+          <div class="campo inteiro"><label for="dg-chuva">Meses em que costuma chover</label><input id="dg-chuva" name="meses_chuva" value="${v('meses_chuva')}" maxlength="120" placeholder="Ex.: janeiro a abril"></div>
         </div><div id="dg-alerta-agua"></div></fieldset>
 
         <fieldset><legend>4. O que produz hoje</legend>
           <div class="prod">${MQ.DIAG.producao.map(([k, t]) => { const x = prod[k] || {};
-            return `<div class="prod-l"><b>${E(t)}</b><input name="pr_${k}_qtd" placeholder="Quantidade (pés, canteiros, cabeças)" value="${E(x.qtd || '')}" aria-label="${E(t)}: quantidade">
+            return `<div class="prod-l"><b>${E(t)}</b><input name="pr_${k}_qtd" placeholder="Quantidade (pés, canteiros, cabeças)" value="${E(x.qtd || '')}" aria-label="${E(t)}: quantidade" maxlength="120">
               <span class="prod-usos"><label class="mini-chk"><input type="checkbox" name="pr_${k}_consumo" ${x.consumo ? 'checked' : ''}>Consumo</label><label class="mini-chk"><input type="checkbox" name="pr_${k}_venda" ${x.venda ? 'checked' : ''}>Venda/troca</label></span>
-              <input name="pr_${k}_onde" placeholder="Onde vende" value="${E(x.onde || '')}" aria-label="${E(t)}: onde vende"></div>`; }).join('')}</div>
-          <div class="campo"><label for="dg-rq">Quanto ganha com vendas do quintal por mês (R$)</label><input id="dg-rq" name="renda_quintal" type="number" min="0" step="10" inputmode="numeric" value="${v('renda_quintal')}"><span class="dica">Zero se não vende. É a linha de base: a visita final vai perguntar a mesma coisa.</span></div>
+              <input name="pr_${k}_onde" placeholder="Onde vende" value="${E(x.onde || '')}" aria-label="${E(t)}: onde vende" maxlength="120"></div>`; }).join('')}</div>
+          <div class="campo"><label for="dg-rq">Quanto ganha com vendas do quintal por mês (R$)</label><input id="dg-rq" name="renda_quintal" type="number" min="0" max="${R.LIM.rendaMax}" step="10" inputmode="numeric" value="${v('renda_quintal')}"><span class="dica">Zero se não vende. É a linha de base: a visita final vai perguntar a mesma coisa.</span></div>
         </fieldset>
 
         ${MQ.impactoUI ? MQ.impactoUI.bloco(d.impacto, '4b. Medidas para comparar no fim (linha de base)', MQ.impactoUI.menorDaFamilia(d.familia)) : ''}
@@ -3818,8 +4040,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         </fieldset>
 
         <fieldset><legend>7. Problemas e sonhos</legend><div class="campos">
-          <div class="campo inteiro"><label for="dg-dif">Maiores dificuldades do quintal</label><textarea id="dg-dif" name="dificuldades">${v('dificuldades')}</textarea></div>
-          <div class="campo inteiro"><label for="dg-son">O que ela quer produzir ou melhorar</label><textarea id="dg-son" name="sonhos">${v('sonhos')}</textarea></div>
+          <div class="campo inteiro"><label for="dg-dif">Maiores dificuldades do quintal</label><textarea id="dg-dif" name="dificuldades" maxlength="2000">${v('dificuldades')}</textarea></div>
+          <div class="campo inteiro"><label for="dg-son">O que ela quer produzir ou melhorar</label><textarea id="dg-son" name="sonhos" maxlength="2000">${v('sonhos')}</textarea></div>
         </div></fieldset>
 
         <fieldset id="w-fotos"><legend>8. Fotos e croqui</legend>
@@ -3832,7 +4054,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <div data-parteb>
         <fieldset><legend>9. Plano do quintal: objetivo</legend>
           <div id="w-objetivos">${chk('objetivos', MQ.DIAG.objetivos, d.objetivos)}</div>
-          <div class="campo"><label for="dg-frase">Em uma frase, o que ela quer alcançar em 12 meses</label><input id="dg-frase" name="frase_objetivo" value="${v('frase_objetivo')}"></div>
+          <div class="campo"><label for="dg-frase">Em uma frase, o que ela quer alcançar em 12 meses</label><input id="dg-frase" name="frase_objetivo" value="${v('frase_objetivo')}" maxlength="300"></div>
         </fieldset>
         <fieldset><legend>10. Kit escolhido</legend>
           <p class="small muted" style="margin-top:-6px">Só itens da lista aprovada pela coordenação, sem passar do valor por quintal. Sem irrigação, comece pelos itens de água (caixa d’água, gotejamento) e pela cobertura do solo.</p>
@@ -3845,7 +4067,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <button type="button" class="btn-add" data-acao="campo-linha-add" data-tipo="cron"><span aria-hidden="true">+</span> Atividade</button>
           <div class="campos">
             <div class="campo" id="w-lote"><label>Lote de implantação</label>${rad('lote', [['1', 'Lote 1 (jan–abr)'], ['2', 'Lote 2 (mai–jul)']], d.lote ? String(d.lote) : '')}</div>
-            <div class="campo"><label for="dg-mes">Mês previsto</label><input id="dg-mes" name="mes_implantacao" value="${v('mes_implantacao')}" placeholder="No início das chuvas ou com água garantida"></div>
+            <div class="campo"><label for="dg-mes">Mês previsto</label><input id="dg-mes" name="mes_implantacao" value="${v('mes_implantacao')}" maxlength="120" placeholder="No início das chuvas ou com água garantida"></div>
           </div></fieldset>
         <fieldset><legend>12. Compromissos</legend>
           <label class="check" id="w-compromissos"><input type="checkbox" name="compromissos" ${d.compromissos ? 'checked' : ''}><span>Ela concorda em usar o kit no quintal, cuidar da produção, receber as visitas, participar das formações e avisar a equipe se deixar de usar o quintal.</span></label>
@@ -3879,7 +4101,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       dificuldades: txt('dificuldades'), sonhos: txt('sonhos'),
       objetivos: todos('objetivos'), frase_objetivo: txt('frase_objetivo'),
       kit: linhas('kit', [['item', 'kit_item'], ['qtd', 'kit_qtd'], ['valor', 'kit_valor'], ['para', 'kit_para']]).filter(x => x.item)
-        .map(x => Object.assign(x, { valor: numBR(x.valor) })),
+        .map(x => { const q = numBR(x.qtd), o = Object.assign(x, { valor: numBR(x.valor) });
+          // "1/2", "2 de 500 ml", "3 a 4": a tela lê o primeiro número (0,5 · 2 · 3); o banco colaria os números (12 · 2500 · 34).
+          // Para os dois lerem igual, a quantidade vai como número e o texto digitado fica guardado em qtd_txt.
+          if (q != null && q !== R.numBanco(x.qtd)) { o.qtd_txt = x.qtd; o.qtd = String(q).replace('.', ','); }
+          return o; }),
       cronograma: linhas('cron', [['oque', 'cr_oque'], ['inicio', 'cr_ini'], ['fim', 'cr_fim'], ['quem', 'cr_quem']]).filter(x => x.oque),
       lote: num('lote'), mes_implantacao: txt('mes_implantacao'), compromissos: !!fd.get('compromissos'),
       impacto: MQ.impactoUI && form.querySelector('fieldset.impacto') ? MQ.impactoUI.ler(form) : undefined
@@ -3932,7 +4158,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           ${dl([['Práticas', (d.praticas || []).map(k => rot(MQ.DIAG.praticas, k)).join(', ')], ['Horas por dia', d.horas_dia], ['Participa de', (d.participa || []).map(k => rot(MQ.DIAG.participa, k)).join(', ')], ['Dificuldades', d.dificuldades], ['Quer', d.sonhos]])}</div>
         ${dg.sem_agua ? '<div class="aviso erro">Sem água que dure na seca: não há plano nem kit. Encaminhar para programa de cisternas.</div>' : `
         <div class="bloco"><h3>Plano do quintal</h3>${dl([['Objetivo', (d.objetivos || []).map(k => rot(MQ.DIAG.objetivos, k)).join(', ')], ['Em 12 meses', d.frase_objetivo], ['Lote', d.lote ? 'Lote ' + d.lote : null], ['Mês previsto', d.mes_implantacao]])}
-          <h3 style="margin-top:8px">Kit</h3>${tab(['Item', 'Qtd.', 'R$ unid.', 'Subtotal', 'Para quê'], (d.kit || []).map(x => [x.item, x.qtd, x.valor != null ? brl(x.valor) : '—', x.valor != null ? brl((numBR(x.qtd) || 0) * x.valor) : '—', x.para]))}
+          <h3 style="margin-top:8px">Kit</h3>${tab(['Item', 'Qtd.', 'R$ unid.', 'Subtotal', 'Para quê'], (d.kit || []).map(x => [x.item, x.qtd_txt || x.qtd, x.valor != null ? brl(x.valor) : '—', x.valor != null ? brl(totalKit([x])) : '—', x.para]))}
           ${projKit(d.kit)}
           <h3 style="margin-top:8px">Cronograma</h3>${tab(['O que', 'Início', 'Fim', 'Quem'], (d.cronograma || []).map(x => [x.oque, x.inicio, x.fim, x.quem]))}</div>`}
         <div class="bloco"><h3>Fotos</h3><div class="acoes">${(dg.fotos || []).map((x, i) => `<button class="btn peq" data-acao="ficha-foto" data-path="${E(x)}">${x === 'exemplo' ? 'Foto de exemplo' : 'Foto ' + (i + 1)}</button>`).join('') || '<span class="muted small">Sem fotos enviadas.</span>'}</div><div id="fi-foto-vista"></div></div>
@@ -3942,7 +4168,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           return `<form class="bloco" data-form="diag-decisao" data-id="${E(dg.id)}" data-conferir="${loc.alerta ? '1' : ''}" novalidate><h3>Decisão da coordenação</h3>
           <p class="small muted">${dg.sem_agua ? 'Confirme o encaminhamento por falta de água.' : 'Aprove se o kit está na lista aprovada e cabe no valor por quintal, e se o cronograma é viável.'}</p>
           ${alterei && dg.situacao !== 'aprovado' ? '<div class="aviso"><b>Você alterou este diagnóstico, então não aprova.</b> Quem aprova é a coordenação técnica. Sem técnica, devolva para quem aplicou corrigir: depois da correção dela, você pode aprovar.</div>' : ''}
-          <div class="campo"><label for="dd-obs">${loc.alerta && dg.situacao !== 'aprovado' ? 'Observação: como você confirmou que a visita aconteceu?' : 'Observação'}</label><textarea id="dd-obs" name="obs">${dg.situacao === 'aprovado' ? E(dg.obs_coordenacao || '') : ''}</textarea>
+          <div class="campo"><label for="dd-obs">${loc.alerta && dg.situacao !== 'aprovado' ? 'Observação: como você confirmou que a visita aconteceu?' : 'Observação'}</label><textarea id="dd-obs" name="obs" maxlength="2000">${dg.situacao === 'aprovado' ? E(dg.obs_coordenacao || '') : ''}</textarea>
             ${dg.situacao !== 'aprovado' && dg.obs_coordenacao ? `<span class="dica">Observação anterior: ${E(dg.obs_coordenacao)}</span>` : ''}</div>
           <div class="aviso erro" data-erro hidden></div>
           <div class="acoes">${dg.situacao !== 'aprovado' && !alterei ? `<button class="btn pri" type="submit" name="decisao" value="aprovado">${dg.sem_agua ? 'Confirmar encaminhamento' : 'Aprovar plano'}</button>` : ''}
@@ -3961,8 +4187,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <div class="painel-corpo"><form class="f" data-form="visita-feita" data-id="${E(v.id)}" novalidate>
         <p class="small muted">Registrar a visita feita é o que permite solicitar a ajuda de custo dela. Depois de solicitada, ela não muda mais.</p>
         <div class="campos">
-          <div class="campo"><label for="vf-data">Dia em que foi feita</label><input id="vf-data" name="data_realizada" type="date" max="${R.hoje()}" value="${v.data_prevista <= R.hoje() ? v.data_prevista : R.hoje()}" required></div>
-          <div class="campo inteiro"><label for="vf-rel">O que foi feito</label><textarea id="vf-rel" name="relato" rows="4" placeholder="${v.etapa === 'implantacao' ? 'Ex.: entregue a caixa d’água e o kit de gotejamento; montados 3 canteiros com a família; combinada a próxima visita.' : 'Ex.: canteiros produzindo alface e coentro; gotejamento com vazamento consertado; orientei a compostagem.'}">${E(v.relato || '')}</textarea></div>
+          <div class="campo"><label for="vf-data">Dia em que foi feita</label><input id="vf-data" name="data_realizada" type="date" min="${R.LIM.visitaMin}" max="${R.hoje()}" value="${v.data_prevista <= R.hoje() ? v.data_prevista : R.hoje()}" required></div>
+          <div class="campo inteiro"><label for="vf-rel">O que foi feito</label><textarea id="vf-rel" name="relato" rows="4" maxlength="2000" placeholder="${v.etapa === 'implantacao' ? 'Ex.: entregue a caixa d’água e o kit de gotejamento; montados 3 canteiros com a família; combinada a próxima visita.' : 'Ex.: canteiros produzindo alface e coentro; gotejamento com vazamento consertado; orientei a compostagem.'}">${E(v.relato || '')}</textarea></div>
           ${foto(1)}${foto(2)}${foto(3)}
         </div>
         <div class="aviso erro" data-erro hidden></div>
@@ -3972,8 +4198,22 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const inp = ev.target.closest && ev.target.closest('input[data-foto-vis]'); if (!inp || !inp.files[0]) return;
     const n = inp.dataset.fotoVis; const dica = document.getElementById('vf-f' + n + '-dica');
     if (inp.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; inp.value = ''; return; }
-    dica.textContent = 'Preparando foto…'; fotosVis[n] = await MQ.comprimirFoto(inp.files[0]); dica.textContent = 'Foto pronta (' + Math.round(fotosVis[n].size / 1024) + ' KB).';
+    dica.textContent = 'Preparando foto…';
+    const foto = await prepararFoto(inp, dica); if (!foto) { delete fotosVis[n]; return; }
+    fotosVis[n] = foto; dica.textContent = 'Foto pronta (' + Math.round(fotosVis[n].size / 1024) + ' KB).';
   });
+  /* Só aceita foto de verdade (imagem, com tamanho e que o aparelho consiga abrir). Arquivo que não é foto
+     (texto, PDF, arquivo vazio ou renomeado para .jpg) é recusado na hora, com o aviso embaixo do campo.
+     A conferência é a de MQ.comprimirFoto (fila.js); aqui a tela mostra o motivo e limpa o campo. */
+  const MSG_NAO_FOTO = 'Este arquivo não é uma foto.';
+  async function prepararFoto(inp, dica) {
+    const arq = inp.files[0];
+    const recusar = () => { inp.value = ''; if (dica) { dica.textContent = MSG_NAO_FOTO + ' Tire a foto de novo ou escolha outra imagem.'; dica.classList.add('erro-foto'); } return null; };
+    if (!arq || !/^image\//.test(String(arq.type || '')) || !(arq.size > 0)) return recusar();
+    if (dica) dica.classList.remove('erro-foto');
+    try { const b = await MQ.comprimirFoto(arq, undefined, undefined, { semAviso: true }); return b && b.size > 0 ? b : recusar(); }
+    catch (e) { return recusar(); }
+  }
 
   function painel(p) {
     if (p.tipo === 'visita-feita') return painelFeita(p);
@@ -4019,7 +4259,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     else if (a === 'campo-visita-cancelar') {
       const fm = $('form[data-form=visita]'); const v = visitas().find(x => x.id === fm.dataset.id);
       if (!fm.dataset.confirmar) { fm.dataset.confirmar = '1'; el.textContent = 'Confirmar cancelamento'; return; }
-      await U().ocupado(fm, async () => { await guardar('visita', Object.assign({}, v, { situacao: 'cancelada' })); U().fecharPainel(); U().render(); U().toast('Visita cancelada. O dia de campo volta para o saldo do estado.'); });
+      await U().ocupado(fm, async () => { await guardar('visita', Object.assign({}, v, { situacao: 'cancelada' })); U().fecharPainel(); U().render(); U().toast('Visita cancelada. O dia de campo volta para o saldo do estado.'); }, { semConferir: true });
     }
   }
 
@@ -4044,7 +4284,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const e = {};
       if (!v.ficha_id) e.ficha_id = 'Escolha a mulher.';
       if (!v.executor_id) e.executor_id = 'Escolha quem faz a visita.';
-      if (!v.data_prevista) e.data_prevista = 'Informe a data.';
+      // de hoje até 31/12/2027 (o banco recusa 2019 ou 2099); a data que já estava gravada e não mudou não trava
+      { const ed = R.erroDataPrevista(v.data_prevista, v0 && v0.data_prevista); if (ed) e.data_prevista = ed; }
+      if (v.obs && v.obs.length > 300) e.obs = 'Texto muito longo (máximo 300 caracteres).';
       if (!v0 && v.ficha_id) {
         if (ativasDe(v.ficha_id, v.etapa).length >= MQ.ETAPAS[v.etapa].max) e.etapa = v.etapa === 'acompanhamento' ? 'Este quintal já tem as 2 visitas de acompanhamento.' : 'Este quintal já tem essa visita agendada ou feita.';
         else if (v.etapa !== 'diagnostico' && !ativasDe(v.ficha_id, 'diagnostico').some(x => x.situacao === 'realizada')) e.etapa = 'Primeiro o diagnóstico.';
@@ -4063,9 +4305,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const d = lerDiag(form);
       const erros = R.validarDiagnostico(d);
       if (Object.keys(erros).length) {
-        Object.keys(erros).forEach(k => { const w = form.querySelector('#w-' + k); if (w) w.classList.add('tem-erro'); });
-        const alvo = {}; Object.entries(erros).forEach(([k, m]) => { if (form.querySelector(`[name="${k}"]`) && !form.querySelector('#w-' + k)) alvo[k] = m; });
-        U().mostrarErros(form, alvo, Object.keys(erros).length > 1 ? 'Faltam ' + Object.keys(erros).length + ' itens: ' + Object.values(erros).slice(0, 3).join(' · ') : Object.values(erros)[0]);
+        form.querySelectorAll('[id^="w-"].tem-erro').forEach(w => w.classList.remove('tem-erro'));   // marcas do envio anterior
+        // mostrarErros (app.js) marca o campo ou o bloco "w-<nome>" de cada erro e lista todos na caixa
+        U().mostrarErros(form, erros, Object.keys(erros).length > 1 ? 'Faltam ' + Object.keys(erros).length + ' itens: ' + Object.values(erros).join(' · ') : Object.values(erros)[0]);
         const p = form.querySelector('.tem-erro'); if (p) p.scrollIntoView({ block: 'center', behavior: 'smooth' });
         return;
       }
@@ -4096,8 +4338,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const v0 = visitas().find(x => x.id === form.dataset.id);
       const data = String(fd.get('data_realizada') || ''), relato = String(fd.get('relato') || '').trim();
       const e = {};
-      if (!data) e.data_realizada = 'Informe o dia.'; else if (data > R.hoje()) e.data_realizada = 'Não pode ser no futuro.';
+      { const ed = R.erroDataFeita(data); if (ed) e.data_realizada = ed; }   // de 01/01/2026 até hoje
       if (relato.length < 20) e.relato = 'Conte em poucas linhas o que foi feito (pelo menos 20 letras).';
+      else if (relato.length > 2000) e.relato = 'Texto muito longo (máximo 2.000 caracteres).';
       if (!fotosVis[1]) e.foto = 'Faça pelo menos 1 foto do que foi feito.';
       if (Object.keys(e).length) { const geral = e.foto; delete e.foto; return U().mostrarErros(form, e, geral && !Object.keys(e).length ? geral : undefined); }
       await U().ocupado(form, async () => {
@@ -4127,7 +4370,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (ev.target.type === 'file' && ev.target.files[0]) {
       const k = ev.target.dataset.foto; const dica = form.querySelector('#dg-f-' + k + '-dica');
       if (ev.target.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; ev.target.value = ''; return; }
-      dica.textContent = 'Preparando foto…'; fotosTemp[k] = await MQ.comprimirFoto(ev.target.files[0]);
+      dica.textContent = 'Preparando foto…';
+      const foto = await prepararFoto(ev.target, dica); if (!foto) { delete fotosTemp[k]; atualizarDiag(form); return; }
+      fotosTemp[k] = foto;
       dica.textContent = 'Foto pronta (' + Math.round(fotosTemp[k].size / 1024) + ' KB).';
       const w = form.querySelector('#w-fotos'); if (w) w.classList.remove('tem-erro');
     }
@@ -4152,7 +4397,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const devolvidos = diagnosticos().filter(d => d.situacao === 'devolvido' && (eu.papel === 'agente' ? (visitas().find(v => v.id === d.visita_id) || {}).executor_id === eu.id : d.uf === eu.uf)).length;
     return vencidas + devolvidos;
   }
-  MQ.campoUI = { contaAFazer, secaoBolsista, telaAgente, abaCoord, painel, clique, enviar, diagnosticos, visitas, guardar, numBR, localDiag, kmEntre, centroMun, MOTIVOS_SEM_GPS };
+  MQ.campoUI = { contaAFazer, secaoBolsista, telaAgente, abaCoord, painel, clique, enviar, diagnosticos, visitas, guardar, numBR, totalKit, prepararFoto, localDiag, kmEntre, centroMun, MOTIVOS_SEM_GPS };
 })();
 ;
 /* ===== vitrine.js ===== */
@@ -4434,6 +4679,17 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const C = { par: null, km: null, mes: null, carregado: false, erro: null };
   const brl = v => (Math.round((+v || 0) * 100) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const norm = t => String(t || '').split('/')[0].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  const r2 = x => Math.round((+x || 0) * 100) / 100;   // centavos: cada visita é arredondada e as telas somam sempre os valores já arredondados
+  /* célula de CSV: aspas dobradas e, se começar por = + - @ (tab ou enter), apóstrofo na frente para o Excel não executar como fórmula */
+  const celCSV = x => { let t = String(x == null ? '' : x); if (/^[=+\-@\t\r]/.test(t) && !/^-?\d+([.,]\d+)?$/.test(t)) t = "'" + t; return '"' + t.replace(/"/g, '""') + '"'; };
+  /* parâmetro salvo com valor impossível (km por litro 0, hora negativa) não entra na conta: vale o padrão */
+  function sanear(par) {
+    const D = MQ.CUSTO_PADRAO; const p = Object.assign({}, D, par || {}); p.horas = Object.assign({}, D.horas, (par || {}).horas);
+    ['valor_hora', 'km_por_litro', 'preco_litro', 'fator_estrada'].forEach(k => { if (!(isFinite(+p[k]) && +p[k] > 0)) p[k] = D[k]; else p[k] = +p[k]; });
+    p.refeicao = isFinite(+p.refeicao) && +p.refeicao >= 0 ? +p.refeicao : D.refeicao;
+    Object.keys(p.horas).forEach(k => { if (!(isFinite(+p.horas[k]) && +p.horas[k] >= 0)) p.horas[k] = D.horas[k] || 0; });
+    return p;
+  }
   const mesDe = d => String(d || '').slice(0, 7);
   const mesHoje = () => R.hoje().slice(0, 7);
   const nomeMes = m => { const [a, b] = m.split('-'); return ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][+b - 1] + '/' + a; };
@@ -4442,11 +4698,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   async function carregar() {
     try {
       const [par, km] = await Promise.all([S().api.lerParametros('custo_visita'), S().api.listarCustos()]);
-      C.par = Object.assign({}, MQ.CUSTO_PADRAO, par || {}, { horas: Object.assign({}, MQ.CUSTO_PADRAO.horas, (par || {}).horas) });
+      C.par = sanear(par);
       C.km = Object.fromEntries((km || []).map(k => [k.visita_id, +k.km_ida]));
       C.erro = null;
     } catch (e) {
-      C.par = C.par || Object.assign({}, MQ.CUSTO_PADRAO); C.km = C.km || {};
+      C.par = C.par || sanear(null); C.km = C.km || {};
       C.erro = /parametros|custos_visita|PGRST205|does not exist|schema cache/i.test(e.message)
         ? 'O cálculo ainda não foi instalado no servidor: rode o arquivo 04_vitrine_e_custos.sql no Supabase. Até lá, os valores abaixo são uma simulação e o km não fica salvo.'
         : e.message;
@@ -4484,12 +4740,26 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
 
   /* ---------- cálculo ---------- */
+  /* cada visita sai arredondada a 2 casas (trabalho, combustível, refeição e total): o botão, o envio, o aval, a tela e o CSV somam o mesmo número.
+     km negativo, NaN ou infinito = sem km (não conferido); etapa desconhecida = 0 hora (só refeição e combustível); km por litro inválido não gera combustível. */
   function calcular(etapa, km) {
-    const p = C.par; const horas = +(p.horas[etapa] || 0);
-    const trabalho = horas * p.valor_hora;
-    const combustivel = km == null ? null : (2 * km / p.km_por_litro) * p.preco_litro;
-    const refeicao = +p.refeicao || 0;
-    return { horas, trabalho, combustivel, refeicao, total: trabalho + (combustivel || 0) + refeicao, completo: km != null };
+    const p = C.par; const H = p.horas || {};
+    const conhecida = etapa != null && Object.prototype.hasOwnProperty.call(H, etapa);   // etapa desconhecida ("constructor", "xpto"): 0 hora, nunca NaN
+    const horas = conhecida && +H[etapa] > 0 ? +H[etapa] : 0;
+    const k = (typeof km === 'number' || (typeof km === 'string' && km.trim() !== '')) ? Number(km) : NaN;
+    const kmOk = isFinite(k) && k >= 0; const kml = +p.km_por_litro, preco = +p.preco_litro;
+    const trabalho = r2(horas * (+p.valor_hora > 0 ? +p.valor_hora : 0));
+    const combustivel = kmOk && kml > 0 && isFinite(preco) && preco >= 0 ? r2((2 * k / kml) * preco) : null;
+    const refeicao = r2(+p.refeicao > 0 ? +p.refeicao : 0);
+    return { horas, trabalho, combustivel, refeicao, total: r2(trabalho + (combustivel || 0) + refeicao), completo: combustivel != null, etapaDesconhecida: !conhecida };
+  }
+  /* simulação da aba: km vazio = "informe o km"; fora de 0 a 999 = recusado com mensagem */
+  function simular(etapa, kmTxt) {
+    const txt = String(kmTxt == null ? '' : kmTxt).replace(',', '.').trim();
+    if (txt === '') return quadro(calcular(etapa, null));
+    const km = Number(txt);
+    if (!(km >= 0 && km <= 999)) return '<div class="aviso erro">Distância inválida: informe de 0 a 999 km (só a ida).</div>';
+    return quadro(calcular(etapa, km));
   }
 
   /* ---------- tela ---------- */
@@ -4509,8 +4779,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       .sort((a, b) => String(a.data_realizada || a.data_prevista).localeCompare(String(b.data_realizada || b.data_prevista)));
     const linhas = vs.map(v => { const k = kmIda(v); return { v, k, c: calcular(v.etapa, k.km), p: U().porId(v.executor_id) || {} }; });
     const feitas = linhas.filter(l => l.v.situacao === 'realizada'), prev = linhas.filter(l => l.v.situacao !== 'realizada');
-    const soma = ls => ls.reduce((s, l) => s + l.c.total, 0);
-    const porPessoa = {}; feitas.forEach(l => { const id = l.v.executor_id; (porPessoa[id] = porPessoa[id] || { p: l.p, n: 0, total: 0, falta: 0 }); porPessoa[id].n++; porPessoa[id].total += l.c.total; if (!l.c.completo) porPessoa[id].falta++; });
+    const soma = ls => r2(ls.reduce((s, l) => s + l.c.total, 0));
+    const porPessoa = {}; feitas.forEach(l => { const id = l.v.executor_id; (porPessoa[id] = porPessoa[id] || { p: l.p, n: 0, total: 0, falta: 0 }); porPessoa[id].n++; porPessoa[id].total = r2(porPessoa[id].total + l.c.total); if (!l.c.completo) porPessoa[id].falta++; });
     const semKm = feitas.filter(l => !l.c.completo).length;
     const p = C.par;
     return `<div class="cab"><div><span class="eyebrow">Ajuda de custo</span><h1>Custo das visitas</h1>
@@ -4570,7 +4840,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   function csv() {
     const vs = (S().visitas || []).filter(v => v.situacao === 'realizada' && mesDe(v.data_realizada) === C.mes);
-    const q = x => '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"';
+    const q = celCSV;
     const n = x => x == null ? '' : String(Math.round(x * 100) / 100).replace('.', ',');
     const cab = ['Data', 'Pessoa', 'CPF', 'Papel', 'UF', 'Etapa', 'Município de partida', 'Município do quintal', 'Km ida', 'Origem do km', 'Horas', 'Trabalho (R$)', 'Combustível (R$)', 'Refeição (R$)', 'Total (R$)'];
     const linhas = vs.map(v => { const p = U().porId(v.executor_id) || {}; const f = (S().fichas || []).find(x => x.id === v.ficha_id) || {}; const k = kmIda(v); const c = calcular(v.etapa, k.km);
@@ -4593,20 +4863,25 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
   async function enviar(tipo, form, fd) {
     if (tipo === 'custo-par') {
-      const v = k => Number(String(fd.get(k)).replace(',', '.'));
+      const v = k => { const t = String(fd.get(k) == null ? '' : fd.get(k)).replace(',', '.').trim(); return t === '' ? NaN : Number(t); };   // campo vazio não vira 0
+      const vazio = k => String(fd.get(k) == null ? '' : fd.get(k)).trim() === '';
+      const FALTA = { valor_hora: 'Informe o valor da hora.', refeicao: 'Informe o valor da refeição (pode ser 0).', km_por_litro: 'Informe quantos km o carro faz por litro.', preco_litro: 'Informe o preço da gasolina.', fator_estrada: 'Informe o fator estrada.', teto: 'Informe o teto das ajudas de custo.' };
       const novo = { valor_hora: v('valor_hora'), refeicao: v('refeicao'), km_por_litro: v('km_por_litro'), preco_litro: v('preco_litro'), fator_estrada: v('fator_estrada'), teto: v('teto'),
         horas: { diagnostico: v('h_diagnostico'), implantacao: v('h_implantacao'), acompanhamento: v('h_acompanhamento'), avaliacao: v('h_avaliacao') } };
       const erros = {};
-      [['valor_hora', 0, 500], ['refeicao', 0, 200], ['km_por_litro', 1, 60], ['preco_litro', 1, 20], ['fator_estrada', 1, 2], ['teto', 1000, 10000000]].forEach(([k, a, b]) => { if (!(novo[k] >= a && novo[k] <= b)) erros[k] = `Entre ${a} e ${b}.`; });
-      Object.keys(novo.horas).forEach(k => { if (!(novo.horas[k] > 0 && novo.horas[k] <= 12)) erros['h_' + k] = 'Entre 0,5 e 12 horas.'; });
+      [['valor_hora', 0, 500], ['refeicao', 0, 200], ['km_por_litro', 1, 60], ['preco_litro', 1, 20], ['fator_estrada', 1, 2], ['teto', 1000, 10000000]].forEach(([k, a, b]) => {
+        if (vazio(k)) erros[k] = FALTA[k];
+        else if (k === 'valor_hora' && !(novo[k] > 0 && novo[k] <= b)) erros[k] = `Maior que 0, até ${b}.`;
+        else if (!(novo[k] >= a && novo[k] <= b)) erros[k] = `Entre ${a} e ${b}.`; });
+      Object.keys(novo.horas).forEach(k => { if (vazio('h_' + k)) erros['h_' + k] = 'Informe as horas.'; else if (!(novo.horas[k] > 0 && novo.horas[k] <= 12)) erros['h_' + k] = 'Entre 0,5 e 12 horas.'; });
       if (Object.keys(erros).length) return U().mostrarErros(form, erros);
-      await U().ocupado(form, async () => { C.par = Object.assign({}, MQ.CUSTO_PADRAO, await S().api.salvarParametros('custo_visita', novo)); C.plano = null; C.planoAtual = null; C.teto = null; U().render(); U().toast('Valores salvos.'); });
+      await U().ocupado(form, async () => { C.par = sanear(await S().api.salvarParametros('custo_visita', novo)); C.plano = null; C.planoAtual = null; C.teto = null; U().render(); U().toast('Valores salvos.'); });
     }
   }
   // simulação e km: reagem ao digitar, sem recarregar a tela
   document.addEventListener('input', ev => {
     const f = ev.target.closest('form[data-form=custo-sim]');
-    if (f) { const km = Number(String(f.km.value).replace(',', '.')); const box = $('#cs-res'); if (box) box.innerHTML = quadro(calcular(f.etapa.value, f.km.value === '' || !(km >= 0) ? null : km)); }
+    if (f) { const box = $('#cs-res'); if (box) box.innerHTML = simular(f.etapa.value, f.km.value); }
   });
   document.addEventListener('change', async ev => {
     const inp = ev.target.closest('input[data-km]'); if (!inp) return;
@@ -4802,7 +5077,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   function csvPlano() {
     const r = C.plano || (C.plano = planejar());
-    const q = x => '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"'; const n = x => String(Math.round(x * 100) / 100).replace('.', ',');
+    const q = celCSV; const n = x => String(Math.round(x * 100) / 100).replace('.', ',');
     const cab = ['Estado', 'Mês', 'Etapa', 'Pessoa', 'Função', 'Quintais na viagem', 'Municípios', 'Km', 'Combustível (R$)', 'Refeição (R$)', 'Horas (R$)', 'Total (R$)'];
     const linhas = Object.values(r.ufs).flatMap(u => u.viagens.map(v => [u.uf, MESES_PROJ[v.mes - 1], MQ.ETAPAS_CUSTO[v.etapa], v.pessoa.nome, (MQ.PAPEIS[v.pessoa.papel] || {}).nome, v.n,
       [...new Set(v.quintais.map(f => f.municipio))].join(', '), n(v.km), n(v.comb), n(v.ref), n(v.horas * C.par.valor_hora), n(v.total)].map(q).join(';')));
@@ -4810,11 +5085,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'proposta-roteiro.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
 
-  MQ.custosUI = { aba, clique, enviar, calcular: (etapa, km) => { C.par = C.par || Object.assign({}, MQ.CUSTO_PADRAO); return calcular(etapa, km); },
+  MQ.custosUI = { aba, clique, enviar, celCSV, calcular: (etapa, km) => { C.par = C.par || sanear(null); return calcular(etapa, km); },
+    simular: (etapa, kmTxt) => { C.par = C.par || sanear(null); return simular(etapa, kmTxt); },
     // usados na solicitação de pagamento (mesmo cálculo do Pagamento do mês)
     garantir: async () => { if (!C.carregado) await carregar(); },
     pronto: () => C.carregado,
-    custoVisita: v => { C.par = C.par || Object.assign({}, MQ.CUSTO_PADRAO); C.km = C.km || {}; const k = kmIda(v); return Object.assign(calcular(v.etapa, k.km), { km: k.km, fonte: k.fonte }); } };
+    custoVisita: v => { C.par = C.par || sanear(null); C.km = C.km || {}; const k = kmIda(v); return Object.assign(calcular(v.etapa, k.km), { km: k.km, fonte: k.fonte }); } };
 })();
 ;
 /* ===== fic.js ===== */
@@ -5001,6 +5277,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     else if (a === 'fic-matricular') U().abrirPainel({ tipo: 'fic-matricular', id: el.dataset.id });
     else if (a === 'fic-cancelar') U().abrirPainel({ tipo: 'fic-cancelar', id: el.dataset.id });
   }
+  const DATA_MIN = '2026-01-01', DATA_MAX = '2027-12-31', MAX_NOME_TURMA = 120;
+  const dataExiste = v => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || '')); if (!m) return false; const t = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return t.getUTCFullYear() === +m[1] && t.getUTCMonth() === +m[2] - 1 && t.getUTCDate() === +m[3]; };
   async function enviar(tipo, form, fd) {
     const txt = k => String(fd.get(k) || '').trim();
     if (tipo === 'fic-turma') {
@@ -5009,8 +5287,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         professor_id: souProf() ? (antes ? antes.professor_id : S().eu.id) : txt('professor_id') || (antes && antes.professor_id) };
       const e = {};
       if (t.nome.length < 3) e.nome = 'Dê um nome à turma.';
+      else if (t.nome.length > MAX_NOME_TURMA) e.nome = `Texto muito longo (máximo ${MAX_NOME_TURMA} caracteres).`;
+      [['inicio', 'O início'], ['fim', 'O fim']].forEach(([k, rot]) => { if (t[k] && (!dataExiste(t[k]) || t[k] < DATA_MIN || t[k] > DATA_MAX)) e[k] = rot + ' da turma fica entre 01/01/2026 e 31/12/2027.'; });
       if (!t.professor_id) e.professor_id = 'Escolha o professor.';
-      if (t.inicio && t.fim && t.fim < t.inicio) e.fim = 'O fim é antes do início.';
+      if (!e.inicio && !e.fim && t.inicio && t.fim && t.fim < t.inicio) e.fim = 'O fim é antes do início.';
       if (antes && antes.uf !== t.uf && t.uf && matriculas().some(x => x.turma_id === id && (pessoa(x.equipe_id) || {}).uf !== t.uf)) e.uf = 'Há gente de outro estado matriculada nesta turma.';
       if (Object.keys(e).length) return U().mostrarErros(form, e);
       await U().ocupado(form, async () => { await S().api.salvarTurma(t); await recarregar(); U().fecharPainel(); U().toast(id ? 'Turma salva.' : 'Turma criada. Agora matricule as pessoas.'); });
@@ -5018,7 +5298,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (tipo === 'fic-matricular') {
       const turma = form.dataset.id; const data = txt('data');
       const marcados = fd.getAll('p'); const e = {};
-      if (!data) e.data = 'Informe a data.'; else if (data > R.hoje()) e.data = 'Data no futuro. Registre só a matrícula já feita.';
+      if (!data) e.data = 'Informe a data.'; else if (!dataExiste(data)) e.data = 'Data inválida.'; else if (data > R.hoje()) e.data = 'Data no futuro. Registre só a matrícula já feita.';
+      else if (data < DATA_MIN) e.data = 'Data antes de 2026: confira o ano da matrícula.';
       if (!marcados.length) return U().mostrarErros(form, e, 'Marque pelo menos uma pessoa.');
       const faltaNum = marcados.filter(id => txt('n_' + id).length < 3);
       if (faltaNum.length) return U().mostrarErros(form, e, 'Falta o número da matrícula (SUAP) de: ' + faltaNum.map(id => nomeDe(pessoa(id))).join(', ') + '.');
@@ -5072,7 +5353,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     .sort((a, b) => (a.ate ? 1 : 0) - (b.ate ? 1 : 0)).filter(x => vistos[x.p.id] ? false : (vistos[x.p.id] = true))
     .sort((a, b) => nomeDe(a.p).localeCompare(nomeDe(b.p))); };
   const valeEm = (x, data) => x.desde <= data && (!x.ate || x.ate > data);
-  const fmtH = h => String(+h).replace('.', ',') + ' h';
+  const h1 = h => Math.round((+h || 0) * 10) / 10;   // horas com 1 casa: 1,1 + 2,2 = 3,3 (e não 3,3000000000000003)
+  const fmtH = h => String(h1(h)).replace('.', ',') + ' h';
   const conta = e => { const ps = e.presencas || []; const pr = ps.filter(p => p.presente); return { total: ps.length, presentes: pr.length, confirmados: pr.filter(p => p.confirmado_em).length }; };
 
   /* ---------- professor: seção "Encontros do curso" ---------- */
@@ -5170,7 +5452,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         </tbody></table>${completo && aus.length ? `<p class="small muted">Ausentes: ${aus.map(p => E(p.nome)).join(', ')}.</p>` : ''}</div>`; }).join('');
   }
   function resumoMes(encs) {
-    const ch = encs.reduce((t, e) => t + (+e.carga_horaria || 0), 0);
+    const ch = h1(encs.reduce((t, e) => t + (+e.carga_horaria || 0), 0));
     const pres = encs.flatMap(e => (e.presencas || []).filter(p => p.presente)); const conf = pres.filter(p => p.confirmado_em).length;
     return { n: encs.length, ch, presencas: pres.length, confirmadas: conf };
   }
@@ -5555,6 +5837,17 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const mesHoje = () => R.hoje().slice(0, 7);
   const somaMes = (m, n) => { const [a, b] = m.split('-').map(Number); const d = new Date(a, b - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
   const G = { mes: null };
+  const r2 = x => Math.round((+x || 0) * 100) / 100;
+  const TETO_VISITA = 2000, FOLGA_AVAL = 1.5;   // aval da ajuda de custo: no máximo 1,5 × o pedido (ou o recalculado pelo sistema) e R$ 2.000 por visita
+  const visitasDe = s => { const ids = Object.entries(vinculadas()).filter(([, sid]) => sid === s.id).map(([vid]) => vid); return ids.length ? ids : ((s.detalhe && s.detalhe.visitas) || []).map(x => x.id); };
+  /* valor recalculado agora pela coordenação (km conferido), somando as visitas já arredondadas; null se não der para recalcular */
+  function recalculado(s) {
+    if (s.tipo !== 'ajuda_custo' || !MQ.custosUI || !MQ.custosUI.pronto()) return null;
+    const vs = visitasDe(s).map(id => (S().visitas || []).find(v => v.id === id)).filter(Boolean);
+    return vs.length ? r2(vs.reduce((t, v) => t + MQ.custosUI.custoVisita(v).total, 0)) : null;
+  }
+  const MAX_PROTOCOLO = 60, MAX_JUSTIFICATIVA = 2000;
+  const longo = n => `Texto muito longo (máximo ${n.toLocaleString('pt-BR')} caracteres).`;
 
   const TIPO = { ajuda_custo: 'Ajuda de custo', bolsa: 'Bolsa' };
   const SIT = { solicitada: ['pend', 'Aguardando aval'], devolvida: ['crit', 'Devolvida para corrigir'], avalizada: ['ok', 'Com aval · falta lançar no Arlo'], lancada: ['ok', 'Lançada no Arlo'] };
@@ -5618,7 +5911,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       .sort((a, b) => String(a.data_realizada).localeCompare(String(b.data_realizada)));
     const livres = feitas.filter(v => !vinc[v.id] || (s && vinc[v.id] === s.id));
     const itens = livres.map(v => ({ v, c: MQ.custosUI.custoVisita(v), f: (S().fichas || []).find(x => x.id === v.ficha_id) || {} }));
-    const total = itens.reduce((t, i) => t + i.c.total, 0);
+    const total = r2(itens.reduce((t, i) => t + i.c.total, 0));   // soma das visitas já arredondadas: é o valor enviado
     const estimado = itens.some(i => i.c.fonte !== 'conferido');
     const semKm = itens.some(i => !i.c.completo);
     const pend = (S().visitas || []).filter(v => v.executor_id === eu.id && v.situacao === 'prevista' && String(v.data_prevista).slice(0, 7) <= m).length;
@@ -5709,7 +6002,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const vs = ids.map(id => (S().visitas || []).find(v => v.id === id)).filter(Boolean);
       if (vs.length && /^coord/.test(eu.papel) && garantirCustos()) {   // coordenação recalcula com o km conferido
         const itens = vs.map(v => ({ v, c: MQ.custosUI.custoVisita(v), f: (S().fichas || []).find(x => x.id === v.ficha_id) || {} }));
-        conf = itens.reduce((t, i) => t + i.c.total, 0);
+        conf = r2(itens.reduce((t, i) => t + i.c.total, 0));
         visHTML = `<table class="tab-uf"><thead><tr><th>Visita</th><th>Km (ida)</th><th style="text-align:right">Valor</th></tr></thead><tbody>${itens.map(i => `<tr>
           <td>${E(MQ.ETAPAS_CUSTO[i.v.etapa])} · ${R.fmtData(i.v.data_realizada)}<br><span class="small muted">${E(i.f.nome || '')} · ${E(i.f.municipio || '')}${i.v.relato ? ' · ' + E(String(i.v.relato).slice(0, 80)) : ''}</span></td>
           <td>${i.c.km != null ? i.c.km + (i.c.fonte === 'conferido' ? ' (conferido)' : ' (estimado)') : '—'}</td><td class="num" style="text-align:right">${brl(i.c.total)}</td></tr>`).join('')}</tbody></table>
@@ -5763,8 +6056,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const ids = fd.getAll('v'); if (!ids.length) return U().mostrarErros(form, {}, 'Marque pelo menos uma visita.');
       const vs = ids.map(id => (S().visitas || []).find(v => v.id === id)).filter(Boolean);
       const itens = vs.map(v => { const c = MQ.custosUI.custoVisita(v); const f = (S().fichas || []).find(x => x.id === v.ficha_id) || {};
-        return { id: v.id, etapa: v.etapa, data: v.data_realizada, municipio: f.municipio || null, km: c.km, fonte: c.fonte, total: Math.round(c.total * 100) / 100 }; });
-      const total = Math.round(itens.reduce((t, i) => t + i.total, 0) * 100) / 100;
+        return { id: v.id, etapa: v.etapa, data: v.data_realizada, municipio: f.municipio || null, km: c.km, fonte: c.fonte, total: r2(c.total) }; });
+      const total = r2(itens.reduce((t, i) => t + i.total, 0));
+      if (!(total > 0)) return U().mostrarErros(form, {}, 'O valor das visitas marcadas deu zero. Avise a coordenação.');
       await U().ocupado(form, async () => {
         await S().api.solicitarPagamento('ajuda_custo', mes + '-01', total, null, ids, { visitas: itens, total });
         await recarregar(); U().toast('Ajuda de custo de ' + nomeMes(mes) + ' solicitada: ' + brl(total) + '. Agora vai para o aval.');
@@ -5775,6 +6069,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (rel.length < 50) return U().mostrarErros(form, { relatorio: 'Conte em algumas linhas o que você fez no mês (pelo menos 50 letras).' });
       if (S().eu.papel === 'professor_fic' && MQ.encUI && !S().encSemBanco && !MQ.encUI.doMes(S().eu.id, mes).length && String(fd.get('justificativa_sem_encontro') || '').trim().length < 30)
         return U().mostrarErros(form, { justificativa_sem_encontro: 'Nenhum encontro registrado neste mês: explique por quê (pelo menos 30 letras).' });
+      if (String(fd.get('justificativa_sem_encontro') || '').trim().length > MAX_JUSTIFICATIVA) return U().mostrarErros(form, { justificativa_sem_encontro: longo(MAX_JUSTIFICATIVA) });
       const valor = P[S().eu.papel].bolsa;
       await U().ocupado(form, async () => {
         const just = String(fd.get('justificativa_sem_encontro') || '').trim();
@@ -5789,12 +6084,19 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (!ok && obs.length < 5) return U().mostrarErros(form, { obs: 'Escreva o que precisa ser corrigido.' });
       if (ok && valor != null && !(valor > 0)) return U().mostrarErros(form, { valor: 'Valor inválido: informe um valor maior que zero.' });
       if (ok && valor != null && sol.tipo === 'bolsa' && sol.valor_solicitado != null && valor > +sol.valor_solicitado) return U().mostrarErros(form, { valor: 'O aval passa do valor pedido. Para pagar mais, devolva para a pessoa corrigir o valor.' });
+      if (ok && valor != null && sol.tipo === 'ajuda_custo') {
+        const pedido = +sol.valor_solicitado || 0, n = visitasDe(sol).length, conf = recalculado(sol);
+        const lim = Math.max(pedido * FOLGA_AVAL, conf || 0);
+        if ((pedido > 0 && valor > lim + 0.005) || (n > 0 && valor > TETO_VISITA * n + 0.005) || valor > 1e6)
+          return U().mostrarErros(form, { valor: `Valor muito acima do pedido (${brl(pedido)}). Confira o valor.` });
+      }
       await U().ocupado(form, async () => {
         await S().api.avalizarPagamento(form.dataset.id, ok, obs, ok ? valor : null);
         await recarregar(); U().fecharPainel(); U().toast(ok ? 'Aval registrado. A solicitação foi para o auxiliar lançar no Arlo.' : 'Solicitação devolvida. A pessoa vê o motivo e pode corrigir.');
       });
     }
     if (tipo === 'pag-arlo') {
+      if (String(fd.get('protocolo') || '').trim().length > MAX_PROTOCOLO) return U().mostrarErros(form, { protocolo: longo(MAX_PROTOCOLO) });
       await U().ocupado(form, async () => {
         await S().api.registrarNoArlo(form.dataset.id, String(fd.get('protocolo') || '').trim());
         await recarregar(); U().fecharPainel(); U().toast('Registrado: lançado no Arlo.');
@@ -5843,7 +6145,18 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const podeVer = papel => ['articulacao', 'coord_tecnico', 'coord_geral'].includes(papel);
   /* ---------- tetos: R$ 6.000 por estado para eventos; R$ 70.000 para passagens (35_tetos_passagens_eventos.sql) ---------- */
   const brl = v => R.fmtBRL(+v || 0);
-  const valorBR = t => { const n = R.valorBR(String(t || '').replace(/[^\d,.]/g, '')); return isNaN(n) ? null : n; };
+  /* valor digitado: "-500" e "(500)" continuam negativos (antes o sinal era jogado fora e virava +500) para a tela recusar */
+  const valorBR = t => { const txt = String(t || '').replace(/\u2212/g, '-').trim(); const neg = /^(R\$)?\s*\(?\s*-/.test(txt) || /^\(.*\)$/.test(txt) || /-$/.test(txt);
+    const n = R.valorBR(txt.replace(/[^\d,.]/g, '')); return isNaN(n) ? null : neg ? -n : n; };
+  const MAX_JUSTIFICATIVA = 2000, MAX_PARTICIPANTES = 5000;
+  /* data de nascimento de passageira: AAAA-MM-DD que existe no calendário, de 1900 até hoje */
+  const erroNascimento = v => { const t = String(v || ''); if (!t) return 'Informe a data.';
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t); const d = m && new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    if (!m || d.getUTCFullYear() !== +m[1] || d.getUTCMonth() !== +m[2] - 1 || d.getUTCDate() !== +m[3]) return 'Data de nascimento inválida.';
+    if (t > R.hoje()) return 'A data de nascimento não pode ser no futuro.';
+    if (t < '1900-01-01') return 'Data de nascimento inválida: confira o ano.';
+    return null; };
+  let seqPass = 0;   // número único de cada bloco de passageira, para ligar cada rótulo (label for) ao seu campo
   function saldo(tipo, uf, semId) {
     const teto = MQ.TETOS[tipo]; const sd = S().saldoPed;
     let usado;
@@ -5960,19 +6273,19 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   /* ---------- formulário ---------- */
   function passBloco(i, x) {
-    x = x || {}; const v = k => E(x[k] == null ? '' : x[k]);
+    x = x || {}; const v = k => E(x[k] == null ? '' : x[k]); const k = ++seqPass; const id = c => 'ps-' + c + '-' + k;
     return `<fieldset class="viag-pass" data-pass>
       <legend>Passageira ou passageiro <span data-n>${i + 1}</span></legend>
       <div class="campos">
-        <div class="campo inteiro"><label>Nome completo (igual ao documento)</label><input name="ps_nome" value="${v('nome')}" autocomplete="off"></div>
-        <div class="campo"><label>CPF</label><input name="ps_cpf" data-mascara="cpf" inputmode="numeric" value="${v('cpf')}"></div>
-        <div class="campo"><label>Data de nascimento</label><input name="ps_nasc" type="date" max="${R.hoje()}" value="${v('nascimento')}"></div>
-        <div class="campo"><label>RG</label><input name="ps_rg" value="${v('rg')}"></div>
-        <div class="campo"><label>Órgão expedidor</label><input name="ps_org" value="${v('rg_orgao')}" placeholder="Ex.: SSP/PI"></div>
-        <div class="campo"><label>Sexo</label><select name="ps_sexo"><option value="">Selecione…</option>${Object.entries(SEXO).map(([k, t]) => `<option value="${k}" ${x.sexo === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-        <div class="campo"><label>Celular</label><input name="ps_cel" data-mascara="tel" inputmode="tel" value="${v('celular')}"></div>
-        <div class="campo inteiro"><label>E-mail</label><input name="ps_email" type="email" value="${v('email')}"></div>
-        <div class="campo inteiro"><label>Endereço <span class="muted">(opcional)</span></label><input name="ps_end" value="${v('endereco')}"></div>
+        <div class="campo inteiro"><label for="${id('nome')}">Nome completo (igual ao documento)</label><input id="${id('nome')}" name="ps_nome" value="${v('nome')}" autocomplete="off"></div>
+        <div class="campo"><label for="${id('cpf')}">CPF</label><input id="${id('cpf')}" name="ps_cpf" data-mascara="cpf" inputmode="numeric" value="${v('cpf')}"></div>
+        <div class="campo"><label for="${id('nasc')}">Data de nascimento</label><input id="${id('nasc')}" name="ps_nasc" type="date" min="1900-01-01" max="${R.hoje()}" value="${v('nascimento')}"></div>
+        <div class="campo"><label for="${id('rg')}">RG</label><input id="${id('rg')}" name="ps_rg" value="${v('rg')}"></div>
+        <div class="campo"><label for="${id('org')}">Órgão expedidor</label><input id="${id('org')}" name="ps_org" value="${v('rg_orgao')}" placeholder="Ex.: SSP/PI"></div>
+        <div class="campo"><label for="${id('sexo')}">Sexo</label><select id="${id('sexo')}" name="ps_sexo"><option value="">Selecione…</option>${Object.entries(SEXO).map(([k, t]) => `<option value="${k}" ${x.sexo === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+        <div class="campo"><label for="${id('cel')}">Celular</label><input id="${id('cel')}" name="ps_cel" data-mascara="tel" inputmode="tel" value="${v('celular')}"></div>
+        <div class="campo inteiro"><label for="${id('email')}">E-mail</label><input id="${id('email')}" name="ps_email" type="email" value="${v('email')}"></div>
+        <div class="campo inteiro"><label for="${id('end')}">Endereço <span class="muted">(opcional)</span></label><input id="${id('end')}" name="ps_end" value="${v('endereco')}"></div>
       </div>
       <button type="button" class="btn peq" data-acao="viag-rem-pass" ${i === 0 ? 'hidden' : ''}>Tirar esta pessoa</button>
     </fieldset>`;
@@ -6155,7 +6468,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   });
 
   function lerForm(tipo, fd) {
-    const t = k => String(fd.get(k) || '').trim(); const n = k => t(k) === '' ? null : Math.max(0, parseInt(t(k), 10) || 0);
+    const t = k => String(fd.get(k) || '').trim(); const negativos = [];   // número negativo continua virando 0 no pedido, mas fica anotado para validar() recusar com mensagem (antes sumia em silêncio)
+    const n = k => { if (t(k) === '') return null; const v = parseInt(t(k), 10) || 0; if (v < 0) negativos.push(k); return Math.max(0, v); };
     if (tipo === 'passagem') {
       const col = k => fd.getAll(k).map(x => String(x || '').trim());
       const nomes = col('ps_nome'), cpfs = col('ps_cpf'), nasc = col('ps_nasc'), rg = col('ps_rg'), org = col('ps_org'), sexo = col('ps_sexo'), cel = col('ps_cel'), em = col('ps_email'), end = col('ps_end');
@@ -6163,16 +6477,18 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       return { finalidade: t('finalidade'), origem: t('origem'), destino: t('destino'), volta: t('volta') || null, volta_para: t('volta_para') || null, sugestao: t('sugestao'), bagagem: t('bagagem'), passageiros };
     }
     const estrutura = {}; ESTRUTURA.forEach(([k]) => { estrutura[k] = !!fd.get('est_' + k); }); estrutura.cadeiras = n('cadeiras'); estrutura.mesas = n('mesas');
-    return { hora: t('hora'), duracao: t('duracao'), local: t('local'), referencia: t('referencia'),
+    return Object.defineProperty({ hora: t('hora'), duracao: t('duracao'), local: t('local'), referencia: t('referencia'),
       participantes: { mulheres: n('p_mulheres'), equipe: n('p_equipe'), convidados: n('p_convidados') }, estrutura,
       alimentacao: { lanche: n('lanche'), almoco: n('almoco'), servico: t('servico') || null, descartaveis: !!fd.get('descartaveis') },
-      responsavel: { nome: t('resp_nome'), celular: t('resp_cel') }, fornecedores: t('fornecedores') || null, orcamento: t('orcamento') || null };
+      responsavel: { nome: t('resp_nome'), celular: t('resp_cel') }, fornecedores: t('fornecedores') || null, orcamento: t('orcamento') || null },
+      '_negativos', { value: negativos, enumerable: false });   // não enumerável: não vai para o servidor
   }
   function validar(tipo, titulo, data, just, d) {
     const e = {};
     if (titulo.length < 5) e.titulo = tipo === 'passagem' ? 'Escreva o objetivo e a atividade.' : 'Escreva o nome do evento e a atividade.';
     if (!data) e.data_ref = 'Informe a data.'; else if (data < R.hoje()) e.data_ref = 'Esta data já passou.'; else if (data > FIM_PROJETO) e.data_ref = 'Passa do fim do projeto (setembro de 2027).';
     else if (diasAte(data) < PRAZO[tipo] && just.length < 15) e.justificativa = `Fora do prazo (${PRAZO[tipo]} dias antes): explique por quê.`;
+    if (just.length > MAX_JUSTIFICATIVA) e.justificativa = 'Texto muito longo (máximo 2.000 caracteres).';
     if (tipo === 'passagem') {
       if (!d.finalidade) e.finalidade = 'Escolha para quê.';
       if (!d.origem) e.origem = 'Informe a cidade de origem.';
@@ -6185,7 +6501,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         const m = (nm, msg) => lp.push([i, nm, msg]);
         if (x.nome.split(' ').length < 2) m('ps_nome', 'Nome completo, igual ao documento.');
         if (!R.cpfValido(x.cpf)) m('ps_cpf', 'CPF inválido.');
-        if (!x.nascimento) m('ps_nasc', 'Informe a data.');
+        const en = erroNascimento(x.nascimento); if (en) m('ps_nasc', en);
         if (!x.rg) m('ps_rg', 'Informe o RG.');
         if (!x.rg_orgao) m('ps_org', 'Informe o órgão.');
         if (!x.sexo) m('ps_sexo', 'Escolha.');
@@ -6194,11 +6510,15 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       });
       const cpfs = d.passageiros.map(x => x.cpf).filter(Boolean);
       if (new Set(cpfs).size !== cpfs.length) e._geral = 'A mesma pessoa aparece duas vezes.';
+      if (!d.passageiros.length) e._geral = 'Inclua pelo menos uma passageira ou passageiro.';
       if (lp.length) e._pass = lp;
     } else {
       if (!d.local) e.local = 'Informe o endereço.';
       if (!d.hora) e.hora = 'Informe a hora.';
-      const pa = d.participantes; if (!((pa.mulheres || 0) + (pa.equipe || 0) + (pa.convidados || 0))) e.p_mulheres = 'Quantas pessoas?';
+      const pa = d.participantes; const totPa = (pa.mulheres || 0) + (pa.equipe || 0) + (pa.convidados || 0);
+      [['p_mulheres', pa.mulheres], ['p_equipe', pa.equipe], ['p_convidados', pa.convidados], ['cadeiras', d.estrutura.cadeiras], ['mesas', d.estrutura.mesas], ['lanche', d.alimentacao.lanche], ['almoco', d.alimentacao.almoco]]
+        .forEach(([k, v]) => { if (v < 0 || (d._negativos || []).includes(k)) e[k] = 'Não pode ser negativo.'; });
+      if (!e.p_mulheres && !e.p_equipe && !e.p_convidados) { if (!totPa) e.p_mulheres = 'Quantas pessoas?'; else if (totPa > MAX_PARTICIPANTES) e.p_mulheres = 'Participantes: de 1 a 5.000 pessoas no total.'; }
       const temAlgo = ESTRUTURA.some(([k]) => d.estrutura[k]) || d.estrutura.cadeiras || d.estrutura.mesas || d.alimentacao.lanche || d.alimentacao.almoco;
       if (!temAlgo) e._geral = 'Marque pelo menos um item de estrutura ou de alimentação.';
       if ((d.alimentacao.lanche || d.alimentacao.almoco) && !d.alimentacao.servico) e.servico = 'Só entrega ou com serviço?';
@@ -6214,7 +6534,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const data = String(fd.get('data_ref') || ''); const just = String(fd.get('justificativa') || '').trim();
       const d = lerForm(t, fd); d.valor_estimado = valorBR(fd.get('valor_estimado'));
       const e = validar(t, titulo, data, just, d);
-      if (!(d.valor_estimado > 0)) e.valor_estimado = 'Informe o valor estimado (R$).';
+      if (d.valor_estimado < 0) e.valor_estimado = 'O valor não pode ser negativo.';
+      else if (!(d.valor_estimado > 0)) e.valor_estimado = 'Informe o valor estimado (R$).';
       else { const sd = saldo(t, S().eu.uf); if (d.valor_estimado > sd.livre) e.valor_estimado = 'Passa do saldo: restam ' + brl(sd.livre) + (t === 'evento' ? ' para eventos em ' + S().eu.uf : ' para passagens no projeto') + '.'; }
       const lp = e._pass || []; const geral = e._geral; delete e._pass; delete e._geral;
       if (Object.keys(e).length || lp.length || geral) {
@@ -6236,6 +6557,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (['devolver', 'recusar'].includes(acao) && obs.length < 5) return U().mostrarErros(form, { obs: acao === 'devolver' ? 'Escreva o que precisa ser corrigido.' : 'Escreva o motivo da recusa.' });
       const valor = acao === 'autorizar' && form.querySelector('[name=valor]') ? valorBR(fd.get('valor')) : null;
       if (acao === 'autorizar' && form.querySelector('[name=valor]')) {
+        if (valor < 0) return U().mostrarErros(form, { valor: 'O valor não pode ser negativo.' });
         if (!(valor > 0)) return U().mostrarErros(form, { valor: 'Informe o valor para autorizar.' });
         const sd = saldo(form.dataset.tipo, form.dataset.uf);
         if (valor > sd.livre) return U().mostrarErros(form, { valor: 'Passa do teto: o saldo é ' + brl(sd.livre) + '. Ajuste o valor, devolva ou recuse.' });
@@ -6264,7 +6586,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     </section>`;
   }
 
-  MQ.viagUI = { contaDevolvidos: () => lista().filter(p => p.solicitante_id === S().eu.id && p.situacao === 'devolvido').length, secaoBolsista, secaoConferente, souConferente, abaCoord, painel, clique, enviar, podeVer, contaMinha: () => lista().filter(minhaVez).length, textoFuncern,
+  MQ.viagUI = { validar, lerForm, passBloco, valorBR, contaDevolvidos: () => lista().filter(p => p.solicitante_id === S().eu.id && p.situacao === 'devolvido').length, secaoBolsista, secaoConferente, souConferente, abaCoord, painel, clique, enviar, podeVer, contaMinha: () => lista().filter(minhaVez).length, textoFuncern,
     validar, lerForm };   // validar e lerForm expostos para os testes unitários (testes/unit)
 })();
 ;
@@ -6278,6 +6600,15 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const TIPOS = { ata: 'Ata', oficio: 'Ofício', relatorio: 'Relatório', contrato: 'Contrato ou termo', plano: 'Plano ou projeto', lista_presenca: 'Lista de presença', foto: 'Foto', outro: 'Outro' };
   const EXT = ['pdf', 'doc', 'docx', 'odt', 'xls', 'xlsx', 'ods', 'jpg', 'jpeg', 'png'];
   const MAX = 20 * 1024 * 1024;   // 20 MB
+  const DATA_MIN = '2026-01-01';   // nenhum documento do projeto é anterior a 2026
+  /* tipo (MIME) que o navegador informa para cada extensão aceita: "ata.pdf" que na verdade é texto ou imagem é recusado.
+     Tipo vazio ou genérico (celular que não reconhece .odt) passa: aí vale a extensão. */
+  const W = 'application/vnd.openxmlformats-officedocument.', OD = 'application/vnd.oasis.opendocument.';
+  const MIME = { pdf: ['application/pdf', 'application/x-pdf'], doc: ['application/msword'], docx: [W + 'wordprocessingml.document'], odt: [OD + 'text'],
+    xls: ['application/vnd.ms-excel', 'application/msexcel', 'application/x-msexcel'], xlsx: [W + 'spreadsheetml.sheet'], ods: [OD + 'spreadsheet'],
+    jpg: ['image/jpeg', 'image/pjpeg'], jpeg: ['image/jpeg', 'image/pjpeg'], png: ['image/png'] };
+  const tipoBate = arquivo => { const t = String(arquivo.type || '').toLowerCase().split(';')[0].trim(); return !t || t === 'application/octet-stream' || (MIME[ext(arquivo.name)] || []).includes(t); };
+  const dataExiste = v => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || '')); if (!m) return false; const t = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return t.getUTCFullYear() === +m[1] && t.getUTCMonth() === +m[2] - 1 && t.getUTCDate() === +m[3]; };
   const G = { mostrarArq: false };
   const lista = () => S().documentos || [];
   const nomeDe = m => (m && (m.nome_social || m.nome)) || '—';
@@ -6291,12 +6622,15 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (!TIPOS[d.tipo]) e.tipo = 'Escolha o tipo do documento.';
     if (String(d.titulo || '').trim().length < 5) e.titulo = 'Escreva um título (pelo menos 5 letras).';
     if (!d.data_documento) e.data_documento = 'Informe a data do documento.';
+    else if (!dataExiste(d.data_documento)) e.data_documento = 'Data inválida.';
     else if (d.data_documento > R.hoje()) e.data_documento = 'A data do documento não pode ser no futuro.';
+    else if (d.data_documento < DATA_MIN) e.data_documento = 'Data antes de 2026: confira o ano do documento.';
     if (d.uf && !MQ.UFS.some(u => u.uf === d.uf)) e.uf = 'Estado inválido.';
     if (String(d.descricao || '').length > 2000) e.descricao = 'No máximo 2.000 letras.';
     if (!arquivo || !arquivo.name) e.arquivo = 'Escolha o arquivo.';
     else if (!EXT.includes(ext(arquivo.name))) e.arquivo = 'Tipo de arquivo não aceito. Use PDF, Word, planilha ou foto (JPG, PNG).';
     else if (!(arquivo.size > 0)) e.arquivo = 'O arquivo está vazio.';
+    else if (!tipoBate(arquivo)) e.arquivo = 'O conteúdo do arquivo não bate com a extensão (.' + ext(arquivo.name) + '). Use PDF, Word, planilha ou foto (JPG, PNG) de verdade.';
     else if (arquivo.size > MAX) e.arquivo = 'O arquivo passa de 20 MB. Diminua (salve o PDF com qualidade menor) ou divida.';
     return e;
   }
@@ -6487,6 +6821,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 (function () {
   const LIMITE_ARQUIVO = 10 * 1024 * 1024;   // 10 MB
   const LIMITE_LINHAS = 5000;
+  const LIMITE_VALOR = 10e6, DATA_MIN = '2026-01-01', DATA_MAX = '2027-12-31';   // acima ou fora disso a linha entra, marcada como suspeita na prévia
 
   /* ---------- zip ---------- */
   async function inflar(bytes) {
@@ -6570,7 +6905,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       else cel += ch;
     }
     if (cel !== '' || lin.length) { lin.push(cel); linhas.push(lin); }
-    return { aba: 'CSV', linhas: linhas.map(l => l.map(x => x.trim() === '' ? null : x.trim())) };
+    return { aba: 'CSV', sep, linhas: linhas.map(l => l.map(x => x.trim() === '' ? null : x.trim())) };
   }
 
   async function ler(arquivo) {
@@ -6585,17 +6920,21 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   /* ---------- interpretar ---------- */
   const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  /* só é número o texto INTEIRO no padrão brasileiro ou americano (R$, sinal e parênteses de negativo opcionais).
+     "12/10/2026", "Nota 12", "1e3" e "10-20" não são valor: devolve null e a linha é ignorada (01/10/2026). */
   function numeroBR(v) {
     if (typeof v === 'number') return isFinite(v) ? v : null;
-    if (v == null) return null; let s = String(v).trim(); if (!s) return null;
+    if (v == null || typeof v !== 'string') return null; let s = v.replace(/[\s\u00a0]/g, ''); if (!s) return null;
     s = s.replace(/\u2212/g, '-');   // sinal de menos tipográfico
-    const neg = /^\(.*\)$/.test(s) || /^[^\d]*-/.test(s) || /-\s*$/.test(s);   // (1.234,56), -1.234,56, R$ -1.234,56, 1.234,56-
-    s = s.replace(/[^\d,.]/g, ''); if (!/\d/.test(s)) return null;
-    const vg = s.lastIndexOf(','), pt = s.lastIndexOf('.'); let n;
-    if (vg >= 0 && pt >= 0) n = vg > pt ? +s.replace(/\./g, '').replace(',', '.') : +s.replace(/,/g, '');   // o último separador é o dos centavos
-    else if (vg >= 0) n = (s.match(/,/g) || []).length > 1 ? +s.replace(/,/g, '') : +s.replace(',', '.');   // só vírgula: decimal (padrão brasileiro)
-    else if (pt >= 0) n = (s.match(/\./g) || []).length > 1 || (/^[1-9]\d{0,2}\.\d{3}$/.test(s)) ? +s.replace(/\./g, '') : +s;   // 1.234 = mil; 0.125 e 12.5 = decimal
-    else n = +s;
+    let neg = false;
+    if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1); }   // (1.234,56)
+    for (let m; (m = /^(-|\+|R\$)/i.exec(s));) { if (m[1] === '-') neg = true; s = s.slice(m[1].length); }   // -1.234,56, R$ -1.234,56, -R$ 5
+    if (/-$/.test(s)) { neg = true; s = s.slice(0, -1); }   // 1.234,56-
+    let n;
+    if (/^[1-9]\d{0,2}(\.\d{3})+(,\d+)?$/.test(s)) n = +s.replace(/\./g, '').replace(',', '.');   // 1.234 · 1.234,56 · 12.345.678
+    else if (/^[1-9]\d{0,2}(,\d{3})+\.\d+$/.test(s) || /^[1-9]\d{0,2}(,\d{3}){2,}$/.test(s)) n = +s.replace(/,/g, '');   // 1,234.56 · 1,000,000
+    else if (/^(\d+([.,]\d+)?|[.,]\d+)$/.test(s)) n = +s.replace(',', '.');   // 1600 · 1600,5 · 1600.50 · 0.125 · ,5
+    else return null;
     return isFinite(n) ? (neg ? -n : n) : null;
   }
   function dataDe(v) {
@@ -6635,9 +6974,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
   function classificar(texto) {
     const n = norm(texto); if (!n) return { item: null, rubrica: null };
-    if (/repasse|receita|nota de credito|transferencia do mda|recurso recebido|credito recebido/.test(n)) return { item: 'repasse_mda', rubrica: null };
+    // dinheiro RECEBIDO do MDA: precisa do contexto ("repasse do MDA", "recebido", "crédito do convênio"). "Repasse de combustível aos agentes" e "Receita Federal - DARF" são gastos.
+    if (/^(repasse|receita)s?( (do|da|de))?( \d+ ?[ao]?)?( parcela)?$|\b(repasse|receita|transferencia|credito|recurso|parcela)s? ((do|da|de|pelo|pela) )?(mda|ministerio|ted|convenio|concedente)\b|\brecebid[oa]s?\b|nota de credito/.test(n)) return { item: 'repasse_mda', rubrica: null };
     const T = tabelaItens();
     let x = T.find(t => t.chaves.includes(n)); if (x) return { item: x.id, rubrica: x.rubrica };
+    x = T.find(t => t.chaves.includes(n + 's') || (n.endsWith('s') && t.chaves.includes(n.slice(0, -1)))); if (x) return { item: x.id, rubrica: x.rubrica };   // "Evento" = "eventos", "Diária" = "diárias"
     x = T.find(t => t.chaves.some(k => k.length >= 6 && n.includes(k))); if (x) return { item: x.id, rubrica: x.rubrica };
     // nome genérico ("Passagens", "Coordenador"): cabe em mais de um item; fica só na rubrica, se todos forem da mesma
     const parecidos = n.length >= 6 ? T.filter(t => t.chaves.some(k => k.includes(n))) : [];
@@ -6652,27 +6993,36 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function interpretar(tab) {
     const c = acharCabecalho(tab.linhas);
     if (!c) throw new Error('Não achei o cabeçalho. A planilha precisa ter as colunas "Item" (ou "Rubrica") e "Valor". Use o modelo.');
-    const out = []; let ignoradas = 0, datasRuins = 0; const avisos = [];
+    const out = []; let ignoradas = 0, datasRuins = 0; const avisos = []; const textoNoValor = [], suspeitas = []; let centavosPerdidos = 0;
+    const nCab = (tab.linhas[c.i] || []).length; const pl = (n, um, varios) => n === 1 ? um : varios;
     for (let i = c.i + 1; i < tab.linhas.length; i++) {
       const l = tab.linhas[i] || []; const pega = k => c.col[k] == null ? null : l[c.col[k]];
-      const texto = pega('item'); const valor = numeroBR(pega('valor'));
+      const texto = pega('item'); const bruto = pega('valor'); const valor = numeroBR(bruto);
       if ((texto == null || String(texto).trim() === '') && valor == null) continue;   // linha em branco
       // linha de total (em qualquer coluna): não entra (contaria duas vezes). "Total Distribuidora Ltda" com data é gasto de verdade.
       const rotTotal = x => typeof x === 'string' && /^((sub ?)?total|soma|saldo)( (geral|final|anterior|d[aeo]s? [a-z0-9 ]{1,40}))?( r\$?)?:?$/.test(norm(x).trim());
       const comData = !!dataDe(pega('data'));
       if (l.some(rotTotal) || (!comData && l.some(x => typeof x === 'string' && /^((sub ?)?total|soma|saldo)\b/.test(norm(x))))) { ignoradas++; continue; }
+      if (valor == null && typeof bruto === 'string' && bruto.trim() !== '') textoNoValor.push(i + 1);   // texto ou data na coluna de valor: não vira gasto
       if (valor == null || valor === 0) { ignoradas++; continue; }
+      // CSV separado por vírgula com centavos sem aspas ("1000,50"): os centavos caíram na coluna seguinte
+      if (tab.sep === ',' && l.length > nCab && typeof bruto === 'string' && /^-?\d+$/.test(bruto) && /^\d{1,2}$/.test(String(l[c.col.valor + 1] == null ? '' : l[c.col.valor + 1]))) centavosPerdidos++;
       const cls = classificar(texto);
       const dt = dataDe(pega('data')); if (!dt && pega('data') != null && String(pega('data')).trim() !== '') datasRuins++;
       out.push({ linha: i + 1, data: dt, texto: String(texto == null ? '' : texto).slice(0, 120), item: cls.item, rubrica: cls.rubrica,
         descricao: pega('descricao') == null ? null : String(pega('descricao')).slice(0, 200), documento: pega('documento') == null ? null : String(pega('documento')).slice(0, 80), valor: Math.round(valor * 100) / 100 });
+      if (Math.abs(valor) > LIMITE_VALOR || (dt && (dt < DATA_MIN || dt > DATA_MAX))) suspeitas.push(i + 1);
       if (out.length > LIMITE_LINHAS) throw new Error(`A planilha tem mais de ${LIMITE_LINHAS} lançamentos.`);
     }
     if (!out.length) throw new Error('A planilha não tem nenhuma linha com valor.');
     if (datasRuins) avisos.push(`${datasRuins} data${datasRuins > 1 ? 's' : ''} que não reconheci (ex.: 31/02): ${datasRuins > 1 ? 'entram' : 'entra'} no mês da planilha. Confira.`);
     const semData = out.filter(x => !x.data).length - datasRuins; if (semData) avisos.push(`${semData} linha${semData > 1 ? 's' : ''} sem data: entram no mês da planilha.`);
+    const quais = ns => ns.slice(0, 10).join(', ') + (ns.length > 10 ? '…' : '');
+    if (textoNoValor.length) avisos.push(`${textoNoValor.length} ${pl(textoNoValor.length, 'linha ignorada', 'linhas ignoradas')} por ter texto ou data no lugar do valor (${pl(textoNoValor.length, 'linha', 'linhas')} ${quais(textoNoValor)}). Confira a coluna de valor.`);
+    if (suspeitas.length) avisos.push(`Confira: ${suspeitas.length} ${pl(suspeitas.length, 'linha suspeita', 'linhas suspeitas')}, com valor acima de R$ 10 milhões ou data fora de 2026 e 2027 (${pl(suspeitas.length, 'linha', 'linhas')} ${quais(suspeitas)}).`);
+    if (centavosPerdidos) avisos.push(`Este CSV usa vírgula para separar as colunas e também nos centavos (ex.: 1000,50): ${centavosPerdidos} ${pl(centavosPerdidos, 'valor pode ter perdido', 'valores podem ter perdido')} os centavos. Salve com ponto e vírgula como separador (ou em .xlsx) e escolha de novo.`);
     if (c.col.data == null) avisos.push('A planilha não tem coluna de data: o gráfico do ritmo usa o mês da planilha para todos os gastos.');
-    return { linhas: out, avisos, ignoradas, aba: tab.aba };
+    return { linhas: out, avisos, ignoradas, suspeitas, aba: tab.aba };
   }
   const resumo = r => {
     const gasto = r.linhas.filter(l => l.item !== 'repasse_mda').reduce((t, l) => t + l.valor, 0);
@@ -6698,6 +7048,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const U = () => MQ.ui; const S = () => MQ.ui.S; const R = MQ.regras; const E = s => MQ.ui.esc(s);
   const O = () => MQ.ORCAMENTO;
   const brl = v => R.fmtBRL(+v || 0);
+  const lim = v => Math.max(0, Math.min(100, +v || 0));   // largura de barra: sempre entre 0 e 100% (estorno maior que o gasto dava largura negativa)
+  const foraDoPeriodo = d => { const V = MQ.PROJETO.vigencia, x = String(d || '').slice(0, 10); return !!x && (x < V.inicio || x > V.fim); };
   const itens = () => O().rubricas.flatMap(r => r.itens.map(i => Object.assign({ rubrica: r.id }, i)));
   // vale a última ENVIADA ("a mais nova passa a valer"), mesmo que corrija uma data anterior
   const planilhas = () => (S().execPlanilhas || []).slice().sort((a, b) => String(b.enviado_em).localeCompare(String(a.enviado_em)) || String(b.posicao_em).localeCompare(String(a.posicao_em)));
@@ -6724,9 +7076,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     itens().forEach(i => { const exec = somaL(l => l.item === i.id), comp = comprometidoItem(i, desde);
       porItem[i.id] = { exec, comp, saldo: i.total - exec - comp, passou: exec + comp > i.total + 0.005 }; });
     const soma = (xs, k) => xs.reduce((t, i) => t + porItem[i.id][k], 0);
-    const rub = O().rubricas.map(r => { const semItem = somaL(l => l.rubrica === r.id && !l.item);
+    // item antigo ou desconhecido (não está mais no orçamento) com rubrica: entra em "sem item" da rubrica, para a soma das rubricas fechar com o total
+    const conhecido = new Set(itens().map(i => i.id)); const rubDe = new Set(O().rubricas.map(r => r.id));
+    const semItemDe = l => l.item !== 'repasse_mda' && !conhecido.has(l.item);
+    const rub = O().rubricas.map(r => { const semItem = somaL(l => l.rubrica === r.id && semItemDe(l));
       return { r, previsto: r.itens.reduce((t, i) => t + i.total, 0), exec: soma(r.itens, 'exec') + semItem, comp: soma(r.itens, 'comp'), semItem }; });
-    const naoClass = somaL(l => l.item !== 'repasse_mda' && !l.rubrica);
+    const naoClass = somaL(l => semItemDe(l) && !rubDe.has(l.rubrica));
     const exec = somaL(l => l.item !== 'repasse_mda'), comp = soma(itens(), 'comp');
     const recebido = somaL(l => l.item === 'repasse_mda');
     const V = MQ.PROJETO.vigencia; const dia = d => new Date(d + 'T12:00:00').getTime();
@@ -6777,10 +7132,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const tempo = n.tempo * 100;
     return `<figure class="exec-graf" data-exec-rub><figcaption><b>Uso de cada rubrica</b> <span class="small muted">% do previsto · clique para ver os itens</span></figcaption>
       <ul class="eg-leg small"><li><i class="eg-q exe"></i>Executado</li><li><i class="eg-q comp"></i>Comprometido</li><li><i class="eg-q tempo"></i>Tempo decorrido (${pctBR(Math.round(tempo * 10) / 10)}%)</li></ul>
-      <div class="eg-barras">${n.rub.map(({ r, previsto, exec, comp }) => { const pe = Math.min(100, exec / previsto * 100), pc = Math.min(100 - pe, comp / previsto * 100); const tot = (exec + comp) / previsto * 100;
+      <div class="eg-barras">${n.rub.map(({ r, previsto, exec, comp }) => { const pe = lim(exec / previsto * 100), pc = Math.min(100 - pe, lim(comp / previsto * 100)); const tot = (exec + comp) / previsto * 100;
         return `<button type="button" class="eg-bar${tot > 100.05 ? ' passou' : ''}" data-acao="exec-rub" data-id="${r.id}" data-dica="${E(r.nome)}|${brl(previsto)}|${brl(exec)}|${brl(comp)}|${brl(previsto - exec - comp)}">
           <span class="eg-nome">${E(r.nome)}</span>
-          <span class="eg-trilho"><i class="exe" style="width:${pe}%"></i><i class="comp" style="left:${pe}%;width:${pc}%"></i><i class="tempo" style="left:${Math.min(100, tempo)}%"></i></span>
+          <span class="eg-trilho"><i class="exe" style="width:${pe}%"></i><i class="comp" style="left:${pe}%;width:${pc}%"></i><i class="tempo" style="left:${lim(tempo)}%"></i></span>
           <span class="eg-pct num">${pctBR(Math.round(tot * 10) / 10)}%</span></button>`; }).join('')}</div>
       <div class="exec-dica" role="status" hidden></div></figure>`;
   }
@@ -6813,7 +7168,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   /* ---------- tela ---------- */
   const pct = (v, t) => t ? Math.round(v / t * 1000) / 10 : 0;
   const pctBR = x => x.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
-  const med = (exec, comp, total) => `<span class="medidor exec-med" title="executado e comprometido"><i style="width:${Math.min(100, (exec + comp) / total * 100)}%;opacity:.35"></i><i style="width:${Math.min(100, exec / total * 100)}%"></i></span>`;
+  const med = (exec, comp, total) => `<span class="medidor exec-med" title="executado e comprometido"><i style="width:${lim((exec + comp) / total * 100)}%;opacity:.35"></i><i style="width:${lim(exec / total * 100)}%"></i></span>`;
   /* composição do item em linguagem de gente (sem "1 × 14 × R$"): fica só no detalhe, não na tabela */
   const UNID = { diarias: ['diária', 'diárias'], locacao_veiculo: ['diária de veículo', 'diárias de veículo'], passagem_intercambio: ['passagem', 'passagens'], passagem_pedagogico: ['passagem', 'passagens'],
     eventos: ['evento', 'eventos'], quintais: ['quintal', 'quintais'], ajuda_apoio: ['ajuda de custo', 'ajudas de custo'], equipamento: ['unidade', 'unidades'] };
@@ -6826,13 +7181,14 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (/^10% do projeto$/.test(c)) return '10% do valor do projeto';
     return c;
   }
-  const celExec = (exec, total) => { const p = pct(exec, total); return `<span class="fin-exe"><span class="medidor fino" aria-hidden="true"><i class="${exec > 0 ? 'st-ok' : ''}" style="width:${Math.min(100, p)}%"></i></span><b class="num">${pctBR(p)}%</b></span>`; };
+  const celExec = (exec, total) => { const p = pct(exec, total); return `<span class="fin-exe"><span class="medidor fino" aria-hidden="true"><i class="${exec > 0 ? 'st-ok' : ''}" style="width:${lim(p)}%"></i></span><b class="num">${pctBR(p)}%</b></span>`; };
   const vExec = v => `<span class="${v > 0 ? 'fin-exec' : 'fin-zero'}">${brl(v)}</span>`;
   const vComp = v => `<span class="${v > 0 ? 'fin-comp' : 'fin-zero'}">${brl(v)}</span>`;
   function alertas(n) {
     const a = [];
     if (!n.pl) a.push('Nenhuma planilha de gastos enviada ainda. Sem ela, o executado fica zerado: envie a planilha do mês.');
     else if (n.idade > 35) a.push(`A planilha vigente é de <b>${R.fmtData(n.pl.posicao_em)}</b> (${n.idade} dias atrás). Envie a planilha deste mês.`);
+    if (n.pl && foraDoPeriodo(n.pl.posicao_em)) a.push(`A planilha vigente é de <b>${R.fmtData(n.pl.posicao_em)}</b>, fora do período do projeto (${R.fmtData(MQ.PROJETO.vigencia.inicio)} a ${R.fmtData(MQ.PROJETO.vigencia.fim)}). Confira a data e, se estiver errada, envie a planilha de novo.`);
     itens().forEach(i => { const x = n.porItem[i.id]; if (x.passou) a.push(`<b>${E(i.nome)}</b>: executado + comprometido (${brl(x.exec + x.comp)}) passa do previsto (${brl(i.total)}).`); });
     if (n.naoClass) a.push(`${brl(n.naoClass)} em linhas que não batem com nenhum item do orçamento (entram no executado total, fora das rubricas). Veja em <b>Planilhas enviadas</b>.`);
     if (n.caixa < -0.005) a.push(`O executado (${brl(n.exec)}) passa do recebido do MDA na planilha (${brl(n.recebido)}). Confira se a planilha traz os repasses.`);
@@ -6850,7 +7206,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <td class="num" data-rot="Previsto">${brl(i.total)}</td><td class="num" data-rot="Executado">${vExec(x.exec)}</td><td class="num" data-rot="Comprometido">${vComp(x.comp)}</td><td class="num fin-saldo" data-rot="Saldo">${brl(x.saldo)}</td><td data-rot="Execução">${celExec(x.exec, i.total)}</td></tr>
         <tr class="fin-detalhe" id="exc-${E(i.id)}" hidden><td colspan="6"><dl class="fin-det"><div><dt>Composição</dt><dd>${E(composicao(i))}</dd></div><div><dt>Previsto</dt><dd class="num">${brl(i.total)}</dd></div>
           <div><dt>Executado</dt><dd class="num">${brl(x.exec)}</dd></div><div><dt>Comprometido</dt><dd class="num">${brl(x.comp)}</dd></div><div><dt>Saldo</dt><dd class="num"><b>${brl(x.saldo)}</b></dd></div></dl></td></tr>`; };
-    const semItem = x => x.semItem ? `<tr class="fin-item"><th scope="row"><span class="fin-nome sem">Sem item definido na planilha</span><span class="small muted">a planilha disse só a rubrica</span></th><td class="num" data-rot="Previsto">—</td><td class="num" data-rot="Executado">${vExec(x.semItem)}</td><td class="num" data-rot="Comprometido">—</td><td class="num" data-rot="Saldo">—</td><td></td></tr>` : '';
+    const semItem = x => x.semItem ? `<tr class="fin-item"><th scope="row"><span class="fin-nome sem">Sem item definido na planilha</span><span class="small muted">a planilha disse só a rubrica ou um item que não está no orçamento</span></th><td class="num" data-rot="Previsto">—</td><td class="num" data-rot="Executado">${vExec(x.semItem)}</td><td class="num" data-rot="Comprometido">—</td><td class="num" data-rot="Saldo">—</td><td></td></tr>` : '';
     return `<div class="cab"><div><span class="eyebrow">Execução</span><h1>Execução do orçamento</h1>
         <p>Previsto × executado de cada rubrica do TED (R$ ${(T / 1e6).toLocaleString('pt-BR')} milhões). O executado vem da <b>planilha de gastos</b> mais recente; o comprometido, do que o sistema já sabe e a planilha ainda não trouxe. Só você vê esta aba.</p>
         <p class="small muted">Base do previsto: ${E(O().fonte)}, com o remanejamento aprovado pelo MDA.</p></div></div>
@@ -6864,7 +7220,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <div><span class="fin-v num fin-comp">${brl(n.comp)}</span><span class="fin-l">comprometido · ${pctBR(pct(n.comp, T))}%</span></div>
           <div><span class="fin-v num"><b>${brl(n.livre)}</b></span><span class="fin-l">saldo livre para executar</span></div>
         </div>
-        <div class="fin-barra" role="img" aria-label="Executado ${pctBR(pct(n.exec, T))}%, comprometido ${pctBR(pct(n.comp, T))}%"><i class="e" style="width:${Math.min(100, pct(n.exec, T))}%"></i><i class="c" style="width:${Math.min(100 - Math.min(100, pct(n.exec, T)), pct(n.comp, T))}%"></i></div>
+        <div class="fin-barra" role="img" aria-label="Executado ${pctBR(pct(n.exec, T))}%, comprometido ${pctBR(pct(n.comp, T))}%"><i class="e" style="width:${lim(pct(n.exec, T))}%"></i><i class="c" style="width:${Math.min(100 - lim(pct(n.exec, T)), lim(pct(n.comp, T)))}%"></i></div>
         <p class="fin-sub"><span><b>${pctBR(usoPct)}%</b> do orçamento em uso (executado + comprometido) · tempo de vigência decorrido: ${pctBR(tempoPct)}%: ${ritmo}</span></p>
         <p class="fin-sub muted">Recebido do MDA: <b>${brl(n.recebido)}</b> de ${brl(T)}${prox ? ` · próximo repasse: ${brl(prox.valor)}, previsto para ${prox.mes.slice(5)}/${prox.mes.slice(0, 4)}${prox.mes < R.hoje().slice(0, 7) ? ' (atrasado ou ainda fora da planilha)' : ''}` : ''} · em caixa na FUNCERN (recebido − executado): <b>${brl(n.caixa)}</b>. Comprometido = aval, Arlo ou autorização ${n.pl ? 'depois de ' + R.fmtData(n.pl.posicao_em) : 'ainda sem planilha'}.</p>
       </section>
@@ -6900,15 +7256,17 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const nomeR = id => id === '_' ? 'Fora do orçamento (não classificado)' : (O().rubricas.find(r => r.id === id) || {}).nome;
     const ant = vigente();
     return `<div class="bloco"><h3>Prévia: ${E(pr.nome)}</h3>
-      <p class="small muted">Aba lida: ${E(pr.aba)} · ${pr.linhas.length} linhas com valor${pr.ignoradas ? ` · ${pr.ignoradas} linhas de total ou sem valor ignoradas` : ''}</p>
+      <p class="small muted">Aba lida: ${E(pr.aba)} · ${pr.linhas.length} linhas com valor${pr.ignoradas ? ` · ${pr.ignoradas === 1 ? '1 linha de total ou sem valor ignorada' : pr.ignoradas + ' linhas de total ou sem valor ignoradas'}` : ''}</p>
       <ul class="pp"><li><span>Gastos</span><b class="num">${brl(s.gasto)}</b></li><li><span>Recebido do MDA</span><b class="num">${brl(s.recebido)}</b></li>
         ${ant ? `<li><span>Planilha vigente hoje</span><b class="num">${brl(ant.total_gasto)}<small class="muted"> até ${R.fmtData(ant.posicao_em)}</small></b></li>` : ''}</ul>
       ${ant && s.gasto + 0.005 < +ant.total_gasto ? '<div class="aviso erro">O total desta planilha é <b>menor</b> que o da planilha vigente. Como cada planilha é o retrato completo desde o início, confira se não faltam gastos antigos.</div>' : ''}
       ${ant && s.ultimaData && s.ultimaData < String(ant.posicao_em).slice(0, 10) ? `<div class="aviso">Os gastos desta planilha vão até ${R.fmtData(s.ultimaData)}, antes da vigente (${R.fmtData(ant.posicao_em)}). Se for uma correção, tudo bem: a última enviada é a que vale.</div>` : ''}
       <table class="quadro viag-tab"><tbody>${Object.entries(porRub).map(([k, v]) => `<tr><th scope="row">${E(nomeR(k))}</th><td class="num">${brl(v)}</td></tr>`).join('')}</tbody></table>
-      ${s.naoClassificadas.length ? `<div class="aviso erro"><b>${s.naoClassificadas.length} linha${s.naoClassificadas.length > 1 ? 's' : ''} não batem com nenhum item do orçamento</b> (entram no total, fora das rubricas). Se for erro de nome, corrija na planilha com o nome da aba Itens do modelo e escolha de novo.
+      ${s.naoClassificadas.length ? `<div class="aviso erro"><b>${s.naoClassificadas.length === 1 ? '1 linha não bate' : s.naoClassificadas.length + ' linhas não batem'} com nenhum item do orçamento</b> (${s.naoClassificadas.length === 1 ? 'entra' : 'entram'} no total, fora das rubricas). Se for erro de nome, corrija na planilha com o nome da aba Itens do modelo e escolha de novo.
         <ul class="small">${s.naoClassificadas.slice(0, 15).map(l => `<li>Linha ${l.linha}: “${E(l.texto)}” · ${brl(l.valor)}</li>`).join('')}${s.naoClassificadas.length > 15 ? `<li>… e mais ${s.naoClassificadas.length - 15}</li>` : ''}</ul></div>` : ''}
-      ${pr.avisos.map(a => `<p class="small muted">${E(a)}</p>`).join('')}</div>`;
+      ${foraDoPeriodo(pr.posicao) ? `<div class="aviso">A data desta planilha (${R.fmtData(pr.posicao)}) está fora do período do projeto (${R.fmtData(MQ.PROJETO.vigencia.inicio)} a ${R.fmtData(MQ.PROJETO.vigencia.fim)}). Confira antes de enviar.</div>` : ''}
+      ${(pr.suspeitas || []).length ? `<div class="aviso">${E(pr.avisos.find(a => /suspeita/.test(a)) || '')}</div>` : ''}
+      ${pr.avisos.filter(a => !(pr.suspeitas || []).length || !/suspeita/.test(a)).map(a => `<p class="small muted">${E(a)}</p>`).join('')}</div>`;
   }
   function painel(p) {
     if (p.tipo !== 'exec-enviar') return '';
@@ -7427,9 +7785,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const e = {};
     if (im.menor == null) e.im_menor = 'Responda se mora alguém com menos de 18 anos.';
     else if (im.ebia_pontos == null) e.ebia = 'Responda todas as perguntas de alimentação (sim ou não).';
-    if (im.dias_consumo == null || im.dias_consumo < 0 || im.dias_consumo > 7) e.im_dias = 'De 0 a 7 dias.';
+    // números inteiros e dentro do possível (os mesmos limites que os campos declaram)
+    if (im.dias_consumo == null || R.foraDaFaixa(im.dias_consumo, 0, 7, true)) e.im_dias = 'De 0 a 7 dias.';
     if (im.especies == null || im.especies < 0) e.im_especies = 'Informe quantos tipos (0 se nenhum).';
+    else if (R.foraDaFaixa(im.especies, 0, 200, true)) e.im_especies = 'De 0 a 200 tipos (número inteiro). Confira.';
     if (im.criacoes == null || im.criacoes < 0) e.im_criacoes = 'Informe quantos tipos (0 se nenhum).';
+    else if (R.foraDaFaixa(im.criacoes, 0, 30, true)) e.im_criacoes = 'De 0 a 30 tipos (número inteiro). Confira.';
     if (im.vende == null) e.im_vende = 'Responda se vende ou troca.';
     if (!im.decide) e.im_decide = 'Escolha quem decide.';
     if (!im.caf) e.im_caf = 'Responda sobre a CAF.';
@@ -7459,15 +7820,15 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <div class="painel-corpo"><form class="f" data-form="aval" data-id="${E(a.id)}" data-ficha="${E(f.id)}" data-visita="${E(p.visita || a.visita_id || '')}" novalidate>
         ${base ? '' : '<div class="aviso">Este quintal não tem as medidas de linha de base no diagnóstico (feito antes desta pergunta existir): a avaliação vale, mas não entra na comparação antes × depois.</div>'}
         <fieldset><legend>Visita</legend><div class="campos">
-          <div class="campo"><label for="av-data">Data da visita</label><input id="av-data" name="data_visita" type="date" value="${v('data_visita')}" max="${R.hoje()}"></div>
+          <div class="campo"><label for="av-data">Data da visita</label><input id="av-data" name="data_visita" type="date" value="${v('data_visita')}" min="${R.LIM.visitaMin}" max="${R.hoje()}"></div>
           <div class="campo"><label>Localização</label><button type="button" class="btn peq" data-acao="aval-gps">${a.latitude ? 'Localização registrada ✓' : 'Registrar localização'}</button>
             <input type="hidden" name="latitude" value="${v('latitude')}"><input type="hidden" name="longitude" value="${v('longitude')}"><span class="dica" id="av-gps-dica">${a.latitude ? E(a.latitude + ', ' + a.longitude) : 'Registre em pé, no quintal.'}</span></div>
-          <div class="campo inteiro"><label for="av-semgps">Sem localização? Explique</label><input id="av-semgps" name="sem_gps_motivo" value="${v('sem_gps_motivo')}"></div>
+          <div class="campo inteiro"><label for="av-semgps">Sem localização? Explique</label><input id="av-semgps" name="sem_gps_motivo" value="${v('sem_gps_motivo')}" maxlength="500"></div>
         </div></fieldset>
         <fieldset><legend>O quintal hoje</legend><div class="campos">
           <div class="campo inteiro" id="w-quintal_produz"><label>O quintal está produzindo?</label>${rad('quintal_produz', [['sim', 'Sim'], ['em_parte', 'Em parte'], ['nao', 'Não']], a.quintal_produz)}</div>
-          <div class="campo inteiro"><label for="av-mot">Se não ou em parte: por quê?</label><input id="av-mot" name="motivo" value="${v('motivo')}" placeholder="Ex.: faltou água em setembro; a tela estragou; ela adoeceu"></div>
-          <div class="campo"><label for="av-rq">Quanto ganha com vendas do quintal por mês (R$)</label><input id="av-rq" name="renda_quintal" type="number" min="0" step="10" inputmode="numeric" value="${v('renda_quintal')}"><span class="dica">A mesma pergunta do diagnóstico. Zero se não vende.</span></div>
+          <div class="campo inteiro"><label for="av-mot">Se não ou em parte: por quê?</label><input id="av-mot" name="motivo" value="${v('motivo')}" maxlength="500" placeholder="Ex.: faltou água em setembro; a tela estragou; ela adoeceu"></div>
+          <div class="campo"><label for="av-rq">Quanto ganha com vendas do quintal por mês (R$)</label><input id="av-rq" name="renda_quintal" type="number" min="0" max="${R.LIM.rendaMax}" step="10" inputmode="numeric" value="${v('renda_quintal')}"><span class="dica">A mesma pergunta do diagnóstico. Zero se não vende.</span></div>
           <div class="campo"><label for="av-h">Horas por dia no quintal</label><input id="av-h" name="horas_dia" type="number" min="0" max="16" step="0.5" inputmode="decimal" value="${v('horas_dia')}"></div>
           <div class="campo inteiro" id="w-agua"><label>A água deu para o quintal no último período seco?</label>${rad('agua', [['sim', 'Sim'], ['as_vezes', 'Às vezes'], ['nao', 'Não']], a.agua)}</div>
           <div class="campo inteiro" id="w-alimentacao"><label>Com o quintal, a alimentação da família…</label>${rad('alimentacao', [['melhorou', 'Melhorou'], ['igual', 'Ficou igual'], ['piorou', 'Piorou']], a.alimentacao)}</div>
@@ -7475,7 +7836,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         </div></fieldset>
         ${bloco(a.impacto, 'Medidas de impacto (as mesmas do diagnóstico)', base ? base.menor : null)}
         <fieldset id="w-fotos_av"><legend>Fotos</legend><div class="campos">${foto('geral', 'Visão geral do quintal')}${foto('producao', 'Produção')}${foto('agua', 'Água / irrigação')}</div></fieldset>
-        <div class="campo"><label for="av-obs">O que ela diz do quintal (em poucas palavras)</label><textarea id="av-obs" name="fala" placeholder="Registre com as palavras dela.">${v('fala')}</textarea></div>
+        <div class="campo"><label for="av-obs">O que ela diz do quintal (em poucas palavras)</label><textarea id="av-obs" name="fala" maxlength="2000" placeholder="Registre com as palavras dela.">${v('fala')}</textarea></div>
         <input type="hidden" name="fotos_existentes" value="${E((a.fotos || []).join('|'))}">
         <div class="aviso erro" data-erro hidden></div>
         <div class="acoes"><button class="btn pri" type="submit">Salvar</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div>
@@ -7485,7 +7846,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const inp = ev.target.closest && ev.target.closest('input[data-foto-av]'); if (!inp || !inp.files[0]) return;
     const k = inp.dataset.fotoAv; const dica = document.getElementById('av-f-' + k + '-dica');
     if (inp.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; inp.value = ''; return; }
-    dica.textContent = 'Preparando foto…'; fotosAv[k] = await MQ.comprimirFoto(inp.files[0]); dica.textContent = 'Foto pronta (' + Math.round(fotosAv[k].size / 1024) + ' KB).';
+    dica.textContent = 'Preparando foto…';
+    const foto = await MQ.campoUI.prepararFoto(inp, dica); if (!foto) { delete fotosAv[k]; return; }   // só imagem de verdade ("Este arquivo não é uma foto.")
+    fotosAv[k] = foto; dica.textContent = 'Foto pronta (' + Math.round(fotosAv[k].size / 1024) + ' KB).';
   });
 
   /* ---------- antes × depois ---------- */
@@ -7590,17 +7953,22 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       motivo: txt('motivo'), renda_quintal: num('renda_quintal'), horas_dia: num('horas_dia'), agua: txt('agua'), alimentacao: txt('alimentacao'), encaminhamentos: fd.getAll('encaminhamentos'), fala: txt('fala') };
     const e = validar(im);
     if (!d.data_visita) e.data_visita = 'Informe a data.'; else if (d.data_visita > R.hoje()) e.data_visita = 'Data no futuro.';
+    else if (R.erroDataFeita(d.data_visita)) e.data_visita = R.erroDataFeita(d.data_visita);   // não antes de 01/01/2026
     if (d.latitude == null && String(d.sem_gps_motivo || '').length < 5) e.sem_gps_motivo = 'Registre a localização ou explique por que não foi possível.';
     if (!d.quintal_produz) e.quintal_produz = 'Responda se o quintal está produzindo.';
     if (d.quintal_produz && d.quintal_produz !== 'sim' && !d.motivo) e.motivo = 'Explique por que não está produzindo.';
     if (d.renda_quintal == null) e.renda_quintal = 'Informe (0 se não vende).';
+    else if (R.foraDaFaixa(d.renda_quintal, 0, R.LIM.rendaMax)) e.renda_quintal = 'Vendas de R$ 0 a R$ 100.000 por mês. Confira o número.';
+    if (R.foraDaFaixa(d.horas_dia, 0, 24)) e.horas_dia = 'De 0 a 24 horas por dia.';
+    ['sem_gps_motivo', 'motivo'].forEach(k => { if (!e[k] && String(d[k] || '').length > 500) e[k] = 'Texto muito longo (máximo 500 caracteres).'; });
+    if (String(d.fala || '').length > 2000) e.fala = 'Texto muito longo (máximo 2.000 caracteres).';
     if (!d.agua) e.agua = 'Responda sobre a água.';
     if (!d.alimentacao) e.alimentacao = 'Responda sobre a alimentação.';
     if (!fotosAv.geral && !existentes.some(x => /aval_geral/.test(x))) e.fotos_av = 'Faça ao menos a foto da visão geral do quintal.';
     if (Object.keys(e).length) {
-      Object.keys(e).forEach(k => { const w = form.querySelector('#w-' + k); if (w) w.classList.add('tem-erro'); });
-      const alvo = {}; Object.entries(e).forEach(([k, m]) => { if (form.querySelector(`[name="${k}"]`) && !form.querySelector('#w-' + k)) alvo[k] = m; });
-      U().mostrarErros(form, alvo, Object.keys(e).length > 1 ? 'Faltam ' + Object.keys(e).length + ' itens: ' + Object.values(e).slice(0, 3).join(' · ') : Object.values(e)[0]);
+      form.querySelectorAll('[id^="w-"].tem-erro').forEach(w => w.classList.remove('tem-erro'));   // marcas do envio anterior
+      // mostrarErros (app.js) marca o campo ou o bloco "w-<nome>" de cada erro e lista todos na caixa
+      U().mostrarErros(form, e, Object.keys(e).length > 1 ? 'Faltam ' + Object.keys(e).length + ' itens: ' + Object.values(e).join(' · ') : Object.values(e)[0]);
       const p = form.querySelector('.tem-erro'); if (p) p.scrollIntoView({ block: 'center', behavior: 'smooth' });
       return;
     }
@@ -7729,12 +8097,14 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     }
     return { cadastro_arlo: false, _arlo_resp: fd.get('cadastro_arlo'), nome_social: t('nome_social') || null, data_nascimento: t('data_nascimento') || null, nis: R.soDigitos(t('nis')) || null, endereco, socioeconomico: socio, perfil: lerPerfil(fd) };
   }
+  /* a data existe no calendário? ("2026-02-30" não existe, mas o navegador lê como 2 de março) */
+  const dataExiste = v => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || '')); if (!m) return false; const t = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return t.getUTCFullYear() === +m[1] && t.getUTCMonth() === +m[2] - 1 && t.getUTCDate() === +m[3]; };
   function validarPessoais(d, pub) {
     const e = {};
     if (!d._arlo_resp) e.cadastro_arlo = 'Responda se já tem cadastro no Arlo.';
     if (pub && !d.cadastro_arlo && !d.data_nascimento) e.data_nascimento = 'Informe a data de nascimento.';
     if (pub && d.cadastro_arlo && d._campo && !d.endereco.cidade) e.cidade = 'Informe o município onde mora (usado no cálculo da ajuda de custo).';
-    if (d.data_nascimento && (d.data_nascimento > R.hoje() || R.idade(d.data_nascimento) < 16)) e.data_nascimento = 'Data de nascimento inválida.';
+    if (d.data_nascimento && (!dataExiste(d.data_nascimento) || d.data_nascimento < '1900-01-01' || d.data_nascimento > R.hoje() || R.idade(d.data_nascimento) < 16)) e.data_nascimento = 'Data de nascimento inválida.';   // 30/02 e 1800 não passam
     if (d.nis && d.nis.length !== 11) e.nis = 'O PIS/NIS tem 11 números.';
     if (pub && d._perfil) { const pf = d.perfil || {};
       PERFIL_Q.forEach(([k]) => { if (typeof pf[k] !== 'boolean') e['pf_' + k] = 'Responda sim ou não.'; });
@@ -7928,7 +8298,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   async function clique(a, el) {
     if (a === 'conv-copiar') {
       try { await navigator.clipboard.writeText(el.dataset.url); U().toast('Link copiado.'); }
-      catch (e) { const i = el.parentElement.querySelector('input'); i.select(); U().toast('Selecione e copie o link.'); }
+      catch (e) {   // área de transferência negada ou inexistente: deixa o link selecionado para a pessoa copiar à mão
+        const caixa = (el.closest && el.closest('.conv-pronto')) || el.parentElement; const i = caixa && caixa.querySelector ? caixa.querySelector('.conv-url input, input[readonly]') : null;
+        if (i) { try { i.focus(); i.select(); } catch (x) { /* campo sem seleção */ } }
+        U().toast('Não deu para copiar. Selecione o link e copie.');
+      }
     } else if (a === 'conv-ver') U().abrirPainel({ tipo: 'pre-ver', id: el.dataset.id });
     else if (a === 'conv-aprovar') {
       const x = (S().pre || []).find(y => y.id === el.dataset.id);
@@ -7971,6 +8345,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const $ = s => document.querySelector(s);
   const B = { meus: undefined, editando: false, situacao: null };
   const mascara = t => t ? '•••' + String(t).slice(-3) : '';
+  const MAX_PIX = 140;   // tamanho máximo da chave Pix (o formulário é novalidate: quem confere é o JS)
   const TIPOS_PIX = [['cpf', 'CPF'], ['celular', 'Celular'], ['email', 'E-mail'], ['aleatoria', 'Chave aleatória']];
   const TIPOS_CONTA = [['corrente', 'Conta corrente'], ['poupanca', 'Poupança'], ['pagamento', 'Conta de pagamento (digital)']];
 
@@ -8077,15 +8452,21 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (outro && !/^\d{3}$/.test(d.banco_codigo)) e.banco_codigo = 'O código tem 3 números.';
     if (outro && d.banco_nome.length < 2) e.banco_nome = 'Escreva o nome do banco.';
     if (!/^\d{1,5}$/.test(d.agencia)) e.agencia = 'Só os números da agência, sem o dígito.';
+    else if (/^0+$/.test(d.agencia)) e.agencia = 'Agência inválida: não pode ser só zeros.';
     if (d.agencia_dv && !/^[0-9X]$/.test(d.agencia_dv)) e.agencia_dv = 'Um número (ou X).';
     if (!/^\d{1,13}$/.test(d.conta)) e.conta = 'Só os números da conta, sem o dígito.';
+    else if (/^0+$/.test(d.conta)) e.conta = 'Conta inválida: não pode ser só zeros.';
     if (!/^[0-9X]{1,2}$/.test(d.conta_dv)) e.conta_dv = 'Informe o dígito da conta.';
     if (d.pix_tipo && !d.pix_chave) e.pix_chave = 'Informe a chave.';
     if (!d.pix_tipo) d.pix_chave = null;
     if (d.pix_tipo === 'cpf' && d.pix_chave && !R.cpfValido(d.pix_chave)) e.pix_chave = 'CPF inválido.';
     if (d.pix_tipo === 'email' && d.pix_chave && !R.emailValido(d.pix_chave)) e.pix_chave = 'E-mail inválido.';
+    // celular: DDD + número (10 ou 11 dígitos; aceita o +55 na frente). "abc" salvava vazio e "8999" passava
+    let cel = d.pix_tipo === 'celular' && d.pix_chave ? R.soDigitos(d.pix_chave) : ''; if (/^55\d{10,11}$/.test(cel)) cel = cel.slice(2);
+    if (d.pix_tipo === 'celular' && d.pix_chave && !/^\d{10,11}$/.test(cel)) e.pix_chave = 'Celular inválido: informe o DDD e o número (10 ou 11 números).';
+    if (d.pix_chave && d.pix_chave.length > MAX_PIX) e.pix_chave = `Texto muito longo (máximo ${MAX_PIX} caracteres).`;
     if (Object.keys(e).length) return U().mostrarErros(form, e);
-    if (d.pix_tipo === 'cpf' || d.pix_tipo === 'celular') d.pix_chave = R.soDigitos(d.pix_chave);
+    if (d.pix_tipo === 'cpf') d.pix_chave = R.soDigitos(d.pix_chave); else if (d.pix_tipo === 'celular') d.pix_chave = cel;
     await U().ocupado(form, async () => {
       await S().api.salvarMeusDadosBancarios(d);
       B.meus = Object.assign({}, d, { atualizado_em: new Date().toISOString() }); B.editando = false; B.situacao = null; desenhar();
@@ -8815,7 +9196,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     }
   };
 
-  const TOPICOS_COORD = ['visao', 'equipe', 'selecao', 'campo', 'fic', 'pagamentos', 'viagens', 'custos', 'documentos', 'historico'];
+  const TOPICOS_COORD = ['visao', 'equipe', 'selecao', 'campo', 'fic', 'pagamentos', 'viagens', 'custos', 'execucao', 'documentos', 'historico'];
 
   function chaveAtual() {
     const s = S();
@@ -9477,6 +9858,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   // ao recarregar a página, volta para a mesma seção e a mesma altura da tela (só neste navegador)
   try { S.aba = localStorage.getItem('mq-aba') || null; const y = +sessionStorage.getItem('mq-rolagem'); if (y) S.rolarPara = y; } catch (e) {}
   const lembrarAba = () => { try { if (S.aba) localStorage.setItem('mq-aba', S.aba); else localStorage.removeItem('mq-aba'); } catch (e) {} };
+  /* histórico do navegador (botão Voltar, gesto do Android): cada aba da coordenação fica no endereço (#aba=custos)
+     e cada painel aberto ganha uma entrada, para o Voltar fechar o painel em vez de sair do sistema.
+     Os outros endereços continuam como eram: #numeros, #convite=..., #teste e a recuperação de senha do Supabase. */
+  const H = (typeof history !== 'undefined' && history && typeof history.pushState === 'function') ? history : null;
+  const abaDoHash = () => { const m = /^#aba=([a-z_]+)$/.exec((typeof location !== 'undefined' && location.hash) || ''); return m ? m[1] : null; };
+  { const a0 = abaDoHash(); if (a0) S.aba = a0; }   // link direto para uma aba
   window.addEventListener('pagehide', () => { try { sessionStorage.setItem('mq-rolagem', String(Math.round(window.scrollY))); } catch (e) {} });
 
   /* ---------- início ---------- */
@@ -9503,7 +9890,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       // sem internet não sai (não daria para entrar de novo): abrir o sistema conta como uso
       if (S.eu && MQ.sessao && MQ.sessao.venceu(MQ.sessao.ultimo()) && !MQ.sessao.semRede() && await temConexao()) await sairDoSistema(AVISO_INATIVO);
       if (S.eu && !S.verEntrada) { if (MQ.sessao) MQ.sessao.tocar(true); registrarAbriu(); await carregar(); setTimeout(() => sincronizar(false), 500); }
-    } catch (e) { toast(e.message); }
+    } catch (e) { toast(avisarErro(e)); }
     if (MQ.sessao) MQ.sessao.iniciar({ ativo: () => !!S.eu && !S.verEntrada, temConexao, aoVencer: () => sairDoSistema(AVISO_INATIVO) });
     await esperarAbertura();
     render();
@@ -9551,8 +9938,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (aviso) guardarRascunhoPainel();   // saiu sozinho: guarda o formulário pela metade
     if (S.eu && !S.verEntrada) await registrarAcesso(aviso ? 'saida_inatividade' : 'saida');   // antes de encerrar a sessão no servidor
     try { sessionStorage.removeItem(CHAVE_ABRIU); } catch (e) {}
-    S.painel = null; const pf = $('#painel'); if (pf) pf.remove();
-    S.menuAberto = false; S.aba = null; lembrarAba(); if (MQ.bancoUI) MQ.bancoUI.limpar();
+    fecharPainel({ semFoco: true });
+    S.menuAberto = false; S.aba = null; lembrarAba(); limparHashAba(); if (MQ.bancoUI) MQ.bancoUI.limpar();
     try { Object.keys(sessionStorage).filter(k => /^mq-pend-visto-/.test(k)).forEach(k => sessionStorage.removeItem(k)); } catch (e) {}
     S.pendVisto = false; S.avisoLogin = aviso || null;
     if (MQ.sessao) MQ.sessao.esquecer();
@@ -9581,7 +9968,23 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const qualquer = e => !e.semRede;   // para as partes em que qualquer erro que não seja de rede só desliga a parte
       S.kitPar = { valor_quintal: MQ.KIT_QUINTAL };   // R$ 5.000 por quintal, fixado no plano de trabalho
       const campoPapel = !['professor_fic', 'auxiliar_adm'].includes(papel);
-      const [equipe, fic, fichas, visitas, diagnosticos, aval, aud, pag, docs, quem, entregas, testes, perfis, pre, exemplo, pedAcesso, acessos, lancs, encs, agua, venda] = await Promise.all([
+      /* Se UMA leitura secundária falha (ex.: o histórico), a tela abre com o que veio e avisa
+         "Parte dos dados não carregou". Só a equipe é indispensável; sem internet, vale a cópia do aparelho. */
+      const falhas = [];
+      const NOMES = ['equipe', 'curso FIC', 'fichas', 'visitas', 'diagnósticos', 'avaliações', 'histórico', 'pagamentos', 'documentos', 'conferência', 'entregas', 'roteiro de testes', 'perfis', 'cadastros do link', 'dados de exemplo', 'pedidos de acesso', 'últimos acessos', 'execução', 'encontros', 'água', 'venda'];
+      // o que fica no lugar da parte que falhou: o que já estava na tela (ou vazio, na primeira carga)
+      const ANTES = [null, () => [!S.ficSemBanco, [S.turmas || [], S.matriculas || [], []]], () => S.fichas || [], () => S.visitas || [], () => S.diagnosticos || [],
+        () => [!S.avalSemBanco, S.avaliacoes || []], () => S.aud || [], () => [!S.pagSemBanco, { lista: S.solic || [], vinculos: S.solicVis || {} }], () => [!S.docSemBanco, S.documentos || []],
+        () => [true, S.quemConfere == null ? null : S.quemConfere], () => [!S.entregasSemBanco, [S.entregas || [], S.ciencias || []]], () => [!S.testesSemBanco, S.testes || []], () => [!S.perfisSemBanco, S.perfisEquipe || []],
+        () => S.pre || [], () => S.exemplo || 0, () => [true, S.pedidosAcesso || []], () => [!S.acessosSemBanco, S.acessos || []], () => [!S.execSemBanco, S.execPlanilhas || []],
+        () => [!S.encSemBanco, S.encontros || []], () => [!S.aguaSemBanco, S.agua || []], () => [!S.vendaSemBanco, [S.canaisVenda || [], S.orientacoesVenda || []]]];
+      const juntar = lista => Promise.allSettled(lista).then(rs => rs.map((r, i) => {
+        if (r.status === 'fulfilled') return r.value;
+        if (i === 0 || (r.reason && r.reason.semRede)) throw r.reason;   // equipe ou falta de internet: sobe como antes
+        falhas.push(NOMES[i]); try { console.warn('Leitura que falhou na carga:', NOMES[i], r.reason); } catch (x) {}
+        return ANTES[i]();
+      }));
+      const [equipe, fic, fichas, visitas, diagnosticos, aval, aud, pag, docs, quem, entregas, testes, perfis, pre, exemplo, pedAcesso, acessos, lancs, encs, agua, venda] = await juntar([
         S.api.listarEquipe(),
         // curso FIC (11_fic.sql): turmas e matrículas
         (coord || papel === 'professor_fic') && S.api.listarTurmas
@@ -9626,15 +10029,18 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       S.pre = pre; S.exemplo = exemplo; S.pedidosAcesso = pedAcesso[0] ? pedAcesso[1] : [];
       S.acessosSemBanco = !acessos[0]; S.acessos = acessos[0] ? acessos[1] : [];
       // segunda leva: os pedidos de viagem dependem de saber quem confere (22 e 26)
-      S.pedSemBanco = false; S.pedidos = [];
+      const pedAntes = S.pedidos || []; S.pedSemBanco = false; S.pedidos = [];
       if (S.api.listarPedidos && MQ.viagUI && (MQ.viagUI.podeVer(papel) || MQ.viagUI.souConferente())) {
-        const r = await talvez(() => S.api.listarPedidos(), semFic); S.pedSemBanco = !r[0]; S.pedidos = r[0] ? r[1] : [];
-        if (S.api.saldoPedidos && !S.pedSemBanco) { const sd = await talvez(() => S.api.saldoPedidos(), qualquer); S.saldoPed = sd[0] ? sd[1] : null; }   // 35
+        try {
+          const r = await talvez(() => S.api.listarPedidos(), semFic); S.pedSemBanco = !r[0]; S.pedidos = r[0] ? r[1] : [];
+          if (S.api.saldoPedidos && !S.pedSemBanco) { const sd = await talvez(() => S.api.saldoPedidos(), qualquer); S.saldoPed = sd[0] ? sd[1] : null; }   // 35
+        } catch (e) { if (e && e.semRede) throw e; falhas.push('viagens e eventos'); S.pedidos = pedAntes; }
       }
+      S.cargaParcial = falhas.length ? falhas : null;
       // cálculo de custos carregado em segundo plano: a aba Custos abre pronta, sem "Carregando…" e sem a página pular
-      if (coord && MQ.custosUI && !MQ.custosUI.pronto()) MQ.custosUI.garantir().then(() => { if (S.aba === 'custos') render(); }).catch(() => {});
+      if (coord && MQ.custosUI && !MQ.custosUI.pronto()) MQ.custosUI.garantir().then(() => { if (S.aba === 'custos') renderFundo(); }).catch(() => {});
       S.semRede = false;
-      try { localStorage.setItem(chaveCache(), JSON.stringify({ equipe: S.equipe, fichas: S.fichas, visitas: S.visitas, diagnosticos: S.diagnosticos, aud: S.aud, em: Date.now() })); } catch (e) {}
+      if (!falhas.length) try { localStorage.setItem(chaveCache(), JSON.stringify({ equipe: S.equipe, fichas: S.fichas, visitas: S.visitas, diagnosticos: S.diagnosticos, aud: S.aud, em: Date.now() })); } catch (e) {}
     } catch (e) {
       if (!e.semRede) throw e;
       // Sem internet: mostra a última cópia guardada no aparelho
@@ -9649,7 +10055,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const antes = (await MQ.fila.listar(S.eu.id)).length; if (!antes) return;
     const r = await MQ.fila.sincronizar(S.api, S.eu.id);
     try { await carregar(); } catch (e) {}
-    render();
+    renderFundo();   // nunca recria o painel aberto: a sincronização acontece com a pessoa no meio de um formulário
     if (r.enviados && avisar !== false) toast(r.enviados + (r.enviados > 1 ? ' registros enviados.' : ' registro enviado.'));
   }
   /* ---------- dados sempre em dia: o que outra pessoa fez aparece sem recarregar a página ----------
@@ -9674,7 +10080,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (S.api.reler) await S.api.reler();   // demonstração: outra aba pode ter mudado os dados guardados
       await carregar(); atualizadoEm = Date.now();
       const depois = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.solic, S.pedidos, S.pre, S.pedidosAcesso, S.entregas, S.matriculas, S.turmas, S.documentos, S.avaliacoes, S.execPlanilhas, S.encontros, S.agua, S.canaisVenda, S.orientacoesVenda]);
-      if (antes !== depois && !digitando()) { const y = window.scrollY; render(); window.scrollTo(0, y); }
+      if (antes !== depois && !digitando()) renderFundo();
     } catch (e) { /* sem internet ou servidor fora: fica com o que já está na tela */ }
     finally { atualizando = false; }
   }
@@ -9687,7 +10093,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   /* sem coordenação técnica ativa (vaga aberta, desligada): a coordenação geral assume a vez dela
      nos contadores e listas, para nenhum pedido ficar parado sem aviso. Só vale para quem vê a equipe toda. */
   const semTecnica = () => !!(S.eu && S.eu.papel === 'coord_geral') && !(S.equipe || []).some(m => m.papel === 'coord_tecnico' && m.status === 'ativa');
-  MQ.ui = { vagaAberta, S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: () => render(), abrirPainel: p => abrirPainel(p), fecharPainel: () => fecharPainel(),
+  MQ.ui = { vagaAberta, S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: o => render(o), renderFundo: () => renderFundo(), abrirPainel: p => abrirPainel(p), fecharPainel: o => fecharPainel(o), pedirFechar: () => pedirFechar(), painelAlterado: () => painelAlterado(),
+    irParaAba: x => irParaAba(x), avisarVersaoNova: () => avisarVersaoNova(), declarados: (f, r) => declarados(f, r),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), sincronizar: a => sincronizar(a),
     porId: id => porId(id), avatar: (m, t) => avatar(m, t), passos: m => passos(m), dadosDL: m => dadosDL(m), botaoFoto: m => botaoFoto(m), cartaoPessoa: m => cartaoPessoa(m),
     atualizar: f => atualizarEmSegundoPlano(f), aparelho: () => aparelho(), ipCurto: ip => ipCurto(ip), sair: a => sairDoSistema(a) };
@@ -9702,18 +10109,61 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     .sort((a, b) => String(b.data_fim).localeCompare(String(a.data_fim)))[0];
 
   /* ---------- desenho ---------- */
-  function render() {
+  /* aviso de "Sem internet": também é trocado sozinho quando o desenho da página é adiado (ver renderFundo) */
+  const avisoRede = () => (S.eu && S.api && (S.semRede || S.api.offline || (typeof navigator !== 'undefined' && navigator.onLine === false)))
+    ? `<div class="demo" role="status" data-rede><div class="demo-in"><span><b>Sem internet.</b> O que você preencher fica guardado neste aparelho e é enviado quando a conexão voltar.${S.cacheEm ? ' Dados de ' + new Date(S.cacheEm).toLocaleString('pt-BR') + '.' : ''}</span></div></div>` : '';
+  function atualizarAvisoRede() {
+    const app = $('#app'); if (!app || !app.querySelector) return;
+    const velho = app.querySelector('[data-rede]'); const h = (S.verEntrada ? '' : avisoRede());
+    if (velho && !h) velho.remove();
+    else if (!velho && h) { const ref = app.querySelector('.demo:not([data-rede])') || app.querySelector('header.barra'); if (ref) ref.insertAdjacentHTML('afterend', h); else app.insertAdjacentHTML('afterbegin', h); }
+  }
+  const selectMudou = i => { const ops = [...i.options]; const temPadrao = ops.some(o => o.defaultSelected); return ops.some((o, n) => o.selected !== (temPadrao ? o.defaultSelected : n === 0)); };
+  /* há formulário em uso? Compara cada campo com o valor que ele tinha quando foi desenhado (nada é guardado à parte). */
+  function alterado(raiz, selForm) {
+    if (!raiz || !raiz.querySelectorAll) return false;
+    for (const f of raiz.querySelectorAll(selForm || 'form[data-form]')) {
+      for (const i of f.querySelectorAll('input,select,textarea')) {
+        if (i.disabled || /^(hidden|submit|button|reset|image)$/.test(i.type) || (i.dataset && (i.dataset.procura != null || i.dataset.filtro != null))) continue;
+        if (i.type === 'file') { if (i.files && i.files.length) return true; continue; }
+        if (i.type === 'checkbox' || i.type === 'radio') { if (i.checked !== i.defaultChecked) return true; continue; }
+        if (i.tagName === 'SELECT') { if (selectMudou(i)) return true; continue; }
+        if (i.value !== i.defaultValue) return true;
+      }
+    }
+    return false;
+  }
+  const painelAlterado = () => alterado($('#painel'));
+  /* a pessoa está preenchendo algo na própria página (fora do painel)? */
+  function paginaEmUso() {
+    const app = $('#app'); if (!app) return false; const a = document.activeElement;
+    if (a && a.closest && a.closest('#app') && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && !/^(checkbox|radio|button|submit)$/.test(a.type)) return true;
+    return alterado(app);
+  }
+  /* Desenho pedido por algo que acontece SOZINHO (o sinal caiu ou voltou, a fila foi enviada, os dados foram
+     atualizados em segundo plano, um cálculo terminou). Regra: nunca recria o painel aberto, porque é nele que
+     a pessoa está digitando (ficha, diagnóstico, foto). Só o fundo e o aviso de conexão mudam. Se ela está
+     preenchendo algo na própria página, nem o fundo é refeito: só o aviso de conexão, e o resto fica para depois. */
+  function renderFundo() {
+    if (!S.api) return;
+    if (paginaEmUso()) { S.renderAdiado = true; atualizarAvisoRede(); return; }
+    const y = window.scrollY; render({ fundo: true }); if (y && !S.rolarPara) window.scrollTo(0, y);
+  }
+  document.addEventListener('focusout', () => { if (S.renderAdiado) setTimeout(() => { if (S.renderAdiado && !paginaEmUso()) renderFundo(); }, 300); }, true);
+  function render(op) {
     const app = $('#app');
     const modoDemo = S.api.modo === 'demo';
+    S.renderAdiado = false;
     const conv = /^#convite=([\w-]+)/.exec(location.hash);
-    if (conv || location.hash === '#numeros') { S.painel = null; const pf = $('#painel'); if (pf) pf.remove(); }
+    if ((conv || location.hash === '#numeros') && (S.painel || $('#painel'))) fecharPainel({ semFoco: true, semHistorico: true });
     if (conv && MQ.convitesUI) { app.innerHTML = barra(true, true) + MQ.convitesUI.pagina(conv[1]) + rodape(); document.title = 'Cadastro · Mulheres & Quintais'; return; }
     if (location.hash === '#numeros' && MQ.vitrineUI) { app.innerHTML = barra(true) + MQ.vitrineUI.pagina() + rodape(); document.title = 'O projeto em números · Mulheres & Quintais'; return; }
     document.title = 'Mulheres & Quintais';
     const telaEntrada = (modoDemo && S.verEntrada) || (!S.eu && !modoDemo && !S.api.temSessao);
     let h = (telaEntrada ? '' : barra()) + (modoDemo ? faixaDemo() : '');
-    if (S.eu && (S.semRede || S.api.offline || !navigator.onLine))
-      h += `<div class="demo" role="status"><div class="demo-in"><span><b>Sem internet.</b> O que você preencher fica guardado neste aparelho e é enviado quando a conexão voltar.${S.cacheEm ? ' Dados de ' + new Date(S.cacheEm).toLocaleString('pt-BR') + '.' : ''}</span></div></div>`;
+    h += avisoRede();
+    if (S.eu && !telaEntrada && (S.cargaParcial || []).length)
+      h += `<div class="demo" role="status" data-parcial><div class="demo-in"><button type="button" class="link carga-parcial" data-acao="carga-tentar"><b>Parte dos dados não carregou.</b> Toque para tentar de novo.</button></div></div>`;
     if (modoDemo && S.verEntrada) h += login();
     else if (!S.eu) h += modoDemo ? '<main class="wrap"><p class="carregando">' + MQ.ampulheta(true) + '</p></main>' : (S.api.temSessao ? semCadastro() : login());
     else {
@@ -9728,7 +10178,14 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     app.innerHTML = h + rodape() + (S.eu && MQ.roteiroUI ? MQ.roteiroUI.barra() : '');
     app.querySelectorAll('.atalhos [data-alvo]').forEach(b => { b.hidden = !document.querySelector(b.dataset.alvo); });
     if (S.eu && MQ.roteiroUI) MQ.roteiroUI.verificarLink();
-    if (S.painel) desenharPainel();
+    // desenho em segundo plano: o painel aberto fica como está (o que a pessoa digitou, a foto e o cursor continuam lá)
+    if (S.painel) {
+      const aberto = !!$('#painel');
+      if (op && op.fundo && aberto) { /* nada: o painel não é recriado */ }
+      else if (aberto && !S.acaoNoPainel && painelAlterado()) redesenharPreservando();   // um dado chegou depois (ex.: dados pessoais, APL) com a pessoa já digitando
+      else desenharPainel();
+    }
+    refocar();
     if (S.rolarPara && S.eu && !S.verEntrada) { const y = S.rolarPara; S.rolarPara = 0; requestAnimationFrame(() => window.scrollTo(0, y)); }
     else if (S.eu && !S.verEntrada && MQ.pendUI) MQ.pendUI.cobrar();
   }
@@ -10215,7 +10672,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <div><span class="eyebrow">Sistema do projeto</span><h2 class="serif">${primeiro ? 'Primeiro acesso' : 'Que bom ver você'}</h2>
             <p class="muted">${primeiro ? 'Crie a sua senha com o e-mail que a coordenação cadastrou.' : 'Entre com o e-mail cadastrado pela coordenação.'}</p></div>
           <span class="seg ent-seg" role="group" aria-label="Tipo de acesso">${aba('entrar', 'Já tenho senha')}${aba('primeiro', 'Primeiro acesso')}</span>
-          <div class="campo"><label for="l-email">E-mail</label><input id="l-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="seu@email.com" required></div>
+          <div class="campo"><label for="l-email">E-mail</label><input id="l-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="seu@email.com" value="${esc(S.emailDigitado || '')}" maxlength="254" required></div>
           ${primeiro ? '<div class="campo"><label for="l-cod">Código de acesso</label><input id="l-cod" name="codigo" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="ABCD-2345" required><span class="dica">Vem na mensagem que a coordenação mandou. Vale 7 dias.</span></div>' : ''}
           <div class="campo"><label for="l-senha">${primeiro ? 'Crie uma senha' : 'Senha'}</label><input id="l-senha" name="senha" type="password" autocomplete="${primeiro ? 'new-password' : 'current-password'}" minlength="8" required>
             ${primeiro ? '<span class="dica">Pelo menos 8 caracteres, com letras e números.</span>' : ''}</div>
@@ -10240,7 +10697,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `<form class="login ent-card" data-form="esqueci" novalidate>
         <div><span class="eyebrow">Esqueci a senha</span><h2 class="serif">Pedir um novo acesso</h2>
           <p class="muted">Digite o e-mail do seu cadastro. A coordenação geral recebe o pedido e manda um código novo para o seu WhatsApp.</p></div>
-        <div class="campo"><label for="e-email">E-mail</label><input id="e-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="seu@email.com" value="${esc(S.emailDigitado || '')}" required></div>
+        <div class="campo"><label for="e-email">E-mail</label><input id="e-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="seu@email.com" value="${esc(S.emailDigitado || '')}" maxlength="254" required></div>
         <div class="aviso erro" data-erro hidden></div>
         <button class="btn pri ent-btn" type="submit">Pedir novo acesso <span aria-hidden="true">→</span></button>
         <button type="button" class="link ent-ajuda" data-acao="modo-login" data-m="entrar">Voltar para entrar</button>
@@ -10262,11 +10719,119 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
 
   /* ---------- painel lateral ---------- */
-  function abrirPainel(p) { S.painel = p; desenharPainel(); }
-  function fecharPainel() {
-    S.painel = null; const f = $('#painel'); if (f) f.remove();
-    if (S.voltarFoco && document.body.contains(S.voltarFoco)) S.voltarFoco.focus();
+  /* Quem abriu o painel: guarda o botão e também um "endereço" dele (data-acao + data-id…), porque a página
+     costuma ser redesenhada enquanto o painel está aberto e o botão antigo deixa de existir. */
+  const aspas = v => String(v).replace(/["\\]/g, '\\$&');
+  function descreverAbridor(el) {
+    if (!el || !el.closest || el.closest('#painel')) return null;
+    const alvo = el.closest('[data-acao]') || el; let sel = '';
+    if (alvo.dataset && alvo.dataset.acao && alvo.attributes) {
+      sel = [...alvo.attributes].filter(a => /^data-/.test(a.name) && a.value.length < 80 && a.name !== 'data-ok').map(a => `[${a.name}="${aspas(a.value)}"]`).join('');
+    } else if (alvo.id) sel = '[id="' + aspas(alvo.id) + '"]';
+    let n = 0; if (sel) { try { n = Math.max(0, [...document.querySelectorAll(sel)].indexOf(alvo)); } catch (e) { sel = ''; } }
+    return { el: alvo, sel, n };
   }
+  const acharAbridor = d => { if (!d) return null;
+    if (d.el && document.body.contains(d.el)) return d.el;
+    if (d.sel) { try { const l = document.querySelectorAll(d.sel); return l[d.n] || l[0] || null; } catch (e) {} }
+    return null; };
+  function focar(el) {
+    if (!el || !el.focus) return false;
+    try { el.focus({ preventScroll: true }); } catch (e) { try { el.focus(); } catch (x) {} }
+    return document.activeElement === el;
+  }
+  function devolverFoco() {
+    const d = S.focoVolta; S.focoVolta = null; if (!d) return;
+    const el = acharAbridor(d);
+    if (!el || !focar(el)) { const t = $('#principal'); if (t && t.setAttribute) { t.setAttribute('tabindex', '-1'); focar(t); } }
+    S.focoDepois = { d, ate: Date.now() + 2500 };   // se a página for redesenhada logo depois (salvou e atualizou a lista), o foco volta de novo
+  }
+  /* chamado no fim de cada desenho da página: devolve o foco ao botão que abriu o painel recém-fechado */
+  function refocar() {
+    const f = S.focoDepois; if (!f) return;
+    if (S.painel || Date.now() > f.ate) { S.focoDepois = null; return; }
+    const a = document.activeElement; if (a && a !== document.body && document.body.contains(a) && a.tagName !== 'BODY') return;
+    const el = acharAbridor({ sel: f.d.sel, n: f.d.n }); if (el) focar(el);
+  }
+  /* a página de trás não recebe toque, Tab nem leitor de tela enquanto o painel está aberto */
+  const prenderFundo = sim => { const app = $('#app'); if (!app || !app.setAttribute) return; if (sim) app.setAttribute('inert', ''); else app.removeAttribute('inert'); };
+  /* Histórico do painel. Abrir o painel cria uma entrada no histórico; fechar tira essa entrada (history.back()).
+     A volta do navegador é assíncrona, então: (1) as nossas próprias voltas são contadas, para não serem tomadas por
+     "a pessoa apertou Voltar"; (2) nada é empurrado no histórico enquanto uma volta nossa está a caminho (fica na fila);
+     (3) fechar um painel e abrir outro em seguida reaproveita a mesma entrada, sem ir e voltar. */
+  const voltasNossas = [], depoisDaVolta = [];
+  const noHistorico = fn => { if (!H) return; if (voltasNossas.length) depoisDaVolta.push(fn); else { try { fn(); } catch (e) {} } };
+  const soltarFila = () => { if (!voltasNossas.length) depoisDaVolta.splice(0).forEach(fn => { try { fn(); } catch (e) {} }); };
+  function voltarNoHistorico() {
+    if (!H) return; const id = {}; voltasNossas.push(id);
+    try { H.back(); } catch (e) { voltasNossas.pop(); soltarFila(); return; }
+    const t = setTimeout(() => { const i = voltasNossas.indexOf(id); if (i >= 0) { voltasNossas.splice(i, 1); soltarFila(); } }, 2000); if (t && t.unref) t.unref();
+  }
+  /* a entrada do painel que acabou de fechar "sobra" até o fim desta tarefa: se outro painel abrir já, é reaproveitada */
+  function sobraDoPainel() {
+    if (!H) return; S.histSobra = true;
+    Promise.resolve().then(() => { if (S.histSobra) { S.histSobra = false; voltarNoHistorico(); } });
+  }
+  /* a entrada atual do histórico sabe em que aba a pessoa está (para o Voltar chegar na aba certa) */
+  function marcarAbaNoHistorico() {
+    if (!H || !S.eu || S.verEntrada || !/^coord/.test(S.eu.papel)) return;
+    try { if (!H.state || H.state.mq !== 'aba') H.replaceState({ mq: 'aba', aba: abaAtual() }, ''); } catch (e) {}
+  }
+  function abrirPainel(p) {
+    const novo = !S.painel || !$('#painel');
+    if (novo) { S.focoVolta = descreverAbridor(S.acionador || document.activeElement); S.focoDepois = null; }
+    S.painel = p; desenharPainel();
+    if (!novo || !H || S.painelHist) return;
+    if (S.histSobra) { S.histSobra = false; S.painelHist = true; return; }   // fechou um e abriu outro: a mesma entrada
+    noHistorico(() => { if (!S.painel || S.painelHist) return; marcarAbaNoHistorico(); H.pushState({ mq: 'painel' }, ''); S.painelHist = true; });
+  }
+  /* Fecha de verdade, sem perguntar: depois de salvar, ao sair do sistema e quando a pessoa confirma "Sair sem salvar".
+     Quem fecha por vontade própria (×, Cancelar, clique fora, Esc, Voltar) passa por pedirFechar(). */
+  function fecharPainel(op) {
+    op = op || {};
+    const havia = !!(S.painel || $('#painel'));
+    S.painel = null; const f = $('#painel'); if (f) f.remove();
+    prenderFundo(false);
+    if (S.painelHist) { S.painelHist = false; if (!op.semHistorico) sobraDoPainel(); }
+    if (havia && !op.semFoco) devolverFoco(); else if (op.semFoco) S.focoVolta = null;
+  }
+  /* o formulário do painel foi mexido desde que abriu? Então pergunta antes de fechar (no padrão dos avisos do sistema) */
+  function pedirFechar() {
+    if (!S.painel && !$('#painel')) return;
+    if ($('#painel .confirma-sair')) return;   // já está perguntando
+    if (!painelAlterado()) return fecharPainel();
+    confirmarSaida();
+  }
+  function confirmarSaida() {
+    const el = $('#painel'); if (!el || el.querySelector('.confirma-sair')) return;
+    const quem = document.activeElement; const lado = el.querySelector('aside');
+    const c = document.createElement('div'); c.className = 'confirma-sair'; c.setAttribute('role', 'alertdialog'); c.setAttribute('aria-modal', 'true');
+    c.setAttribute('aria-labelledby', 'cs-t'); c.setAttribute('aria-describedby', 'cs-d');
+    c.innerHTML = `<div class="sessao-in confirma-in"><b id="cs-t">Sair sem salvar?</b><span id="cs-d">O que você digitou será perdido.</span>
+      <div class="acoes"><button type="button" class="btn pri" data-acao="painel-ficar">Continuar preenchendo</button><button type="button" class="btn perigo" data-acao="painel-sair">Sair sem salvar</button></div></div>`;
+    c._volta = quem; el.appendChild(c);
+    if (lado) lado.setAttribute('inert', '');
+    focar(c.querySelector('[data-acao="painel-ficar"]'));
+  }
+  function desistirDeSair() {
+    const c = $('#painel .confirma-sair'); if (!c) return false;
+    const volta = c._volta; c.remove(); const lado = $('#painel aside'); if (lado) lado.removeAttribute('inert');
+    if (!(volta && document.body.contains(volta) && focar(volta))) focar($('#painel .fechar'));
+    return true;
+  }
+  /* Tab e Shift+Tab ficam dentro do painel (ou da pergunta "Sair sem salvar?") */
+  const visivel = e => !!(e.offsetWidth || e.offsetHeight || (e.getClientRects && e.getClientRects().length));
+  const focaveis = raiz => [...raiz.querySelectorAll('a[href],button,input,select,textarea,summary,[tabindex]')].filter(e => !e.disabled && e.tabIndex >= 0 && e.type !== 'hidden' && visivel(e) && !e.closest('[inert]'));
+  document.addEventListener('keydown', ev => {
+    if (ev.key !== 'Tab' || !S.painel) return;
+    const p = $('#painel'); if (!p || !p.querySelector) return;
+    const raiz = p.querySelector('.confirma-sair') || p.querySelector('aside') || p;
+    const l = focaveis(raiz); if (!l.length) { ev.preventDefault(); return; }
+    const a = document.activeElement, i = l.indexOf(a);
+    if (!raiz.contains(a)) { ev.preventDefault(); focar(l[ev.shiftKey ? l.length - 1 : 0]); }
+    else if (ev.shiftKey && i <= 0 && (i === 0 || a === raiz)) { ev.preventDefault(); focar(l[l.length - 1]); }
+    else if (!ev.shiftKey && i === l.length - 1) { ev.preventDefault(); focar(l[0]); }
+  });
   /* rascunho do formulário aberto: se o sistema sair sozinho (15 minutos sem uso) com um formulário
      pela metade, o que foi digitado fica guardado neste aparelho (só para a mesma pessoa, por 24 horas)
      e volta quando ela abrir o mesmo formulário. Senha e arquivo nunca são guardados. */
@@ -10304,6 +10869,77 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     f.prepend(nota);
     try { localStorage.removeItem(chaveRasc()); } catch (e) {}
   }
+  /* O painel precisa ser redesenhado (chegou um dado que ele esperava) e a pessoa já digitou algo nele.
+     Formulário grande, com linhas que a pessoa acrescenta ou com foto escolhida: não redesenha (nada se perde).
+     Formulário pequeno: redesenha e devolve o que ela tinha mudado, o foco, o cursor e a rolagem. */
+  function redesenharPreservando() {
+    const el = $('#painel'); if (!el || !el.querySelectorAll) return desenharPainel();
+    const forms = todosDe(el, 'form[data-form]');
+    if (forms.some(f => f.querySelector('[data-linha]') || todosDe(f, 'input[type=file]').some(i => i.files && i.files.length))) return;
+    const guardados = [];
+    forms.forEach(f => { const vez = {};
+      todosDe(f, 'input,select,textarea').forEach(i => {
+        if (/^(hidden|submit|button|reset|image|file)$/.test(i.type)) return;
+        const marca = i.type === 'checkbox' || i.type === 'radio'; const k = (i.name || i.id || '') + (marca ? '=' + i.value : ''); const n = vez[k] = (vez[k] || 0) + 1;
+        const mudou = marca ? i.checked !== i.defaultChecked : i.tagName === 'SELECT' ? selectMudou(i) : i.value !== i.defaultValue;
+        // opção de escolha única marcada entra sempre: há módulos que refazem o grupo já com a escolha (ex.: resultado da ficha)
+        if (mudou || (i.type === 'radio' && i.checked)) guardados.push({ form: f.dataset.form, k, n, marca, valor: i.value, marcado: i.checked });
+      }); });
+    const a = document.activeElement; const corpo = el.querySelector('.painel-corpo'); const rolagem = corpo ? corpo.scrollTop : 0;
+    const foco = a && el.contains(a) ? { id: a.id, nome: a.name, form: a.form && a.form.dataset.form, ini: (() => { try { return a.selectionStart; } catch (e) { return null; } })(), fim: (() => { try { return a.selectionEnd; } catch (e) { return null; } })() } : null;
+    const dobras = todosDe(el, 'details').map(d => d.open);   // blocos recolhíveis abertos continuam abertos
+    const classes = todosDe(el, 'details').map(d => d.className);
+    desenharPainel();
+    const novo = $('#painel'); if (!novo) return;
+    const dobras2 = todosDe(novo, 'details'); if (dobras2.length === dobras.length) dobras2.forEach((d, n) => { d.open = dobras[n]; });
+    else { const aberta = dobras.map((ab, n) => ab ? classes[n] : null).filter(Boolean); dobras2.forEach(d => { if (aberta.includes(d.className)) d.open = true; }); }
+    // devolve tudo e só depois avisa os módulos (eles recalculam o formulário com o estado completo). Repete até assentar:
+    // há opções que só ficam liberadas depois que as outras respostas voltam (ex.: o resultado da ficha depende dos critérios).
+    for (let volta = 0; volta < 4; volta++) {
+      const mexidos = [];
+      todosDe(novo, 'form[data-form]').forEach(f => { const vez = {};
+        todosDe(f, 'input,select,textarea').forEach(i => {
+          if (/^(hidden|submit|button|reset|image|file)$/.test(i.type)) return;
+          const marca = i.type === 'checkbox' || i.type === 'radio'; const k = (i.name || i.id || '') + (marca ? '=' + i.value : ''); const n = vez[k] = (vez[k] || 0) + 1;
+          const g = guardados.find(x => x.form === f.dataset.form && x.k === k && x.n === n); if (!g) return;
+          if (marca ? i.checked === g.marcado : i.value === g.valor) return;
+          if (marca) i.checked = g.marcado; else i.value = g.valor;
+          if ((i.tagName === 'SELECT' || marca) && !i.disabled) mexidos.push(i);
+        }); });
+      if (!mexidos.length) break;
+      mexidos.forEach(i => { if (i.isConnected) i.dispatchEvent(new Event('change', { bubbles: true })); });
+    }
+    const c2 = novo.querySelector('.painel-corpo'); if (c2) c2.scrollTop = rolagem;
+    if (foco) { const alvo = (foco.id && novo.querySelector('[id="' + aspas(foco.id) + '"]')) || (foco.nome && novo.querySelector((foco.form ? 'form[data-form="' + aspas(foco.form) + '"] ' : '') + '[name="' + aspas(foco.nome) + '"]'));
+      const por = () => { if (!alvo || !alvo.isConnected || document.activeElement === alvo) return; focar(alvo); try { if (foco.ini != null && alvo.setSelectionRange) alvo.setSelectionRange(foco.ini, foco.fim); } catch (e) {} };
+      por(); setTimeout(por, 0);   // de novo depois que os outros módulos mexem no campo (ex.: a caixa do "Falar" embrulha a área de texto)
+    }
+  }
+  /* Celular: lista de escolha cujo nome é mais largo que o campo (ex.: a turma do FIC "FIC Agroecologia e Quintais
+     Produtivos – Piauí": o estado, que é o que distingue uma turma da outra, ficava cortado). O nome é abreviado pelo
+     meio, guardando o começo e o fim; o nome inteiro continua no "title" da opção. Nada muda no valor escolhido. */
+  function encurtarEscolhas(raiz) {
+    if (!raiz || !raiz.querySelectorAll || typeof getComputedStyle !== 'function' || !(window.innerWidth <= 640)) return;
+    let cv = null;
+    todosDe(raiz, 'select#en-turma').forEach(s => {   // só a turma do FIC: em lista de pessoas o nome inteiro é o que distingue uma da outra
+      if (!s.clientWidth || !s.options) return;
+      if (!cv) { try { cv = document.createElement('canvas').getContext('2d'); } catch (e) { cv = null; } if (!cv) return; }
+      const cs = getComputedStyle(s); cv.font = cs.font;
+      const util = s.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0) - 28;   // 28 px: a seta da lista
+      const larg = t => cv.measureText(t).width;
+      [...s.options].forEach(o => {
+        const inteiro = (o.dataset && o.dataset.inteiro) || o.text;
+        if (util < 60 || larg(inteiro) <= util) { if (o.dataset.inteiro) { o.text = inteiro; delete o.dataset.inteiro; } return; }
+        let ini = inteiro.slice(0, Math.ceil(inteiro.length * 0.4)), fim = inteiro.slice(Math.ceil(inteiro.length * 0.4));
+        const junta = () => ini.trimEnd() + '… ' + fim.trimStart();
+        while (larg(junta()) > util && (ini.length > 6 || fim.length > 6)) { if (ini.length > 6) ini = ini.slice(0, -1); else fim = fim.slice(1); }
+        // sem palavra cortada pela metade: "FIC Agroecologia… – Piauí", não "FIC Agroeco… os – Piauí"
+        if (/\S/.test(inteiro[inteiro.length - fim.length - 1] || ' ') && /\s/.test(fim)) fim = fim.replace(/^\S*\s+/, '');
+        if (/\S/.test(inteiro[ini.length] || ' ') && /\S\s+\S*$/.test(ini.trimEnd())) ini = ini.trimEnd().replace(/\s+\S*$/, '');
+        o.dataset.inteiro = inteiro; o.title = inteiro; o.text = junta();
+      });
+    });
+  }
   function desenharPainel() {
     let el = $('#painel');
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
@@ -10313,6 +10949,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     restaurarRascunhoPainel(el);
     // questionário de campo: opção de imprimir em branco para aplicar no papel (só para quem preenche)
     if (MQ.imprimirUI) { const fm = el.querySelector('.painel-corpo > form[data-form]'); const b = fm && MQ.imprimirUI.barra(fm); if (b) fm.insertAdjacentHTML('beforebegin', b); }
+    prenderFundo(true);
+    encurtarEscolhas(el);
     const foco = el.querySelector('[autofocus]') || el.querySelector('.fechar');
     if (foco) foco.focus();
   }
@@ -10375,9 +11013,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
                 + (pg.length ? `<div class="aviso"><b>${pg.length} pagamento${pg.length > 1 ? 's' : ''} em aberto</b> (${pg.map(x => (x.tipo === 'bolsa' ? 'bolsa' : 'ajuda de custo') + ' de ' + String(x.mes || '').slice(5, 7) + '/' + String(x.mes || '').slice(0, 4)).join(', ')}). O desligamento não cancela: ela tem direito a receber pelo que fez. O pedido continua até o lançamento no Arlo.</div>` : '')
                 + (pd.length ? `<div class="aviso"><b>${pd.length} pedido${pd.length > 1 ? 's' : ''} de passagem ou evento ainda não autorizado${pd.length > 1 ? 's' : ''}</b> ser${pd.length > 1 ? 'ão' : 'á'} cancelado${pd.length > 1 ? 's' : ''} ao desligar, com o motivo registrado.</div>` : ''); })()}
           <p class="small muted">O cadastro não é apagado. A vaga fica livre para a substituta e o histórico guarda quem desligou, quando e por quê. Não dá para desfazer: se ela voltar, faça um novo cadastro.</p>
-          <div class="campos"><div class="campo"><label for="d-data">Último dia na bolsa</label><input id="d-data" name="data_fim" type="date" min="${esc(m.data_inicio)}" value="${hoje}" required></div>
+          <div class="campos"><div class="campo"><label for="d-data">Último dia na bolsa</label><input id="d-data" name="data_fim" type="date" min="${esc(m.data_inicio)}" max="${R.hoje() > m.data_inicio ? R.hoje() : esc(m.data_inicio)}" value="${hoje}" required></div>
             <div class="campo"><label for="d-motivo">Motivo</label><select id="d-motivo" name="motivo" required><option value="">Escolha o motivo…</option>${MQ.MOTIVOS.map(x => `<option>${esc(x)}</option>`).join('')}</select></div>
-            <div class="campo inteiro"><label for="d-det">Explique em uma frase</label><textarea id="d-det" name="detalhe" placeholder="Ex.: pediu para sair por motivo de saúde, comunicou em 20/11."></textarea></div></div>
+            <div class="campo inteiro"><label for="d-det">Explique em uma frase</label><textarea id="d-det" name="detalhe" maxlength="2000" placeholder="Ex.: pediu para sair por motivo de saúde, comunicou em 20/11."></textarea></div></div>
           <div class="aviso erro" data-erro hidden></div>
           <div class="acoes"><button class="btn perigo cheio" type="submit">Confirmar desligamento</button><button class="btn" type="button" data-acao="desligar-cancelar">Cancelar</button></div>
         </form>
@@ -10453,14 +11091,14 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         ${!fic ? '' : `<div class="campo inteiro"><span class="dica">${turma ? `Matrícula no FIC registrada pelo professor na turma <b>${esc(turma.nome)}</b> (nº ${esc(mt.numero)}, ${R.fmtData(mt.matriculado_em)}).`
           : m.matricula_fic_em ? `Matrícula no FIC registrada em ${R.fmtData(m.matricula_fic_em)} (nº ${esc(m.matricula_fic_numero || '')}), ainda sem turma no sistema.` : '<b>Matrícula no FIC: aguardando.</b>'} A matrícula é registrada só pelos professores do curso, na aba Curso FIC.</span></div>`}
         ${[['h-fun', 'docs_funcern_em', 'Cadastrado no Arlo (FUNCERN) em'], ['h-ter', 'termo_assinado_em', 'Termo de compromisso assinado em']].map(([id, k, rot]) => {
-          // sem data registrada: já vem com hoje (o calendário muda); se ainda não aconteceu, "Limpar" deixa em branco
-          const sug = !m[k];
-          return `<div class="campo"><label for="${id}">${rot}</label><div class="data-hoje"><input id="${id}" name="${k}" type="date" max="${R.hoje()}" value="${esc(m[k] || R.hoje())}"${sug ? ' data-sugerido="1"' : ''}>
-            <button type="button" class="btn peq" data-acao="data-limpar" data-alvo="${id}">Limpar</button></div>
-            ${sug ? '<span class="dica">Sugerido: hoje. Mude no calendário se foi outro dia. Se ainda não aconteceu, toque em Limpar.</span>' : ''}</div>`; }).join('')}
+          // passo ainda não feito: a data vem EM BRANCO (nada é gravado sem a pessoa escolher o dia); "Hoje" preenche com um toque
+          return `<div class="campo"><label for="${id}">${rot}</label><div class="data-hoje"><input id="${id}" name="${k}" type="date" min="${R.LIM.equipeMin}" max="${R.hoje()}" value="${esc(m[k] || '')}">
+            <button type="button" class="btn peq" data-acao="data-hoje" data-alvo="${id}" aria-label="${rot} hoje">Hoje</button>
+            <button type="button" class="btn peq" data-acao="data-limpar" data-alvo="${id}" aria-label="Limpar: ${rot}">Limpar</button></div>
+            ${m[k] ? '' : '<span class="dica">Ainda não registrado. Se já aconteceu, escolha o dia no calendário ou toque em Hoje. Se não, deixe em branco.</span>'}</div>`; }).join('')}
         <div class="campo inteiro"><label for="h-arq">Termo assinado (PDF ou foto)</label><input id="h-arq" name="termo" type="file" accept="application/pdf,image/*">
           <span class="dica">${m.termo_path ? 'Já enviado: ' + esc(String(m.termo_path).split('/').pop()) + '. Enviar outro substitui o link.' : 'Com assinaturas da bolsista, da coordenação técnica e da coordenação geral.'}</span></div>
-        <div class="campo inteiro"><label for="h-obs">Observações</label><textarea id="h-obs" name="obs_habilitacao" placeholder="Ex.: falta comprovante de conta; Pix informado em 02/10.">${esc(m.obs_habilitacao || '')}</textarea></div>
+        <div class="campo inteiro"><label for="h-obs">Observações</label><textarea id="h-obs" name="obs_habilitacao" maxlength="2000" placeholder="Ex.: falta comprovante de conta; Pix informado em 02/10.">${esc(m.obs_habilitacao || '')}</textarea></div>
       </div>
       <div class="aviso erro" data-erro hidden></div>
       <div class="acoes"><button class="btn pri" type="submit">Salvar</button></div></form></details>`;
@@ -10510,20 +11148,20 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         ${pre ? `<div class="aviso">Dados enviados por ela pelo link em ${R.fmtData(pre._pre.enviado_em)}. Confira, complete o que falta e salve: ao salvar, o cadastro é aprovado.</div>` : ''}
         ${subst ? `<div class="aviso">Substitui <b>${esc(subst.nome)}</b>, desligada em ${R.fmtData(subst.data_fim)}. O histórico liga as duas.</div>` : ''}
         <fieldset><legend>Dados pessoais</legend><div class="campos">
-          <div class="campo inteiro"><label for="c-nome">Nome completo</label><input id="c-nome" name="nome" autocomplete="name" value="${v('nome')}" ${edit ? '' : 'autofocus'} required></div>
+          <div class="campo inteiro"><label for="c-nome">Nome completo</label><input id="c-nome" name="nome" autocomplete="name" value="${v('nome')}" maxlength="120" ${edit ? '' : 'autofocus'} required></div>
           <div class="campo"><label for="c-cpf">CPF</label><input id="c-cpf" name="cpf" inputmode="numeric" value="${esc(R.fmtCPF(m.cpf || ''))}" ${edit ? 'readonly' : ''} placeholder="000.000.000-00" required>
             ${edit ? '<span class="dica">CPF não muda. Se estiver errado, desligue e cadastre de novo.</span>' : ''}</div>
           <div class="campo"><label for="c-fone">Celular com WhatsApp</label><input id="c-fone" name="telefone" inputmode="tel" autocomplete="tel" value="${esc(MQ.mascaras ? MQ.mascaras.fmtTel(String(m.telefone || '').replace(/\D/g, '')) : (m.telefone || ''))}" placeholder="(89) 90000-0000" required></div>
-          <div class="campo inteiro"><label for="c-email">E-mail</label><input id="c-email" name="email" type="email" autocomplete="email" value="${v('email')}" required>
+          <div class="campo inteiro"><label for="c-email">E-mail</label><input id="c-email" name="email" type="email" autocomplete="email" value="${v('email')}" maxlength="254" required>
             <span class="dica">É o login no sistema. Nenhum e-mail é enviado: depois de salvar, mande para ela o aviso de acesso (aparece na ficha dela).</span></div>
-          ${MQ.convitesUI && priv !== undefined ? '' : `<div class="campo"><label for="c-mun">Município onde mora</label><input id="c-mun" name="municipio" value="${v('municipio')}" ${bols ? 'list="lista-mun"' : 'placeholder="Município/UF"'}>
+          ${MQ.convitesUI && priv !== undefined ? '' : `<div class="campo"><label for="c-mun">Município onde mora</label><input id="c-mun" name="municipio" value="${v('municipio')}" maxlength="120" ${bols ? 'list="lista-mun"' : 'placeholder="Município/UF"'}>
             ${bols ? `<datalist id="lista-mun">${munis.map(x => `<option value="${esc(x)}">`).join('')}</datalist><span class="dica">A lista traz os municípios do projeto técnico em ${esc(m.uf)}.</span>` : ''}</div>`}
           <div class="campo"><label for="c-siape">Matrícula SIAPE <span class="muted">(só se for servidor(a) público(a) federal)</span></label><input id="c-siape" name="siape" inputmode="numeric" value="${v('siape')}" placeholder="Deixe vazio se não for"></div>
-          <div class="campo"><label for="c-org">Organização ou movimento</label><input id="c-org" name="organizacao" value="${v('organizacao')}" placeholder="${bols ? 'Ex.: MPA, associação, sindicato' : ['professor_fic', 'auxiliar_adm'].includes(m.papel) ? 'Ex.: IFRN Campus Apodi' : 'Ex.: MPA'}"></div>
+          <div class="campo"><label for="c-org">Organização ou movimento</label><input id="c-org" name="organizacao" value="${v('organizacao')}" maxlength="120" placeholder="${bols ? 'Ex.: MPA, associação, sindicato' : ['professor_fic', 'auxiliar_adm'].includes(m.papel) ? 'Ex.: IFRN Campus Apodi' : 'Ex.: MPA'}"></div>
         </div></fieldset>
         ${MQ.convitesUI ? (priv === undefined ? '<p class="small muted">' + MQ.ampulheta() + '</p>' : MQ.convitesUI.camposPessoais(Object.assign({ nome_social: m.nome_social, municipio: m.municipio, cadastro_arlo: p.id ? !!m.cadastro_arlo : m.cadastro_arlo }, priv || {}), false, m.papel, bols ? munis : null)) : ''}
         <fieldset><legend>Bolsa</legend><div class="campos">
-          <div class="campo"><label for="c-ini">Início ${m.papel === 'agente' ? 'no projeto' : 'da bolsa'}</label><input id="c-ini" name="data_inicio" type="date" value="${v('data_inicio')}" min="${MQ.PROJETO.vigencia.inicio}" max="${MQ.PROJETO.vigencia.fim}" required>
+          <div class="campo"><label for="c-ini">Início ${m.papel === 'agente' ? 'no projeto' : 'da bolsa'}</label><input id="c-ini" name="data_inicio" type="date" value="${v('data_inicio')}" min="${R.LIM.equipeMin}" max="${R.somaDias(R.hoje(), R.LIM.inicioFuturoDias)}" required>
             ${edit ? '' : '<span class="dica">Sugerimos hoje. Mude se a pessoa começou em outro dia.</span>'}</div>
         </div></fieldset>
         ${bols ? `<fieldset><legend>Previsão de atividades (opcional)</legend>
@@ -10547,47 +11185,185 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
 
   /* ---------- ações ---------- */
+  /* aviso rápido no pé da tela. Nunca mostra "undefined", "null" nem "[object Object]": vira a mensagem simples. */
   function toast(msg) {
+    let m = msg; if (m && typeof m === 'object') m = R.mensagemParaTela(m);
+    m = String(m == null ? '' : m).trim();
+    if (!m || /^(undefined|null|NaN|\[object [^\]]*\])$/i.test(m)) m = R.MSG_GENERICA;
     let t = $('#toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
-    t.textContent = msg; t.hidden = false; clearTimeout(t._t); t._t = setTimeout(() => { t.hidden = true; }, 3600);
+    t.textContent = m; t.hidden = false; clearTimeout(t._t); t._t = setTimeout(() => { t.hidden = true; }, 3600);
   }
-  function mostrarErros(form, erros, geral) {
-    form.querySelectorAll('.tem-erro').forEach(x => x.classList.remove('tem-erro'));
-    form.querySelectorAll('.campo .erro, .criterio .erro').forEach(x => x.remove());
-    const box = form.querySelector('[data-erro]');
-    Object.entries(erros || {}).forEach(([k, msg]) => {
-      const inp = form.querySelector(`[name="${k}"]`);
-      if (!inp) return;
-      if (inp.type === 'checkbox') { inp.closest('.check').classList.add('tem-erro'); return; }
-      if (inp.type === 'radio' && inp.closest('.criterio')) { const w = inp.closest('.criterio'); w.classList.add('tem-erro'); const s = document.createElement('span'); s.className = 'erro'; s.textContent = msg; w.appendChild(s); return; }
-      const c = inp.closest('.campo'); if (!c) return; c.classList.add('tem-erro');
-      const s = document.createElement('span'); s.className = 'erro'; s.textContent = msg; c.appendChild(s);
+  /* erro apanhado numa ação: a pessoa lê a mensagem simples; o detalhe técnico vai para o console */
+  function avisarErro(e) {
+    if (!(e && typeof e === 'object' && (e.original || e.regra))) { try { console.error('Erro na ação:', e); } catch (x) {} }
+    return R.mensagemParaTela(e);
+  }
+
+  /* ---------- erros do formulário ---------- */
+  const todosDe = (raiz, sel) => (raiz && raiz.querySelectorAll ? [...raiz.querySelectorAll(sel)] : []);
+  let nErro = 0;
+  /* tira a marca de erro de um campo ou bloco (classe, mensagem e os avisos para leitor de tela) */
+  function limparErro(c) {
+    if (!c || !c.classList) return;
+    c.classList.remove('tem-erro');
+    todosDe(c, 'span.erro').forEach(x => { if ((x.dataset && x.dataset.msgErro != null) || (x.closest && x.closest('.campo, .criterio') === c)) x.remove(); });
+    todosDe(c, '[aria-invalid]').concat(c.hasAttribute && c.hasAttribute('aria-invalid') ? [c] : []).forEach(i => {
+      i.removeAttribute('aria-invalid');
+      const antes = i.getAttribute('data-desc-antes');
+      if (antes != null) { if (antes) i.setAttribute('aria-describedby', antes); else i.removeAttribute('aria-describedby'); i.removeAttribute('data-desc-antes'); }
     });
-    const lista = Object.values(erros || {});
-    const texto = geral || (lista.length ? (lista.length > 1 ? 'Corrija os ' + lista.length + ' campos marcados.' : lista[0]) : '');
-    if (box) { box.textContent = texto; box.hidden = !texto; } else if (texto) toast(texto);
+  }
+  /* marca um campo (ou um bloco inteiro: critério, autorização, grupo de perguntas) e liga a mensagem a ele */
+  function marcarErro(cx, msg, campos, mostra) {
+    if (!cx || !cx.classList) return;
+    cx.classList.add('tem-erro');
+    let id = '';
+    if (msg && document.createElement && cx.appendChild) {
+      const sp = document.createElement('span'); sp.className = 'erro' + (mostra ? '' : ' so-leitor'); sp.textContent = msg;
+      id = 'erro-' + (++nErro); sp.id = id; if (sp.setAttribute) sp.setAttribute('data-msg-erro', ''); if (sp.dataset) sp.dataset.msgErro = '';
+      cx.appendChild(sp);
+    }
+    (campos || []).forEach(i => { if (!i || !i.setAttribute) return;
+      i.setAttribute('aria-invalid', 'true');
+      if (id && i.getAttribute) { const antes = i.getAttribute('aria-describedby') || ''; if (i.getAttribute('data-desc-antes') == null) i.setAttribute('data-desc-antes', antes);
+        i.setAttribute('aria-describedby', (antes ? antes + ' ' : '') + id); } });
+  }
+  const dataBR = d => String(d || '').slice(0, 10).split('-').reverse().join('/');
+  /* O que o próprio campo declara (required, maxlength, min, max) conferido em JavaScript: os formulários são
+     "novalidate" (para a mensagem sair em português simples), então o navegador não confere sozinho.
+     Só os campos que estão na tela; min, max e tamanho valem para o que a pessoa mudou (dado antigo não trava).
+     comObrigatorios: confere também os "required" vazios (na hora de gravar). */
+  function declarados(form, comObrigatorios) {
+    const e = {};
+    todosDe(form, 'input,select,textarea').forEach(i => {
+      const k = i.name; if (!k || e[k] || i.disabled || /^(hidden|submit|button|reset|image|file)$/.test(i.type)) return;
+      if (!(i.offsetWidth || i.offsetHeight || (i.getClientRects && i.getClientRects().length))) return;   // fora da tela (bloco escondido)
+      const marca = i.type === 'checkbox' || i.type === 'radio';
+      if (comObrigatorios && i.required) {
+        if (i.type === 'checkbox' ? !i.checked : i.type === 'radio' ? !todosDe(form, 'input[type=radio]').some(r => r.name === k && r.checked) : !String(i.value || '').trim()) {
+          e[k] = marca ? 'Marque esta opção.' : i.tagName === 'SELECT' ? 'Escolha uma opção.' : (i.validity && i.validity.badInput) ? 'Digite só números.' : 'Preencha este campo.'; return; }
+      }
+      if (marca || i.tagName === 'SELECT') return;
+      if (i.validity && i.validity.badInput) { e[k] = i.type === 'date' ? 'Data inválida.' : 'Digite só números.'; return; }
+      const v = String(i.value || ''); if (!v || v === i.defaultValue) return;
+      const mx = i.getAttribute('maxlength');
+      if (mx && /^\d+$/.test(mx) && v.length > +mx) { e[k] = 'Texto muito longo (máximo ' + (+mx).toLocaleString('pt-BR') + ' caracteres).'; return; }
+      const mi = i.getAttribute('min'), ma = i.getAttribute('max');
+      if (i.type === 'number' || i.type === 'range') { const n = Number(v);
+        if (mi !== null && mi !== '' && n < +mi) e[k] = 'O menor valor aceito é ' + (+mi).toLocaleString('pt-BR') + '.';
+        else if (ma !== null && ma !== '' && n > +ma) e[k] = 'O maior valor aceito é ' + (+ma).toLocaleString('pt-BR') + '.';
+      } else if (i.type === 'date' || i.type === 'month') {
+        if (mi && v < mi) e[k] = 'A data não pode ser antes de ' + dataBR(mi) + '.';
+        else if (ma && v > ma) e[k] = 'A data não pode ser depois de ' + dataBR(ma) + '.';
+      }
+    });
+    return e;
+  }
+  /* erros: { nome do campo: mensagem }. geral: texto da caixa do formulário (quando não vem, é montado aqui).
+     Blocos com id "w-<nome>" (critérios, autorizações, grupos de perguntas, fotos) ficam marcados inteiros:
+     tanto os que vêm em "erros" quanto os que o módulo já marcou antes de chamar. */
+  function mostrarErros(form, erros, geral) {
+    erros = Object.assign({}, erros || {});
+    const jaMarcados = todosDe(form, '[id^="w-"].tem-erro').map(w => [w, (w.getAttribute && w.getAttribute('title')) || '']);
+    todosDe(form, '.tem-erro').forEach(limparErro);
+    todosDe(form, '.campo span.erro, .criterio span.erro, [data-msg-erro]').forEach(x => x.remove());
+    todosDe(form, '[aria-invalid]').forEach(i => limparErro(i.closest('[id^="w-"], .campo, .check, .criterio, .sn-par, .chips-sel') || i));
+    const box = form.querySelector('[data-erro]');
+    // o que os próprios campos declaram (tamanho do texto, mínimo e máximo): entra junto, sem tirar a mensagem do módulo
+    const dec = declarados(form, false); Object.keys(dec).forEach(k => { if (!(k in erros)) erros[k] = dec[k]; });
+    const msgs = []; const feitos = new Set();
+    const bloco = (w, msg) => { if (feitos.has(w)) return; feitos.add(w); if (msg) msgs.push([w, msg]);
+      marcarErro(w, msg, todosDe(w, 'input,select,textarea').filter(i => i.type !== 'hidden'), !(w.matches && w.matches('label, .check'))); };
+    Object.entries(erros).forEach(([k, msg]) => {
+      const w = /^[\w-]+$/.test(k) ? form.querySelector('#w-' + k) : null;
+      if (w) { bloco(w, msg); return; }
+      const inp = form.querySelector(`[name="${k}"]`);
+      if (!inp) { msgs.push([null, msg]); return; }
+      const c = inp.type === 'checkbox' ? inp.closest('.check') : (inp.type === 'radio' && inp.closest('.criterio')) || inp.closest('.campo');
+      if (!c) {   // opções soltas (sem .campo): marca o grupo de opções; a mensagem vai para o leitor de tela e para a caixa
+        const g = inp.closest('.sn-par, .chips-sel'); msgs.push([g || inp, msg]);
+        if (g && !feitos.has(g)) { feitos.add(g); marcarErro(g, msg, todosDe(g, 'input'), false); } else if (!g && inp.setAttribute) inp.setAttribute('aria-invalid', 'true');
+        return; }
+      if (feitos.has(c)) return; feitos.add(c); msgs.push([c, msg]);
+      marcarErro(c, msg, inp.type === 'radio' ? todosDe(c, 'input[type=radio]') : [inp], inp.type !== 'checkbox');
+    });
+    jaMarcados.forEach(([w, msg]) => bloco(w, msg));
+    // na ordem em que aparecem na tela
+    const ordem = msgs.filter(([el]) => el && el.compareDocumentPosition);
+    if (ordem.length === msgs.length) msgs.sort((a, b) => (a[0].compareDocumentPosition(b[0]) & 4) ? -1 : 1);
+    const lista = msgs.map(x => x[1]).filter(Boolean);
+    let texto = geral || (lista.length ? (lista.length > 1 ? 'Corrija os ' + lista.length + ' campos marcados.' : lista[0]) : '');
+    // "Faltam N itens": a caixa lista todos (até 10; depois, "e mais N"), não só os 3 primeiros
+    const falta = /^Faltam (\d+) itens:/.exec(String(geral || ''));
+    if (falta && lista.length) {
+      const n = Math.max(+falta[1], lista.length);
+      // mensagens iguais (ex.: "Marque sim ou não." em 9 critérios) aparecem uma vez, com a quantidade
+      const conta = new Map(); lista.forEach(m => conta.set(m, (conta.get(m) || 0) + 1));
+      const unicas = [...conta.entries()], mostra = unicas.slice(0, 10), cobertos = mostra.reduce((t, x) => t + x[1], 0);
+      texto = 'Faltam ' + n + ' itens: ' + mostra.map(([m, q]) => q > 1 ? m.replace(/\.$/, '') + ' (' + q + ' itens).' : m).join(' · ') + (n > cobertos ? ' · e mais ' + (n - cobertos) + '.' : '');
+    }
+    if (box) { box.textContent = texto; box.hidden = !texto; if (box.setAttribute) { if (texto) box.setAttribute('role', 'alert'); else box.removeAttribute('role'); } } else if (texto) toast(texto);
     const primeiro = form.querySelector('.tem-erro input, .tem-erro select, .tem-erro textarea, .check.tem-erro input');
     if (primeiro) primeiro.focus();
   }
-  async function ocupado(form, fn) {
-    const b = form.querySelector('[type=submit]'); const txt = b.textContent;
-    b.disabled = true; b.textContent = 'Salvando…';
-    try { await fn(); } finally { if (document.body.contains(b)) { b.disabled = false; b.textContent = txt; } }
+  /* Enquanto a gravação está em andamento, TODOS os botões de enviar do formulário (e as outras ações que gravam,
+     como "Cancelar esta visita") ficam travados: toque duplo ou Enter repetido não grava duas vezes.
+     Antes de gravar, confere o que os campos declaram (required, maxlength, min, max). */
+  async function ocupado(form, fn, op) {
+    if (form._ocupado) return;
+    if (!(op && op.semConferir)) { const dec = declarados(form, true); if (Object.keys(dec).length) { mostrarErros(form, dec); return; } }
+    let bs = todosDe(form, '[type=submit]'); const b = bs[0] || form.querySelector('[type=submit]') || null;
+    if (b && !bs.length) bs = [b];
+    const outros = todosDe(form, 'button[data-acao]').filter(x => !/^(fechar|painel-)/.test((x.dataset && x.dataset.acao) || '') && !bs.includes(x));
+    const travados = bs.concat(outros).map(x => [x, x.disabled]);
+    const txt = b ? b.textContent : '';
+    form._ocupado = true; if (form.setAttribute) form.setAttribute('aria-busy', 'true');
+    travados.forEach(([x]) => { x.disabled = true; }); if (b) b.textContent = 'Salvando…';
+    try { await fn(); } finally {
+      form._ocupado = false; if (form.removeAttribute) form.removeAttribute('aria-busy');
+      travados.forEach(([x, antes]) => { if (document.body.contains(x)) x.disabled = !!antes; });
+      if (b && document.body.contains(b)) b.textContent = txt;
+    }
   }
   async function recarregar() { S.eu = await S.api.eu(true); await carregar(); render(); }
 
+  /* Uma ação que ainda está gravando não começa de novo: o segundo toque no mesmo botão (toque duplo, pressa)
+     é ignorado até a primeira chamada terminar. Vale para todos os botões [data-acao]. */
+  const emAndamento = new Set();
+  const chaveAcao = el => { try { return el.dataset.acao + '|' + JSON.stringify(Object.assign({}, el.dataset, { ok: undefined, okEm: undefined })); } catch (e) { return String(el.dataset.acao); } };
   document.addEventListener('click', async ev => {
     const el = ev.target.closest('[data-acao]'); if (!el) return;
     const a = el.dataset.acao;
+    const chave = chaveAcao(el); if (emAndamento.has(chave)) return;
+    emAndamento.add(chave);
+    const noPainel = !!(el.closest && el.closest('#painel'));
+    if (!noPainel) S.acionador = el;   // quem abriu o painel: o foco volta para cá ao fechar
+    S.focoDepois = null;
+    if (noPainel) S.acaoNoPainel = (S.acaoNoPainel || 0) + 1;   // desenho pedido por uma ação da pessoa no painel: é o desenho normal
     try {
       if (a === 'perfil' && MQ.bancoUI) MQ.bancoUI.limpar();
       if (a === 'lembrete-ok') { MQ.lembreteUI.dispensar(el.dataset.id); render(); return; }
-      if (a === 'perfil' && el.dataset.p === 'entrada') { S.verEntrada = true; S.painel = null; render(); window.scrollTo(0, 0); }
-      else if (a === 'perfil') { S.verEntrada = false; S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); S.aba = null; lembrarAba(); S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.trocarPerfil(el.dataset.p); marcarAbriu(); registrarAcesso('entrada'); await carregar(); render(); }
-      else if (a === 'recomecar') { S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.recomecar(); await carregar(); render(); toast('Demonstração recomeçada com os dados de exemplo.'); }
+      if (a === 'painel-ficar') { desistirDeSair(); return; }
+      if (a === 'painel-sair') { fecharPainel(); return; }
+      if (a === 'versao-nova') { if (painelAlterado() || paginaEmUso()) { toast('Salve ou feche o que você está preenchendo antes de atualizar.'); return; } location.reload(); return; }
+      if (a === 'carga-tentar') { el.disabled = true; try { await carregar(); } finally { el.disabled = false; } render(); toast(S.cargaParcial ? 'Ainda não deu para carregar tudo. Tente de novo daqui a pouco.' : 'Dados carregados.'); return; }
+      if (a === 'data-hoje') { const i = document.getElementById(el.dataset.alvo); if (i) { i.value = R.hoje(); i.dispatchEvent(new Event('input', { bubbles: true })); i.focus(); } return; }
+      if (a === 'perfil' && el.dataset.p === 'entrada') { S.verEntrada = true; fecharPainel({ semFoco: true }); render(); window.scrollTo(0, 0); }
+      else if (a === 'perfil') { S.verEntrada = false; S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); S.aba = null; lembrarAba(); limparHashAba(); fecharPainel({ semFoco: true }); S.eu = await S.api.trocarPerfil(el.dataset.p); marcarAbriu(); registrarAcesso('entrada'); await carregar(); render(); }
+      else if (a === 'recomecar') { fecharPainel({ semFoco: true }); S.eu = await S.api.recomecar(); await carregar(); render(); toast('Demonstração recomeçada com os dados de exemplo.'); }
       else if (a === 'gerar-codigo-nao') { S.confirmaAcesso = null; abrirPainel(S.painel); }
       else if (a === 'acesso-descartar') {
-        await S.api.descartarPedidoAcesso(el.dataset.id); await carregar(); render(); toast('Pedido descartado.');
+        // descartar apaga o pedido da pessoa: pede confirmação (toque de novo), como o botão Sair
+        if (!el.dataset.ok) {
+          el.dataset.ok = '1'; el.dataset.okEm = String(Date.now()); el.textContent = 'Descartar mesmo?';
+          toast('Descartar apaga este pedido de novo acesso. Para confirmar, toque de novo em "Descartar mesmo?".');
+          const t = setTimeout(() => { if (el.isConnected) { delete el.dataset.ok; delete el.dataset.okEm; el.textContent = 'Descartar'; } }, 6000); if (t && t.unref) t.unref();
+          return;
+        }
+        if (Date.now() - (+el.dataset.okEm || 0) < 400) return;   // toque duplo não vale como confirmação
+        el.disabled = true;
+        try { await S.api.descartarPedidoAcesso(el.dataset.id); await carregar(); render(); toast('Pedido descartado.'); }
+        catch (e) { el.disabled = false; throw e; }
       }
       else if (a === 'gerar-codigo') {
         const m = porId(el.dataset.id); if (!m) return;
@@ -10598,13 +11374,13 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           S.codigos = Object.assign({}, S.codigos, { [m.id]: c }); S.confirmaAcesso = null;
           if (m.user_id) { m.user_id = null; toast('Senha antiga apagada. Mande o código novo para ' + nomeDe(m).split(' ')[0] + '.'); }
           abrirPainel(S.painel);
-        } catch (e) { el.disabled = false; toast(e.message || String(e)); }
+        } catch (e) { el.disabled = false; toast(avisarErro(e)); }
       }
       else if (a === 'data-limpar') { const i = document.getElementById(el.dataset.alvo); if (i) { i.value = ''; i.dispatchEvent(new Event('input', { bubbles: true })); i.focus(); } }
       else if (a === 'cad-modo') {
         const p = Object.assign({}, S.painel, { modo: el.dataset.m || undefined }); abrirPainel(p);
         if (p.modo === 'link' && MQ.convitesUI) {   // o link sai pronto, sem outro clique
-          try { await MQ.convitesUI.gerarLink(p); } catch (e) { toast(e.message); abrirPainel(Object.assign({}, p, { modo: undefined })); return; }
+          try { await MQ.convitesUI.gerarLink(p); } catch (e) { toast(avisarErro(e)); abrirPainel(Object.assign({}, p, { modo: undefined })); return; }
           if (S.painel && S.painel.tipo === 'cadastro' && S.painel.modo === 'link') abrirPainel(S.painel);
         }
       }
@@ -10612,7 +11388,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       else if (a === 'meus-dados') { if (S.menuAberto) { S.menuAberto = false; render(); } S.voltarFoco = el; abrirPainel({ tipo: 'meus-dados' }); }
       else if (a === 'copiar-texto') { const t = el.closest('.bloco').querySelector('textarea'); try { await navigator.clipboard.writeText(t.value); toast('Mensagem copiada.'); } catch (e) { t.select(); toast('Selecione e copie a mensagem.'); } }
       else if (a === 'modo-login') {
-        const em = $('#l-email'); if (em && em.value) S.emailDigitado = em.value.trim();   // leva o e-mail já digitado
+        const em = $('#l-email') || $('#e-email'); if (em) S.emailDigitado = String(em.value || '').trim();   // leva o e-mail já digitado (para Primeiro acesso, Esqueci a senha e de volta)
         S.modoLogin = el.dataset.m; S.esqueciEnviado = false; render(); const f = $('#l-email') || $('#e-email'); if (f) f.focus(); }
       else if (a === 'sair' && !el.dataset.ok && (!navigator.onLine || (S.fila || []).length)) {
         // sem internet, não dá para entrar de novo; e o que está guardado no aparelho só sobe depois de entrar
@@ -10621,8 +11397,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         setTimeout(() => { if (el.isConnected) { delete el.dataset.ok; el.textContent = 'Sair'; } }, 6000);
       }
       else if (a === 'sair') await sairDoSistema();
-      else if (a === 'fechar') fecharPainel();
-      else if (a === 'aba') { S.aba = el.dataset.aba; lembrarAba(); S.menuAberto = false; render(); window.scrollTo(0, 0); digitouEm = 0; atualizarEmSegundoPlano(); }
+      else if (a === 'fechar') pedirFechar();
+      else if (a === 'aba') { irParaAba(el.dataset.aba); S.menuAberto = false; render(); window.scrollTo(0, 0); digitouEm = 0; atualizarEmSegundoPlano(); }
       else if (/^ficha/.test(a) && MQ.fichasUI) { S.voltarFoco = el; await MQ.fichasUI.clique(a, el); }
       else if (/^apl-/.test(a) && MQ.sugestaoUI) await MQ.sugestaoUI.clique(a, el);
       else if (/^banco-/.test(a) && MQ.bancoUI) await MQ.bancoUI.clique(a, el);
@@ -10648,10 +11424,13 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       else if (a === 'editar') abrirPainel({ tipo: 'cadastro', id: el.dataset.id });
       else if (a === 'desligar-abrir') { const f = $('form[data-form=desligar]'); f.hidden = false; f.scrollIntoView({ block: 'nearest' }); f.querySelector('select').focus(); }
       else if (a === 'desligar-cancelar') { $('form[data-form=desligar]').hidden = true; }
-    } catch (e) { toast(e.message); }
+    } catch (e) { toast(avisarErro(e)); }
+    finally { emAndamento.delete(chave); if (S.acionador === el) S.acionador = null; if (noPainel) S.acaoNoPainel = Math.max(0, (S.acaoNoPainel || 1) - 1); }
   });
 
-  document.addEventListener('keydown', ev => { if (ev.key !== 'Escape') return; if (S.painel) fecharPainel(); else if (S.menuAberto) { S.menuAberto = false; render(); } });
+  document.addEventListener('keydown', ev => { if (ev.key !== 'Escape') return;
+    if (desistirDeSair()) return;   // Esc na pergunta "Sair sem salvar?": continua preenchendo
+    if (S.painel) pedirFechar(); else if (S.menuAberto) { S.menuAberto = false; render(); } });
   // foto da equipe: recorta quadrada, 320 px, JPEG (tira dados do celular, como a localização)
   function fotoQuadrada(arq, lado = 320) {
     return new Promise((res, rej) => {
@@ -10672,26 +11451,103 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (lab) lab.firstChild.textContent = 'Enviando…';
       await S.api.enviarFotoEquipe(inp.dataset.fotoEquipe, await fotoQuadrada(inp.files[0]));
       S.equipe = await S.api.listarEquipe(); if (S.eu.id === inp.dataset.fotoEquipe) S.eu = Object.assign({}, S.eu, porId(S.eu.id));
-      render(); toast('Foto salva.');
-    } catch (e) { if (lab) lab.firstChild.textContent = txt; toast(e.message); }
+      render();   // se há algo digitado no painel, o desenho devolve o que foi digitado (ver redesenharPreservando) if (lab && lab.isConnected) lab.firstChild.textContent = txt; toast('Foto salva.');
+    } catch (e) { if (lab) lab.firstChild.textContent = txt; toast(avisarErro(e)); }
   });
 
-  window.addEventListener('hashchange', () => { if (/^#(numeros|convite=|)$|^#convite=/.test(location.hash) || location.hash === '') { render(); window.scrollTo(0, 0); } });
-  window.addEventListener('online', () => { if (S.eu) sincronizar(); });
-  window.addEventListener('offline', () => { if (S.eu) render(); });
+  /* ---------- histórico: abas no endereço e Voltar fechando o painel ---------- */
+  /* saiu do sistema ou trocou de perfil: o endereço não fica apontando para a aba de quem saiu */
+  function limparHashAba() {
+    if (!H) return;
+    if (S.histSobra) { S.histSobra = false; voltarNoHistorico(); }   // primeiro sai da entrada do painel que acabou de fechar
+    noHistorico(() => { if (abaDoHash()) H.replaceState(null, '', location.pathname + location.search); });
+  }
+  /* trocar de aba: grava a aba no endereço (#aba=custos) com uma entrada nova no histórico */
+  function irParaAba(x) {
+    const naEntradaDoPainel = !!S.painelHist;
+    if (S.painel || $('#painel')) fecharPainel({ semFoco: true, semHistorico: true });
+    const antes = S.eu && /^coord/.test(S.eu.papel) ? abaAtual() : S.aba;
+    if (naEntradaDoPainel || S.histSobra) {   // estava (ou acabou de estar) na entrada de um painel: ela vira a entrada da aba
+      S.histSobra = false; try { H.replaceState({ mq: 'aba', aba: x }, '', '#aba=' + x); } catch (e) {}
+    } else noHistorico(() => {
+      if (!H.state || H.state.mq !== 'aba') H.replaceState({ mq: 'aba', aba: antes }, '');   // a aba de onde a pessoa saiu (para o Voltar)
+      if (x !== antes || (abaDoHash() && abaDoHash() !== x)) H.pushState({ mq: 'aba', aba: x }, '', '#aba=' + x);
+    });
+    S.aba = x; lembrarAba();
+  }
+  /* Voltar/Avançar (ou link direto) chegou numa aba: mostra essa aba */
+  function abaDoHistorico(st) {
+    if (!S.eu || S.verEntrada || !/^coord/.test(S.eu.papel)) return;
+    const x = abaDoHash() || (st && st.mq === 'aba' && st.aba) || null;
+    if (!x || !abasDoPapel().includes(x)) return;
+    if (x === abaAtual()) { S.aba = x; render(); return; }   // voltou de #numeros ou de um convite: a tela mostrada não era a do sistema
+    S.aba = x; lembrarAba(); S.menuAberto = false; render(); window.scrollTo(0, 0);
+  }
+  window.addEventListener('popstate', ev => {
+    if (voltasNossas.length) { voltasNossas.shift(); soltarFila(); return; }   // fomos nós, ao fechar o painel
+    if ((S.painel || $('#painel')) && S.painelHist) {            // Voltar com painel aberto: fecha o painel, não sai do sistema
+      S.painelHist = false;                                      // a entrada do painel já saiu do histórico
+      if (painelAlterado()) { try { H.pushState({ mq: 'painel' }, ''); S.painelHist = true; } catch (e) {} confirmarSaida(); return; }
+      fecharPainel(); return;
+    }
+    const st = ev && ev.state;
+    if (st && st.mq === 'painel') { try { H.back(); } catch (e) {} return; }   // entrada de um painel que já fechou: segue em frente
+    abaDoHistorico(st);
+  });
+  window.addEventListener('hashchange', () => {
+    if (/^#aba=/.test(location.hash)) { abaDoHistorico(H && H.state); return; }   // link direto ou endereço digitado
+    if (/^#(numeros|convite=|)$|^#convite=/.test(location.hash) || location.hash === '') { render(); window.scrollTo(0, 0); } });
+  /* o sinal voltou ou caiu: só o fundo e o aviso de conexão mudam; o formulário aberto fica como está */
+  window.addEventListener('online', () => { if (S.eu) { renderFundo(); sincronizar(); } });
+  window.addEventListener('offline', () => { if (S.eu) renderFundo(); });
+
+  /* ---------- versão nova do sistema (service worker trocado com a página aberta) ---------- */
+  function avisarVersaoNova() {
+    if ($('#versao-nova')) return;
+    const b = document.createElement('button'); b.type = 'button'; b.id = 'versao-nova'; b.className = 'versao-nova'; b.setAttribute('data-acao', 'versao-nova'); b.setAttribute('role', 'status');
+    b.textContent = 'Há uma versão nova. Toque para atualizar.'; document.body.appendChild(b);
+  }
+  try {
+    if (typeof navigator !== 'undefined' && navigator.serviceWorker && navigator.serviceWorker.addEventListener) {
+      let tinha = !!navigator.serviceWorker.controller;   // primeira instalação não é "versão nova"
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if (tinha) avisarVersaoNova(); tinha = true; });
+    }
+  } catch (e) {}
+
+  /* ---------- erro que escapou de todos os tratamentos: aviso simples na tela, detalhe no console ---------- */
+  let ultimoAvisoGlobal = 0;
+  function erroGlobal(motivo, origem) {
+    try { console.error('Erro não tratado (' + origem + '):', motivo); } catch (e) {}
+    const nome = motivo && motivo.name, txt = String((motivo && motivo.message) || motivo || '');
+    if (nome === 'AbortError' || /ResizeObserver loop|^Script error\.?$/i.test(txt)) return;   // ruído do navegador, não é falha do sistema
+    if (Date.now() - ultimoAvisoGlobal < 4000) return; ultimoAvisoGlobal = Date.now();
+    try { toast(motivo && typeof motivo === 'object' && (motivo.original || motivo.regra) ? R.mensagemParaTela(motivo) : (R.erroDeRede(motivo) ? R.MSG_SEM_REDE : R.MSG_GENERICA)); } catch (e) {}
+  }
+  window.addEventListener('error', ev => { if (ev && (ev.error || ev.message)) erroGlobal(ev.error || ev.message, 'window.onerror'); });
+  window.addEventListener('unhandledrejection', ev => { erroGlobal(ev && ev.reason, 'unhandledrejection'); });
 
   document.addEventListener('input', ev => {
     const t = ev.target;
     // CPF e telefone: a máscara (com o cursor no lugar certo) é do mascaras.js
-    const c = t.closest && t.closest('.campo.tem-erro, .check.tem-erro, .criterio.tem-erro');   // some o aviso do campo assim que a pessoa corrige
-    if (c) { c.classList.remove('tem-erro'); const e = c.querySelector('.erro'); if (e) e.remove(); }
+    corrigiu(t);
   });
+  /* some o aviso do campo (ou do bloco de perguntas) assim que a pessoa corrige; limpa também o aviso do leitor de tela */
+  function corrigiu(t) {
+    if (!t || !t.closest) return;
+    const c = t.closest('.campo.tem-erro, .check.tem-erro, .criterio.tem-erro, [id^="w-"].tem-erro, .sn-par.tem-erro, .chips-sel.tem-erro') || (t.hasAttribute && t.hasAttribute('aria-invalid') ? (t.closest('[id^="w-"]') || t.closest('.criterio') || t.closest('.campo') || t.closest('.check') || t.closest('.sn-par, .chips-sel') || t) : null);
+    if (c) limparErro(c);
+  }
+  document.addEventListener('change', ev => corrigiu(ev.target));
 
+  /* escolhas dentro do painel (lista, caixa de marcar, arquivo) que fazem o módulo redesenhar: desenho normal, durante o próprio evento */
+  document.addEventListener('change', ev => { const t = ev.target; if (!t || !t.closest || !t.closest('#painel') || /^(text|textarea|number|date|email|tel|password|search|url)$/.test(t.type)) return;
+    S.acaoNoPainel = (S.acaoNoPainel || 0) + 1; Promise.resolve().then(() => { S.acaoNoPainel = Math.max(0, (S.acaoNoPainel || 1) - 1); }); }, true);
   document.addEventListener('submit', async ev => {
     const form = ev.target.closest('form[data-form]'); if (!form) return;
     ev.preventDefault();
     const tipo = form.dataset.form;
     const fd = new FormData(form);
+    S.acaoNoPainel = (S.acaoNoPainel || 0) + 1;
     try {
       if (tipo === 'trocar-senha') {
         const atual = String(fd.get('atual') || ''), nova = String(fd.get('nova') || ''), nova2 = String(fd.get('nova2') || '');
@@ -10721,6 +11577,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         const codigo = String(fd.get('codigo') || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
         if (S.modoLogin === 'primeiro' && codigo.length !== 8) erros.codigo = 'O código tem 8 letras e números (ex.: ABCD-2345).';
         if (Object.keys(erros).length) return mostrarErros(form, erros);
+        // demonstração: não há senha; entra-se pelos botões de perfil, na faixa do alto
+        if (modoDemoAtivo() && S.modoLogin !== 'primeiro') return mostrarErros(form, {}, 'Esta é a demonstração: aqui não se entra com senha. Escolha um perfil nos botões "Ver como", no alto da tela.');
         await ocupado(form, async () => {
           S.eu = S.modoLogin === 'primeiro' ? await S.api.criarSenha(email, senha, codigo) : await S.api.entrarSenha(email, senha);
           if (S.eu) { S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); marcarAbriu(); registrarAcesso(S.modoLogin === 'primeiro' ? 'primeiro_acesso' : 'entrada'); await carregar(); setTimeout(() => sincronizar(false), 500); }
@@ -10762,6 +11620,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         if (R.ehBolsista(m.papel)) Object.assign(m, { meta_diagnosticos: num('meta_diagnosticos'), meta_quintais: num('meta_quintais'), meta_visitas: num('meta_visitas') });
         const erros = R.validar(m, S.equipe);
         if (p.id) delete erros.papel;
+        if (m.nome.length > R.LIM.nome && !erros.nome) erros.nome = 'Texto muito longo (máximo 120 caracteres).';
+        // início: de 01/01/2025 até um ano à frente (a mesma regra do banco); data antiga que não mudou não trava
+        if (!erros.data_inicio && (!p.id || m.data_inicio !== base.data_inicio)) { const ed = R.erroDataInicio(m.data_inicio); if (ed) erros.data_inicio = ed; }
         if (priv) Object.assign(erros, MQ.convitesUI.validarPessoais(priv, false));
         if (Object.keys(erros).length) return mostrarErros(form, erros);
         await ocupado(form, async () => {
@@ -10793,7 +11654,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           const val = String(fd.get(k) || '').trim() || null; if (val !== (m[k] || null)) patch[k] = val;
         });
         const erros = {};
-        ['matricula_fic_em', 'docs_funcern_em', 'termo_assinado_em'].forEach(k => { if (patch[k] && patch[k] > R.hoje()) erros[k] = 'Data no futuro. Registre só o que já aconteceu.'; });
+        // só a data que mudou é conferida (a mesma regra do banco, 45: de 01/01/2025 até hoje)
+        ['matricula_fic_em', 'docs_funcern_em', 'termo_assinado_em'].forEach(k => { const ed = patch[k] ? R.erroDataPasso(patch[k]) : null; if (ed) erros[k] = ed; });
+        if (patch.obs_habilitacao && patch.obs_habilitacao.length > 2000) erros.obs_habilitacao = 'Texto muito longo (máximo 2.000 caracteres).';
         if (patch.matricula_fic_em && !(patch.matricula_fic_numero || m.matricula_fic_numero)) erros.matricula_fic_numero = 'Informe o número da matrícula.';
         const arq = fd.get('termo');
         if (arq && arq.size && arq.size > 10 * 1024 * 1024) erros.termo = 'Arquivo acima de 10 MB. Envie um PDF menor ou uma foto.';
@@ -10809,8 +11672,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         const id = form.dataset.id; const m = porId(id);
         const data = String(fd.get('data_fim') || ''); const det = String(fd.get('detalhe') || '').trim();
         const erros = {};
-        if (!data) erros.data_fim = 'Informe o último dia.';
-        else if (data < m.data_inicio) erros.data_fim = 'Antes do início da bolsa (' + R.fmtData(m.data_inicio) + ').';
+        const edf = R.erroDataDesligamento(data, m.data_inicio); if (edf) erros.data_fim = edf;   // não pode ser no futuro (o banco recusa)
+        if (det.length > 2000) erros.detalhe = 'Texto muito longo (máximo 2.000 caracteres).';
         if (!fd.get('motivo')) erros.motivo = 'Escolha o motivo.';
         if (fd.get('motivo') === 'Outro motivo' && det.length < 5) erros.detalhe = 'Explique o motivo.';
         if (Object.keys(erros).length) return mostrarErros(form, erros);
@@ -10820,8 +11683,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         });
       }
     } catch (e) {
-      mostrarErros(form, e.campos || {}, e.original || !/fetch|network|Load failed/i.test(e.message || '') ? e.message : R.mensagemErro(e));
-    }
+      mostrarErros(form, (e && e.campos) || {}, avisarErro(e));
+    } finally { S.acaoNoPainel = Math.max(0, (S.acaoNoPainel || 1) - 1); }
   });
 
   window.addEventListener('DOMContentLoaded', boot);

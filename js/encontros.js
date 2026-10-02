@@ -24,7 +24,8 @@
     .sort((a, b) => (a.ate ? 1 : 0) - (b.ate ? 1 : 0)).filter(x => vistos[x.p.id] ? false : (vistos[x.p.id] = true))
     .sort((a, b) => nomeDe(a.p).localeCompare(nomeDe(b.p))); };
   const valeEm = (x, data) => x.desde <= data && (!x.ate || x.ate > data);
-  const fmtH = h => String(+h).replace('.', ',') + ' h';
+  const h1 = h => Math.round((+h || 0) * 10) / 10;   // horas com 1 casa: 1,1 + 2,2 = 3,3 (e não 3,3000000000000003)
+  const fmtH = h => String(h1(h)).replace('.', ',') + ' h';
   const conta = e => { const ps = e.presencas || []; const pr = ps.filter(p => p.presente); return { total: ps.length, presentes: pr.length, confirmados: pr.filter(p => p.confirmado_em).length }; };
 
   /* ---------- professor: seção "Encontros do curso" ---------- */
@@ -122,7 +123,7 @@
         </tbody></table>${completo && aus.length ? `<p class="small muted">Ausentes: ${aus.map(p => E(p.nome)).join(', ')}.</p>` : ''}</div>`; }).join('');
   }
   function resumoMes(encs) {
-    const ch = encs.reduce((t, e) => t + (+e.carga_horaria || 0), 0);
+    const ch = h1(encs.reduce((t, e) => t + (+e.carga_horaria || 0), 0));
     const pres = encs.flatMap(e => (e.presencas || []).filter(p => p.presente)); const conf = pres.filter(p => p.confirmado_em).length;
     return { n: encs.length, ch, presencas: pres.length, confirmadas: conf };
   }

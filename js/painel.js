@@ -582,17 +582,22 @@
     const dadosMun = Array.isArray(op.municipios) ? op.municipios : null;
     const qMun = (uf, nome) => dadosMun && dadosMun.find(m => m.uf === uf && norm(m.municipio) === norm(nome));
     const semCadastro = dadosMun ? muns.filter(m => !qMun(m.uf, m.nome)).length : 0;
+    /* Pontos do mapa: cada um tem nome para o leitor de tela (município e o que ele mostra). Na página pública (#numeros)
+       entram na ordem do Tab; na tela de entrada ficam fora dela (tabindex -1), para o teclado chegar logo ao login
+       em vez de passar por ~30 pontos. op.tab força um dos dois. */
+    const tab = op.tab != null ? op.tab : ((typeof location !== 'undefined' && location.hash === '#numeros') ? 0 : -1);
+    const acess = rot => `role="img" aria-label="${E(rot)}" tabindex="${tab}"`;
     const pontoMun = ({ uf, nome, xy: [x, y] }, k) => { const q = qMun(uf, nome); const n = q ? (q.n || 2) : 0;
       const r = esc * (1.15 + 0.42 * Math.sqrt(n)); const txt = q ? (q.menos_de_3 ? 'menos de 3 mulheres cadastradas' : q.n + ' mulheres cadastradas') : 'previsto, ainda sem cadastro';
-      return `<g class="mun-pt${q ? ' mun-q' : ' mun-prev'}" data-mun="${E(nome)}/${uf} · ${txt}" data-rota-de="${E(nome)}/${uf}" tabindex="0" style="--i:${k}"><circle cx="${x}" cy="${y}" r="${Math.max(r, esc * 3.2)}" class="mun-alvo"/>`
+      return `<g class="mun-pt${q ? ' mun-q' : ' mun-prev'}" data-mun="${E(nome)}/${uf} · ${txt}" data-rota-de="${E(nome)}/${uf}" ${acess(nome + '/' + uf + ': ' + txt)} style="--i:${k}"><circle cx="${x}" cy="${y}" r="${Math.max(r, esc * 3.2)}" class="mun-alvo"/>`
         + (q ? `<circle cx="${x}" cy="${y}" r="${r}" class="mun-dot" stroke-width="${esc * 0.35}"/>${q.n ? `<text x="${x}" y="${y + r * 0.36}" text-anchor="middle" font-size="${Math.min(r * 1.05, esc * 2.8)}" class="mun-n">${q.n}</text>` : ''}`
           : `<circle cx="${x}" cy="${y}" r="${esc * 1}" class="mun-vazio" stroke-width="${esc * 0.35}"/>`) + `<title>${E(nome)}/${uf}: ${txt}</title></g>`; };
     const pontos = dadosMun ? muns.map(pontoMun).join('') : muns.map(({ uf, nome, xy: [x, y] }, k) =>
-      `<g class="mun-pt" data-mun="${E(nome)}/${uf}" tabindex="0" style="animation-delay:${((k * 0.37) % 2.4).toFixed(2)}s;--i:${k}"><circle cx="${x}" cy="${y}" r="${esc * 3.2}" class="mun-alvo"/><circle cx="${x}" cy="${y}" r="${esc * 2.2}" class="mun-onda"/><circle cx="${x}" cy="${y}" r="${esc * 1.4}" class="mun-dot" stroke-width="${esc * 0.35}"/><title>${E(nome)}/${uf}</title></g>`).join('');
+      `<g class="mun-pt" data-mun="${E(nome)}/${uf}" ${acess(nome + '/' + uf)} style="animation-delay:${((k * 0.37) % 2.4).toFixed(2)}s;--i:${k}"><circle cx="${x}" cy="${y}" r="${esc * 3.2}" class="mun-alvo"/><circle cx="${x}" cy="${y}" r="${esc * 2.2}" class="mun-onda"/><circle cx="${x}" cy="${y}" r="${esc * 1.4}" class="mun-dot" stroke-width="${esc * 0.35}"/><title>${E(nome)}/${uf}</title></g>`).join('');
     const sede = op.entrada   // entrada (infográfico): Apodi como origem, marcador maior em terracota com halo discreto
-      ? `<g class="mun-pt sede-pt" data-mun="Apodi/RN · IFRN Campus Apodi, de onde sai a equipe" tabindex="0"><circle cx="${ax}" cy="${ay}" r="${esc * 3.8}" class="sede-halo"/><circle cx="${ax}" cy="${ay}" r="${esc * 3.4}" class="mun-alvo"/><circle cx="${ax}" cy="${ay}" r="${esc * 2.2}" class="sede-dot" stroke-width="${esc * 0.55}"/><title>Apodi/RN: IFRN Campus Apodi</title></g>
+      ? `<g class="mun-pt sede-pt" data-mun="Apodi/RN · IFRN Campus Apodi, de onde sai a equipe" ${acess('Apodi/RN: IFRN Campus Apodi, de onde sai a equipe')}><circle cx="${ax}" cy="${ay}" r="${esc * 3.8}" class="sede-halo"/><circle cx="${ax}" cy="${ay}" r="${esc * 3.4}" class="mun-alvo"/><circle cx="${ax}" cy="${ay}" r="${esc * 2.2}" class="sede-dot" stroke-width="${esc * 0.55}"/><title>Apodi/RN: IFRN Campus Apodi</title></g>
       <text x="${ax + esc * 3.4}" y="${ay - esc * 2.4}" class="sede-rot" font-size="${esc * 3.4}">Apodi <tspan class="sede-uf" font-size="${esc * 2.6}">RN</tspan></text>`
-      : `<g class="mun-pt sede-pt" data-mun="Apodi/RN · IFRN Campus Apodi, de onde sai a equipe" tabindex="0"><circle cx="${ax}" cy="${ay}" r="${esc * 3.4}" class="mun-alvo"/><circle cx="${ax}" cy="${ay}" r="${esc * 2.1}" class="sede-dot" stroke-width="${esc * 0.5}"/><circle cx="${ax}" cy="${ay}" r="${esc * 0.8}" class="sede-miolo"/><title>Apodi/RN: IFRN Campus Apodi</title></g>
+      : `<g class="mun-pt sede-pt" data-mun="Apodi/RN · IFRN Campus Apodi, de onde sai a equipe" ${acess('Apodi/RN: IFRN Campus Apodi, de onde sai a equipe')}><circle cx="${ax}" cy="${ay}" r="${esc * 3.4}" class="mun-alvo"/><circle cx="${ax}" cy="${ay}" r="${esc * 2.1}" class="sede-dot" stroke-width="${esc * 0.5}"/><circle cx="${ax}" cy="${ay}" r="${esc * 0.8}" class="sede-miolo"/><title>Apodi/RN: IFRN Campus Apodi</title></g>
       <text x="${ax + esc * 3}" y="${ay - esc * 2.2}" class="sede-rot" font-size="${esc * 3.4}">Apodi</text>`;
     const nMun = muns.length;
     // rótulos longe dos pontos das cidades: PI desce; AL e SE vão para o mar, ao lado (em unidades de "esc")

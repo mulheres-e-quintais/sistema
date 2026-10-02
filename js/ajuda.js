@@ -428,7 +428,7 @@
     }
   };
 
-  const TOPICOS_COORD = ['visao', 'equipe', 'selecao', 'campo', 'fic', 'pagamentos', 'viagens', 'custos', 'documentos', 'historico'];
+  const TOPICOS_COORD = ['visao', 'equipe', 'selecao', 'campo', 'fic', 'pagamentos', 'viagens', 'custos', 'execucao', 'documentos', 'historico'];
 
   function chaveAtual() {
     const s = S();

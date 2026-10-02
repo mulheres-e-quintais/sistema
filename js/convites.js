@@ -104,12 +104,14 @@
     }
     return { cadastro_arlo: false, _arlo_resp: fd.get('cadastro_arlo'), nome_social: t('nome_social') || null, data_nascimento: t('data_nascimento') || null, nis: R.soDigitos(t('nis')) || null, endereco, socioeconomico: socio, perfil: lerPerfil(fd) };
   }
+  /* a data existe no calendário? ("2026-02-30" não existe, mas o navegador lê como 2 de março) */
+  const dataExiste = v => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || '')); if (!m) return false; const t = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return t.getUTCFullYear() === +m[1] && t.getUTCMonth() === +m[2] - 1 && t.getUTCDate() === +m[3]; };
   function validarPessoais(d, pub) {
     const e = {};
     if (!d._arlo_resp) e.cadastro_arlo = 'Responda se já tem cadastro no Arlo.';
     if (pub && !d.cadastro_arlo && !d.data_nascimento) e.data_nascimento = 'Informe a data de nascimento.';
     if (pub && d.cadastro_arlo && d._campo && !d.endereco.cidade) e.cidade = 'Informe o município onde mora (usado no cálculo da ajuda de custo).';
-    if (d.data_nascimento && (d.data_nascimento > R.hoje() || R.idade(d.data_nascimento) < 16)) e.data_nascimento = 'Data de nascimento inválida.';
+    if (d.data_nascimento && (!dataExiste(d.data_nascimento) || d.data_nascimento < '1900-01-01' || d.data_nascimento > R.hoje() || R.idade(d.data_nascimento) < 16)) e.data_nascimento = 'Data de nascimento inválida.';   // 30/02 e 1800 não passam
     if (d.nis && d.nis.length !== 11) e.nis = 'O PIS/NIS tem 11 números.';
     if (pub && d._perfil) { const pf = d.perfil || {};
       PERFIL_Q.forEach(([k]) => { if (typeof pf[k] !== 'boolean') e['pf_' + k] = 'Responda sim ou não.'; });
@@ -303,7 +305,11 @@
   async function clique(a, el) {
     if (a === 'conv-copiar') {
       try { await navigator.clipboard.writeText(el.dataset.url); U().toast('Link copiado.'); }
-      catch (e) { const i = el.parentElement.querySelector('input'); i.select(); U().toast('Selecione e copie o link.'); }
+      catch (e) {   // área de transferência negada ou inexistente: deixa o link selecionado para a pessoa copiar à mão
+        const caixa = (el.closest && el.closest('.conv-pronto')) || el.parentElement; const i = caixa && caixa.querySelector ? caixa.querySelector('.conv-url input, input[readonly]') : null;
+        if (i) { try { i.focus(); i.select(); } catch (x) { /* campo sem seleção */ } }
+        U().toast('Não deu para copiar. Selecione o link e copie.');
+      }
     } else if (a === 'conv-ver') U().abrirPainel({ tipo: 'pre-ver', id: el.dataset.id });
     else if (a === 'conv-aprovar') {
       const x = (S().pre || []).find(y => y.id === el.dataset.id);

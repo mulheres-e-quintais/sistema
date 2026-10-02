@@ -181,6 +181,8 @@
     else if (a === 'fic-matricular') U().abrirPainel({ tipo: 'fic-matricular', id: el.dataset.id });
     else if (a === 'fic-cancelar') U().abrirPainel({ tipo: 'fic-cancelar', id: el.dataset.id });
   }
+  const DATA_MIN = '2026-01-01', DATA_MAX = '2027-12-31', MAX_NOME_TURMA = 120;
+  const dataExiste = v => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || '')); if (!m) return false; const t = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return t.getUTCFullYear() === +m[1] && t.getUTCMonth() === +m[2] - 1 && t.getUTCDate() === +m[3]; };
   async function enviar(tipo, form, fd) {
     const txt = k => String(fd.get(k) || '').trim();
     if (tipo === 'fic-turma') {
@@ -189,8 +191,10 @@
         professor_id: souProf() ? (antes ? antes.professor_id : S().eu.id) : txt('professor_id') || (antes && antes.professor_id) };
       const e = {};
       if (t.nome.length < 3) e.nome = 'Dê um nome à turma.';
+      else if (t.nome.length > MAX_NOME_TURMA) e.nome = `Texto muito longo (máximo ${MAX_NOME_TURMA} caracteres).`;
+      [['inicio', 'O início'], ['fim', 'O fim']].forEach(([k, rot]) => { if (t[k] && (!dataExiste(t[k]) || t[k] < DATA_MIN || t[k] > DATA_MAX)) e[k] = rot + ' da turma fica entre 01/01/2026 e 31/12/2027.'; });
       if (!t.professor_id) e.professor_id = 'Escolha o professor.';
-      if (t.inicio && t.fim && t.fim < t.inicio) e.fim = 'O fim é antes do início.';
+      if (!e.inicio && !e.fim && t.inicio && t.fim && t.fim < t.inicio) e.fim = 'O fim é antes do início.';
       if (antes && antes.uf !== t.uf && t.uf && matriculas().some(x => x.turma_id === id && (pessoa(x.equipe_id) || {}).uf !== t.uf)) e.uf = 'Há gente de outro estado matriculada nesta turma.';
       if (Object.keys(e).length) return U().mostrarErros(form, e);
       await U().ocupado(form, async () => { await S().api.salvarTurma(t); await recarregar(); U().fecharPainel(); U().toast(id ? 'Turma salva.' : 'Turma criada. Agora matricule as pessoas.'); });
@@ -198,7 +202,8 @@
     if (tipo === 'fic-matricular') {
       const turma = form.dataset.id; const data = txt('data');
       const marcados = fd.getAll('p'); const e = {};
-      if (!data) e.data = 'Informe a data.'; else if (data > R.hoje()) e.data = 'Data no futuro. Registre só a matrícula já feita.';
+      if (!data) e.data = 'Informe a data.'; else if (!dataExiste(data)) e.data = 'Data inválida.'; else if (data > R.hoje()) e.data = 'Data no futuro. Registre só a matrícula já feita.';
+      else if (data < DATA_MIN) e.data = 'Data antes de 2026: confira o ano da matrícula.';
       if (!marcados.length) return U().mostrarErros(form, e, 'Marque pelo menos uma pessoa.');
       const faltaNum = marcados.filter(id => txt('n_' + id).length < 3);
       if (faltaNum.length) return U().mostrarErros(form, e, 'Falta o número da matrícula (SUAP) de: ' + faltaNum.map(id => nomeDe(pessoa(id))).join(', ') + '.');

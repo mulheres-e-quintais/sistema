@@ -10,6 +10,12 @@
   // ao recarregar a página, volta para a mesma seção e a mesma altura da tela (só neste navegador)
   try { S.aba = localStorage.getItem('mq-aba') || null; const y = +sessionStorage.getItem('mq-rolagem'); if (y) S.rolarPara = y; } catch (e) {}
   const lembrarAba = () => { try { if (S.aba) localStorage.setItem('mq-aba', S.aba); else localStorage.removeItem('mq-aba'); } catch (e) {} };
+  /* histórico do navegador (botão Voltar, gesto do Android): cada aba da coordenação fica no endereço (#aba=custos)
+     e cada painel aberto ganha uma entrada, para o Voltar fechar o painel em vez de sair do sistema.
+     Os outros endereços continuam como eram: #numeros, #convite=..., #teste e a recuperação de senha do Supabase. */
+  const H = (typeof history !== 'undefined' && history && typeof history.pushState === 'function') ? history : null;
+  const abaDoHash = () => { const m = /^#aba=([a-z_]+)$/.exec((typeof location !== 'undefined' && location.hash) || ''); return m ? m[1] : null; };
+  { const a0 = abaDoHash(); if (a0) S.aba = a0; }   // link direto para uma aba
   window.addEventListener('pagehide', () => { try { sessionStorage.setItem('mq-rolagem', String(Math.round(window.scrollY))); } catch (e) {} });
 
   /* ---------- início ---------- */
@@ -36,7 +42,7 @@
       // sem internet não sai (não daria para entrar de novo): abrir o sistema conta como uso
       if (S.eu && MQ.sessao && MQ.sessao.venceu(MQ.sessao.ultimo()) && !MQ.sessao.semRede() && await temConexao()) await sairDoSistema(AVISO_INATIVO);
       if (S.eu && !S.verEntrada) { if (MQ.sessao) MQ.sessao.tocar(true); registrarAbriu(); await carregar(); setTimeout(() => sincronizar(false), 500); }
-    } catch (e) { toast(e.message); }
+    } catch (e) { toast(avisarErro(e)); }
     if (MQ.sessao) MQ.sessao.iniciar({ ativo: () => !!S.eu && !S.verEntrada, temConexao, aoVencer: () => sairDoSistema(AVISO_INATIVO) });
     await esperarAbertura();
     render();
@@ -84,8 +90,8 @@
     if (aviso) guardarRascunhoPainel();   // saiu sozinho: guarda o formulário pela metade
     if (S.eu && !S.verEntrada) await registrarAcesso(aviso ? 'saida_inatividade' : 'saida');   // antes de encerrar a sessão no servidor
     try { sessionStorage.removeItem(CHAVE_ABRIU); } catch (e) {}
-    S.painel = null; const pf = $('#painel'); if (pf) pf.remove();
-    S.menuAberto = false; S.aba = null; lembrarAba(); if (MQ.bancoUI) MQ.bancoUI.limpar();
+    fecharPainel({ semFoco: true });
+    S.menuAberto = false; S.aba = null; lembrarAba(); limparHashAba(); if (MQ.bancoUI) MQ.bancoUI.limpar();
     try { Object.keys(sessionStorage).filter(k => /^mq-pend-visto-/.test(k)).forEach(k => sessionStorage.removeItem(k)); } catch (e) {}
     S.pendVisto = false; S.avisoLogin = aviso || null;
     if (MQ.sessao) MQ.sessao.esquecer();
@@ -114,7 +120,23 @@
       const qualquer = e => !e.semRede;   // para as partes em que qualquer erro que não seja de rede só desliga a parte
       S.kitPar = { valor_quintal: MQ.KIT_QUINTAL };   // R$ 5.000 por quintal, fixado no plano de trabalho
       const campoPapel = !['professor_fic', 'auxiliar_adm'].includes(papel);
-      const [equipe, fic, fichas, visitas, diagnosticos, aval, aud, pag, docs, quem, entregas, testes, perfis, pre, exemplo, pedAcesso, acessos, lancs, encs, agua, venda] = await Promise.all([
+      /* Se UMA leitura secundária falha (ex.: o histórico), a tela abre com o que veio e avisa
+         "Parte dos dados não carregou". Só a equipe é indispensável; sem internet, vale a cópia do aparelho. */
+      const falhas = [];
+      const NOMES = ['equipe', 'curso FIC', 'fichas', 'visitas', 'diagnósticos', 'avaliações', 'histórico', 'pagamentos', 'documentos', 'conferência', 'entregas', 'roteiro de testes', 'perfis', 'cadastros do link', 'dados de exemplo', 'pedidos de acesso', 'últimos acessos', 'execução', 'encontros', 'água', 'venda'];
+      // o que fica no lugar da parte que falhou: o que já estava na tela (ou vazio, na primeira carga)
+      const ANTES = [null, () => [!S.ficSemBanco, [S.turmas || [], S.matriculas || [], []]], () => S.fichas || [], () => S.visitas || [], () => S.diagnosticos || [],
+        () => [!S.avalSemBanco, S.avaliacoes || []], () => S.aud || [], () => [!S.pagSemBanco, { lista: S.solic || [], vinculos: S.solicVis || {} }], () => [!S.docSemBanco, S.documentos || []],
+        () => [true, S.quemConfere == null ? null : S.quemConfere], () => [!S.entregasSemBanco, [S.entregas || [], S.ciencias || []]], () => [!S.testesSemBanco, S.testes || []], () => [!S.perfisSemBanco, S.perfisEquipe || []],
+        () => S.pre || [], () => S.exemplo || 0, () => [true, S.pedidosAcesso || []], () => [!S.acessosSemBanco, S.acessos || []], () => [!S.execSemBanco, S.execPlanilhas || []],
+        () => [!S.encSemBanco, S.encontros || []], () => [!S.aguaSemBanco, S.agua || []], () => [!S.vendaSemBanco, [S.canaisVenda || [], S.orientacoesVenda || []]]];
+      const juntar = lista => Promise.allSettled(lista).then(rs => rs.map((r, i) => {
+        if (r.status === 'fulfilled') return r.value;
+        if (i === 0 || (r.reason && r.reason.semRede)) throw r.reason;   // equipe ou falta de internet: sobe como antes
+        falhas.push(NOMES[i]); try { console.warn('Leitura que falhou na carga:', NOMES[i], r.reason); } catch (x) {}
+        return ANTES[i]();
+      }));
+      const [equipe, fic, fichas, visitas, diagnosticos, aval, aud, pag, docs, quem, entregas, testes, perfis, pre, exemplo, pedAcesso, acessos, lancs, encs, agua, venda] = await juntar([
         S.api.listarEquipe(),
         // curso FIC (11_fic.sql): turmas e matrículas
         (coord || papel === 'professor_fic') && S.api.listarTurmas
@@ -159,15 +181,18 @@
       S.pre = pre; S.exemplo = exemplo; S.pedidosAcesso = pedAcesso[0] ? pedAcesso[1] : [];
       S.acessosSemBanco = !acessos[0]; S.acessos = acessos[0] ? acessos[1] : [];
       // segunda leva: os pedidos de viagem dependem de saber quem confere (22 e 26)
-      S.pedSemBanco = false; S.pedidos = [];
+      const pedAntes = S.pedidos || []; S.pedSemBanco = false; S.pedidos = [];
       if (S.api.listarPedidos && MQ.viagUI && (MQ.viagUI.podeVer(papel) || MQ.viagUI.souConferente())) {
-        const r = await talvez(() => S.api.listarPedidos(), semFic); S.pedSemBanco = !r[0]; S.pedidos = r[0] ? r[1] : [];
-        if (S.api.saldoPedidos && !S.pedSemBanco) { const sd = await talvez(() => S.api.saldoPedidos(), qualquer); S.saldoPed = sd[0] ? sd[1] : null; }   // 35
+        try {
+          const r = await talvez(() => S.api.listarPedidos(), semFic); S.pedSemBanco = !r[0]; S.pedidos = r[0] ? r[1] : [];
+          if (S.api.saldoPedidos && !S.pedSemBanco) { const sd = await talvez(() => S.api.saldoPedidos(), qualquer); S.saldoPed = sd[0] ? sd[1] : null; }   // 35
+        } catch (e) { if (e && e.semRede) throw e; falhas.push('viagens e eventos'); S.pedidos = pedAntes; }
       }
+      S.cargaParcial = falhas.length ? falhas : null;
       // cálculo de custos carregado em segundo plano: a aba Custos abre pronta, sem "Carregando…" e sem a página pular
-      if (coord && MQ.custosUI && !MQ.custosUI.pronto()) MQ.custosUI.garantir().then(() => { if (S.aba === 'custos') render(); }).catch(() => {});
+      if (coord && MQ.custosUI && !MQ.custosUI.pronto()) MQ.custosUI.garantir().then(() => { if (S.aba === 'custos') renderFundo(); }).catch(() => {});
       S.semRede = false;
-      try { localStorage.setItem(chaveCache(), JSON.stringify({ equipe: S.equipe, fichas: S.fichas, visitas: S.visitas, diagnosticos: S.diagnosticos, aud: S.aud, em: Date.now() })); } catch (e) {}
+      if (!falhas.length) try { localStorage.setItem(chaveCache(), JSON.stringify({ equipe: S.equipe, fichas: S.fichas, visitas: S.visitas, diagnosticos: S.diagnosticos, aud: S.aud, em: Date.now() })); } catch (e) {}
     } catch (e) {
       if (!e.semRede) throw e;
       // Sem internet: mostra a última cópia guardada no aparelho
@@ -182,7 +207,7 @@
     const antes = (await MQ.fila.listar(S.eu.id)).length; if (!antes) return;
     const r = await MQ.fila.sincronizar(S.api, S.eu.id);
     try { await carregar(); } catch (e) {}
-    render();
+    renderFundo();   // nunca recria o painel aberto: a sincronização acontece com a pessoa no meio de um formulário
     if (r.enviados && avisar !== false) toast(r.enviados + (r.enviados > 1 ? ' registros enviados.' : ' registro enviado.'));
   }
   /* ---------- dados sempre em dia: o que outra pessoa fez aparece sem recarregar a página ----------
@@ -207,7 +232,7 @@
       if (S.api.reler) await S.api.reler();   // demonstração: outra aba pode ter mudado os dados guardados
       await carregar(); atualizadoEm = Date.now();
       const depois = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.solic, S.pedidos, S.pre, S.pedidosAcesso, S.entregas, S.matriculas, S.turmas, S.documentos, S.avaliacoes, S.execPlanilhas, S.encontros, S.agua, S.canaisVenda, S.orientacoesVenda]);
-      if (antes !== depois && !digitando()) { const y = window.scrollY; render(); window.scrollTo(0, y); }
+      if (antes !== depois && !digitando()) renderFundo();
     } catch (e) { /* sem internet ou servidor fora: fica com o que já está na tela */ }
     finally { atualizando = false; }
   }
@@ -220,7 +245,8 @@
   /* sem coordenação técnica ativa (vaga aberta, desligada): a coordenação geral assume a vez dela
      nos contadores e listas, para nenhum pedido ficar parado sem aviso. Só vale para quem vê a equipe toda. */
   const semTecnica = () => !!(S.eu && S.eu.papel === 'coord_geral') && !(S.equipe || []).some(m => m.papel === 'coord_tecnico' && m.status === 'ativa');
-  MQ.ui = { vagaAberta, S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: () => render(), abrirPainel: p => abrirPainel(p), fecharPainel: () => fecharPainel(),
+  MQ.ui = { vagaAberta, S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: o => render(o), renderFundo: () => renderFundo(), abrirPainel: p => abrirPainel(p), fecharPainel: o => fecharPainel(o), pedirFechar: () => pedirFechar(), painelAlterado: () => painelAlterado(),
+    irParaAba: x => irParaAba(x), avisarVersaoNova: () => avisarVersaoNova(), declarados: (f, r) => declarados(f, r),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), sincronizar: a => sincronizar(a),
     porId: id => porId(id), avatar: (m, t) => avatar(m, t), passos: m => passos(m), dadosDL: m => dadosDL(m), botaoFoto: m => botaoFoto(m), cartaoPessoa: m => cartaoPessoa(m),
     atualizar: f => atualizarEmSegundoPlano(f), aparelho: () => aparelho(), ipCurto: ip => ipCurto(ip), sair: a => sairDoSistema(a) };
@@ -235,18 +261,61 @@
     .sort((a, b) => String(b.data_fim).localeCompare(String(a.data_fim)))[0];
 
   /* ---------- desenho ---------- */
-  function render() {
+  /* aviso de "Sem internet": também é trocado sozinho quando o desenho da página é adiado (ver renderFundo) */
+  const avisoRede = () => (S.eu && S.api && (S.semRede || S.api.offline || (typeof navigator !== 'undefined' && navigator.onLine === false)))
+    ? `<div class="demo" role="status" data-rede><div class="demo-in"><span><b>Sem internet.</b> O que você preencher fica guardado neste aparelho e é enviado quando a conexão voltar.${S.cacheEm ? ' Dados de ' + new Date(S.cacheEm).toLocaleString('pt-BR') + '.' : ''}</span></div></div>` : '';
+  function atualizarAvisoRede() {
+    const app = $('#app'); if (!app || !app.querySelector) return;
+    const velho = app.querySelector('[data-rede]'); const h = (S.verEntrada ? '' : avisoRede());
+    if (velho && !h) velho.remove();
+    else if (!velho && h) { const ref = app.querySelector('.demo:not([data-rede])') || app.querySelector('header.barra'); if (ref) ref.insertAdjacentHTML('afterend', h); else app.insertAdjacentHTML('afterbegin', h); }
+  }
+  const selectMudou = i => { const ops = [...i.options]; const temPadrao = ops.some(o => o.defaultSelected); return ops.some((o, n) => o.selected !== (temPadrao ? o.defaultSelected : n === 0)); };
+  /* há formulário em uso? Compara cada campo com o valor que ele tinha quando foi desenhado (nada é guardado à parte). */
+  function alterado(raiz, selForm) {
+    if (!raiz || !raiz.querySelectorAll) return false;
+    for (const f of raiz.querySelectorAll(selForm || 'form[data-form]')) {
+      for (const i of f.querySelectorAll('input,select,textarea')) {
+        if (i.disabled || /^(hidden|submit|button|reset|image)$/.test(i.type) || (i.dataset && (i.dataset.procura != null || i.dataset.filtro != null))) continue;
+        if (i.type === 'file') { if (i.files && i.files.length) return true; continue; }
+        if (i.type === 'checkbox' || i.type === 'radio') { if (i.checked !== i.defaultChecked) return true; continue; }
+        if (i.tagName === 'SELECT') { if (selectMudou(i)) return true; continue; }
+        if (i.value !== i.defaultValue) return true;
+      }
+    }
+    return false;
+  }
+  const painelAlterado = () => alterado($('#painel'));
+  /* a pessoa está preenchendo algo na própria página (fora do painel)? */
+  function paginaEmUso() {
+    const app = $('#app'); if (!app) return false; const a = document.activeElement;
+    if (a && a.closest && a.closest('#app') && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && !/^(checkbox|radio|button|submit)$/.test(a.type)) return true;
+    return alterado(app);
+  }
+  /* Desenho pedido por algo que acontece SOZINHO (o sinal caiu ou voltou, a fila foi enviada, os dados foram
+     atualizados em segundo plano, um cálculo terminou). Regra: nunca recria o painel aberto, porque é nele que
+     a pessoa está digitando (ficha, diagnóstico, foto). Só o fundo e o aviso de conexão mudam. Se ela está
+     preenchendo algo na própria página, nem o fundo é refeito: só o aviso de conexão, e o resto fica para depois. */
+  function renderFundo() {
+    if (!S.api) return;
+    if (paginaEmUso()) { S.renderAdiado = true; atualizarAvisoRede(); return; }
+    const y = window.scrollY; render({ fundo: true }); if (y && !S.rolarPara) window.scrollTo(0, y);
+  }
+  document.addEventListener('focusout', () => { if (S.renderAdiado) setTimeout(() => { if (S.renderAdiado && !paginaEmUso()) renderFundo(); }, 300); }, true);
+  function render(op) {
     const app = $('#app');
     const modoDemo = S.api.modo === 'demo';
+    S.renderAdiado = false;
     const conv = /^#convite=([\w-]+)/.exec(location.hash);
-    if (conv || location.hash === '#numeros') { S.painel = null; const pf = $('#painel'); if (pf) pf.remove(); }
+    if ((conv || location.hash === '#numeros') && (S.painel || $('#painel'))) fecharPainel({ semFoco: true, semHistorico: true });
     if (conv && MQ.convitesUI) { app.innerHTML = barra(true, true) + MQ.convitesUI.pagina(conv[1]) + rodape(); document.title = 'Cadastro · Mulheres & Quintais'; return; }
     if (location.hash === '#numeros' && MQ.vitrineUI) { app.innerHTML = barra(true) + MQ.vitrineUI.pagina() + rodape(); document.title = 'O projeto em números · Mulheres & Quintais'; return; }
     document.title = 'Mulheres & Quintais';
     const telaEntrada = (modoDemo && S.verEntrada) || (!S.eu && !modoDemo && !S.api.temSessao);
     let h = (telaEntrada ? '' : barra()) + (modoDemo ? faixaDemo() : '');
-    if (S.eu && (S.semRede || S.api.offline || !navigator.onLine))
-      h += `<div class="demo" role="status"><div class="demo-in"><span><b>Sem internet.</b> O que você preencher fica guardado neste aparelho e é enviado quando a conexão voltar.${S.cacheEm ? ' Dados de ' + new Date(S.cacheEm).toLocaleString('pt-BR') + '.' : ''}</span></div></div>`;
+    h += avisoRede();
+    if (S.eu && !telaEntrada && (S.cargaParcial || []).length)
+      h += `<div class="demo" role="status" data-parcial><div class="demo-in"><button type="button" class="link carga-parcial" data-acao="carga-tentar"><b>Parte dos dados não carregou.</b> Toque para tentar de novo.</button></div></div>`;
     if (modoDemo && S.verEntrada) h += login();
     else if (!S.eu) h += modoDemo ? '<main class="wrap"><p class="carregando">' + MQ.ampulheta(true) + '</p></main>' : (S.api.temSessao ? semCadastro() : login());
     else {
@@ -261,7 +330,14 @@
     app.innerHTML = h + rodape() + (S.eu && MQ.roteiroUI ? MQ.roteiroUI.barra() : '');
     app.querySelectorAll('.atalhos [data-alvo]').forEach(b => { b.hidden = !document.querySelector(b.dataset.alvo); });
     if (S.eu && MQ.roteiroUI) MQ.roteiroUI.verificarLink();
-    if (S.painel) desenharPainel();
+    // desenho em segundo plano: o painel aberto fica como está (o que a pessoa digitou, a foto e o cursor continuam lá)
+    if (S.painel) {
+      const aberto = !!$('#painel');
+      if (op && op.fundo && aberto) { /* nada: o painel não é recriado */ }
+      else if (aberto && !S.acaoNoPainel && painelAlterado()) redesenharPreservando();   // um dado chegou depois (ex.: dados pessoais, APL) com a pessoa já digitando
+      else desenharPainel();
+    }
+    refocar();
     if (S.rolarPara && S.eu && !S.verEntrada) { const y = S.rolarPara; S.rolarPara = 0; requestAnimationFrame(() => window.scrollTo(0, y)); }
     else if (S.eu && !S.verEntrada && MQ.pendUI) MQ.pendUI.cobrar();
   }
@@ -748,7 +824,7 @@
           <div><span class="eyebrow">Sistema do projeto</span><h2 class="serif">${primeiro ? 'Primeiro acesso' : 'Que bom ver você'}</h2>
             <p class="muted">${primeiro ? 'Crie a sua senha com o e-mail que a coordenação cadastrou.' : 'Entre com o e-mail cadastrado pela coordenação.'}</p></div>
           <span class="seg ent-seg" role="group" aria-label="Tipo de acesso">${aba('entrar', 'Já tenho senha')}${aba('primeiro', 'Primeiro acesso')}</span>
-          <div class="campo"><label for="l-email">E-mail</label><input id="l-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="seu@email.com" required></div>
+          <div class="campo"><label for="l-email">E-mail</label><input id="l-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="seu@email.com" value="${esc(S.emailDigitado || '')}" maxlength="254" required></div>
           ${primeiro ? '<div class="campo"><label for="l-cod">Código de acesso</label><input id="l-cod" name="codigo" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="ABCD-2345" required><span class="dica">Vem na mensagem que a coordenação mandou. Vale 7 dias.</span></div>' : ''}
           <div class="campo"><label for="l-senha">${primeiro ? 'Crie uma senha' : 'Senha'}</label><input id="l-senha" name="senha" type="password" autocomplete="${primeiro ? 'new-password' : 'current-password'}" minlength="8" required>
             ${primeiro ? '<span class="dica">Pelo menos 8 caracteres, com letras e números.</span>' : ''}</div>
@@ -773,7 +849,7 @@
     return `<form class="login ent-card" data-form="esqueci" novalidate>
         <div><span class="eyebrow">Esqueci a senha</span><h2 class="serif">Pedir um novo acesso</h2>
           <p class="muted">Digite o e-mail do seu cadastro. A coordenação geral recebe o pedido e manda um código novo para o seu WhatsApp.</p></div>
-        <div class="campo"><label for="e-email">E-mail</label><input id="e-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="seu@email.com" value="${esc(S.emailDigitado || '')}" required></div>
+        <div class="campo"><label for="e-email">E-mail</label><input id="e-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="seu@email.com" value="${esc(S.emailDigitado || '')}" maxlength="254" required></div>
         <div class="aviso erro" data-erro hidden></div>
         <button class="btn pri ent-btn" type="submit">Pedir novo acesso <span aria-hidden="true">→</span></button>
         <button type="button" class="link ent-ajuda" data-acao="modo-login" data-m="entrar">Voltar para entrar</button>
@@ -795,11 +871,119 @@
   }
 
   /* ---------- painel lateral ---------- */
-  function abrirPainel(p) { S.painel = p; desenharPainel(); }
-  function fecharPainel() {
-    S.painel = null; const f = $('#painel'); if (f) f.remove();
-    if (S.voltarFoco && document.body.contains(S.voltarFoco)) S.voltarFoco.focus();
+  /* Quem abriu o painel: guarda o botão e também um "endereço" dele (data-acao + data-id…), porque a página
+     costuma ser redesenhada enquanto o painel está aberto e o botão antigo deixa de existir. */
+  const aspas = v => String(v).replace(/["\\]/g, '\\$&');
+  function descreverAbridor(el) {
+    if (!el || !el.closest || el.closest('#painel')) return null;
+    const alvo = el.closest('[data-acao]') || el; let sel = '';
+    if (alvo.dataset && alvo.dataset.acao && alvo.attributes) {
+      sel = [...alvo.attributes].filter(a => /^data-/.test(a.name) && a.value.length < 80 && a.name !== 'data-ok').map(a => `[${a.name}="${aspas(a.value)}"]`).join('');
+    } else if (alvo.id) sel = '[id="' + aspas(alvo.id) + '"]';
+    let n = 0; if (sel) { try { n = Math.max(0, [...document.querySelectorAll(sel)].indexOf(alvo)); } catch (e) { sel = ''; } }
+    return { el: alvo, sel, n };
   }
+  const acharAbridor = d => { if (!d) return null;
+    if (d.el && document.body.contains(d.el)) return d.el;
+    if (d.sel) { try { const l = document.querySelectorAll(d.sel); return l[d.n] || l[0] || null; } catch (e) {} }
+    return null; };
+  function focar(el) {
+    if (!el || !el.focus) return false;
+    try { el.focus({ preventScroll: true }); } catch (e) { try { el.focus(); } catch (x) {} }
+    return document.activeElement === el;
+  }
+  function devolverFoco() {
+    const d = S.focoVolta; S.focoVolta = null; if (!d) return;
+    const el = acharAbridor(d);
+    if (!el || !focar(el)) { const t = $('#principal'); if (t && t.setAttribute) { t.setAttribute('tabindex', '-1'); focar(t); } }
+    S.focoDepois = { d, ate: Date.now() + 2500 };   // se a página for redesenhada logo depois (salvou e atualizou a lista), o foco volta de novo
+  }
+  /* chamado no fim de cada desenho da página: devolve o foco ao botão que abriu o painel recém-fechado */
+  function refocar() {
+    const f = S.focoDepois; if (!f) return;
+    if (S.painel || Date.now() > f.ate) { S.focoDepois = null; return; }
+    const a = document.activeElement; if (a && a !== document.body && document.body.contains(a) && a.tagName !== 'BODY') return;
+    const el = acharAbridor({ sel: f.d.sel, n: f.d.n }); if (el) focar(el);
+  }
+  /* a página de trás não recebe toque, Tab nem leitor de tela enquanto o painel está aberto */
+  const prenderFundo = sim => { const app = $('#app'); if (!app || !app.setAttribute) return; if (sim) app.setAttribute('inert', ''); else app.removeAttribute('inert'); };
+  /* Histórico do painel. Abrir o painel cria uma entrada no histórico; fechar tira essa entrada (history.back()).
+     A volta do navegador é assíncrona, então: (1) as nossas próprias voltas são contadas, para não serem tomadas por
+     "a pessoa apertou Voltar"; (2) nada é empurrado no histórico enquanto uma volta nossa está a caminho (fica na fila);
+     (3) fechar um painel e abrir outro em seguida reaproveita a mesma entrada, sem ir e voltar. */
+  const voltasNossas = [], depoisDaVolta = [];
+  const noHistorico = fn => { if (!H) return; if (voltasNossas.length) depoisDaVolta.push(fn); else { try { fn(); } catch (e) {} } };
+  const soltarFila = () => { if (!voltasNossas.length) depoisDaVolta.splice(0).forEach(fn => { try { fn(); } catch (e) {} }); };
+  function voltarNoHistorico() {
+    if (!H) return; const id = {}; voltasNossas.push(id);
+    try { H.back(); } catch (e) { voltasNossas.pop(); soltarFila(); return; }
+    const t = setTimeout(() => { const i = voltasNossas.indexOf(id); if (i >= 0) { voltasNossas.splice(i, 1); soltarFila(); } }, 2000); if (t && t.unref) t.unref();
+  }
+  /* a entrada do painel que acabou de fechar "sobra" até o fim desta tarefa: se outro painel abrir já, é reaproveitada */
+  function sobraDoPainel() {
+    if (!H) return; S.histSobra = true;
+    Promise.resolve().then(() => { if (S.histSobra) { S.histSobra = false; voltarNoHistorico(); } });
+  }
+  /* a entrada atual do histórico sabe em que aba a pessoa está (para o Voltar chegar na aba certa) */
+  function marcarAbaNoHistorico() {
+    if (!H || !S.eu || S.verEntrada || !/^coord/.test(S.eu.papel)) return;
+    try { if (!H.state || H.state.mq !== 'aba') H.replaceState({ mq: 'aba', aba: abaAtual() }, ''); } catch (e) {}
+  }
+  function abrirPainel(p) {
+    const novo = !S.painel || !$('#painel');
+    if (novo) { S.focoVolta = descreverAbridor(S.acionador || document.activeElement); S.focoDepois = null; }
+    S.painel = p; desenharPainel();
+    if (!novo || !H || S.painelHist) return;
+    if (S.histSobra) { S.histSobra = false; S.painelHist = true; return; }   // fechou um e abriu outro: a mesma entrada
+    noHistorico(() => { if (!S.painel || S.painelHist) return; marcarAbaNoHistorico(); H.pushState({ mq: 'painel' }, ''); S.painelHist = true; });
+  }
+  /* Fecha de verdade, sem perguntar: depois de salvar, ao sair do sistema e quando a pessoa confirma "Sair sem salvar".
+     Quem fecha por vontade própria (×, Cancelar, clique fora, Esc, Voltar) passa por pedirFechar(). */
+  function fecharPainel(op) {
+    op = op || {};
+    const havia = !!(S.painel || $('#painel'));
+    S.painel = null; const f = $('#painel'); if (f) f.remove();
+    prenderFundo(false);
+    if (S.painelHist) { S.painelHist = false; if (!op.semHistorico) sobraDoPainel(); }
+    if (havia && !op.semFoco) devolverFoco(); else if (op.semFoco) S.focoVolta = null;
+  }
+  /* o formulário do painel foi mexido desde que abriu? Então pergunta antes de fechar (no padrão dos avisos do sistema) */
+  function pedirFechar() {
+    if (!S.painel && !$('#painel')) return;
+    if ($('#painel .confirma-sair')) return;   // já está perguntando
+    if (!painelAlterado()) return fecharPainel();
+    confirmarSaida();
+  }
+  function confirmarSaida() {
+    const el = $('#painel'); if (!el || el.querySelector('.confirma-sair')) return;
+    const quem = document.activeElement; const lado = el.querySelector('aside');
+    const c = document.createElement('div'); c.className = 'confirma-sair'; c.setAttribute('role', 'alertdialog'); c.setAttribute('aria-modal', 'true');
+    c.setAttribute('aria-labelledby', 'cs-t'); c.setAttribute('aria-describedby', 'cs-d');
+    c.innerHTML = `<div class="sessao-in confirma-in"><b id="cs-t">Sair sem salvar?</b><span id="cs-d">O que você digitou será perdido.</span>
+      <div class="acoes"><button type="button" class="btn pri" data-acao="painel-ficar">Continuar preenchendo</button><button type="button" class="btn perigo" data-acao="painel-sair">Sair sem salvar</button></div></div>`;
+    c._volta = quem; el.appendChild(c);
+    if (lado) lado.setAttribute('inert', '');
+    focar(c.querySelector('[data-acao="painel-ficar"]'));
+  }
+  function desistirDeSair() {
+    const c = $('#painel .confirma-sair'); if (!c) return false;
+    const volta = c._volta; c.remove(); const lado = $('#painel aside'); if (lado) lado.removeAttribute('inert');
+    if (!(volta && document.body.contains(volta) && focar(volta))) focar($('#painel .fechar'));
+    return true;
+  }
+  /* Tab e Shift+Tab ficam dentro do painel (ou da pergunta "Sair sem salvar?") */
+  const visivel = e => !!(e.offsetWidth || e.offsetHeight || (e.getClientRects && e.getClientRects().length));
+  const focaveis = raiz => [...raiz.querySelectorAll('a[href],button,input,select,textarea,summary,[tabindex]')].filter(e => !e.disabled && e.tabIndex >= 0 && e.type !== 'hidden' && visivel(e) && !e.closest('[inert]'));
+  document.addEventListener('keydown', ev => {
+    if (ev.key !== 'Tab' || !S.painel) return;
+    const p = $('#painel'); if (!p || !p.querySelector) return;
+    const raiz = p.querySelector('.confirma-sair') || p.querySelector('aside') || p;
+    const l = focaveis(raiz); if (!l.length) { ev.preventDefault(); return; }
+    const a = document.activeElement, i = l.indexOf(a);
+    if (!raiz.contains(a)) { ev.preventDefault(); focar(l[ev.shiftKey ? l.length - 1 : 0]); }
+    else if (ev.shiftKey && i <= 0 && (i === 0 || a === raiz)) { ev.preventDefault(); focar(l[l.length - 1]); }
+    else if (!ev.shiftKey && i === l.length - 1) { ev.preventDefault(); focar(l[0]); }
+  });
   /* rascunho do formulário aberto: se o sistema sair sozinho (15 minutos sem uso) com um formulário
      pela metade, o que foi digitado fica guardado neste aparelho (só para a mesma pessoa, por 24 horas)
      e volta quando ela abrir o mesmo formulário. Senha e arquivo nunca são guardados. */
@@ -837,6 +1021,77 @@
     f.prepend(nota);
     try { localStorage.removeItem(chaveRasc()); } catch (e) {}
   }
+  /* O painel precisa ser redesenhado (chegou um dado que ele esperava) e a pessoa já digitou algo nele.
+     Formulário grande, com linhas que a pessoa acrescenta ou com foto escolhida: não redesenha (nada se perde).
+     Formulário pequeno: redesenha e devolve o que ela tinha mudado, o foco, o cursor e a rolagem. */
+  function redesenharPreservando() {
+    const el = $('#painel'); if (!el || !el.querySelectorAll) return desenharPainel();
+    const forms = todosDe(el, 'form[data-form]');
+    if (forms.some(f => f.querySelector('[data-linha]') || todosDe(f, 'input[type=file]').some(i => i.files && i.files.length))) return;
+    const guardados = [];
+    forms.forEach(f => { const vez = {};
+      todosDe(f, 'input,select,textarea').forEach(i => {
+        if (/^(hidden|submit|button|reset|image|file)$/.test(i.type)) return;
+        const marca = i.type === 'checkbox' || i.type === 'radio'; const k = (i.name || i.id || '') + (marca ? '=' + i.value : ''); const n = vez[k] = (vez[k] || 0) + 1;
+        const mudou = marca ? i.checked !== i.defaultChecked : i.tagName === 'SELECT' ? selectMudou(i) : i.value !== i.defaultValue;
+        // opção de escolha única marcada entra sempre: há módulos que refazem o grupo já com a escolha (ex.: resultado da ficha)
+        if (mudou || (i.type === 'radio' && i.checked)) guardados.push({ form: f.dataset.form, k, n, marca, valor: i.value, marcado: i.checked });
+      }); });
+    const a = document.activeElement; const corpo = el.querySelector('.painel-corpo'); const rolagem = corpo ? corpo.scrollTop : 0;
+    const foco = a && el.contains(a) ? { id: a.id, nome: a.name, form: a.form && a.form.dataset.form, ini: (() => { try { return a.selectionStart; } catch (e) { return null; } })(), fim: (() => { try { return a.selectionEnd; } catch (e) { return null; } })() } : null;
+    const dobras = todosDe(el, 'details').map(d => d.open);   // blocos recolhíveis abertos continuam abertos
+    const classes = todosDe(el, 'details').map(d => d.className);
+    desenharPainel();
+    const novo = $('#painel'); if (!novo) return;
+    const dobras2 = todosDe(novo, 'details'); if (dobras2.length === dobras.length) dobras2.forEach((d, n) => { d.open = dobras[n]; });
+    else { const aberta = dobras.map((ab, n) => ab ? classes[n] : null).filter(Boolean); dobras2.forEach(d => { if (aberta.includes(d.className)) d.open = true; }); }
+    // devolve tudo e só depois avisa os módulos (eles recalculam o formulário com o estado completo). Repete até assentar:
+    // há opções que só ficam liberadas depois que as outras respostas voltam (ex.: o resultado da ficha depende dos critérios).
+    for (let volta = 0; volta < 4; volta++) {
+      const mexidos = [];
+      todosDe(novo, 'form[data-form]').forEach(f => { const vez = {};
+        todosDe(f, 'input,select,textarea').forEach(i => {
+          if (/^(hidden|submit|button|reset|image|file)$/.test(i.type)) return;
+          const marca = i.type === 'checkbox' || i.type === 'radio'; const k = (i.name || i.id || '') + (marca ? '=' + i.value : ''); const n = vez[k] = (vez[k] || 0) + 1;
+          const g = guardados.find(x => x.form === f.dataset.form && x.k === k && x.n === n); if (!g) return;
+          if (marca ? i.checked === g.marcado : i.value === g.valor) return;
+          if (marca) i.checked = g.marcado; else i.value = g.valor;
+          if ((i.tagName === 'SELECT' || marca) && !i.disabled) mexidos.push(i);
+        }); });
+      if (!mexidos.length) break;
+      mexidos.forEach(i => { if (i.isConnected) i.dispatchEvent(new Event('change', { bubbles: true })); });
+    }
+    const c2 = novo.querySelector('.painel-corpo'); if (c2) c2.scrollTop = rolagem;
+    if (foco) { const alvo = (foco.id && novo.querySelector('[id="' + aspas(foco.id) + '"]')) || (foco.nome && novo.querySelector((foco.form ? 'form[data-form="' + aspas(foco.form) + '"] ' : '') + '[name="' + aspas(foco.nome) + '"]'));
+      const por = () => { if (!alvo || !alvo.isConnected || document.activeElement === alvo) return; focar(alvo); try { if (foco.ini != null && alvo.setSelectionRange) alvo.setSelectionRange(foco.ini, foco.fim); } catch (e) {} };
+      por(); setTimeout(por, 0);   // de novo depois que os outros módulos mexem no campo (ex.: a caixa do "Falar" embrulha a área de texto)
+    }
+  }
+  /* Celular: lista de escolha cujo nome é mais largo que o campo (ex.: a turma do FIC "FIC Agroecologia e Quintais
+     Produtivos – Piauí": o estado, que é o que distingue uma turma da outra, ficava cortado). O nome é abreviado pelo
+     meio, guardando o começo e o fim; o nome inteiro continua no "title" da opção. Nada muda no valor escolhido. */
+  function encurtarEscolhas(raiz) {
+    if (!raiz || !raiz.querySelectorAll || typeof getComputedStyle !== 'function' || !(window.innerWidth <= 640)) return;
+    let cv = null;
+    todosDe(raiz, 'select#en-turma').forEach(s => {   // só a turma do FIC: em lista de pessoas o nome inteiro é o que distingue uma da outra
+      if (!s.clientWidth || !s.options) return;
+      if (!cv) { try { cv = document.createElement('canvas').getContext('2d'); } catch (e) { cv = null; } if (!cv) return; }
+      const cs = getComputedStyle(s); cv.font = cs.font;
+      const util = s.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0) - 28;   // 28 px: a seta da lista
+      const larg = t => cv.measureText(t).width;
+      [...s.options].forEach(o => {
+        const inteiro = (o.dataset && o.dataset.inteiro) || o.text;
+        if (util < 60 || larg(inteiro) <= util) { if (o.dataset.inteiro) { o.text = inteiro; delete o.dataset.inteiro; } return; }
+        let ini = inteiro.slice(0, Math.ceil(inteiro.length * 0.4)), fim = inteiro.slice(Math.ceil(inteiro.length * 0.4));
+        const junta = () => ini.trimEnd() + '… ' + fim.trimStart();
+        while (larg(junta()) > util && (ini.length > 6 || fim.length > 6)) { if (ini.length > 6) ini = ini.slice(0, -1); else fim = fim.slice(1); }
+        // sem palavra cortada pela metade: "FIC Agroecologia… – Piauí", não "FIC Agroeco… os – Piauí"
+        if (/\S/.test(inteiro[inteiro.length - fim.length - 1] || ' ') && /\s/.test(fim)) fim = fim.replace(/^\S*\s+/, '');
+        if (/\S/.test(inteiro[ini.length] || ' ') && /\S\s+\S*$/.test(ini.trimEnd())) ini = ini.trimEnd().replace(/\s+\S*$/, '');
+        o.dataset.inteiro = inteiro; o.title = inteiro; o.text = junta();
+      });
+    });
+  }
   function desenharPainel() {
     let el = $('#painel');
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
@@ -846,6 +1101,8 @@
     restaurarRascunhoPainel(el);
     // questionário de campo: opção de imprimir em branco para aplicar no papel (só para quem preenche)
     if (MQ.imprimirUI) { const fm = el.querySelector('.painel-corpo > form[data-form]'); const b = fm && MQ.imprimirUI.barra(fm); if (b) fm.insertAdjacentHTML('beforebegin', b); }
+    prenderFundo(true);
+    encurtarEscolhas(el);
     const foco = el.querySelector('[autofocus]') || el.querySelector('.fechar');
     if (foco) foco.focus();
   }
@@ -908,9 +1165,9 @@
                 + (pg.length ? `<div class="aviso"><b>${pg.length} pagamento${pg.length > 1 ? 's' : ''} em aberto</b> (${pg.map(x => (x.tipo === 'bolsa' ? 'bolsa' : 'ajuda de custo') + ' de ' + String(x.mes || '').slice(5, 7) + '/' + String(x.mes || '').slice(0, 4)).join(', ')}). O desligamento não cancela: ela tem direito a receber pelo que fez. O pedido continua até o lançamento no Arlo.</div>` : '')
                 + (pd.length ? `<div class="aviso"><b>${pd.length} pedido${pd.length > 1 ? 's' : ''} de passagem ou evento ainda não autorizado${pd.length > 1 ? 's' : ''}</b> ser${pd.length > 1 ? 'ão' : 'á'} cancelado${pd.length > 1 ? 's' : ''} ao desligar, com o motivo registrado.</div>` : ''); })()}
           <p class="small muted">O cadastro não é apagado. A vaga fica livre para a substituta e o histórico guarda quem desligou, quando e por quê. Não dá para desfazer: se ela voltar, faça um novo cadastro.</p>
-          <div class="campos"><div class="campo"><label for="d-data">Último dia na bolsa</label><input id="d-data" name="data_fim" type="date" min="${esc(m.data_inicio)}" value="${hoje}" required></div>
+          <div class="campos"><div class="campo"><label for="d-data">Último dia na bolsa</label><input id="d-data" name="data_fim" type="date" min="${esc(m.data_inicio)}" max="${R.hoje() > m.data_inicio ? R.hoje() : esc(m.data_inicio)}" value="${hoje}" required></div>
             <div class="campo"><label for="d-motivo">Motivo</label><select id="d-motivo" name="motivo" required><option value="">Escolha o motivo…</option>${MQ.MOTIVOS.map(x => `<option>${esc(x)}</option>`).join('')}</select></div>
-            <div class="campo inteiro"><label for="d-det">Explique em uma frase</label><textarea id="d-det" name="detalhe" placeholder="Ex.: pediu para sair por motivo de saúde, comunicou em 20/11."></textarea></div></div>
+            <div class="campo inteiro"><label for="d-det">Explique em uma frase</label><textarea id="d-det" name="detalhe" maxlength="2000" placeholder="Ex.: pediu para sair por motivo de saúde, comunicou em 20/11."></textarea></div></div>
           <div class="aviso erro" data-erro hidden></div>
           <div class="acoes"><button class="btn perigo cheio" type="submit">Confirmar desligamento</button><button class="btn" type="button" data-acao="desligar-cancelar">Cancelar</button></div>
         </form>
@@ -986,14 +1243,14 @@
         ${!fic ? '' : `<div class="campo inteiro"><span class="dica">${turma ? `Matrícula no FIC registrada pelo professor na turma <b>${esc(turma.nome)}</b> (nº ${esc(mt.numero)}, ${R.fmtData(mt.matriculado_em)}).`
           : m.matricula_fic_em ? `Matrícula no FIC registrada em ${R.fmtData(m.matricula_fic_em)} (nº ${esc(m.matricula_fic_numero || '')}), ainda sem turma no sistema.` : '<b>Matrícula no FIC: aguardando.</b>'} A matrícula é registrada só pelos professores do curso, na aba Curso FIC.</span></div>`}
         ${[['h-fun', 'docs_funcern_em', 'Cadastrado no Arlo (FUNCERN) em'], ['h-ter', 'termo_assinado_em', 'Termo de compromisso assinado em']].map(([id, k, rot]) => {
-          // sem data registrada: já vem com hoje (o calendário muda); se ainda não aconteceu, "Limpar" deixa em branco
-          const sug = !m[k];
-          return `<div class="campo"><label for="${id}">${rot}</label><div class="data-hoje"><input id="${id}" name="${k}" type="date" max="${R.hoje()}" value="${esc(m[k] || R.hoje())}"${sug ? ' data-sugerido="1"' : ''}>
-            <button type="button" class="btn peq" data-acao="data-limpar" data-alvo="${id}">Limpar</button></div>
-            ${sug ? '<span class="dica">Sugerido: hoje. Mude no calendário se foi outro dia. Se ainda não aconteceu, toque em Limpar.</span>' : ''}</div>`; }).join('')}
+          // passo ainda não feito: a data vem EM BRANCO (nada é gravado sem a pessoa escolher o dia); "Hoje" preenche com um toque
+          return `<div class="campo"><label for="${id}">${rot}</label><div class="data-hoje"><input id="${id}" name="${k}" type="date" min="${R.LIM.equipeMin}" max="${R.hoje()}" value="${esc(m[k] || '')}">
+            <button type="button" class="btn peq" data-acao="data-hoje" data-alvo="${id}" aria-label="${rot} hoje">Hoje</button>
+            <button type="button" class="btn peq" data-acao="data-limpar" data-alvo="${id}" aria-label="Limpar: ${rot}">Limpar</button></div>
+            ${m[k] ? '' : '<span class="dica">Ainda não registrado. Se já aconteceu, escolha o dia no calendário ou toque em Hoje. Se não, deixe em branco.</span>'}</div>`; }).join('')}
         <div class="campo inteiro"><label for="h-arq">Termo assinado (PDF ou foto)</label><input id="h-arq" name="termo" type="file" accept="application/pdf,image/*">
           <span class="dica">${m.termo_path ? 'Já enviado: ' + esc(String(m.termo_path).split('/').pop()) + '. Enviar outro substitui o link.' : 'Com assinaturas da bolsista, da coordenação técnica e da coordenação geral.'}</span></div>
-        <div class="campo inteiro"><label for="h-obs">Observações</label><textarea id="h-obs" name="obs_habilitacao" placeholder="Ex.: falta comprovante de conta; Pix informado em 02/10.">${esc(m.obs_habilitacao || '')}</textarea></div>
+        <div class="campo inteiro"><label for="h-obs">Observações</label><textarea id="h-obs" name="obs_habilitacao" maxlength="2000" placeholder="Ex.: falta comprovante de conta; Pix informado em 02/10.">${esc(m.obs_habilitacao || '')}</textarea></div>
       </div>
       <div class="aviso erro" data-erro hidden></div>
       <div class="acoes"><button class="btn pri" type="submit">Salvar</button></div></form></details>`;
@@ -1043,20 +1300,20 @@
         ${pre ? `<div class="aviso">Dados enviados por ela pelo link em ${R.fmtData(pre._pre.enviado_em)}. Confira, complete o que falta e salve: ao salvar, o cadastro é aprovado.</div>` : ''}
         ${subst ? `<div class="aviso">Substitui <b>${esc(subst.nome)}</b>, desligada em ${R.fmtData(subst.data_fim)}. O histórico liga as duas.</div>` : ''}
         <fieldset><legend>Dados pessoais</legend><div class="campos">
-          <div class="campo inteiro"><label for="c-nome">Nome completo</label><input id="c-nome" name="nome" autocomplete="name" value="${v('nome')}" ${edit ? '' : 'autofocus'} required></div>
+          <div class="campo inteiro"><label for="c-nome">Nome completo</label><input id="c-nome" name="nome" autocomplete="name" value="${v('nome')}" maxlength="120" ${edit ? '' : 'autofocus'} required></div>
           <div class="campo"><label for="c-cpf">CPF</label><input id="c-cpf" name="cpf" inputmode="numeric" value="${esc(R.fmtCPF(m.cpf || ''))}" ${edit ? 'readonly' : ''} placeholder="000.000.000-00" required>
             ${edit ? '<span class="dica">CPF não muda. Se estiver errado, desligue e cadastre de novo.</span>' : ''}</div>
           <div class="campo"><label for="c-fone">Celular com WhatsApp</label><input id="c-fone" name="telefone" inputmode="tel" autocomplete="tel" value="${esc(MQ.mascaras ? MQ.mascaras.fmtTel(String(m.telefone || '').replace(/\D/g, '')) : (m.telefone || ''))}" placeholder="(89) 90000-0000" required></div>
-          <div class="campo inteiro"><label for="c-email">E-mail</label><input id="c-email" name="email" type="email" autocomplete="email" value="${v('email')}" required>
+          <div class="campo inteiro"><label for="c-email">E-mail</label><input id="c-email" name="email" type="email" autocomplete="email" value="${v('email')}" maxlength="254" required>
             <span class="dica">É o login no sistema. Nenhum e-mail é enviado: depois de salvar, mande para ela o aviso de acesso (aparece na ficha dela).</span></div>
-          ${MQ.convitesUI && priv !== undefined ? '' : `<div class="campo"><label for="c-mun">Município onde mora</label><input id="c-mun" name="municipio" value="${v('municipio')}" ${bols ? 'list="lista-mun"' : 'placeholder="Município/UF"'}>
+          ${MQ.convitesUI && priv !== undefined ? '' : `<div class="campo"><label for="c-mun">Município onde mora</label><input id="c-mun" name="municipio" value="${v('municipio')}" maxlength="120" ${bols ? 'list="lista-mun"' : 'placeholder="Município/UF"'}>
             ${bols ? `<datalist id="lista-mun">${munis.map(x => `<option value="${esc(x)}">`).join('')}</datalist><span class="dica">A lista traz os municípios do projeto técnico em ${esc(m.uf)}.</span>` : ''}</div>`}
           <div class="campo"><label for="c-siape">Matrícula SIAPE <span class="muted">(só se for servidor(a) público(a) federal)</span></label><input id="c-siape" name="siape" inputmode="numeric" value="${v('siape')}" placeholder="Deixe vazio se não for"></div>
-          <div class="campo"><label for="c-org">Organização ou movimento</label><input id="c-org" name="organizacao" value="${v('organizacao')}" placeholder="${bols ? 'Ex.: MPA, associação, sindicato' : ['professor_fic', 'auxiliar_adm'].includes(m.papel) ? 'Ex.: IFRN Campus Apodi' : 'Ex.: MPA'}"></div>
+          <div class="campo"><label for="c-org">Organização ou movimento</label><input id="c-org" name="organizacao" value="${v('organizacao')}" maxlength="120" placeholder="${bols ? 'Ex.: MPA, associação, sindicato' : ['professor_fic', 'auxiliar_adm'].includes(m.papel) ? 'Ex.: IFRN Campus Apodi' : 'Ex.: MPA'}"></div>
         </div></fieldset>
         ${MQ.convitesUI ? (priv === undefined ? '<p class="small muted">' + MQ.ampulheta() + '</p>' : MQ.convitesUI.camposPessoais(Object.assign({ nome_social: m.nome_social, municipio: m.municipio, cadastro_arlo: p.id ? !!m.cadastro_arlo : m.cadastro_arlo }, priv || {}), false, m.papel, bols ? munis : null)) : ''}
         <fieldset><legend>Bolsa</legend><div class="campos">
-          <div class="campo"><label for="c-ini">Início ${m.papel === 'agente' ? 'no projeto' : 'da bolsa'}</label><input id="c-ini" name="data_inicio" type="date" value="${v('data_inicio')}" min="${MQ.PROJETO.vigencia.inicio}" max="${MQ.PROJETO.vigencia.fim}" required>
+          <div class="campo"><label for="c-ini">Início ${m.papel === 'agente' ? 'no projeto' : 'da bolsa'}</label><input id="c-ini" name="data_inicio" type="date" value="${v('data_inicio')}" min="${R.LIM.equipeMin}" max="${R.somaDias(R.hoje(), R.LIM.inicioFuturoDias)}" required>
             ${edit ? '' : '<span class="dica">Sugerimos hoje. Mude se a pessoa começou em outro dia.</span>'}</div>
         </div></fieldset>
         ${bols ? `<fieldset><legend>Previsão de atividades (opcional)</legend>
@@ -1080,47 +1337,185 @@
   }
 
   /* ---------- ações ---------- */
+  /* aviso rápido no pé da tela. Nunca mostra "undefined", "null" nem "[object Object]": vira a mensagem simples. */
   function toast(msg) {
+    let m = msg; if (m && typeof m === 'object') m = R.mensagemParaTela(m);
+    m = String(m == null ? '' : m).trim();
+    if (!m || /^(undefined|null|NaN|\[object [^\]]*\])$/i.test(m)) m = R.MSG_GENERICA;
     let t = $('#toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
-    t.textContent = msg; t.hidden = false; clearTimeout(t._t); t._t = setTimeout(() => { t.hidden = true; }, 3600);
+    t.textContent = m; t.hidden = false; clearTimeout(t._t); t._t = setTimeout(() => { t.hidden = true; }, 3600);
   }
-  function mostrarErros(form, erros, geral) {
-    form.querySelectorAll('.tem-erro').forEach(x => x.classList.remove('tem-erro'));
-    form.querySelectorAll('.campo .erro, .criterio .erro').forEach(x => x.remove());
-    const box = form.querySelector('[data-erro]');
-    Object.entries(erros || {}).forEach(([k, msg]) => {
-      const inp = form.querySelector(`[name="${k}"]`);
-      if (!inp) return;
-      if (inp.type === 'checkbox') { inp.closest('.check').classList.add('tem-erro'); return; }
-      if (inp.type === 'radio' && inp.closest('.criterio')) { const w = inp.closest('.criterio'); w.classList.add('tem-erro'); const s = document.createElement('span'); s.className = 'erro'; s.textContent = msg; w.appendChild(s); return; }
-      const c = inp.closest('.campo'); if (!c) return; c.classList.add('tem-erro');
-      const s = document.createElement('span'); s.className = 'erro'; s.textContent = msg; c.appendChild(s);
+  /* erro apanhado numa ação: a pessoa lê a mensagem simples; o detalhe técnico vai para o console */
+  function avisarErro(e) {
+    if (!(e && typeof e === 'object' && (e.original || e.regra))) { try { console.error('Erro na ação:', e); } catch (x) {} }
+    return R.mensagemParaTela(e);
+  }
+
+  /* ---------- erros do formulário ---------- */
+  const todosDe = (raiz, sel) => (raiz && raiz.querySelectorAll ? [...raiz.querySelectorAll(sel)] : []);
+  let nErro = 0;
+  /* tira a marca de erro de um campo ou bloco (classe, mensagem e os avisos para leitor de tela) */
+  function limparErro(c) {
+    if (!c || !c.classList) return;
+    c.classList.remove('tem-erro');
+    todosDe(c, 'span.erro').forEach(x => { if ((x.dataset && x.dataset.msgErro != null) || (x.closest && x.closest('.campo, .criterio') === c)) x.remove(); });
+    todosDe(c, '[aria-invalid]').concat(c.hasAttribute && c.hasAttribute('aria-invalid') ? [c] : []).forEach(i => {
+      i.removeAttribute('aria-invalid');
+      const antes = i.getAttribute('data-desc-antes');
+      if (antes != null) { if (antes) i.setAttribute('aria-describedby', antes); else i.removeAttribute('aria-describedby'); i.removeAttribute('data-desc-antes'); }
     });
-    const lista = Object.values(erros || {});
-    const texto = geral || (lista.length ? (lista.length > 1 ? 'Corrija os ' + lista.length + ' campos marcados.' : lista[0]) : '');
-    if (box) { box.textContent = texto; box.hidden = !texto; } else if (texto) toast(texto);
+  }
+  /* marca um campo (ou um bloco inteiro: critério, autorização, grupo de perguntas) e liga a mensagem a ele */
+  function marcarErro(cx, msg, campos, mostra) {
+    if (!cx || !cx.classList) return;
+    cx.classList.add('tem-erro');
+    let id = '';
+    if (msg && document.createElement && cx.appendChild) {
+      const sp = document.createElement('span'); sp.className = 'erro' + (mostra ? '' : ' so-leitor'); sp.textContent = msg;
+      id = 'erro-' + (++nErro); sp.id = id; if (sp.setAttribute) sp.setAttribute('data-msg-erro', ''); if (sp.dataset) sp.dataset.msgErro = '';
+      cx.appendChild(sp);
+    }
+    (campos || []).forEach(i => { if (!i || !i.setAttribute) return;
+      i.setAttribute('aria-invalid', 'true');
+      if (id && i.getAttribute) { const antes = i.getAttribute('aria-describedby') || ''; if (i.getAttribute('data-desc-antes') == null) i.setAttribute('data-desc-antes', antes);
+        i.setAttribute('aria-describedby', (antes ? antes + ' ' : '') + id); } });
+  }
+  const dataBR = d => String(d || '').slice(0, 10).split('-').reverse().join('/');
+  /* O que o próprio campo declara (required, maxlength, min, max) conferido em JavaScript: os formulários são
+     "novalidate" (para a mensagem sair em português simples), então o navegador não confere sozinho.
+     Só os campos que estão na tela; min, max e tamanho valem para o que a pessoa mudou (dado antigo não trava).
+     comObrigatorios: confere também os "required" vazios (na hora de gravar). */
+  function declarados(form, comObrigatorios) {
+    const e = {};
+    todosDe(form, 'input,select,textarea').forEach(i => {
+      const k = i.name; if (!k || e[k] || i.disabled || /^(hidden|submit|button|reset|image|file)$/.test(i.type)) return;
+      if (!(i.offsetWidth || i.offsetHeight || (i.getClientRects && i.getClientRects().length))) return;   // fora da tela (bloco escondido)
+      const marca = i.type === 'checkbox' || i.type === 'radio';
+      if (comObrigatorios && i.required) {
+        if (i.type === 'checkbox' ? !i.checked : i.type === 'radio' ? !todosDe(form, 'input[type=radio]').some(r => r.name === k && r.checked) : !String(i.value || '').trim()) {
+          e[k] = marca ? 'Marque esta opção.' : i.tagName === 'SELECT' ? 'Escolha uma opção.' : (i.validity && i.validity.badInput) ? 'Digite só números.' : 'Preencha este campo.'; return; }
+      }
+      if (marca || i.tagName === 'SELECT') return;
+      if (i.validity && i.validity.badInput) { e[k] = i.type === 'date' ? 'Data inválida.' : 'Digite só números.'; return; }
+      const v = String(i.value || ''); if (!v || v === i.defaultValue) return;
+      const mx = i.getAttribute('maxlength');
+      if (mx && /^\d+$/.test(mx) && v.length > +mx) { e[k] = 'Texto muito longo (máximo ' + (+mx).toLocaleString('pt-BR') + ' caracteres).'; return; }
+      const mi = i.getAttribute('min'), ma = i.getAttribute('max');
+      if (i.type === 'number' || i.type === 'range') { const n = Number(v);
+        if (mi !== null && mi !== '' && n < +mi) e[k] = 'O menor valor aceito é ' + (+mi).toLocaleString('pt-BR') + '.';
+        else if (ma !== null && ma !== '' && n > +ma) e[k] = 'O maior valor aceito é ' + (+ma).toLocaleString('pt-BR') + '.';
+      } else if (i.type === 'date' || i.type === 'month') {
+        if (mi && v < mi) e[k] = 'A data não pode ser antes de ' + dataBR(mi) + '.';
+        else if (ma && v > ma) e[k] = 'A data não pode ser depois de ' + dataBR(ma) + '.';
+      }
+    });
+    return e;
+  }
+  /* erros: { nome do campo: mensagem }. geral: texto da caixa do formulário (quando não vem, é montado aqui).
+     Blocos com id "w-<nome>" (critérios, autorizações, grupos de perguntas, fotos) ficam marcados inteiros:
+     tanto os que vêm em "erros" quanto os que o módulo já marcou antes de chamar. */
+  function mostrarErros(form, erros, geral) {
+    erros = Object.assign({}, erros || {});
+    const jaMarcados = todosDe(form, '[id^="w-"].tem-erro').map(w => [w, (w.getAttribute && w.getAttribute('title')) || '']);
+    todosDe(form, '.tem-erro').forEach(limparErro);
+    todosDe(form, '.campo span.erro, .criterio span.erro, [data-msg-erro]').forEach(x => x.remove());
+    todosDe(form, '[aria-invalid]').forEach(i => limparErro(i.closest('[id^="w-"], .campo, .check, .criterio, .sn-par, .chips-sel') || i));
+    const box = form.querySelector('[data-erro]');
+    // o que os próprios campos declaram (tamanho do texto, mínimo e máximo): entra junto, sem tirar a mensagem do módulo
+    const dec = declarados(form, false); Object.keys(dec).forEach(k => { if (!(k in erros)) erros[k] = dec[k]; });
+    const msgs = []; const feitos = new Set();
+    const bloco = (w, msg) => { if (feitos.has(w)) return; feitos.add(w); if (msg) msgs.push([w, msg]);
+      marcarErro(w, msg, todosDe(w, 'input,select,textarea').filter(i => i.type !== 'hidden'), !(w.matches && w.matches('label, .check'))); };
+    Object.entries(erros).forEach(([k, msg]) => {
+      const w = /^[\w-]+$/.test(k) ? form.querySelector('#w-' + k) : null;
+      if (w) { bloco(w, msg); return; }
+      const inp = form.querySelector(`[name="${k}"]`);
+      if (!inp) { msgs.push([null, msg]); return; }
+      const c = inp.type === 'checkbox' ? inp.closest('.check') : (inp.type === 'radio' && inp.closest('.criterio')) || inp.closest('.campo');
+      if (!c) {   // opções soltas (sem .campo): marca o grupo de opções; a mensagem vai para o leitor de tela e para a caixa
+        const g = inp.closest('.sn-par, .chips-sel'); msgs.push([g || inp, msg]);
+        if (g && !feitos.has(g)) { feitos.add(g); marcarErro(g, msg, todosDe(g, 'input'), false); } else if (!g && inp.setAttribute) inp.setAttribute('aria-invalid', 'true');
+        return; }
+      if (feitos.has(c)) return; feitos.add(c); msgs.push([c, msg]);
+      marcarErro(c, msg, inp.type === 'radio' ? todosDe(c, 'input[type=radio]') : [inp], inp.type !== 'checkbox');
+    });
+    jaMarcados.forEach(([w, msg]) => bloco(w, msg));
+    // na ordem em que aparecem na tela
+    const ordem = msgs.filter(([el]) => el && el.compareDocumentPosition);
+    if (ordem.length === msgs.length) msgs.sort((a, b) => (a[0].compareDocumentPosition(b[0]) & 4) ? -1 : 1);
+    const lista = msgs.map(x => x[1]).filter(Boolean);
+    let texto = geral || (lista.length ? (lista.length > 1 ? 'Corrija os ' + lista.length + ' campos marcados.' : lista[0]) : '');
+    // "Faltam N itens": a caixa lista todos (até 10; depois, "e mais N"), não só os 3 primeiros
+    const falta = /^Faltam (\d+) itens:/.exec(String(geral || ''));
+    if (falta && lista.length) {
+      const n = Math.max(+falta[1], lista.length);
+      // mensagens iguais (ex.: "Marque sim ou não." em 9 critérios) aparecem uma vez, com a quantidade
+      const conta = new Map(); lista.forEach(m => conta.set(m, (conta.get(m) || 0) + 1));
+      const unicas = [...conta.entries()], mostra = unicas.slice(0, 10), cobertos = mostra.reduce((t, x) => t + x[1], 0);
+      texto = 'Faltam ' + n + ' itens: ' + mostra.map(([m, q]) => q > 1 ? m.replace(/\.$/, '') + ' (' + q + ' itens).' : m).join(' · ') + (n > cobertos ? ' · e mais ' + (n - cobertos) + '.' : '');
+    }
+    if (box) { box.textContent = texto; box.hidden = !texto; if (box.setAttribute) { if (texto) box.setAttribute('role', 'alert'); else box.removeAttribute('role'); } } else if (texto) toast(texto);
     const primeiro = form.querySelector('.tem-erro input, .tem-erro select, .tem-erro textarea, .check.tem-erro input');
     if (primeiro) primeiro.focus();
   }
-  async function ocupado(form, fn) {
-    const b = form.querySelector('[type=submit]'); const txt = b.textContent;
-    b.disabled = true; b.textContent = 'Salvando…';
-    try { await fn(); } finally { if (document.body.contains(b)) { b.disabled = false; b.textContent = txt; } }
+  /* Enquanto a gravação está em andamento, TODOS os botões de enviar do formulário (e as outras ações que gravam,
+     como "Cancelar esta visita") ficam travados: toque duplo ou Enter repetido não grava duas vezes.
+     Antes de gravar, confere o que os campos declaram (required, maxlength, min, max). */
+  async function ocupado(form, fn, op) {
+    if (form._ocupado) return;
+    if (!(op && op.semConferir)) { const dec = declarados(form, true); if (Object.keys(dec).length) { mostrarErros(form, dec); return; } }
+    let bs = todosDe(form, '[type=submit]'); const b = bs[0] || form.querySelector('[type=submit]') || null;
+    if (b && !bs.length) bs = [b];
+    const outros = todosDe(form, 'button[data-acao]').filter(x => !/^(fechar|painel-)/.test((x.dataset && x.dataset.acao) || '') && !bs.includes(x));
+    const travados = bs.concat(outros).map(x => [x, x.disabled]);
+    const txt = b ? b.textContent : '';
+    form._ocupado = true; if (form.setAttribute) form.setAttribute('aria-busy', 'true');
+    travados.forEach(([x]) => { x.disabled = true; }); if (b) b.textContent = 'Salvando…';
+    try { await fn(); } finally {
+      form._ocupado = false; if (form.removeAttribute) form.removeAttribute('aria-busy');
+      travados.forEach(([x, antes]) => { if (document.body.contains(x)) x.disabled = !!antes; });
+      if (b && document.body.contains(b)) b.textContent = txt;
+    }
   }
   async function recarregar() { S.eu = await S.api.eu(true); await carregar(); render(); }
 
+  /* Uma ação que ainda está gravando não começa de novo: o segundo toque no mesmo botão (toque duplo, pressa)
+     é ignorado até a primeira chamada terminar. Vale para todos os botões [data-acao]. */
+  const emAndamento = new Set();
+  const chaveAcao = el => { try { return el.dataset.acao + '|' + JSON.stringify(Object.assign({}, el.dataset, { ok: undefined, okEm: undefined })); } catch (e) { return String(el.dataset.acao); } };
   document.addEventListener('click', async ev => {
     const el = ev.target.closest('[data-acao]'); if (!el) return;
     const a = el.dataset.acao;
+    const chave = chaveAcao(el); if (emAndamento.has(chave)) return;
+    emAndamento.add(chave);
+    const noPainel = !!(el.closest && el.closest('#painel'));
+    if (!noPainel) S.acionador = el;   // quem abriu o painel: o foco volta para cá ao fechar
+    S.focoDepois = null;
+    if (noPainel) S.acaoNoPainel = (S.acaoNoPainel || 0) + 1;   // desenho pedido por uma ação da pessoa no painel: é o desenho normal
     try {
       if (a === 'perfil' && MQ.bancoUI) MQ.bancoUI.limpar();
       if (a === 'lembrete-ok') { MQ.lembreteUI.dispensar(el.dataset.id); render(); return; }
-      if (a === 'perfil' && el.dataset.p === 'entrada') { S.verEntrada = true; S.painel = null; render(); window.scrollTo(0, 0); }
-      else if (a === 'perfil') { S.verEntrada = false; S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); S.aba = null; lembrarAba(); S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.trocarPerfil(el.dataset.p); marcarAbriu(); registrarAcesso('entrada'); await carregar(); render(); }
-      else if (a === 'recomecar') { S.painel = null; const f = $('#painel'); if (f) f.remove(); S.eu = await S.api.recomecar(); await carregar(); render(); toast('Demonstração recomeçada com os dados de exemplo.'); }
+      if (a === 'painel-ficar') { desistirDeSair(); return; }
+      if (a === 'painel-sair') { fecharPainel(); return; }
+      if (a === 'versao-nova') { if (painelAlterado() || paginaEmUso()) { toast('Salve ou feche o que você está preenchendo antes de atualizar.'); return; } location.reload(); return; }
+      if (a === 'carga-tentar') { el.disabled = true; try { await carregar(); } finally { el.disabled = false; } render(); toast(S.cargaParcial ? 'Ainda não deu para carregar tudo. Tente de novo daqui a pouco.' : 'Dados carregados.'); return; }
+      if (a === 'data-hoje') { const i = document.getElementById(el.dataset.alvo); if (i) { i.value = R.hoje(); i.dispatchEvent(new Event('input', { bubbles: true })); i.focus(); } return; }
+      if (a === 'perfil' && el.dataset.p === 'entrada') { S.verEntrada = true; fecharPainel({ semFoco: true }); render(); window.scrollTo(0, 0); }
+      else if (a === 'perfil') { S.verEntrada = false; S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); S.aba = null; lembrarAba(); limparHashAba(); fecharPainel({ semFoco: true }); S.eu = await S.api.trocarPerfil(el.dataset.p); marcarAbriu(); registrarAcesso('entrada'); await carregar(); render(); }
+      else if (a === 'recomecar') { fecharPainel({ semFoco: true }); S.eu = await S.api.recomecar(); await carregar(); render(); toast('Demonstração recomeçada com os dados de exemplo.'); }
       else if (a === 'gerar-codigo-nao') { S.confirmaAcesso = null; abrirPainel(S.painel); }
       else if (a === 'acesso-descartar') {
-        await S.api.descartarPedidoAcesso(el.dataset.id); await carregar(); render(); toast('Pedido descartado.');
+        // descartar apaga o pedido da pessoa: pede confirmação (toque de novo), como o botão Sair
+        if (!el.dataset.ok) {
+          el.dataset.ok = '1'; el.dataset.okEm = String(Date.now()); el.textContent = 'Descartar mesmo?';
+          toast('Descartar apaga este pedido de novo acesso. Para confirmar, toque de novo em "Descartar mesmo?".');
+          const t = setTimeout(() => { if (el.isConnected) { delete el.dataset.ok; delete el.dataset.okEm; el.textContent = 'Descartar'; } }, 6000); if (t && t.unref) t.unref();
+          return;
+        }
+        if (Date.now() - (+el.dataset.okEm || 0) < 400) return;   // toque duplo não vale como confirmação
+        el.disabled = true;
+        try { await S.api.descartarPedidoAcesso(el.dataset.id); await carregar(); render(); toast('Pedido descartado.'); }
+        catch (e) { el.disabled = false; throw e; }
       }
       else if (a === 'gerar-codigo') {
         const m = porId(el.dataset.id); if (!m) return;
@@ -1131,13 +1526,13 @@
           S.codigos = Object.assign({}, S.codigos, { [m.id]: c }); S.confirmaAcesso = null;
           if (m.user_id) { m.user_id = null; toast('Senha antiga apagada. Mande o código novo para ' + nomeDe(m).split(' ')[0] + '.'); }
           abrirPainel(S.painel);
-        } catch (e) { el.disabled = false; toast(e.message || String(e)); }
+        } catch (e) { el.disabled = false; toast(avisarErro(e)); }
       }
       else if (a === 'data-limpar') { const i = document.getElementById(el.dataset.alvo); if (i) { i.value = ''; i.dispatchEvent(new Event('input', { bubbles: true })); i.focus(); } }
       else if (a === 'cad-modo') {
         const p = Object.assign({}, S.painel, { modo: el.dataset.m || undefined }); abrirPainel(p);
         if (p.modo === 'link' && MQ.convitesUI) {   // o link sai pronto, sem outro clique
-          try { await MQ.convitesUI.gerarLink(p); } catch (e) { toast(e.message); abrirPainel(Object.assign({}, p, { modo: undefined })); return; }
+          try { await MQ.convitesUI.gerarLink(p); } catch (e) { toast(avisarErro(e)); abrirPainel(Object.assign({}, p, { modo: undefined })); return; }
           if (S.painel && S.painel.tipo === 'cadastro' && S.painel.modo === 'link') abrirPainel(S.painel);
         }
       }
@@ -1145,7 +1540,7 @@
       else if (a === 'meus-dados') { if (S.menuAberto) { S.menuAberto = false; render(); } S.voltarFoco = el; abrirPainel({ tipo: 'meus-dados' }); }
       else if (a === 'copiar-texto') { const t = el.closest('.bloco').querySelector('textarea'); try { await navigator.clipboard.writeText(t.value); toast('Mensagem copiada.'); } catch (e) { t.select(); toast('Selecione e copie a mensagem.'); } }
       else if (a === 'modo-login') {
-        const em = $('#l-email'); if (em && em.value) S.emailDigitado = em.value.trim();   // leva o e-mail já digitado
+        const em = $('#l-email') || $('#e-email'); if (em) S.emailDigitado = String(em.value || '').trim();   // leva o e-mail já digitado (para Primeiro acesso, Esqueci a senha e de volta)
         S.modoLogin = el.dataset.m; S.esqueciEnviado = false; render(); const f = $('#l-email') || $('#e-email'); if (f) f.focus(); }
       else if (a === 'sair' && !el.dataset.ok && (!navigator.onLine || (S.fila || []).length)) {
         // sem internet, não dá para entrar de novo; e o que está guardado no aparelho só sobe depois de entrar
@@ -1154,8 +1549,8 @@
         setTimeout(() => { if (el.isConnected) { delete el.dataset.ok; el.textContent = 'Sair'; } }, 6000);
       }
       else if (a === 'sair') await sairDoSistema();
-      else if (a === 'fechar') fecharPainel();
-      else if (a === 'aba') { S.aba = el.dataset.aba; lembrarAba(); S.menuAberto = false; render(); window.scrollTo(0, 0); digitouEm = 0; atualizarEmSegundoPlano(); }
+      else if (a === 'fechar') pedirFechar();
+      else if (a === 'aba') { irParaAba(el.dataset.aba); S.menuAberto = false; render(); window.scrollTo(0, 0); digitouEm = 0; atualizarEmSegundoPlano(); }
       else if (/^ficha/.test(a) && MQ.fichasUI) { S.voltarFoco = el; await MQ.fichasUI.clique(a, el); }
       else if (/^apl-/.test(a) && MQ.sugestaoUI) await MQ.sugestaoUI.clique(a, el);
       else if (/^banco-/.test(a) && MQ.bancoUI) await MQ.bancoUI.clique(a, el);
@@ -1181,10 +1576,13 @@
       else if (a === 'editar') abrirPainel({ tipo: 'cadastro', id: el.dataset.id });
       else if (a === 'desligar-abrir') { const f = $('form[data-form=desligar]'); f.hidden = false; f.scrollIntoView({ block: 'nearest' }); f.querySelector('select').focus(); }
       else if (a === 'desligar-cancelar') { $('form[data-form=desligar]').hidden = true; }
-    } catch (e) { toast(e.message); }
+    } catch (e) { toast(avisarErro(e)); }
+    finally { emAndamento.delete(chave); if (S.acionador === el) S.acionador = null; if (noPainel) S.acaoNoPainel = Math.max(0, (S.acaoNoPainel || 1) - 1); }
   });
 
-  document.addEventListener('keydown', ev => { if (ev.key !== 'Escape') return; if (S.painel) fecharPainel(); else if (S.menuAberto) { S.menuAberto = false; render(); } });
+  document.addEventListener('keydown', ev => { if (ev.key !== 'Escape') return;
+    if (desistirDeSair()) return;   // Esc na pergunta "Sair sem salvar?": continua preenchendo
+    if (S.painel) pedirFechar(); else if (S.menuAberto) { S.menuAberto = false; render(); } });
   // foto da equipe: recorta quadrada, 320 px, JPEG (tira dados do celular, como a localização)
   function fotoQuadrada(arq, lado = 320) {
     return new Promise((res, rej) => {
@@ -1205,26 +1603,103 @@
       if (lab) lab.firstChild.textContent = 'Enviando…';
       await S.api.enviarFotoEquipe(inp.dataset.fotoEquipe, await fotoQuadrada(inp.files[0]));
       S.equipe = await S.api.listarEquipe(); if (S.eu.id === inp.dataset.fotoEquipe) S.eu = Object.assign({}, S.eu, porId(S.eu.id));
-      render(); toast('Foto salva.');
-    } catch (e) { if (lab) lab.firstChild.textContent = txt; toast(e.message); }
+      render();   // se há algo digitado no painel, o desenho devolve o que foi digitado (ver redesenharPreservando) if (lab && lab.isConnected) lab.firstChild.textContent = txt; toast('Foto salva.');
+    } catch (e) { if (lab) lab.firstChild.textContent = txt; toast(avisarErro(e)); }
   });
 
-  window.addEventListener('hashchange', () => { if (/^#(numeros|convite=|)$|^#convite=/.test(location.hash) || location.hash === '') { render(); window.scrollTo(0, 0); } });
-  window.addEventListener('online', () => { if (S.eu) sincronizar(); });
-  window.addEventListener('offline', () => { if (S.eu) render(); });
+  /* ---------- histórico: abas no endereço e Voltar fechando o painel ---------- */
+  /* saiu do sistema ou trocou de perfil: o endereço não fica apontando para a aba de quem saiu */
+  function limparHashAba() {
+    if (!H) return;
+    if (S.histSobra) { S.histSobra = false; voltarNoHistorico(); }   // primeiro sai da entrada do painel que acabou de fechar
+    noHistorico(() => { if (abaDoHash()) H.replaceState(null, '', location.pathname + location.search); });
+  }
+  /* trocar de aba: grava a aba no endereço (#aba=custos) com uma entrada nova no histórico */
+  function irParaAba(x) {
+    const naEntradaDoPainel = !!S.painelHist;
+    if (S.painel || $('#painel')) fecharPainel({ semFoco: true, semHistorico: true });
+    const antes = S.eu && /^coord/.test(S.eu.papel) ? abaAtual() : S.aba;
+    if (naEntradaDoPainel || S.histSobra) {   // estava (ou acabou de estar) na entrada de um painel: ela vira a entrada da aba
+      S.histSobra = false; try { H.replaceState({ mq: 'aba', aba: x }, '', '#aba=' + x); } catch (e) {}
+    } else noHistorico(() => {
+      if (!H.state || H.state.mq !== 'aba') H.replaceState({ mq: 'aba', aba: antes }, '');   // a aba de onde a pessoa saiu (para o Voltar)
+      if (x !== antes || (abaDoHash() && abaDoHash() !== x)) H.pushState({ mq: 'aba', aba: x }, '', '#aba=' + x);
+    });
+    S.aba = x; lembrarAba();
+  }
+  /* Voltar/Avançar (ou link direto) chegou numa aba: mostra essa aba */
+  function abaDoHistorico(st) {
+    if (!S.eu || S.verEntrada || !/^coord/.test(S.eu.papel)) return;
+    const x = abaDoHash() || (st && st.mq === 'aba' && st.aba) || null;
+    if (!x || !abasDoPapel().includes(x)) return;
+    if (x === abaAtual()) { S.aba = x; render(); return; }   // voltou de #numeros ou de um convite: a tela mostrada não era a do sistema
+    S.aba = x; lembrarAba(); S.menuAberto = false; render(); window.scrollTo(0, 0);
+  }
+  window.addEventListener('popstate', ev => {
+    if (voltasNossas.length) { voltasNossas.shift(); soltarFila(); return; }   // fomos nós, ao fechar o painel
+    if ((S.painel || $('#painel')) && S.painelHist) {            // Voltar com painel aberto: fecha o painel, não sai do sistema
+      S.painelHist = false;                                      // a entrada do painel já saiu do histórico
+      if (painelAlterado()) { try { H.pushState({ mq: 'painel' }, ''); S.painelHist = true; } catch (e) {} confirmarSaida(); return; }
+      fecharPainel(); return;
+    }
+    const st = ev && ev.state;
+    if (st && st.mq === 'painel') { try { H.back(); } catch (e) {} return; }   // entrada de um painel que já fechou: segue em frente
+    abaDoHistorico(st);
+  });
+  window.addEventListener('hashchange', () => {
+    if (/^#aba=/.test(location.hash)) { abaDoHistorico(H && H.state); return; }   // link direto ou endereço digitado
+    if (/^#(numeros|convite=|)$|^#convite=/.test(location.hash) || location.hash === '') { render(); window.scrollTo(0, 0); } });
+  /* o sinal voltou ou caiu: só o fundo e o aviso de conexão mudam; o formulário aberto fica como está */
+  window.addEventListener('online', () => { if (S.eu) { renderFundo(); sincronizar(); } });
+  window.addEventListener('offline', () => { if (S.eu) renderFundo(); });
+
+  /* ---------- versão nova do sistema (service worker trocado com a página aberta) ---------- */
+  function avisarVersaoNova() {
+    if ($('#versao-nova')) return;
+    const b = document.createElement('button'); b.type = 'button'; b.id = 'versao-nova'; b.className = 'versao-nova'; b.setAttribute('data-acao', 'versao-nova'); b.setAttribute('role', 'status');
+    b.textContent = 'Há uma versão nova. Toque para atualizar.'; document.body.appendChild(b);
+  }
+  try {
+    if (typeof navigator !== 'undefined' && navigator.serviceWorker && navigator.serviceWorker.addEventListener) {
+      let tinha = !!navigator.serviceWorker.controller;   // primeira instalação não é "versão nova"
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if (tinha) avisarVersaoNova(); tinha = true; });
+    }
+  } catch (e) {}
+
+  /* ---------- erro que escapou de todos os tratamentos: aviso simples na tela, detalhe no console ---------- */
+  let ultimoAvisoGlobal = 0;
+  function erroGlobal(motivo, origem) {
+    try { console.error('Erro não tratado (' + origem + '):', motivo); } catch (e) {}
+    const nome = motivo && motivo.name, txt = String((motivo && motivo.message) || motivo || '');
+    if (nome === 'AbortError' || /ResizeObserver loop|^Script error\.?$/i.test(txt)) return;   // ruído do navegador, não é falha do sistema
+    if (Date.now() - ultimoAvisoGlobal < 4000) return; ultimoAvisoGlobal = Date.now();
+    try { toast(motivo && typeof motivo === 'object' && (motivo.original || motivo.regra) ? R.mensagemParaTela(motivo) : (R.erroDeRede(motivo) ? R.MSG_SEM_REDE : R.MSG_GENERICA)); } catch (e) {}
+  }
+  window.addEventListener('error', ev => { if (ev && (ev.error || ev.message)) erroGlobal(ev.error || ev.message, 'window.onerror'); });
+  window.addEventListener('unhandledrejection', ev => { erroGlobal(ev && ev.reason, 'unhandledrejection'); });
 
   document.addEventListener('input', ev => {
     const t = ev.target;
     // CPF e telefone: a máscara (com o cursor no lugar certo) é do mascaras.js
-    const c = t.closest && t.closest('.campo.tem-erro, .check.tem-erro, .criterio.tem-erro');   // some o aviso do campo assim que a pessoa corrige
-    if (c) { c.classList.remove('tem-erro'); const e = c.querySelector('.erro'); if (e) e.remove(); }
+    corrigiu(t);
   });
+  /* some o aviso do campo (ou do bloco de perguntas) assim que a pessoa corrige; limpa também o aviso do leitor de tela */
+  function corrigiu(t) {
+    if (!t || !t.closest) return;
+    const c = t.closest('.campo.tem-erro, .check.tem-erro, .criterio.tem-erro, [id^="w-"].tem-erro, .sn-par.tem-erro, .chips-sel.tem-erro') || (t.hasAttribute && t.hasAttribute('aria-invalid') ? (t.closest('[id^="w-"]') || t.closest('.criterio') || t.closest('.campo') || t.closest('.check') || t.closest('.sn-par, .chips-sel') || t) : null);
+    if (c) limparErro(c);
+  }
+  document.addEventListener('change', ev => corrigiu(ev.target));
 
+  /* escolhas dentro do painel (lista, caixa de marcar, arquivo) que fazem o módulo redesenhar: desenho normal, durante o próprio evento */
+  document.addEventListener('change', ev => { const t = ev.target; if (!t || !t.closest || !t.closest('#painel') || /^(text|textarea|number|date|email|tel|password|search|url)$/.test(t.type)) return;
+    S.acaoNoPainel = (S.acaoNoPainel || 0) + 1; Promise.resolve().then(() => { S.acaoNoPainel = Math.max(0, (S.acaoNoPainel || 1) - 1); }); }, true);
   document.addEventListener('submit', async ev => {
     const form = ev.target.closest('form[data-form]'); if (!form) return;
     ev.preventDefault();
     const tipo = form.dataset.form;
     const fd = new FormData(form);
+    S.acaoNoPainel = (S.acaoNoPainel || 0) + 1;
     try {
       if (tipo === 'trocar-senha') {
         const atual = String(fd.get('atual') || ''), nova = String(fd.get('nova') || ''), nova2 = String(fd.get('nova2') || '');
@@ -1254,6 +1729,8 @@
         const codigo = String(fd.get('codigo') || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
         if (S.modoLogin === 'primeiro' && codigo.length !== 8) erros.codigo = 'O código tem 8 letras e números (ex.: ABCD-2345).';
         if (Object.keys(erros).length) return mostrarErros(form, erros);
+        // demonstração: não há senha; entra-se pelos botões de perfil, na faixa do alto
+        if (modoDemoAtivo() && S.modoLogin !== 'primeiro') return mostrarErros(form, {}, 'Esta é a demonstração: aqui não se entra com senha. Escolha um perfil nos botões "Ver como", no alto da tela.');
         await ocupado(form, async () => {
           S.eu = S.modoLogin === 'primeiro' ? await S.api.criarSenha(email, senha, codigo) : await S.api.entrarSenha(email, senha);
           if (S.eu) { S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); marcarAbriu(); registrarAcesso(S.modoLogin === 'primeiro' ? 'primeiro_acesso' : 'entrada'); await carregar(); setTimeout(() => sincronizar(false), 500); }
@@ -1295,6 +1772,9 @@
         if (R.ehBolsista(m.papel)) Object.assign(m, { meta_diagnosticos: num('meta_diagnosticos'), meta_quintais: num('meta_quintais'), meta_visitas: num('meta_visitas') });
         const erros = R.validar(m, S.equipe);
         if (p.id) delete erros.papel;
+        if (m.nome.length > R.LIM.nome && !erros.nome) erros.nome = 'Texto muito longo (máximo 120 caracteres).';
+        // início: de 01/01/2025 até um ano à frente (a mesma regra do banco); data antiga que não mudou não trava
+        if (!erros.data_inicio && (!p.id || m.data_inicio !== base.data_inicio)) { const ed = R.erroDataInicio(m.data_inicio); if (ed) erros.data_inicio = ed; }
         if (priv) Object.assign(erros, MQ.convitesUI.validarPessoais(priv, false));
         if (Object.keys(erros).length) return mostrarErros(form, erros);
         await ocupado(form, async () => {
@@ -1326,7 +1806,9 @@
           const val = String(fd.get(k) || '').trim() || null; if (val !== (m[k] || null)) patch[k] = val;
         });
         const erros = {};
-        ['matricula_fic_em', 'docs_funcern_em', 'termo_assinado_em'].forEach(k => { if (patch[k] && patch[k] > R.hoje()) erros[k] = 'Data no futuro. Registre só o que já aconteceu.'; });
+        // só a data que mudou é conferida (a mesma regra do banco, 45: de 01/01/2025 até hoje)
+        ['matricula_fic_em', 'docs_funcern_em', 'termo_assinado_em'].forEach(k => { const ed = patch[k] ? R.erroDataPasso(patch[k]) : null; if (ed) erros[k] = ed; });
+        if (patch.obs_habilitacao && patch.obs_habilitacao.length > 2000) erros.obs_habilitacao = 'Texto muito longo (máximo 2.000 caracteres).';
         if (patch.matricula_fic_em && !(patch.matricula_fic_numero || m.matricula_fic_numero)) erros.matricula_fic_numero = 'Informe o número da matrícula.';
         const arq = fd.get('termo');
         if (arq && arq.size && arq.size > 10 * 1024 * 1024) erros.termo = 'Arquivo acima de 10 MB. Envie um PDF menor ou uma foto.';
@@ -1342,8 +1824,8 @@
         const id = form.dataset.id; const m = porId(id);
         const data = String(fd.get('data_fim') || ''); const det = String(fd.get('detalhe') || '').trim();
         const erros = {};
-        if (!data) erros.data_fim = 'Informe o último dia.';
-        else if (data < m.data_inicio) erros.data_fim = 'Antes do início da bolsa (' + R.fmtData(m.data_inicio) + ').';
+        const edf = R.erroDataDesligamento(data, m.data_inicio); if (edf) erros.data_fim = edf;   // não pode ser no futuro (o banco recusa)
+        if (det.length > 2000) erros.detalhe = 'Texto muito longo (máximo 2.000 caracteres).';
         if (!fd.get('motivo')) erros.motivo = 'Escolha o motivo.';
         if (fd.get('motivo') === 'Outro motivo' && det.length < 5) erros.detalhe = 'Explique o motivo.';
         if (Object.keys(erros).length) return mostrarErros(form, erros);
@@ -1353,8 +1835,8 @@
         });
       }
     } catch (e) {
-      mostrarErros(form, e.campos || {}, e.original || !/fetch|network|Load failed/i.test(e.message || '') ? e.message : R.mensagemErro(e));
-    }
+      mostrarErros(form, (e && e.campos) || {}, avisarErro(e));
+    } finally { S.acaoNoPainel = Math.max(0, (S.acaoNoPainel || 1) - 1); }
   });
 
   window.addEventListener('DOMContentLoaded', boot);
