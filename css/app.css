@@ -2379,7 +2379,7 @@ p.carregando:has(.carregando-t) { flex-direction: column; gap: 12px; }
 
 /* --- MAPA DA TELA DE ENTRADA: institucional, tons suaves, Apodi como foco (02/10/2026) ---
    Só apresentação: mesmos estados, municípios, pontos e números. Hierarquia: Apodi > estados > municípios > rotas. */
-.ent-hero .vit-mapa.vit-info { background: transparent; border-color: transparent; box-shadow: none; }
+/* (02/10/2026) a moldura ao redor do mapa da entrada volta: fundo claro e borda, como antes do v179 */
 .ent-hero .mapa-info {
   --uf-RN: color-mix(in srgb, #A44934 34%, #FAF7F1); --uf-PI: color-mix(in srgb, #2E7D43 26%, #FAF7F1); --uf-BA: color-mix(in srgb, #885B44 24%, #FAF7F1);
   --uf-PE: color-mix(in srgb, #C29A2E 30%, #FAF7F1); --uf-AL: color-mix(in srgb, #A44934 17%, #FAF7F1); --uf-SE: color-mix(in srgb, #5C7A3A 30%, #FAF7F1); }

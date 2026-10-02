@@ -130,7 +130,7 @@
       <h2 id="vit-t" class="serif">Mulheres &amp; Quintais em números</h2>
       <div class="vts">${tiles(t).map(tile).join('')}</div>
       <div class="vit-duo">
-        <div class="vit-mapa vit-info">${MQ.painelUI.mapaUFs({ entrada: true, animar: rotasSaindo(), municipios: d.municipios })}</div>
+        <div class="vit-mapa vit-info">${/* tela de entrada (02/10/2026): pontos FIXOS, um por município que terá quintais (os mesmos do mapa da Visão geral, MQ.GEO.mun), todos iguais, tenha ou não cadastro; o círculo pelo número de cadastradas fica só na página pública */ MQ.painelUI.mapaUFs({ entrada: true, animar: rotasSaindo() })}</div>
         <div id="vit-foto">${miniMosaico(d, V.foto) || `<div class="vit-sem-foto"><span>As fotos dos quintais aparecem aqui quando a coordenação aprovar, só de quem autorizou.</span></div>`}</div>
       </div>
       <p class="vit-rodape vit-rodape-fim"><span>${quando() ? 'atualizado ' + quando() : ''}</span></p>`;
