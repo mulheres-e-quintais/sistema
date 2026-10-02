@@ -9315,7 +9315,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>`;
     if (p.tipo === 'pend-banco') return cab('Conta bancária') + `<div class="painel-corpo">${MQ.bancoUI.secaoMinha(true)}
       <div class="acoes"><button class="btn" type="button" data-acao="pend-ver">Voltar</button></div></div>`;
-    if (p.tipo === 'pend-termo') return cab('Termo de compromisso') + `<div class="painel-corpo">${formTermo(l.m || eu())}</div>`;
+    if (p.tipo === 'pend-termo') return cab(R.tipoTermo(l.m || eu() || {}) === 'servidor' ? 'Termo de autorização' : 'Termo de compromisso') + `<div class="painel-corpo">${formTermo(l.m || eu())}</div>`;
     if (p.tipo === 'pend-dados') return cab(l.m && l.m.cadastro_arlo ? 'Cidade onde mora' : 'Dados pessoais') + `<div class="painel-corpo">${formDados(l.m)}</div>`;
     if (!l.itens.length) return cab('Tudo em dia') + `<div class="painel-corpo"><p>Nenhuma pendência no seu cadastro.</p>
       <div class="acoes"><button class="btn pri" data-acao="fechar">Fechar</button></div></div>`;
@@ -12017,11 +12017,16 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const plano = R.ehBolsista(m.papel) ? `<div class="bloco"><h3>Previsão de atividades (plano individual)</h3>
       ${m.meta_diagnosticos != null ? `<dl class="dl"><dt>Diagnósticos</dt><dd class="num">${m.meta_diagnosticos ?? '—'}</dd><dt>Quintais</dt><dd class="num">${m.meta_quintais ?? '—'}</dd><dt>Visitas</dt><dd class="num">${m.meta_visitas ?? '—'}</dd></dl>` : '<p class="muted small">Não preenchido.</p>'}</div>` : '';
     const hoje = R.hoje() > m.data_inicio ? R.hoje() : m.data_inicio;
+    // habilitação pendente vem PRIMEIRO na ficha (era o último bloco: quem habilita não achava); completa, volta para o fim
+    const blocoHab = `<div class="bloco" id="bloco-hab"><h3>Habilitação</h3>${m.papel === 'coord_geral' ? '<p class="small muted">Não se aplica.</p>' : passos(m)}
+          ${editaHab && m.papel !== 'coord_geral' ? formHabilitacao(m) : ''}</div>`;
+    const habPrimeiro = editaHab && m.status === 'ativa' && m.papel !== 'coord_geral' && R.situacao(m).cod !== 'ok';
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(nomeUF(m.uf)) : ''}</span>
         <div class="cab-av">${avatar(m, 96)}<div style="display:grid;gap:4px"><h2 id="painel-t">${esc(nomeDe(m))}</h2><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span></div></div>
         ${botaoFoto(m) ? `<span>${botaoFoto(m)}</span>` : ''}</div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo">
+        ${habPrimeiro ? blocoHab : ''}
         <div class="bloco"><h3>Dados</h3>${dadosDL(m)}
           ${editaDados ? `<div class="acoes"><button class="btn" data-acao="editar" data-id="${m.id}">Editar</button><button class="btn perigo" data-acao="desligar-abrir">Desligar</button></div>` : ''}
           </div>
@@ -12052,8 +12057,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         ${m.id === S.eu.id && m.papel !== 'coord_geral' && !m.cadastro_arlo && MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
         ${m.id !== S.eu.id && MQ.bancoUI ? MQ.bancoUI.blocoContaArlo(m) : ''}
 
-        <div class="bloco"><h3>Habilitação</h3>${m.papel === 'coord_geral' ? '<p class="small muted">Não se aplica.</p>' : passos(m)}
-          ${editaHab && m.papel !== 'coord_geral' ? formHabilitacao(m) : ''}</div>
+        ${habPrimeiro ? '' : blocoHab}
       </div>`;
   }
 
