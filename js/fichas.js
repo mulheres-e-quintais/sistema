@@ -8,6 +8,20 @@
   const E = s => MQ.ui.esc(s);
   const fotosTemp = { ficha: null, termo: null };
   const filtro = { uf: '', situacao: '', busca: '' };
+  const MAX_NOME = 120;
+  /* busca: sem acento, sem diferença de maiúsculas e com espaços repetidos reduzidos ("antonia" acha "Antônia").
+     Só compara com o CPF quando o que foi digitado é só número e pontuação de CPF, com 3 dígitos ou mais ("Inexistente 2" não casa com CPF). */
+  const semAcento = s => String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  function casaBusca(f, texto) {
+    const b = semAcento(texto); if (!b) return true;
+    if (semAcento(f.nome).includes(b)) return true;
+    const dig = R.soDigitos(texto);
+    return /^[\d.\-\s]+$/.test(String(texto).trim()) && dig.length >= 3 && String(f.cpf || '').includes(dig);
+  }
+  const temFiltro = () => !!(filtro.uf || filtro.situacao || semAcento(filtro.busca));
+  const filtrar = lista => lista.filter(f => (!filtro.uf || f.uf === filtro.uf) && (!filtro.situacao || f.situacao === filtro.situacao || f.resultado === filtro.situacao) && casaBusca(f, filtro.busca));
+  /* célula de CSV: aspas dobradas e, se começar por = + - @ (tab ou enter), apóstrofo na frente para o Excel não executar como fórmula */
+  const celCSV = v => { let t = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(t) && !/^-?\d+([.,]\d+)?$/.test(t)) t = "'" + t; return '"' + t.replace(/"/g, '""') + '"'; };
 
   /* ---------- dados combinados: servidor + fila do aparelho ---------- */
   function todas() {
@@ -26,7 +40,7 @@
        primeiro a situação (ainda com a coordenação técnica?), depois o resultado das já aprovadas. */
     l.forEach(f => {
       if (f.resultado === 'selecionada') c.selecionadas++;
-      if (f.situacao === 'aguardando') c.aguardando++;
+      if (f.situacao !== 'aprovada' && f.situacao !== 'devolvida') c.aguardando++;   // situação vazia ou desconhecida ainda não é aprovada
       else if (f.situacao === 'devolvida') c.devolvidas++;
       else if (f.resultado === 'selecionada') c.aprovadas++;
       else if (f.resultado === 'lista_espera') c.espera++;
@@ -62,7 +76,6 @@
     const lista = todas().filter(f => f.uf === uf);
     const c = contar(lista, uf);
     const filaF = S.fila.filter(i => !i.tipo || i.tipo === 'ficha'); const pend = filaF.length, comErro = filaF.filter(i => i.erro).length;
-    const busca = filtro.busca.trim().toLowerCase();
     const vis = lista;
     const devolvidas = vis.filter(f => f.situacao === 'devolvida' || f._erro);
     const resto = vis.filter(f => !(f.situacao === 'devolvida' || f._erro));
@@ -102,14 +115,13 @@
         <td class="num sep">${c.aguardando ? `<b>${c.aguardando}</b>` : 0}</td><td class="num">${c.devolvidas}</td></tr>`;
     };
     const aguardando = lista.filter(f => f.situacao === 'aguardando').sort((a, b) => String(a.criado_em).localeCompare(String(b.criado_em)));
-    const busca = filtro.busca.trim().toLowerCase();
-    const filtradas = lista.filter(f => (!filtro.uf || f.uf === filtro.uf) && (!filtro.situacao || f.situacao === filtro.situacao || f.resultado === filtro.situacao)
-      && (!busca || f.nome.toLowerCase().includes(busca) || f.cpf.includes(R.soDigitos(busca) || '#')));
+    const filtradas = filtrar(lista);
+    const conta = temFiltro() ? filtradas.length + ' de ' + lista.length : String(lista.length);
     const op = (v, t, atual) => `<option value="${v}" ${v === atual ? 'selected' : ''}>${t}</option>`;
     return `<section class="secao" aria-labelledby="t-sel">
       <div class="cab"><div><span class="eyebrow">Seleção das mulheres</span><h1 id="t-sel">Seleção das beneficiárias</h1>
         <p>Fichas de indicação dos 5 estados. ${souTec ? 'Você aprova ou devolve cada ficha antes do diagnóstico.' : 'A aprovação é da coordenação técnica.'} O sistema impede CPF repetido e mais de ${MQ.VAGAS_UF} selecionadas aprovadas por estado.</p></div>
-        <button class="btn" data-acao="ficha-csv">Baixar CSV</button></div>
+        <button class="btn" data-acao="ficha-csv">Baixar CSV${temFiltro() ? ' (' + conta + ')' : ''}</button></div>
       ${(() => { const u = MQ.UFS.find(x => contar(lista, x.uf).total); if (!u) return ''; const c = contar(lista, u.uf);
         const partes = [[c.aprovadas, 'selecionada'], [c.espera, 'na lista de espera'], [c.sem_agua, 'sem água'], [c.nao_atende, 'que não atende'], [c.aguardando, 'para aprovar'], [c.devolvidas, 'devolvida']].filter(x => x[0]).map(x => x[0] + ' ' + x[1]);
         return `<div class="aviso" style="margin:0"><b>Como ler:</b> a coluna <b>Fichas</b> é o total de mulheres indicadas no estado, e as colunas ao lado repartem esse total (cada mulher aparece numa só). As <b>${MQ.VAGAS_UF} vagas</b> são só a coluna <b>Selecionadas</b>; as outras não ocupam vaga.
@@ -122,7 +134,7 @@
         </tbody></table></div><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p>
       ${aguardando.length ? `<div class="bloco"><h3>${souTec ? 'Para você aprovar' : 'Aguardando a coordenação técnica'} (${aguardando.length})</h3>
         <div class="lista-fichas">${aguardando.slice(0, 30).map(f => linhaFicha(f, true)).join('')}</div></div>` : ''}
-      <details class="hist" data-lembrar="fichas-coord" ${(U().S.aberto || {})['fichas-coord'] || filtro.uf || filtro.situacao || filtro.busca ? 'open' : ''}><summary>Todas as fichas (${lista.length})</summary><div style="padding:0 18px 16px;display:grid;gap:12px">
+      <details class="hist" data-lembrar="fichas-coord" ${(U().S.aberto || {})['fichas-coord'] || filtro.uf || filtro.situacao || filtro.busca ? 'open' : ''}><summary>Todas as fichas (${conta})</summary><div style="padding:0 18px 16px;display:grid;gap:12px">
         <div class="campos" style="grid-template-columns:repeat(3,minmax(0,1fr))">
           <div class="campo"><label for="ff-uf">Estado</label><select id="ff-uf" data-filtro="uf">${op('', 'Todos', filtro.uf)}${MQ.UFS.map(u => op(u.uf, u.nome, filtro.uf)).join('')}</select></div>
           <div class="campo"><label for="ff-sit">Situação</label><select id="ff-sit" data-filtro="situacao">${op('', 'Todas', filtro.situacao)}
@@ -385,7 +397,9 @@
     const S = U().S;
     if (tipo === 'ficha') {
       const f = lerForm(form);
-      const erros = R.validarFicha(f, todas());
+      // tamanho do texto conferido aqui (o formulário é novalidate); o nome vem primeiro na lista de erros
+      const erros = Object.assign(String(f.nome || '').trim().length > MAX_NOME ? { nome: `Nome: texto muito longo (máximo ${MAX_NOME} caracteres).` } : {}, R.validarFicha(f, todas()));
+      if (String(f.justificativa || '').length > 2000) erros.justificativa = 'Justificativa: texto muito longo (máximo 2.000 caracteres).';
       // "Não autorizo" no uso dos dados: a ficha não é guardada
       if (Object.keys(erros).length) {
         const m = {}; Object.entries(erros).forEach(([k, v]) => { m[k] = v; });
@@ -428,23 +442,35 @@
     const primeiro = form.querySelector('.tem-erro'); if (primeiro) primeiro.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }
 
-  function baixarCSV() {
-    const S = U().S;
+  /* CSV das fichas: respeita o filtro da tela (estado, situação, busca), cabeçalho legível, datas em dd/mm/aaaa e células protegidas contra fórmula */
+  const ROTULO_CSV = { uf: 'Estado', municipio: 'Município', comunidade: 'Comunidade', nome: 'Nome', cpf: 'CPF', data_nascimento: 'Data de nascimento', celular: 'Celular', endereco: 'Endereço', ponto_referencia: 'Ponto de referência',
+    nis: 'NIS', caf: 'CAF', pessoas_familia: 'Pessoas na família', indicada_por: 'Indicada por', data_ficha: 'Data da ficha', autodeclaracao: 'Autodeclaração assinada', pontos: 'Pontos de prioridade', resultado: 'Resultado',
+    posicao_espera: 'Posição na lista de espera', encaminhada_para: 'Encaminhada para', situacao: 'Situação', aprovada_em: 'Aprovada em', bolsista: 'Bolsista', consent_imagem: 'Autoriza uso de imagem' };
+  const DATAS_CSV = ['data_nascimento', 'data_ficha', 'aprovada_em'];
+  function montarCSV() {
     const col = ['uf', 'municipio', 'comunidade', 'nome', 'cpf', 'data_nascimento', 'celular', 'endereco', 'ponto_referencia', 'nis', 'caf', 'pessoas_familia', 'indicada_por', 'data_ficha',
       ...MQ.CRITERIOS.map(c => c[0]), 'autodeclaracao', 'pontos', 'resultado', 'posicao_espera', 'encaminhada_para', 'situacao', 'aprovada_em', 'bolsista', 'consent_imagem'];
-    const linhas = todas().map(f => col.map(c => {
+    const rot = c => ROTULO_CSV[c] || ((MQ.CRITERIOS.find(x => x[0] === c) || [])[1]) || c;
+    const tudo = todas(); const lista = filtrar(tudo);
+    const linhas = lista.map(f => col.map(c => {
       let v = c === 'pontos' ? R.pontosFicha(f) : c === 'bolsista' ? ((U().porId(f.bolsista_id) || {}).nome || '') : f[c];
       if (v === true) v = 'Sim'; if (v === false) v = 'Não';
       if (c === 'resultado') v = (MQ.RESULTADOS[v] || {}).nome || v;
       if (c === 'situacao') v = (MQ.SITUACOES[v] || {}).nome || v;
-      return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+      if (DATAS_CSV.includes(c)) v = R.fmtData(v);   // dd/mm/aaaa, no dia de Fortaleza
+      return celCSV(v);
     }).join(';'));
-    const csv = '﻿' + col.join(';') + '\n' + linhas.join('\n');
+    const partes = [filtro.uf, filtro.situacao, semAcento(filtro.busca) ? 'busca' : ''].filter(Boolean).map(x => String(x).replace(/[^a-zA-Z0-9_]+/g, ''));
+    return { texto: '\ufeff' + col.map(c => celCSV(rot(c))).join(';') + '\n' + linhas.join('\n'), n: lista.length, total: tudo.length, filtrado: temFiltro(),
+      nome: 'fichas_mulheres_e_quintais_' + (partes.length ? 'filtro_' + partes.join('_') + '_' : '') + R.hoje() + '.csv' };
+  }
+  function baixarCSV() {
+    const r = montarCSV();
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    a.download = 'fichas_mulheres_e_quintais_' + R.hoje() + '.csv';
+    a.href = URL.createObjectURL(new Blob([r.texto], { type: 'text/csv;charset=utf-8' }));
+    a.download = r.nome;
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-    U().toast('Planilha gerada. Ela tem dados pessoais: guarde em pasta restrita.');
+    U().toast((r.filtrado ? `Planilha gerada com ${r.n} de ${r.total} fichas (filtro da tela).` : 'Planilha gerada.') + ' Ela tem dados pessoais: guarde em pasta restrita.');
   }
 
   /* reatividade do formulário e dos filtros */
@@ -457,7 +483,9 @@
         const dica = form.querySelector('#fi-' + (campo === 'termo' ? 'ft' : 'ff') + '-dica');
         if (arq.size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; ev.target.value = ''; return; }
         dica.textContent = 'Preparando foto…';
-        fotosTemp[campo] = await MQ.comprimirFoto(arq);
+        if (arq.type === 'application/pdf' && arq.size > 0) { fotosTemp[campo] = arq; dica.textContent = 'Arquivo pronto (' + Math.round(arq.size / 1024) + ' KB). Fica no aparelho até enviar.'; return; }   // ficha digitalizada em PDF: vai como está
+        try { fotosTemp[campo] = await MQ.comprimirFoto(arq, undefined, undefined, { semAviso: true }); }
+        catch (e) { fotosTemp[campo] = null; ev.target.value = ''; dica.textContent = e.message; return; }   // não é foto (txt renomeado, vazio, corrompido)
         dica.textContent = 'Foto pronta (' + Math.round(fotosTemp[campo].size / 1024) + ' KB). Fica no aparelho até enviar.';
       }
       atualizarForm(form);
@@ -488,5 +516,5 @@
     if (b) b.form.dataset.decisao = b.value;
   }, true);
 
-  MQ.fichasUI = { secaoBolsista, secaoCoord, painel, clique, enviar };
+  MQ.fichasUI = { secaoBolsista, secaoCoord, painel, clique, enviar, contar, casaBusca, filtrar, filtro, montarCSV, celCSV };
 })();

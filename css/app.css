@@ -2174,3 +2174,129 @@ main .secao + .secao, main .secao + .bloco, main .bloco + .secao { margin-top: 1
   .tab-campo-uf tr > :nth-child(2) { width: 40%; }
   .tab-campo-uf .dias-cel { grid-template-columns: auto minmax(60px, 1fr) auto; }
 }
+
+/* =====================================================================================================
+   AUDITORIA QA (01/10/2026)
+   Correções da auditoria de qualidade. A paleta não muda: só variáveis e tons que já existem acima.
+   ===================================================================================================== */
+
+/* --- painel: o campo com foco não fica debaixo do rodapé fixo Salvar/Cancelar --- */
+.painel-corpo { scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); scroll-padding-top: 12px; }
+
+/* opções em forma de botão (sim/não, chips): o campo escondido ocupa o rótulo inteiro, para a rolagem do foco mostrar o rótulo todo */
+.sn { position: relative; }
+.sn input { inset: 0; width: 100%; height: 100%; margin: 0; }
+
+/* --- "Sair sem salvar?": pergunta no padrão do aviso de sessão (cartão .sessao-in), por cima do painel --- */
+.confirma-sair { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(30, 18, 11, .45); }
+.confirma-sair .confirma-in { width: min(420px, 100%); gap: 10px; padding: 18px; }
+.confirma-sair .confirma-in > b { font-size: var(--t-lg); color: var(--ink); }
+.confirma-sair .confirma-in > span { color: var(--ink-2); }
+.confirma-sair .acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.confirma-sair .acoes .btn { flex: 1 1 150px; justify-self: stretch; min-height: 44px; }
+
+/* --- aviso de versão nova (não recarrega sozinho) e de carga incompleta --- */
+.versao-nova { position: fixed; left: 50%; top: calc(10px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); z-index: 45; max-width: calc(100% - 24px);
+  min-height: 40px; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); font: 600 var(--t-sm)/1.3 var(--sans); box-shadow: var(--shadow); cursor: pointer; }
+.versao-nova:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.carga-parcial { text-align: left; color: var(--ink-2); min-height: 40px; }
+.carga-parcial b { color: var(--crit); }
+
+/* --- erros em grupo: critérios, autorizações, blocos de perguntas, fotos e kit ficam marcados --- */
+[id^="w-"].tem-erro:not(.campo):not(.criterio):not(.check) { outline: 2px solid var(--crit); outline-offset: 5px; border-radius: 8px; }
+.sn-par.tem-erro, .chips-sel.tem-erro { outline: 2px solid var(--crit); outline-offset: 3px; border-radius: 12px; }
+.campo.tem-erro > label:first-child { color: var(--crit); }
+[id^="w-"] > span.erro:not(.so-leitor), fieldset > span.erro:not(.so-leitor) { display: block; margin-top: 6px; font-size: var(--t-xs); color: var(--crit); }
+.dica.erro-foto { color: var(--crit); font-weight: 600; }
+.kit-proj .kit-sem-qtd { color: var(--crit); }
+.aviso.erro[data-erro] { overflow-wrap: anywhere; }
+.data-hoje { flex-wrap: wrap; }
+.data-hoje input { flex: 1 1 150px; }
+
+/* --- 13a. Curso FIC em 360–375 px: a data da matrícula quebra de linha em vez de ficar debaixo do "Cancelar" --- */
+@media (max-width: 640px) {
+  .ft-mat { flex-wrap: wrap; white-space: normal; min-width: 0; row-gap: 0; column-gap: 8px; }
+  .ft-mat > * { white-space: nowrap; }
+}
+
+/* --- 13b. Turma do encontro (select) no celular: o navegador não quebra o texto de uma lista de escolha em duas linhas;
+       o nome é abreviado pelo meio em js/app.js (encurtarEscolhas), mantendo o estado à vista. Aqui, só a folga lateral. --- */
+@media (max-width: 640px) {
+  select#en-turma { padding-left: 10px; padding-right: 28px; text-overflow: ellipsis; }
+}
+
+/* --- 13c. alvos de toque no celular: pelo menos 40 px de altura, sem mudar letra nem cor --- */
+@media (max-width: 640px) {
+  .btn.peq, .btn.peq.pri { min-height: 40px; }   /* a regra "design system" mais acima tinha voltado para 34 px */
+  .btn-ajuda, .btn-meus { width: 40px; height: 40px; min-width: 40px; }
+  .btn-meus .av { --av: 34px; }
+  .btn-acao.mini { min-height: 40px; }
+  a.btn-barra, .quem .btn-barra { display: inline-flex; align-items: center; min-height: 40px; }
+  /* links de texto: a área de toque cresce por dentro (padding) e a margem negativa devolve o espaço: o texto fica onde estava */
+  .demo-mais > summary, .dx-como > summary { padding-block: 11px; margin-block: -11px; min-height: 40px; box-sizing: border-box; position: relative; }
+  .demo-mais > summary { display: inline-block; }
+  .vit-link.voltar { display: inline-block; padding-block: 10px; margin-block: -10px; min-height: 40px; box-sizing: border-box; }
+  .ft-cancelar { min-height: 40px; padding: 10px 6px; margin: -8px -4px; }
+  th > button.fin-nome { min-height: 40px; }
+  /* caixas de marcar e rádios do diagnóstico e da orientação de venda: o rótulo inteiro é o alvo */
+  .mini-chk { min-height: 40px; padding-block: 4px; }
+  .chips-sel .sn, .sn-par .sn { min-height: 40px; }
+  .linha-din > input, .linha-din > select, .prod-l > input, .cl-km > input, .fm-num { min-height: 40px; }
+  .btn-add { min-height: 40px; }
+}
+
+/* --- 13d. contraste (só opacidade e variáveis que já existem) --- */
+.lista-custo > .custo-l.prev { opacity: 1; }                       /* valor previsto e etiqueta "prev": 4,4 → acima de 4,5 */
+.campo input::placeholder, .campo textarea::placeholder, input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
+.btn[disabled], .btn[aria-disabled="true"] { opacity: .72; }      /* desabilitado continua legível (≥ 3:1) */
+.btn-voz:disabled { opacity: .72; }
+.sn.off { opacity: .72; }
+
+/* --- 13f. menos animação: o risco embaixo de "nunca" (entrada) aparece pronto --- */
+@media (prefers-reduced-motion: reduce) {
+  .ent-t em::after { animation: none !important; transform: none !important; }
+  .painel, .toast, .versao-nova, .confirma-sair { animation: none !important; transition: none !important; }
+}
+
+/* --- 13g. tabelas por estado com o celular deitado: todas as colunas, com letra menor --- */
+@media (orientation: landscape) and (min-width: 560px) and (max-width: 640px) {
+  .dica-cols { display: none; }
+  .quadro-sel .grupo { display: table-row; }
+  .quadro-sel tr > :nth-child(n), .tab-plano tr > :nth-child(n), .tab-campo-uf tr > :nth-child(n) { display: table-cell; }
+  .quadro-sel, .tab-plano, .tab-campo-uf { font-size: var(--t-xs); }
+  .quadro-sel th, .tab-plano th, .tab-campo-uf th { font-size: 10px; padding: 6px 4px; letter-spacing: 0; white-space: normal; }
+  .quadro-sel td, .tab-plano td, .tab-campo-uf td { padding: 6px 4px; font-size: var(--t-xs); white-space: normal; }
+  .quadro-sel .sigla, .tab-campo-uf .sigla { font-size: var(--t-sm); min-width: 0; }
+}
+
+/* --- 13e. impressão das telas (Ctrl+P ou "Imprimir" do navegador): só o conteúdo, em fundo branco --- */
+@media print {
+  :root, :root[data-theme="dark"], :root:not([data-theme="light"]) { color-scheme: light;
+    --bg: #fff; --surface: #fff; --surface-2: #fff; --ink: #000; --ink-2: #222; --muted: #444; --line: #bbb; --line-2: #999; --shadow: none; }
+  html, body { background: #fff !important; color: #000; }
+  html { scrollbar-gutter: auto; }
+  body { font-size: 11pt; }
+  /* o que é da tela e não do papel */
+  .barra, .demo, .abas, .abas-m, .atalhos, .rodape, .toast, #toast, .sessao-aviso, .versao-nova, .confirma-sair, .fundo,
+  .btn, .btn-acao, .btn-add, .btn-voz, .btn-ajuda, .btn-meus, .btn-barra, button.link, .seg, .fechar, .imp-barra, .voz-barra, .dica-cols,
+  nav, input[type=file], .rot-barra, .teste-barra { display: none !important; }
+  * { box-shadow: none !important; text-shadow: none !important; animation: none !important; transition: none !important; }
+  .wrap, main, .ent, .painel-corpo { max-width: none !important; width: auto !important; margin: 0 !important; padding: 0 !important; }
+  .bloco, .secao, .cartao, .resumo > div, .pessoa, .vagabtn, .aviso, details.hist { background: #fff !important; border-color: #bbb !important; break-inside: avoid; }
+  /* tabelas inteiras, sem corte nem rolagem lateral */
+  .quadro-scroll, .eg-caixa, .rel-previa { overflow: visible !important; display: block !important; max-width: none !important; }
+  table, .quadro, .tab-uf, table.fin { width: 100% !important; min-width: 0 !important; table-layout: auto !important; border-collapse: collapse; font-size: 9pt; }
+  table tr > * { display: table-cell !important; white-space: normal !important; padding: 4px 6px !important; }
+  .quadro-sel .grupo { display: table-row !important; }
+  thead { display: table-header-group; } tr, img, svg { break-inside: avoid; }
+  th, td { border-bottom: 1px solid #bbb; color: #000 !important; }
+  h1, h2, h3 { break-after: avoid; color: #000; }
+  details > *:not(summary) { display: block; }   /* blocos recolhidos saem abertos no papel */
+  a[href] { color: #000; text-decoration: none; }
+  /* com um painel aberto, imprime o painel (a página de trás fica de fora) */
+  body:has(#painel) #app { display: none !important; }
+  #painel .painel { position: static !important; width: auto !important; box-shadow: none !important; background: #fff !important; display: block; }
+  #painel .painel-corpo { overflow: visible !important; display: block; }
+  #painel .painel-cab { border-bottom: 1px solid #bbb; margin-bottom: 8px; }
+  @page { margin: 14mm 12mm; }
+}

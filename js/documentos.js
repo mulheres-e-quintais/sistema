@@ -7,6 +7,15 @@
   const TIPOS = { ata: 'Ata', oficio: 'Ofício', relatorio: 'Relatório', contrato: 'Contrato ou termo', plano: 'Plano ou projeto', lista_presenca: 'Lista de presença', foto: 'Foto', outro: 'Outro' };
   const EXT = ['pdf', 'doc', 'docx', 'odt', 'xls', 'xlsx', 'ods', 'jpg', 'jpeg', 'png'];
   const MAX = 20 * 1024 * 1024;   // 20 MB
+  const DATA_MIN = '2026-01-01';   // nenhum documento do projeto é anterior a 2026
+  /* tipo (MIME) que o navegador informa para cada extensão aceita: "ata.pdf" que na verdade é texto ou imagem é recusado.
+     Tipo vazio ou genérico (celular que não reconhece .odt) passa: aí vale a extensão. */
+  const W = 'application/vnd.openxmlformats-officedocument.', OD = 'application/vnd.oasis.opendocument.';
+  const MIME = { pdf: ['application/pdf', 'application/x-pdf'], doc: ['application/msword'], docx: [W + 'wordprocessingml.document'], odt: [OD + 'text'],
+    xls: ['application/vnd.ms-excel', 'application/msexcel', 'application/x-msexcel'], xlsx: [W + 'spreadsheetml.sheet'], ods: [OD + 'spreadsheet'],
+    jpg: ['image/jpeg', 'image/pjpeg'], jpeg: ['image/jpeg', 'image/pjpeg'], png: ['image/png'] };
+  const tipoBate = arquivo => { const t = String(arquivo.type || '').toLowerCase().split(';')[0].trim(); return !t || t === 'application/octet-stream' || (MIME[ext(arquivo.name)] || []).includes(t); };
+  const dataExiste = v => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || '')); if (!m) return false; const t = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return t.getUTCFullYear() === +m[1] && t.getUTCMonth() === +m[2] - 1 && t.getUTCDate() === +m[3]; };
   const G = { mostrarArq: false };
   const lista = () => S().documentos || [];
   const nomeDe = m => (m && (m.nome_social || m.nome)) || '—';
@@ -20,12 +29,15 @@
     if (!TIPOS[d.tipo]) e.tipo = 'Escolha o tipo do documento.';
     if (String(d.titulo || '').trim().length < 5) e.titulo = 'Escreva um título (pelo menos 5 letras).';
     if (!d.data_documento) e.data_documento = 'Informe a data do documento.';
+    else if (!dataExiste(d.data_documento)) e.data_documento = 'Data inválida.';
     else if (d.data_documento > R.hoje()) e.data_documento = 'A data do documento não pode ser no futuro.';
+    else if (d.data_documento < DATA_MIN) e.data_documento = 'Data antes de 2026: confira o ano do documento.';
     if (d.uf && !MQ.UFS.some(u => u.uf === d.uf)) e.uf = 'Estado inválido.';
     if (String(d.descricao || '').length > 2000) e.descricao = 'No máximo 2.000 letras.';
     if (!arquivo || !arquivo.name) e.arquivo = 'Escolha o arquivo.';
     else if (!EXT.includes(ext(arquivo.name))) e.arquivo = 'Tipo de arquivo não aceito. Use PDF, Word, planilha ou foto (JPG, PNG).';
     else if (!(arquivo.size > 0)) e.arquivo = 'O arquivo está vazio.';
+    else if (!tipoBate(arquivo)) e.arquivo = 'O conteúdo do arquivo não bate com a extensão (.' + ext(arquivo.name) + '). Use PDF, Word, planilha ou foto (JPG, PNG) de verdade.';
     else if (arquivo.size > MAX) e.arquivo = 'O arquivo passa de 20 MB. Diminua (salve o PDF com qualidade menor) ou divida.';
     return e;
   }

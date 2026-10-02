@@ -293,10 +293,10 @@
         <div class="campos">
           <div class="campo inteiro"><label for="vi-f">Mulher (quintal)</label><select id="vi-f" name="ficha_id" ${p.id ? 'disabled' : ''}><option value="">Escolha…</option>${opF}</select></div>
           <div class="campo"><label for="vi-e">Etapa</label><select id="vi-e" name="etapa" ${p.id ? 'disabled' : ''}>${Object.entries(MQ.ETAPAS).map(([k, e]) => `<option value="${k}" ${k === v.etapa ? 'selected' : ''}>${E(e.nome)}</option>`).join('')}</select></div>
-          <div class="campo"><label for="vi-d">Data prevista</label><input id="vi-d" name="data_prevista" type="date" value="${E(v.data_prevista || '')}" min="${MQ.PROJETO.inicioDiagnosticos}" max="${MQ.PROJETO.vigencia.fim}"></div>
+          <div class="campo"><label for="vi-d">Data prevista</label><input id="vi-d" name="data_prevista" type="date" value="${E(v.data_prevista || '')}" min="${R.hoje()}" max="${R.LIM.visitaMax}"></div>
           <div class="campo inteiro"><label for="vi-p">Quem faz a visita</label><select id="vi-p" name="executor_id"><option value="">Escolha…</option>${opP}</select>
             <span class="dica">Só aparece quem está habilitada (FIC, FUNCERN e termo). Sem isso, o dia de campo não pode ser pago.</span></div>
-          <div class="campo inteiro"><label for="vi-o">Observação</label><input id="vi-o" name="obs" value="${E(v.obs || '')}"></div>
+          <div class="campo inteiro"><label for="vi-o">Observação</label><input id="vi-o" name="obs" value="${E(v.obs || '')}" maxlength="300"></div>
         </div>
         <p class="small muted">Dias de campo no estado: <b class="num">${diasUsados(uf)}</b> de ${MQ.DIAS_CAMPO_UF}.</p>
         <div class="aviso erro" data-erro hidden></div>
@@ -310,15 +310,15 @@
   const chk = (nome, lista, marcados) => `<div class="chips-sel">${lista.map(([k, t]) => `<label class="sn${(marcados || []).includes(k) ? ' on' : ''}"><input type="checkbox" name="${nome}" value="${k}" ${(marcados || []).includes(k) ? 'checked' : ''}>${E(t)}</label>`).join('')}</div>`;
   const rad = (nome, ops, val) => `<span class="sn-par" style="flex-wrap:wrap">${ops.map(([k, t]) => `<label class="sn${val === k ? ' on' : ''}"><input type="radio" name="${nome}" value="${k}" ${val === k ? 'checked' : ''}>${E(t)}</label>`).join('')}</span>`;
   const linhaFamilia = (x = {}) => `<div class="linha-din" data-linha="familia">
-    <input name="fam_nome" placeholder="Nome" value="${E(x.nome || '')}" aria-label="Nome"><input name="fam_idade" type="number" min="0" max="120" inputmode="numeric" placeholder="Idade" value="${E(x.idade ?? '')}" aria-label="Idade">
+    <input name="fam_nome" placeholder="Nome" value="${E(x.nome || '')}" aria-label="Nome" maxlength="120"><input name="fam_idade" type="number" min="0" max="120" inputmode="numeric" placeholder="Idade" value="${E(x.idade ?? '')}" aria-label="Idade">
     <select name="fam_par" aria-label="Parentesco">${MQ.DIAG.parentesco.map(p => `<option ${x.parentesco === p ? 'selected' : ''}>${p}</option>`).join('')}</select>
-    <input name="fam_ocup" placeholder="Estuda / trabalha?" value="${E(x.ocupacao || '')}" aria-label="Estuda ou trabalha">
+    <input name="fam_ocup" placeholder="Estuda / trabalha?" value="${E(x.ocupacao || '')}" aria-label="Estuda ou trabalha" maxlength="120">
     <label class="mini-chk"><input type="checkbox" name="fam_ajuda" ${x.ajuda ? 'checked' : ''}>Ajuda no quintal</label>
     <button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`;
   const linhaKit = (x = {}) => `<div class="linha-din kit kit5" data-linha="kit">
-    <input name="kit_item" placeholder="Item (da lista aprovada)" value="${E(x.item || '')}" aria-label="Item"><input name="kit_qtd" placeholder="Qtd." inputmode="decimal" value="${E(x.qtd || '')}" aria-label="Quantidade">
-    <input name="kit_valor" placeholder="R$ unid." inputmode="decimal" value="${E(x.valor != null ? String(x.valor).replace('.', ',') : '')}" aria-label="Valor estimado de cada unidade (R$)">
-    <input name="kit_para" placeholder="Para quê" value="${E(x.para || '')}" aria-label="Para quê"><button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`;
+    <input name="kit_item" placeholder="Item (da lista aprovada)" value="${E(x.item || '')}" aria-label="Item" maxlength="120"><input name="kit_qtd" placeholder="Qtd." inputmode="decimal" value="${E(x.qtd_txt || x.qtd || '')}" aria-label="Quantidade" maxlength="40">
+    <input name="kit_valor" placeholder="R$ unid." inputmode="decimal" value="${E(x.valor != null ? String(x.valor).replace('.', ',') : '')}" aria-label="Valor estimado de cada unidade (R$)" maxlength="20">
+    <input name="kit_para" placeholder="Para quê" value="${E(x.para || '')}" aria-label="Para quê" maxlength="200"><button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`;
   /* coordenação: valor do kit por quintal e o total projetado pelos planos */
   function blocoKitPar() {
     const lim = +((S().kitPar || {}).valor_quintal) || 0;
@@ -332,21 +332,23 @@
   }
   /* projeção do investimento no quintal: soma de quantidade × valor estimado de cada item */
   const numBR = t => R.numBR(t);   // 1.250,50 → 1250.5 · 1.250 → 1250 · 12.50 → 12.5
-  const totalKit = kit => (kit || []).reduce((s, x) => s + (numBR(x.qtd) || 0) * (x.valor != null ? +x.valor : 0), 0);
+  const totalKit = kit => R.totalKit(kit);   // item com quantidade ou valor negativo não abate o total (regras.js)
   const brl = v => (+v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   function projKit(kit) {
     const tot = totalKit(kit); const lim = +((S().kitPar || {}).valor_quintal) || 0;
     const semValor = (kit || []).filter(x => x.item && (x.valor == null || !(+x.valor > 0))).length;
+    const semQtd = (kit || []).filter(x => x.item && +x.valor > 0 && !(numBR(x.qtd) > 0));   // o banco recusa item com valor e sem quantidade: avisa já
     const pct = lim ? Math.min(100, Math.round(tot / lim * 100)) : 0;
     return `<div class="kit-proj ${lim && tot > lim ? 'passou' : ''}"><div class="kp-l"><span class="small muted">Projeção do investimento no quintal</span><b class="num">${brl(tot)}</b></div>
       ${lim ? `<span class="bar" role="img" aria-label="${pct}% do valor por quintal"><i class="${tot > lim ? 'cheio' : ''}" style="width:${pct}%"></i></span>
         <span class="small">${tot > lim ? `<b>Passa ${brl(tot - lim)}</b> do valor por quintal (${brl(lim)}). Tire ou troque itens.` : `Valor por quintal: ${brl(lim)} · sobram ${brl(lim - tot)}`}</span>`
         : '<span class="small muted">A coordenação ainda não definiu o valor por quintal (aba Campo).</span>'}
-      ${semValor ? `<span class="small">${semValor === 1 ? '1 item sem valor' : semValor + ' itens sem valor'}: informe o preço estimado de cada unidade.</span>` : ''}</div>`;
+      ${semValor ? `<span class="small">${semValor === 1 ? '1 item sem valor' : semValor + ' itens sem valor'}: informe o preço estimado de cada unidade.</span>` : ''}
+      ${semQtd.length ? `<span class="small kit-sem-qtd">Informe a quantidade de ${E(semQtd.slice(0, 3).map(x => x.item).join(', '))}${semQtd.length > 3 ? ' e de mais ' + (semQtd.length - 3) : ''} (um número maior que zero).</span>` : ''}</div>`;
   }
   const linhaCron = (x = {}) => `<div class="linha-din kit" data-linha="cron">
-    <input name="cr_oque" placeholder="O que fazer" value="${E(x.oque || '')}" aria-label="O que fazer"><input name="cr_ini" placeholder="Mês início" value="${E(x.inicio || '')}" aria-label="Mês de início">
-    <input name="cr_fim" placeholder="Mês fim" value="${E(x.fim || '')}" aria-label="Mês de fim"><input name="cr_quem" placeholder="Quem faz" value="${E(x.quem || '')}" aria-label="Quem faz">
+    <input name="cr_oque" placeholder="O que fazer" value="${E(x.oque || '')}" aria-label="O que fazer" maxlength="200"><input name="cr_ini" placeholder="Mês início" value="${E(x.inicio || '')}" aria-label="Mês de início" maxlength="40">
+    <input name="cr_fim" placeholder="Mês fim" value="${E(x.fim || '')}" aria-label="Mês de fim" maxlength="40"><input name="cr_quem" placeholder="Quem faz" value="${E(x.quem || '')}" aria-label="Quem faz" maxlength="120">
     <button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`;
 
   function painelDiag(p) {
@@ -363,7 +365,7 @@
       <div class="painel-corpo"><form class="f" data-form="diag" data-id="${E(d.id)}" data-ficha="${E(f.id)}" data-visita="${E(d.visita_id || '')}" novalidate>
         ${!f.consent_imagem ? '<div class="aviso"><b>Ela não autorizou uso de imagem:</b> fotografe o quintal sem que ela apareça.</div>' : ''}
         <fieldset><legend>Visita</legend><div class="campos">
-          <div class="campo"><label for="dg-data">Data da visita</label><input id="dg-data" name="data_visita" type="date" value="${v('data_visita')}" max="${R.hoje()}"></div>
+          <div class="campo"><label for="dg-data">Data da visita</label><input id="dg-data" name="data_visita" type="date" value="${v('data_visita')}" min="${R.LIM.visitaMin}" max="${R.hoje()}"></div>
           <div class="campo"><label>Localização do quintal</label><button type="button" class="btn peq" data-acao="campo-gps">${d.latitude ? 'Localização registrada ✓' : 'Registrar localização'}</button>
             <input type="hidden" name="latitude" value="${v('latitude')}"><input type="hidden" name="longitude" value="${v('longitude')}">
             <input type="hidden" name="gps_precisao" value="${v('gps_precisao')}"><input type="hidden" name="gps_em" value="${v('gps_em')}">
@@ -372,7 +374,7 @@
             return `<div class="campo inteiro sem-gps" id="w-sem_gps_motivo"><label for="dg-semgps-tipo">Sem localização? Por quê</label>
               <select id="dg-semgps-tipo" name="sem_gps_tipo"><option value="">Escolha, se não conseguiu registrar…</option>${MOTIVOS_SEM_GPS.map(x => `<option${x === tipo ? ' selected' : ''}>${E(x)}</option>`).join('')}</select>
               <label for="dg-semgps" class="so-leitor">Explique com suas palavras</label>
-              <input id="dg-semgps" name="sem_gps_detalhe" value="${E(det)}" placeholder="Explique com suas palavras: onde fica o quintal e o que aconteceu">
+              <input id="dg-semgps" name="sem_gps_detalhe" value="${E(det)}" maxlength="500" placeholder="Explique com suas palavras: onde fica o quintal e o que aconteceu">
               <span class="dica">Sem localização, a coordenação só aprova depois de confirmar a visita de outro jeito.</span></div>`; })()}
         </div></fieldset>
 
@@ -382,12 +384,12 @@
         <fieldset><legend>2. Renda e políticas públicas</legend>
           ${chk('politicas', MQ.DIAG.politicas, d.politicas)}
           <div class="campos">
-            <div class="campo"><label for="dg-rf">Renda da família por mês (R$)</label><input id="dg-rf" name="renda_familiar" type="number" min="0" step="10" inputmode="numeric" value="${v('renda_familiar')}"></div>
-            <div class="campo"><label for="dg-fr">De onde vem a maior parte</label><input id="dg-fr" name="fonte_renda" value="${v('fonte_renda')}"></div>
+            <div class="campo"><label for="dg-rf">Renda da família por mês (R$)</label><input id="dg-rf" name="renda_familiar" type="number" min="0" max="${R.LIM.rendaMax}" step="10" inputmode="numeric" value="${v('renda_familiar')}"></div>
+            <div class="campo"><label for="dg-fr">De onde vem a maior parte</label><input id="dg-fr" name="fonte_renda" value="${v('fonte_renda')}" maxlength="200"></div>
           </div></fieldset>
 
         <fieldset><legend>3. O quintal e a água</legend><div class="campos">
-          <div class="campo"><label for="dg-area">Área aproximada (m²)</label><input id="dg-area" name="area_m2" type="number" min="1" inputmode="numeric" value="${v('area_m2')}"></div>
+          <div class="campo"><label for="dg-area">Área aproximada (m²)</label><input id="dg-area" name="area_m2" type="number" min="1" max="${R.LIM.areaMax}" inputmode="numeric" value="${v('area_m2')}"></div>
           <div class="campo"><label>A terra é</label>${rad('terra', [['propria', 'Própria'], ['cedida', 'Cedida'], ['outra', 'Outra']], d.terra)}</div>
           <div class="campo"><label>Cercado?</label>${rad('cercado', [['sim', 'Sim'], ['nao', 'Não'], ['em_parte', 'Em parte']], d.cercado)}</div>
           <div class="campo inteiro" id="w-fontes_agua"><label>Fontes de água</label>${chk('fontes_agua', MQ.DIAG.fontes_agua, d.fontes_agua)}</div>
@@ -398,15 +400,15 @@
           <div class="campo"><label>Água de pia/tanque/banho reaproveitável?</label>${rad('reuso', [['sim', 'Sim'], ['nao', 'Não']], d.reuso === true ? 'sim' : d.reuso === false ? 'nao' : '')}</div>
           <div class="campo"><label>Irrigação</label>${rad('irrigacao', [['nao', 'Não tem'], ['regador', 'Regador/balde'], ['gotejamento', 'Gotejamento'], ['outra', 'Outra']], d.irrigacao)}</div>
           <div class="campo"><label>Solo</label>${rad('solo', [['arenoso', 'Arenoso'], ['argiloso', 'Argiloso'], ['pedregoso', 'Pedregoso'], ['nao_sabe', 'Não sabe']], d.solo)}</div>
-          <div class="campo inteiro"><label for="dg-chuva">Meses em que costuma chover</label><input id="dg-chuva" name="meses_chuva" value="${v('meses_chuva')}" placeholder="Ex.: janeiro a abril"></div>
+          <div class="campo inteiro"><label for="dg-chuva">Meses em que costuma chover</label><input id="dg-chuva" name="meses_chuva" value="${v('meses_chuva')}" maxlength="120" placeholder="Ex.: janeiro a abril"></div>
         </div><div id="dg-alerta-agua"></div></fieldset>
 
         <fieldset><legend>4. O que produz hoje</legend>
           <div class="prod">${MQ.DIAG.producao.map(([k, t]) => { const x = prod[k] || {};
-            return `<div class="prod-l"><b>${E(t)}</b><input name="pr_${k}_qtd" placeholder="Quantidade (pés, canteiros, cabeças)" value="${E(x.qtd || '')}" aria-label="${E(t)}: quantidade">
+            return `<div class="prod-l"><b>${E(t)}</b><input name="pr_${k}_qtd" placeholder="Quantidade (pés, canteiros, cabeças)" value="${E(x.qtd || '')}" aria-label="${E(t)}: quantidade" maxlength="120">
               <span class="prod-usos"><label class="mini-chk"><input type="checkbox" name="pr_${k}_consumo" ${x.consumo ? 'checked' : ''}>Consumo</label><label class="mini-chk"><input type="checkbox" name="pr_${k}_venda" ${x.venda ? 'checked' : ''}>Venda/troca</label></span>
-              <input name="pr_${k}_onde" placeholder="Onde vende" value="${E(x.onde || '')}" aria-label="${E(t)}: onde vende"></div>`; }).join('')}</div>
-          <div class="campo"><label for="dg-rq">Quanto ganha com vendas do quintal por mês (R$)</label><input id="dg-rq" name="renda_quintal" type="number" min="0" step="10" inputmode="numeric" value="${v('renda_quintal')}"><span class="dica">Zero se não vende. É a linha de base: a visita final vai perguntar a mesma coisa.</span></div>
+              <input name="pr_${k}_onde" placeholder="Onde vende" value="${E(x.onde || '')}" aria-label="${E(t)}: onde vende" maxlength="120"></div>`; }).join('')}</div>
+          <div class="campo"><label for="dg-rq">Quanto ganha com vendas do quintal por mês (R$)</label><input id="dg-rq" name="renda_quintal" type="number" min="0" max="${R.LIM.rendaMax}" step="10" inputmode="numeric" value="${v('renda_quintal')}"><span class="dica">Zero se não vende. É a linha de base: a visita final vai perguntar a mesma coisa.</span></div>
         </fieldset>
 
         ${MQ.impactoUI ? MQ.impactoUI.bloco(d.impacto, '4b. Medidas para comparar no fim (linha de base)', MQ.impactoUI.menorDaFamilia(d.familia)) : ''}
@@ -418,8 +420,8 @@
         </fieldset>
 
         <fieldset><legend>7. Problemas e sonhos</legend><div class="campos">
-          <div class="campo inteiro"><label for="dg-dif">Maiores dificuldades do quintal</label><textarea id="dg-dif" name="dificuldades">${v('dificuldades')}</textarea></div>
-          <div class="campo inteiro"><label for="dg-son">O que ela quer produzir ou melhorar</label><textarea id="dg-son" name="sonhos">${v('sonhos')}</textarea></div>
+          <div class="campo inteiro"><label for="dg-dif">Maiores dificuldades do quintal</label><textarea id="dg-dif" name="dificuldades" maxlength="2000">${v('dificuldades')}</textarea></div>
+          <div class="campo inteiro"><label for="dg-son">O que ela quer produzir ou melhorar</label><textarea id="dg-son" name="sonhos" maxlength="2000">${v('sonhos')}</textarea></div>
         </div></fieldset>
 
         <fieldset id="w-fotos"><legend>8. Fotos e croqui</legend>
@@ -432,7 +434,7 @@
         <div data-parteb>
         <fieldset><legend>9. Plano do quintal: objetivo</legend>
           <div id="w-objetivos">${chk('objetivos', MQ.DIAG.objetivos, d.objetivos)}</div>
-          <div class="campo"><label for="dg-frase">Em uma frase, o que ela quer alcançar em 12 meses</label><input id="dg-frase" name="frase_objetivo" value="${v('frase_objetivo')}"></div>
+          <div class="campo"><label for="dg-frase">Em uma frase, o que ela quer alcançar em 12 meses</label><input id="dg-frase" name="frase_objetivo" value="${v('frase_objetivo')}" maxlength="300"></div>
         </fieldset>
         <fieldset><legend>10. Kit escolhido</legend>
           <p class="small muted" style="margin-top:-6px">Só itens da lista aprovada pela coordenação, sem passar do valor por quintal. Sem irrigação, comece pelos itens de água (caixa d’água, gotejamento) e pela cobertura do solo.</p>
@@ -445,7 +447,7 @@
           <button type="button" class="btn-add" data-acao="campo-linha-add" data-tipo="cron"><span aria-hidden="true">+</span> Atividade</button>
           <div class="campos">
             <div class="campo" id="w-lote"><label>Lote de implantação</label>${rad('lote', [['1', 'Lote 1 (jan–abr)'], ['2', 'Lote 2 (mai–jul)']], d.lote ? String(d.lote) : '')}</div>
-            <div class="campo"><label for="dg-mes">Mês previsto</label><input id="dg-mes" name="mes_implantacao" value="${v('mes_implantacao')}" placeholder="No início das chuvas ou com água garantida"></div>
+            <div class="campo"><label for="dg-mes">Mês previsto</label><input id="dg-mes" name="mes_implantacao" value="${v('mes_implantacao')}" maxlength="120" placeholder="No início das chuvas ou com água garantida"></div>
           </div></fieldset>
         <fieldset><legend>12. Compromissos</legend>
           <label class="check" id="w-compromissos"><input type="checkbox" name="compromissos" ${d.compromissos ? 'checked' : ''}><span>Ela concorda em usar o kit no quintal, cuidar da produção, receber as visitas, participar das formações e avisar a equipe se deixar de usar o quintal.</span></label>
@@ -479,7 +481,11 @@
       dificuldades: txt('dificuldades'), sonhos: txt('sonhos'),
       objetivos: todos('objetivos'), frase_objetivo: txt('frase_objetivo'),
       kit: linhas('kit', [['item', 'kit_item'], ['qtd', 'kit_qtd'], ['valor', 'kit_valor'], ['para', 'kit_para']]).filter(x => x.item)
-        .map(x => Object.assign(x, { valor: numBR(x.valor) })),
+        .map(x => { const q = numBR(x.qtd), o = Object.assign(x, { valor: numBR(x.valor) });
+          // "1/2", "2 de 500 ml", "3 a 4": a tela lê o primeiro número (0,5 · 2 · 3); o banco colaria os números (12 · 2500 · 34).
+          // Para os dois lerem igual, a quantidade vai como número e o texto digitado fica guardado em qtd_txt.
+          if (q != null && q !== R.numBanco(x.qtd)) { o.qtd_txt = x.qtd; o.qtd = String(q).replace('.', ','); }
+          return o; }),
       cronograma: linhas('cron', [['oque', 'cr_oque'], ['inicio', 'cr_ini'], ['fim', 'cr_fim'], ['quem', 'cr_quem']]).filter(x => x.oque),
       lote: num('lote'), mes_implantacao: txt('mes_implantacao'), compromissos: !!fd.get('compromissos'),
       impacto: MQ.impactoUI && form.querySelector('fieldset.impacto') ? MQ.impactoUI.ler(form) : undefined
@@ -532,7 +538,7 @@
           ${dl([['Práticas', (d.praticas || []).map(k => rot(MQ.DIAG.praticas, k)).join(', ')], ['Horas por dia', d.horas_dia], ['Participa de', (d.participa || []).map(k => rot(MQ.DIAG.participa, k)).join(', ')], ['Dificuldades', d.dificuldades], ['Quer', d.sonhos]])}</div>
         ${dg.sem_agua ? '<div class="aviso erro">Sem água que dure na seca: não há plano nem kit. Encaminhar para programa de cisternas.</div>' : `
         <div class="bloco"><h3>Plano do quintal</h3>${dl([['Objetivo', (d.objetivos || []).map(k => rot(MQ.DIAG.objetivos, k)).join(', ')], ['Em 12 meses', d.frase_objetivo], ['Lote', d.lote ? 'Lote ' + d.lote : null], ['Mês previsto', d.mes_implantacao]])}
-          <h3 style="margin-top:8px">Kit</h3>${tab(['Item', 'Qtd.', 'R$ unid.', 'Subtotal', 'Para quê'], (d.kit || []).map(x => [x.item, x.qtd, x.valor != null ? brl(x.valor) : '—', x.valor != null ? brl((numBR(x.qtd) || 0) * x.valor) : '—', x.para]))}
+          <h3 style="margin-top:8px">Kit</h3>${tab(['Item', 'Qtd.', 'R$ unid.', 'Subtotal', 'Para quê'], (d.kit || []).map(x => [x.item, x.qtd_txt || x.qtd, x.valor != null ? brl(x.valor) : '—', x.valor != null ? brl(totalKit([x])) : '—', x.para]))}
           ${projKit(d.kit)}
           <h3 style="margin-top:8px">Cronograma</h3>${tab(['O que', 'Início', 'Fim', 'Quem'], (d.cronograma || []).map(x => [x.oque, x.inicio, x.fim, x.quem]))}</div>`}
         <div class="bloco"><h3>Fotos</h3><div class="acoes">${(dg.fotos || []).map((x, i) => `<button class="btn peq" data-acao="ficha-foto" data-path="${E(x)}">${x === 'exemplo' ? 'Foto de exemplo' : 'Foto ' + (i + 1)}</button>`).join('') || '<span class="muted small">Sem fotos enviadas.</span>'}</div><div id="fi-foto-vista"></div></div>
@@ -542,7 +548,7 @@
           return `<form class="bloco" data-form="diag-decisao" data-id="${E(dg.id)}" data-conferir="${loc.alerta ? '1' : ''}" novalidate><h3>Decisão da coordenação</h3>
           <p class="small muted">${dg.sem_agua ? 'Confirme o encaminhamento por falta de água.' : 'Aprove se o kit está na lista aprovada e cabe no valor por quintal, e se o cronograma é viável.'}</p>
           ${alterei && dg.situacao !== 'aprovado' ? '<div class="aviso"><b>Você alterou este diagnóstico, então não aprova.</b> Quem aprova é a coordenação técnica. Sem técnica, devolva para quem aplicou corrigir: depois da correção dela, você pode aprovar.</div>' : ''}
-          <div class="campo"><label for="dd-obs">${loc.alerta && dg.situacao !== 'aprovado' ? 'Observação: como você confirmou que a visita aconteceu?' : 'Observação'}</label><textarea id="dd-obs" name="obs">${dg.situacao === 'aprovado' ? E(dg.obs_coordenacao || '') : ''}</textarea>
+          <div class="campo"><label for="dd-obs">${loc.alerta && dg.situacao !== 'aprovado' ? 'Observação: como você confirmou que a visita aconteceu?' : 'Observação'}</label><textarea id="dd-obs" name="obs" maxlength="2000">${dg.situacao === 'aprovado' ? E(dg.obs_coordenacao || '') : ''}</textarea>
             ${dg.situacao !== 'aprovado' && dg.obs_coordenacao ? `<span class="dica">Observação anterior: ${E(dg.obs_coordenacao)}</span>` : ''}</div>
           <div class="aviso erro" data-erro hidden></div>
           <div class="acoes">${dg.situacao !== 'aprovado' && !alterei ? `<button class="btn pri" type="submit" name="decisao" value="aprovado">${dg.sem_agua ? 'Confirmar encaminhamento' : 'Aprovar plano'}</button>` : ''}
@@ -561,8 +567,8 @@
       <div class="painel-corpo"><form class="f" data-form="visita-feita" data-id="${E(v.id)}" novalidate>
         <p class="small muted">Registrar a visita feita é o que permite solicitar a ajuda de custo dela. Depois de solicitada, ela não muda mais.</p>
         <div class="campos">
-          <div class="campo"><label for="vf-data">Dia em que foi feita</label><input id="vf-data" name="data_realizada" type="date" max="${R.hoje()}" value="${v.data_prevista <= R.hoje() ? v.data_prevista : R.hoje()}" required></div>
-          <div class="campo inteiro"><label for="vf-rel">O que foi feito</label><textarea id="vf-rel" name="relato" rows="4" placeholder="${v.etapa === 'implantacao' ? 'Ex.: entregue a caixa d’água e o kit de gotejamento; montados 3 canteiros com a família; combinada a próxima visita.' : 'Ex.: canteiros produzindo alface e coentro; gotejamento com vazamento consertado; orientei a compostagem.'}">${E(v.relato || '')}</textarea></div>
+          <div class="campo"><label for="vf-data">Dia em que foi feita</label><input id="vf-data" name="data_realizada" type="date" min="${R.LIM.visitaMin}" max="${R.hoje()}" value="${v.data_prevista <= R.hoje() ? v.data_prevista : R.hoje()}" required></div>
+          <div class="campo inteiro"><label for="vf-rel">O que foi feito</label><textarea id="vf-rel" name="relato" rows="4" maxlength="2000" placeholder="${v.etapa === 'implantacao' ? 'Ex.: entregue a caixa d’água e o kit de gotejamento; montados 3 canteiros com a família; combinada a próxima visita.' : 'Ex.: canteiros produzindo alface e coentro; gotejamento com vazamento consertado; orientei a compostagem.'}">${E(v.relato || '')}</textarea></div>
           ${foto(1)}${foto(2)}${foto(3)}
         </div>
         <div class="aviso erro" data-erro hidden></div>
@@ -572,8 +578,22 @@
     const inp = ev.target.closest && ev.target.closest('input[data-foto-vis]'); if (!inp || !inp.files[0]) return;
     const n = inp.dataset.fotoVis; const dica = document.getElementById('vf-f' + n + '-dica');
     if (inp.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; inp.value = ''; return; }
-    dica.textContent = 'Preparando foto…'; fotosVis[n] = await MQ.comprimirFoto(inp.files[0]); dica.textContent = 'Foto pronta (' + Math.round(fotosVis[n].size / 1024) + ' KB).';
+    dica.textContent = 'Preparando foto…';
+    const foto = await prepararFoto(inp, dica); if (!foto) { delete fotosVis[n]; return; }
+    fotosVis[n] = foto; dica.textContent = 'Foto pronta (' + Math.round(fotosVis[n].size / 1024) + ' KB).';
   });
+  /* Só aceita foto de verdade (imagem, com tamanho e que o aparelho consiga abrir). Arquivo que não é foto
+     (texto, PDF, arquivo vazio ou renomeado para .jpg) é recusado na hora, com o aviso embaixo do campo.
+     A conferência é a de MQ.comprimirFoto (fila.js); aqui a tela mostra o motivo e limpa o campo. */
+  const MSG_NAO_FOTO = 'Este arquivo não é uma foto.';
+  async function prepararFoto(inp, dica) {
+    const arq = inp.files[0];
+    const recusar = () => { inp.value = ''; if (dica) { dica.textContent = MSG_NAO_FOTO + ' Tire a foto de novo ou escolha outra imagem.'; dica.classList.add('erro-foto'); } return null; };
+    if (!arq || !/^image\//.test(String(arq.type || '')) || !(arq.size > 0)) return recusar();
+    if (dica) dica.classList.remove('erro-foto');
+    try { const b = await MQ.comprimirFoto(arq, undefined, undefined, { semAviso: true }); return b && b.size > 0 ? b : recusar(); }
+    catch (e) { return recusar(); }
+  }
 
   function painel(p) {
     if (p.tipo === 'visita-feita') return painelFeita(p);
@@ -619,7 +639,7 @@
     else if (a === 'campo-visita-cancelar') {
       const fm = $('form[data-form=visita]'); const v = visitas().find(x => x.id === fm.dataset.id);
       if (!fm.dataset.confirmar) { fm.dataset.confirmar = '1'; el.textContent = 'Confirmar cancelamento'; return; }
-      await U().ocupado(fm, async () => { await guardar('visita', Object.assign({}, v, { situacao: 'cancelada' })); U().fecharPainel(); U().render(); U().toast('Visita cancelada. O dia de campo volta para o saldo do estado.'); });
+      await U().ocupado(fm, async () => { await guardar('visita', Object.assign({}, v, { situacao: 'cancelada' })); U().fecharPainel(); U().render(); U().toast('Visita cancelada. O dia de campo volta para o saldo do estado.'); }, { semConferir: true });
     }
   }
 
@@ -644,7 +664,9 @@
       const e = {};
       if (!v.ficha_id) e.ficha_id = 'Escolha a mulher.';
       if (!v.executor_id) e.executor_id = 'Escolha quem faz a visita.';
-      if (!v.data_prevista) e.data_prevista = 'Informe a data.';
+      // de hoje até 31/12/2027 (o banco recusa 2019 ou 2099); a data que já estava gravada e não mudou não trava
+      { const ed = R.erroDataPrevista(v.data_prevista, v0 && v0.data_prevista); if (ed) e.data_prevista = ed; }
+      if (v.obs && v.obs.length > 300) e.obs = 'Texto muito longo (máximo 300 caracteres).';
       if (!v0 && v.ficha_id) {
         if (ativasDe(v.ficha_id, v.etapa).length >= MQ.ETAPAS[v.etapa].max) e.etapa = v.etapa === 'acompanhamento' ? 'Este quintal já tem as 2 visitas de acompanhamento.' : 'Este quintal já tem essa visita agendada ou feita.';
         else if (v.etapa !== 'diagnostico' && !ativasDe(v.ficha_id, 'diagnostico').some(x => x.situacao === 'realizada')) e.etapa = 'Primeiro o diagnóstico.';
@@ -663,9 +685,9 @@
       const d = lerDiag(form);
       const erros = R.validarDiagnostico(d);
       if (Object.keys(erros).length) {
-        Object.keys(erros).forEach(k => { const w = form.querySelector('#w-' + k); if (w) w.classList.add('tem-erro'); });
-        const alvo = {}; Object.entries(erros).forEach(([k, m]) => { if (form.querySelector(`[name="${k}"]`) && !form.querySelector('#w-' + k)) alvo[k] = m; });
-        U().mostrarErros(form, alvo, Object.keys(erros).length > 1 ? 'Faltam ' + Object.keys(erros).length + ' itens: ' + Object.values(erros).slice(0, 3).join(' · ') : Object.values(erros)[0]);
+        form.querySelectorAll('[id^="w-"].tem-erro').forEach(w => w.classList.remove('tem-erro'));   // marcas do envio anterior
+        // mostrarErros (app.js) marca o campo ou o bloco "w-<nome>" de cada erro e lista todos na caixa
+        U().mostrarErros(form, erros, Object.keys(erros).length > 1 ? 'Faltam ' + Object.keys(erros).length + ' itens: ' + Object.values(erros).join(' · ') : Object.values(erros)[0]);
         const p = form.querySelector('.tem-erro'); if (p) p.scrollIntoView({ block: 'center', behavior: 'smooth' });
         return;
       }
@@ -696,8 +718,9 @@
       const v0 = visitas().find(x => x.id === form.dataset.id);
       const data = String(fd.get('data_realizada') || ''), relato = String(fd.get('relato') || '').trim();
       const e = {};
-      if (!data) e.data_realizada = 'Informe o dia.'; else if (data > R.hoje()) e.data_realizada = 'Não pode ser no futuro.';
+      { const ed = R.erroDataFeita(data); if (ed) e.data_realizada = ed; }   // de 01/01/2026 até hoje
       if (relato.length < 20) e.relato = 'Conte em poucas linhas o que foi feito (pelo menos 20 letras).';
+      else if (relato.length > 2000) e.relato = 'Texto muito longo (máximo 2.000 caracteres).';
       if (!fotosVis[1]) e.foto = 'Faça pelo menos 1 foto do que foi feito.';
       if (Object.keys(e).length) { const geral = e.foto; delete e.foto; return U().mostrarErros(form, e, geral && !Object.keys(e).length ? geral : undefined); }
       await U().ocupado(form, async () => {
@@ -727,7 +750,9 @@
     if (ev.target.type === 'file' && ev.target.files[0]) {
       const k = ev.target.dataset.foto; const dica = form.querySelector('#dg-f-' + k + '-dica');
       if (ev.target.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; ev.target.value = ''; return; }
-      dica.textContent = 'Preparando foto…'; fotosTemp[k] = await MQ.comprimirFoto(ev.target.files[0]);
+      dica.textContent = 'Preparando foto…';
+      const foto = await prepararFoto(ev.target, dica); if (!foto) { delete fotosTemp[k]; atualizarDiag(form); return; }
+      fotosTemp[k] = foto;
       dica.textContent = 'Foto pronta (' + Math.round(fotosTemp[k].size / 1024) + ' KB).';
       const w = form.querySelector('#w-fotos'); if (w) w.classList.remove('tem-erro');
     }
@@ -752,5 +777,5 @@
     const devolvidos = diagnosticos().filter(d => d.situacao === 'devolvido' && (eu.papel === 'agente' ? (visitas().find(v => v.id === d.visita_id) || {}).executor_id === eu.id : d.uf === eu.uf)).length;
     return vencidas + devolvidos;
   }
-  MQ.campoUI = { contaAFazer, secaoBolsista, telaAgente, abaCoord, painel, clique, enviar, diagnosticos, visitas, guardar, numBR, localDiag, kmEntre, centroMun, MOTIVOS_SEM_GPS };
+  MQ.campoUI = { contaAFazer, secaoBolsista, telaAgente, abaCoord, painel, clique, enviar, diagnosticos, visitas, guardar, numBR, totalKit, prepararFoto, localDiag, kmEntre, centroMun, MOTIVOS_SEM_GPS };
 })();

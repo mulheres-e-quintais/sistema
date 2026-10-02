@@ -357,7 +357,7 @@
         if (!p || p.solicitante_id !== eu.id) throw falha('Pedido não encontrado.');
         if (p.situacao !== 'devolvido') throw falha('Só dá para corrigir pedido devolvido.');
       }
-      Object.assign(p, { titulo, data_ref: data, dados: copia(dados), justificativa_prazo: justificativa || null, situacao: 'enviado', enviado_em: agora, conferido_por: null, conferido_em: null, decidido_por: null, decidido_em: null });
+      Object.assign(p, { titulo, data_ref: data, dados: copia(dados), justificativa_prazo: justificativa || null, situacao: 'enviado', enviado_em: agora, conferido_por: null, conferido_em: null, decidido_por: null, decidido_em: null, valor_autorizado: null });
       const aud = Object.assign({}, p); delete aud.dados;
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'pedidos_apoio', registro_id: p.id, acao: id ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: null, depois: aud });
       gravar(); return p.id;
@@ -389,7 +389,7 @@
       } else if (acao === 'devolver') {
         if (!((papel === conferente && p.situacao === 'enviado') || (papel === 'coord_geral' && p.situacao === 'conferido'))) throw falha('Este pedido não pode ser devolvido agora.');
         if (o.length < 5) throw falha('Para devolver, escreva o que precisa ser corrigido.');
-        Object.assign(p, { situacao: 'devolvido', obs: o, decidido_por: eu.id, decidido_em: agora });
+        Object.assign(p, { situacao: 'devolvido', obs: o, decidido_por: eu.id, decidido_em: agora, valor_autorizado: null });   // 42: pedido devolvido perde o valor autorizado
       } else if (acao === 'autorizar') {
         if (papel !== 'coord_geral') throw falha('Quem autoriza e manda para a FUNCERN é a coordenação geral.');
         if (p.situacao !== 'conferido') throw falha('Só pedido conferido pode ser autorizado.');
@@ -444,13 +444,14 @@
         const ruim = visitas.some(id => { const v = (d.visitas || []).find(x => x.id === id); const sid = d.solic_visitas[id];
           return !v || v.executor_id !== eu.id || v.situacao !== 'realizada' || String(v.data_realizada).slice(0, 7) !== m.slice(0, 7) || (sid && (!s || sid !== s.id)); });
         if (ruim) throw falha('Há visita que não é sua, não está feita, é de outro mês ou já foi solicitada.');
+        if (!(+valor > 0)) throw falha('Valor inválido.');   // 32: ajuda de custo com valor zero, negativo ou vazio
       } else if (String(relatorio || '').trim().length < 50) throw falha('Escreva o relatório de atividades do mês (pelo menos algumas linhas).');
       const agora = new Date().toISOString(); let alvo = s;
       if (tipo === 'bolsa' && eu.papel === 'professor_fic') {   // 38: relatório com os encontros do mês e a presença, gravado pelo sistema
         const enc = (d.ficEncontros || []).filter(e => e.professor_id === eu.id && !e.cancelado_em && String(e.data).slice(0, 7) === m.slice(0, 7)).sort((a, b) => String(a.data).localeCompare(String(b.data)));
         if (!enc.length && String((detalhe || {}).justificativa_sem_encontro || '').trim().length < 30) throw falha('Nenhum encontro do curso registrado neste mês: explique por quê (pelo menos 30 letras), por exemplo, mês de preparação do curso.');
         const nomeP = id => { const q = d.equipe.find(y => y.id === id) || {}; return { nome: q.nome_social || q.nome, papel: q.papel, uf: q.uf }; };
-        detalhe = Object.assign({}, detalhe || {}, { fic_carga_horaria: enc.reduce((t, e) => t + (+e.carga_horaria || 0), 0), fic_gerado_em: new Date().toISOString(),
+        detalhe = Object.assign({}, detalhe || {}, { fic_carga_horaria: Math.round(enc.reduce((t, e) => t + (+e.carga_horaria || 0), 0) * 10) / 10, fic_gerado_em: new Date().toISOString(),
           fic_encontros: enc.map(e => ({ id: e.id, data: e.data, turma: ((d.turmas || []).find(t => t.id === e.turma_id) || {}).nome, carga_horaria: e.carga_horaria, modalidade: e.modalidade, conteudo: e.conteudo,
             presencas: (d.ficPresencas || []).filter(p => p.encontro_id === e.id && (p.presente || matriculadosEm(d, e.turma_id, e.data).includes(p.equipe_id))).map(p => Object.assign(nomeP(p.equipe_id), { presente: p.presente, confirmado_em: p.confirmado_em })).sort((a, b) => String(a.nome).localeCompare(String(b.nome))) })) });
       }
@@ -472,6 +473,11 @@
       const agora = new Date().toISOString();
       const vAval = valor != null ? valor : s.valor_solicitado;
       if (ok && !(vAval > 0)) throw falha('Informe o valor do aval (maior que zero).');
+      if (ok && s.tipo === 'ajuda_custo') {   // teto de R$ 600 por visita da solicitação (erro de digitação de um zero não vira pagamento)
+        const nVis = Object.values(d.solic_visitas || {}).filter(sid => sid === s.id).length || ((s.detalhe || {}).visitas || []).length;
+        const teto = nVis ? 600 * nVis : MQ.CUSTO_PADRAO.teto;
+        if (vAval > teto) throw falha('Valor muito acima do pedido (' + R.fmtBRL(+s.valor_solicitado || 0) + '). Confira o valor: o aval da ajuda de custo vai até R$ 600,00 por visita.');
+      }
       if (ok && s.tipo === 'bolsa' && s.valor_solicitado != null && vAval > s.valor_solicitado) throw falha('O aval passa do valor pedido. Para pagar mais, devolva para a pessoa corrigir o valor.');
       if (ok) Object.assign(s, { situacao: 'avalizada', valor_avalizado: vAval, aval_por: eu.id, aval_em: agora, obs_aval: obs || null });
       else {
@@ -719,7 +725,7 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       const erros = R.validar(m, d.equipe);
       if (Object.keys(erros).length) { const e = falha(Object.values(erros)[0]); e.campos = erros; throw e; }
       const agora = new Date().toISOString();
-      const novo = Object.assign({}, m, { id: uid(), cpf: R.soDigitos(m.cpf), email: m.email.trim(), status: 'ativa', user_id: null,
+      const novo = Object.assign({}, m, { id: uid(), cpf: R.soDigitos(m.cpf), email: m.email.trim().toLowerCase(), status: 'ativa', user_id: null,
         data_fim: null, motivo_desligamento: null, criado_por: eu.id, criado_em: agora, atualizado_em: agora });
       d.equipe.push(novo); auditar('INSERT', null, novo); gravar();
       return copia(novo);
@@ -812,6 +818,8 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       const i = d.visitas.findIndex(x => x.id === v.id); const antes = i >= 0 ? d.visitas[i] : null;
       const f = d.fichas.find(x => x.id === v.ficha_id);
       if (!f) throw falha('Ficha não encontrada.');
+      if (!Object.prototype.hasOwnProperty.call(MQ.ETAPAS, antes ? antes.etapa : v.etapa) || (antes && v.etapa != null && v.etapa !== antes.etapa && !Object.prototype.hasOwnProperty.call(MQ.ETAPAS, v.etapa))) throw falha('Etapa da visita inválida.');
+      if (antes && antes.situacao === 'cancelada' && (v.situacao || antes.situacao) !== 'cancelada') throw falha('Visita cancelada não volta. Agende outra.');   // 03_campo.sql
       if (!eu || !(R.decideCampo(eu.papel) || (R.ehBolsista(eu.papel) && f.uf === eu.uf) || (antes && antes.executor_id === eu.id))) throw falha('Seu perfil não tem permissão para esta ação.');
       if (eu.papel === 'agente' && antes && (v.executor_id !== antes.executor_id || v.data_prevista !== antes.data_prevista || v.situacao === 'cancelada')) throw falha('O agente de campo não reagenda nem cancela visitas. Fale com a bolsista do estado.');
       if (!(f.resultado === 'selecionada' && f.situacao === 'aprovada')) throw falha('Só há visita para mulher selecionada e aprovada pela coordenação técnica.');
@@ -876,6 +884,16 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       const i = d.diagnosticos.findIndex(x => x.id === dados.id); const antes = i >= 0 ? d.diagnosticos[i] : null;
       if (!antes && d.diagnosticos.some(x => x.ficha_id === dados.ficha_id)) throw falha('Este quintal já tem diagnóstico registrado.');
       if (antes && antes.situacao === 'aprovado') throw falha('Plano já aprovado pela coordenação técnica. Peça que ela devolva para corrigir.');
+      if (dados.data_visita && String(dados.data_visita).slice(0, 10) > R.hoje() && (!antes || dados.data_visita !== antes.data_visita)) throw falha('A data da visita não pode ser no futuro.');   // 42: ao criar ou ao mudar a data
+      if (v.situacao === 'cancelada') throw falha('A visita de diagnóstico foi cancelada.');
+      const kit = (dados.dados && dados.dados.kit) || dados.kit;   // o plano fica em dados.dados (como na produção)
+      if (!dados.sem_agua && Array.isArray(kit)) {   // 42: kit até R$ 5.000,00 por quintal; quantidade tem de ser maior que zero
+        let tot = 0;
+        for (const it of kit) { if (!it || !String(it.item || '').trim()) continue; const q = R.numBR(it.qtd);
+          if (q != null && !(q > 0)) throw falha('Quantidade inválida no kit (' + String(it.item).trim().slice(0, 60) + '): informe um número maior que zero.');
+          tot += (q || 0) * (+it.valor || 0); }
+        if (tot > 5000) throw falha('O kit passa do valor por quintal (' + R.fmtBRL(tot) + ', o teto é R$ 5.000,00). Tire ou troque itens.');
+      }
       if (dados.latitude == null && String(dados.sem_gps_motivo || '').trim().length < 15) throw falha('Sem localização: explique em pelo menos 15 letras por que não foi possível registrar no quintal.');   // 31
       const caminhos = new Set(dados.fotos || (antes && antes.fotos) || []);
       Object.entries(fotos || {}).forEach(([campo, blob]) => { if (!blob) return; const path = v.uf + '/' + v.ficha_id + '/diag_' + campo; fotosMemoria.set(path, URL.createObjectURL(blob)); caminhos.add(path); });
@@ -1031,7 +1049,7 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       const leg = String(legenda || '').trim();
       if (leg.length < 5 || leg.length > 140) throw falha('Escreva uma legenda de 5 a 140 caracteres.');
       const pn = String(f.nome || '').split(' ')[0];
-      if (pn.length >= 3 && new RegExp('(^|[^\\p{L}])' + pn + '($|[^\\p{L}])', 'iu').test(leg)) throw falha('A legenda não pode trazer o nome da mulher.');
+      if (pn.length >= 3 && new RegExp('(^|[^\\p{L}])' + pn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|[^\\p{L}])', 'iu').test(leg)) throw falha('A legenda não pode trazer o nome da mulher.');
       const v = { id: MQ.novoId(), path: MQ.novoId() + '.jpg', ficha_id, uf: f.uf, legenda: leg, sem_criancas: !!sem_criancas, publicada_por: eu.id, publicada_em: new Date().toISOString(), origem };
       d.vitrine = [v].concat(d.vitrine || []); gravar(); return copia(v);
     },
@@ -1071,6 +1089,7 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     async enviarTermo(id, arquivo) { return arquivo.name; },   // no demo guarda só o nome
     async linkTermo(path) { return null; },
     async entrar() { throw falha('No modo demonstração não há login: use o seletor de perfil.'); },
+    async entrarSenha() { throw falha('Na demonstração não há login: escolha um perfil acima.'); },   // a tela chama S.api.entrarSenha: sem isto aparecia "is not a function"
     async sair() {}
   };
 })();

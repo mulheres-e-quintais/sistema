@@ -8,6 +8,17 @@
   const C = { par: null, km: null, mes: null, carregado: false, erro: null };
   const brl = v => (Math.round((+v || 0) * 100) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const norm = t => String(t || '').split('/')[0].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  const r2 = x => Math.round((+x || 0) * 100) / 100;   // centavos: cada visita é arredondada e as telas somam sempre os valores já arredondados
+  /* célula de CSV: aspas dobradas e, se começar por = + - @ (tab ou enter), apóstrofo na frente para o Excel não executar como fórmula */
+  const celCSV = x => { let t = String(x == null ? '' : x); if (/^[=+\-@\t\r]/.test(t) && !/^-?\d+([.,]\d+)?$/.test(t)) t = "'" + t; return '"' + t.replace(/"/g, '""') + '"'; };
+  /* parâmetro salvo com valor impossível (km por litro 0, hora negativa) não entra na conta: vale o padrão */
+  function sanear(par) {
+    const D = MQ.CUSTO_PADRAO; const p = Object.assign({}, D, par || {}); p.horas = Object.assign({}, D.horas, (par || {}).horas);
+    ['valor_hora', 'km_por_litro', 'preco_litro', 'fator_estrada'].forEach(k => { if (!(isFinite(+p[k]) && +p[k] > 0)) p[k] = D[k]; else p[k] = +p[k]; });
+    p.refeicao = isFinite(+p.refeicao) && +p.refeicao >= 0 ? +p.refeicao : D.refeicao;
+    Object.keys(p.horas).forEach(k => { if (!(isFinite(+p.horas[k]) && +p.horas[k] >= 0)) p.horas[k] = D.horas[k] || 0; });
+    return p;
+  }
   const mesDe = d => String(d || '').slice(0, 7);
   const mesHoje = () => R.hoje().slice(0, 7);
   const nomeMes = m => { const [a, b] = m.split('-'); return ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][+b - 1] + '/' + a; };
@@ -16,11 +27,11 @@
   async function carregar() {
     try {
       const [par, km] = await Promise.all([S().api.lerParametros('custo_visita'), S().api.listarCustos()]);
-      C.par = Object.assign({}, MQ.CUSTO_PADRAO, par || {}, { horas: Object.assign({}, MQ.CUSTO_PADRAO.horas, (par || {}).horas) });
+      C.par = sanear(par);
       C.km = Object.fromEntries((km || []).map(k => [k.visita_id, +k.km_ida]));
       C.erro = null;
     } catch (e) {
-      C.par = C.par || Object.assign({}, MQ.CUSTO_PADRAO); C.km = C.km || {};
+      C.par = C.par || sanear(null); C.km = C.km || {};
       C.erro = /parametros|custos_visita|PGRST205|does not exist|schema cache/i.test(e.message)
         ? 'O cálculo ainda não foi instalado no servidor: rode o arquivo 04_vitrine_e_custos.sql no Supabase. Até lá, os valores abaixo são uma simulação e o km não fica salvo.'
         : e.message;
@@ -58,12 +69,26 @@
   }
 
   /* ---------- cálculo ---------- */
+  /* cada visita sai arredondada a 2 casas (trabalho, combustível, refeição e total): o botão, o envio, o aval, a tela e o CSV somam o mesmo número.
+     km negativo, NaN ou infinito = sem km (não conferido); etapa desconhecida = 0 hora (só refeição e combustível); km por litro inválido não gera combustível. */
   function calcular(etapa, km) {
-    const p = C.par; const horas = +(p.horas[etapa] || 0);
-    const trabalho = horas * p.valor_hora;
-    const combustivel = km == null ? null : (2 * km / p.km_por_litro) * p.preco_litro;
-    const refeicao = +p.refeicao || 0;
-    return { horas, trabalho, combustivel, refeicao, total: trabalho + (combustivel || 0) + refeicao, completo: km != null };
+    const p = C.par; const H = p.horas || {};
+    const conhecida = etapa != null && Object.prototype.hasOwnProperty.call(H, etapa);   // etapa desconhecida ("constructor", "xpto"): 0 hora, nunca NaN
+    const horas = conhecida && +H[etapa] > 0 ? +H[etapa] : 0;
+    const k = (typeof km === 'number' || (typeof km === 'string' && km.trim() !== '')) ? Number(km) : NaN;
+    const kmOk = isFinite(k) && k >= 0; const kml = +p.km_por_litro, preco = +p.preco_litro;
+    const trabalho = r2(horas * (+p.valor_hora > 0 ? +p.valor_hora : 0));
+    const combustivel = kmOk && kml > 0 && isFinite(preco) && preco >= 0 ? r2((2 * k / kml) * preco) : null;
+    const refeicao = r2(+p.refeicao > 0 ? +p.refeicao : 0);
+    return { horas, trabalho, combustivel, refeicao, total: r2(trabalho + (combustivel || 0) + refeicao), completo: combustivel != null, etapaDesconhecida: !conhecida };
+  }
+  /* simulação da aba: km vazio = "informe o km"; fora de 0 a 999 = recusado com mensagem */
+  function simular(etapa, kmTxt) {
+    const txt = String(kmTxt == null ? '' : kmTxt).replace(',', '.').trim();
+    if (txt === '') return quadro(calcular(etapa, null));
+    const km = Number(txt);
+    if (!(km >= 0 && km <= 999)) return '<div class="aviso erro">Distância inválida: informe de 0 a 999 km (só a ida).</div>';
+    return quadro(calcular(etapa, km));
   }
 
   /* ---------- tela ---------- */
@@ -83,8 +108,8 @@
       .sort((a, b) => String(a.data_realizada || a.data_prevista).localeCompare(String(b.data_realizada || b.data_prevista)));
     const linhas = vs.map(v => { const k = kmIda(v); return { v, k, c: calcular(v.etapa, k.km), p: U().porId(v.executor_id) || {} }; });
     const feitas = linhas.filter(l => l.v.situacao === 'realizada'), prev = linhas.filter(l => l.v.situacao !== 'realizada');
-    const soma = ls => ls.reduce((s, l) => s + l.c.total, 0);
-    const porPessoa = {}; feitas.forEach(l => { const id = l.v.executor_id; (porPessoa[id] = porPessoa[id] || { p: l.p, n: 0, total: 0, falta: 0 }); porPessoa[id].n++; porPessoa[id].total += l.c.total; if (!l.c.completo) porPessoa[id].falta++; });
+    const soma = ls => r2(ls.reduce((s, l) => s + l.c.total, 0));
+    const porPessoa = {}; feitas.forEach(l => { const id = l.v.executor_id; (porPessoa[id] = porPessoa[id] || { p: l.p, n: 0, total: 0, falta: 0 }); porPessoa[id].n++; porPessoa[id].total = r2(porPessoa[id].total + l.c.total); if (!l.c.completo) porPessoa[id].falta++; });
     const semKm = feitas.filter(l => !l.c.completo).length;
     const p = C.par;
     return `<div class="cab"><div><span class="eyebrow">Ajuda de custo</span><h1>Custo das visitas</h1>
@@ -144,7 +169,7 @@
 
   function csv() {
     const vs = (S().visitas || []).filter(v => v.situacao === 'realizada' && mesDe(v.data_realizada) === C.mes);
-    const q = x => '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"';
+    const q = celCSV;
     const n = x => x == null ? '' : String(Math.round(x * 100) / 100).replace('.', ',');
     const cab = ['Data', 'Pessoa', 'CPF', 'Papel', 'UF', 'Etapa', 'Município de partida', 'Município do quintal', 'Km ida', 'Origem do km', 'Horas', 'Trabalho (R$)', 'Combustível (R$)', 'Refeição (R$)', 'Total (R$)'];
     const linhas = vs.map(v => { const p = U().porId(v.executor_id) || {}; const f = (S().fichas || []).find(x => x.id === v.ficha_id) || {}; const k = kmIda(v); const c = calcular(v.etapa, k.km);
@@ -167,20 +192,25 @@
   }
   async function enviar(tipo, form, fd) {
     if (tipo === 'custo-par') {
-      const v = k => Number(String(fd.get(k)).replace(',', '.'));
+      const v = k => { const t = String(fd.get(k) == null ? '' : fd.get(k)).replace(',', '.').trim(); return t === '' ? NaN : Number(t); };   // campo vazio não vira 0
+      const vazio = k => String(fd.get(k) == null ? '' : fd.get(k)).trim() === '';
+      const FALTA = { valor_hora: 'Informe o valor da hora.', refeicao: 'Informe o valor da refeição (pode ser 0).', km_por_litro: 'Informe quantos km o carro faz por litro.', preco_litro: 'Informe o preço da gasolina.', fator_estrada: 'Informe o fator estrada.', teto: 'Informe o teto das ajudas de custo.' };
       const novo = { valor_hora: v('valor_hora'), refeicao: v('refeicao'), km_por_litro: v('km_por_litro'), preco_litro: v('preco_litro'), fator_estrada: v('fator_estrada'), teto: v('teto'),
         horas: { diagnostico: v('h_diagnostico'), implantacao: v('h_implantacao'), acompanhamento: v('h_acompanhamento'), avaliacao: v('h_avaliacao') } };
       const erros = {};
-      [['valor_hora', 0, 500], ['refeicao', 0, 200], ['km_por_litro', 1, 60], ['preco_litro', 1, 20], ['fator_estrada', 1, 2], ['teto', 1000, 10000000]].forEach(([k, a, b]) => { if (!(novo[k] >= a && novo[k] <= b)) erros[k] = `Entre ${a} e ${b}.`; });
-      Object.keys(novo.horas).forEach(k => { if (!(novo.horas[k] > 0 && novo.horas[k] <= 12)) erros['h_' + k] = 'Entre 0,5 e 12 horas.'; });
+      [['valor_hora', 0, 500], ['refeicao', 0, 200], ['km_por_litro', 1, 60], ['preco_litro', 1, 20], ['fator_estrada', 1, 2], ['teto', 1000, 10000000]].forEach(([k, a, b]) => {
+        if (vazio(k)) erros[k] = FALTA[k];
+        else if (k === 'valor_hora' && !(novo[k] > 0 && novo[k] <= b)) erros[k] = `Maior que 0, até ${b}.`;
+        else if (!(novo[k] >= a && novo[k] <= b)) erros[k] = `Entre ${a} e ${b}.`; });
+      Object.keys(novo.horas).forEach(k => { if (vazio('h_' + k)) erros['h_' + k] = 'Informe as horas.'; else if (!(novo.horas[k] > 0 && novo.horas[k] <= 12)) erros['h_' + k] = 'Entre 0,5 e 12 horas.'; });
       if (Object.keys(erros).length) return U().mostrarErros(form, erros);
-      await U().ocupado(form, async () => { C.par = Object.assign({}, MQ.CUSTO_PADRAO, await S().api.salvarParametros('custo_visita', novo)); C.plano = null; C.planoAtual = null; C.teto = null; U().render(); U().toast('Valores salvos.'); });
+      await U().ocupado(form, async () => { C.par = sanear(await S().api.salvarParametros('custo_visita', novo)); C.plano = null; C.planoAtual = null; C.teto = null; U().render(); U().toast('Valores salvos.'); });
     }
   }
   // simulação e km: reagem ao digitar, sem recarregar a tela
   document.addEventListener('input', ev => {
     const f = ev.target.closest('form[data-form=custo-sim]');
-    if (f) { const km = Number(String(f.km.value).replace(',', '.')); const box = $('#cs-res'); if (box) box.innerHTML = quadro(calcular(f.etapa.value, f.km.value === '' || !(km >= 0) ? null : km)); }
+    if (f) { const box = $('#cs-res'); if (box) box.innerHTML = simular(f.etapa.value, f.km.value); }
   });
   document.addEventListener('change', async ev => {
     const inp = ev.target.closest('input[data-km]'); if (!inp) return;
@@ -376,7 +406,7 @@
 
   function csvPlano() {
     const r = C.plano || (C.plano = planejar());
-    const q = x => '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"'; const n = x => String(Math.round(x * 100) / 100).replace('.', ',');
+    const q = celCSV; const n = x => String(Math.round(x * 100) / 100).replace('.', ',');
     const cab = ['Estado', 'Mês', 'Etapa', 'Pessoa', 'Função', 'Quintais na viagem', 'Municípios', 'Km', 'Combustível (R$)', 'Refeição (R$)', 'Horas (R$)', 'Total (R$)'];
     const linhas = Object.values(r.ufs).flatMap(u => u.viagens.map(v => [u.uf, MESES_PROJ[v.mes - 1], MQ.ETAPAS_CUSTO[v.etapa], v.pessoa.nome, (MQ.PAPEIS[v.pessoa.papel] || {}).nome, v.n,
       [...new Set(v.quintais.map(f => f.municipio))].join(', '), n(v.km), n(v.comb), n(v.ref), n(v.horas * C.par.valor_hora), n(v.total)].map(q).join(';')));
@@ -384,9 +414,10 @@
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'proposta-roteiro.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
 
-  MQ.custosUI = { aba, clique, enviar, calcular: (etapa, km) => { C.par = C.par || Object.assign({}, MQ.CUSTO_PADRAO); return calcular(etapa, km); },
+  MQ.custosUI = { aba, clique, enviar, celCSV, calcular: (etapa, km) => { C.par = C.par || sanear(null); return calcular(etapa, km); },
+    simular: (etapa, kmTxt) => { C.par = C.par || sanear(null); return simular(etapa, kmTxt); },
     // usados na solicitação de pagamento (mesmo cálculo do Pagamento do mês)
     garantir: async () => { if (!C.carregado) await carregar(); },
     pronto: () => C.carregado,
-    custoVisita: v => { C.par = C.par || Object.assign({}, MQ.CUSTO_PADRAO); C.km = C.km || {}; const k = kmIda(v); return Object.assign(calcular(v.etapa, k.km), { km: k.km, fonte: k.fonte }); } };
+    custoVisita: v => { C.par = C.par || sanear(null); C.km = C.km || {}; const k = kmIda(v); return Object.assign(calcular(v.etapa, k.km), { km: k.km, fonte: k.fonte }); } };
 })();

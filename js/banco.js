@@ -7,6 +7,7 @@
   const $ = s => document.querySelector(s);
   const B = { meus: undefined, editando: false, situacao: null };
   const mascara = t => t ? '•••' + String(t).slice(-3) : '';
+  const MAX_PIX = 140;   // tamanho máximo da chave Pix (o formulário é novalidate: quem confere é o JS)
   const TIPOS_PIX = [['cpf', 'CPF'], ['celular', 'Celular'], ['email', 'E-mail'], ['aleatoria', 'Chave aleatória']];
   const TIPOS_CONTA = [['corrente', 'Conta corrente'], ['poupanca', 'Poupança'], ['pagamento', 'Conta de pagamento (digital)']];
 
@@ -113,15 +114,21 @@
     if (outro && !/^\d{3}$/.test(d.banco_codigo)) e.banco_codigo = 'O código tem 3 números.';
     if (outro && d.banco_nome.length < 2) e.banco_nome = 'Escreva o nome do banco.';
     if (!/^\d{1,5}$/.test(d.agencia)) e.agencia = 'Só os números da agência, sem o dígito.';
+    else if (/^0+$/.test(d.agencia)) e.agencia = 'Agência inválida: não pode ser só zeros.';
     if (d.agencia_dv && !/^[0-9X]$/.test(d.agencia_dv)) e.agencia_dv = 'Um número (ou X).';
     if (!/^\d{1,13}$/.test(d.conta)) e.conta = 'Só os números da conta, sem o dígito.';
+    else if (/^0+$/.test(d.conta)) e.conta = 'Conta inválida: não pode ser só zeros.';
     if (!/^[0-9X]{1,2}$/.test(d.conta_dv)) e.conta_dv = 'Informe o dígito da conta.';
     if (d.pix_tipo && !d.pix_chave) e.pix_chave = 'Informe a chave.';
     if (!d.pix_tipo) d.pix_chave = null;
     if (d.pix_tipo === 'cpf' && d.pix_chave && !R.cpfValido(d.pix_chave)) e.pix_chave = 'CPF inválido.';
     if (d.pix_tipo === 'email' && d.pix_chave && !R.emailValido(d.pix_chave)) e.pix_chave = 'E-mail inválido.';
+    // celular: DDD + número (10 ou 11 dígitos; aceita o +55 na frente). "abc" salvava vazio e "8999" passava
+    let cel = d.pix_tipo === 'celular' && d.pix_chave ? R.soDigitos(d.pix_chave) : ''; if (/^55\d{10,11}$/.test(cel)) cel = cel.slice(2);
+    if (d.pix_tipo === 'celular' && d.pix_chave && !/^\d{10,11}$/.test(cel)) e.pix_chave = 'Celular inválido: informe o DDD e o número (10 ou 11 números).';
+    if (d.pix_chave && d.pix_chave.length > MAX_PIX) e.pix_chave = `Texto muito longo (máximo ${MAX_PIX} caracteres).`;
     if (Object.keys(e).length) return U().mostrarErros(form, e);
-    if (d.pix_tipo === 'cpf' || d.pix_tipo === 'celular') d.pix_chave = R.soDigitos(d.pix_chave);
+    if (d.pix_tipo === 'cpf') d.pix_chave = R.soDigitos(d.pix_chave); else if (d.pix_tipo === 'celular') d.pix_chave = cel;
     await U().ocupado(form, async () => {
       await S().api.salvarMeusDadosBancarios(d);
       B.meus = Object.assign({}, d, { atualizado_em: new Date().toISOString() }); B.editando = false; B.situacao = null; desenhar();

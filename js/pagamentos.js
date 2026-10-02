@@ -9,6 +9,17 @@
   const mesHoje = () => R.hoje().slice(0, 7);
   const somaMes = (m, n) => { const [a, b] = m.split('-').map(Number); const d = new Date(a, b - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
   const G = { mes: null };
+  const r2 = x => Math.round((+x || 0) * 100) / 100;
+  const TETO_VISITA = 2000, FOLGA_AVAL = 1.5;   // aval da ajuda de custo: no máximo 1,5 × o pedido (ou o recalculado pelo sistema) e R$ 2.000 por visita
+  const visitasDe = s => { const ids = Object.entries(vinculadas()).filter(([, sid]) => sid === s.id).map(([vid]) => vid); return ids.length ? ids : ((s.detalhe && s.detalhe.visitas) || []).map(x => x.id); };
+  /* valor recalculado agora pela coordenação (km conferido), somando as visitas já arredondadas; null se não der para recalcular */
+  function recalculado(s) {
+    if (s.tipo !== 'ajuda_custo' || !MQ.custosUI || !MQ.custosUI.pronto()) return null;
+    const vs = visitasDe(s).map(id => (S().visitas || []).find(v => v.id === id)).filter(Boolean);
+    return vs.length ? r2(vs.reduce((t, v) => t + MQ.custosUI.custoVisita(v).total, 0)) : null;
+  }
+  const MAX_PROTOCOLO = 60, MAX_JUSTIFICATIVA = 2000;
+  const longo = n => `Texto muito longo (máximo ${n.toLocaleString('pt-BR')} caracteres).`;
 
   const TIPO = { ajuda_custo: 'Ajuda de custo', bolsa: 'Bolsa' };
   const SIT = { solicitada: ['pend', 'Aguardando aval'], devolvida: ['crit', 'Devolvida para corrigir'], avalizada: ['ok', 'Com aval · falta lançar no Arlo'], lancada: ['ok', 'Lançada no Arlo'] };
@@ -72,7 +83,7 @@
       .sort((a, b) => String(a.data_realizada).localeCompare(String(b.data_realizada)));
     const livres = feitas.filter(v => !vinc[v.id] || (s && vinc[v.id] === s.id));
     const itens = livres.map(v => ({ v, c: MQ.custosUI.custoVisita(v), f: (S().fichas || []).find(x => x.id === v.ficha_id) || {} }));
-    const total = itens.reduce((t, i) => t + i.c.total, 0);
+    const total = r2(itens.reduce((t, i) => t + i.c.total, 0));   // soma das visitas já arredondadas: é o valor enviado
     const estimado = itens.some(i => i.c.fonte !== 'conferido');
     const semKm = itens.some(i => !i.c.completo);
     const pend = (S().visitas || []).filter(v => v.executor_id === eu.id && v.situacao === 'prevista' && String(v.data_prevista).slice(0, 7) <= m).length;
@@ -163,7 +174,7 @@
       const vs = ids.map(id => (S().visitas || []).find(v => v.id === id)).filter(Boolean);
       if (vs.length && /^coord/.test(eu.papel) && garantirCustos()) {   // coordenação recalcula com o km conferido
         const itens = vs.map(v => ({ v, c: MQ.custosUI.custoVisita(v), f: (S().fichas || []).find(x => x.id === v.ficha_id) || {} }));
-        conf = itens.reduce((t, i) => t + i.c.total, 0);
+        conf = r2(itens.reduce((t, i) => t + i.c.total, 0));
         visHTML = `<table class="tab-uf"><thead><tr><th>Visita</th><th>Km (ida)</th><th style="text-align:right">Valor</th></tr></thead><tbody>${itens.map(i => `<tr>
           <td>${E(MQ.ETAPAS_CUSTO[i.v.etapa])} · ${R.fmtData(i.v.data_realizada)}<br><span class="small muted">${E(i.f.nome || '')} · ${E(i.f.municipio || '')}${i.v.relato ? ' · ' + E(String(i.v.relato).slice(0, 80)) : ''}</span></td>
           <td>${i.c.km != null ? i.c.km + (i.c.fonte === 'conferido' ? ' (conferido)' : ' (estimado)') : '—'}</td><td class="num" style="text-align:right">${brl(i.c.total)}</td></tr>`).join('')}</tbody></table>
@@ -217,8 +228,9 @@
       const ids = fd.getAll('v'); if (!ids.length) return U().mostrarErros(form, {}, 'Marque pelo menos uma visita.');
       const vs = ids.map(id => (S().visitas || []).find(v => v.id === id)).filter(Boolean);
       const itens = vs.map(v => { const c = MQ.custosUI.custoVisita(v); const f = (S().fichas || []).find(x => x.id === v.ficha_id) || {};
-        return { id: v.id, etapa: v.etapa, data: v.data_realizada, municipio: f.municipio || null, km: c.km, fonte: c.fonte, total: Math.round(c.total * 100) / 100 }; });
-      const total = Math.round(itens.reduce((t, i) => t + i.total, 0) * 100) / 100;
+        return { id: v.id, etapa: v.etapa, data: v.data_realizada, municipio: f.municipio || null, km: c.km, fonte: c.fonte, total: r2(c.total) }; });
+      const total = r2(itens.reduce((t, i) => t + i.total, 0));
+      if (!(total > 0)) return U().mostrarErros(form, {}, 'O valor das visitas marcadas deu zero. Avise a coordenação.');
       await U().ocupado(form, async () => {
         await S().api.solicitarPagamento('ajuda_custo', mes + '-01', total, null, ids, { visitas: itens, total });
         await recarregar(); U().toast('Ajuda de custo de ' + nomeMes(mes) + ' solicitada: ' + brl(total) + '. Agora vai para o aval.');
@@ -229,6 +241,7 @@
       if (rel.length < 50) return U().mostrarErros(form, { relatorio: 'Conte em algumas linhas o que você fez no mês (pelo menos 50 letras).' });
       if (S().eu.papel === 'professor_fic' && MQ.encUI && !S().encSemBanco && !MQ.encUI.doMes(S().eu.id, mes).length && String(fd.get('justificativa_sem_encontro') || '').trim().length < 30)
         return U().mostrarErros(form, { justificativa_sem_encontro: 'Nenhum encontro registrado neste mês: explique por quê (pelo menos 30 letras).' });
+      if (String(fd.get('justificativa_sem_encontro') || '').trim().length > MAX_JUSTIFICATIVA) return U().mostrarErros(form, { justificativa_sem_encontro: longo(MAX_JUSTIFICATIVA) });
       const valor = P[S().eu.papel].bolsa;
       await U().ocupado(form, async () => {
         const just = String(fd.get('justificativa_sem_encontro') || '').trim();
@@ -243,12 +256,19 @@
       if (!ok && obs.length < 5) return U().mostrarErros(form, { obs: 'Escreva o que precisa ser corrigido.' });
       if (ok && valor != null && !(valor > 0)) return U().mostrarErros(form, { valor: 'Valor inválido: informe um valor maior que zero.' });
       if (ok && valor != null && sol.tipo === 'bolsa' && sol.valor_solicitado != null && valor > +sol.valor_solicitado) return U().mostrarErros(form, { valor: 'O aval passa do valor pedido. Para pagar mais, devolva para a pessoa corrigir o valor.' });
+      if (ok && valor != null && sol.tipo === 'ajuda_custo') {
+        const pedido = +sol.valor_solicitado || 0, n = visitasDe(sol).length, conf = recalculado(sol);
+        const lim = Math.max(pedido * FOLGA_AVAL, conf || 0);
+        if ((pedido > 0 && valor > lim + 0.005) || (n > 0 && valor > TETO_VISITA * n + 0.005) || valor > 1e6)
+          return U().mostrarErros(form, { valor: `Valor muito acima do pedido (${brl(pedido)}). Confira o valor.` });
+      }
       await U().ocupado(form, async () => {
         await S().api.avalizarPagamento(form.dataset.id, ok, obs, ok ? valor : null);
         await recarregar(); U().fecharPainel(); U().toast(ok ? 'Aval registrado. A solicitação foi para o auxiliar lançar no Arlo.' : 'Solicitação devolvida. A pessoa vê o motivo e pode corrigir.');
       });
     }
     if (tipo === 'pag-arlo') {
+      if (String(fd.get('protocolo') || '').trim().length > MAX_PROTOCOLO) return U().mostrarErros(form, { protocolo: longo(MAX_PROTOCOLO) });
       await U().ocupado(form, async () => {
         await S().api.registrarNoArlo(form.dataset.id, String(fd.get('protocolo') || '').trim());
         await recarregar(); U().fecharPainel(); U().toast('Registrado: lançado no Arlo.');

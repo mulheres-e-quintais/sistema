@@ -69,9 +69,12 @@
     const e = {};
     if (im.menor == null) e.im_menor = 'Responda se mora alguém com menos de 18 anos.';
     else if (im.ebia_pontos == null) e.ebia = 'Responda todas as perguntas de alimentação (sim ou não).';
-    if (im.dias_consumo == null || im.dias_consumo < 0 || im.dias_consumo > 7) e.im_dias = 'De 0 a 7 dias.';
+    // números inteiros e dentro do possível (os mesmos limites que os campos declaram)
+    if (im.dias_consumo == null || R.foraDaFaixa(im.dias_consumo, 0, 7, true)) e.im_dias = 'De 0 a 7 dias.';
     if (im.especies == null || im.especies < 0) e.im_especies = 'Informe quantos tipos (0 se nenhum).';
+    else if (R.foraDaFaixa(im.especies, 0, 200, true)) e.im_especies = 'De 0 a 200 tipos (número inteiro). Confira.';
     if (im.criacoes == null || im.criacoes < 0) e.im_criacoes = 'Informe quantos tipos (0 se nenhum).';
+    else if (R.foraDaFaixa(im.criacoes, 0, 30, true)) e.im_criacoes = 'De 0 a 30 tipos (número inteiro). Confira.';
     if (im.vende == null) e.im_vende = 'Responda se vende ou troca.';
     if (!im.decide) e.im_decide = 'Escolha quem decide.';
     if (!im.caf) e.im_caf = 'Responda sobre a CAF.';
@@ -101,15 +104,15 @@
       <div class="painel-corpo"><form class="f" data-form="aval" data-id="${E(a.id)}" data-ficha="${E(f.id)}" data-visita="${E(p.visita || a.visita_id || '')}" novalidate>
         ${base ? '' : '<div class="aviso">Este quintal não tem as medidas de linha de base no diagnóstico (feito antes desta pergunta existir): a avaliação vale, mas não entra na comparação antes × depois.</div>'}
         <fieldset><legend>Visita</legend><div class="campos">
-          <div class="campo"><label for="av-data">Data da visita</label><input id="av-data" name="data_visita" type="date" value="${v('data_visita')}" max="${R.hoje()}"></div>
+          <div class="campo"><label for="av-data">Data da visita</label><input id="av-data" name="data_visita" type="date" value="${v('data_visita')}" min="${R.LIM.visitaMin}" max="${R.hoje()}"></div>
           <div class="campo"><label>Localização</label><button type="button" class="btn peq" data-acao="aval-gps">${a.latitude ? 'Localização registrada ✓' : 'Registrar localização'}</button>
             <input type="hidden" name="latitude" value="${v('latitude')}"><input type="hidden" name="longitude" value="${v('longitude')}"><span class="dica" id="av-gps-dica">${a.latitude ? E(a.latitude + ', ' + a.longitude) : 'Registre em pé, no quintal.'}</span></div>
-          <div class="campo inteiro"><label for="av-semgps">Sem localização? Explique</label><input id="av-semgps" name="sem_gps_motivo" value="${v('sem_gps_motivo')}"></div>
+          <div class="campo inteiro"><label for="av-semgps">Sem localização? Explique</label><input id="av-semgps" name="sem_gps_motivo" value="${v('sem_gps_motivo')}" maxlength="500"></div>
         </div></fieldset>
         <fieldset><legend>O quintal hoje</legend><div class="campos">
           <div class="campo inteiro" id="w-quintal_produz"><label>O quintal está produzindo?</label>${rad('quintal_produz', [['sim', 'Sim'], ['em_parte', 'Em parte'], ['nao', 'Não']], a.quintal_produz)}</div>
-          <div class="campo inteiro"><label for="av-mot">Se não ou em parte: por quê?</label><input id="av-mot" name="motivo" value="${v('motivo')}" placeholder="Ex.: faltou água em setembro; a tela estragou; ela adoeceu"></div>
-          <div class="campo"><label for="av-rq">Quanto ganha com vendas do quintal por mês (R$)</label><input id="av-rq" name="renda_quintal" type="number" min="0" step="10" inputmode="numeric" value="${v('renda_quintal')}"><span class="dica">A mesma pergunta do diagnóstico. Zero se não vende.</span></div>
+          <div class="campo inteiro"><label for="av-mot">Se não ou em parte: por quê?</label><input id="av-mot" name="motivo" value="${v('motivo')}" maxlength="500" placeholder="Ex.: faltou água em setembro; a tela estragou; ela adoeceu"></div>
+          <div class="campo"><label for="av-rq">Quanto ganha com vendas do quintal por mês (R$)</label><input id="av-rq" name="renda_quintal" type="number" min="0" max="${R.LIM.rendaMax}" step="10" inputmode="numeric" value="${v('renda_quintal')}"><span class="dica">A mesma pergunta do diagnóstico. Zero se não vende.</span></div>
           <div class="campo"><label for="av-h">Horas por dia no quintal</label><input id="av-h" name="horas_dia" type="number" min="0" max="16" step="0.5" inputmode="decimal" value="${v('horas_dia')}"></div>
           <div class="campo inteiro" id="w-agua"><label>A água deu para o quintal no último período seco?</label>${rad('agua', [['sim', 'Sim'], ['as_vezes', 'Às vezes'], ['nao', 'Não']], a.agua)}</div>
           <div class="campo inteiro" id="w-alimentacao"><label>Com o quintal, a alimentação da família…</label>${rad('alimentacao', [['melhorou', 'Melhorou'], ['igual', 'Ficou igual'], ['piorou', 'Piorou']], a.alimentacao)}</div>
@@ -117,7 +120,7 @@
         </div></fieldset>
         ${bloco(a.impacto, 'Medidas de impacto (as mesmas do diagnóstico)', base ? base.menor : null)}
         <fieldset id="w-fotos_av"><legend>Fotos</legend><div class="campos">${foto('geral', 'Visão geral do quintal')}${foto('producao', 'Produção')}${foto('agua', 'Água / irrigação')}</div></fieldset>
-        <div class="campo"><label for="av-obs">O que ela diz do quintal (em poucas palavras)</label><textarea id="av-obs" name="fala" placeholder="Registre com as palavras dela.">${v('fala')}</textarea></div>
+        <div class="campo"><label for="av-obs">O que ela diz do quintal (em poucas palavras)</label><textarea id="av-obs" name="fala" maxlength="2000" placeholder="Registre com as palavras dela.">${v('fala')}</textarea></div>
         <input type="hidden" name="fotos_existentes" value="${E((a.fotos || []).join('|'))}">
         <div class="aviso erro" data-erro hidden></div>
         <div class="acoes"><button class="btn pri" type="submit">Salvar</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div>
@@ -127,7 +130,9 @@
     const inp = ev.target.closest && ev.target.closest('input[data-foto-av]'); if (!inp || !inp.files[0]) return;
     const k = inp.dataset.fotoAv; const dica = document.getElementById('av-f-' + k + '-dica');
     if (inp.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; inp.value = ''; return; }
-    dica.textContent = 'Preparando foto…'; fotosAv[k] = await MQ.comprimirFoto(inp.files[0]); dica.textContent = 'Foto pronta (' + Math.round(fotosAv[k].size / 1024) + ' KB).';
+    dica.textContent = 'Preparando foto…';
+    const foto = await MQ.campoUI.prepararFoto(inp, dica); if (!foto) { delete fotosAv[k]; return; }   // só imagem de verdade ("Este arquivo não é uma foto.")
+    fotosAv[k] = foto; dica.textContent = 'Foto pronta (' + Math.round(fotosAv[k].size / 1024) + ' KB).';
   });
 
   /* ---------- antes × depois ---------- */
@@ -232,17 +237,22 @@
       motivo: txt('motivo'), renda_quintal: num('renda_quintal'), horas_dia: num('horas_dia'), agua: txt('agua'), alimentacao: txt('alimentacao'), encaminhamentos: fd.getAll('encaminhamentos'), fala: txt('fala') };
     const e = validar(im);
     if (!d.data_visita) e.data_visita = 'Informe a data.'; else if (d.data_visita > R.hoje()) e.data_visita = 'Data no futuro.';
+    else if (R.erroDataFeita(d.data_visita)) e.data_visita = R.erroDataFeita(d.data_visita);   // não antes de 01/01/2026
     if (d.latitude == null && String(d.sem_gps_motivo || '').length < 5) e.sem_gps_motivo = 'Registre a localização ou explique por que não foi possível.';
     if (!d.quintal_produz) e.quintal_produz = 'Responda se o quintal está produzindo.';
     if (d.quintal_produz && d.quintal_produz !== 'sim' && !d.motivo) e.motivo = 'Explique por que não está produzindo.';
     if (d.renda_quintal == null) e.renda_quintal = 'Informe (0 se não vende).';
+    else if (R.foraDaFaixa(d.renda_quintal, 0, R.LIM.rendaMax)) e.renda_quintal = 'Vendas de R$ 0 a R$ 100.000 por mês. Confira o número.';
+    if (R.foraDaFaixa(d.horas_dia, 0, 24)) e.horas_dia = 'De 0 a 24 horas por dia.';
+    ['sem_gps_motivo', 'motivo'].forEach(k => { if (!e[k] && String(d[k] || '').length > 500) e[k] = 'Texto muito longo (máximo 500 caracteres).'; });
+    if (String(d.fala || '').length > 2000) e.fala = 'Texto muito longo (máximo 2.000 caracteres).';
     if (!d.agua) e.agua = 'Responda sobre a água.';
     if (!d.alimentacao) e.alimentacao = 'Responda sobre a alimentação.';
     if (!fotosAv.geral && !existentes.some(x => /aval_geral/.test(x))) e.fotos_av = 'Faça ao menos a foto da visão geral do quintal.';
     if (Object.keys(e).length) {
-      Object.keys(e).forEach(k => { const w = form.querySelector('#w-' + k); if (w) w.classList.add('tem-erro'); });
-      const alvo = {}; Object.entries(e).forEach(([k, m]) => { if (form.querySelector(`[name="${k}"]`) && !form.querySelector('#w-' + k)) alvo[k] = m; });
-      U().mostrarErros(form, alvo, Object.keys(e).length > 1 ? 'Faltam ' + Object.keys(e).length + ' itens: ' + Object.values(e).slice(0, 3).join(' · ') : Object.values(e)[0]);
+      form.querySelectorAll('[id^="w-"].tem-erro').forEach(w => w.classList.remove('tem-erro'));   // marcas do envio anterior
+      // mostrarErros (app.js) marca o campo ou o bloco "w-<nome>" de cada erro e lista todos na caixa
+      U().mostrarErros(form, e, Object.keys(e).length > 1 ? 'Faltam ' + Object.keys(e).length + ' itens: ' + Object.values(e).join(' · ') : Object.values(e)[0]);
       const p = form.querySelector('.tem-erro'); if (p) p.scrollIntoView({ block: 'center', behavior: 'smooth' });
       return;
     }

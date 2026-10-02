@@ -10,6 +10,8 @@
   const U = () => MQ.ui; const S = () => MQ.ui.S; const R = MQ.regras; const E = s => MQ.ui.esc(s);
   const O = () => MQ.ORCAMENTO;
   const brl = v => R.fmtBRL(+v || 0);
+  const lim = v => Math.max(0, Math.min(100, +v || 0));   // largura de barra: sempre entre 0 e 100% (estorno maior que o gasto dava largura negativa)
+  const foraDoPeriodo = d => { const V = MQ.PROJETO.vigencia, x = String(d || '').slice(0, 10); return !!x && (x < V.inicio || x > V.fim); };
   const itens = () => O().rubricas.flatMap(r => r.itens.map(i => Object.assign({ rubrica: r.id }, i)));
   // vale a última ENVIADA ("a mais nova passa a valer"), mesmo que corrija uma data anterior
   const planilhas = () => (S().execPlanilhas || []).slice().sort((a, b) => String(b.enviado_em).localeCompare(String(a.enviado_em)) || String(b.posicao_em).localeCompare(String(a.posicao_em)));
@@ -36,9 +38,12 @@
     itens().forEach(i => { const exec = somaL(l => l.item === i.id), comp = comprometidoItem(i, desde);
       porItem[i.id] = { exec, comp, saldo: i.total - exec - comp, passou: exec + comp > i.total + 0.005 }; });
     const soma = (xs, k) => xs.reduce((t, i) => t + porItem[i.id][k], 0);
-    const rub = O().rubricas.map(r => { const semItem = somaL(l => l.rubrica === r.id && !l.item);
+    // item antigo ou desconhecido (não está mais no orçamento) com rubrica: entra em "sem item" da rubrica, para a soma das rubricas fechar com o total
+    const conhecido = new Set(itens().map(i => i.id)); const rubDe = new Set(O().rubricas.map(r => r.id));
+    const semItemDe = l => l.item !== 'repasse_mda' && !conhecido.has(l.item);
+    const rub = O().rubricas.map(r => { const semItem = somaL(l => l.rubrica === r.id && semItemDe(l));
       return { r, previsto: r.itens.reduce((t, i) => t + i.total, 0), exec: soma(r.itens, 'exec') + semItem, comp: soma(r.itens, 'comp'), semItem }; });
-    const naoClass = somaL(l => l.item !== 'repasse_mda' && !l.rubrica);
+    const naoClass = somaL(l => semItemDe(l) && !rubDe.has(l.rubrica));
     const exec = somaL(l => l.item !== 'repasse_mda'), comp = soma(itens(), 'comp');
     const recebido = somaL(l => l.item === 'repasse_mda');
     const V = MQ.PROJETO.vigencia; const dia = d => new Date(d + 'T12:00:00').getTime();
@@ -89,10 +94,10 @@
     const tempo = n.tempo * 100;
     return `<figure class="exec-graf" data-exec-rub><figcaption><b>Uso de cada rubrica</b> <span class="small muted">% do previsto · clique para ver os itens</span></figcaption>
       <ul class="eg-leg small"><li><i class="eg-q exe"></i>Executado</li><li><i class="eg-q comp"></i>Comprometido</li><li><i class="eg-q tempo"></i>Tempo decorrido (${pctBR(Math.round(tempo * 10) / 10)}%)</li></ul>
-      <div class="eg-barras">${n.rub.map(({ r, previsto, exec, comp }) => { const pe = Math.min(100, exec / previsto * 100), pc = Math.min(100 - pe, comp / previsto * 100); const tot = (exec + comp) / previsto * 100;
+      <div class="eg-barras">${n.rub.map(({ r, previsto, exec, comp }) => { const pe = lim(exec / previsto * 100), pc = Math.min(100 - pe, lim(comp / previsto * 100)); const tot = (exec + comp) / previsto * 100;
         return `<button type="button" class="eg-bar${tot > 100.05 ? ' passou' : ''}" data-acao="exec-rub" data-id="${r.id}" data-dica="${E(r.nome)}|${brl(previsto)}|${brl(exec)}|${brl(comp)}|${brl(previsto - exec - comp)}">
           <span class="eg-nome">${E(r.nome)}</span>
-          <span class="eg-trilho"><i class="exe" style="width:${pe}%"></i><i class="comp" style="left:${pe}%;width:${pc}%"></i><i class="tempo" style="left:${Math.min(100, tempo)}%"></i></span>
+          <span class="eg-trilho"><i class="exe" style="width:${pe}%"></i><i class="comp" style="left:${pe}%;width:${pc}%"></i><i class="tempo" style="left:${lim(tempo)}%"></i></span>
           <span class="eg-pct num">${pctBR(Math.round(tot * 10) / 10)}%</span></button>`; }).join('')}</div>
       <div class="exec-dica" role="status" hidden></div></figure>`;
   }
@@ -125,7 +130,7 @@
   /* ---------- tela ---------- */
   const pct = (v, t) => t ? Math.round(v / t * 1000) / 10 : 0;
   const pctBR = x => x.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
-  const med = (exec, comp, total) => `<span class="medidor exec-med" title="executado e comprometido"><i style="width:${Math.min(100, (exec + comp) / total * 100)}%;opacity:.35"></i><i style="width:${Math.min(100, exec / total * 100)}%"></i></span>`;
+  const med = (exec, comp, total) => `<span class="medidor exec-med" title="executado e comprometido"><i style="width:${lim((exec + comp) / total * 100)}%;opacity:.35"></i><i style="width:${lim(exec / total * 100)}%"></i></span>`;
   /* composição do item em linguagem de gente (sem "1 × 14 × R$"): fica só no detalhe, não na tabela */
   const UNID = { diarias: ['diária', 'diárias'], locacao_veiculo: ['diária de veículo', 'diárias de veículo'], passagem_intercambio: ['passagem', 'passagens'], passagem_pedagogico: ['passagem', 'passagens'],
     eventos: ['evento', 'eventos'], quintais: ['quintal', 'quintais'], ajuda_apoio: ['ajuda de custo', 'ajudas de custo'], equipamento: ['unidade', 'unidades'] };
@@ -138,13 +143,14 @@
     if (/^10% do projeto$/.test(c)) return '10% do valor do projeto';
     return c;
   }
-  const celExec = (exec, total) => { const p = pct(exec, total); return `<span class="fin-exe"><span class="medidor fino" aria-hidden="true"><i class="${exec > 0 ? 'st-ok' : ''}" style="width:${Math.min(100, p)}%"></i></span><b class="num">${pctBR(p)}%</b></span>`; };
+  const celExec = (exec, total) => { const p = pct(exec, total); return `<span class="fin-exe"><span class="medidor fino" aria-hidden="true"><i class="${exec > 0 ? 'st-ok' : ''}" style="width:${lim(p)}%"></i></span><b class="num">${pctBR(p)}%</b></span>`; };
   const vExec = v => `<span class="${v > 0 ? 'fin-exec' : 'fin-zero'}">${brl(v)}</span>`;
   const vComp = v => `<span class="${v > 0 ? 'fin-comp' : 'fin-zero'}">${brl(v)}</span>`;
   function alertas(n) {
     const a = [];
     if (!n.pl) a.push('Nenhuma planilha de gastos enviada ainda. Sem ela, o executado fica zerado: envie a planilha do mês.');
     else if (n.idade > 35) a.push(`A planilha vigente é de <b>${R.fmtData(n.pl.posicao_em)}</b> (${n.idade} dias atrás). Envie a planilha deste mês.`);
+    if (n.pl && foraDoPeriodo(n.pl.posicao_em)) a.push(`A planilha vigente é de <b>${R.fmtData(n.pl.posicao_em)}</b>, fora do período do projeto (${R.fmtData(MQ.PROJETO.vigencia.inicio)} a ${R.fmtData(MQ.PROJETO.vigencia.fim)}). Confira a data e, se estiver errada, envie a planilha de novo.`);
     itens().forEach(i => { const x = n.porItem[i.id]; if (x.passou) a.push(`<b>${E(i.nome)}</b>: executado + comprometido (${brl(x.exec + x.comp)}) passa do previsto (${brl(i.total)}).`); });
     if (n.naoClass) a.push(`${brl(n.naoClass)} em linhas que não batem com nenhum item do orçamento (entram no executado total, fora das rubricas). Veja em <b>Planilhas enviadas</b>.`);
     if (n.caixa < -0.005) a.push(`O executado (${brl(n.exec)}) passa do recebido do MDA na planilha (${brl(n.recebido)}). Confira se a planilha traz os repasses.`);
@@ -162,7 +168,7 @@
         <td class="num" data-rot="Previsto">${brl(i.total)}</td><td class="num" data-rot="Executado">${vExec(x.exec)}</td><td class="num" data-rot="Comprometido">${vComp(x.comp)}</td><td class="num fin-saldo" data-rot="Saldo">${brl(x.saldo)}</td><td data-rot="Execução">${celExec(x.exec, i.total)}</td></tr>
         <tr class="fin-detalhe" id="exc-${E(i.id)}" hidden><td colspan="6"><dl class="fin-det"><div><dt>Composição</dt><dd>${E(composicao(i))}</dd></div><div><dt>Previsto</dt><dd class="num">${brl(i.total)}</dd></div>
           <div><dt>Executado</dt><dd class="num">${brl(x.exec)}</dd></div><div><dt>Comprometido</dt><dd class="num">${brl(x.comp)}</dd></div><div><dt>Saldo</dt><dd class="num"><b>${brl(x.saldo)}</b></dd></div></dl></td></tr>`; };
-    const semItem = x => x.semItem ? `<tr class="fin-item"><th scope="row"><span class="fin-nome sem">Sem item definido na planilha</span><span class="small muted">a planilha disse só a rubrica</span></th><td class="num" data-rot="Previsto">—</td><td class="num" data-rot="Executado">${vExec(x.semItem)}</td><td class="num" data-rot="Comprometido">—</td><td class="num" data-rot="Saldo">—</td><td></td></tr>` : '';
+    const semItem = x => x.semItem ? `<tr class="fin-item"><th scope="row"><span class="fin-nome sem">Sem item definido na planilha</span><span class="small muted">a planilha disse só a rubrica ou um item que não está no orçamento</span></th><td class="num" data-rot="Previsto">—</td><td class="num" data-rot="Executado">${vExec(x.semItem)}</td><td class="num" data-rot="Comprometido">—</td><td class="num" data-rot="Saldo">—</td><td></td></tr>` : '';
     return `<div class="cab"><div><span class="eyebrow">Execução</span><h1>Execução do orçamento</h1>
         <p>Previsto × executado de cada rubrica do TED (R$ ${(T / 1e6).toLocaleString('pt-BR')} milhões). O executado vem da <b>planilha de gastos</b> mais recente; o comprometido, do que o sistema já sabe e a planilha ainda não trouxe. Só você vê esta aba.</p>
         <p class="small muted">Base do previsto: ${E(O().fonte)}, com o remanejamento aprovado pelo MDA.</p></div></div>
@@ -176,7 +182,7 @@
           <div><span class="fin-v num fin-comp">${brl(n.comp)}</span><span class="fin-l">comprometido · ${pctBR(pct(n.comp, T))}%</span></div>
           <div><span class="fin-v num"><b>${brl(n.livre)}</b></span><span class="fin-l">saldo livre para executar</span></div>
         </div>
-        <div class="fin-barra" role="img" aria-label="Executado ${pctBR(pct(n.exec, T))}%, comprometido ${pctBR(pct(n.comp, T))}%"><i class="e" style="width:${Math.min(100, pct(n.exec, T))}%"></i><i class="c" style="width:${Math.min(100 - Math.min(100, pct(n.exec, T)), pct(n.comp, T))}%"></i></div>
+        <div class="fin-barra" role="img" aria-label="Executado ${pctBR(pct(n.exec, T))}%, comprometido ${pctBR(pct(n.comp, T))}%"><i class="e" style="width:${lim(pct(n.exec, T))}%"></i><i class="c" style="width:${Math.min(100 - lim(pct(n.exec, T)), lim(pct(n.comp, T)))}%"></i></div>
         <p class="fin-sub"><span><b>${pctBR(usoPct)}%</b> do orçamento em uso (executado + comprometido) · tempo de vigência decorrido: ${pctBR(tempoPct)}%: ${ritmo}</span></p>
         <p class="fin-sub muted">Recebido do MDA: <b>${brl(n.recebido)}</b> de ${brl(T)}${prox ? ` · próximo repasse: ${brl(prox.valor)}, previsto para ${prox.mes.slice(5)}/${prox.mes.slice(0, 4)}${prox.mes < R.hoje().slice(0, 7) ? ' (atrasado ou ainda fora da planilha)' : ''}` : ''} · em caixa na FUNCERN (recebido − executado): <b>${brl(n.caixa)}</b>. Comprometido = aval, Arlo ou autorização ${n.pl ? 'depois de ' + R.fmtData(n.pl.posicao_em) : 'ainda sem planilha'}.</p>
       </section>
@@ -212,15 +218,17 @@
     const nomeR = id => id === '_' ? 'Fora do orçamento (não classificado)' : (O().rubricas.find(r => r.id === id) || {}).nome;
     const ant = vigente();
     return `<div class="bloco"><h3>Prévia: ${E(pr.nome)}</h3>
-      <p class="small muted">Aba lida: ${E(pr.aba)} · ${pr.linhas.length} linhas com valor${pr.ignoradas ? ` · ${pr.ignoradas} linhas de total ou sem valor ignoradas` : ''}</p>
+      <p class="small muted">Aba lida: ${E(pr.aba)} · ${pr.linhas.length} linhas com valor${pr.ignoradas ? ` · ${pr.ignoradas === 1 ? '1 linha de total ou sem valor ignorada' : pr.ignoradas + ' linhas de total ou sem valor ignoradas'}` : ''}</p>
       <ul class="pp"><li><span>Gastos</span><b class="num">${brl(s.gasto)}</b></li><li><span>Recebido do MDA</span><b class="num">${brl(s.recebido)}</b></li>
         ${ant ? `<li><span>Planilha vigente hoje</span><b class="num">${brl(ant.total_gasto)}<small class="muted"> até ${R.fmtData(ant.posicao_em)}</small></b></li>` : ''}</ul>
       ${ant && s.gasto + 0.005 < +ant.total_gasto ? '<div class="aviso erro">O total desta planilha é <b>menor</b> que o da planilha vigente. Como cada planilha é o retrato completo desde o início, confira se não faltam gastos antigos.</div>' : ''}
       ${ant && s.ultimaData && s.ultimaData < String(ant.posicao_em).slice(0, 10) ? `<div class="aviso">Os gastos desta planilha vão até ${R.fmtData(s.ultimaData)}, antes da vigente (${R.fmtData(ant.posicao_em)}). Se for uma correção, tudo bem: a última enviada é a que vale.</div>` : ''}
       <table class="quadro viag-tab"><tbody>${Object.entries(porRub).map(([k, v]) => `<tr><th scope="row">${E(nomeR(k))}</th><td class="num">${brl(v)}</td></tr>`).join('')}</tbody></table>
-      ${s.naoClassificadas.length ? `<div class="aviso erro"><b>${s.naoClassificadas.length} linha${s.naoClassificadas.length > 1 ? 's' : ''} não batem com nenhum item do orçamento</b> (entram no total, fora das rubricas). Se for erro de nome, corrija na planilha com o nome da aba Itens do modelo e escolha de novo.
+      ${s.naoClassificadas.length ? `<div class="aviso erro"><b>${s.naoClassificadas.length === 1 ? '1 linha não bate' : s.naoClassificadas.length + ' linhas não batem'} com nenhum item do orçamento</b> (${s.naoClassificadas.length === 1 ? 'entra' : 'entram'} no total, fora das rubricas). Se for erro de nome, corrija na planilha com o nome da aba Itens do modelo e escolha de novo.
         <ul class="small">${s.naoClassificadas.slice(0, 15).map(l => `<li>Linha ${l.linha}: “${E(l.texto)}” · ${brl(l.valor)}</li>`).join('')}${s.naoClassificadas.length > 15 ? `<li>… e mais ${s.naoClassificadas.length - 15}</li>` : ''}</ul></div>` : ''}
-      ${pr.avisos.map(a => `<p class="small muted">${E(a)}</p>`).join('')}</div>`;
+      ${foraDoPeriodo(pr.posicao) ? `<div class="aviso">A data desta planilha (${R.fmtData(pr.posicao)}) está fora do período do projeto (${R.fmtData(MQ.PROJETO.vigencia.inicio)} a ${R.fmtData(MQ.PROJETO.vigencia.fim)}). Confira antes de enviar.</div>` : ''}
+      ${(pr.suspeitas || []).length ? `<div class="aviso">${E(pr.avisos.find(a => /suspeita/.test(a)) || '')}</div>` : ''}
+      ${pr.avisos.filter(a => !(pr.suspeitas || []).length || !/suspeita/.test(a)).map(a => `<p class="small muted">${E(a)}</p>`).join('')}</div>`;
   }
   function painel(p) {
     if (p.tipo !== 'exec-enviar') return '';

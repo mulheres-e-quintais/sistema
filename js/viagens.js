@@ -32,7 +32,18 @@
   const podeVer = papel => ['articulacao', 'coord_tecnico', 'coord_geral'].includes(papel);
   /* ---------- tetos: R$ 6.000 por estado para eventos; R$ 70.000 para passagens (35_tetos_passagens_eventos.sql) ---------- */
   const brl = v => R.fmtBRL(+v || 0);
-  const valorBR = t => { const n = R.valorBR(String(t || '').replace(/[^\d,.]/g, '')); return isNaN(n) ? null : n; };
+  /* valor digitado: "-500" e "(500)" continuam negativos (antes o sinal era jogado fora e virava +500) para a tela recusar */
+  const valorBR = t => { const txt = String(t || '').replace(/\u2212/g, '-').trim(); const neg = /^(R\$)?\s*\(?\s*-/.test(txt) || /^\(.*\)$/.test(txt) || /-$/.test(txt);
+    const n = R.valorBR(txt.replace(/[^\d,.]/g, '')); return isNaN(n) ? null : neg ? -n : n; };
+  const MAX_JUSTIFICATIVA = 2000, MAX_PARTICIPANTES = 5000;
+  /* data de nascimento de passageira: AAAA-MM-DD que existe no calendário, de 1900 até hoje */
+  const erroNascimento = v => { const t = String(v || ''); if (!t) return 'Informe a data.';
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t); const d = m && new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    if (!m || d.getUTCFullYear() !== +m[1] || d.getUTCMonth() !== +m[2] - 1 || d.getUTCDate() !== +m[3]) return 'Data de nascimento inválida.';
+    if (t > R.hoje()) return 'A data de nascimento não pode ser no futuro.';
+    if (t < '1900-01-01') return 'Data de nascimento inválida: confira o ano.';
+    return null; };
+  let seqPass = 0;   // número único de cada bloco de passageira, para ligar cada rótulo (label for) ao seu campo
   function saldo(tipo, uf, semId) {
     const teto = MQ.TETOS[tipo]; const sd = S().saldoPed;
     let usado;
@@ -149,19 +160,19 @@
 
   /* ---------- formulário ---------- */
   function passBloco(i, x) {
-    x = x || {}; const v = k => E(x[k] == null ? '' : x[k]);
+    x = x || {}; const v = k => E(x[k] == null ? '' : x[k]); const k = ++seqPass; const id = c => 'ps-' + c + '-' + k;
     return `<fieldset class="viag-pass" data-pass>
       <legend>Passageira ou passageiro <span data-n>${i + 1}</span></legend>
       <div class="campos">
-        <div class="campo inteiro"><label>Nome completo (igual ao documento)</label><input name="ps_nome" value="${v('nome')}" autocomplete="off"></div>
-        <div class="campo"><label>CPF</label><input name="ps_cpf" data-mascara="cpf" inputmode="numeric" value="${v('cpf')}"></div>
-        <div class="campo"><label>Data de nascimento</label><input name="ps_nasc" type="date" max="${R.hoje()}" value="${v('nascimento')}"></div>
-        <div class="campo"><label>RG</label><input name="ps_rg" value="${v('rg')}"></div>
-        <div class="campo"><label>Órgão expedidor</label><input name="ps_org" value="${v('rg_orgao')}" placeholder="Ex.: SSP/PI"></div>
-        <div class="campo"><label>Sexo</label><select name="ps_sexo"><option value="">Selecione…</option>${Object.entries(SEXO).map(([k, t]) => `<option value="${k}" ${x.sexo === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-        <div class="campo"><label>Celular</label><input name="ps_cel" data-mascara="tel" inputmode="tel" value="${v('celular')}"></div>
-        <div class="campo inteiro"><label>E-mail</label><input name="ps_email" type="email" value="${v('email')}"></div>
-        <div class="campo inteiro"><label>Endereço <span class="muted">(opcional)</span></label><input name="ps_end" value="${v('endereco')}"></div>
+        <div class="campo inteiro"><label for="${id('nome')}">Nome completo (igual ao documento)</label><input id="${id('nome')}" name="ps_nome" value="${v('nome')}" autocomplete="off"></div>
+        <div class="campo"><label for="${id('cpf')}">CPF</label><input id="${id('cpf')}" name="ps_cpf" data-mascara="cpf" inputmode="numeric" value="${v('cpf')}"></div>
+        <div class="campo"><label for="${id('nasc')}">Data de nascimento</label><input id="${id('nasc')}" name="ps_nasc" type="date" min="1900-01-01" max="${R.hoje()}" value="${v('nascimento')}"></div>
+        <div class="campo"><label for="${id('rg')}">RG</label><input id="${id('rg')}" name="ps_rg" value="${v('rg')}"></div>
+        <div class="campo"><label for="${id('org')}">Órgão expedidor</label><input id="${id('org')}" name="ps_org" value="${v('rg_orgao')}" placeholder="Ex.: SSP/PI"></div>
+        <div class="campo"><label for="${id('sexo')}">Sexo</label><select id="${id('sexo')}" name="ps_sexo"><option value="">Selecione…</option>${Object.entries(SEXO).map(([k, t]) => `<option value="${k}" ${x.sexo === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+        <div class="campo"><label for="${id('cel')}">Celular</label><input id="${id('cel')}" name="ps_cel" data-mascara="tel" inputmode="tel" value="${v('celular')}"></div>
+        <div class="campo inteiro"><label for="${id('email')}">E-mail</label><input id="${id('email')}" name="ps_email" type="email" value="${v('email')}"></div>
+        <div class="campo inteiro"><label for="${id('end')}">Endereço <span class="muted">(opcional)</span></label><input id="${id('end')}" name="ps_end" value="${v('endereco')}"></div>
       </div>
       <button type="button" class="btn peq" data-acao="viag-rem-pass" ${i === 0 ? 'hidden' : ''}>Tirar esta pessoa</button>
     </fieldset>`;
@@ -344,7 +355,8 @@
   });
 
   function lerForm(tipo, fd) {
-    const t = k => String(fd.get(k) || '').trim(); const n = k => t(k) === '' ? null : Math.max(0, parseInt(t(k), 10) || 0);
+    const t = k => String(fd.get(k) || '').trim(); const negativos = [];   // número negativo continua virando 0 no pedido, mas fica anotado para validar() recusar com mensagem (antes sumia em silêncio)
+    const n = k => { if (t(k) === '') return null; const v = parseInt(t(k), 10) || 0; if (v < 0) negativos.push(k); return Math.max(0, v); };
     if (tipo === 'passagem') {
       const col = k => fd.getAll(k).map(x => String(x || '').trim());
       const nomes = col('ps_nome'), cpfs = col('ps_cpf'), nasc = col('ps_nasc'), rg = col('ps_rg'), org = col('ps_org'), sexo = col('ps_sexo'), cel = col('ps_cel'), em = col('ps_email'), end = col('ps_end');
@@ -352,16 +364,18 @@
       return { finalidade: t('finalidade'), origem: t('origem'), destino: t('destino'), volta: t('volta') || null, volta_para: t('volta_para') || null, sugestao: t('sugestao'), bagagem: t('bagagem'), passageiros };
     }
     const estrutura = {}; ESTRUTURA.forEach(([k]) => { estrutura[k] = !!fd.get('est_' + k); }); estrutura.cadeiras = n('cadeiras'); estrutura.mesas = n('mesas');
-    return { hora: t('hora'), duracao: t('duracao'), local: t('local'), referencia: t('referencia'),
+    return Object.defineProperty({ hora: t('hora'), duracao: t('duracao'), local: t('local'), referencia: t('referencia'),
       participantes: { mulheres: n('p_mulheres'), equipe: n('p_equipe'), convidados: n('p_convidados') }, estrutura,
       alimentacao: { lanche: n('lanche'), almoco: n('almoco'), servico: t('servico') || null, descartaveis: !!fd.get('descartaveis') },
-      responsavel: { nome: t('resp_nome'), celular: t('resp_cel') }, fornecedores: t('fornecedores') || null, orcamento: t('orcamento') || null };
+      responsavel: { nome: t('resp_nome'), celular: t('resp_cel') }, fornecedores: t('fornecedores') || null, orcamento: t('orcamento') || null },
+      '_negativos', { value: negativos, enumerable: false });   // não enumerável: não vai para o servidor
   }
   function validar(tipo, titulo, data, just, d) {
     const e = {};
     if (titulo.length < 5) e.titulo = tipo === 'passagem' ? 'Escreva o objetivo e a atividade.' : 'Escreva o nome do evento e a atividade.';
     if (!data) e.data_ref = 'Informe a data.'; else if (data < R.hoje()) e.data_ref = 'Esta data já passou.'; else if (data > FIM_PROJETO) e.data_ref = 'Passa do fim do projeto (setembro de 2027).';
     else if (diasAte(data) < PRAZO[tipo] && just.length < 15) e.justificativa = `Fora do prazo (${PRAZO[tipo]} dias antes): explique por quê.`;
+    if (just.length > MAX_JUSTIFICATIVA) e.justificativa = 'Texto muito longo (máximo 2.000 caracteres).';
     if (tipo === 'passagem') {
       if (!d.finalidade) e.finalidade = 'Escolha para quê.';
       if (!d.origem) e.origem = 'Informe a cidade de origem.';
@@ -374,7 +388,7 @@
         const m = (nm, msg) => lp.push([i, nm, msg]);
         if (x.nome.split(' ').length < 2) m('ps_nome', 'Nome completo, igual ao documento.');
         if (!R.cpfValido(x.cpf)) m('ps_cpf', 'CPF inválido.');
-        if (!x.nascimento) m('ps_nasc', 'Informe a data.');
+        const en = erroNascimento(x.nascimento); if (en) m('ps_nasc', en);
         if (!x.rg) m('ps_rg', 'Informe o RG.');
         if (!x.rg_orgao) m('ps_org', 'Informe o órgão.');
         if (!x.sexo) m('ps_sexo', 'Escolha.');
@@ -383,11 +397,15 @@
       });
       const cpfs = d.passageiros.map(x => x.cpf).filter(Boolean);
       if (new Set(cpfs).size !== cpfs.length) e._geral = 'A mesma pessoa aparece duas vezes.';
+      if (!d.passageiros.length) e._geral = 'Inclua pelo menos uma passageira ou passageiro.';
       if (lp.length) e._pass = lp;
     } else {
       if (!d.local) e.local = 'Informe o endereço.';
       if (!d.hora) e.hora = 'Informe a hora.';
-      const pa = d.participantes; if (!((pa.mulheres || 0) + (pa.equipe || 0) + (pa.convidados || 0))) e.p_mulheres = 'Quantas pessoas?';
+      const pa = d.participantes; const totPa = (pa.mulheres || 0) + (pa.equipe || 0) + (pa.convidados || 0);
+      [['p_mulheres', pa.mulheres], ['p_equipe', pa.equipe], ['p_convidados', pa.convidados], ['cadeiras', d.estrutura.cadeiras], ['mesas', d.estrutura.mesas], ['lanche', d.alimentacao.lanche], ['almoco', d.alimentacao.almoco]]
+        .forEach(([k, v]) => { if (v < 0 || (d._negativos || []).includes(k)) e[k] = 'Não pode ser negativo.'; });
+      if (!e.p_mulheres && !e.p_equipe && !e.p_convidados) { if (!totPa) e.p_mulheres = 'Quantas pessoas?'; else if (totPa > MAX_PARTICIPANTES) e.p_mulheres = 'Participantes: de 1 a 5.000 pessoas no total.'; }
       const temAlgo = ESTRUTURA.some(([k]) => d.estrutura[k]) || d.estrutura.cadeiras || d.estrutura.mesas || d.alimentacao.lanche || d.alimentacao.almoco;
       if (!temAlgo) e._geral = 'Marque pelo menos um item de estrutura ou de alimentação.';
       if ((d.alimentacao.lanche || d.alimentacao.almoco) && !d.alimentacao.servico) e.servico = 'Só entrega ou com serviço?';
@@ -403,7 +421,8 @@
       const data = String(fd.get('data_ref') || ''); const just = String(fd.get('justificativa') || '').trim();
       const d = lerForm(t, fd); d.valor_estimado = valorBR(fd.get('valor_estimado'));
       const e = validar(t, titulo, data, just, d);
-      if (!(d.valor_estimado > 0)) e.valor_estimado = 'Informe o valor estimado (R$).';
+      if (d.valor_estimado < 0) e.valor_estimado = 'O valor não pode ser negativo.';
+      else if (!(d.valor_estimado > 0)) e.valor_estimado = 'Informe o valor estimado (R$).';
       else { const sd = saldo(t, S().eu.uf); if (d.valor_estimado > sd.livre) e.valor_estimado = 'Passa do saldo: restam ' + brl(sd.livre) + (t === 'evento' ? ' para eventos em ' + S().eu.uf : ' para passagens no projeto') + '.'; }
       const lp = e._pass || []; const geral = e._geral; delete e._pass; delete e._geral;
       if (Object.keys(e).length || lp.length || geral) {
@@ -425,6 +444,7 @@
       if (['devolver', 'recusar'].includes(acao) && obs.length < 5) return U().mostrarErros(form, { obs: acao === 'devolver' ? 'Escreva o que precisa ser corrigido.' : 'Escreva o motivo da recusa.' });
       const valor = acao === 'autorizar' && form.querySelector('[name=valor]') ? valorBR(fd.get('valor')) : null;
       if (acao === 'autorizar' && form.querySelector('[name=valor]')) {
+        if (valor < 0) return U().mostrarErros(form, { valor: 'O valor não pode ser negativo.' });
         if (!(valor > 0)) return U().mostrarErros(form, { valor: 'Informe o valor para autorizar.' });
         const sd = saldo(form.dataset.tipo, form.dataset.uf);
         if (valor > sd.livre) return U().mostrarErros(form, { valor: 'Passa do teto: o saldo é ' + brl(sd.livre) + '. Ajuste o valor, devolva ou recuse.' });
@@ -453,6 +473,6 @@
     </section>`;
   }
 
-  MQ.viagUI = { contaDevolvidos: () => lista().filter(p => p.solicitante_id === S().eu.id && p.situacao === 'devolvido').length, secaoBolsista, secaoConferente, souConferente, abaCoord, painel, clique, enviar, podeVer, contaMinha: () => lista().filter(minhaVez).length, textoFuncern,
+  MQ.viagUI = { validar, lerForm, passBloco, valorBR, contaDevolvidos: () => lista().filter(p => p.solicitante_id === S().eu.id && p.situacao === 'devolvido').length, secaoBolsista, secaoConferente, souConferente, abaCoord, painel, clique, enviar, podeVer, contaMinha: () => lista().filter(minhaVez).length, textoFuncern,
     validar, lerForm };   // validar e lerForm expostos para os testes unitários (testes/unit)
 })();

@@ -6,6 +6,7 @@
 (function () {
   const LIMITE_ARQUIVO = 10 * 1024 * 1024;   // 10 MB
   const LIMITE_LINHAS = 5000;
+  const LIMITE_VALOR = 10e6, DATA_MIN = '2026-01-01', DATA_MAX = '2027-12-31';   // acima ou fora disso a linha entra, marcada como suspeita na prévia
 
   /* ---------- zip ---------- */
   async function inflar(bytes) {
@@ -89,7 +90,7 @@
       else cel += ch;
     }
     if (cel !== '' || lin.length) { lin.push(cel); linhas.push(lin); }
-    return { aba: 'CSV', linhas: linhas.map(l => l.map(x => x.trim() === '' ? null : x.trim())) };
+    return { aba: 'CSV', sep, linhas: linhas.map(l => l.map(x => x.trim() === '' ? null : x.trim())) };
   }
 
   async function ler(arquivo) {
@@ -104,17 +105,21 @@
 
   /* ---------- interpretar ---------- */
   const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  /* só é número o texto INTEIRO no padrão brasileiro ou americano (R$, sinal e parênteses de negativo opcionais).
+     "12/10/2026", "Nota 12", "1e3" e "10-20" não são valor: devolve null e a linha é ignorada (01/10/2026). */
   function numeroBR(v) {
     if (typeof v === 'number') return isFinite(v) ? v : null;
-    if (v == null) return null; let s = String(v).trim(); if (!s) return null;
+    if (v == null || typeof v !== 'string') return null; let s = v.replace(/[\s\u00a0]/g, ''); if (!s) return null;
     s = s.replace(/\u2212/g, '-');   // sinal de menos tipográfico
-    const neg = /^\(.*\)$/.test(s) || /^[^\d]*-/.test(s) || /-\s*$/.test(s);   // (1.234,56), -1.234,56, R$ -1.234,56, 1.234,56-
-    s = s.replace(/[^\d,.]/g, ''); if (!/\d/.test(s)) return null;
-    const vg = s.lastIndexOf(','), pt = s.lastIndexOf('.'); let n;
-    if (vg >= 0 && pt >= 0) n = vg > pt ? +s.replace(/\./g, '').replace(',', '.') : +s.replace(/,/g, '');   // o último separador é o dos centavos
-    else if (vg >= 0) n = (s.match(/,/g) || []).length > 1 ? +s.replace(/,/g, '') : +s.replace(',', '.');   // só vírgula: decimal (padrão brasileiro)
-    else if (pt >= 0) n = (s.match(/\./g) || []).length > 1 || (/^[1-9]\d{0,2}\.\d{3}$/.test(s)) ? +s.replace(/\./g, '') : +s;   // 1.234 = mil; 0.125 e 12.5 = decimal
-    else n = +s;
+    let neg = false;
+    if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1); }   // (1.234,56)
+    for (let m; (m = /^(-|\+|R\$)/i.exec(s));) { if (m[1] === '-') neg = true; s = s.slice(m[1].length); }   // -1.234,56, R$ -1.234,56, -R$ 5
+    if (/-$/.test(s)) { neg = true; s = s.slice(0, -1); }   // 1.234,56-
+    let n;
+    if (/^[1-9]\d{0,2}(\.\d{3})+(,\d+)?$/.test(s)) n = +s.replace(/\./g, '').replace(',', '.');   // 1.234 · 1.234,56 · 12.345.678
+    else if (/^[1-9]\d{0,2}(,\d{3})+\.\d+$/.test(s) || /^[1-9]\d{0,2}(,\d{3}){2,}$/.test(s)) n = +s.replace(/,/g, '');   // 1,234.56 · 1,000,000
+    else if (/^(\d+([.,]\d+)?|[.,]\d+)$/.test(s)) n = +s.replace(',', '.');   // 1600 · 1600,5 · 1600.50 · 0.125 · ,5
+    else return null;
     return isFinite(n) ? (neg ? -n : n) : null;
   }
   function dataDe(v) {
@@ -154,9 +159,11 @@
   }
   function classificar(texto) {
     const n = norm(texto); if (!n) return { item: null, rubrica: null };
-    if (/repasse|receita|nota de credito|transferencia do mda|recurso recebido|credito recebido/.test(n)) return { item: 'repasse_mda', rubrica: null };
+    // dinheiro RECEBIDO do MDA: precisa do contexto ("repasse do MDA", "recebido", "crédito do convênio"). "Repasse de combustível aos agentes" e "Receita Federal - DARF" são gastos.
+    if (/^(repasse|receita)s?( (do|da|de))?( \d+ ?[ao]?)?( parcela)?$|\b(repasse|receita|transferencia|credito|recurso|parcela)s? ((do|da|de|pelo|pela) )?(mda|ministerio|ted|convenio|concedente)\b|\brecebid[oa]s?\b|nota de credito/.test(n)) return { item: 'repasse_mda', rubrica: null };
     const T = tabelaItens();
     let x = T.find(t => t.chaves.includes(n)); if (x) return { item: x.id, rubrica: x.rubrica };
+    x = T.find(t => t.chaves.includes(n + 's') || (n.endsWith('s') && t.chaves.includes(n.slice(0, -1)))); if (x) return { item: x.id, rubrica: x.rubrica };   // "Evento" = "eventos", "Diária" = "diárias"
     x = T.find(t => t.chaves.some(k => k.length >= 6 && n.includes(k))); if (x) return { item: x.id, rubrica: x.rubrica };
     // nome genérico ("Passagens", "Coordenador"): cabe em mais de um item; fica só na rubrica, se todos forem da mesma
     const parecidos = n.length >= 6 ? T.filter(t => t.chaves.some(k => k.includes(n))) : [];
@@ -171,27 +178,36 @@
   function interpretar(tab) {
     const c = acharCabecalho(tab.linhas);
     if (!c) throw new Error('Não achei o cabeçalho. A planilha precisa ter as colunas "Item" (ou "Rubrica") e "Valor". Use o modelo.');
-    const out = []; let ignoradas = 0, datasRuins = 0; const avisos = [];
+    const out = []; let ignoradas = 0, datasRuins = 0; const avisos = []; const textoNoValor = [], suspeitas = []; let centavosPerdidos = 0;
+    const nCab = (tab.linhas[c.i] || []).length; const pl = (n, um, varios) => n === 1 ? um : varios;
     for (let i = c.i + 1; i < tab.linhas.length; i++) {
       const l = tab.linhas[i] || []; const pega = k => c.col[k] == null ? null : l[c.col[k]];
-      const texto = pega('item'); const valor = numeroBR(pega('valor'));
+      const texto = pega('item'); const bruto = pega('valor'); const valor = numeroBR(bruto);
       if ((texto == null || String(texto).trim() === '') && valor == null) continue;   // linha em branco
       // linha de total (em qualquer coluna): não entra (contaria duas vezes). "Total Distribuidora Ltda" com data é gasto de verdade.
       const rotTotal = x => typeof x === 'string' && /^((sub ?)?total|soma|saldo)( (geral|final|anterior|d[aeo]s? [a-z0-9 ]{1,40}))?( r\$?)?:?$/.test(norm(x).trim());
       const comData = !!dataDe(pega('data'));
       if (l.some(rotTotal) || (!comData && l.some(x => typeof x === 'string' && /^((sub ?)?total|soma|saldo)\b/.test(norm(x))))) { ignoradas++; continue; }
+      if (valor == null && typeof bruto === 'string' && bruto.trim() !== '') textoNoValor.push(i + 1);   // texto ou data na coluna de valor: não vira gasto
       if (valor == null || valor === 0) { ignoradas++; continue; }
+      // CSV separado por vírgula com centavos sem aspas ("1000,50"): os centavos caíram na coluna seguinte
+      if (tab.sep === ',' && l.length > nCab && typeof bruto === 'string' && /^-?\d+$/.test(bruto) && /^\d{1,2}$/.test(String(l[c.col.valor + 1] == null ? '' : l[c.col.valor + 1]))) centavosPerdidos++;
       const cls = classificar(texto);
       const dt = dataDe(pega('data')); if (!dt && pega('data') != null && String(pega('data')).trim() !== '') datasRuins++;
       out.push({ linha: i + 1, data: dt, texto: String(texto == null ? '' : texto).slice(0, 120), item: cls.item, rubrica: cls.rubrica,
         descricao: pega('descricao') == null ? null : String(pega('descricao')).slice(0, 200), documento: pega('documento') == null ? null : String(pega('documento')).slice(0, 80), valor: Math.round(valor * 100) / 100 });
+      if (Math.abs(valor) > LIMITE_VALOR || (dt && (dt < DATA_MIN || dt > DATA_MAX))) suspeitas.push(i + 1);
       if (out.length > LIMITE_LINHAS) throw new Error(`A planilha tem mais de ${LIMITE_LINHAS} lançamentos.`);
     }
     if (!out.length) throw new Error('A planilha não tem nenhuma linha com valor.');
     if (datasRuins) avisos.push(`${datasRuins} data${datasRuins > 1 ? 's' : ''} que não reconheci (ex.: 31/02): ${datasRuins > 1 ? 'entram' : 'entra'} no mês da planilha. Confira.`);
     const semData = out.filter(x => !x.data).length - datasRuins; if (semData) avisos.push(`${semData} linha${semData > 1 ? 's' : ''} sem data: entram no mês da planilha.`);
+    const quais = ns => ns.slice(0, 10).join(', ') + (ns.length > 10 ? '…' : '');
+    if (textoNoValor.length) avisos.push(`${textoNoValor.length} ${pl(textoNoValor.length, 'linha ignorada', 'linhas ignoradas')} por ter texto ou data no lugar do valor (${pl(textoNoValor.length, 'linha', 'linhas')} ${quais(textoNoValor)}). Confira a coluna de valor.`);
+    if (suspeitas.length) avisos.push(`Confira: ${suspeitas.length} ${pl(suspeitas.length, 'linha suspeita', 'linhas suspeitas')}, com valor acima de R$ 10 milhões ou data fora de 2026 e 2027 (${pl(suspeitas.length, 'linha', 'linhas')} ${quais(suspeitas)}).`);
+    if (centavosPerdidos) avisos.push(`Este CSV usa vírgula para separar as colunas e também nos centavos (ex.: 1000,50): ${centavosPerdidos} ${pl(centavosPerdidos, 'valor pode ter perdido', 'valores podem ter perdido')} os centavos. Salve com ponto e vírgula como separador (ou em .xlsx) e escolha de novo.`);
     if (c.col.data == null) avisos.push('A planilha não tem coluna de data: o gráfico do ritmo usa o mês da planilha para todos os gastos.');
-    return { linhas: out, avisos, ignoradas, aba: tab.aba };
+    return { linhas: out, avisos, ignoradas, suspeitas, aba: tab.aba };
   }
   const resumo = r => {
     const gasto = r.linhas.filter(l => l.item !== 'repasse_mda').reduce((t, l) => t + l.valor, 0);

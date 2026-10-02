@@ -33,7 +33,8 @@
       return (todos || []).filter(x => !dono || x.dono === dono).sort((a, b) => a.criado - b.criado);
     },
     async salvar(item) {
-      item.criado = item.criado || Date.now();
+      // regravar (corrigir um item que já estava na fila) mantém a data original: a ordem de envio não muda
+      if (!item.criado) { const antes = await tx('readonly', l => l ? l.get(item.id) : { result: memoria.get(item.id) }); item.criado = (antes && antes.criado) || Date.now(); }
       await tx('readwrite', l => { if (l) l.put(item); else memoria.set(item.id, item); });
       return item;
     },
@@ -56,7 +57,7 @@
             await F.remover(it.id); enviados++;
           } catch (e) {
             if (e.semRede) break;
-            it.erro = e.message; it.reenviar = false; await F.salvar(it);
+            it.erro = (MQ.regras && MQ.regras.mensagemErro ? MQ.regras.mensagemErro(e) : e.message) || 'Não foi possível enviar. Tente de novo.'; it.reenviar = false; await F.salvar(it);   // mensagem já traduzida, não o texto cru do servidor
           }
         }
       } finally { F.enviando = false; }
@@ -64,21 +65,41 @@
     }
   });
 
-  /* Reduz a foto antes de guardar: papel fotografado em 1600px continua legível e ocupa ~300 KB */
-  MQ.comprimirFoto = function (arquivo, max = 1600, qualidade = 0.8) {
-    return new Promise(res => {
-      if (!arquivo || !/^image\//.test(arquivo.type)) return res(arquivo);
-      const img = new Image(); const url = URL.createObjectURL(arquivo);
-      img.onload = () => {
-        const esc = Math.min(1, max / Math.max(img.width, img.height));
-        const c = document.createElement('canvas');
-        c.width = Math.round(img.width * esc); c.height = Math.round(img.height * esc);
-        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-        URL.revokeObjectURL(url);
-        c.toBlob(b => res(b && b.size < arquivo.size ? b : arquivo), 'image/jpeg', qualidade);
-      };
-      img.onerror = () => { URL.revokeObjectURL(url); res(arquivo); };
-      img.src = url;
+  /* Reduz a foto antes de guardar: papel fotografado em 1600px continua legível e ocupa ~300 KB.
+     Só aceita foto de verdade: tipo de imagem (JPEG, PNG, WebP, HEIC), tamanho maior que zero e que o navegador consiga abrir.
+     Arquivo que não é foto (txt renomeado para .png, vazio, .exe) é RECUSADO: a promessa falha com a mensagem para a tela. */
+  MQ.MSG_NAO_E_FOTO = 'Este arquivo não é uma foto. Tire a foto de novo ou escolha outra imagem.';
+  const TIPO_FOTO = /^image\/(jpeg|png|webp|heic|heif)$/i;
+  MQ.fotoValida = arquivo => !!(arquivo && TIPO_FOTO.test(String(arquivo.type || '')) && arquivo.size > 0);
+  // HEIC de verdade (iPhone) que este navegador não sabe abrir: confere a assinatura do arquivo ("ftyp" + marca) antes de aceitar o original
+  async function ehHeic(arquivo) {
+    try { const b = new Uint8Array(await arquivo.slice(0, 12).arrayBuffer()); const t = String.fromCharCode(...b);
+      return t.slice(4, 8) === 'ftyp' && /^(heic|heix|hevc|hevx|heim|heis|mif1|msf1)$/.test(t.slice(8, 12)); } catch (e) { return false; }
+  }
+  MQ.comprimirFoto = function (arquivo, max = 1600, qualidade = 0.8, op) {
+    return new Promise((res, rej) => {
+      const recusar = () => { const e = new Error(MQ.MSG_NAO_E_FOTO); e.naoEhFoto = true;
+        if (!(op && op.semAviso) && MQ.ui && MQ.ui.toast) { try { MQ.ui.toast(e.message); } catch (x) { /* sem tela */ } }
+        rej(e); };
+      if (!MQ.fotoValida(arquivo)) return recusar();
+      let url; const soltar = () => { try { URL.revokeObjectURL(url); } catch (e) { /* nada */ } };
+      try {
+        const img = new Image(); url = URL.createObjectURL(arquivo);
+        img.onload = () => {
+          try {
+            if (!(img.width > 0 && img.height > 0)) { soltar(); return recusar(); }
+            const esc = Math.min(1, max / Math.max(img.width, img.height));
+            const c = document.createElement('canvas');
+            c.width = Math.round(img.width * esc); c.height = Math.round(img.height * esc);
+            c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+            soltar();
+            c.toBlob(b => { if (!b || !(b.size > 0)) return recusar(); res(b.size < arquivo.size ? b : arquivo); }, 'image/jpeg', qualidade);
+          } catch (e) { soltar(); recusar(); }
+        };
+        img.onerror = () => { soltar();
+          if (/hei[cf]$/i.test(arquivo.type)) ehHeic(arquivo).then(ok => ok ? res(arquivo) : recusar()); else recusar(); };
+        img.src = url;
+      } catch (e) { soltar(); recusar(); }
     });
   };
 
