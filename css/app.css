@@ -2367,3 +2367,12 @@ main .secao + .secao, main .secao + .bloco, main .bloco + .secao { margin-top: 1
 /* tela de espera ao entrar ou trocar de perfil: o desenho da abertura com a frase embaixo */
 p.carregando:has(.carregando-t) { flex-direction: column; gap: 12px; }
 .carregando-t { font-size: var(--t-md); color: var(--muted); }
+
+/* --- marco ligado à meta (02/10/2026) --- */
+.marco-meta { justify-self: start; display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 3px 10px; border: 1px solid var(--line-2); border-radius: 99px; background: var(--surface); color: var(--ink-2); font: 600 var(--t-xs)/1.3 var(--sans); text-align: left; cursor: pointer; }
+.marco-meta::after { content: "→"; color: var(--accent); }
+.marco-meta:hover { border-color: var(--accent); color: var(--ink); }
+.meta-marcos { margin: 8px 0 0; display: grid; gap: 4px; font-size: var(--t-sm); color: var(--ink-2); }
+.meta-marcos .mm { display: block; } .meta-marcos .mm.passou { color: var(--muted); }
+.dx-meta.meta-alvo { box-shadow: inset 4px 0 0 var(--accent); background: color-mix(in srgb, var(--surface-2) 45%, transparent); transition: background .3s; }
+@media (max-width: 640px) { .marco-meta { min-height: 40px; } }

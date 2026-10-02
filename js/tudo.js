@@ -147,14 +147,15 @@ MQ.METAS = [
   { id: 'M7', nome: 'Acompanhamento pedagógico', alvo: 8, un: 'missões', ini: 4, fim: 12, fonte: null, valor: 42000 },
   { id: 'M8', nome: 'Relatório final', alvo: 1, un: 'relatório', ini: 13, fim: 13, fonte: null }
 ];
-/* feito: o marco sai da lista quando o sistema já mostra que aconteceu (equipe completa, 1º diagnóstico, Meta 2 concluída) */
+/* meta: a meta do plano de trabalho a que o marco pertence (o 2º repasse é financeiro: não é de uma meta só).
+   feito: o marco sai da lista quando o sistema já mostra que aconteceu (equipe completa, 1º diagnóstico, Meta 2 concluída) */
 MQ.MARCOS = [
-  { d: '2026-10-09', t: 'MPA indica a coordenação técnica e as 10 bolsistas', feito: 'equipe' },
-  { d: '2026-10-16', t: 'Termo de referência dos kits enviado à FUNCERN' },
-  { d: '2026-10-23', t: 'Ata dos critérios de seleção assinada; início dos diagnósticos', feito: 'diagnostico_inicio' },
-  { d: '2027-01-31', t: 'Fim dos diagnósticos (Meta 2)', feito: 'M2' },
+  { d: '2026-10-09', t: 'MPA indica a coordenação técnica e as 10 bolsistas', feito: 'equipe', meta: 'M1' },
+  { d: '2026-10-16', t: 'Termo de referência dos kits enviado à FUNCERN', meta: 'M3' },
+  { d: '2026-10-23', t: 'Ata dos critérios de seleção assinada; início dos diagnósticos', feito: 'diagnostico_inicio', meta: 'M2' },
+  { d: '2027-01-31', t: 'Fim dos diagnósticos', feito: 'M2', meta: 'M2' },
   { d: '2027-04-30', t: '2º repasse do MDA previsto' },
-  { d: '2027-09-30', t: 'Fim da vigência do TED' }
+  { d: '2027-09-30', t: 'Fim da vigência do TED', meta: 'M8' }
 ];
 MQ.PAINEL_FINANCEIRO = 'https://claude.ai/artifact/TMjzFNUUaKkgwk7RKFrXgm';
 
@@ -3415,11 +3416,13 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
   function linhaMeta(meta, S, d, mes) {
     const x = infoMeta(meta, S, d, mes);
-    return `<details class="dx-meta">
+    const hoje = R.hoje(); const ms = (MQ.MARCOS || []).filter(k => k.meta === meta.id);
+    const marcosDaMeta = ms.length ? `<p class="meta-marcos"><b>Marco${ms.length > 1 ? 's' : ''} desta meta:</b> ${ms.map(k => `<span class="mm${k.d < hoje ? ' passou' : ''}"><span class="num">${R.fmtData(k.d)}</span> · ${E(k.t)}</span>`).join('')}</p>` : '';
+    return `<details class="dx-meta" id="meta-${meta.id}">
       <summary><span class="meta-id">${meta.id}</span><span class="meta-nome">${E(meta.nome)}</span>${chipStatus(x.st, x.st === 'nao' && mes - 1 < meta.ini ? 'Começa em ' + MESES[meta.ini - 1] : null)}
         <span class="medidor" role="img" aria-label="${x.atual == null ? 'sem registro' : x.atual + ' de ' + x.alvo}${x.pctPrev != null && x.prev > 0 ? ', previsto até agora ' + x.prev : ''}"><i class="${STATUS[x.st].cls}" style="width:${x.pct}%"></i>${x.pctPrev != null && x.prev > 0 ? `<b class="previsto" style="left:${x.pctPrev}%"></b>` : ''}</span>
         <span class="meta-num num"><b>${x.atual == null ? '—' : x.atual}</b> de ${x.alvo} <span class="muted">${E(x.un)}</span></span></summary>
-      <div class="dx-meta-mais"><p>${E(x.nota)}</p><p class="muted">Período: ${MESES[meta.ini - 1]} a ${MESES[meta.fim - 1]}${x.pctPrev != null && mes - 1 >= meta.ini ? ` · previsto até ${MESES[Math.max(0, mes - 2)]}: ${x.prev}` : ''}${meta.valor ? ` · valor no plano: ${R.fmtBRL(meta.valor).replace(',00', '')}` : ''}.</p></div>
+      <div class="dx-meta-mais"><p>${E(x.nota)}</p><p class="muted">Período: ${MESES[meta.ini - 1]} a ${MESES[meta.fim - 1]}${x.pctPrev != null && mes - 1 >= meta.ini ? ` · previsto até ${MESES[Math.max(0, mes - 2)]}: ${x.prev}` : ''}${meta.valor ? ` · valor no plano: ${R.fmtBRL(meta.valor).replace(',00', '')}` : ''}.</p>${marcosDaMeta}</div>
     </details>`;
   }
 
@@ -3760,6 +3763,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
               const tom = dd < 0 ? 'passou' : dd <= 7 ? 'perto' : 'longe';
               return `<li class="marco ${tom}${prox ? ' prox' : ''}"><time class="marco-cal" datetime="${m.d}"><b>${m.d.slice(8, 10)}</b><span>${MES3[+m.d.slice(5, 7) - 1]} ${m.d.slice(0, 4)}</span></time>
                 <span class="marco-txt">${E(m.t)}
+                ${m.meta && MQ.METAS.some(x => x.id === m.meta) ? `<button type="button" class="marco-meta" data-meta-ir="${m.meta}" aria-label="Ver a meta ${m.meta.slice(1)}: ${E((MQ.METAS.find(x => x.id === m.meta) || {}).nome || '')}">Meta ${m.meta.slice(1)} · ${E((MQ.METAS.find(x => x.id === m.meta) || {}).nome || '')}</button>` : ''}
                 <span class="marco-prazo">${dd < 0 ? 'passou há ' + (-dd) + ' dia' + (dd === -1 ? '' : 's') : dd === 0 ? 'hoje' : 'em ' + dd + ' dia' + (dd === 1 ? '' : 's')}</span></span></li>`; }).join('')}</ol>
           </section>
           <section class="secao" aria-labelledby="t-uf">
@@ -3927,6 +3931,14 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         return `<li><span class="lg-q" style="background:var(--uf-${uf})"></span>${uf} <span class="lg-mun">${nm} ${nm === 1 ? 'município' : 'municípios'}</span></li>`; }).join('')}<li><span class="lg-q lg-sede"></span>RN <span class="muted">sede (Apodi)</span></li></ul>`}`;
   }
 
+  /* marco → meta: abre a linha da meta no plano, rola até ela e põe o foco no título */
+  if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('click', ev => {
+    const b = ev.target && ev.target.closest && ev.target.closest('[data-meta-ir]'); if (!b) return;
+    const d = document.getElementById('meta-' + b.dataset.metaIr); if (!d) return;
+    d.open = true; d.classList.add('meta-alvo'); setTimeout(() => d.classList.remove('meta-alvo'), 2400);
+    if (d.scrollIntoView) d.scrollIntoView({ block: 'center', behavior: (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) ? 'auto' : 'smooth' });
+    const s = d.querySelector('summary'); if (s && s.focus) s.focus({ preventScroll: true });
+  });
   MQ.painelUI = { visaoGeral, mesDoProjeto, mapaUFs, infoMeta, execucaoGeral, chipStatus, STATUS };
 })();
 ;
