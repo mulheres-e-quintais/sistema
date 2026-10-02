@@ -863,7 +863,7 @@
             ${primeiro ? '<span class="dica">Pelo menos 8 caracteres, com letras e números.</span>' : ''}</div>
           ${primeiro ? '<div class="campo"><label for="l-senha2">Repita a senha</label><input id="l-senha2" name="senha2" type="password" autocomplete="new-password" required></div>' : ''}
           <div class="aviso erro" data-erro hidden></div>
-          <button class="btn pri ent-btn" type="submit">${primeiro ? 'Criar senha e entrar' : 'Entrar'} <span aria-hidden="true">→</span></button>
+          <button class="btn pri ent-btn" type="submit">${primeiro ? 'Criar senha e entrar' : 'Entrar'}</button>
           ${primeiro ? '' : '<button type="button" class="link ent-esqueci" data-acao="modo-login" data-m="esqueci">Esqueci a senha</button>'}
           <button type="button" class="link ent-ajuda" data-acao="ajuda" data-k="entrada">Precisa de ajuda para entrar?</button>
         </form>`}
@@ -884,7 +884,7 @@
           <p class="muted">Digite o e-mail do seu cadastro. A coordenação geral recebe o pedido e manda um código novo para o seu WhatsApp.</p></div>
         <div class="campo"><label for="e-email">E-mail</label><input id="e-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="seu@email.com" value="${esc(S.emailDigitado || '')}" maxlength="254" required></div>
         <div class="aviso erro" data-erro hidden></div>
-        <button class="btn pri ent-btn" type="submit">Pedir novo acesso <span aria-hidden="true">→</span></button>
+        <button class="btn pri ent-btn" type="submit">Pedir novo acesso</button>
         <button type="button" class="link ent-ajuda" data-acao="modo-login" data-m="entrar">Voltar para entrar</button>
       </form>`;
   }

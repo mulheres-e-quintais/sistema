@@ -3421,7 +3421,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `<details class="dx-meta" id="meta-${meta.id}">
       <summary><span class="meta-id">${meta.id}</span><span class="meta-nome">${E(meta.nome)}</span>${chipStatus(x.st, x.st === 'nao' && mes - 1 < meta.ini ? 'Começa em ' + MESES[meta.ini - 1] : null)}
         <span class="medidor" role="img" aria-label="${x.atual == null ? 'sem registro' : x.atual + ' de ' + x.alvo}${x.pctPrev != null && x.prev > 0 ? ', previsto até agora ' + x.prev : ''}"><i class="${STATUS[x.st].cls}" style="width:${x.pct}%"></i>${x.pctPrev != null && x.prev > 0 ? `<b class="previsto" style="left:${x.pctPrev}%"></b>` : ''}</span>
-        <span class="meta-num num"><b>${x.atual == null ? '—' : x.atual}</b> de ${x.alvo} <span class="muted">${E(x.un)}</span></span></summary>
+        <span class="meta-num num"><b>${x.atual == null ? '—' : x.atual}</b> de ${x.alvo} <span class="muted">${E(x.un)}</span></span><span class="meta-ver" aria-hidden="true"></span></summary>
       <div class="dx-meta-mais"><p>${E(x.nota)}</p><p class="muted">Período: ${MESES[meta.ini - 1]} a ${MESES[meta.fim - 1]}${x.pctPrev != null && mes - 1 >= meta.ini ? ` · previsto até ${MESES[Math.max(0, mes - 2)]}: ${x.prev}` : ''}${meta.valor ? ` · valor no plano: ${R.fmtBRL(meta.valor).replace(',00', '')}` : ''}.</p>${marcosDaMeta}</div>
     </details>`;
   }
@@ -3738,7 +3738,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <div class="dx-tr dx-th" role="row"><span role="columnheader">Problema</span><span role="columnheader">Prazo</span><span role="columnheader"><span class="sr">Ação</span></span></div>
           ${al.map(x => `<div class="dx-tr" role="row"><span role="cell" class="dx-prob"><span class="st-pt ${NIVEL[x.nivel][0]}" aria-hidden="true"></span><span><span class="sr">${NIVEL[x.nivel][1]}: </span><b>${E(x.texto)}</b><small>${E(x.det)}</small></span></span>
             <span role="cell" class="dx-prazo num">${prazoTxt(x)}</span>
-            <span role="cell">${x.aba ? MQ.botaoAcao({ acao: 'aba', texto: 'Resolver', icone: false, sec: true, mini: true, cls: 'dx-ir', rotulo: `Resolver: ${E(x.texto)} (abre ${NOME_ABA[x.aba] || x.aba})`, attrs: `data-aba="${x.aba}" title="Abre ${NOME_ABA[x.aba] || x.aba}"` }) : ''}</span></div>`).join('')}
+            <span role="cell">${x.aba ? MQ.botaoAcao({ acao: 'aba', texto: 'Resolver', icone: false, mini: true, cls: 'dx-ir', rotulo: `Resolver: ${E(x.texto)} (abre ${NOME_ABA[x.aba] || x.aba})`, attrs: `data-aba="${x.aba}" title="Abre ${NOME_ABA[x.aba] || x.aba}"` }) : ''}</span></div>`).join('')}
         </div>` : `<p class="dx-ok">${chipStatus('concluida', 'Nada pendente')} nos dados do sistema.</p>`}
       </section>
 
@@ -3749,7 +3749,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
             ${linhaMeta(MQ.METAS[0], S, d, mes)}
             <details class="dx-meta"><summary><span class="meta-id">Sel.</span><span class="meta-nome">Seleção das beneficiárias</span>${chipStatus(d.selAprov.length >= 200 ? 'concluida' : d.fichas.length ? 'andamento' : 'nao')}
               <span class="medidor" role="img" aria-label="${d.selAprov.length} de 200"><i class="${d.selAprov.length >= 200 ? 'st-ok' : 'st-and'}" style="width:${Math.min(100, d.selAprov.length / 2)}%"></i></span>
-              <span class="meta-num num"><b>${d.selAprov.length}</b> de 200 <span class="muted">selecionadas</span></span></summary>
+              <span class="meta-num num"><b>${d.selAprov.length}</b> de 200 <span class="muted">selecionadas</span></span><span class="meta-ver" aria-hidden="true"></span></summary>
               <div class="dx-meta-mais"><p>Antes da Meta 2. Registrada no sistema (ficha de indicação e termo de consentimento). ${aguard} aguardando aprovação.</p></div></details>
             ${MQ.METAS.filter(m => m.fonte && m.fonte !== 'equipe').map(m => linhaMeta(m, S, d, mes)).join('')}
             ${MQ.METAS.filter(m => !m.fonte).map(m => linhaMeta(m, S, d, mes)).join('')}
@@ -3926,8 +3926,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         + (op.entrada && uf !== 'RN' ? `<text x="${x}" y="${y + esc * 3.4}" class="uf-sigla uf-num${anc === 'start' ? ' sigla-mar' : ''}" font-size="${esc * 2.5}" text-anchor="${anc}">${n} ${n === 1 ? 'cidade' : 'cidades'}</text>` : ''); }).join('');
     return `<svg class="mapa mapa-pub${op.entrada ? ' mapa-info' : ''}${op.animar ? ' saindo' : ''}" viewBox="${vb.join(' ')}" role="img" aria-label="Mapa dos estados do projeto: ${ufsProj.map(u => u + ' ' + nMunUF(u) + ' municípios').join(', ')}; ${nMun} municípios que receberão os quintais, ligados a Apodi/RN, sede do IFRN" preserveAspectRatio="xMidYMid meet">${estados}${siglas}<g class="rotas">${rotas}</g>${pontos}${sede}</svg>
       <p class="mun-nome" aria-live="polite"><span data-mun-nome></span></p>
-      ${op.entrada ? (dadosMun ? `<div class="mapa-leg-info"><p><span class="pt" aria-hidden="true"></span>Cada círculo representa um município. O tamanho indica o número de mulheres cadastradas.</p>${semCadastro ? `<p><span class="pt pt-vazio" aria-hidden="true"></span>Município previsto, ainda sem cadastro.</p>` : ''}</div>`
-        : `<p class="mapa-leg-info"><span class="pt" aria-hidden="true"></span>Cada ponto representa 1 município atendido pelo projeto.</p>`) : `<ul class="mapa-lista">${ordem.map(uf => { const nm = nMunUF(uf);
+      ${op.entrada ? (dadosMun ? `<div class="mapa-leg-info"><p class="leg-sede"><span class="pt pt-sede" aria-hidden="true"></span>Polo: IFRN Campus Apodi</p><p><span class="pt" aria-hidden="true"></span>Cada círculo representa um município. O tamanho indica o número de mulheres cadastradas.</p>${semCadastro ? `<p><span class="pt pt-vazio" aria-hidden="true"></span>Município previsto, ainda sem cadastro.</p>` : ''}</div>`
+        : `<div class="mapa-leg-info"><p class="leg-sede"><span class="pt pt-sede" aria-hidden="true"></span>Polo: IFRN Campus Apodi</p><p><span class="pt" aria-hidden="true"></span>Cada ponto representa 1 município atendido pelo projeto.</p></div>`) : `<ul class="mapa-lista">${ordem.map(uf => { const nm = nMunUF(uf);
         return `<li><span class="lg-q" style="background:var(--uf-${uf})"></span>${uf} <span class="lg-mun">${nm} ${nm === 1 ? 'município' : 'municípios'}</span></li>`; }).join('')}<li><span class="lg-q lg-sede"></span>RN <span class="muted">sede (Apodi)</span></li></ul>`}`;
   }
 
@@ -11134,7 +11134,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
             ${primeiro ? '<span class="dica">Pelo menos 8 caracteres, com letras e números.</span>' : ''}</div>
           ${primeiro ? '<div class="campo"><label for="l-senha2">Repita a senha</label><input id="l-senha2" name="senha2" type="password" autocomplete="new-password" required></div>' : ''}
           <div class="aviso erro" data-erro hidden></div>
-          <button class="btn pri ent-btn" type="submit">${primeiro ? 'Criar senha e entrar' : 'Entrar'} <span aria-hidden="true">→</span></button>
+          <button class="btn pri ent-btn" type="submit">${primeiro ? 'Criar senha e entrar' : 'Entrar'}</button>
           ${primeiro ? '' : '<button type="button" class="link ent-esqueci" data-acao="modo-login" data-m="esqueci">Esqueci a senha</button>'}
           <button type="button" class="link ent-ajuda" data-acao="ajuda" data-k="entrada">Precisa de ajuda para entrar?</button>
         </form>`}
@@ -11155,7 +11155,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <p class="muted">Digite o e-mail do seu cadastro. A coordenação geral recebe o pedido e manda um código novo para o seu WhatsApp.</p></div>
         <div class="campo"><label for="e-email">E-mail</label><input id="e-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="seu@email.com" value="${esc(S.emailDigitado || '')}" maxlength="254" required></div>
         <div class="aviso erro" data-erro hidden></div>
-        <button class="btn pri ent-btn" type="submit">Pedir novo acesso <span aria-hidden="true">→</span></button>
+        <button class="btn pri ent-btn" type="submit">Pedir novo acesso</button>
         <button type="button" class="link ent-ajuda" data-acao="modo-login" data-m="entrar">Voltar para entrar</button>
       </form>`;
   }
