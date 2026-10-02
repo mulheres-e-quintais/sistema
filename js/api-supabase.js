@@ -18,14 +18,26 @@
 
   /* Grava com UPDATE quando o registro já existe e INSERT só quando é novo.
      (upsert dispara o gatilho de inclusão mesmo ao editar, e as travas de inclusão bloqueariam a edição) */
-  async function gravar(tabela, reg) {
-    const { data: up, error: e1 } = await sb.from(tabela).update(reg).eq('id', reg.id).select();
+  /* 47 (versão do registro): "marca" é o atualizado_em que a tela leu, como TEXTO, igual ao que veio do banco (nunca passa
+     por Date: perderia os microssegundos). Vai junto no UPDATE; se o registro mudou depois da leitura, o banco recusa com
+     "Este registro foi alterado por outra pessoa…". Sem marca (registro novo, banco sem o 47), grava como antes. */
+  async function gravar(tabela, reg, marca) {
+    const muda = marca ? Object.assign({}, reg, { atualizado_em: marca }) : reg;
+    const { data: up, error: e1 } = await sb.from(tabela).update(muda).eq('id', reg.id).select();
     if (e1) throw erro(e1);
     if (up && up.length) return up[0];
     const { data, error } = await sb.from(tabela).insert(reg).select().single();
     if (error) throw erro(error);
     return data;
   }
+  /* antes de subir foto: se o registro já mudou no servidor, para aqui (a foto nova não fica por cima da de outra pessoa) */
+  async function conferirMarca(tabela, id, marca) {
+    if (!marca) return;
+    const { data, error } = await sb.from(tabela).select('atualizado_em').eq('id', id).maybeSingle();
+    if (error) throw erro(error);
+    if (data && data.atualizado_em !== marca) throw erro({ code: 'P0001', message: R.MSG_CONFLITO });
+  }
+  const temFoto = fotos => Object.values(fotos || {}).some(Boolean);
   /* Recodifica a imagem no navegador: tira metadados (EXIF com GPS, modelo do celular) antes de publicar */
   function limparImagem(blob, max = 1600) {
     return new Promise((res, rej) => {
@@ -174,8 +186,9 @@
       (data || []).forEach(f => { marcas.fichas[f.id] = f.atualizado_em; });   // o que a coordenação leu (confere ao aprovar)
       return data;
     },
-    async salvarFicha(dados, fotos) {
-      const f = Object.assign({}, dados);
+    async salvarFicha(dados, fotos, op) {
+      const f = Object.assign({}, dados); const marca = (op && op.marca) || null;
+      if (temFoto(fotos)) await conferirMarca('fichas', f.id, marca);
       for (const [campo, blob] of Object.entries(fotos || {})) {
         if (!blob) continue;
         const ext = /pdf/.test(blob.type) ? 'pdf' : 'jpg';
@@ -186,7 +199,7 @@
       }
       ['tem_foto_ficha', 'tem_foto_termo', 'pontos', 'situacao', 'aprovada_por', 'aprovada_em', 'obs_coordenacao', 'bolsista_id', 'criado_em', 'atualizado_em']
         .forEach(k => delete f[k]);
-      return gravar('fichas', f);
+      { const g = await gravar('fichas', f, marca); marcas.fichas[g.id] = g.atualizado_em; return g; }
     },
     // marca = "atualizado_em" do registro que a coordenação leu: se a ficha mudou depois disso, o servidor recusa a aprovação
     async decidirFicha(id, situacao, obs, marca) {
@@ -202,8 +215,9 @@
       const { data, error } = await sb.from('visitas').select('*').order('data_prevista');
       if (error) throw erro(error); return data;
     },
-    async salvarVisita(v, fotos) {
-      const r = Object.assign({}, v); ['criado_por', 'criado_em', 'atualizado_em'].forEach(k => delete r[k]);
+    async salvarVisita(v, fotos, op) {
+      const r = Object.assign({}, v); ['criado_por', 'criado_em', 'atualizado_em'].forEach(k => delete r[k]); const marca = (op && op.marca) || null;
+      if (temFoto(fotos)) await conferirMarca('visitas', r.id, marca);
       // fotos da visita feita (implantação/acompanhamento): <UF>/<ficha>/visita_<id>_<n>.jpg no bucket "campo"
       const caminhos = new Set(r.fotos || []);
       for (const [k, blob] of Object.entries(fotos || {})) {
@@ -214,14 +228,15 @@
         caminhos.add(path);
       }
       if (caminhos.size || 'fotos' in r) r.fotos = [...caminhos];
-      return gravar('visitas', r);
+      return gravar('visitas', r, marca);
     },
     async listarDiagnosticos() {
       const { data, error } = await sb.from('diagnosticos').select('*').order('data_visita', { ascending: false });
       if (error) throw erro(error); (data || []).forEach(d => { marcas.diagnosticos[d.id] = d.atualizado_em; }); return data;
     },
-    async salvarDiagnostico(dados, fotos) {
-      const d = Object.assign({}, dados);
+    async salvarDiagnostico(dados, fotos, op) {
+      const d = Object.assign({}, dados); const marca = (op && op.marca) || null;
+      if (temFoto(fotos)) await conferirMarca('diagnosticos', d.id, marca);
       const caminhos = new Set(d.fotos || []);
       for (const [campo, blob] of Object.entries(fotos || {})) {
         if (!blob) continue;
@@ -232,13 +247,14 @@
       }
       d.fotos = [...caminhos];
       ['situacao', 'aprovado_por', 'aprovado_em', 'obs_coordenacao', 'executor_id', 'criado_em', 'atualizado_em', 'conteudo_alterado_por', 'conteudo_alterado_em'].forEach(k => delete d[k]);
-      return gravar('diagnosticos', d);
+      { const g = await gravar('diagnosticos', d, marca); marcas.diagnosticos[g.id] = g.atualizado_em; return g; }
     },
     async listarAvaliacoes() {
       const { data, error } = await sb.from('avaliacoes').select('*').order('data_visita', { ascending: false }); if (error) throw erro(error); return data;
     },
-    async salvarAvaliacao(dados, fotos) {
-      const d = Object.assign({}, dados); const caminhos = new Set(d.fotos || []);
+    async salvarAvaliacao(dados, fotos, op) {
+      const d = Object.assign({}, dados); const caminhos = new Set(d.fotos || []); const marca = (op && op.marca) || null;
+      if (temFoto(fotos)) await conferirMarca('avaliacoes', d.id, marca);
       for (const [k, blob] of Object.entries(fotos || {})) {
         if (!blob) continue;
         const path = d.uf + '/' + d.ficha_id + '/aval_' + k + '.jpg';
@@ -247,7 +263,7 @@
         caminhos.add(path);
       }
       d.fotos = [...caminhos]; ['executor_id', 'criado_em', 'atualizado_em'].forEach(k => delete d[k]);
-      return gravar('avaliacoes', d);
+      return gravar('avaliacoes', d, marca);
     },
     async decidirDiagnostico(id, situacao, obs, marca) {
       const muda = { situacao, obs_coordenacao: obs || null }; const m = marca || marcas.diagnosticos[id];
@@ -309,6 +325,19 @@
     async decidirPreCadastro(id, situacao, obs, equipe_id) {
       const { error } = await sb.from('pre_cadastros').update({ situacao, obs: obs || null, equipe_id: equipe_id || null }).eq('id', id);
       if (error) throw erro(error);
+    },
+    /* 47: aprovar o cadastro vindo do link numa operação só (pessoa na equipe + dados pessoais + cadastro enviado aprovado: tudo ou nada).
+       Banco sem o 47: o erro vem com "semFuncao" e a tela usa as três gravações de antes. */
+    async aprovarPreCadastro(pre, m, priv) {
+      const r = limpar(Object.assign({}, m, { cpf: R.soDigitos(m.cpf), email: m.email.trim().toLowerCase() })); delete r.status;
+      const { data, error } = await sb.rpc('aprovar_pre_cadastro', { p_pre: pre, p_equipe: r, p_privado: priv || null });
+      if (error) {
+        if (error.code === 'PGRST202' || /Could not find the function|aprovar_pre_cadastro.*(does not exist|schema cache)/i.test(String(error.message || ''))) {
+          const x = new Error('A aprovação em uma operação só ainda não foi instalada no servidor: rode o arquivo 47_auditoria_bd.sql no Supabase.'); x.semFuncao = true; x.original = error; throw x;
+        }
+        throw erro(error);
+      }
+      return data;
     },
     async contarExemplo() {
       const { count, error } = await sb.from('exemplo').select('id', { count: 'exact', head: true });
@@ -461,9 +490,15 @@
       const { error: e1 } = await sb.storage.from('documentos').upload(path, arquivo, { upsert: false, contentType: arquivo.type || undefined });
       if (e1) throw erro(/Bucket not found|not found/i.test(e1.message) ? 'A pasta de documentos ainda não foi criada: rode o arquivo 24_documentos.sql no Supabase.' : e1);
       const { data, error } = await sb.from('documentos_projeto').insert({ tipo: d.tipo, titulo: d.titulo, data_documento: d.data_documento, uf: d.uf || null,
-        descricao: d.descricao || null, arquivo_path: path, arquivo_nome: arquivo.name, tamanho: arquivo.size, mime: arquivo.type || null }).select().single();
+        descricao: d.descricao || null, arquivo_path: path, arquivo_nome: arquivo.name, tamanho: arquivo.size, mime: arquivo.type || null }).select();
       if (error) throw erro(error);   // o arquivo fica na pasta sem registro: não apagamos (a pasta não permite apagar)
-      return data;
+      if (data && data.length) return data[0];
+      // 47: envio repetido (rede caiu e a tela mandou de novo em menos de 2 minutos): o banco não grava a cópia; devolve o que já estava anexado
+      const { data: ja, error: e2 } = await sb.from('documentos_projeto').select('*').eq('tipo', d.tipo).eq('titulo', d.titulo).eq('data_documento', d.data_documento)
+        .is('arquivado_em', null).order('enviado_em', { ascending: false }).limit(1);
+      if (e2) throw erro(e2);
+      if (ja && ja.length) return ja[0];
+      throw erro('O documento não foi gravado. Tente de novo.');
     },
     async linkDocumento(path) {
       const { data, error } = await sb.storage.from('documentos').createSignedUrl(path, 300); if (error) throw erro(error); return data.signedUrl;

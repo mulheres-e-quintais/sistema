@@ -436,6 +436,17 @@ MQ.ORCAMENTO = {
     [/execucao_um_estorno/, 'Este lançamento já foi estornado.'],
     [/avaliacoes_visita_id_key/, 'Esta visita já tem avaliação registrada.']
   ];
+  /* 47 (supabase/47_auditoria_bd.sql): mensagens das travas novas do banco */
+  R.MSG_OCUPADO = 'O sistema está ocupado com outra gravação. Tente de novo em instantes.';
+  R.MSG_CONFLITO = 'Este registro foi alterado por outra pessoa enquanto você editava. Abra de novo, confira e refaça a sua alteração.';
+  R.ehConflito = e => /alterado por outra pessoa enquanto voc/i.test(String((e && e.message) || e || '') + ' ' + String((e && e.original && e.original.message) || ''));
+  // nome do campo como a pessoa conhece, para a trava "tam_<coluna>_<limite>" (o gatilho do banco já manda a frase pronta; isto é a rede de baixo)
+  R.ROTULO_LIMITE = { municipio: 'município', endereco: 'endereço', ponto_referencia: 'ponto de referência', caf: 'CAF ou DAP', indicada_por: 'quem indicou',
+    testemunha_nome: 'nome da testemunha', encaminhada_para: 'para onde foi encaminhada', obs_coordenacao: 'observação da coordenação', obs: 'observação',
+    relato: 'relato da visita', sem_gps_motivo: 'motivo de não haver localização', dados: 'respostas do formulário', organizacao: 'organização',
+    motivo_desligamento: 'motivo do desligamento', obs_habilitacao: 'observação da habilitação', motivo_cancelamento: 'motivo do cancelamento',
+    relatorio: 'relatório do mês', obs_aval: 'observação do aval', email: 'e-mail', nome_social: 'nome social', motivo_arquivo: 'motivo do arquivamento',
+    justificativa_prazo: 'justificativa', pix_chave: 'chave Pix', arquivo_nome: 'nome do arquivo', matricula_fic_numero: 'número da matrícula', numero: 'número da matrícula' };
   R.mensagemErro = function (err) {
     if (err == null || err === '' || err === 0 || err === false) return 'Não foi possível salvar. Tente de novo.';
     const o = typeof err === 'object' ? err : (typeof err === 'string' ? { message: err } : {});   // número ou verdadeiro/falso soltos não são mensagem
@@ -449,6 +460,11 @@ MQ.ORCAMENTO = {
     if (/row-level security|permission denied/i.test(s)) return 'Seu perfil não tem permissão para esta ação.';
     if (cod === 'P0001' && R.mensagemDoProjeto(msg)) return msg;   // "raise exception" do banco: já está em português
     if (cod === '42501' || cod === 'PGRST301' || cod === 'PGRST302' || /JWT expired|invalid JWT|JWT.*(expired|invalid)/i.test(s)) return R.MSG_SESSAO;
+    // 47: banco ocupado com outra gravação (a espera por trava tem limite), texto acima do limite e lista fora do combinado
+    if (cod === '55P03' || /lock timeout|could not obtain lock/i.test(s)) return R.MSG_OCUPADO;
+    { const t = /\btam_([a-z0-9_]+?)_(\d+)\b/.exec(s);
+      if (t) return 'Texto muito longo em ' + (R.ROTULO_LIMITE[t[1]] || t[1].replace(/_/g, ' ')) + ' (máximo ' + Number(t[2]).toLocaleString('pt-BR') + ' caracteres).'; }
+    if (/_uf_lista\b/.test(s)) return 'Estado (UF) fora da lista do projeto. Confira e tente de novo.';
     if (cod === '23505' || /duplicate key/i.test(s)) return 'Este registro já existe. Confira se ele já não foi salvo.';
     if (cod === '23514' || cod === '23502' || /violates (check|not-null) constraint/i.test(s)) return 'Algum campo está com valor que o sistema não aceita. Confira e tente de novo.';
     if (cod === '22003') return 'Valor grande demais.';
@@ -935,6 +951,9 @@ MQ.ORCAMENTO = {
   const usadoPassagem = (d, pedag, semId) => (d.pedidos || []).filter(y => y.id !== semId && y.situacao === 'autorizado' && y.tipo === 'passagem' && ehPedagogico(y) === pedag).reduce((t, y) => t + (+y.valor_autorizado || 0), 0);
   const visitaPaga = (d, vid) => { const sid = (d.solic_visitas || {})[vid]; return !!sid && ((d.solicitacoes || []).find(x => x.id === sid) || {}).situacao === 'lancada'; };
   const MSG_ALTERADO = 'Este registro foi alterado enquanto você lia. Abra de novo e confira.';
+  /* 47: versão do registro, como no banco: a tela manda a marca (atualizado_em que leu); se o registro mudou depois, recusa. Sem marca, grava como antes. */
+  const conferirVersao = (lista, id, op) => { const marca = op && op.marca; if (!marca) return;
+    const x = (lista || []).find(y => y.id === id); if (x && x.atualizado_em && x.atualizado_em !== marca) throw falha(R.MSG_CONFLITO); };
   function euMesmo() {
     const d = ler();
     const id = d.eu[d.perfil];
@@ -1612,8 +1631,8 @@ MQ.ORCAMENTO = {
       if (eu.papel === 'agente') { const ids = new Set((d.visitas || []).filter(v => v.executor_id === eu.id && v.situacao !== 'cancelada').map(v => v.ficha_id)); return copia(d.fichas.filter(f => ids.has(f.id))); }
       return copia(d.fichas.filter(f => f.uf === eu.uf));
     },
-    async salvarFicha(dados, fotos) {
-      const d = ler(); d.fichas = d.fichas || []; const eu = euMesmo();
+    async salvarFicha(dados, fotos, op) {
+      const d = ler(); d.fichas = d.fichas || []; const eu = euMesmo(); conferirVersao(d.fichas, dados.id, op);
       if (!eu || !R.ehBolsista(eu.papel) || dados.uf !== eu.uf) throw falha('Seu perfil não tem permissão para esta ação.');
       const i = d.fichas.findIndex(x => x.id === dados.id);
       const antes = i >= 0 ? d.fichas[i] : null;
@@ -1679,9 +1698,9 @@ MQ.ORCAMENTO = {
       if (R.ehBolsista(eu.papel)) return copia(d.visitas.filter(v => v.uf === eu.uf));
       return copia(d.visitas.filter(v => v.executor_id === eu.id));
     },
-    async salvarVisita(v, fotos) {
+    async salvarVisita(v, fotos, op) {
       if (fotos && Object.keys(fotos).length) v = Object.assign({}, v, { fotos: Object.keys(fotos).map(k => 'visita_' + v.id + '_' + k + '.jpg') });
-      const d = ler(); d.visitas = d.visitas || []; const eu = euMesmo();
+      const d = ler(); d.visitas = d.visitas || []; const eu = euMesmo(); conferirVersao(d.visitas, v.id, op);
       const i = d.visitas.findIndex(x => x.id === v.id); const antes = i >= 0 ? d.visitas[i] : null;
       const f = d.fichas.find(x => x.id === v.ficha_id);
       if (!f) throw falha('Ficha não encontrada.');
@@ -1729,8 +1748,8 @@ MQ.ORCAMENTO = {
       if (R.ehBolsista(eu.papel)) return copia(l.filter(a => a.uf === eu.uf));
       return copia(l.filter(a => a.executor_id === eu.id));
     },
-    async salvarAvaliacao(dados, fotos) {
-      const d = ler(); const eu = euMesmo(); d.avaliacoes = d.avaliacoes || [];
+    async salvarAvaliacao(dados, fotos, op) {
+      const d = ler(); const eu = euMesmo(); d.avaliacoes = d.avaliacoes || []; conferirVersao(d.avaliacoes, dados.id, op);
       const v = (d.visitas || []).find(x => x.id === dados.visita_id);
       if (!v || v.etapa !== 'avaliacao' || v.ficha_id !== dados.ficha_id) throw falha('A avaliação precisa estar ligada à visita de avaliação desta mulher.');
       if (v.situacao === 'cancelada') throw falha('A visita de avaliação foi cancelada.');
@@ -1759,8 +1778,8 @@ MQ.ORCAMENTO = {
       if (R.ehBolsista(eu.papel)) return copia(d.diagnosticos.filter(x => x.uf === eu.uf));
       return copia(d.diagnosticos.filter(x => x.executor_id === eu.id));
     },
-    async salvarDiagnostico(dados, fotos) {
-      const d = ler(); d.diagnosticos = d.diagnosticos || []; const eu = euMesmo();
+    async salvarDiagnostico(dados, fotos, op) {
+      const d = ler(); d.diagnosticos = d.diagnosticos || []; const eu = euMesmo(); conferirVersao(d.diagnosticos, dados.id, op);
       const v = (d.visitas || []).find(x => x.id === dados.visita_id);
       if (!v || v.etapa !== 'diagnostico' || v.ficha_id !== dados.ficha_id) throw falha('O diagnóstico precisa estar ligado à visita de diagnóstico desta mulher.');
       if (!eu || !((R.ehBolsista(eu.papel) && v.uf === eu.uf) || v.executor_id === eu.id)) throw falha('Seu perfil não tem permissão para esta ação.');
@@ -1888,6 +1907,19 @@ MQ.ORCAMENTO = {
     async listarPreCadastros() {
       const eu = euMesmo(); if (!eu) return [];
       return copia((ler().pre_cadastros || []).filter(x => x.situacao === 'aguardando' && R.podeCadastrar(eu.papel, x.papel)));
+    },
+    /* 47 (aprovar_pre_cadastro): pessoa na equipe + dados pessoais + cadastro enviado aprovado, tudo ou nada */
+    async aprovarPreCadastro(pre, m, priv) {
+      const d0 = ler(); const x = (d0.pre_cadastros || []).find(y => y.id === pre);
+      if (!x) throw falha('Cadastro enviado não encontrado (ou o seu perfil não pode aprová-lo).');
+      if (x.situacao !== 'aguardando') throw falha('Este pré-cadastro já foi decidido.');
+      const antes = JSON.stringify(mem);
+      try {
+        const novo = await this.criar(m);
+        if (priv) await this.salvarPrivado(novo.id, priv);
+        await this.decidirPreCadastro(pre, 'aprovado', null, novo.id);
+        return novo;
+      } catch (e) { mem = JSON.parse(antes); gravar(); throw e; }   // falhou no meio: nada fica gravado
     },
     async decidirPreCadastro(id, situacao, obs, equipe_id) {
       const d = ler(); const eu = euMesmo(); const x = (d.pre_cadastros || []).find(y => y.id === id);
@@ -2039,14 +2071,26 @@ MQ.ORCAMENTO = {
 
   /* Grava com UPDATE quando o registro já existe e INSERT só quando é novo.
      (upsert dispara o gatilho de inclusão mesmo ao editar, e as travas de inclusão bloqueariam a edição) */
-  async function gravar(tabela, reg) {
-    const { data: up, error: e1 } = await sb.from(tabela).update(reg).eq('id', reg.id).select();
+  /* 47 (versão do registro): "marca" é o atualizado_em que a tela leu, como TEXTO, igual ao que veio do banco (nunca passa
+     por Date: perderia os microssegundos). Vai junto no UPDATE; se o registro mudou depois da leitura, o banco recusa com
+     "Este registro foi alterado por outra pessoa…". Sem marca (registro novo, banco sem o 47), grava como antes. */
+  async function gravar(tabela, reg, marca) {
+    const muda = marca ? Object.assign({}, reg, { atualizado_em: marca }) : reg;
+    const { data: up, error: e1 } = await sb.from(tabela).update(muda).eq('id', reg.id).select();
     if (e1) throw erro(e1);
     if (up && up.length) return up[0];
     const { data, error } = await sb.from(tabela).insert(reg).select().single();
     if (error) throw erro(error);
     return data;
   }
+  /* antes de subir foto: se o registro já mudou no servidor, para aqui (a foto nova não fica por cima da de outra pessoa) */
+  async function conferirMarca(tabela, id, marca) {
+    if (!marca) return;
+    const { data, error } = await sb.from(tabela).select('atualizado_em').eq('id', id).maybeSingle();
+    if (error) throw erro(error);
+    if (data && data.atualizado_em !== marca) throw erro({ code: 'P0001', message: R.MSG_CONFLITO });
+  }
+  const temFoto = fotos => Object.values(fotos || {}).some(Boolean);
   /* Recodifica a imagem no navegador: tira metadados (EXIF com GPS, modelo do celular) antes de publicar */
   function limparImagem(blob, max = 1600) {
     return new Promise((res, rej) => {
@@ -2195,8 +2239,9 @@ MQ.ORCAMENTO = {
       (data || []).forEach(f => { marcas.fichas[f.id] = f.atualizado_em; });   // o que a coordenação leu (confere ao aprovar)
       return data;
     },
-    async salvarFicha(dados, fotos) {
-      const f = Object.assign({}, dados);
+    async salvarFicha(dados, fotos, op) {
+      const f = Object.assign({}, dados); const marca = (op && op.marca) || null;
+      if (temFoto(fotos)) await conferirMarca('fichas', f.id, marca);
       for (const [campo, blob] of Object.entries(fotos || {})) {
         if (!blob) continue;
         const ext = /pdf/.test(blob.type) ? 'pdf' : 'jpg';
@@ -2207,7 +2252,7 @@ MQ.ORCAMENTO = {
       }
       ['tem_foto_ficha', 'tem_foto_termo', 'pontos', 'situacao', 'aprovada_por', 'aprovada_em', 'obs_coordenacao', 'bolsista_id', 'criado_em', 'atualizado_em']
         .forEach(k => delete f[k]);
-      return gravar('fichas', f);
+      { const g = await gravar('fichas', f, marca); marcas.fichas[g.id] = g.atualizado_em; return g; }
     },
     // marca = "atualizado_em" do registro que a coordenação leu: se a ficha mudou depois disso, o servidor recusa a aprovação
     async decidirFicha(id, situacao, obs, marca) {
@@ -2223,8 +2268,9 @@ MQ.ORCAMENTO = {
       const { data, error } = await sb.from('visitas').select('*').order('data_prevista');
       if (error) throw erro(error); return data;
     },
-    async salvarVisita(v, fotos) {
-      const r = Object.assign({}, v); ['criado_por', 'criado_em', 'atualizado_em'].forEach(k => delete r[k]);
+    async salvarVisita(v, fotos, op) {
+      const r = Object.assign({}, v); ['criado_por', 'criado_em', 'atualizado_em'].forEach(k => delete r[k]); const marca = (op && op.marca) || null;
+      if (temFoto(fotos)) await conferirMarca('visitas', r.id, marca);
       // fotos da visita feita (implantação/acompanhamento): <UF>/<ficha>/visita_<id>_<n>.jpg no bucket "campo"
       const caminhos = new Set(r.fotos || []);
       for (const [k, blob] of Object.entries(fotos || {})) {
@@ -2235,14 +2281,15 @@ MQ.ORCAMENTO = {
         caminhos.add(path);
       }
       if (caminhos.size || 'fotos' in r) r.fotos = [...caminhos];
-      return gravar('visitas', r);
+      return gravar('visitas', r, marca);
     },
     async listarDiagnosticos() {
       const { data, error } = await sb.from('diagnosticos').select('*').order('data_visita', { ascending: false });
       if (error) throw erro(error); (data || []).forEach(d => { marcas.diagnosticos[d.id] = d.atualizado_em; }); return data;
     },
-    async salvarDiagnostico(dados, fotos) {
-      const d = Object.assign({}, dados);
+    async salvarDiagnostico(dados, fotos, op) {
+      const d = Object.assign({}, dados); const marca = (op && op.marca) || null;
+      if (temFoto(fotos)) await conferirMarca('diagnosticos', d.id, marca);
       const caminhos = new Set(d.fotos || []);
       for (const [campo, blob] of Object.entries(fotos || {})) {
         if (!blob) continue;
@@ -2253,13 +2300,14 @@ MQ.ORCAMENTO = {
       }
       d.fotos = [...caminhos];
       ['situacao', 'aprovado_por', 'aprovado_em', 'obs_coordenacao', 'executor_id', 'criado_em', 'atualizado_em', 'conteudo_alterado_por', 'conteudo_alterado_em'].forEach(k => delete d[k]);
-      return gravar('diagnosticos', d);
+      { const g = await gravar('diagnosticos', d, marca); marcas.diagnosticos[g.id] = g.atualizado_em; return g; }
     },
     async listarAvaliacoes() {
       const { data, error } = await sb.from('avaliacoes').select('*').order('data_visita', { ascending: false }); if (error) throw erro(error); return data;
     },
-    async salvarAvaliacao(dados, fotos) {
-      const d = Object.assign({}, dados); const caminhos = new Set(d.fotos || []);
+    async salvarAvaliacao(dados, fotos, op) {
+      const d = Object.assign({}, dados); const caminhos = new Set(d.fotos || []); const marca = (op && op.marca) || null;
+      if (temFoto(fotos)) await conferirMarca('avaliacoes', d.id, marca);
       for (const [k, blob] of Object.entries(fotos || {})) {
         if (!blob) continue;
         const path = d.uf + '/' + d.ficha_id + '/aval_' + k + '.jpg';
@@ -2268,7 +2316,7 @@ MQ.ORCAMENTO = {
         caminhos.add(path);
       }
       d.fotos = [...caminhos]; ['executor_id', 'criado_em', 'atualizado_em'].forEach(k => delete d[k]);
-      return gravar('avaliacoes', d);
+      return gravar('avaliacoes', d, marca);
     },
     async decidirDiagnostico(id, situacao, obs, marca) {
       const muda = { situacao, obs_coordenacao: obs || null }; const m = marca || marcas.diagnosticos[id];
@@ -2330,6 +2378,19 @@ MQ.ORCAMENTO = {
     async decidirPreCadastro(id, situacao, obs, equipe_id) {
       const { error } = await sb.from('pre_cadastros').update({ situacao, obs: obs || null, equipe_id: equipe_id || null }).eq('id', id);
       if (error) throw erro(error);
+    },
+    /* 47: aprovar o cadastro vindo do link numa operação só (pessoa na equipe + dados pessoais + cadastro enviado aprovado: tudo ou nada).
+       Banco sem o 47: o erro vem com "semFuncao" e a tela usa as três gravações de antes. */
+    async aprovarPreCadastro(pre, m, priv) {
+      const r = limpar(Object.assign({}, m, { cpf: R.soDigitos(m.cpf), email: m.email.trim().toLowerCase() })); delete r.status;
+      const { data, error } = await sb.rpc('aprovar_pre_cadastro', { p_pre: pre, p_equipe: r, p_privado: priv || null });
+      if (error) {
+        if (error.code === 'PGRST202' || /Could not find the function|aprovar_pre_cadastro.*(does not exist|schema cache)/i.test(String(error.message || ''))) {
+          const x = new Error('A aprovação em uma operação só ainda não foi instalada no servidor: rode o arquivo 47_auditoria_bd.sql no Supabase.'); x.semFuncao = true; x.original = error; throw x;
+        }
+        throw erro(error);
+      }
+      return data;
     },
     async contarExemplo() {
       const { count, error } = await sb.from('exemplo').select('id', { count: 'exact', head: true });
@@ -2482,9 +2543,15 @@ MQ.ORCAMENTO = {
       const { error: e1 } = await sb.storage.from('documentos').upload(path, arquivo, { upsert: false, contentType: arquivo.type || undefined });
       if (e1) throw erro(/Bucket not found|not found/i.test(e1.message) ? 'A pasta de documentos ainda não foi criada: rode o arquivo 24_documentos.sql no Supabase.' : e1);
       const { data, error } = await sb.from('documentos_projeto').insert({ tipo: d.tipo, titulo: d.titulo, data_documento: d.data_documento, uf: d.uf || null,
-        descricao: d.descricao || null, arquivo_path: path, arquivo_nome: arquivo.name, tamanho: arquivo.size, mime: arquivo.type || null }).select().single();
+        descricao: d.descricao || null, arquivo_path: path, arquivo_nome: arquivo.name, tamanho: arquivo.size, mime: arquivo.type || null }).select();
       if (error) throw erro(error);   // o arquivo fica na pasta sem registro: não apagamos (a pasta não permite apagar)
-      return data;
+      if (data && data.length) return data[0];
+      // 47: envio repetido (rede caiu e a tela mandou de novo em menos de 2 minutos): o banco não grava a cópia; devolve o que já estava anexado
+      const { data: ja, error: e2 } = await sb.from('documentos_projeto').select('*').eq('tipo', d.tipo).eq('titulo', d.titulo).eq('data_documento', d.data_documento)
+        .is('arquivado_em', null).order('enviado_em', { ascending: false }).limit(1);
+      if (e2) throw erro(e2);
+      if (ja && ja.length) return ja[0];
+      throw erro('O documento não foi gravado. Tente de novo.');
     },
     async linkDocumento(path) {
       const { data, error } = await sb.storage.from('documentos').createSignedUrl(path, 300); if (error) throw erro(error); return data.signedUrl;
@@ -2615,6 +2682,35 @@ MQ.ORCAMENTO = {
     });
   }
 
+  /* 47: o que a pessoa MUDOU em relação ao registro que ela leu (lista de campos). Num conflito, a tela mostra o registro
+     como está no servidor e, por cima, só estes campos: dado velho não volta por cima de dado novo. */
+  MQ.camposMudados = (dados, base, jaMudados) => {
+    const fora = /^(_|atualizado_em$|criado_em$)/; const m = new Set(jaMudados || []);
+    Object.keys(dados || {}).forEach(k => { if (fora.test(k)) return;
+      if (!base || JSON.stringify(dados[k] == null ? null : dados[k]) !== JSON.stringify(base[k] == null ? null : base[k])) m.add(k); });
+    return [...m];
+  };
+  /* o registro como a tela deve mostrar: servidor + fila. Em conflito, só os campos mudados vêm da fila. */
+  MQ.juntarFila = (base, it) => {
+    if (!(it.conflito && base && it.mud)) return Object.assign({}, base || {}, it.dados);
+    const r = Object.assign({}, base); it.mud.forEach(k => { if (k in it.dados) r[k] = it.dados[k]; }); return r;
+  };
+  /* marca para o envio: a do item que já está na fila (edição sobre edição, ainda não enviada) ou o atualizado_em do registro lido.
+     "vista" = as listas como estavam quando o formulário abriu; "agora" = as de agora. */
+  MQ.marcaDe = (tipo, id, vista, agora) => {
+    const lista = { ficha: 'fichas', visita: 'visitas', diagnostico: 'diagnosticos', avaliacao: 'avaliacoes' }[tipo];
+    const doTipo = i => i.id === id && (i.tipo || 'ficha') === tipo;
+    const reg = b => ((b && b[lista]) || []).find(x => x.id === id);
+    const it = ((vista && vista.fila) || []).find(doTipo);
+    if (it && !it.conflito && 'marca' in it) {
+      if (it.marca) return it.marca;
+      // era registro novo na fila; se já foi enviado enquanto o formulário estava aberto, vale a marca do que subiu
+      const subiu = !((agora && agora.fila) || []).some(doTipo) && reg(agora);
+      return subiu ? subiu.atualizado_em || null : null;
+    }
+    const r = reg(vista); return r ? r.atualizado_em || null : null;
+  };
+
   const F = (MQ.fila = {
     async listar(dono) {
       const todos = await tx('readonly', l => l ? l.getAll() : { result: [...memoria.values()] });
@@ -2638,14 +2734,19 @@ MQ.ORCAMENTO = {
         for (const it of await F.listar(dono)) {
           if (it.erro && !it.reenviar) continue;
           try {
-            if (it.tipo === 'visita') await api.salvarVisita(it.dados, it.fotos || {});
-            else if (it.tipo === 'diagnostico') await api.salvarDiagnostico(it.dados, it.fotos || {});
-            else if (it.tipo === 'avaliacao') await api.salvarAvaliacao(it.dados, it.fotos || {});
-            else await api.salvarFicha(it.dados, it.fotos || {});
+            // 47: a marca (versão do registro que a pessoa leu) vai junto; se o registro mudou no servidor, o envio é recusado
+            const op = { marca: it.marca || null };
+            if (it.tipo === 'visita') await api.salvarVisita(it.dados, it.fotos || {}, op);
+            else if (it.tipo === 'diagnostico') await api.salvarDiagnostico(it.dados, it.fotos || {}, op);
+            else if (it.tipo === 'avaliacao') await api.salvarAvaliacao(it.dados, it.fotos || {}, op);
+            else await api.salvarFicha(it.dados, it.fotos || {}, op);
             await F.remover(it.id); enviados++;
           } catch (e) {
             if (e.semRede) break;
-            it.erro = (MQ.regras && MQ.regras.mensagemErro ? MQ.regras.mensagemErro(e) : e.message) || 'Não foi possível enviar. Tente de novo.'; it.reenviar = false; await F.salvar(it);   // mensagem já traduzida, não o texto cru do servidor
+            it.erro = (MQ.regras && MQ.regras.mensagemErro ? MQ.regras.mensagemErro(e) : e.message) || 'Não foi possível enviar. Tente de novo.'; it.reenviar = false;   // mensagem já traduzida, não o texto cru do servidor
+            // recusado porque outra pessoa alterou: o item NÃO é descartado (o que foi digitado fica); a tela reabre com o dado novo e só o que ela mudou
+            it.conflito = !!(MQ.regras && MQ.regras.ehConflito && (MQ.regras.ehConflito(e) || MQ.regras.ehConflito(it.erro)));
+            await F.salvar(it);
           }
         }
       } finally { F.enviando = false; }
@@ -2769,7 +2870,7 @@ MQ.ORCAMENTO = {
     const porId = new Map(S.fichas.map(f => [f.id, Object.assign({}, f)]));
     S.fila.filter(it => !it.tipo || it.tipo === 'ficha').forEach(it => {
       const base = porId.get(it.id) || {};
-      porId.set(it.id, Object.assign({}, base, it.dados, { _fila: true, _erro: it.erro || null, situacao: base.situacao || 'aguardando' }));
+      porId.set(it.id, Object.assign(MQ.juntarFila(porId.get(it.id), it), { _fila: true, _erro: it.erro || null, _conflito: !!it.conflito, situacao: base.situacao || 'aguardando' }));
     });
     return [...porId.values()].sort((a, b) => String(b.data_ficha || '').localeCompare(String(a.data_ficha || '')) || String(a.nome).localeCompare(String(b.nome)));
   }
@@ -2932,15 +3033,15 @@ MQ.ORCAMENTO = {
           <div class="campo inteiro"><label for="fi-nome">Nome completo</label><input id="fi-nome" name="nome" value="${v('nome')}" autocomplete="off" required></div>
           <div class="campo"><label for="fi-cpf">CPF</label><input id="fi-cpf" name="cpf" inputmode="numeric" value="${E(R.fmtCPF(f.cpf || ''))}" placeholder="000.000.000-00"></div>
           <div class="campo"><label for="fi-nasc">Data de nascimento</label><input id="fi-nasc" name="data_nascimento" type="date" value="${v('data_nascimento')}" max="${R.hoje()}"></div>
-          <div class="campo"><label for="fi-cel">Celular / WhatsApp</label><input id="fi-cel" name="celular" inputmode="tel" value="${v('celular')}"></div>
+          <div class="campo"><label for="fi-cel">Celular / WhatsApp</label><input id="fi-cel" name="celular" maxlength="40" inputmode="tel" value="${v('celular')}"></div>
           <div class="campo"><label for="fi-pess">Nº de pessoas na família</label><input id="fi-pess" name="pessoas_familia" type="number" min="1" max="30" inputmode="numeric" value="${v('pessoas_familia')}"></div>
-          <div class="campo"><label for="fi-mun">Município</label><input id="fi-mun" name="municipio" list="fi-lista-mun" value="${v('municipio')}"><datalist id="fi-lista-mun">${munis.map(m => `<option value="${E(m)}">`).join('')}</datalist></div>
-          <div class="campo"><label for="fi-com">Comunidade / assentamento</label><input id="fi-com" name="comunidade" value="${v('comunidade')}"></div>
-          <div class="campo inteiro"><label for="fi-end">Endereço (rua, sítio, nº)</label><input id="fi-end" name="endereco" value="${v('endereco')}"><span class="dica">Escreva do jeito mais completo possível: é por ele que o sistema confere se já há alguém da mesma casa.</span></div>
-          <div class="campo inteiro"><label for="fi-ref">Ponto de referência</label><input id="fi-ref" name="ponto_referencia" value="${v('ponto_referencia')}"></div>
+          <div class="campo"><label for="fi-mun">Município</label><input id="fi-mun" name="municipio" maxlength="120" list="fi-lista-mun" value="${v('municipio')}"><datalist id="fi-lista-mun">${munis.map(m => `<option value="${E(m)}">`).join('')}</datalist></div>
+          <div class="campo"><label for="fi-com">Comunidade / assentamento</label><input id="fi-com" name="comunidade" maxlength="300" value="${v('comunidade')}"></div>
+          <div class="campo inteiro"><label for="fi-end">Endereço (rua, sítio, nº)</label><input id="fi-end" name="endereco" maxlength="300" value="${v('endereco')}"><span class="dica">Escreva do jeito mais completo possível: é por ele que o sistema confere se já há alguém da mesma casa.</span></div>
+          <div class="campo inteiro"><label for="fi-ref">Ponto de referência</label><input id="fi-ref" name="ponto_referencia" maxlength="300" value="${v('ponto_referencia')}"></div>
           <div class="campo"><label for="fi-nis">NIS (CadÚnico)</label><input id="fi-nis" name="nis" inputmode="numeric" value="${v('nis')}" placeholder="Se tiver"></div>
-          <div class="campo"><label for="fi-caf">CAF nº</label><input id="fi-caf" name="caf" value="${v('caf')}" placeholder="Se tiver"></div>
-          <div class="campo inteiro"><label for="fi-ind">Quem indicou (organização / liderança)</label><input id="fi-ind" name="indicada_por" value="${v('indicada_por')}"></div>
+          <div class="campo"><label for="fi-caf">CAF nº</label><input id="fi-caf" name="caf" maxlength="60" value="${v('caf')}" placeholder="Se tiver"></div>
+          <div class="campo inteiro"><label for="fi-ind">Quem indicou (organização / liderança)</label><input id="fi-ind" name="indicada_por" maxlength="200" value="${v('indicada_por')}"></div>
           <div class="campo"><label for="fi-data">Data da ficha</label><input id="fi-data" name="data_ficha" type="date" value="${v('data_ficha')}" max="${R.hoje()}"></div>
           <div class="campo"><label>Localização</label><button type="button" class="btn peq" data-acao="ficha-gps">${f.latitude ? 'Localização registrada ✓' : 'Registrar localização'}</button>
             <input type="hidden" name="latitude" value="${v('latitude')}"><input type="hidden" name="longitude" value="${v('longitude')}"><span class="dica" id="fi-gps-dica">${f.latitude ? E(f.latitude + ', ' + f.longitude) : 'Opcional. Use na casa da mulher.'}</span></div>
@@ -2956,7 +3057,7 @@ MQ.ORCAMENTO = {
             <div class="campo inteiro"><label for="fi-ass">Como assinou</label><select id="fi-ass" name="assinatura">
               <option value="assinatura" ${f.assinatura !== 'digital' ? 'selected' : ''}>Assinou o nome</option>
               <option value="digital" ${f.assinatura === 'digital' ? 'selected' : ''}>Impressão digital + testemunha</option></select></div>
-            <div class="campo" data-so-digital><label for="fi-tn">Testemunha: nome</label><input id="fi-tn" name="testemunha_nome" value="${v('testemunha_nome')}"></div>
+            <div class="campo" data-so-digital><label for="fi-tn">Testemunha: nome</label><input id="fi-tn" name="testemunha_nome" maxlength="160" value="${v('testemunha_nome')}"></div>
             <div class="campo" data-so-digital><label for="fi-tc">Testemunha: CPF</label><input id="fi-tc" name="testemunha_cpf" inputmode="numeric" value="${E(R.fmtCPF(f.testemunha_cpf || ''))}"></div>
             <div class="campo inteiro"><label for="fi-ft">Foto do termo assinado</label><input id="fi-ft" name="foto_termo" type="file" accept="image/*" capture="environment">
               <span class="dica" id="fi-ft-dica">${f.foto_termo_path ? 'Já tem foto. Envie outra só se quiser trocar.' : 'Fotografe o papel inteiro, com as assinaturas legíveis.'}</span></div>
@@ -2978,7 +3079,7 @@ MQ.ORCAMENTO = {
         <fieldset><legend>5. Resultado</legend><div id="fi-resultado"></div>
           <div class="campos">
             <div class="campo" data-so="lista_espera"><label for="fi-pos">Posição na lista de espera</label><input id="fi-pos" name="posicao_espera" type="number" min="1" inputmode="numeric" value="${v('posicao_espera')}"></div>
-            <div class="campo inteiro" data-so="sem_agua"><label for="fi-enc">Encaminhada para (programa de cisternas / órgão)</label><input id="fi-enc" name="encaminhada_para" value="${v('encaminhada_para')}"></div>
+            <div class="campo inteiro" data-so="sem_agua"><label for="fi-enc">Encaminhada para (programa de cisternas / órgão)</label><input id="fi-enc" name="encaminhada_para" maxlength="300" value="${v('encaminhada_para')}"></div>
             <div class="campo inteiro"><label for="fi-just">Justificativa / observações</label><textarea id="fi-just" name="justificativa">${v('justificativa')}</textarea></div>
             <div class="campo inteiro"><label for="fi-ff">Foto da ficha em papel assinada</label><input id="fi-ff" name="foto_ficha" type="file" accept="image/*,application/pdf" capture="environment">
               <span class="dica" id="fi-ff-dica">${f.foto_ficha_path ? 'Já tem foto. Envie outra só se quiser trocar.' : 'As duas páginas, com as assinaturas da mulher e da bolsista.'}</span></div>
@@ -3100,14 +3201,14 @@ MQ.ORCAMENTO = {
           <div id="fi-foto-vista"></div></div>
         ${podeDecidir && f.situacao !== 'aprovada' ? `<form class="bloco" data-form="ficha-decisao" data-id="${E(f.id)}" data-ver="${ver}" novalidate><h3>Decisão da coordenação</h3>
           <p class="small muted">A bolsista marcou o resultado (${E(((MQ.RESULTADOS[f.resultado] || {}).nome || '').toLowerCase())}). Aqui você confere: aprove se os papéis fotografados batem com a ficha e os critérios foram aplicados como aprovado em ata. Se algo estiver errado, devolva dizendo o que corrigir.</p>
-          <div class="campo"><label for="fd-obs">Observação para a bolsista</label><textarea id="fd-obs" name="obs">${E(f.obs_coordenacao || '')}</textarea></div>
+          <div class="campo"><label for="fd-obs">Observação para a bolsista</label><textarea id="fd-obs" name="obs" maxlength="4000">${E(f.obs_coordenacao || '')}</textarea></div>
           <div class="aviso erro" data-erro hidden></div>
           <div class="acoes"><button class="btn pri" type="submit" name="decisao" value="aprovada">Aprovar</button>
             <button class="btn perigo" type="submit" name="decisao" value="devolvida">Devolver para correção</button></div></form>` : ''}
         ${podeDecidir && f.situacao === 'aprovada' ? `<details class="hist reabrir-ficha"><summary>Achou um erro depois de aprovar? Reabrir esta ficha</summary>
           <form class="f" data-form="ficha-decisao" data-id="${E(f.id)}" data-ver="${ver}" novalidate>
           <p class="small muted">A ficha já foi conferida e aprovada: não há nada a fazer aqui. Só use isto se descobrir um erro. Ela volta para a bolsista corrigir e sai da contagem de aprovadas até ser aprovada de novo.</p>
-          <div class="campo"><label for="fd-obs">O que precisa ser corrigido</label><textarea id="fd-obs" name="obs"></textarea></div>
+          <div class="campo"><label for="fd-obs">O que precisa ser corrigido</label><textarea id="fd-obs" name="obs" maxlength="4000"></textarea></div>
           <div class="aviso erro" data-erro hidden></div>
           <div class="acoes"><button class="btn perigo" type="submit" name="decisao" value="devolvida">Reabrir: devolver para correção</button></div></form></details>` : ''}
       </div>`;
@@ -3176,7 +3277,11 @@ MQ.ORCAMENTO = {
       }
       await U().ocupado(form, async () => {
         const dados = Object.assign({}, f); delete dados.tem_foto_ficha; delete dados.tem_foto_termo;
-        await MQ.fila.salvar({ id: f.id, dono: S.eu.id, tipo: 'ficha', dados, fotos: { ficha: fotosTemp.ficha, termo: fotosTemp.termo }, erro: null });
+        ['_fila', '_erro', '_conflito'].forEach(k => delete dados[k]);
+        // 47: a versão que ela leu vai com o envio (e fica na fila, se estiver sem internet), mais a lista do que ela mudou
+        const vista = U().vista(), antes = (vista.fila || []).find(i => i.id === f.id && (!i.tipo || i.tipo === 'ficha')), noServ = (vista.fichas || []).find(x => x.id === f.id);
+        await MQ.fila.salvar({ id: f.id, dono: S.eu.id, tipo: 'ficha', dados, fotos: { ficha: fotosTemp.ficha, termo: fotosTemp.termo }, erro: null,
+          marca: U().marcaAberta('ficha', f.id), mud: MQ.camposMudados(dados, noServ, antes && antes.mud) });
         fotosTemp.ficha = fotosTemp.termo = null;
         S.fila = await MQ.fila.listar(S.eu.id);
         U().fecharPainel(); U().render();
@@ -4030,14 +4135,14 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function diagnosticos() { return lembrar('d', S().diagnosticos, diagnosticosCalc); }
   function visitasCalc() {
     const m = new Map((S().visitas || []).map(v => [v.id, Object.assign({}, v)]));
-    S().fila.filter(i => i.tipo === 'visita').forEach(i => m.set(i.id, Object.assign({}, m.get(i.id) || {}, i.dados, { _fila: true, _erro: i.erro })));
+    S().fila.filter(i => i.tipo === 'visita').forEach(i => m.set(i.id, Object.assign(MQ.juntarFila(m.get(i.id), i), { _fila: true, _erro: i.erro })));
     // diagnóstico ainda na fila marca a visita como feita (para quem está sem internet)
     S().fila.filter(i => i.tipo === 'diagnostico').forEach(i => { const v = m.get(i.dados.visita_id); if (v) { v.situacao = 'realizada'; v.data_realizada = i.dados.data_visita; } });
     return [...m.values()];
   }
   function diagnosticosCalc() {
     const m = new Map((S().diagnosticos || []).map(d => [d.id, Object.assign({}, d)]));
-    S().fila.filter(i => i.tipo === 'diagnostico').forEach(i => m.set(i.id, Object.assign({}, m.get(i.id) || {}, i.dados, { _fila: true, _erro: i.erro, situacao: (m.get(i.id) || {}).situacao || 'aguardando' })));
+    S().fila.filter(i => i.tipo === 'diagnostico').forEach(i => m.set(i.id, Object.assign(MQ.juntarFila(m.get(i.id), i), { _fila: true, _erro: i.erro, situacao: (m.get(i.id) || {}).situacao || 'aguardando' })));
     return [...m.values()];
   }
   // índices refeitos só quando a lista muda (com 1.000 visitas, procurar uma a uma deixava a aba lenta)
@@ -4150,6 +4255,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <div><span class="v num">${dg.filter(d => d.situacao === 'aprovado').length}</span><span class="l">planos aprovados</span></div>
         <div><span class="v num">${dg.filter(d => d.sem_agua).length}</span><span class="l">sem água na seca</span></div>
       </div>
+      ${avisoConflitos()}
       ${pend.length ? `<div class="aviso${pend.some(i => i.erro) ? ' erro' : ''}"><b>${pend.length} registro${pend.length > 1 ? 's' : ''} de campo neste aparelho</b>${pend.some(i => i.erro) ? ': ' + E(pend.find(i => i.erro).erro) : ', aguardando internet para enviar.'}
         ${navigator.onLine ? ' <button class="link" data-acao="ficha-enviar">Enviar agora</button>' : ''}</div>` : ''}
       ${sel.length ? paraFazer(uf, sel) : '<div class="vazio"><span>As visitas começam quando a coordenação técnica aprovar as primeiras fichas como "selecionada".</span></div>'}
@@ -4190,6 +4296,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       ${MQ.entregasUI ? MQ.entregasUI.blocoCiencia() : ''}
       ${MQ.encUI ? MQ.encUI.blocoConfirmar() : ''}
       ${!R.habilitado(eu) ? `<div class="aviso erro"><b>Você ainda não pode receber visitas no roteiro.</b> Faltam passos da habilitação (matrícula no FIC, documentos na FUNCERN e termo). Sem eles, a ajuda de custo não pode ser paga.</div>` : ''}
+      ${avisoConflitos()}
       ${pend.length ? `<div class="aviso">${pend.length} diagnóstico${pend.length > 1 ? 's' : ''} guardado${pend.length > 1 ? 's' : ''} neste aparelho, aguardando internet.${navigator.onLine ? ' <button class="link" data-acao="ficha-enviar">Enviar agora</button>' : ''}</div>` : ''}
       <section class="secao"><div class="secao-cab"><h2 id="t-prox">Próximas visitas</h2><span class="muted small">${prox.length} prevista${prox.length === 1 ? '' : 's'}</span></div>
         ${prox.length ? `<div class="lista-fichas">${prox.map(linha).join('')}</div>` : '<div class="vazio"><span>Nenhuma visita atribuída a você. Quem agenda é a bolsista do estado ou a coordenação técnica.</span></div>'}</section>
@@ -4518,7 +4625,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <div class="painel-corpo"><form class="f" data-form="visita-feita" data-id="${E(v.id)}" novalidate>
         <p class="small muted">Registrar a visita feita é o que permite solicitar a ajuda de custo dela. Depois de solicitada, ela não muda mais.</p>
         <div class="campos">
-          <div class="campo"><label for="vf-data">Dia em que foi feita</label><input id="vf-data" name="data_realizada" type="date" min="${R.LIM.visitaMin}" max="${R.hoje()}" value="${v.data_prevista <= R.hoje() ? v.data_prevista : R.hoje()}" required></div>
+          <div class="campo"><label for="vf-data">Dia em que foi feita</label><input id="vf-data" name="data_realizada" type="date" min="${R.LIM.visitaMin}" max="${R.hoje()}" value="${v.data_realizada || (v.data_prevista <= R.hoje() ? v.data_prevista : R.hoje())}" required></div>
           <div class="campo inteiro"><label for="vf-rel">O que foi feito</label><textarea id="vf-rel" name="relato" rows="4" maxlength="2000" placeholder="${v.etapa === 'implantacao' ? 'Ex.: entregue a caixa d’água e o kit de gotejamento; montados 3 canteiros com a família; combinada a próxima visita.' : 'Ex.: canteiros produzindo alface e coentro; gotejamento com vazamento consertado; orientei a compostagem.'}">${E(v.relato || '')}</textarea></div>
           ${foto(1)}${foto(2)}${foto(3)}
         </div>
@@ -4546,6 +4653,15 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     catch (e) { return recusar(); }
   }
 
+  /* 47: registros deste aparelho que o servidor recusou porque outra pessoa alterou antes. Não são descartados:
+     "Abrir e conferir" mostra o registro como está agora, com o que a pessoa tinha mudado por cima, para ela salvar de novo. */
+  function avisoConflitos() {
+    const its = (S().fila || []).filter(i => i.conflito && /^(visita|diagnostico|avaliacao)$/.test(i.tipo || ''));
+    if (!its.length) return '';
+    const nome = i => { const f = ficha(i.dados && i.dados.ficha_id) || {}; return (i.tipo === 'visita' ? 'Visita' : i.tipo === 'diagnostico' ? 'Diagnóstico' : 'Avaliação') + (f.nome ? ' · ' + f.nome : ''); };
+    return `<div class="aviso erro" role="status"><b>${its.length > 1 ? its.length + ' registros não foram enviados' : '1 registro não foi enviado'}: outra pessoa alterou antes.</b> O que você preencheu continua guardado neste aparelho.
+      ${its.map(i => `<div style="margin-top:6px">${E(nome(i))} <button class="btn peq" data-acao="campo-conferir" data-id="${E(i.id)}">Abrir e conferir</button></div>`).join('')}</div>`;
+  }
   function painel(p) {
     if (p.tipo === 'visita-feita') return painelFeita(p);
     if (p.tipo === 'visita-form') return painelVisita(p);
@@ -4556,7 +4672,19 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   /* ---------- ações ---------- */
   async function clique(a, el) {
     const eu = S().eu;
-    if (a === 'campo-visita-nova') U().abrirPainel({ tipo: 'visita-form', uf: eu.uf });
+    if (a === 'campo-conferir') {
+      const it = (S().fila || []).find(i => i.id === el.dataset.id); if (!it) return;
+      const d = it.dados || {};
+      if (it.tipo === 'visita' && d.situacao === 'realizada') { Object.keys(fotosVis).forEach(k => delete fotosVis[k]); Object.assign(fotosVis, it.fotos || {}); U().abrirPainel({ tipo: 'visita-feita', id: it.id }); }
+      else if (it.tipo === 'visita') U().abrirPainel({ tipo: 'visita-form', id: it.id });
+      else if (it.tipo === 'diagnostico') { Object.keys(fotosTemp).forEach(k => delete fotosTemp[k]); Object.assign(fotosTemp, it.fotos || {});
+        U().abrirPainel({ tipo: 'diag-form', ficha: d.ficha_id, visita: d.visita_id || '' }); setTimeout(() => { const fm = $('form[data-form=diag]'); if (fm) atualizarDiag(fm); }, 0); }
+      else if (it.tipo === 'avaliacao' && MQ.impactoUI) MQ.impactoUI.conferir(it);
+      const p = document.getElementById('painel'), f0 = p && p.querySelector('form[data-form]');
+      if (f0 && !p.querySelector('.rascunho-volta')) { const n = document.createElement('p'); n.className = 'aviso rascunho-volta'; n.setAttribute('role', 'status');
+        n.textContent = R.MSG_CONFLITO + ' Já mostramos o registro como está agora, com o que você tinha preenchido por cima: confira e salve de novo.'; f0.prepend(n); }
+    }
+    else if (a === 'campo-visita-nova') U().abrirPainel({ tipo: 'visita-form', uf: eu.uf });
     else if (a === 'campo-visita-editar') U().abrirPainel({ tipo: 'visita-form', id: el.dataset.id });
     else if (a === 'campo-feita') { Object.keys(fotosVis).forEach(k => delete fotosVis[k]); U().abrirPainel({ tipo: 'visita-feita', id: el.dataset.id }); }
     else if (a === 'campo-mes') { const n = +el.dataset.n; mesRoteiro = n === 0 ? mesAtual() : mesMais(mesRoteiro || mesAtual(), n); U().render(); }
@@ -4596,12 +4724,21 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   async function guardar(tipo, dados, fotos) {
     const s = S();
-    const limpo = Object.assign({}, dados); ['_fila', '_erro'].forEach(k => delete limpo[k]);
-    await MQ.fila.salvar({ id: limpo.id, dono: s.eu.id, tipo, dados: limpo, fotos: fotos || null, erro: null });
+    const limpo = Object.assign({}, dados); ['_fila', '_erro', '_conflito'].forEach(k => delete limpo[k]);
+    // 47: a versão que a pessoa leu (atualizado_em de quando o formulário abriu) vai com o envio e fica na fila se estiver sem internet
+    const vista = U().vista(), lista = { visita: 'visitas', diagnostico: 'diagnosticos', avaliacao: 'avaliacoes' }[tipo];
+    const antes = (vista.fila || []).find(i => i.id === limpo.id && i.tipo === tipo), noServ = ((vista[lista]) || []).find(x => x.id === limpo.id);
+    await MQ.fila.salvar({ id: limpo.id, dono: s.eu.id, tipo, dados: limpo, fotos: fotos || null, erro: null,
+      marca: U().marcaAberta(tipo, limpo.id), mud: MQ.camposMudados(limpo, noServ, antes && antes.mud) });
     s.fila = await MQ.fila.listar(s.eu.id);
     if (navigator.onLine) await U().sincronizar(false);
     const resta = s.fila.find(i => i.id === limpo.id);
-    if (resta && resta.erro) throw new Error(resta.erro);
+    if (resta && resta.erro) {
+      const e = new Error(resta.erro);
+      // outra pessoa alterou o registro: o formulário reabre com o dado novo e o que ela tinha digitado volta por cima (nada se perde)
+      if (resta.conflito && U().reabrirComConflito) { await MQ.fila.remover(resta.id); s.fila = await MQ.fila.listar(s.eu.id); if (U().reabrirComConflito(resta.erro)) e.jaAvisado = true; }
+      throw e;
+    }
     return !resta;   // true = enviado
   }
 
@@ -8208,7 +8345,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const fotosAv = {};
   function painelForm(p) {
     const f = (S().fichas || []).find(x => x.id === p.ficha); if (!f) return '<div class="painel-corpo"><p>Ficha não encontrada.</p></div>';
-    const atual = avaliacoes().find(a => a.ficha_id === f.id);
+    // 47: avaliação que ainda está só no aparelho (sem internet, ou recusada porque outra pessoa alterou antes) abre com o que foi preenchido
+    const naFila = (S().fila || []).find(i => i.tipo === 'avaliacao' && i.dados && i.dados.ficha_id === f.id);
+    const noServ = avaliacoes().find(a => a.ficha_id === f.id);
+    const atual = naFila ? MQ.juntarFila(noServ, naFila) : noServ;
     const dg = (S().diagnosticos || []).find(x => x.ficha_id === f.id);
     const base = dg && dg.dados && dg.dados.impacto;
     const a = atual ? Object.assign({}, atual, atual.dados || {}) : { id: MQ.novoId(), data_visita: R.hoje(), latitude: dg ? dg.latitude : null, longitude: dg ? dg.longitude : null };
@@ -8384,9 +8524,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       U().toast(enviado ? 'Avaliação registrada. A visita conta como feita e pode entrar na ajuda de custo.' : 'Avaliação guardada no aparelho. Será enviada quando houver internet.');
     });
   }
+  function conferir(it) { Object.keys(fotosAv).forEach(k => delete fotosAv[k]); Object.assign(fotosAv, it.fotos || {}); U().abrirPainel({ tipo: 'aval-form', ficha: it.dados.ficha_id, visita: it.dados.visita_id || '' }); }
   function painel(p) { return p.tipo === 'aval-ver' ? painelVer(p) : painelForm(p); }
 
-  MQ.impactoUI = { bloco, ler, validar, classificar, menorDaFamilia, secaoCoord, painel, clique, enviar, indicadores, avaliacoes };
+  MQ.impactoUI = { conferir, bloco, ler, validar, classificar, menorDaFamilia, secaoCoord, painel, clique, enviar, indicadores, avaliacoes };
 })();
 ;
 /* ===== convites.js ===== */
@@ -10536,6 +10677,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const semTecnica = () => !!(S.eu && S.eu.papel === 'coord_geral') && !(S.equipe || []).some(m => m.papel === 'coord_tecnico' && m.status === 'ativa');
   MQ.ui = { vagaAberta, S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: o => render(o), renderFundo: () => renderFundo(), abrirPainel: p => abrirPainel(p), fecharPainel: o => fecharPainel(o), pedirFechar: () => pedirFechar(), painelAlterado: () => painelAlterado(),
     irParaAba: x => irParaAba(x), avisarVersaoNova: () => avisarVersaoNova(), declarados: (f, r) => declarados(f, r),
+    vista: () => vistaDoPainel(), marcaAberta: (t, id) => marcaAberta(t, id), reabrirComConflito: m => reabrirComConflito(m),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), sincronizar: a => sincronizar(a),
     porId: id => porId(id), avatar: (m, t) => avatar(m, t), passos: m => passos(m), dadosDL: m => dadosDL(m), botaoFoto: m => botaoFoto(m), cartaoPessoa: m => cartaoPessoa(m),
     atualizar: f => atualizarEmSegundoPlano(f), aparelho: () => aparelho(), ipCurto: ip => ipCurto(ip), sair: a => sairDoSistema(a) };
@@ -10899,6 +11041,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (a.tabela === 'equipe_bancario' && a.acao === 'VIEW') return `<b>${esc(quem)}</b> consultou a conta bancária de <b>${esc((porId(a.registro_id) || {}).nome || 'uma pessoa')}</b> para o cadastro no Arlo.`;
     if (a.tabela === 'equipe_bancario' && a.acao === 'EXPORT') return `<b>${esc(quem)}</b> gerou a planilha bancária para a FUNCERN.`;
     if (a.tabela === 'equipe_bancario') return `<b>${esc(quem)}</b> informou ou alterou a própria conta bancária.`;
+    // 47: o login (só a senha) de quem saiu é removido pelo banco
+    if (a.acao === 'LOGIN_REMOVIDO') return `O login (senha) de <b>${esc(alvo.nome || (porId(a.registro_id) || {}).nome || 'uma pessoa')}</b> foi removido${alvo.motivo ? ' (' + esc(alvo.motivo) + ')' : ''}. Se a pessoa voltar ao projeto, cria a senha de novo com um código de primeiro acesso.`;
     if (a.tabela === 'acesso_codigos') { const n = esc((porId(a.registro_id) || {}).nome || 'uma pessoa');
       return a.acao === 'NOVO_ACESSO' ? `<b>${esc(quem)}</b> liberou um novo primeiro acesso para <b>${n}</b> (a senha anterior foi apagada).` : `<b>${esc(quem)}</b> gerou o código de acesso de <b>${n}</b>.`; }
     const Q = `<b>${esc(quem)}</b>`, A0 = a.antes || {}, D0 = a.depois || {};
@@ -11248,6 +11392,19 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (!H || !S.eu || S.verEntrada || !/^coord/.test(S.eu.papel)) return;
     try { if (!H.state || H.state.mq !== 'aba') H.replaceState({ mq: 'aba', aba: abaAtual() }, ''); } catch (e) {}
   }
+  const listasDeAgora = () => ({ fichas: S.fichas, visitas: S.visitas, diagnosticos: S.diagnosticos, avaliacoes: S.avaliacoes, fila: S.fila });
+  const vistaDoPainel = () => (S.painel && S.painel._vista) || listasDeAgora();
+  const marcaAberta = (tipo, id) => MQ.marcaDe(tipo, id, vistaDoPainel(), listasDeAgora());
+  /* 47: o banco recusou porque outra pessoa alterou o registro. O formulário reabre com o dado novo do servidor e o que a
+     pessoa tinha digitado volta por cima (o mesmo mecanismo do rascunho: só os campos que ela mudou). Nada é descartado. */
+  function reabrirComConflito(msg) {
+    const el = $('#painel'); if (!el || !S.painel) return false;
+    guardarRascunhoPainel('conflito'); rascAtivo = null;
+    abrirPainel(Object.assign({}, S.painel));
+    const el2 = $('#painel'); if (el2 && !el2.querySelector('.rascunho-volta')) notaRascunho(el2, msg || R.MSG_CONFLITO, 0, true);
+    toast(msg || R.MSG_CONFLITO);
+    return true;
+  }
   function abrirPainel(p) {
     const novo = !S.painel || !$('#painel');
     if (novo) { S.focoVolta = descreverAbridor(S.acionador || document.activeElement); S.focoDepois = null; }
@@ -11255,6 +11412,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     // trocou de formulário sem salvar (Voltar, outro painel): o rascunho do anterior, se era deste painel, não fica
     const chAntes = S.painel ? chavePainel(S.painel) : null, chNova = chavePainel(p);
     if (chAntes && chAntes !== chNova) { clearTimeout(rascT); if (rascAtivo === chAntes) removerRascunho(chAntes); rascAtivo = null; }
+    // 47: as listas como estavam quando este formulário abriu (a "versão lida" de cada registro sai daqui, não da lista que se atualiza por trás)
+    p._vista = listasDeAgora();
     S.painel = p; desenharPainel();
     if (!novo || !H || S.painelHist) return;
     if (S.histSobra) { S.histSobra = false; S.painelHist = true; return; }   // fechou um e abriu outro: a mesma entrada
@@ -11427,11 +11586,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
   /* aciona o botão "+" de um grupo de linhas sem passar pela trava de toque duplo (são vários toques seguidos, de propósito) */
   function acrescentarLinha(b) { emAndamento.delete(chaveAcao(b)); b.click(); emAndamento.delete(chaveAcao(b)); }
-  function notaRascunho(el, texto, faltou) {
+  function notaRascunho(el, texto, faltou, semArquivo) {
     const f = formsDoPainel(el)[0]; if (!f) return;
     todosDe(el, '.rascunho-volta').forEach(x => x.remove());
     const nota = document.createElement('p'); nota.className = 'aviso rascunho-volta'; nota.setAttribute('role', 'status');
-    nota.textContent = texto + (el.querySelector('form[data-form] input[type=file]') ? ' Fotos e arquivos não ficam guardados: se já tinha escolhido, tire a foto ou escolha o arquivo de novo.' : '')
+    nota.textContent = texto + (!semArquivo && el.querySelector('form[data-form] input[type=file]') ? ' Fotos e arquivos não ficam guardados: se já tinha escolhido, tire a foto ou escolha o arquivo de novo.' : '')
       + (faltou ? ' Alguma linha que você tinha acrescentado pode não ter voltado: confira.' : '');
     f.prepend(nota);
   }
@@ -11440,6 +11599,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const ch = chavePainel(S.painel); if (rascAtivo === ch) return;
     const r = lerRascunhos(); const it = r.itens[ch]; if (!it) return;
     const lista = formsDoPainel(el); if (!Object.keys(it.forms || {}).some(nome => lista.some(x => nomeForm(x, lista) === nome))) return;   // o formulário ainda não está na tela
+    if (it.motivo === 'conflito') {   // 47: outra pessoa alterou o registro: o formulário mostra o dado novo e o que foi digitado volta por cima
+      const faltou = aplicarRascunho(el, it); notaRascunho(el, R.MSG_CONFLITO + ' Já mostramos o registro como está agora, com o que você tinha digitado por cima: confira e salve de novo.', faltou, true);
+      delete r.itens[ch]; gravarRascunhos(r); rascAtivo = ch; return;
+    }
     if (it.motivo === 'inatividade') {   // o sistema saiu sozinho: o que foi digitado volta direto, com aviso
       const faltou = aplicarRascunho(el, it); notaRascunho(el, 'Recuperamos o que você tinha digitado antes de o sistema sair sozinho. Confira e salve.', faltou);
       delete r.itens[ch]; gravarRascunhos(r); rascAtivo = ch; return;
@@ -12251,15 +12414,27 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
             if (!Object.keys(patch).length) { await recarregar(); abrirPainel({ tipo: 'detalhe', id: p.id }); toast('Dados salvos.'); return; }
             await S.api.atualizar(p.id, patch); await recarregar(); abrirPainel({ tipo: 'detalhe', id: p.id }); toast('Cadastro atualizado.');
           } else {
-            const novo = await S.api.criar(m);
             const temAlgo = priv && (priv.data_nascimento || priv.nis || Object.keys(priv.endereco).length || priv.socioeconomico || priv.perfil);
+            // 47: cadastro vindo do link: uma operação só no banco (pessoa + dados pessoais + cadastro enviado aprovado: tudo ou nada).
+            //     Banco ainda sem o 47: segue pelas três gravações de antes e avisa para instalar.
+            let novo = null, semFuncao = false;
+            if (p.pre && S.api.aprovarPreCadastro) {
+              try { novo = await S.api.aprovarPreCadastro(p.pre, m, temAlgo ? priv : null); }
+              catch (e) { if (!(e && e.semFuncao)) throw e; semFuncao = true; }
+            }
+            const deUmaVez = !!novo;
+            if (!novo) novo = await S.api.criar(m);
             // a pessoa já está cadastrada: uma falha daqui em diante não pode levar a cadastrar de novo (daria "CPF já ocupa vaga")
             let falhou = '';
-            try { if (temAlgo) await S.api.salvarPrivado(novo.id, priv); } catch (e) { falhou = 'os dados pessoais (nascimento, endereço, perfil) não foram salvos: abra "Editar" e salve de novo'; }
-            try { if (p.pre) await S.api.decidirPreCadastro(p.pre, 'aprovado', null, novo.id); } catch (e) { falhou = falhou || 'o cadastro enviado pelo link continua na lista: recuse-o com o motivo "já cadastrada"'; }
+            if (!deUmaVez) {
+              try { if (temAlgo) await S.api.salvarPrivado(novo.id, priv); } catch (e) { falhou = 'os dados pessoais (nascimento, endereço, perfil) não foram salvos: abra "Editar" e salve de novo'; }
+              try { if (p.pre) await S.api.decidirPreCadastro(p.pre, 'aprovado', null, novo.id); } catch (e) { falhou = falhou || 'o cadastro enviado pelo link continua na lista: recuse-o com o motivo "já cadastrada"'; }
+            }
+            if (semFuncao && !falhou) { try { console.warn('aprovar_pre_cadastro não instalada: instale o 47 (supabase/47_auditoria_bd.sql)'); } catch (e) {} }
             try { await recarregar(); } catch (e) {}
             abrirPainel({ tipo: 'detalhe', id: novo.id });
-            if (falhou) { toast(nomeDe(m).split(' ')[0] + ' foi cadastrada, mas ' + falhou + '.'); return; }
+            if (falhou) { toast(nomeDe(m).split(' ')[0] + ' foi cadastrada, mas ' + falhou + '.' + (semFuncao ? ' Para isto não acontecer mais, instale o 47 no servidor (arquivo 47_auditoria_bd.sql).' : '')); return; }
+            if (semFuncao && S.eu && S.eu.papel === 'coord_geral') { toast(nomeDe(m).split(' ')[0] + ' cadastrada. Aviso: instale o 47 no servidor (arquivo 47_auditoria_bd.sql) para a aprovação ser gravada de uma vez só.'); return; }
             toast(nomeDe(m).split(' ')[0] + (['professor_fic', 'auxiliar_adm'].includes(m.papel) ? ' cadastrado(a). Próximo passo: cadastro no Arlo e termo.' : ' cadastrada. Próximo passo: matrícula no curso FIC.'));
           }
         });
@@ -12304,7 +12479,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         });
       }
     } catch (e) {
-      mostrarErros(form, (e && e.campos) || {}, avisarErro(e));
+      if (!(e && e.jaAvisado)) mostrarErros(form, (e && e.campos) || {}, avisarErro(e));   // (conflito de versão: o formulário já reabriu com o aviso)
     } finally { S.acaoNoPainel = Math.max(0, (S.acaoNoPainel || 1) - 1); }
   });
 
