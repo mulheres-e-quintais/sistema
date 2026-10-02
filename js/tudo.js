@@ -3839,10 +3839,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       </section>
 
       <section class="secao dx-atencao" aria-labelledby="t-alertas">
-        <div class="secao-cab"><div><h2 id="t-alertas">O que pede atenção</h2></div>${al.length ? `<span class="dx-conta">${al.filter(x => x.nivel === 'crit').length} requer${al.filter(x => x.nivel === 'crit').length === 1 ? '' : 'em'} ação · ${al.filter(x => x.nivel === 'pend').length} atenção</span>` : ''}</div>
+        <div class="secao-cab"><div><h2 id="t-alertas">O que pede atenção</h2></div>${al.length ? `<span class="dx-conta"><span class="dx-ct dx-ct-crit"><b class="num">${al.filter(x => x.nivel === 'crit').length}</b> requer${al.filter(x => x.nivel === 'crit').length === 1 ? '' : 'em'} ação</span><span class="so-leitor"> · </span><span class="dx-ct dx-ct-pend"><b class="num">${al.filter(x => x.nivel === 'pend').length}</b> atenção</span></span>` : ''}</div>
         ${al.length ? `<div class="dx-tab" role="table" aria-label="Pendências">
           <div class="dx-tr dx-th" role="row"><span role="columnheader">Problema</span><span role="columnheader">Prazo</span><span role="columnheader"><span class="sr">Ação</span></span></div>
-          ${al.map(x => `<div class="dx-tr" role="row"><span role="cell" class="dx-prob"><span class="st-pt ${NIVEL[x.nivel][0]}" aria-hidden="true"></span><span><span class="sr">${NIVEL[x.nivel][1]}: </span><b>${E(x.texto)}</b><small>${E(x.det)}</small></span></span>
+          ${al.map(x => `<div class="dx-tr dx-n-${x.nivel}" role="row"><span role="cell" class="dx-prob"><span class="st-pt ${NIVEL[x.nivel][0]}" aria-hidden="true"></span><span><span class="sr">${NIVEL[x.nivel][1]}: </span><b>${E(x.texto)}</b><small>${E(x.det)}</small></span></span>
             <span role="cell" class="dx-prazo num">${prazoTxt(x)}</span>
             <span role="cell">${x.aba ? MQ.botaoAcao({ acao: 'aba', texto: 'Resolver', icone: 'resolver', mini: true, cls: 'dx-ir', rotulo: `Resolver: ${E(x.texto)} (abre ${NOME_ABA[x.aba] || x.aba})`, attrs: `data-aba="${x.aba}" title="Abre ${NOME_ABA[x.aba] || x.aba}"` }) : ''}</span></div>`).join('')}
         </div>` : `<p class="dx-ok">${chipStatus('concluida', 'Nada pendente')} nos dados do sistema.</p>`}
