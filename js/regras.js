@@ -146,6 +146,17 @@
     [/execucao_um_estorno/, 'Este lançamento já foi estornado.'],
     [/avaliacoes_visita_id_key/, 'Esta visita já tem avaliação registrada.']
   ];
+  /* 47 (supabase/47_auditoria_bd.sql): mensagens das travas novas do banco */
+  R.MSG_OCUPADO = 'O sistema está ocupado com outra gravação. Tente de novo em instantes.';
+  R.MSG_CONFLITO = 'Este registro foi alterado por outra pessoa enquanto você editava. Abra de novo, confira e refaça a sua alteração.';
+  R.ehConflito = e => /alterado por outra pessoa enquanto voc/i.test(String((e && e.message) || e || '') + ' ' + String((e && e.original && e.original.message) || ''));
+  // nome do campo como a pessoa conhece, para a trava "tam_<coluna>_<limite>" (o gatilho do banco já manda a frase pronta; isto é a rede de baixo)
+  R.ROTULO_LIMITE = { municipio: 'município', endereco: 'endereço', ponto_referencia: 'ponto de referência', caf: 'CAF ou DAP', indicada_por: 'quem indicou',
+    testemunha_nome: 'nome da testemunha', encaminhada_para: 'para onde foi encaminhada', obs_coordenacao: 'observação da coordenação', obs: 'observação',
+    relato: 'relato da visita', sem_gps_motivo: 'motivo de não haver localização', dados: 'respostas do formulário', organizacao: 'organização',
+    motivo_desligamento: 'motivo do desligamento', obs_habilitacao: 'observação da habilitação', motivo_cancelamento: 'motivo do cancelamento',
+    relatorio: 'relatório do mês', obs_aval: 'observação do aval', email: 'e-mail', nome_social: 'nome social', motivo_arquivo: 'motivo do arquivamento',
+    justificativa_prazo: 'justificativa', pix_chave: 'chave Pix', arquivo_nome: 'nome do arquivo', matricula_fic_numero: 'número da matrícula', numero: 'número da matrícula' };
   R.mensagemErro = function (err) {
     if (err == null || err === '' || err === 0 || err === false) return 'Não foi possível salvar. Tente de novo.';
     const o = typeof err === 'object' ? err : (typeof err === 'string' ? { message: err } : {});   // número ou verdadeiro/falso soltos não são mensagem
@@ -159,6 +170,11 @@
     if (/row-level security|permission denied/i.test(s)) return 'Seu perfil não tem permissão para esta ação.';
     if (cod === 'P0001' && R.mensagemDoProjeto(msg)) return msg;   // "raise exception" do banco: já está em português
     if (cod === '42501' || cod === 'PGRST301' || cod === 'PGRST302' || /JWT expired|invalid JWT|JWT.*(expired|invalid)/i.test(s)) return R.MSG_SESSAO;
+    // 47: banco ocupado com outra gravação (a espera por trava tem limite), texto acima do limite e lista fora do combinado
+    if (cod === '55P03' || /lock timeout|could not obtain lock/i.test(s)) return R.MSG_OCUPADO;
+    { const t = /\btam_([a-z0-9_]+?)_(\d+)\b/.exec(s);
+      if (t) return 'Texto muito longo em ' + (R.ROTULO_LIMITE[t[1]] || t[1].replace(/_/g, ' ')) + ' (máximo ' + Number(t[2]).toLocaleString('pt-BR') + ' caracteres).'; }
+    if (/_uf_lista\b/.test(s)) return 'Estado (UF) fora da lista do projeto. Confira e tente de novo.';
     if (cod === '23505' || /duplicate key/i.test(s)) return 'Este registro já existe. Confira se ele já não foi salvo.';
     if (cod === '23514' || cod === '23502' || /violates (check|not-null) constraint/i.test(s)) return 'Algum campo está com valor que o sistema não aceita. Confira e tente de novo.';
     if (cod === '22003') return 'Valor grande demais.';

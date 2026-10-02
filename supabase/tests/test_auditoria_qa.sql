@@ -16,13 +16,13 @@ begin
     termo_assinado_em = coalesce(termo_assinado_em, hoje) where id = b.id;
   -- agente da BA, habilitada, com login; uma pessoa que será desligada; um cadastro antigo (início em 2020)
   insert into public.equipe (id, papel, uf, nome, cpf, email, data_inicio, consentimento_lgpd, matricula_fic_em, docs_funcern_em, termo_assinado_em) values
-    (ag, 'agente', 'BA', 'Agente Auditoria', '90000000001', 'qa.ag@t.com', mes, true, mes, mes, mes),
-    ('e0000000-0000-0000-0000-000000000002', 'agente', 'BA', 'Agente Desligada', '90000000002', 'qa.desl@t.com', mes, true, null, null, null),
-    ('e0000000-0000-0000-0000-000000000003', 'agente', 'BA', 'Agente Antiga', '90000000003', 'qa.antiga@t.com', '2020-03-01', true, null, null, null);
+    (ag, 'agente', 'BA', 'Agente Auditoria', '90000000175', 'qa.ag@t.com', mes, true, mes, mes, mes),
+    ('e0000000-0000-0000-0000-000000000002', 'agente', 'BA', 'Agente Desligada', '90000000256', 'qa.desl@t.com', mes, true, null, null, null),
+    ('e0000000-0000-0000-0000-000000000003', 'agente', 'BA', 'Agente Antiga', '90000000337', 'qa.antiga@t.com', '2020-03-01', true, null, null, null);
   for i in 1..7 loop
     insert into public.fichas (id, uf, municipio, comunidade, nome, cpf, data_nascimento, endereco,
       c_agricultora,c_maior18,c_espaco,c_agua,c_disponibilidade,c_sem_kit,c_sem_parentesco,c_casa_unica,autodeclaracao, consent_dados, resultado, data_ficha, situacao, bolsista_id)
-    values (('e1000000-0000-0000-0000-00000000000' || i)::uuid, 'BA', 'Juazeiro', 'Lagoa Auditoria', 'Maria Auditoria ' || i, (91000000000 + i)::text, '1980-01-01', 'Sítio ' || i,
+    values (('e1000000-0000-0000-0000-00000000000' || i)::uuid, 'BA', 'Juazeiro', 'Lagoa Auditoria', 'Maria Auditoria ' || i, cpf_t(91000000000 + i), '1980-01-01', 'Sítio ' || i,
       true,true,true,true,true,true,true,true,true,true,'selecionada', case when i = 5 then date '2025-06-01' else hoje - 30 end, case when i in (5, 6) then 'aguardando' else 'aprovada' end, b.id);
   end loop;
   insert into public.visitas (id, ficha_id, uf, etapa, executor_id, data_prevista, data_realizada, situacao, relato) values
@@ -50,6 +50,10 @@ select logar('qa.desl@t.com') \gset ds_
 \set DESL '''' :ds_logar ''''
 update public.equipe set status = 'desligada', data_fim = (now() at time zone 'America/Fortaleza')::date, motivo_desligamento = 'teste da auditoria' where email = 'qa.desl@t.com';
 -- pior caso: o cadastro desligado ainda aponta para a conta (banco antigo)
+-- (47: o desligamento agora remove o login; para o pior caso do banco antigo, a conta é recriada só para o teste)
+alter table auth.users disable trigger user;
+insert into auth.users (id, email) values (:DESL, 'qa.desl@t.com') on conflict (id) do nothing;
+alter table auth.users enable trigger user;
 alter table public.equipe disable trigger user;
 update public.equipe set user_id = :DESL where email = 'qa.desl@t.com';
 alter table public.equipe enable trigger user;
@@ -244,16 +248,16 @@ create or replace function qa_fi(p_cpf text, p_nasc text, p_data text, p_resulta
     c_agricultora,c_maior18,c_espaco,c_agua,c_disponibilidade,c_sem_kit,c_sem_parentesco,c_casa_unica,autodeclaracao, consent_dados, resultado, data_ficha)
     values (gen_random_uuid(), 'BA', 'Juazeiro', 'Lagoa Auditoria', 'Maria Ficha Nova', %L, (%s)::date, 'Sítio novo', true,%s,true,true,true,true,true,true,true,true, %L, (%s)::date)$q$,
     p_cpf, p_nasc, case when p_resultado = 'nao_atende' then 'false' else 'true' end, p_resultado, p_data) $$;
-select t('ficha com data no futuro é recusada', :BB, qa_fi('92000000001', $q$'1980-01-01'$q$, $q$public.fic_hoje() + 1$q$), 'data da ficha não pode ser no futuro');
-select t('menor de idade NÃO passa como selecionada pondo a data da ficha no futuro', :BB, qa_fi('92000000002', $q$public.fic_hoje() - interval '15 years'$q$, $q$public.fic_hoje() + interval '4 years'$q$), 'data da ficha não pode ser no futuro');
-select t('ficha com data de 1900 é recusada', :BB, qa_fi('92000000003', $q$'1880-01-01'$q$, $q$'1900-01-01'$q$, 'nao_atende'), 'anterior a 01/01/2026');
-select t('ficha com data anterior ao projeto (2025) é recusada', :BB, qa_fi('92000000004', $q$'1980-01-01'$q$, $q$'2025-12-31'$q$), 'anterior a 01/01/2026');
-select t('ficha com nascimento no futuro é recusada', :BB, qa_fi('92000000005', $q$public.fic_hoje() + 1$q$, $q$public.fic_hoje()$q$, 'nao_atende'), 'nascimento não pode ser no futuro');
-select t('ficha com nascimento em 1900 é recusada', :BB, qa_fi('92000000006', $q$'1900-01-01'$q$, $q$public.fic_hoje()$q$), 'data de nascimento');
+select t('ficha com data no futuro é recusada', :BB, qa_fi('92000000100', $q$'1980-01-01'$q$, $q$public.fic_hoje() + 1$q$), 'data da ficha não pode ser no futuro');
+select t('menor de idade NÃO passa como selecionada pondo a data da ficha no futuro', :BB, qa_fi('92000000290', $q$public.fic_hoje() - interval '15 years'$q$, $q$public.fic_hoje() + interval '4 years'$q$), 'data da ficha não pode ser no futuro');
+select t('ficha com data de 1900 é recusada', :BB, qa_fi('92000000371', $q$'1880-01-01'$q$, $q$'1900-01-01'$q$, 'nao_atende'), 'anterior a 01/01/2026');
+select t('ficha com data anterior ao projeto (2025) é recusada', :BB, qa_fi('92000000452', $q$'1980-01-01'$q$, $q$'2025-12-31'$q$), 'anterior a 01/01/2026');
+select t('ficha com nascimento no futuro é recusada', :BB, qa_fi('92000000533', $q$public.fic_hoje() + 1$q$, $q$public.fic_hoje()$q$, 'nao_atende'), 'nascimento não pode ser no futuro');
+select t('ficha com nascimento em 1900 é recusada', :BB, qa_fi('92000000614', $q$'1900-01-01'$q$, $q$public.fic_hoje()$q$), 'data de nascimento');
 select t('ficha com CPF 00000000000 é recusada', :BB, qa_fi('00000000000', $q$'1980-01-01'$q$, $q$public.fic_hoje()$q$), 'CPF inválido');
 select t('ficha com CPF 11111111111 é recusada', :BB, qa_fi('11111111111', $q$'1980-01-01'$q$, $q$public.fic_hoje()$q$), 'CPF inválido');
-select t('ficha de hoje, com nascimento e CPF comuns, é aceita', :BB, qa_fi('92000000007', $q$'1980-01-01'$q$, $q$public.fic_hoje()$q$), 'ok');
-select t('ficha de 01/01/2026 (primeiro dia aceito) é aceita', :BB, qa_fi('92000000008', $q$'1950-05-20'$q$, $q$'2026-01-01'$q$), 'ok');
+select t('ficha de hoje, com nascimento e CPF comuns, é aceita', :BB, qa_fi('92000000703', $q$'1980-01-01'$q$, $q$public.fic_hoje()$q$), 'ok');
+select t('ficha de 01/01/2026 (primeiro dia aceito) é aceita', :BB, qa_fi('92000000886', $q$'1950-05-20'$q$, $q$'2026-01-01'$q$), 'ok');
 \set F5 ' where id = ''e1000000-0000-0000-0000-000000000005'''
 select t('ficha antiga (data de 2025) continua podendo ser aprovada', :T, $q$update public.fichas set situacao = 'aprovada'$q$ || :'F5', 'ok');
 select t('ficha antiga continua podendo ser corrigida em outro campo', :BB, $q$update public.fichas set celular = '(74) 99999-0000'$q$ || :'F5', 'ok');
@@ -310,7 +314,7 @@ select t('aval de bolsa acima do pedido continua recusado (regra do 42)', :T, 's
 select t('aval de bolsa no valor pedido é aceito', :T, 'select public.avalizar_pagamento(' || :'SBO' || ', true, null, 1400)', 'ok');
 
 -- ===== 9. mensagens de valor =====
-select t('valor em reais no padrão brasileiro, também os grandes', null, $q$do $x$ begin
+select t('valor em reais no padrão brasileiro, também os grandes', :G, $q$do $x$ begin   -- (47: quem não entrou não executa mais as funções de apoio)
   if public.brl(1e12) <> 'R$ 1.000.000.000.000,00' then raise exception '1e12 = %', public.brl(1e12); end if;
   if public.brl(70000) <> 'R$ 70.000,00' or public.brl(0.5) <> 'R$ 0,50' or public.brl(null) <> 'R$ 0,00' or public.brl(-1234.5) <> 'R$ -1.234,50' then raise exception 'formato mudou'; end if;
   if public.brl(5000.004) <> 'R$ 5.000,00' or public.brl(1e20) like '%#%' then raise exception 'arredondamento'; end if; end $x$$q$, 'ok');
@@ -330,7 +334,7 @@ select t('teto de eventos: a mensagem mostra os valores no padrão brasileiro', 
 -- ===== 10. equipe: datas =====
 create or replace function qa_eq(p_inicio text, p_n int) returns text language sql as $$
   select format($q$insert into public.equipe (papel, uf, nome, cpf, email, data_inicio, consentimento_lgpd)
-    values ('agente', 'BA', 'Agente Data Nova', %L, %L, (%s)::date, true)$q$, (93000000000 + p_n)::text, 'qa.data' || p_n || '@t.com', p_inicio) $$;
+    values ('agente', 'BA', 'Agente Data Nova', %L, %L, (%s)::date, true)$q$, cpf_t(93000000000 + p_n), 'qa.data' || p_n || '@t.com', p_inicio) $$;
 select t('cadastro com início em 1900 é recusado', :T, qa_eq($q$'1900-01-01'$q$, 1), 'data de início');
 select t('cadastro com início em 2090 é recusado', :T, qa_eq($q$'2090-01-01'$q$, 2), 'data de início');
 select t('cadastro com início em 2024 é recusado', :T, qa_eq($q$'2024-12-31'$q$, 3), 'data de início');
@@ -416,6 +420,9 @@ end $$;
 -- abertas de propósito (tela de entrada, vitrine pública e link de cadastro): não dão dado pessoal a ninguém
 create temp table qa_abertas (fn text);
 insert into qa_abertas values ('ver_convite'), ('vitrine'), ('vitrine_municipios'), ('pedir_novo_acesso'), ('enviar_pre_cadastro');
+-- (47: as funções de apoio passaram a ter permissão própria e por isso entram na varredura. São só conta e formato:
+--  não leem tabela nenhuma, devolvem o que recebem (R$ formatado, texto sem pontuação, a data de hoje, quem dá o aval de um tipo de pedido))
+insert into qa_abertas values ('brl'), ('codigo_hash'), ('codigo_normalizado'), ('fic_hoje'), ('num_br'), ('quem_avaliza');
 create temp table qa_varredura as
   select 'sem cadastro' as conta, v.* from qa_varre(:NOEQ) v union all select 'desligada', v.* from qa_varre(:DESL) v union all select 'coordenação geral', v.* from qa_varre(:G) v;
 insert into res (caso, ok, det) select 'varredura: conta SEM CADASTRO chama todas as funções do app e não recebe dado nem grava nada',

@@ -2,7 +2,7 @@
 -- Mulheres & Quintais — VERIFICAR o banco (só lê, não muda nada)
 -- Supabase > SQL Editor > New query > cole este arquivo inteiro > Run.
 -- Mostra, etapa por etapa, o que já está instalado. Onde aparecer "FALTA", rode aquele script
--- (na ordem 01, 02, 03, 04, 07, 08, 09, 10, 11, 12, 13, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46). Todos podem rodar de novo sem estragar nada.
+-- (na ordem 01, 02, 03, 04, 07, 08, 09, 10, 11, 12, 13, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47). Todos podem rodar de novo sem estragar nada.
 -- =====================================================================
 with col as (select table_name, column_name from information_schema.columns where table_schema = 'public'),
 fn as (select proname from pg_proc where pronamespace = 'public'::regnamespace),
@@ -38,10 +38,10 @@ chk as (
   union all select '24_documentos', to_regclass('public.documentos_projeto') is not null and exists (select 1 from storage.buckets where id = 'documentos')
   union all select '23_fic_coordenacao_tecnica', exists (select 1 from pg_proc where proname = 'matricular_fic' and prosrc like '%coord_tecnico%')
   -- rodar 01, 03, 07 ou 11 de novo fora de ordem volta regras antigas da equipe: estes dois itens acusam.
-  -- Conserto: rodar de novo, em ordem, 11, 12, 13, 15, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46 (nunca 05, 06, 14 ou 16).
-  union all select 'regras da equipe (se FALTA: rode de novo, em ordem, do 11 ao 46)',
+  -- Conserto: rodar de novo, em ordem, 11, 12, 13, 15, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47 (nunca 05, 06, 14 ou 16).
+  union all select 'regras da equipe (se FALTA: rode de novo, em ordem, do 11 ao 47)',
                    exists (select 1 from pg_proc where proname = 'equipe_antes' and prosrc like '%só registra o cadastro no Arlo%' and prosrc like '%coordenação geral altera%')
-  union all select 'auxiliar ver e registrar Arlo (se FALTA: rode de novo, em ordem, do 11 ao 46)',
+  union all select 'auxiliar ver e registrar Arlo (se FALTA: rode de novo, em ordem, do 11 ao 47)',
                    exists (select 1 from pg_policy where polname = 'equipe_ler' and pg_get_expr(polqual, polrelid) like '%auxiliar_adm%')
                    and exists (select 1 from pg_policy where polname = 'equipe_alterar' and pg_get_expr(polqual, polrelid) like '%auxiliar_adm%')
   union all select '29_desempenho (rode depois do 11 ao 28)', to_regclass('public.auditoria_em') is not null
@@ -95,9 +95,9 @@ chk as (
                    not exists (select 1 from pg_policy where polname in ('parametros_ler', 'apl_ler') and pg_get_expr(polqual, polrelid) = 'true')
                    and exists (select 1 from pg_policy where polname = 'parametros_ler')
                    and exists (select 1 from pg_policy where polname = 'equipe_ler' and pg_get_expr(polqual, polrelid) like '%ativa%')
-  union all select '47_termo_pela_pessoa (a própria pessoa anexa o termo; a data só entra com o termo anexado)', exists (select 1 from fn where proname = 'enviar_meu_termo')
+  union all select '48_termo_pela_pessoa (a própria pessoa anexa o termo; a data só entra com o termo anexado)', exists (select 1 from fn where proname = 'enviar_meu_termo')
   union all select '46_regras_decididas (regras decididas pela coordenação geral e pendências da auditoria)', exists (select 1 from fn where proname = 'visita_etapa_motivo')
-                   and (select count(*) from pg_trigger where not tgisinternal and tgname in ('a1_versao', 'diagnosticos_a1_versao', 'diagnosticos_a2_limites', 'fichas_c_regras', 'equipe_c_regras',
+                   and (select count(distinct tgname) from pg_trigger where not tgisinternal and tgname in ('a1_versao', 'diagnosticos_a1_versao', 'diagnosticos_a2_limites', 'fichas_c_regras', 'equipe_c_regras',
                           'custos_visita_a0_travas', 'parametros_a0_validar', 'convites_a0_travas', 'entregas_a0_travas', 'equipe_desligada_matricula', 'equipe_privado_auditoria',
                           'solicitacao_visitas_auditoria', 'entregas_mes_auditoria', 'apl_municipios_auditoria')) = 14
   -- as linhas abaixo voltam a FALTA se o 45 (ou outro script anterior) for rodado de novo depois do 46: nesse caso, rode o 46 de novo
@@ -125,6 +125,55 @@ chk as (
                    exists (select 1 from pg_proc where proname = 'documentos_antes' and prosrc like '%o título e a data não mudam mais%')
                    and exists (select 1 from pg_proc where proname = 'enviar_pre_cadastro' and prosrc like '%não é uma data que existe%')
                    and exists (select 1 from pg_proc where proname = 'vitrine_municipios' and prosrc like '%sem_acento%')
+  union all select '47_auditoria_bd (correções da auditoria do banco de dados)',
+                   (select count(*) from fn where proname in ('aprovar_pre_cadastro', 'minhas_fichas', 'trava_aviso', 'cpf_valido', 'limites_texto', 'chave_fixa', 'equipe_solta_login')) = 7
+                   and (select count(*) from pg_trigger where not tgisinternal and tgname = 'a00_chave_fixa') >= 7
+                   and (select count(*) from pg_trigger where not tgisinternal and tgname = 'a0_tamanho') >= 15
+                   and exists (select 1 from pg_trigger where not tgisinternal and tgname = 'equipe_z_solta_login')
+                   and exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'visitas_executor')
+  -- as linhas abaixo voltam a FALTA se o 46 (ou outro script anterior) for rodado de novo depois do 47: nesse caso, rode o 47 de novo
+  union all select 'regras de acesso calculadas uma vez por consulta, não por linha (se FALTA: rode o 47)',
+                   not exists (select 1 from pg_policies where schemaname = 'public'
+                                and (coalesce(qual, '') || ' ' || coalesce(with_check, '')) ~ '(?<!SELECT )(?<!public\.)\m(meu_papel|meu_id|minha_uf|quem_confere_pedidos)\(\)')
+                   and exists (select 1 from pg_policies where schemaname = 'public' and policyname = 'fichas_ler' and qual like '%minhas_fichas%')
+  union all select 'edição ao mesmo tempo é avisada: ficha, diagnóstico, visita e avaliação (se FALTA: rode o 47)',
+                   exists (select 1 from pg_proc where proname = 'versao_conferir' and prosrc like '%alterado por outra pessoa enquanto você editava%')
+                   and (select count(*) from pg_trigger t join pg_proc p on p.oid = t.tgfoid where not t.tgisinternal and p.proname = 'versao_conferir') = 4
+  union all select 'privilégios: quem não entrou só executa as cinco funções públicas e não tem acesso a tabela (se FALTA: rode o 47)',
+                   not exists (select 1 from information_schema.role_table_grants where table_schema = 'public' and grantee = 'anon')
+                   and not exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prorettype <> 'trigger'::regtype and (p.proacl is not null or p.prosecdef)
+                                    and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e') and has_function_privilege('anon', p.oid, 'EXECUTE')
+                                    and p.proname not in ('ver_convite', 'enviar_pre_cadastro', 'pedir_novo_acesso', 'vitrine', 'vitrine_municipios'))
+                   and not exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosecdef and not ('search_path=public, pg_temp' = any (coalesce(p.proconfig, '{}'))))
+  union all select 'tamanho de texto conferido no banco, com mensagem que diz o campo (se FALTA: rode o 47)',
+                   exists (select 1 from pg_proc where proname = 'enviar_pre_cadastro' and prosrc like '%Texto muito longo em nome%')
+                   and exists (select 1 from pg_proc where proname = 'salvar_pedido_apoio' and prosrc like '%Texto muito longo em dados do pedido%')
+                   and (select count(*) from pg_constraint where connamespace = 'public'::regnamespace and conname ~ '^tam_') >= 60
+  union all select 'conferências que esperam uma pela outra: desligar, agendar, pedir pagamento, km, encontro, diagnóstico (se FALTA: rode o 47)',
+                   exists (select 1 from pg_proc where proname = 'visitas_antes' and prosrc like '%new.executor_id for share%')
+                   and exists (select 1 from pg_proc where proname = 'solicitar_pagamento' and prosrc like '%public.meu_id() for share%' and prosrc like '%order by v.id for share%')
+                   and exists (select 1 from pg_proc where proname = 'custos_visita_travas' and prosrc like '%order by s.id for share%')
+                   and exists (select 1 from pg_proc where proname = 'diagnosticos_antes' and prosrc like '%new.ficha_id for share%')
+                   and exists (select 1 from pg_proc where proname = 'registrar_encontro_fic' and prosrc like '%trava_aviso(''solicitar_pagamento_''%')
+                   and exists (select 1 from pg_proc where proname = 'cancelar_matricula_fic' and prosrc like '%m.equipe_id for update%')
+  union all select 'repetição depois de falha de rede não grava duas vezes: pedido, orientação, link e documento (se FALTA: rode o 47)',
+                   exists (select 1 from pg_proc where proname = 'salvar_pedido_apoio' and prosrc like '%interval ''2 minutes''%')
+                   and exists (select 1 from pg_proc where proname = 'registrar_orientacao_venda' and prosrc like '%interval ''2 minutes''%')
+                   and exists (select 1 from pg_proc where proname = 'criar_convite' and prosrc like '%interval ''2 minutes''%')
+                   and exists (select 1 from pg_proc where proname = 'documentos_antes' and prosrc like '%interval ''2 minutes''%')
+  union all select 'CPF com dígito verificador conferido na ficha, na equipe e no cadastro pelo link (se FALTA: rode o 47)',
+                   exists (select 1 from pg_proc where proname = 'fichas_regras' and prosrc like '%cpf_valido%')
+                   and exists (select 1 from pg_proc where proname = 'equipe_regras' and prosrc like '%cpf_valido%' and prosrc like '%fecharia um círculo%')
+                   and exists (select 1 from pg_proc where proname = 'enviar_pre_cadastro' and prosrc like '%cpf_valido%')
+  union all select 'canal de venda, APL, vitrine, parâmetros e planilha com as conferências do 47 (se FALTA: rode o 47)',
+                   exists (select 1 from pg_proc where proname = 'salvar_canal_venda' and prosrc like '%pelo menos 2 letras%')
+                   and exists (select 1 from pg_proc where proname = 'apl_carimbo' and prosrc like '%sem_acento%')
+                   and exists (select 1 from pg_proc where proname = 'vitrine_fotos_antes' and prosrc like '%regexp_split_to_array%')
+                   and exists (select 1 from pg_proc where proname = 'parametros_validar' and prosrc like '%Parâmetro desconhecido%')
+                   and exists (select 1 from pg_proc where proname = 'execucao_planilhas_antes' and prosrc like '%Os totais da planilha%')
+  union all select 'espera por trava de no máximo 5 segundos (se FALTA: rode o 47)',
+                   not exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ '(pg_advisory_xact_lock|trava_aviso)\('
+                                and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e') and not ('lock_timeout=5s' = any (coalesce(p.proconfig, '{}'))))
   -- regras que VOLTAM AO ANTIGO se um script velho for rodado de novo fora de ordem (se FALTA, rode de novo o número indicado)
   union all select 'primeiro acesso só com código (se FALTA: rode o 18 e depois o 43)', exists (select 1 from pg_proc where proname = 'bloquear_conta_nao_cadastrada' and prosrc like '%codigo_hash%')
   union all select '200 dias de campo e avaliação (se FALTA: rode o 13 e depois o 15)', exists (select 1 from pg_proc where proname = 'visitas_antes' and prosrc like '%200 dias de campo%')

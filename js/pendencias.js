@@ -55,7 +55,7 @@
         d: 'Procure os professores do curso FIC para fazer a matrícula e receber o acesso ao AVA.' });
       if (p.id === 'funcern') itens.push({ id: 'arlo', t: 'Cadastro no Arlo (FUNCERN) ainda não registrado',
         d: (m.cadastro_arlo ? 'Você informou que já tem cadastro no Arlo: ' + quemHab + ' precisa conferir e registrar.' : 'Quem faz o seu cadastro no Arlo é ' + quemHab + ', com os seus dados e a sua conta.') + ' Se pedirem algum documento, envie logo.' });
-      // 47: o termo é anexado pela própria pessoa (modelo preenchido e assinado); quem confere abre o arquivo e registra a data
+      // 48: o termo é anexado pela própria pessoa (modelo preenchido e assinado); quem confere abre o arquivo e registra a data
       if (p.id === 'termo') itens.push(p.enviado
         ? { id: 'termo', t: 'Termo de compromisso enviado: aguardando conferência',
             d: 'Você anexou o termo. Agora ' + quemHab + ' abre o arquivo, confere se está preenchido e assinado e registra a data.', acao: 'pend-termo', btn: 'Ver ou trocar' }
@@ -137,7 +137,7 @@
       <div class="acoes"><button class="btn pri" type="submit">Salvar</button><button class="btn" type="button" data-acao="pend-ver">Voltar</button></div></form>`;
   }
 
-  /* ---------- termo de compromisso: a própria pessoa anexa (47) ---------- */
+  /* ---------- termo de compromisso: a própria pessoa anexa (48) ---------- */
   const quemConfere = m => m && m.papel === 'auxiliar_adm' ? 'a coordenação geral' : 'o auxiliar administrativo';
   /* link do modelo (fica ao lado do campo de anexar); sem arquivo configurado em dados.js, orienta a pedir */
   function linkModelo(m) {

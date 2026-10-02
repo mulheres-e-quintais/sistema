@@ -84,14 +84,14 @@
   function diagnosticos() { return lembrar('d', S().diagnosticos, diagnosticosCalc); }
   function visitasCalc() {
     const m = new Map((S().visitas || []).map(v => [v.id, Object.assign({}, v)]));
-    S().fila.filter(i => i.tipo === 'visita').forEach(i => m.set(i.id, Object.assign({}, m.get(i.id) || {}, i.dados, { _fila: true, _erro: i.erro })));
+    S().fila.filter(i => i.tipo === 'visita').forEach(i => m.set(i.id, Object.assign(MQ.juntarFila(m.get(i.id), i), { _fila: true, _erro: i.erro })));
     // diagnóstico ainda na fila marca a visita como feita (para quem está sem internet)
     S().fila.filter(i => i.tipo === 'diagnostico').forEach(i => { const v = m.get(i.dados.visita_id); if (v) { v.situacao = 'realizada'; v.data_realizada = i.dados.data_visita; } });
     return [...m.values()];
   }
   function diagnosticosCalc() {
     const m = new Map((S().diagnosticos || []).map(d => [d.id, Object.assign({}, d)]));
-    S().fila.filter(i => i.tipo === 'diagnostico').forEach(i => m.set(i.id, Object.assign({}, m.get(i.id) || {}, i.dados, { _fila: true, _erro: i.erro, situacao: (m.get(i.id) || {}).situacao || 'aguardando' })));
+    S().fila.filter(i => i.tipo === 'diagnostico').forEach(i => m.set(i.id, Object.assign(MQ.juntarFila(m.get(i.id), i), { _fila: true, _erro: i.erro, situacao: (m.get(i.id) || {}).situacao || 'aguardando' })));
     return [...m.values()];
   }
   // índices refeitos só quando a lista muda (com 1.000 visitas, procurar uma a uma deixava a aba lenta)
@@ -204,6 +204,7 @@
         <div><span class="v num">${dg.filter(d => d.situacao === 'aprovado').length}</span><span class="l">planos aprovados</span></div>
         <div><span class="v num">${dg.filter(d => d.sem_agua).length}</span><span class="l">sem água na seca</span></div>
       </div>
+      ${avisoConflitos()}
       ${pend.length ? `<div class="aviso${pend.some(i => i.erro) ? ' erro' : ''}"><b>${pend.length} registro${pend.length > 1 ? 's' : ''} de campo neste aparelho</b>${pend.some(i => i.erro) ? ': ' + E(pend.find(i => i.erro).erro) : ', aguardando internet para enviar.'}
         ${navigator.onLine ? ' <button class="link" data-acao="ficha-enviar">Enviar agora</button>' : ''}</div>` : ''}
       ${sel.length ? paraFazer(uf, sel) : '<div class="vazio"><span>As visitas começam quando a coordenação técnica aprovar as primeiras fichas como "selecionada".</span></div>'}
@@ -244,6 +245,7 @@
       ${MQ.entregasUI ? MQ.entregasUI.blocoCiencia() : ''}
       ${MQ.encUI ? MQ.encUI.blocoConfirmar() : ''}
       ${!R.habilitado(eu) ? `<div class="aviso erro"><b>Você ainda não pode receber visitas no roteiro.</b> Faltam passos da habilitação (matrícula no FIC, documentos na FUNCERN e termo). Sem eles, a ajuda de custo não pode ser paga.</div>` : ''}
+      ${avisoConflitos()}
       ${pend.length ? `<div class="aviso">${pend.length} diagnóstico${pend.length > 1 ? 's' : ''} guardado${pend.length > 1 ? 's' : ''} neste aparelho, aguardando internet.${navigator.onLine ? ' <button class="link" data-acao="ficha-enviar">Enviar agora</button>' : ''}</div>` : ''}
       <section class="secao"><div class="secao-cab"><h2 id="t-prox">Próximas visitas</h2><span class="muted small">${prox.length} prevista${prox.length === 1 ? '' : 's'}</span></div>
         ${prox.length ? `<div class="lista-fichas">${prox.map(linha).join('')}</div>` : '<div class="vazio"><span>Nenhuma visita atribuída a você. Quem agenda é a bolsista do estado ou a coordenação técnica.</span></div>'}</section>
@@ -572,7 +574,7 @@
       <div class="painel-corpo"><form class="f" data-form="visita-feita" data-id="${E(v.id)}" novalidate>
         <p class="small muted">Registrar a visita feita é o que permite solicitar a ajuda de custo dela. Depois de solicitada, ela não muda mais.</p>
         <div class="campos">
-          <div class="campo"><label for="vf-data">Dia em que foi feita</label><input id="vf-data" name="data_realizada" type="date" min="${R.LIM.visitaMin}" max="${R.hoje()}" value="${v.data_prevista <= R.hoje() ? v.data_prevista : R.hoje()}" required></div>
+          <div class="campo"><label for="vf-data">Dia em que foi feita</label><input id="vf-data" name="data_realizada" type="date" min="${R.LIM.visitaMin}" max="${R.hoje()}" value="${v.data_realizada || (v.data_prevista <= R.hoje() ? v.data_prevista : R.hoje())}" required></div>
           <div class="campo inteiro"><label for="vf-rel">O que foi feito</label><textarea id="vf-rel" name="relato" rows="4" maxlength="2000" placeholder="${v.etapa === 'implantacao' ? 'Ex.: entregue a caixa d’água e o kit de gotejamento; montados 3 canteiros com a família; combinada a próxima visita.' : 'Ex.: canteiros produzindo alface e coentro; gotejamento com vazamento consertado; orientei a compostagem.'}">${E(v.relato || '')}</textarea></div>
           ${foto(1)}${foto(2)}${foto(3)}
         </div>
@@ -600,6 +602,15 @@
     catch (e) { return recusar(); }
   }
 
+  /* 47: registros deste aparelho que o servidor recusou porque outra pessoa alterou antes. Não são descartados:
+     "Abrir e conferir" mostra o registro como está agora, com o que a pessoa tinha mudado por cima, para ela salvar de novo. */
+  function avisoConflitos() {
+    const its = (S().fila || []).filter(i => i.conflito && /^(visita|diagnostico|avaliacao)$/.test(i.tipo || ''));
+    if (!its.length) return '';
+    const nome = i => { const f = ficha(i.dados && i.dados.ficha_id) || {}; return (i.tipo === 'visita' ? 'Visita' : i.tipo === 'diagnostico' ? 'Diagnóstico' : 'Avaliação') + (f.nome ? ' · ' + f.nome : ''); };
+    return `<div class="aviso erro" role="status"><b>${its.length > 1 ? its.length + ' registros não foram enviados' : '1 registro não foi enviado'}: outra pessoa alterou antes.</b> O que você preencheu continua guardado neste aparelho.
+      ${its.map(i => `<div style="margin-top:6px">${E(nome(i))} <button class="btn peq" data-acao="campo-conferir" data-id="${E(i.id)}">Abrir e conferir</button></div>`).join('')}</div>`;
+  }
   function painel(p) {
     if (p.tipo === 'visita-feita') return painelFeita(p);
     if (p.tipo === 'visita-form') return painelVisita(p);
@@ -610,7 +621,19 @@
   /* ---------- ações ---------- */
   async function clique(a, el) {
     const eu = S().eu;
-    if (a === 'campo-visita-nova') U().abrirPainel({ tipo: 'visita-form', uf: eu.uf });
+    if (a === 'campo-conferir') {
+      const it = (S().fila || []).find(i => i.id === el.dataset.id); if (!it) return;
+      const d = it.dados || {};
+      if (it.tipo === 'visita' && d.situacao === 'realizada') { Object.keys(fotosVis).forEach(k => delete fotosVis[k]); Object.assign(fotosVis, it.fotos || {}); U().abrirPainel({ tipo: 'visita-feita', id: it.id }); }
+      else if (it.tipo === 'visita') U().abrirPainel({ tipo: 'visita-form', id: it.id });
+      else if (it.tipo === 'diagnostico') { Object.keys(fotosTemp).forEach(k => delete fotosTemp[k]); Object.assign(fotosTemp, it.fotos || {});
+        U().abrirPainel({ tipo: 'diag-form', ficha: d.ficha_id, visita: d.visita_id || '' }); setTimeout(() => { const fm = $('form[data-form=diag]'); if (fm) atualizarDiag(fm); }, 0); }
+      else if (it.tipo === 'avaliacao' && MQ.impactoUI) MQ.impactoUI.conferir(it);
+      const p = document.getElementById('painel'), f0 = p && p.querySelector('form[data-form]');
+      if (f0 && !p.querySelector('.rascunho-volta')) { const n = document.createElement('p'); n.className = 'aviso rascunho-volta'; n.setAttribute('role', 'status');
+        n.textContent = R.MSG_CONFLITO + ' Já mostramos o registro como está agora, com o que você tinha preenchido por cima: confira e salve de novo.'; f0.prepend(n); }
+    }
+    else if (a === 'campo-visita-nova') U().abrirPainel({ tipo: 'visita-form', uf: eu.uf });
     else if (a === 'campo-visita-editar') U().abrirPainel({ tipo: 'visita-form', id: el.dataset.id });
     else if (a === 'campo-feita') { Object.keys(fotosVis).forEach(k => delete fotosVis[k]); U().abrirPainel({ tipo: 'visita-feita', id: el.dataset.id }); }
     else if (a === 'campo-mes') { const n = +el.dataset.n; mesRoteiro = n === 0 ? mesAtual() : mesMais(mesRoteiro || mesAtual(), n); U().render(); }
@@ -650,12 +673,21 @@
 
   async function guardar(tipo, dados, fotos) {
     const s = S();
-    const limpo = Object.assign({}, dados); ['_fila', '_erro'].forEach(k => delete limpo[k]);
-    await MQ.fila.salvar({ id: limpo.id, dono: s.eu.id, tipo, dados: limpo, fotos: fotos || null, erro: null });
+    const limpo = Object.assign({}, dados); ['_fila', '_erro', '_conflito'].forEach(k => delete limpo[k]);
+    // 47: a versão que a pessoa leu (atualizado_em de quando o formulário abriu) vai com o envio e fica na fila se estiver sem internet
+    const vista = U().vista(), lista = { visita: 'visitas', diagnostico: 'diagnosticos', avaliacao: 'avaliacoes' }[tipo];
+    const antes = (vista.fila || []).find(i => i.id === limpo.id && i.tipo === tipo), noServ = ((vista[lista]) || []).find(x => x.id === limpo.id);
+    await MQ.fila.salvar({ id: limpo.id, dono: s.eu.id, tipo, dados: limpo, fotos: fotos || null, erro: null,
+      marca: U().marcaAberta(tipo, limpo.id), mud: MQ.camposMudados(limpo, noServ, antes && antes.mud) });
     s.fila = await MQ.fila.listar(s.eu.id);
     if (navigator.onLine) await U().sincronizar(false);
     const resta = s.fila.find(i => i.id === limpo.id);
-    if (resta && resta.erro) throw new Error(resta.erro);
+    if (resta && resta.erro) {
+      const e = new Error(resta.erro);
+      // outra pessoa alterou o registro: o formulário reabre com o dado novo e o que ela tinha digitado volta por cima (nada se perde)
+      if (resta.conflito && U().reabrirComConflito) { await MQ.fila.remover(resta.id); s.fila = await MQ.fila.listar(s.eu.id); if (U().reabrirComConflito(resta.erro)) e.jaAvisado = true; }
+      throw e;
+    }
     return !resta;   // true = enviado
   }
 

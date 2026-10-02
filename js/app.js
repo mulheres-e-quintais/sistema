@@ -263,6 +263,7 @@
   const semTecnica = () => !!(S.eu && S.eu.papel === 'coord_geral') && !(S.equipe || []).some(m => m.papel === 'coord_tecnico' && m.status === 'ativa');
   MQ.ui = { vagaAberta, S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: o => render(o), renderFundo: () => renderFundo(), abrirPainel: p => abrirPainel(p), fecharPainel: o => fecharPainel(o), pedirFechar: () => pedirFechar(), painelAlterado: () => painelAlterado(),
     irParaAba: x => irParaAba(x), avisarVersaoNova: () => avisarVersaoNova(), declarados: (f, r) => declarados(f, r),
+    vista: () => vistaDoPainel(), marcaAberta: (t, id) => marcaAberta(t, id), reabrirComConflito: m => reabrirComConflito(m),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), sincronizar: a => sincronizar(a),
     recarregar: () => recarregar(), porId: id => porId(id), avatar: (m, t) => avatar(m, t), passos: m => passos(m), dadosDL: m => dadosDL(m), botaoFoto: m => botaoFoto(m), cartaoPessoa: m => cartaoPessoa(m),
     atualizar: f => atualizarEmSegundoPlano(f), aparelho: () => aparelho(), ipCurto: ip => ipCurto(ip), sair: a => sairDoSistema(a) };
@@ -626,6 +627,8 @@
     if (a.tabela === 'equipe_bancario' && a.acao === 'VIEW') return `<b>${esc(quem)}</b> consultou a conta bancária de <b>${esc((porId(a.registro_id) || {}).nome || 'uma pessoa')}</b> para o cadastro no Arlo.`;
     if (a.tabela === 'equipe_bancario' && a.acao === 'EXPORT') return `<b>${esc(quem)}</b> gerou a planilha bancária para a FUNCERN.`;
     if (a.tabela === 'equipe_bancario') return `<b>${esc(quem)}</b> informou ou alterou a própria conta bancária.`;
+    // 47: o login (só a senha) de quem saiu é removido pelo banco
+    if (a.acao === 'LOGIN_REMOVIDO') return `O login (senha) de <b>${esc(alvo.nome || (porId(a.registro_id) || {}).nome || 'uma pessoa')}</b> foi removido${alvo.motivo ? ' (' + esc(alvo.motivo) + ')' : ''}. Se a pessoa voltar ao projeto, cria a senha de novo com um código de primeiro acesso.`;
     if (a.tabela === 'acesso_codigos') { const n = esc((porId(a.registro_id) || {}).nome || 'uma pessoa');
       return a.acao === 'NOVO_ACESSO' ? `<b>${esc(quem)}</b> liberou um novo primeiro acesso para <b>${n}</b> (a senha anterior foi apagada).` : `<b>${esc(quem)}</b> gerou o código de acesso de <b>${n}</b>.`; }
     const Q = `<b>${esc(quem)}</b>`, A0 = a.antes || {}, D0 = a.depois || {};
@@ -976,6 +979,19 @@
     if (!H || !S.eu || S.verEntrada || !/^coord/.test(S.eu.papel)) return;
     try { if (!H.state || H.state.mq !== 'aba') H.replaceState({ mq: 'aba', aba: abaAtual() }, ''); } catch (e) {}
   }
+  const listasDeAgora = () => ({ fichas: S.fichas, visitas: S.visitas, diagnosticos: S.diagnosticos, avaliacoes: S.avaliacoes, fila: S.fila });
+  const vistaDoPainel = () => (S.painel && S.painel._vista) || listasDeAgora();
+  const marcaAberta = (tipo, id) => MQ.marcaDe(tipo, id, vistaDoPainel(), listasDeAgora());
+  /* 47: o banco recusou porque outra pessoa alterou o registro. O formulário reabre com o dado novo do servidor e o que a
+     pessoa tinha digitado volta por cima (o mesmo mecanismo do rascunho: só os campos que ela mudou). Nada é descartado. */
+  function reabrirComConflito(msg) {
+    const el = $('#painel'); if (!el || !S.painel) return false;
+    guardarRascunhoPainel('conflito'); rascAtivo = null;
+    abrirPainel(Object.assign({}, S.painel));
+    const el2 = $('#painel'); if (el2 && !el2.querySelector('.rascunho-volta')) notaRascunho(el2, msg || R.MSG_CONFLITO, 0, true);
+    toast(msg || R.MSG_CONFLITO);
+    return true;
+  }
   function abrirPainel(p) {
     const novo = !S.painel || !$('#painel');
     if (novo) { S.focoVolta = descreverAbridor(S.acionador || document.activeElement); S.focoDepois = null; }
@@ -983,6 +999,8 @@
     // trocou de formulário sem salvar (Voltar, outro painel): o rascunho do anterior, se era deste painel, não fica
     const chAntes = S.painel ? chavePainel(S.painel) : null, chNova = chavePainel(p);
     if (chAntes && chAntes !== chNova) { clearTimeout(rascT); if (rascAtivo === chAntes) removerRascunho(chAntes); rascAtivo = null; }
+    // 47: as listas como estavam quando este formulário abriu (a "versão lida" de cada registro sai daqui, não da lista que se atualiza por trás)
+    p._vista = listasDeAgora();
     S.painel = p; desenharPainel();
     if (!novo || !H || S.painelHist) return;
     if (S.histSobra) { S.histSobra = false; S.painelHist = true; return; }   // fechou um e abriu outro: a mesma entrada
@@ -1155,11 +1173,11 @@
   }
   /* aciona o botão "+" de um grupo de linhas sem passar pela trava de toque duplo (são vários toques seguidos, de propósito) */
   function acrescentarLinha(b) { emAndamento.delete(chaveAcao(b)); b.click(); emAndamento.delete(chaveAcao(b)); }
-  function notaRascunho(el, texto, faltou) {
+  function notaRascunho(el, texto, faltou, semArquivo) {
     const f = formsDoPainel(el)[0]; if (!f) return;
     todosDe(el, '.rascunho-volta').forEach(x => x.remove());
     const nota = document.createElement('p'); nota.className = 'aviso rascunho-volta'; nota.setAttribute('role', 'status');
-    nota.textContent = texto + (el.querySelector('form[data-form] input[type=file]') ? ' Fotos e arquivos não ficam guardados: se já tinha escolhido, tire a foto ou escolha o arquivo de novo.' : '')
+    nota.textContent = texto + (!semArquivo && el.querySelector('form[data-form] input[type=file]') ? ' Fotos e arquivos não ficam guardados: se já tinha escolhido, tire a foto ou escolha o arquivo de novo.' : '')
       + (faltou ? ' Alguma linha que você tinha acrescentado pode não ter voltado: confira.' : '');
     f.prepend(nota);
   }
@@ -1168,6 +1186,10 @@
     const ch = chavePainel(S.painel); if (rascAtivo === ch) return;
     const r = lerRascunhos(); const it = r.itens[ch]; if (!it) return;
     const lista = formsDoPainel(el); if (!Object.keys(it.forms || {}).some(nome => lista.some(x => nomeForm(x, lista) === nome))) return;   // o formulário ainda não está na tela
+    if (it.motivo === 'conflito') {   // 47: outra pessoa alterou o registro: o formulário mostra o dado novo e o que foi digitado volta por cima
+      const faltou = aplicarRascunho(el, it); notaRascunho(el, R.MSG_CONFLITO + ' Já mostramos o registro como está agora, com o que você tinha digitado por cima: confira e salve de novo.', faltou, true);
+      delete r.itens[ch]; gravarRascunhos(r); rascAtivo = ch; return;
+    }
     if (it.motivo === 'inatividade') {   // o sistema saiu sozinho: o que foi digitado volta direto, com aviso
       const faltou = aplicarRascunho(el, it); notaRascunho(el, 'Recuperamos o que você tinha digitado antes de o sistema sair sozinho. Confira e salve.', faltou);
       delete r.itens[ch]; gravarRascunhos(r); rascAtivo = ch; return;
@@ -1999,15 +2021,27 @@
             if (!Object.keys(patch).length) { await recarregar(); abrirPainel({ tipo: 'detalhe', id: p.id }); toast('Dados salvos.'); return; }
             await S.api.atualizar(p.id, patch); await recarregar(); abrirPainel({ tipo: 'detalhe', id: p.id }); toast('Cadastro atualizado.');
           } else {
-            const novo = await S.api.criar(m);
             const temAlgo = priv && (priv.data_nascimento || priv.nis || Object.keys(priv.endereco).length || priv.socioeconomico || priv.perfil);
+            // 47: cadastro vindo do link: uma operação só no banco (pessoa + dados pessoais + cadastro enviado aprovado: tudo ou nada).
+            //     Banco ainda sem o 47: segue pelas três gravações de antes e avisa para instalar.
+            let novo = null, semFuncao = false;
+            if (p.pre && S.api.aprovarPreCadastro) {
+              try { novo = await S.api.aprovarPreCadastro(p.pre, m, temAlgo ? priv : null); }
+              catch (e) { if (!(e && e.semFuncao)) throw e; semFuncao = true; }
+            }
+            const deUmaVez = !!novo;
+            if (!novo) novo = await S.api.criar(m);
             // a pessoa já está cadastrada: uma falha daqui em diante não pode levar a cadastrar de novo (daria "CPF já ocupa vaga")
             let falhou = '';
-            try { if (temAlgo) await S.api.salvarPrivado(novo.id, priv); } catch (e) { falhou = 'os dados pessoais (nascimento, endereço, perfil) não foram salvos: abra "Editar" e salve de novo'; }
-            try { if (p.pre) await S.api.decidirPreCadastro(p.pre, 'aprovado', null, novo.id); } catch (e) { falhou = falhou || 'o cadastro enviado pelo link continua na lista: recuse-o com o motivo "já cadastrada"'; }
+            if (!deUmaVez) {
+              try { if (temAlgo) await S.api.salvarPrivado(novo.id, priv); } catch (e) { falhou = 'os dados pessoais (nascimento, endereço, perfil) não foram salvos: abra "Editar" e salve de novo'; }
+              try { if (p.pre) await S.api.decidirPreCadastro(p.pre, 'aprovado', null, novo.id); } catch (e) { falhou = falhou || 'o cadastro enviado pelo link continua na lista: recuse-o com o motivo "já cadastrada"'; }
+            }
+            if (semFuncao && !falhou) { try { console.warn('aprovar_pre_cadastro não instalada: instale o 47 (supabase/47_auditoria_bd.sql)'); } catch (e) {} }
             try { await recarregar(); } catch (e) {}
             abrirPainel({ tipo: 'detalhe', id: novo.id });
-            if (falhou) { toast(nomeDe(m).split(' ')[0] + ' foi cadastrada, mas ' + falhou + '.'); return; }
+            if (falhou) { toast(nomeDe(m).split(' ')[0] + ' foi cadastrada, mas ' + falhou + '.' + (semFuncao ? ' Para isto não acontecer mais, instale o 47 no servidor (arquivo 47_auditoria_bd.sql).' : '')); return; }
+            if (semFuncao && S.eu && S.eu.papel === 'coord_geral') { toast(nomeDe(m).split(' ')[0] + ' cadastrada. Aviso: instale o 47 no servidor (arquivo 47_auditoria_bd.sql) para a aprovação ser gravada de uma vez só.'); return; }
             toast(nomeDe(m).split(' ')[0] + (['professor_fic', 'auxiliar_adm'].includes(m.papel) ? ' cadastrado(a). Próximo passo: cadastro no Arlo e termo.' : ' cadastrada. Próximo passo: matrícula no curso FIC.'));
           }
         });
@@ -2029,7 +2063,7 @@
         if (temArq && arq.size > 10 * 1024 * 1024) erros.termo = 'Arquivo acima de 10 MB. Envie um PDF menor ou uma foto.';
         // PDF ou foto de verdade: confere a extensão e o começo do arquivo (programa ou página renomeada para .pdf não passa)
         else if (temArq && MQ.arquivoConfere) { const falso = await MQ.arquivoConfere(arq, ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'], { rotulo: 'PDF ou foto (JPG, PNG)' }); if (falso) erros.termo = falso; }
-        // 47: a data do termo só é salva com o termo anexado (pela pessoa, antes, ou por quem confere, agora)
+        // 48: a data do termo só é salva com o termo anexado (pela pessoa, antes, ou por quem confere, agora)
         if (!erros.termo && patch.termo_assinado_em && !m.termo_path && !temArq) erros.termo_assinado_em = R.MSG_TERMO_SEM_ARQUIVO;
         if (erros.termo) { const dt = form.querySelector('details.explica'); if (dt) dt.open = true; }
         if (Object.keys(erros).length) return mostrarErros(form, erros);
@@ -2055,7 +2089,7 @@
         });
       }
     } catch (e) {
-      mostrarErros(form, (e && e.campos) || {}, avisarErro(e));
+      if (!(e && e.jaAvisado)) mostrarErros(form, (e && e.campos) || {}, avisarErro(e));   // (conflito de versão: o formulário já reabriu com o aviso)
     } finally { S.acaoNoPainel = Math.max(0, (S.acaoNoPainel || 1) - 1); }
   });
 

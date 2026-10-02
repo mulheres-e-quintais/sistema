@@ -29,7 +29,7 @@
     const porId = new Map(S.fichas.map(f => [f.id, Object.assign({}, f)]));
     S.fila.filter(it => !it.tipo || it.tipo === 'ficha').forEach(it => {
       const base = porId.get(it.id) || {};
-      porId.set(it.id, Object.assign({}, base, it.dados, { _fila: true, _erro: it.erro || null, situacao: base.situacao || 'aguardando' }));
+      porId.set(it.id, Object.assign(MQ.juntarFila(porId.get(it.id), it), { _fila: true, _erro: it.erro || null, _conflito: !!it.conflito, situacao: base.situacao || 'aguardando' }));
     });
     return [...porId.values()].sort((a, b) => String(b.data_ficha || '').localeCompare(String(a.data_ficha || '')) || String(a.nome).localeCompare(String(b.nome)));
   }
@@ -192,15 +192,15 @@
           <div class="campo inteiro"><label for="fi-nome">Nome completo</label><input id="fi-nome" name="nome" value="${v('nome')}" autocomplete="off" required></div>
           <div class="campo"><label for="fi-cpf">CPF</label><input id="fi-cpf" name="cpf" inputmode="numeric" value="${E(R.fmtCPF(f.cpf || ''))}" placeholder="000.000.000-00"></div>
           <div class="campo"><label for="fi-nasc">Data de nascimento</label><input id="fi-nasc" name="data_nascimento" type="date" value="${v('data_nascimento')}" max="${R.hoje()}"></div>
-          <div class="campo"><label for="fi-cel">Celular / WhatsApp</label><input id="fi-cel" name="celular" inputmode="tel" value="${v('celular')}"></div>
+          <div class="campo"><label for="fi-cel">Celular / WhatsApp</label><input id="fi-cel" name="celular" maxlength="40" inputmode="tel" value="${v('celular')}"></div>
           <div class="campo"><label for="fi-pess">Nº de pessoas na família</label><input id="fi-pess" name="pessoas_familia" type="number" min="1" max="30" inputmode="numeric" value="${v('pessoas_familia')}"></div>
-          <div class="campo"><label for="fi-mun">Município</label><input id="fi-mun" name="municipio" list="fi-lista-mun" value="${v('municipio')}"><datalist id="fi-lista-mun">${munis.map(m => `<option value="${E(m)}">`).join('')}</datalist></div>
-          <div class="campo"><label for="fi-com">Comunidade / assentamento</label><input id="fi-com" name="comunidade" value="${v('comunidade')}"></div>
-          <div class="campo inteiro"><label for="fi-end">Endereço (rua, sítio, nº)</label><input id="fi-end" name="endereco" value="${v('endereco')}"><span class="dica">Escreva do jeito mais completo possível: é por ele que o sistema confere se já há alguém da mesma casa.</span></div>
-          <div class="campo inteiro"><label for="fi-ref">Ponto de referência</label><input id="fi-ref" name="ponto_referencia" value="${v('ponto_referencia')}"></div>
+          <div class="campo"><label for="fi-mun">Município</label><input id="fi-mun" name="municipio" maxlength="120" list="fi-lista-mun" value="${v('municipio')}"><datalist id="fi-lista-mun">${munis.map(m => `<option value="${E(m)}">`).join('')}</datalist></div>
+          <div class="campo"><label for="fi-com">Comunidade / assentamento</label><input id="fi-com" name="comunidade" maxlength="300" value="${v('comunidade')}"></div>
+          <div class="campo inteiro"><label for="fi-end">Endereço (rua, sítio, nº)</label><input id="fi-end" name="endereco" maxlength="300" value="${v('endereco')}"><span class="dica">Escreva do jeito mais completo possível: é por ele que o sistema confere se já há alguém da mesma casa.</span></div>
+          <div class="campo inteiro"><label for="fi-ref">Ponto de referência</label><input id="fi-ref" name="ponto_referencia" maxlength="300" value="${v('ponto_referencia')}"></div>
           <div class="campo"><label for="fi-nis">NIS (CadÚnico)</label><input id="fi-nis" name="nis" inputmode="numeric" value="${v('nis')}" placeholder="Se tiver"></div>
-          <div class="campo"><label for="fi-caf">CAF nº</label><input id="fi-caf" name="caf" value="${v('caf')}" placeholder="Se tiver"></div>
-          <div class="campo inteiro"><label for="fi-ind">Quem indicou (organização / liderança)</label><input id="fi-ind" name="indicada_por" value="${v('indicada_por')}"></div>
+          <div class="campo"><label for="fi-caf">CAF nº</label><input id="fi-caf" name="caf" maxlength="60" value="${v('caf')}" placeholder="Se tiver"></div>
+          <div class="campo inteiro"><label for="fi-ind">Quem indicou (organização / liderança)</label><input id="fi-ind" name="indicada_por" maxlength="200" value="${v('indicada_por')}"></div>
           <div class="campo"><label for="fi-data">Data da ficha</label><input id="fi-data" name="data_ficha" type="date" value="${v('data_ficha')}" max="${R.hoje()}"></div>
           <div class="campo"><label>Localização</label><button type="button" class="btn peq" data-acao="ficha-gps">${f.latitude ? 'Localização registrada ✓' : 'Registrar localização'}</button>
             <input type="hidden" name="latitude" value="${v('latitude')}"><input type="hidden" name="longitude" value="${v('longitude')}"><span class="dica" id="fi-gps-dica">${f.latitude ? E(f.latitude + ', ' + f.longitude) : 'Opcional. Use na casa da mulher.'}</span></div>
@@ -216,7 +216,7 @@
             <div class="campo inteiro"><label for="fi-ass">Como assinou</label><select id="fi-ass" name="assinatura">
               <option value="assinatura" ${f.assinatura !== 'digital' ? 'selected' : ''}>Assinou o nome</option>
               <option value="digital" ${f.assinatura === 'digital' ? 'selected' : ''}>Impressão digital + testemunha</option></select></div>
-            <div class="campo" data-so-digital><label for="fi-tn">Testemunha: nome</label><input id="fi-tn" name="testemunha_nome" value="${v('testemunha_nome')}"></div>
+            <div class="campo" data-so-digital><label for="fi-tn">Testemunha: nome</label><input id="fi-tn" name="testemunha_nome" maxlength="160" value="${v('testemunha_nome')}"></div>
             <div class="campo" data-so-digital><label for="fi-tc">Testemunha: CPF</label><input id="fi-tc" name="testemunha_cpf" inputmode="numeric" value="${E(R.fmtCPF(f.testemunha_cpf || ''))}"></div>
             <div class="campo inteiro"><label for="fi-ft">Foto do termo assinado</label><input id="fi-ft" name="foto_termo" type="file" accept="image/*" capture="environment">
               <span class="dica" id="fi-ft-dica">${f.foto_termo_path ? 'Já tem foto. Envie outra só se quiser trocar.' : 'Fotografe o papel inteiro, com as assinaturas legíveis.'}</span></div>
@@ -238,7 +238,7 @@
         <fieldset><legend>5. Resultado</legend><div id="fi-resultado"></div>
           <div class="campos">
             <div class="campo" data-so="lista_espera"><label for="fi-pos">Posição na lista de espera</label><input id="fi-pos" name="posicao_espera" type="number" min="1" inputmode="numeric" value="${v('posicao_espera')}"></div>
-            <div class="campo inteiro" data-so="sem_agua"><label for="fi-enc">Encaminhada para (programa de cisternas / órgão)</label><input id="fi-enc" name="encaminhada_para" value="${v('encaminhada_para')}"></div>
+            <div class="campo inteiro" data-so="sem_agua"><label for="fi-enc">Encaminhada para (programa de cisternas / órgão)</label><input id="fi-enc" name="encaminhada_para" maxlength="300" value="${v('encaminhada_para')}"></div>
             <div class="campo inteiro"><label for="fi-just">Justificativa / observações</label><textarea id="fi-just" name="justificativa">${v('justificativa')}</textarea></div>
             <div class="campo inteiro"><label for="fi-ff">Foto da ficha em papel assinada</label><input id="fi-ff" name="foto_ficha" type="file" accept="image/*,application/pdf" capture="environment">
               <span class="dica" id="fi-ff-dica">${f.foto_ficha_path ? 'Já tem foto. Envie outra só se quiser trocar.' : 'As duas páginas, com as assinaturas da mulher e da bolsista.'}</span></div>
@@ -360,14 +360,14 @@
           <div id="fi-foto-vista"></div></div>
         ${podeDecidir && f.situacao !== 'aprovada' ? `<form class="bloco" data-form="ficha-decisao" data-id="${E(f.id)}" data-ver="${ver}" novalidate><h3>Decisão da coordenação</h3>
           <p class="small muted">A bolsista marcou o resultado (${E(((MQ.RESULTADOS[f.resultado] || {}).nome || '').toLowerCase())}). Aqui você confere: aprove se os papéis fotografados batem com a ficha e os critérios foram aplicados como aprovado em ata. Se algo estiver errado, devolva dizendo o que corrigir.</p>
-          <div class="campo"><label for="fd-obs">Observação para a bolsista</label><textarea id="fd-obs" name="obs">${E(f.obs_coordenacao || '')}</textarea></div>
+          <div class="campo"><label for="fd-obs">Observação para a bolsista</label><textarea id="fd-obs" name="obs" maxlength="4000">${E(f.obs_coordenacao || '')}</textarea></div>
           <div class="aviso erro" data-erro hidden></div>
           <div class="acoes"><button class="btn pri" type="submit" name="decisao" value="aprovada">Aprovar</button>
             <button class="btn perigo" type="submit" name="decisao" value="devolvida">Devolver para correção</button></div></form>` : ''}
         ${podeDecidir && f.situacao === 'aprovada' ? `<details class="hist reabrir-ficha"><summary>Achou um erro depois de aprovar? Reabrir esta ficha</summary>
           <form class="f" data-form="ficha-decisao" data-id="${E(f.id)}" data-ver="${ver}" novalidate>
           <p class="small muted">A ficha já foi conferida e aprovada: não há nada a fazer aqui. Só use isto se descobrir um erro. Ela volta para a bolsista corrigir e sai da contagem de aprovadas até ser aprovada de novo.</p>
-          <div class="campo"><label for="fd-obs">O que precisa ser corrigido</label><textarea id="fd-obs" name="obs"></textarea></div>
+          <div class="campo"><label for="fd-obs">O que precisa ser corrigido</label><textarea id="fd-obs" name="obs" maxlength="4000"></textarea></div>
           <div class="aviso erro" data-erro hidden></div>
           <div class="acoes"><button class="btn perigo" type="submit" name="decisao" value="devolvida">Reabrir: devolver para correção</button></div></form></details>` : ''}
       </div>`;
@@ -436,7 +436,11 @@
       }
       await U().ocupado(form, async () => {
         const dados = Object.assign({}, f); delete dados.tem_foto_ficha; delete dados.tem_foto_termo;
-        await MQ.fila.salvar({ id: f.id, dono: S.eu.id, tipo: 'ficha', dados, fotos: { ficha: fotosTemp.ficha, termo: fotosTemp.termo }, erro: null });
+        ['_fila', '_erro', '_conflito'].forEach(k => delete dados[k]);
+        // 47: a versão que ela leu vai com o envio (e fica na fila, se estiver sem internet), mais a lista do que ela mudou
+        const vista = U().vista(), antes = (vista.fila || []).find(i => i.id === f.id && (!i.tipo || i.tipo === 'ficha')), noServ = (vista.fichas || []).find(x => x.id === f.id);
+        await MQ.fila.salvar({ id: f.id, dono: S.eu.id, tipo: 'ficha', dados, fotos: { ficha: fotosTemp.ficha, termo: fotosTemp.termo }, erro: null,
+          marca: U().marcaAberta('ficha', f.id), mud: MQ.camposMudados(dados, noServ, antes && antes.mud) });
         fotosTemp.ficha = fotosTemp.termo = null;
         S.fila = await MQ.fila.listar(S.eu.id);
         U().fecharPainel(); U().render();

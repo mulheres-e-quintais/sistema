@@ -60,7 +60,7 @@ supabase/10_apl.sql              etapa 10: arranjo produtivo local por municípi
 supabase/11_fic.sql              etapa 11: professores do FIC, turmas e matrículas; cadastro no Arlo e SIAPE; auxiliar administrativo (um só)
 supabase/12_pagamentos.sql       etapa 12: visita feita (implantação/acompanhamento) e solicitação de pagamento: solicita → aval → auxiliar lança no Arlo
 supabase/13_avaliacao.sql        etapa 13: visita de avaliação (5ª visita, 200 dias de campo por estado) e medidas de impacto antes × depois
-supabase/47_termo_pela_pessoa.sql etapa 47: a própria pessoa anexa o termo de compromisso; a data só entra com o termo anexado (decisão de 02/10/2026)
+supabase/48_termo_pela_pessoa.sql etapa 48: a própria pessoa anexa o termo de compromisso; a data só entra com o termo anexado (decisão de 02/10/2026)
 supabase/06_apagar_exemplo.sql   apaga os dados inventados
 supabase/00_verificar.sql        só lê: mostra quais etapas já estão instaladas e quantos registros há
 supabase/15_coord_geral_total.sql etapa 15: coordenação geral com todos os acessos (decisão de 28/09/2026)
