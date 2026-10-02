@@ -1,3 +1,4 @@
+-- (a tabela ia_usos, do script opcional 20, não entra: nem toda instalação tem)
 -- =====================================================================
 -- Mulheres & Quintais — 90: AUDITORIA DA QUALIDADE DOS DADOS (só lê, não muda nada)
 -- Supabase > SQL Editor > New query > cole este arquivo inteiro > Run.
@@ -107,10 +108,6 @@ with c (codigo, verificacao, quantidade, como_ver) as (
   select 'A21', 'órfãos em fichas (aprovada_por, bolsista_id)',
     (select count(*) from (select x.* from public.fichas x where (x.aprovada_por is not null and not exists (select 1 from public.equipe y where y.id = x.aprovada_por)) or (x.bolsista_id is not null and not exists (select 1 from public.equipe y where y.id = x.bolsista_id))) q),
     $q$select x.* from public.fichas x where (x.aprovada_por is not null and not exists (select 1 from public.equipe y where y.id = x.aprovada_por)) or (x.bolsista_id is not null and not exists (select 1 from public.equipe y where y.id = x.bolsista_id));$q$
-  union all
-  select 'A22', 'órfãos em ia_usos (equipe_id)',
-    (select count(*) from (select x.* from public.ia_usos x where (x.equipe_id is not null and not exists (select 1 from public.equipe y where y.id = x.equipe_id))) q),
-    $q$select x.* from public.ia_usos x where (x.equipe_id is not null and not exists (select 1 from public.equipe y where y.id = x.equipe_id));$q$
   union all
   select 'A23', 'órfãos em matriculas_fic (criado_por, equipe_id, turma_id)',
     (select count(*) from (select x.* from public.matriculas_fic x where (x.criado_por is not null and not exists (select 1 from public.equipe y where y.id = x.criado_por)) or (x.equipe_id is not null and not exists (select 1 from public.equipe y where y.id = x.equipe_id)) or (x.turma_id is not null and not exists (select 1 from public.turmas_fic y where y.id = x.turma_id))) q),
