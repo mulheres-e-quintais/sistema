@@ -100,7 +100,7 @@
       <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>`;
     if (p.tipo === 'pend-banco') return cab('Conta bancária') + `<div class="painel-corpo">${MQ.bancoUI.secaoMinha(true)}
       <div class="acoes"><button class="btn" type="button" data-acao="pend-ver">Voltar</button></div></div>`;
-    if (p.tipo === 'pend-termo') return cab('Termo de compromisso') + `<div class="painel-corpo">${formTermo(l.m || eu())}</div>`;
+    if (p.tipo === 'pend-termo') return cab(R.tipoTermo(l.m || eu() || {}) === 'servidor' ? 'Termo de autorização' : 'Termo de compromisso') + `<div class="painel-corpo">${formTermo(l.m || eu())}</div>`;
     if (p.tipo === 'pend-dados') return cab(l.m && l.m.cadastro_arlo ? 'Cidade onde mora' : 'Dados pessoais') + `<div class="painel-corpo">${formDados(l.m)}</div>`;
     if (!l.itens.length) return cab('Tudo em dia') + `<div class="painel-corpo"><p>Nenhuma pendência no seu cadastro.</p>
       <div class="acoes"><button class="btn pri" data-acao="fechar">Fechar</button></div></div>`;
