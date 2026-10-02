@@ -104,12 +104,14 @@
   function linhaMeta(meta, S, d, mes) {
     const x = infoMeta(meta, S, d, mes);
     const hoje = R.hoje(); const ms = (MQ.MARCOS || []).filter(k => k.meta === meta.id);
-    const marcosDaMeta = ms.length ? `<p class="meta-marcos"><b>Marco${ms.length > 1 ? 's' : ''} desta meta:</b> ${ms.map(k => `<span class="mm${k.d < hoje ? ' passou' : ''}"><span class="num">${R.fmtData(k.d)}</span> · ${E(k.t)}</span>`).join('')}</p>` : '';
+    const MESC = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    const marcosDaMeta = ms.length ? `<div class="mm-marcos"><span class="mm-t">Marco${ms.length > 1 ? 's' : ''} desta meta</span><ul>${ms.map(k => `<li class="${k.d < hoje ? 'passou' : ''}"><time datetime="${k.d}"><b>${k.d.slice(8, 10)}</b> ${MESC[+k.d.slice(5, 7) - 1]} ${k.d.slice(0, 4)}</time><span>${E(k.t)}</span></li>`).join('')}</ul></div>` : '';
     return `<details class="dx-meta" id="meta-${meta.id}">
       <summary><span class="meta-id">${meta.id}</span><span class="meta-nome">${E(meta.nome)}</span>${chipStatus(x.st, x.st === 'nao' && mes - 1 < meta.ini ? 'Começa em ' + MESES[meta.ini - 1] : null)}
         <span class="medidor" role="img" aria-label="${x.atual == null ? 'sem registro' : x.atual + ' de ' + x.alvo}${x.pctPrev != null && x.prev > 0 ? ', previsto até agora ' + x.prev : ''}"><i class="${STATUS[x.st].cls}" style="width:${x.pct}%"></i>${x.pctPrev != null && x.prev > 0 ? `<b class="previsto" style="left:${x.pctPrev}%"></b>` : ''}</span>
         <span class="meta-num num"><b>${x.atual == null ? '—' : x.atual}</b> de ${x.alvo} <span class="muted">${E(x.un)}</span></span><span class="meta-ver" aria-hidden="true"></span></summary>
-      <div class="dx-meta-mais"><p>${E(x.nota)}</p><p class="muted">Período: ${MESES[meta.ini - 1]} a ${MESES[meta.fim - 1]}${x.pctPrev != null && mes - 1 >= meta.ini ? ` · previsto até ${MESES[Math.max(0, mes - 2)]}: ${x.prev}` : ''}${meta.valor ? ` · valor no plano: ${R.fmtBRL(meta.valor).replace(',00', '')}` : ''}.</p>${marcosDaMeta}</div>
+      <div class="dx-meta-mais"><p class="mm-nota">${E(x.nota)}</p>
+        <dl class="mm-dados"><div><dt>Período</dt><dd>${MESES[meta.ini - 1]} a ${MESES[meta.fim - 1]}</dd></div>${x.pctPrev != null && mes - 1 >= meta.ini ? `<div><dt>Previsto até ${MESES[Math.max(0, mes - 2)]}</dt><dd class="num">${x.prev}</dd></div>` : ''}${meta.valor ? `<div><dt>Valor no plano</dt><dd class="num">${R.fmtBRL(meta.valor).replace(',00', '')}</dd></div>` : ''}</dl>${marcosDaMeta}</div>
     </details>`;
   }
 
@@ -437,7 +439,7 @@
             <details class="dx-meta"><summary><span class="meta-id">Sel.</span><span class="meta-nome">Seleção das beneficiárias</span>${chipStatus(d.selAprov.length >= 200 ? 'concluida' : d.fichas.length ? 'andamento' : 'nao')}
               <span class="medidor" role="img" aria-label="${d.selAprov.length} de 200"><i class="${d.selAprov.length >= 200 ? 'st-ok' : 'st-and'}" style="width:${Math.min(100, d.selAprov.length / 2)}%"></i></span>
               <span class="meta-num num"><b>${d.selAprov.length}</b> de 200 <span class="muted">selecionadas</span></span><span class="meta-ver" aria-hidden="true"></span></summary>
-              <div class="dx-meta-mais"><p>Antes da Meta 2. Registrada no sistema (ficha de indicação e termo de consentimento). ${aguard} aguardando aprovação.</p></div></details>
+              <div class="dx-meta-mais"><p class="mm-nota">Antes da Meta 2. Registrada no sistema (ficha de indicação e termo de consentimento). ${aguard} aguardando aprovação.</p></div></details>
             ${MQ.METAS.filter(m => m.fonte && m.fonte !== 'equipe').map(m => linhaMeta(m, S, d, mes)).join('')}
             ${MQ.METAS.filter(m => !m.fonte).map(m => linhaMeta(m, S, d, mes)).join('')}
           </div>
