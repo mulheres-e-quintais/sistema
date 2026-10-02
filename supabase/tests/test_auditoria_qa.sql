@@ -341,7 +341,7 @@ select t('cadastro no Arlo com data no futuro é recusado', :X, format($q$update
 select t('cadastro no Arlo com data de 2020 é recusado', :X, format($q$update public.equipe set docs_funcern_em = '2020-01-01' where id = %L$q$, :'ag2'), 'cadastro no Arlo');
 select t('matrícula no FIC com data no futuro é recusada (também por dentro do banco)', null, format($q$do $x$ begin set local role none;
   update public.equipe set matricula_fic_em = '2090-01-01', matricula_fic_numero = '2026555' where id = %L; end $x$$q$, :'ag2'), 'matrícula no FIC');
-select t('auxiliar continua registrando Arlo e termo com a data de hoje', :X, format($q$update public.equipe set docs_funcern_em = public.fic_hoje(), termo_assinado_em = public.fic_hoje() where id = %L$q$, :'ag2'), 'ok');
+select t('auxiliar continua registrando Arlo e termo com a data de hoje', :X, format($q$update public.equipe set docs_funcern_em = public.fic_hoje(), termo_path = coalesce(termo_path, 'equipe/qa/termo_1.pdf'), termo_assinado_em = public.fic_hoje() where id = %L$q$, :'ag2'), 'ok');
 select t('desligamento com data no futuro é recusado', :T, format($q$update public.equipe set status = 'desligada', data_fim = public.fic_hoje() + 30, motivo_desligamento = 'vai sair do projeto' where id = %L$q$, :'ag2'), 'desligamento não pode ser no futuro');
 select t('desligamento com a data de hoje continua funcionando', :T, format($q$update public.equipe set status = 'desligada', data_fim = public.fic_hoje(), motivo_desligamento = 'saiu do projeto' where id = %L$q$, :'ag2'), 'ok');
 select t('cadastro antigo (início em 2020) continua podendo ser alterado em outro campo', :T, $q$update public.equipe set telefone = '(74) 98888-0000' where email = 'qa.antiga@t.com'$q$, 'ok');

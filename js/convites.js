@@ -12,6 +12,13 @@
   /* ---------- dados pessoais complementares (mesmos campos no link e no cadastro pela coordenação) ---------- */
   const ESCOLARIDADE = ['Fundamental incompleto', 'Fundamental completo', 'Médio incompleto', 'Médio completo', 'Técnico', 'Superior incompleto', 'Superior completo', 'Pós-graduação'];
   const RACA = ['Preta', 'Parda', 'Branca', 'Amarela', 'Indígena', 'Prefiro não informar'];
+  /* explicação que abre com um toque: a maioria das pessoas nunca ouviu falar no Arlo */
+  function oQueEArlo(pub) {
+    return `<details class="explica"><summary>O que é o Arlo?</summary>
+      <p>É o sistema da <b>FUNCERN</b>, a fundação que cuida do dinheiro do projeto e faz os pagamentos. É nele que ficam os dados e a conta bancária de quem recebe bolsa ou ajuda de custo.</p>
+      <p><b>Marque Sim</b> se ${pub ? 'você' : 'a pessoa'} já recebeu bolsa ou pagamento por outro projeto administrado pela FUNCERN: o cadastro já deve estar lá.</p>
+      <p><b>Marque Não</b> se nunca recebeu pela FUNCERN ou se ${pub ? 'não sabe' : 'ela não sabe'}: o auxiliar administrativo do projeto faz o cadastro${pub ? ' para você' : ''}, com os dados deste formulário.</p></details>`;
+  }
   /* papel: quem vai a campo (articulação, apoio, agente) informa a cidade mesmo com Arlo (cálculo da ajuda de custo) */
   /* perfil no campo (Guia das bolsistas, item 3): coordenação técnica, bolsistas e agentes */
   const PERFIL_Q = [
@@ -58,8 +65,9 @@
     const op = (lista, sel) => '<option value="">Selecione…</option>' + lista.map(x => `<option ${x === sel ? 'selected' : ''}>${E(x)}</option>`).join('');
     const arlo = d.cadastro_arlo === true;   // sem resposta ainda: nenhuma opção marcada
     const sn = (val, t) => `<label class="sn${d.cadastro_arlo === val ? ' on' : ''}"><input type="radio" name="cadastro_arlo" value="${val ? 'sim' : 'nao'}" ${d.cadastro_arlo === val ? 'checked' : ''} data-arlo>${t}</label>`;
-    return `${temPerfil(papel) ? camposPerfil(d.perfil, pub) : ''}<fieldset><legend>Cadastro no Arlo</legend>
-        <div class="criterio" id="w-cadastro_arlo"><span>${pub ? 'Você já tem' : 'A pessoa já tem'} cadastro no Arlo?</span><span class="sn-par">${sn(true, 'Sim')}${sn(false, 'Não')}</span></div>
+    return `${temPerfil(papel) ? camposPerfil(d.perfil, pub) : ''}<fieldset><legend>Cadastro na FUNCERN (sistema Arlo)</legend>
+        <div class="criterio" id="w-cadastro_arlo"><span>${pub ? 'Você já tem' : 'A pessoa já tem'} cadastro no sistema Arlo, da FUNCERN?</span><span class="sn-par">${sn(true, 'Sim')}${sn(false, 'Não')}</span></div>
+        ${oQueEArlo(pub)}
         <p class="small muted" data-arlo-nota ${arlo ? '' : 'hidden'}>Então bastam os dados básicos: nome, CPF, celular e e-mail${campo ? ', mais o município onde mora (o sistema não lê o Arlo e calcula a ajuda de custo das visitas pela distância do município até os quintais)' : ''}. Nascimento, NIS, endereço e conta bancária ficam no Arlo.</p>
       </fieldset>
       <div data-arlo-opc ${arlo ? 'hidden' : ''}><fieldset><legend>Mais dados pessoais</legend><div class="campos">
@@ -108,7 +116,7 @@
   const dataExiste = v => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || '')); if (!m) return false; const t = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return t.getUTCFullYear() === +m[1] && t.getUTCMonth() === +m[2] - 1 && t.getUTCDate() === +m[3]; };
   function validarPessoais(d, pub) {
     const e = {};
-    if (!d._arlo_resp) e.cadastro_arlo = 'Responda se já tem cadastro no Arlo.';
+    if (!d._arlo_resp) e.cadastro_arlo = 'Responda se já tem cadastro no sistema Arlo, da FUNCERN. Se não souber, marque Não.';
     if (pub && !d.cadastro_arlo && !d.data_nascimento) e.data_nascimento = 'Informe a data de nascimento.';
     if (pub && d.cadastro_arlo && d._campo && !d.endereco.cidade) e.cidade = 'Informe o município onde mora (usado no cálculo da ajuda de custo).';
     if (d.data_nascimento && (!dataExiste(d.data_nascimento) || d.data_nascimento < '1900-01-01' || d.data_nascimento > R.hoje() || R.idade(d.data_nascimento) < 16)) e.data_nascimento = 'Data de nascimento inválida.';   // 30/02 e 1800 não passam
