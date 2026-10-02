@@ -2551,3 +2551,30 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 .mm-marcos time b { font: 600 var(--t-md)/1 var(--serif); }
 .mm-marcos li.passou { color: var(--muted); } .mm-marcos li.passou time { background: var(--surface-2); border-color: var(--line); color: var(--muted); }
 @media (max-width: 640px) { .dx-duas .dx-meta .dx-meta-mais { margin: 2px 4px 12px 4px; padding: 12px; } .mm-marcos li { grid-template-columns: 1fr; gap: 4px; } .mm-marcos time { justify-self: start; } }
+
+/* --- ROTEIRO DE CAMPO no celular: um cartão por visita (02/10/2026) ---
+   data e situação no topo, a mulher em destaque, etapa e quem visita lado a lado, ação em largura inteira */
+@media (max-width: 720px) {
+  .quadro-scroll:has(> .tab-rot) { border: 0; background: transparent; overflow: visible; }
+  table.quadro.tab-rot, table.quadro.tab-rot tbody { display: block; min-width: 0; width: 100%; }
+  table.quadro.tab-rot thead { display: none; }
+  table.quadro.tab-rot tbody { display: grid; gap: 10px; }
+  table.quadro.tab-rot tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "data sit" "mulher mulher" "etapa quem" "acao acao"; gap: 10px 14px; align-items: start;
+    padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 1px 2px rgba(69, 43, 26, .04); }
+  table.quadro.tab-rot td { display: block; padding: 0; border: 0; background: transparent; white-space: normal; text-align: left; min-width: 0; }
+  table.quadro.tab-rot td.rt-data { grid-area: data; font: 600 var(--t-md)/1.2 var(--sans); color: var(--ink); align-self: center; }
+  table.quadro.tab-rot td.rt-uf { display: none; }   /* o estado já aparece no município e no título da seção */
+  table.quadro.tab-rot td.rt-sit { grid-area: sit; justify-self: end; align-self: center; }
+  table.quadro.tab-rot td.rt-mulher { grid-area: mulher; font-weight: 600; font-size: var(--t-md); color: var(--ink); padding-top: 10px; border-top: 1px solid var(--line); }
+  table.quadro.tab-rot td.rt-mulher .small { font-weight: 400; }
+  table.quadro.tab-rot td.rt-etapa { grid-area: etapa; } table.quadro.tab-rot td.rt-quem { grid-area: quem; }
+  table.quadro.tab-rot td.rt-etapa, table.quadro.tab-rot td.rt-quem { font-size: var(--t-sm); color: var(--ink); }
+  table.quadro.tab-rot td.rt-etapa::before, table.quadro.tab-rot td.rt-quem::before { display: block; margin-bottom: 2px; font: 600 var(--t-2xs)/1.2 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  table.quadro.tab-rot td.rt-etapa::before { content: "Etapa"; } table.quadro.tab-rot td.rt-quem::before { content: "Quem visita"; }
+  table.quadro.tab-rot td.rt-acao { grid-area: acao; }
+  table.quadro.tab-rot td.rt-acao:empty, table.quadro.tab-rot td.rt-acao:has(.rot-acoes:empty) { display: none; }
+  table.quadro.tab-rot .rot-acoes { display: grid; gap: 8px; justify-items: stretch; }
+  table.quadro.tab-rot .rot-acoes .btn { width: 100%; min-height: 44px; justify-content: center; }
+  table.quadro.tab-rot .rot-acoes .link { justify-self: center; min-height: 40px; }
+}
+.rt-ufm { display: none; } @media (max-width: 720px) { .rt-ufm { display: inline; } }
