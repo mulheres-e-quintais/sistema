@@ -2441,3 +2441,64 @@ p.carregando:has(.carregando-t) { flex-direction: column; gap: 12px; }
 .btn-acao.mini .ba-ic { flex: 0 0 18px; height: 18px; padding-right: 8px; }
 .btn-acao.mini .ba-ic svg { width: 18px; height: 18px; }
 .btn-acao.mini { padding: 0 14px 0 12px; }
+
+/* --- VISÃO GERAL: quadros em cartões (02/10/2026) — "O que pede atenção", metas, marcos, por estado e acesso à água --- */
+.dx-atencao, .dx-duas > section.secao, .dx-lado > section.secao, .dx-agua {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px 20px;
+  box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 8px 22px rgba(69, 43, 26, .06); }
+.dx-duas { gap: 28px; } .dx-lado { gap: 28px; }
+.dx-atencao > .secao-cab, .dx-duas > section.secao > .secao-cab, .dx-agua > .secao-cab { margin: 0 0 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line); align-items: center; }
+.dx-atencao h2, .dx-duas > section.secao h2, .dx-lado > section.secao h2, .dx-agua h2 { font-size: var(--t-xl); }
+.dx-lado > section.secao > h2 { margin: 0 0 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+
+/* o que pede atenção: faixa colorida por gravidade, contadores em pílulas, linha que acende ao passar */
+.dx-atencao { border-top: 3px solid var(--accent); }
+.dx-conta { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+.dx-ct { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 99px; font-size: var(--t-sm); font-weight: 600; }
+.dx-ct b { font: 600 var(--t-md)/1 var(--serif); }
+.dx-ct-crit { background: var(--crit-bg); color: var(--crit); } .dx-ct-pend { background: var(--pend-bg); color: var(--pend); }
+.dx-atencao .dx-tab { border-top: 0; gap: 8px; }
+.dx-atencao .dx-tr.dx-th { padding: 0 16px 2px 20px; border: 0; background: transparent; }
+.dx-atencao .dx-tr:not(.dx-th) { padding: 14px 16px 14px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); position: relative; overflow: hidden; transition: border-color .15s, background .15s; }
+.dx-atencao .dx-tr:not(.dx-th)::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--pend); }
+.dx-atencao .dx-tr.dx-n-crit::before { background: var(--crit); }
+.dx-atencao .dx-tr.dx-n-crit { background: color-mix(in srgb, var(--crit-bg) 45%, var(--surface)); border-color: color-mix(in srgb, var(--crit) 22%, var(--line)); }
+.dx-atencao .dx-tr:not(.dx-th):hover { border-color: var(--line-2); }
+.dx-atencao .dx-prob b { font-size: var(--t-md); } .dx-atencao .dx-prob small { font-size: var(--t-sm); color: var(--ink-2); }
+.dx-atencao .dx-prob .st-pt { width: 10px; height: 10px; margin-top: 7px; }
+
+/* metas: sigla em selo, barra mais cheia, linha que acende ao passar */
+.dx-duas .dx-metas { border-top: 0; }
+.dx-duas .dx-meta { border-bottom: 1px solid var(--line); border-radius: 10px; transition: background .15s; }
+.dx-duas .dx-meta:last-child { border-bottom: 0; }
+.dx-duas .dx-meta summary { grid-template-columns: 46px minmax(0, 1fr) auto; gap: 8px 14px; padding: 14px 10px; border-radius: 10px; }
+.dx-duas .dx-meta summary:hover, .dx-duas .dx-meta[open] summary { background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
+.dx-duas .dx-meta .meta-id { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line)); font: 600 var(--t-md)/1 var(--serif); color: var(--accent); }
+.dx-duas .dx-meta .meta-nome { font-size: var(--t-md); }
+.dx-duas .dx-meta .medidor { height: 10px; border-radius: 5px; }
+.dx-duas .dx-meta .medidor i { border-radius: 5px; }
+.dx-duas .dx-meta .dx-meta-mais { padding: 0 10px 14px 70px; }
+
+/* acesso à água: número em destaque, barra mais alta e as quatro situações em quadros */
+.dx-agua { border-top: 3px solid var(--st-and, var(--ocre)); }
+.dx-agua .agua-topo { gap: 18px 32px; }
+.dx-agua .dx-num b { color: var(--accent); }
+.dx-agua .agua-barra { height: 18px; border-radius: 9px; gap: 3px; }
+.dx-agua .agua-sit { border-top: 0; gap: 12px; }
+.dx-agua .agua-sit li { padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); row-gap: 6px; }
+.dx-agua .agua-sit b { font-size: clamp(26px, 2.6vw, 32px); }
+.dx-agua .agua-sit li:has(.st-atr), .dx-agua .agua-sit li:has(.st-nao) { border-color: color-mix(in srgb, var(--crit) 22%, var(--line)); }
+.dx-agua .agua-lista { margin-top: 14px; }
+
+/* marcos e por estado: mesmo cartão, um pouco mais compacto */
+.dx-lado > section.secao { padding: 20px 22px 18px; }
+
+@media (max-width: 900px) { .dx-duas { gap: 20px; } }
+@media (max-width: 640px) {
+  .dx-atencao, .dx-duas > section.secao, .dx-lado > section.secao, .dx-agua { padding: 16px 14px 14px; border-radius: 14px; }
+  .dx-atencao .dx-tr:not(.dx-th) { padding: 12px 12px 12px 16px; }
+  .dx-duas .dx-meta summary { grid-template-columns: 40px minmax(0, 1fr) auto; padding: 12px 4px; }
+  .dx-duas .dx-meta .meta-id { width: 38px; height: 38px; font-size: var(--t-sm); }
+  .dx-duas .dx-meta .dx-meta-mais { padding-left: 54px; }
+  .dx-agua .agua-sit { grid-template-columns: 1fr 1fr; }
+}
