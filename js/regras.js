@@ -64,8 +64,15 @@
      'falta' (nada anexado) → 'enviado' (anexado, esperando conferência) → 'conferido' (data registrada) */
   R.termoSituacao = m => m.termo_assinado_em ? 'conferido' : m.termo_path ? 'enviado' : 'falta';
   /* qual termo cada função assina: servidor do IFRN (professor do FIC, auxiliar) ou bolsista/agente (MPA) */
-  R.tipoTermo = papel => ['professor_fic', 'auxiliar_adm'].includes(papel) ? 'servidor' : 'bolsista';
-  R.modeloTermo = papel => { const x = (MQ.MODELOS_TERMO || {})[R.tipoTermo(papel)]; return x && x.arquivo ? x : null; };
+  /* aceita a função (texto) ou a pessoa: professor do FIC é sempre servidor; nas outras funções do IFRN (auxiliar administrativo),
+     é servidor quem tem matrícula SIAPE no cadastro; sem a pessoa em mãos, o auxiliar conta como servidor */
+  R.tipoTermo = x => {
+    const papel = x && typeof x === 'object' ? x.papel : x;
+    if (papel === 'professor_fic') return 'servidor';
+    if (papel === 'auxiliar_adm') return x && typeof x === 'object' && !x.siape ? 'bolsista' : 'servidor';
+    return 'bolsista';
+  };
+  R.modeloTermo = x => { const m = (MQ.MODELOS_TERMO || {})[R.tipoTermo(x)]; return m && m.arquivo ? m : null; };
   R.MSG_TERMO_SEM_ARQUIVO = 'Sem o termo anexado não há o que conferir: a data só é registrada depois que o termo preenchido e assinado estiver anexado.';
   R.TERMO_EXT = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
   R.nomeArquivo = p => String(p || '').split('/').pop();
