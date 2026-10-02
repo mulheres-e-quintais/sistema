@@ -10,12 +10,13 @@
   // ao recarregar a página, volta para a mesma seção e a mesma altura da tela (só neste navegador)
   try { S.aba = localStorage.getItem('mq-aba') || null; const y = +sessionStorage.getItem('mq-rolagem'); if (y) S.rolarPara = y; } catch (e) {}
   const lembrarAba = () => { try { if (S.aba) localStorage.setItem('mq-aba', S.aba); else localStorage.removeItem('mq-aba'); } catch (e) {} };
-  /* histórico do navegador (botão Voltar, gesto do Android): cada aba da coordenação fica no endereço (#aba=custos)
+  /* histórico do navegador (botão Voltar, gesto do Android): cada aba da coordenação vira uma entrada do histórico (o endereço não muda)
      e cada painel aberto ganha uma entrada, para o Voltar fechar o painel em vez de sair do sistema.
      Os outros endereços continuam como eram: #numeros, #convite=..., #teste e a recuperação de senha do Supabase. */
   const H = (typeof history !== 'undefined' && history && typeof history.pushState === 'function') ? history : null;
   const abaDoHash = () => { const m = /^#aba=([a-z_]+)$/.exec((typeof location !== 'undefined' && location.hash) || ''); return m ? m[1] : null; };
-  { const a0 = abaDoHash(); if (a0) S.aba = a0; }   // link direto para uma aba
+  const enderecoLimpo = () => location.pathname + location.search;   // o endereço não mostra a aba: ela fica só no histórico do navegador
+  { const a0 = abaDoHash(); if (a0) { S.aba = a0; try { history.replaceState({ mq: 'aba', aba: a0 }, '', enderecoLimpo()); } catch (e) {} } }   // link antigo com #aba=…: abre a aba e limpa o endereço
   window.addEventListener('pagehide', () => { try { sessionStorage.setItem('mq-rolagem', String(Math.round(window.scrollY))); } catch (e) {} });
 
   /* ---------- início ---------- */
@@ -1850,23 +1851,24 @@
     if (S.histSobra) { S.histSobra = false; voltarNoHistorico(); }   // primeiro sai da entrada do painel que acabou de fechar
     noHistorico(() => { if (abaDoHash()) H.replaceState(null, '', location.pathname + location.search); });
   }
-  /* trocar de aba: grava a aba no endereço (#aba=custos) com uma entrada nova no histórico */
+  /* trocar de aba: entrada nova no histórico do navegador (Voltar e Avançar funcionam), sem mexer no endereço */
   function irParaAba(x) {
     const naEntradaDoPainel = !!S.painelHist;
     if (S.painel || $('#painel')) fecharPainel({ semFoco: true, semHistorico: true });
     const antes = S.eu && /^coord/.test(S.eu.papel) ? abaAtual() : S.aba;
     if (naEntradaDoPainel || S.histSobra) {   // estava (ou acabou de estar) na entrada de um painel: ela vira a entrada da aba
-      S.histSobra = false; try { H.replaceState({ mq: 'aba', aba: x }, '', '#aba=' + x); } catch (e) {}
+      S.histSobra = false; try { H.replaceState({ mq: 'aba', aba: x }, '', enderecoLimpo()); } catch (e) {}
     } else noHistorico(() => {
       if (!H.state || H.state.mq !== 'aba') H.replaceState({ mq: 'aba', aba: antes }, '');   // a aba de onde a pessoa saiu (para o Voltar)
-      if (x !== antes || (abaDoHash() && abaDoHash() !== x)) H.pushState({ mq: 'aba', aba: x }, '', '#aba=' + x);
+      if (x !== antes) H.pushState({ mq: 'aba', aba: x }, '', enderecoLimpo());
     });
     S.aba = x; lembrarAba();
   }
   /* Voltar/Avançar (ou link direto) chegou numa aba: mostra essa aba */
   function abaDoHistorico(st) {
     if (!S.eu || S.verEntrada || !/^coord/.test(S.eu.papel)) return;
-    const x = abaDoHash() || (st && st.mq === 'aba' && st.aba) || null;
+    const doLink = abaDoHash(); const x = (st && st.mq === 'aba' && st.aba) || doLink || null;
+    if (doLink && x) { try { H.replaceState({ mq: 'aba', aba: x }, '', enderecoLimpo()); } catch (e) {} }   // link antigo: some do endereço
     if (!x || !abasDoPapel().includes(x)) return;
     if (x === abaAtual()) { S.aba = x; render(); return; }   // voltou de #numeros ou de um convite: a tela mostrada não era a do sistema
     S.aba = x; lembrarAba(); S.menuAberto = false; render(); window.scrollTo(0, 0);
