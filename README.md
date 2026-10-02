@@ -45,6 +45,7 @@ js/vitrine.js           tela de entrada com números e página pública "O proje
 js/custos.js            cálculo da ajuda de custo por visita
 js/convites.js          link de cadastro (a pessoa preenche; a coordenação confere e aprova)
 js/banco.js             dados bancários para a FUNCERN
+js/termo.js             termo de compromisso (ou de autorização do servidor) já preenchido com os dados do cadastro, para imprimir, assinar e anexar
 js/app.js               telas e navegação
 sw.js, manifest         instalação no celular e abertura sem internet
 supabase/01_criar_banco.sql      etapa 1: equipe, regras de acesso (RLS), auditoria, login
@@ -59,6 +60,7 @@ supabase/10_apl.sql              etapa 10: arranjo produtivo local por municípi
 supabase/11_fic.sql              etapa 11: professores do FIC, turmas e matrículas; cadastro no Arlo e SIAPE; auxiliar administrativo (um só)
 supabase/12_pagamentos.sql       etapa 12: visita feita (implantação/acompanhamento) e solicitação de pagamento: solicita → aval → auxiliar lança no Arlo
 supabase/13_avaliacao.sql        etapa 13: visita de avaliação (5ª visita, 200 dias de campo por estado) e medidas de impacto antes × depois
+supabase/48_termo_pela_pessoa.sql etapa 48: a própria pessoa anexa o termo de compromisso; a data só entra com o termo anexado (decisão de 02/10/2026)
 supabase/06_apagar_exemplo.sql   apaga os dados inventados
 supabase/00_verificar.sql        só lê: mostra quais etapas já estão instaladas e quantos registros há
 supabase/15_coord_geral_total.sql etapa 15: coordenação geral com todos os acessos (decisão de 28/09/2026)
@@ -142,6 +144,10 @@ psql -d teste4 -f supabase/tests/test_vitrine.sql     # 14 casos da vitrine e do
 - **Valores de bolsa** vêm do plano de trabalho: coordenação técnica R$ 4.700, articulação R$ 2.200 e apoio R$ 1.600 por mês. Se o plano mudar, altere `js/dados.js`.
 - **Nomes das funções:** o sistema usa "articulação estadual" e "apoio estadual", como no plano de trabalho e no Guia das bolsistas. O modelo de termo de compromisso diz "articulação territorial" e "apoio técnico", e vale uniformizar o modelo.
 - **Modelo de dados alinhado à proposta de sistema nacional ao MDA** (18/07/2026): CPF validado, papéis de agentes de campo, habilitação e bolsa. Assim, os dados podem migrar se a proposta for adotada.
+
+- **Termo de compromisso (02/10/2026):** cada pessoa baixa o modelo, preenche, assina e anexa o termo no próprio cadastro (Pendências ou Meus dados). Quem confere (auxiliar administrativo ou coordenação) abre o arquivo e só então registra a data; sem o termo anexado, o banco recusa a data. Depois de conferido, só quem confere troca o arquivo. O sistema monta o termo já preenchido com os dados do cadastro (`js/termo.js`): a pessoa só confere, imprime ou salva em PDF, assina e anexa; o que o sistema não tem (cargo, regime e campus do servidor) sai em branco. São dois modelos, com versão em branco em `modelos/`, escolhidos pela função (`MQ.MODELOS_TERMO` em `js/dados.js`): servidores do IFRN (professores do FIC e auxiliar administrativo) usam o termo de autorização de participação em programa gerenciado pela FUNCERN (Anexo I da Portaria 017/2017), em branco; coordenação técnica, bolsistas e agentes (MPA) usam o termo de compromisso do projeto, redigido a partir do Guia das bolsistas e ainda a validar com a FUNCERN. Quem recebe o termo por fora (papel, WhatsApp) ainda pode anexar pela ficha da pessoa. Registros antigos com data e sem arquivo continuam valendo.
+- **Aba Equipe da coordenação técnica (02/10/2026):** não mostra o auxiliar administrativo nem os professores do FIC (são cadastrados e acompanhados pela coordenação geral). É só a tela: o banco não mudou.
+- **Tela de entrada (02/10/2026):** uma ajuda só, o link "Precisa de ajuda para entrar?" ao lado do formulário; o botão "Ajuda desta página" do rodapé fica nas outras telas.
 
 ## Próximos passos
 

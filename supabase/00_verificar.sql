@@ -95,6 +95,7 @@ chk as (
                    not exists (select 1 from pg_policy where polname in ('parametros_ler', 'apl_ler') and pg_get_expr(polqual, polrelid) = 'true')
                    and exists (select 1 from pg_policy where polname = 'parametros_ler')
                    and exists (select 1 from pg_policy where polname = 'equipe_ler' and pg_get_expr(polqual, polrelid) like '%ativa%')
+  union all select '48_termo_pela_pessoa (a própria pessoa anexa o termo; a data só entra com o termo anexado)', exists (select 1 from fn where proname = 'enviar_meu_termo')
   union all select '46_regras_decididas (regras decididas pela coordenação geral e pendências da auditoria)', exists (select 1 from fn where proname = 'visita_etapa_motivo')
                    and (select count(distinct tgname) from pg_trigger where not tgisinternal and tgname in ('a1_versao', 'diagnosticos_a1_versao', 'diagnosticos_a2_limites', 'fichas_c_regras', 'equipe_c_regras',
                           'custos_visita_a0_travas', 'parametros_a0_validar', 'convites_a0_travas', 'entregas_a0_travas', 'equipe_desligada_matricula', 'equipe_privado_auditoria',

@@ -376,7 +376,7 @@
         ['Antes da primeira visita paga', [
           '<b>Matrícula no curso FIC</b>, feita pelos professores do curso.',
           '<b>Cadastro na FUNCERN</b>, com conta bancária ou chave Pix no seu nome (informe em <b>Meus dados</b>).',
-          '<b>Termo de compromisso</b> assinado.']],
+          '<b>Termo de compromisso</b>: baixe o modelo, preencha, assine e anexe em <b>Meus dados</b> (ou no aviso de pendências). O auxiliar administrativo confere.']],
         ['Como você recebe', [
           'Você não recebe bolsa: recebe <b>ajuda de custo</b> por dia de campo, calculada pela distância até os quintais.',
           'No fim do mês, peça a ajuda de custo das visitas feitas em <b>Solicitar pagamento</b>.',
@@ -421,7 +421,7 @@
         ['Lançar um pagamento no Arlo', ['No topo, toque em <b>Lançar pagamentos no Arlo</b>.', 'Abra o pedido, lance o valor no Arlo e digite o protocolo.', 'Toque em <b>Registrar: lançado no Arlo</b>.']]
       ],
       passos: [
-        'Quando a pessoa entregar o termo assinado, registre a data e anexe o arquivo em <b>Registrar passos da habilitação</b>.',
+        'O termo é anexado pela própria pessoa, no cadastro dela. Quando chegar, abra a pessoa, toque em <b>Abrir o termo</b>, confira se está preenchido e assinado e só então registre a data em <b>Registrar passos da habilitação</b>. Sem o termo anexado, o sistema não aceita a data.',
         'Em <b>Pagamentos para lançar</b> ficam só os pedidos que já têm o aval da coordenação.'
       ],
       duvidas: [

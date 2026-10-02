@@ -13,6 +13,21 @@ MQ.PROJETO = {
   inicioDiagnosticos: '2026-10-23'
 };
 
+/* Modelos do termo: a pessoa baixa, preenche com os dados dela, assina e anexa no próprio cadastro.
+   São dois, porque são documentos diferentes (decisão de 02/10/2026):
+   - servidor: servidores do IFRN (professores do FIC e auxiliar administrativo) usam o termo de autorização de participação
+     em programa gerenciado pela FUNCERN (Anexo I da Portaria 017/2017 – SUP/FUNCERN), com parecer da chefia e da direção-geral
+     (o auxiliar só conta como servidor se tiver matrícula SIAPE no cadastro: R.tipoTermo);
+   - bolsista: coordenação técnica, bolsistas e agentes de campo (MPA, não são servidores) usam o termo de compromisso do projeto.
+   O sistema monta o termo já preenchido com os dados do cadastro (js/termo.js); estes arquivos são a versão em branco.
+   Os arquivos ficam na pasta modelos/. Sem arquivo (''), a tela não mostra o link e orienta a pedir o modelo a quem confere. */
+MQ.MODELOS_TERMO = {
+  servidor: { arquivo: 'modelos/Modelo_termo_de_autorizacao_servidor_IFRN.docx', nome: 'termo de autorização de participação (servidor do IFRN)',
+              como: 'Preencha os campos entre colchetes, assine e colha o parecer da chefia imediata e da direção-geral do seu campus.' },
+  bolsista: { arquivo: 'modelos/Modelo_termo_de_compromisso_bolsista_e_agente.pdf', nome: 'termo de compromisso',
+              como: 'Imprima, preencha com os seus dados e assine. Sem impressora, peça uma cópia à coordenação técnica.' }
+};
+
 MQ.UFS = [
   { uf: 'AL', nome: 'Alagoas' },
   { uf: 'BA', nome: 'Bahia' },
