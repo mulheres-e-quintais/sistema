@@ -722,6 +722,7 @@ MQ.ORCAMENTO = {
     equipe: p('<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14.2c2.4-.2 4.1 1.3 4.6 4.3"/>'),
     pasta: p('<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M8.5 10h7M8.5 13.5h7M8.5 17h4"/>'),
     capelo: p('<path d="M2.5 9 12 5l9.5 4L12 13z"/><path d="M6.5 11v4.2c1.4 1.4 3.3 2.1 5.5 2.1s4.1-.7 5.5-2.1V11"/><path d="M21.5 9v5"/>'),
+    resolver: p('<path d="M14.7 6.3a4 4 0 0 0-5.2 5.2L4 17l3 3 5.5-5.5a4 4 0 0 0 5.2-5.2l-2.6 2.6-2.4-.6-.6-2.4z"/>'),   // chave de boca: resolver uma pendência
     pessoa_mais: p('<circle cx="10" cy="8" r="3.4"/><path d="M3.5 20c.7-3.6 3.2-5.6 6.5-5.6 1.5 0 2.8.4 3.9 1.1"/><path d="M18.5 14v6M15.5 17h6"/>'),
     enviar: p('<path d="M12 15V4"/><path d="m7.5 8.5 4.5-4.5 4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/>'),
     calendario: p('<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="m9 15 2 2 4-4"/>'),
@@ -3738,7 +3739,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <div class="dx-tr dx-th" role="row"><span role="columnheader">Problema</span><span role="columnheader">Prazo</span><span role="columnheader"><span class="sr">Ação</span></span></div>
           ${al.map(x => `<div class="dx-tr" role="row"><span role="cell" class="dx-prob"><span class="st-pt ${NIVEL[x.nivel][0]}" aria-hidden="true"></span><span><span class="sr">${NIVEL[x.nivel][1]}: </span><b>${E(x.texto)}</b><small>${E(x.det)}</small></span></span>
             <span role="cell" class="dx-prazo num">${prazoTxt(x)}</span>
-            <span role="cell">${x.aba ? MQ.botaoAcao({ acao: 'aba', texto: 'Resolver', icone: false, mini: true, cls: 'dx-ir', rotulo: `Resolver: ${E(x.texto)} (abre ${NOME_ABA[x.aba] || x.aba})`, attrs: `data-aba="${x.aba}" title="Abre ${NOME_ABA[x.aba] || x.aba}"` }) : ''}</span></div>`).join('')}
+            <span role="cell">${x.aba ? MQ.botaoAcao({ acao: 'aba', texto: 'Resolver', icone: 'resolver', mini: true, cls: 'dx-ir', rotulo: `Resolver: ${E(x.texto)} (abre ${NOME_ABA[x.aba] || x.aba})`, attrs: `data-aba="${x.aba}" title="Abre ${NOME_ABA[x.aba] || x.aba}"` }) : ''}</span></div>`).join('')}
         </div>` : `<p class="dx-ok">${chipStatus('concluida', 'Nada pendente')} nos dados do sistema.</p>`}
       </section>
 
@@ -8960,7 +8961,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `<div class="pend-faixa" role="status"><div class="pend-in">
       <span class="pend-ic" aria-hidden="true">!</span>
       <span><b>Seu cadastro tem ${l.itens.length} pendência${l.itens.length > 1 ? 's' : ''}.</b> ${seus ? `${seus === 1 ? 'Uma depende' : seus + ' dependem'} só de você.` : 'Cobre quem precisa resolver.'} <span class="pend-cons">${E(consequencia(l))}</span></span>
-      ${MQ.botaoAcao({ acao: 'pend-ver', texto: 'Resolver', icone: false, mini: true })}</div></div>`;
+      ${MQ.botaoAcao({ acao: 'pend-ver', texto: 'Resolver', icone: 'resolver', mini: true })}</div></div>`;
   }
 
   /* abre o quadro sozinho uma vez por sessão, quando tudo já carregou */
