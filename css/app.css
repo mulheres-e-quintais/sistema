@@ -2376,3 +2376,64 @@ p.carregando:has(.carregando-t) { flex-direction: column; gap: 12px; }
 .meta-marcos .mm { display: block; } .meta-marcos .mm.passou { color: var(--muted); }
 .dx-meta.meta-alvo { box-shadow: inset 4px 0 0 var(--accent); background: color-mix(in srgb, var(--surface-2) 45%, transparent); transition: background .3s; }
 @media (max-width: 640px) { .marco-meta { min-height: 40px; } }
+
+/* --- MAPA DA TELA DE ENTRADA: institucional, tons suaves, Apodi como foco (02/10/2026) ---
+   Só apresentação: mesmos estados, municípios, pontos e números. Hierarquia: Apodi > estados > municípios > rotas. */
+.ent-hero .vit-mapa.vit-info { background: transparent; border-color: transparent; box-shadow: none; }
+.ent-hero .mapa-info {
+  --uf-RN: color-mix(in srgb, #A44934 34%, #FAF7F1); --uf-PI: color-mix(in srgb, #2E7D43 26%, #FAF7F1); --uf-BA: color-mix(in srgb, #885B44 24%, #FAF7F1);
+  --uf-PE: color-mix(in srgb, #C29A2E 30%, #FAF7F1); --uf-AL: color-mix(in srgb, #A44934 17%, #FAF7F1); --uf-SE: color-mix(in srgb, #5C7A3A 30%, #FAF7F1); }
+.ent-hero .mapa-pub.mapa-info .uf-pub { fill-opacity: 1; stroke: #FAF7F1; stroke-width: 1.25px; vector-effect: non-scaling-stroke; transition: filter .2s; }
+.ent-hero .mapa-pub.mapa-info .uf-pub:hover { filter: saturate(1.35) brightness(.97); }
+.ent-hero .mapa-pub.mapa-info .uf-sede { fill: var(--uf-RN); fill-opacity: 1; stroke: #FAF7F1; stroke-width: 1.25px; vector-effect: non-scaling-stroke; }
+.ent-hero .mapa-pub.mapa-info .uf-fundo { fill: #F1EBE0; stroke: #FAF7F1; stroke-width: 1px; vector-effect: non-scaling-stroke; opacity: 1; }
+/* rótulos: sigla forte, "N cidades" menor e secundário, sem caixa; só um contorno claro bem fino para ler sobre o estado */
+.ent-hero .mapa-pub.mapa-info .uf-sigla { fill: #3A2519; font-family: var(--serif); font-weight: 600; stroke: #FAF7F1; stroke-width: .12px; paint-order: stroke; }
+.ent-hero .mapa-pub.mapa-info .uf-sigla.uf-num { fill: #6B594A; font-family: var(--sans); font-weight: 500; letter-spacing: .01em; stroke-width: .1px; }
+/* municípios: círculo pequeno, miolo claro, contorno verde; cresce de leve ao passar */
+.ent-hero .mapa-pub.mapa-info .mun-pt .mun-dot, .ent-hero .mapa-pub.mapa-info .mun-q .mun-dot { fill: #FAF7F1; stroke: #315C45; stroke-width: 1.25px; vector-effect: non-scaling-stroke; }
+.ent-hero .mapa-pub.mapa-info .mun-q .mun-dot { fill: #E3EEE2; }
+.ent-hero .mapa-pub.mapa-info .mun-n { fill: #244532; font-weight: 700; }
+.ent-hero .mapa-pub.mapa-info .mun-vazio { fill: #FAF7F1; stroke: #6B594A; stroke-width: 1px; vector-effect: non-scaling-stroke; opacity: .8; transform: scale(.8); transform-box: fill-box; transform-origin: center; transition: transform .2s; }
+.ent-hero .mapa-pub.mapa-info .mun-pt:hover .mun-dot, .ent-hero .mapa-pub.mapa-info .mun-pt:focus-visible .mun-dot { transform: scale(1.25); }
+.ent-hero .mapa-pub.mapa-info .mun-pt:hover .mun-vazio, .ent-hero .mapa-pub.mapa-info .mun-pt:focus-visible .mun-vazio { transform: scale(1.3); opacity: 1; stroke: #315C45; }
+/* rotas: quase invisíveis; aparecem quando o município é apontado */
+.ent-hero .mapa-pub.mapa-info .rota { stroke: #A44934; stroke-width: .7px; vector-effect: non-scaling-stroke; stroke-dasharray: none; opacity: .16; animation: none; }
+.ent-hero .mapa-pub.mapa-info .rota.ativa { opacity: .8; stroke-width: 1.25px; }
+@media (prefers-reduced-motion: no-preference) {
+  .ent-hero .mapa-pub.mapa-info.saindo .rota { stroke-dasharray: var(--len) var(--len); opacity: .16; }
+}
+/* Apodi: anel branco, miolo terracota, halo suave que respira devagar */
+.ent-hero .mapa-pub.mapa-info .sede-dot { fill: #A44934; stroke: #FFFFFF; stroke-width: 3px; vector-effect: non-scaling-stroke; filter: drop-shadow(0 1px 2px rgba(69, 43, 26, .35)); }
+.ent-hero .mapa-pub.mapa-info .sede-halo { fill: #A44934; opacity: .16; transform-box: fill-box; transform-origin: center; }
+@media (prefers-reduced-motion: no-preference) { .ent-hero .mapa-pub.mapa-info .sede-halo { animation: sede-respira 3.6s ease-in-out infinite; } }
+@keyframes sede-respira { 0%, 100% { transform: scale(1); opacity: .18; } 50% { transform: scale(1.45); opacity: .06; } }
+.ent-hero .mapa-pub.mapa-info .sede-rot { fill: #3A2519; font-family: var(--serif); font-weight: 600; stroke: #FAF7F1; stroke-width: .14px; paint-order: stroke; }
+.ent-hero .mapa-pub.mapa-info .sede-rot .sede-uf { fill: #6B594A; font-family: var(--sans); font-weight: 500; }
+/* legenda: pequena e discreta, no canto inferior */
+.ent-hero .mapa-leg-info { background: transparent; border: 0; box-shadow: none; padding: 0; font-size: var(--t-xs); color: #6B594A; gap: 4px; }
+.mapa-leg-info p { margin: 0; display: flex; align-items: center; gap: 8px; }
+.mapa-leg-info .pt.pt-sede { background: #A44934; box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(164, 73, 52, .35); }
+.mapa-leg-info .leg-sede { display: none; } .ent-hero .mapa-leg-info .leg-sede { display: flex; }
+.ent-hero .mapa-leg-info .pt:not(.pt-sede):not(.pt-vazio) { background: #E3EEE2; box-shadow: 0 0 0 1.5px #315C45; }
+.ent-hero .mapa-leg-info { max-width: 26ch; }
+.ent-hero .mapa-pub.mapa-info .rota, .ent-hero .mapa-pub.mapa-info.saindo .rota { stroke-dasharray: none !important; stroke-dashoffset: 0 !important; animation: none !important; opacity: .11; }
+.ent-hero .mapa-pub.mapa-info .rota.ativa { opacity: .8 !important; }
+/* mapa da entrada no tema escuro: o cartão continua claro (os estados e os rótulos foram desenhados para fundo claro) */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ent-hero .vit-mapa.vit-info { background: #FAF7F1; border-radius: 16px; } }
+:root[data-theme="dark"] .ent-hero .vit-mapa.vit-info { background: #FAF7F1; border-radius: 16px; }
+
+/* --- botões sem o símbolo de seta; "Resolver" da Visão geral em terracota; metas com "Ver detalhes" à vista (02/10/2026) --- */
+.btn-acao .ba-seta { display: none; }
+.btn-acao.mini { padding: 0 14px; }
+@media (max-width: 640px) { .btn-acao.mini { padding: 0 14px; } }
+.marco-meta::after { content: none; }
+.marco-meta { text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; }
+.dx-meta summary { grid-template-areas: "id nome st" "id barra barra" "id num ver"; }
+.dx-meta .meta-ver { grid-area: ver; justify-self: end; font-size: var(--t-sm); font-weight: 600; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
+.dx-meta .meta-ver::after { content: "Ver detalhes"; }
+.dx-meta[open] .meta-ver::after { content: "Fechar detalhes"; }
+.dx-meta summary:hover .meta-ver { color: var(--ink); }
+/* foco pelo teclado nos seletores de duas opções ("Já tenho senha / Primeiro acesso" e demais): o contorno ficava cortado pela borda arredondada */
+.seg button:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; border-radius: inherit; position: relative; z-index: 1; box-shadow: inset 0 0 0 5px var(--surface); }
+.seg button[aria-pressed="true"]:focus-visible, .seg button.ativo:focus-visible, .seg button[aria-selected="true"]:focus-visible { box-shadow: inset 0 0 0 5px color-mix(in srgb, var(--surface) 55%, transparent); }
