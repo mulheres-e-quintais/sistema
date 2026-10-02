@@ -10355,7 +10355,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const posso = R.podeCadastrar(S.eu.papel, papel);
     const quem = ant ? `Substituta de ${esc(ant.nome)}, desligada em ${R.fmtData(ant.data_fim)}` : 'Aguardando indicação do MPA';
     if (!posso) return `<button class="vagabtn livre" disabled><span class="add">Vaga aberta</span><span class="sub">${quem}</span></button>`;
-    return `<div class="vaga-slot"><span class="sub">${quem}</span>${MQ.botaoAcao({ acao: 'novo', icone: 'pessoa_mais', sec: true, peq: true,
+    return `<div class="vaga-slot"><span class="vs-quem">${ant ? avatar({ id: ant.id, nome: ant.nome }, 36) : '<span class="av vs-vazio" style="--av:36px" aria-hidden="true">?</span>'}<span class="sub">${quem}</span></span>${MQ.botaoAcao({ acao: 'novo', icone: 'pessoa_mais', sec: true, peq: true,
       texto: 'Cadastrar ' + (ant ? 'substituta' : P[papel].curto.toLowerCase()), curto: 'Cadastrar', rotulo: 'Cadastrar ' + (ant ? 'substituta' : P[papel].curto.toLowerCase()) + ' em ' + uf,
       attrs: `data-papel="${papel}" data-uf="${uf}"${ant ? ` data-subst="${ant.id}"` : ''}` })}</div>`;
   }
@@ -10427,15 +10427,15 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
 
   function quadroTabela() {
-    return `<div class="quadro-scroll"><table class="quadro"><colgroup><col class="c-uf"><col><col><col class="c-plano"></colgroup><thead><tr><th scope="col">Estado</th><th scope="col">Articulação estadual</th>
+    return `<div class="quadro-scroll eq-cx"><table class="quadro eq-quadro"><colgroup><col class="c-uf"><col><col><col class="c-plano"></colgroup><thead><tr><th scope="col">Estado</th><th scope="col">Articulação estadual</th>
       <th scope="col">Apoio estadual</th><th scope="col">Seleção no estado</th></tr></thead><tbody>
       ${MQ.UFS.map(u => `<tr><td class="uf"><span class="sigla">${u.uf}</span><span class="nomeuf">${u.nome}</span></td>
         <td>${botaoVaga('articulacao', u.uf)}</td><td>${botaoVaga('apoio', u.uf)}</td><td>${planoUF(u.uf)}</td></tr>`).join('')}
       </tbody></table></div>`;
   }
   function quadroCartoes() {
-    return `<div class="cartoes">${MQ.UFS.map(u => `<div class="cartao"><div class="cab-uf"><span class="uf"><span class="sigla">${u.uf}</span></span><span class="nomeuf muted">${u.nome}</span></div>
-      <span class="fn">Articulação estadual</span>${botaoVaga('articulacao', u.uf)}<span class="fn">Apoio estadual</span>${botaoVaga('apoio', u.uf)}${planoUF(u.uf)}</div>`).join('')}</div>`;
+    return `<div class="cartoes eq-cartoes">${MQ.UFS.map(u => `<div class="cartao"><div class="cab-uf"><span class="uf"><span class="sigla">${u.uf}</span></span><span class="nomeuf muted">${u.nome}</span></div>
+      <span class="fn">Articulação estadual</span>${botaoVaga('articulacao', u.uf)}<span class="fn">Apoio estadual</span>${botaoVaga('apoio', u.uf)}<span class="fn">Seleção no estado</span>${planoUF(u.uf)}</div>`).join('')}</div>`;
   }
 
   function descreverAud(a) {
