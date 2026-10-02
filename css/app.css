@@ -2453,6 +2453,7 @@ fieldset.hab-termo > legend { padding: 0 6px; margin: 0; }
 .rot-com-link { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
 .rot-com-link > label { font-size: var(--t-sm); font-weight: 500; color: var(--ink-2); }
 .termo-passos { margin: 0; }
+.termo-acoes { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
 details.explica { font-size: var(--t-sm); min-width: 0; }
 details.explica > summary { list-style: none; cursor: pointer; width: fit-content; max-width: 100%; min-height: 32px; display: inline-flex; align-items: center; gap: 6px; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
 details.explica > summary::-webkit-details-marker { display: none; }

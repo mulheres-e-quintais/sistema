@@ -141,7 +141,9 @@
   const quemConfere = m => m && m.papel === 'auxiliar_adm' ? 'a coordenação geral' : 'o auxiliar administrativo';
   /* link do modelo (fica ao lado do campo de anexar); sem arquivo configurado em dados.js, orienta a pedir */
   function linkModelo(m) {
-    const mod = m ? R.modeloTermo(m.papel) : null;
+    const mod = m ? R.modeloTermo(m) : null;
+    // o termo já sai preenchido com os dados do cadastro; o modelo em branco fica como segunda opção
+    if (m && MQ.termoUI) return `<span class="termo-modelo termo-acoes"><button type="button" class="btn peq pri" data-acao="pend-termo-gerar" data-id="${E(m.id)}">Gerar o termo preenchido</button>${mod ? `<a class="link small" href="${E(mod.arquivo)}" download target="_blank" rel="noopener">modelo em branco</a>` : ''}</span>`;
     return mod
       ? `<a class="btn peq termo-modelo" href="${E(mod.arquivo)}" download target="_blank" rel="noopener" title="Modelo: ${E(mod.nome)}">Baixar o modelo do termo</a>`
       : `<span class="small muted termo-modelo">Peça o modelo do termo ${m ? quemConfere(m).replace(/^a /, 'à ').replace(/^o /, 'ao ') : 'à coordenação'}.</span>`;
@@ -155,8 +157,8 @@
     return `<form class="f" data-form="pend-termo" novalidate>
       ${sit === 'enviado' ? `<div class="aviso ok" role="status"><b>Termo enviado: ${E(R.nomeArquivo(m.termo_path))}.</b> Falta ${quemConfere(m)} conferir. Se mandou o arquivo errado, anexe outro: ele substitui o anterior.</div>` : ''}
       <ol class="conv-passos termo-passos">
-        <li><span><b>Baixe o modelo</b>: ${E((R.modeloTermo(m.papel) || { nome: 'termo de compromisso' }).nome)}.</span></li>
-        <li><span><b>Preencha e assine.</b> ${E((R.modeloTermo(m.papel) || { como: 'Preencha com os seus dados e assine.' }).como)}</span></li>
+        <li><span><b>Gere o seu termo</b> (${E((R.modeloTermo(m) || { nome: 'termo de compromisso' }).nome)}): ele já sai com os dados do seu cadastro.</span></li>
+        <li><span><b>Confira, imprima e assine.</b> ${R.tipoTermo(m) === 'servidor' ? 'Complete o cargo, o regime de trabalho e o campus e colha o parecer da chefia imediata e da direção-geral do seu campus.' : 'Se algum dado estiver errado, peça a correção do cadastro antes de assinar. Sem impressora, peça uma cópia à coordenação técnica.'}</span></li>
         <li><span><b>Anexe aqui</b> o termo preenchido e assinado, em PDF ou foto do papel inteiro.</span></li></ol>
       <div class="campo" id="w-termo"><div class="rot-com-link"><label for="pt-arq">Termo preenchido e assinado (PDF ou foto)</label>${linkModelo(m)}</div>
         <input id="pt-arq" name="termo" type="file" accept="application/pdf,image/*" data-termo-arq required>
@@ -228,11 +230,15 @@
     });
   }
 
-  async function clique(a) {
+  async function clique(a, el) {
     if (a === 'pend-ver') U().abrirPainel({ tipo: 'pend' });
     else if (a === 'pend-dados') U().abrirPainel({ tipo: 'pend-dados' });
     else if (a === 'pend-banco') U().abrirPainel({ tipo: 'pend-banco' });
     else if (a === 'pend-termo') U().abrirPainel({ tipo: 'pend-termo' });
+    else if (a === 'pend-termo-gerar' && MQ.termoUI) {   // a própria pessoa, ou quem confere (para entregar impresso a quem não tem como imprimir)
+      const id = el && el.dataset.id; const m = id && id !== (S().eu || {}).id ? (S().equipe || []).find(x => x.id === id) : eu();
+      if (m) MQ.termoUI.abrir(m); else U().toast('Não foi possível montar o termo: dados do cadastro não encontrados.');
+    }
   }
 
   MQ.pendUI = { lista, faixa, cobrar, painel, clique, enviar, secaoTermo, linkModelo, formTermo };

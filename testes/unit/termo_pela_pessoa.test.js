@@ -50,10 +50,8 @@ describe('Termo de compromisso anexado pela própria pessoa', () => {
     assert.match(h, /data-form="pend-termo"/); assert.match(h, /<input id="pt-arq" name="termo" type="file"[^>]*required/);
     assert.match(h, /<button class="btn pri" type="submit" data-termo-salvar disabled>Enviar termo<\/button>/);
     assert.match(h, /class="rot-com-link"[\s\S]*termo-modelo/, 'o modelo fica ao lado do rótulo do campo');
-    assert.match(h, /<a class="btn peq termo-modelo" href="modelos\/Modelo_termo_de_compromisso_bolsista_e_agente\.pdf" download/, 'bolsista: termo de compromisso');
-    const guardado = t.MQ.MODELOS_TERMO; t.MQ.MODELOS_TERMO = {};
-    assert.ok(texto(t.MQ.pendUI.formTermo(eu)).includes('Peça o modelo do termo'), 'sem arquivo configurado, orienta a pedir');
-    t.MQ.MODELOS_TERMO = guardado;
+    assert.match(h, /data-acao="pend-termo-gerar" data-id="[^"]+">Gerar o termo preenchido<\/button>/, 'o termo sai preenchido com os dados do cadastro');
+    assert.match(h, /href="modelos\/Modelo_termo_de_compromisso_bolsista_e_agente\.pdf" download[^>]*>modelo em branco<\/a>/, 'bolsista: modelo em branco como segunda opção');
   });
   test('termo enviado: a pessoa vê "aguardando conferência" e pode trocar; conferido: não há mais formulário', async () => {
     const t = await montar('bolsista'); const base = t.S.equipe.find(m => m.id === t.S.eu.id);
@@ -93,6 +91,44 @@ describe('Dois modelos de termo: servidor do IFRN e bolsista/agente', () => {
     const t = await montar('professor'); const eu = Object.assign({}, t.S.equipe.find(m => m.id === t.S.eu.id), { termo_path: null, termo_assinado_em: null });
     const h = t.MQ.pendUI.formTermo(eu);
     assert.match(h, /href="modelos\/Modelo_termo_de_autorizacao_servidor_IFRN\.docx"/); assert.ok(texto(h).includes('parecer da chefia imediata'));
+  });
+});
+
+describe('Termo já preenchido com os dados do cadastro', () => {
+  const pessoa = (t, papel) => t.S.equipe.find(m => m.papel === papel && m.status === 'ativa');
+  test('bolsista: nome, CPF, e-mail, celular, função, estado, início e valor da bolsa da função já vêm escritos', async () => {
+    const t = await montar('coord_geral'); const m = pessoa(t, 'articulacao'); const R = t.MQ.regras;
+    const h = texto(t.MQ.termoUI.pagina(m));
+    for (const x of [m.nome, R.fmtCPF(m.cpf), m.email, 'Articulação estadual', '(' + m.uf + ')', R.fmtData(m.data_inicio), R.fmtBRL(t.MQ.PAPEIS.articulacao.bolsa).replace(/\s/g, ' ')]) assert.ok(h.includes(x), 'falta no termo: ' + x);
+    assert.ok(h.includes('TERMO DE COMPROMISSO')); assert.ok(h.includes('Se eu ficar dois meses seguidos sem entregar o relatório mensal'));
+    assert.ok(!h.includes(R.fmtBRL(t.MQ.PAPEIS.apoio.bolsa).replace(/\s/g, ' ')), 'só o valor da própria função');
+  });
+  test('agente de campo: sem bolsa, com ajuda de custo', async () => {
+    const t = await montar('coord_geral'); const h = texto(t.MQ.termoUI.pagina(pessoa(t, 'agente')));
+    assert.ok(h.includes('A agente de campo não recebe bolsa')); assert.ok(!h.includes('Bolsa mensal no valor'));
+  });
+  test('servidor: nome, SIAPE, função e período preenchidos; cargo, regime e campus ficam em branco para completar', async () => {
+    const t = await montar('coord_geral'); const m = Object.assign({}, pessoa(t, 'professor_fic'), { siape: '1234567' }); const R = t.MQ.regras;
+    const html = t.MQ.termoUI.pagina(m); const h = texto(html);
+    assert.ok(h.includes('TERMO DE AUTORIZAÇÃO DE PARTICIPAÇÃO EM PROGRAMA')); assert.ok(h.includes('Portaria nº. 017/2017'));
+    for (const x of [m.nome, '1234567', 'QUINTAIS PRODUTIVOS PARA MULHERES RURAIS', R.fmtData(m.data_inicio), R.fmtData(t.MQ.PROJETO.vigencia.fim)]) assert.ok(h.includes(x), 'falta no termo: ' + x);
+    assert.deepEqual([...t.MQ.termoUI.faltando(m)], ['cargo', 'regime de trabalho', 'campus de lotação']);
+    assert.match(html, /ocupante do cargo de <span class="ln"/, 'cargo em branco');
+  });
+  test('dado que falta no cadastro sai como linha em branco e é avisado na tela; nada de "undefined" ou "null" no papel', async () => {
+    const t = await montar('coord_geral'); const m = Object.assign({}, pessoa(t, 'apoio'), { municipio: '', telefone: null });
+    const html = t.MQ.termoUI.pagina(m);
+    assert.ok(!/undefined|null|NaN/.test(texto(html))); assert.deepEqual([...t.MQ.termoUI.faltando(m)], ['município onde mora', 'celular']);
+    assert.match(html, /Complete à mão: <b>município onde mora, celular<\/b>/);
+  });
+  test('texto digitado no cadastro não vira código na página do termo', async () => {
+    const t = await montar('coord_geral'); const m = Object.assign({}, pessoa(t, 'apoio'), { nome: 'Maria <script>alert(1)</script> Silva', municipio: '"><img src=x onerror=alert(1)>' });
+    const html = t.MQ.termoUI.pagina(m); assert.ok(!/<script>alert|<img src=x/.test(html));
+  });
+  test('auxiliar administrativo: com SIAPE usa o termo do servidor; sem SIAPE, o termo de compromisso', async () => {
+    const t = await montar('coord_geral'); const R = t.MQ.regras;
+    assert.equal(R.tipoTermo({ papel: 'auxiliar_adm', siape: '7654321' }), 'servidor'); assert.equal(R.tipoTermo({ papel: 'auxiliar_adm', siape: null }), 'bolsista');
+    assert.equal(R.tipoTermo({ papel: 'professor_fic', siape: null }), 'servidor', 'professor é sempre servidor');
   });
 });
 
