@@ -159,7 +159,7 @@ chk as (
   union all select 'repetição depois de falha de rede não grava duas vezes: pedido, orientação, link e documento (se FALTA: rode o 47)',
                    exists (select 1 from pg_proc where proname = 'salvar_pedido_apoio' and prosrc like '%interval ''2 minutes''%')
                    and exists (select 1 from pg_proc where proname = 'registrar_orientacao_venda' and prosrc like '%interval ''2 minutes''%')
-                   and exists (select 1 from pg_proc where proname = 'criar_convite' and prosrc like '%interval ''2 minutes''%')
+                   and exists (select 1 from pg_proc where proname = 'criar_convite' and prosrc like '%interval ''20 seconds''%')
                    and exists (select 1 from pg_proc where proname = 'documentos_antes' and prosrc like '%interval ''2 minutes''%')
   union all select 'CPF com dígito verificador conferido na ficha, na equipe e no cadastro pelo link (se FALTA: rode o 47)',
                    exists (select 1 from pg_proc where proname = 'fichas_regras' and prosrc like '%cpf_valido%')
