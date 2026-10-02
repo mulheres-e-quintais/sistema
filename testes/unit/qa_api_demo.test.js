@@ -79,17 +79,17 @@ test('ajuda de custo com valor zero, negativo ou vazio é recusada', async () =>
   for (const v of [0, -10, null, undefined, 'abc']) await assert.rejects(() => T.api.solicitarPagamento('ajuda_custo', hoje, v, null, ['vz'], {}), /Valor inválido/, 'valor ' + v);
   await assert.doesNotReject(() => T.api.solicitarPagamento('ajuda_custo', hoje, 176.08, null, ['vz'], {}));
 });
-test('aval de ajuda de custo: maior que zero e até R$ 600 por visita', async () => {
+test('aval de ajuda de custo: maior que zero e até R$ 2.000 por visita', async () => {
   const T = await montar('coord_tecnico'); const { MQ, S } = T; const hoje = MQ.regras.hoje();
   const ana = S.equipe.find(m => m.papel === 'articulacao' && m.uf === 'PI');
   const montarSolic = () => editarDemo(T, d => { d.solicitacoes = [{ id: 'sq1', tipo: 'ajuda_custo', equipe_id: ana.id, mes: hoje.slice(0, 8) + '01', situacao: 'solicitada', valor_solicitado: 356.5, valor_avalizado: null, detalhe: {}, solicitada_em: new Date().toISOString() }];
     d.solic_visitas = { va: 'sq1', vb: 'sq1' }; });
   await montarSolic(); await T.trocar('coord_tecnico');
   await assert.rejects(() => T.api.avalizarPagamento('sq1', true, null, 1000000), /Valor muito acima do pedido \(R\$\s356,50\)/);
-  await assert.rejects(() => T.api.avalizarPagamento('sq1', true, null, 1200.01), /Valor muito acima do pedido/);
+  await assert.rejects(() => T.api.avalizarPagamento('sq1', true, null, 4000.01), /Valor muito acima do pedido.*até R\$ 2\.000,00 por visita/);
   await assert.rejects(() => T.api.avalizarPagamento('sq1', true, null, 0), /maior que zero/);
-  await T.api.avalizarPagamento('sq1', true, null, 1200);   // 2 visitas × R$ 600
-  assert.equal(lerDemo(T).solicitacoes[0].valor_avalizado, 1200);
+  await T.api.avalizarPagamento('sq1', true, null, 4000);   // 2 visitas × R$ 2.000 (o mesmo teto do banco)
+  assert.equal(lerDemo(T).solicitacoes[0].valor_avalizado, 4000);
 });
 test('relatório da bolsa do professor: carga horária somada com 1 casa (0,1 + 0,2 = 0,3)', async () => {
   const T = await montar('professor'); const { MQ, S } = T; const hoje = MQ.regras.hoje(); const eu = S.eu;

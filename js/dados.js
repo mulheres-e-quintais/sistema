@@ -25,7 +25,7 @@ MQ.UFS = [
 MQ.META_UF = { diagnosticos: 40, quintais: 40, visitas: 80 };
 
 MQ.PAPEIS = {
-  coord_geral:   { nome: 'Coordenação geral',    curto: 'Coord. geral',   bolsa: 70000 / 12, org: 'IFRN' },
+  coord_geral:   { nome: 'Coordenação geral',    curto: 'Coord. geral',   bolsa: 5000, org: 'IFRN' },   // 14 meses × R$ 5.000 = R$ 70.000 (planilha do TED; decisão de 01/10/2026)
   coord_tecnico: { nome: 'Coordenação técnica',  curto: 'Coord. técnica', bolsa: 56400 / 12, org: 'MPA' },
   articulacao:   { nome: 'Articulação estadual', curto: 'Articulação',    bolsa: 132000 / 5 / 12, org: 'MPA',
                    faz: 'Mobiliza as comunidades, organiza as atividades, acompanha as metas e elabora registros e relatórios.' },
@@ -197,8 +197,43 @@ MQ.ETAPAS_CUSTO = { diagnostico: 'Diagnóstico', implantacao: 'Implantação', a
 MQ.BANCOS = [['001', 'Banco do Brasil'], ['104', 'Caixa Econômica Federal'], ['004', 'Banco do Nordeste'], ['237', 'Bradesco'], ['341', 'Itaú'],
   ['033', 'Santander'], ['260', 'Nubank'], ['077', 'Inter'], ['756', 'Sicoob'], ['748', 'Sicredi'], ['336', 'C6 Bank'], ['323', 'Mercado Pago'],
   ['380', 'PicPay'], ['290', 'PagBank'], ['212', 'Banco Original'], ['070', 'BRB'], ['041', 'Banrisul']];
-/* tetos de gasto (35_tetos_passagens_eventos.sql): evento por estado; passagens no projeto todo */
-MQ.TETOS = { evento: 6000, passagem: 70000 };
+/* tetos de gasto (35_tetos_passagens_eventos.sql e 46_regras_decididas.sql): evento por estado; passagens no projeto todo, um teto por finalidade.
+   "passagem" é o teto do INTERCÂMBIO (nome antigo, mantido); passagem antiga, sem finalidade, conta no intercâmbio. */
+MQ.TETOS = { evento: 6000, passagem: 70000, passagem_pedagogico: 22400 };
+MQ.tetoPassagem = finalidade => finalidade === 'pedagogico' ? MQ.TETOS.passagem_pedagogico : MQ.TETOS.passagem;
+
+/* ---------- etapas do campo em ordem (46_regras_decididas.sql): as MESMAS mensagens do banco ----------
+   Implantação: só com o plano aprovado e com água na seca. Acompanhamento: só depois da implantação feita.
+   A data de uma etapa não pode ser anterior à da etapa anterior (a avaliação continua depois da implantação).
+   base = { visitas, diagnosticos } que a pessoa enxerga. op.visitaId: a visita que está sendo registrada; op.data: o dia
+   em que foi feita (vazio = só agendando); op.veTudo: quem enxerga todos os planos do estado (coordenação e bolsista):
+   para a agente, que só vê os planos que ela mesma fez, plano "não encontrado" não trava a tela (o banco confere). */
+MQ.MSG_ETAPA = {
+  semAgua: 'Este quintal está sem água na seca: foi encaminhado a programa de cisternas e não recebe implantação.',
+  plano: 'O plano deste quintal ainda não foi aprovado pela coordenação técnica.',
+  acompanhamento: 'O acompanhamento é feito depois da implantação do quintal.'
+};
+MQ.etapaMotivo = function (etapa, fichaId, base, op) {
+  op = op || {}; base = base || {};
+  const dataBR = d => String(d).slice(0, 10).split('-').reverse().join('/');
+  const feitas = et => (base.visitas || []).filter(v => v.ficha_id === fichaId && v.etapa === et && v.situacao === 'realizada' && v.id !== op.visitaId && v.data_realizada);
+  const ultima = et => feitas(et).map(v => String(v.data_realizada).slice(0, 10)).sort().pop() || null;
+  const antes = (et, nome, deQue) => { const u = ultima(et); return op.data && u && String(op.data).slice(0, 10) < u ? nome + ' não pode ter data anterior à ' + deQue + ' (' + dataBR(u) + ').' : null; };
+  if (etapa === 'implantacao') {
+    if (!op.soData) {
+      const dg = (base.diagnosticos || []).find(d => d.ficha_id === fichaId);
+      if (dg && dg.sem_agua) return MQ.MSG_ETAPA.semAgua;
+      if (dg ? dg.situacao !== 'aprovado' : !!op.veTudo) return MQ.MSG_ETAPA.plano;
+    }
+    return antes('diagnostico', 'A implantação', 'do diagnóstico');
+  }
+  if (etapa === 'acompanhamento') {
+    if (!op.soData && !feitas('implantacao').length && (op.veTudo || (base.visitas || []).some(v => v.ficha_id === fichaId && v.etapa === 'implantacao' && v.situacao !== 'cancelada'))) return MQ.MSG_ETAPA.acompanhamento;
+    return antes('implantacao', 'O acompanhamento', 'da implantação');
+  }
+  if (etapa === 'avaliacao') return antes('implantacao', 'A avaliação', 'da implantação');
+  return null;
+};
 /* carregando: uma mulher rega um broto, que cresce a cada ciclo (caule, folhas e flor), com as gotas caindo do regador.
    O leitor de tela ouve "Carregando". O nome MQ.ampulheta ficou por compatibilidade com as telas que já o chamam. */
 MQ.ampulheta = (grande) => `<span class="ampulheta${grande ? ' grande' : ''}" role="status" aria-label="Carregando"><svg viewBox="0 0 56 48" width="39" height="33" aria-hidden="true" focusable="false">`

@@ -20,7 +20,7 @@
       { t: 'Achar uma visita para fazer', p: ['Procure "Trabalho de campo" e depois "Para fazer agora".', 'Se tiver uma visita, toque no botão dela (por exemplo, "Registrar diagnóstico").'], v: 'Abre o formulário da visita. Se não houver visita marcada, responda "Deu certo" e escreva "sem visita".' },
       { t: 'Achar ajuda', p: ['Toque no "?" no alto da tela.', 'Procure como pedir o pagamento da bolsa.'], v: 'A ajuda explica onde pedir a bolsa.' },
       { t: 'Entender os números nos botões', p: ['Em "O que você quer fazer?", veja se algum botão tem um número.'], v: 'O número mostra quantas coisas esperam você ali (ex.: algo devolvido para corrigir).', pergunta: 'Você entendeu o que o número queria dizer?' },
-      { t: 'Pedir uma passagem (só articulação estadual)', p: ['Se você é de apoio, responda "Deu certo" e escreva "sou de apoio".', 'Procure "Passagens aéreas e eventos" e toque em "Pedir passagem aérea".', 'Preencha com dados inventados e envie.'], v: 'O pedido aparece em "Meus pedidos", com a coordenação técnica.' },
+      { t: 'Pedir uma passagem (só articulação estadual)', p: ['Se você é de apoio, responda "Deu certo" e escreva "sou de apoio".', 'Procure "Passagens aéreas e eventos" e toque em "Pedir passagem aérea".', 'Preencha com dados inventados e envie.'], v: 'O pedido aparece em "Meus pedidos", com a coordenação técnica (ou com a coordenação geral, se for de acompanhamento pedagógico).' },
       { t: 'Sair sozinho depois de 15 minutos', p: ['Com internet, deixe o sistema aberto e não toque no celular por 15 minutos.', 'Aos 13 minutos deve aparecer um aviso com contagem e o botão "Continuar usando".'], v: 'Aos 15 minutos o sistema sai e explica por quê. Os dados não se perdem.', pergunta: 'O aviso apareceu antes de sair? Deu tempo de ler?' }
     ] },
     agente: { nome: 'Agente de campo', tarefas: [
@@ -58,7 +58,7 @@
       { t: 'Marcar uma visita', p: ['Na aba Campo, no roteiro, marque uma visita para uma bolsista ou agente.'], v: 'A visita aparece no roteiro com a data.' },
       { t: 'Aprovar um plano de quintal', p: ['Na aba Campo, abra "Planos para você aprovar".', 'Abra um plano e aprove ou devolva.'], v: 'O plano sai da lista de espera. Se não houver plano, responda "Deu certo" e escreva "sem plano".' },
       { t: 'Achar ajuda', p: ['Toque no "?" no alto da tela.'], v: 'Abre a ajuda da aba em que você está.' },
-      { t: 'Conferir um pedido de passagem', p: ['Abra a aba "Viagens e eventos" (o número na aba mostra quantos esperam você).', 'Abra o pedido e toque em "Conferido" ou devolva dizendo o que corrigir.'], v: 'O pedido vai para a coordenação geral (ou volta para a bolsista). Se não houver pedido, responda "Deu certo" e escreva "sem pedido".' }
+      { t: 'Conferir um pedido de passagem', p: ['Abra a aba "Viagens e eventos" (o número na aba mostra quantos esperam você).', 'Abra o pedido e toque em "Conferido" ou devolva dizendo o que corrigir.'], v: 'O pedido vai para a coordenação geral (ou volta para a bolsista). Pedido de acompanhamento pedagógico só a coordenação geral confere: para você ele aparece como "aguardando a coordenação geral". Se não houver pedido, responda "Deu certo" e escreva "sem pedido".' }
     ] },
     geral: { nome: 'Coordenação geral', tarefas: [
       { t: 'Cadastrar a coordenação técnica', p: ['Na aba Equipe, toque em "Cadastrar coordenação técnica".', 'Toque em "Digitar os dados agora" e preencha com dados inventados.'], v: 'A pessoa aparece na Equipe.' },

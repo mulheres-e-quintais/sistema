@@ -164,7 +164,7 @@
     else if (a === 'enc-imprimir') { const s = (S().solic || []).find(x => x.id === el.dataset.id); if (s) imprimir(s); }
     else if (a === 'enc-confirmar') {
       el.disabled = true;
-      try { await S().api.confirmarPresencaFic(el.dataset.id); await U().carregar(); U().render(); U().toast('Presença confirmada. Obrigado!'); }
+      try { await S().api.confirmarPresencaFic(el.dataset.id); await U().carregar(); U().render(); U().toast('Presença confirmada.'); }
       catch (e) { el.disabled = false; U().toast(e.message); }
     }
   }
@@ -189,6 +189,11 @@
     if (!x.data) e.data = 'Informe a data.'; else if (x.data > R.hoje()) e.data = 'A data não pode ser no futuro.';
     if (!(x.carga_horaria > 0 && x.carga_horaria <= 12)) e.carga_horaria = 'Informe a carga horária (até 12 horas).';
     if (x.conteudo.length < 10) e.conteudo = 'Escreva o que foi trabalhado (pelo menos 10 letras).';
+    if (!x.id && tid && x.data && !e.data) {   // mesma turma, dia e modalidade = o mesmo encontro; no dia, a turma soma no máximo 12 horas (o servidor confere de novo)
+      const doDia = (S().encontros || []).filter(y => y.turma_id === tid && y.data === x.data && !y.cancelado_em);
+      if (doDia.some(y => y.modalidade === x.modalidade)) e.modalidade = 'Esta turma já tem encontro registrado neste dia nesta modalidade. Se houve mais horas, altere o encontro que já existe.';
+      else if (!e.carga_horaria && doDia.reduce((t, y) => t + (+y.carga_horaria || 0), 0) + x.carga_horaria > 12) e.carga_horaria = 'Os encontros desta turma neste dia passariam de 12 horas.';
+    }
     if (Object.keys(e).length) return U().mostrarErros(form, e);
     await U().ocupado(form, async () => { await S().api.salvarEncontroFic(x); await U().carregar(); U().fecharPainel(); U().render(); U().toast(x.id ? 'Encontro atualizado.' : 'Encontro registrado.'); });
   }

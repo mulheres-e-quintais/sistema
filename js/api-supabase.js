@@ -3,6 +3,7 @@
   const R = MQ.regras;
   let sb = null;
   let euCache = null;
+  const marcas = { fichas: {}, diagnosticos: {} };   // "atualizado_em" de cada registro na última leitura (item: aprovar o que foi lido)
 
   const erro = e => {
     const x = new Error(R.mensagemErro(e)); x.original = e;
@@ -170,6 +171,7 @@
     async listarFichas() {
       const { data, error } = await sb.from('fichas').select('*').order('criado_em', { ascending: false });
       if (error) throw erro(error);
+      (data || []).forEach(f => { marcas.fichas[f.id] = f.atualizado_em; });   // o que a coordenação leu (confere ao aprovar)
       return data;
     },
     async salvarFicha(dados, fotos) {
@@ -186,9 +188,13 @@
         .forEach(k => delete f[k]);
       return gravar('fichas', f);
     },
-    async decidirFicha(id, situacao, obs) {
-      const { data, error } = await sb.from('fichas').update({ situacao, obs_coordenacao: obs || null }).eq('id', id).select().single();
+    // marca = "atualizado_em" do registro que a coordenação leu: se a ficha mudou depois disso, o servidor recusa a aprovação
+    async decidirFicha(id, situacao, obs, marca) {
+      const muda = { situacao, obs_coordenacao: obs || null }; const m = marca || marcas.fichas[id];
+      if (situacao === 'aprovada' && m) muda.atualizado_em = m;
+      const { data, error } = await sb.from('fichas').update(muda).eq('id', id).select().single();
       if (error) throw erro(error);
+      marcas.fichas[id] = data.atualizado_em;
       return data;
     },
     /* ---------- Visitas e diagnósticos ---------- */
@@ -212,7 +218,7 @@
     },
     async listarDiagnosticos() {
       const { data, error } = await sb.from('diagnosticos').select('*').order('data_visita', { ascending: false });
-      if (error) throw erro(error); return data;
+      if (error) throw erro(error); (data || []).forEach(d => { marcas.diagnosticos[d.id] = d.atualizado_em; }); return data;
     },
     async salvarDiagnostico(dados, fotos) {
       const d = Object.assign({}, dados);
@@ -243,9 +249,11 @@
       d.fotos = [...caminhos]; ['executor_id', 'criado_em', 'atualizado_em'].forEach(k => delete d[k]);
       return gravar('avaliacoes', d);
     },
-    async decidirDiagnostico(id, situacao, obs) {
-      const { data, error } = await sb.from('diagnosticos').update({ situacao, obs_coordenacao: obs || null }).eq('id', id).select().single();
-      if (error) throw erro(error); return data;
+    async decidirDiagnostico(id, situacao, obs, marca) {
+      const muda = { situacao, obs_coordenacao: obs || null }; const m = marca || marcas.diagnosticos[id];
+      if (situacao === 'aprovado' && m) muda.atualizado_em = m;
+      const { data, error } = await sb.from('diagnosticos').update(muda).eq('id', id).select().single();
+      if (error) throw erro(error); marcas.diagnosticos[id] = data.atualizado_em; return data;
     },
     async linkFoto(path) {
       const balde = /\/(diag_|visita_|aval_)/.test(path) ? 'campo' : 'fichas';

@@ -55,14 +55,17 @@
     let m = G.mes || mesHoje(); if (mesIni && m < mesIni && mesIni <= mesHoje()) m = G.mes = mesIni;
     const minhas = lista().filter(s => s.equipe_id === eu.id);
     const doMes = t => minhas.find(s => s.tipo === t && String(s.mes).slice(0, 7) === m);
+    // a ajuda de custo pode ter mais de um pedido no mês (o primeiro e os complementares); a bolsa é uma só
+    const ajudasDoMes = minhas.filter(s => s.tipo === 'ajuda_custo' && String(s.mes).slice(0, 7) === m).sort((a, b) => String(a.solicitada_em).localeCompare(String(b.solicitada_em)));
     const hab = R.habilitado(eu);
     return `<section class="secao pag" aria-labelledby="t-pag">
       <div class="secao-cab"><div><h2 id="t-pag">Solicitar pagamento</h2><p>Você solicita, a ${quemAvaliza('bolsa', papel) === 'coord_geral' && !podeAjuda(papel) ? 'coordenação geral' : 'coordenação técnica'} dá o aval e o auxiliar administrativo lança no Arlo (FUNCERN).</p></div>
         <span class="seg"><button type="button" data-acao="pag-mes" data-n="-1" aria-label="Mês anterior" ${mesIni && m <= mesIni ? 'disabled' : ''}>‹</button><button type="button" data-acao="pag-mes" data-n="0">${nomeMes(m)}</button><button type="button" data-acao="pag-mes" data-n="1" aria-label="Próximo mês" ${m >= mesHoje() ? 'disabled' : ''}>›</button></span></div>
       ${mesIni && mesIni > mesHoje() ? `<div class="aviso">Você começa no projeto em ${nomeMes(mesIni)}: a partir desse mês dá para solicitar.</div>` : ''}
-      ${!hab ? '<div class="aviso erro"><b>Sua habilitação ainda não está completa.</b> Sem ela não há pagamento: veja os passos que faltam.</div>' : ''}
+      ${!hab ? '<div class="aviso erro"><b>Sua habilitação ainda não está completa.</b> Sem ela não há pagamento: <button type="button" class="link" data-acao="pend-ver">veja os passos que faltam</button>.</div>' : ''}
+      ${podeAjuda(papel) ? avisoMesesAnteriores(eu, m, mesIni) : ''}
       ${mesIni && m < mesIni ? '' : `<div class="pag-grade">
-        ${podeAjuda(papel) ? cartaoAjuda(eu, m, doMes('ajuda_custo'), hab) : ''}
+        ${podeAjuda(papel) ? cartaoAjuda(eu, m, ajudasDoMes, hab) : ''}
         ${podeBolsa(papel) ? cartaoBolsa(eu, m, doMes('bolsa'), hab) : ''}
       </div>`}
       ${minhas.length ? `<details class="hist"><summary>Minhas solicitações (${minhas.length})</summary><div class="pag-lista">${minhas.map(s => linha(s, false)).join('')}</div></details>` : ''}
@@ -74,29 +77,51 @@
       ${s.situacao === 'lancada' ? `<p class="small muted">Lançada no Arlo em ${new Date(s.arlo_em).toLocaleDateString('pt-BR')}${s.arlo_protocolo ? ' · protocolo ' + E(s.arlo_protocolo) : ''}.</p>` : ''}`;
   }
 
-  function cartaoAjuda(eu, m, s, hab) {
-    if (s && s.situacao !== 'devolvida') return `<div class="bloco pag-c"><h3>Ajuda de custo · ${nomeMes(m)}</h3>
-      <p class="num valor-destaque">${brl(s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado)}</p>${situacaoTxt(s)}</div>`;
-    if (!garantirCustos()) return '<div class="bloco pag-c"><p class="carregando">Calculando…</p></div>';
+  const ehCompl = s => s.tipo === 'ajuda_custo' && !!(s.detalhe && s.detalhe.complementar);
+  const rotTipo = s => (TIPO[s.tipo] || E(s.tipo)) + (ehCompl(s) ? ' (complementar)' : '');
+  /* visitas feitas no mês que ainda não estão em nenhum pedido (ou estão no pedido devolvido "dev", que volta para corrigir) */
+  function visitasLivres(eu, m, dev) {
     const vinc = vinculadas();
-    const feitas = (S().visitas || []).filter(v => v.executor_id === eu.id && v.situacao === 'realizada' && String(v.data_realizada).slice(0, 7) === m && !v._fila)
-      .sort((a, b) => String(a.data_realizada).localeCompare(String(b.data_realizada)));
-    const livres = feitas.filter(v => !vinc[v.id] || (s && vinc[v.id] === s.id));
+    return (S().visitas || []).filter(v => v.executor_id === eu.id && v.situacao === 'realizada' && String(v.data_realizada).slice(0, 7) === m && !v._fila
+      && (!vinc[v.id] || (dev && vinc[v.id] === dev.id))).sort((a, b) => String(a.data_realizada).localeCompare(String(b.data_realizada)));
+  }
+  /* visita feita em mês anterior que ficou fora do pedido: avisa e leva ao mês (lá aparece o pedido complementar) */
+  function avisoMesesAnteriores(eu, m, mesIni) {
+    const por = {};
+    (S().visitas || []).forEach(v => { if (v.executor_id !== eu.id || v.situacao !== 'realizada' || v._fila || vinculadas()[v.id]) return;
+      const k = String(v.data_realizada).slice(0, 7); if (k < m && (!mesIni || k >= mesIni)) por[k] = (por[k] || 0) + 1; });
+    const meses = Object.keys(por).sort();
+    return meses.length ? `<div class="aviso" data-pag-fora>${meses.map(k => `<span><b>${por[k]} visita${por[k] > 1 ? 's' : ''} de ${nomeMes(k)}</b> ${por[k] > 1 ? 'ficaram' : 'ficou'} fora do pedido. <button type="button" class="link" data-acao="pag-mes-ir" data-mes="${k}">Solicitar em ${nomeMes(k)}</button></span>`).join('<br>')}</div>` : '';
+  }
+
+  function cartaoAjuda(eu, m, pedidos, hab) {
+    pedidos = Array.isArray(pedidos) ? pedidos : pedidos ? [pedidos] : [];
+    const s = pedidos.filter(x => x.situacao === 'devolvida').sort((a, b) => String(b.aval_em || '').localeCompare(String(a.aval_em || '')))[0] || null;   // o devolvido volta para corrigir
+    const outros = pedidos.filter(x => x !== s);
+    const jaPedidos = outros.map(x => `<div class="pag-ja"><p class="num valor-destaque">${brl(x.valor_avalizado != null ? x.valor_avalizado : x.valor_solicitado)}</p>
+      ${ehCompl(x) ? '<span class="chip">Pedido complementar</span> ' : ''}${situacaoTxt(x)}</div>`).join('');
+    const livresAgora = outros.length && !s ? visitasLivres(eu, m, null) : null;
+    if (outros.length && !s && !livresAgora.length) return `<div class="bloco pag-c"><h3>Ajuda de custo · ${nomeMes(m)}</h3>${jaPedidos}</div>`;
+    if (!garantirCustos()) return '<div class="bloco pag-c"><p class="carregando">Calculando…</p></div>';
+    const compl = outros.length > 0 && !(s && !ehCompl(s));   // pedido novo num mês que já tem pedido (ou o complementar devolvido)
+    const livres = livresAgora || visitasLivres(eu, m, s);
     const itens = livres.map(v => ({ v, c: MQ.custosUI.custoVisita(v), f: (S().fichas || []).find(x => x.id === v.ficha_id) || {} }));
     const total = r2(itens.reduce((t, i) => t + i.c.total, 0));   // soma das visitas já arredondadas: é o valor enviado
     const estimado = itens.some(i => i.c.fonte !== 'conferido');
     const semKm = itens.some(i => !i.c.completo);
     const pend = (S().visitas || []).filter(v => v.executor_id === eu.id && v.situacao === 'prevista' && String(v.data_prevista).slice(0, 7) <= m).length;
-    return `<form class="bloco pag-c" data-form="pag-ajuda" data-mes="${m}" novalidate><h3>Ajuda de custo · ${nomeMes(m)}</h3>
+    return `<form class="bloco pag-c" data-form="pag-ajuda" data-mes="${m}"${compl ? ' data-complementar="1"' : ''} novalidate><h3>Ajuda de custo · ${nomeMes(m)}</h3>
+      ${jaPedidos}
       ${s ? situacaoTxt(s) : ''}
-      ${itens.length ? `<div class="pag-vis">${itens.map(i => `<label class="pv"><input type="checkbox" name="v" value="${E(i.v.id)}" checked>
+      ${compl && itens.length ? `<p class="aviso" data-pag-complementar><b>Pedido complementar:</b> ${itens.length} visita${itens.length > 1 ? 's' : ''} de ${nomeMes(m)} que ${itens.length > 1 ? 'ficaram' : 'ficou'} fora do pedido anterior.</p>` : ''}
+      ${itens.length ? `<div class="pag-vis">${itens.map(i => `<label class="pv"><input type="checkbox" name="v" value="${E(i.v.id)}" data-valor="${Number(i.c.total) || 0}" checked>
           <span><b>${E(MQ.ETAPAS_CUSTO[i.v.etapa])}</b> · ${R.fmtData(i.v.data_realizada)}<br><span class="small muted">${E(i.f.municipio || '')} · ${i.c.km != null ? i.c.km + ' km ' + (i.c.fonte === 'conferido' ? 'conferidos' : 'estimados') : 'sem distância'}</span></span>
           <span class="num">${brl(i.c.total)}</span></label>`).join('')}</div>
-        <p class="pag-total"><span>Total</span><b class="num">${brl(total)}</b></p>
+        <p class="pag-total"><span>Total</span><b class="num" data-pag-total>${brl(total)}</b></p>
         ${estimado ? '<p class="small muted">Distância estimada pelo município: a coordenação confere o km no aval e o valor pode mudar.</p>' : ''}
         ${semKm ? '<p class="small" style="color:var(--crit)">Há visita sem distância calculada: só as horas e a refeição entram. Avise a coordenação para conferir o km.</p>' : ''}
         <div class="aviso erro" data-erro hidden></div>
-        <button class="btn pri" type="submit" ${hab ? '' : 'disabled'}>${s ? 'Corrigir e reenviar' : 'Solicitar'} ${brl(total)}</button>`
+        <button class="btn pri" type="submit" ${hab ? '' : 'disabled'}>${s ? 'Corrigir e reenviar' : compl ? 'Solicitar pedido complementar' : 'Solicitar'} <span data-pag-total>${brl(total)}</span></button>`
         : `<p class="muted">Nenhuma visita feita em ${nomeMes(m)} para solicitar.</p>`}
       ${pend ? `<p class="small muted">${pend} visita${pend > 1 ? 's' : ''} ainda sem registro de feita. Registre na lista de visitas para entrarem aqui.</p>` : ''}</form>`;
   }
@@ -117,7 +142,7 @@
   function linha(s, comPessoa) {
     const p = pessoa(s.equipe_id);
     return `<button class="vagabtn pag-l" data-acao="pag-ver" data-id="${E(s.id)}">
-      ${comPessoa ? U().avatar(p, 40) : ''}<span class="vb-t"><span class="nm">${comPessoa ? E(nomeDe(p)) + ' · ' : ''}${TIPO[s.tipo]} de ${nomeMes(s.mes)}</span>
+      ${comPessoa ? U().avatar(p, 40) : ''}<span class="vb-t"><span class="nm">${comPessoa ? E(nomeDe(p)) + ' · ' : ''}${rotTipo(s)} de ${nomeMes(s.mes)}</span>
       <span class="sub">${comPessoa ? E(P[p.papel] ? P[p.papel].curto : '') + (p.uf ? ' · ' + E(p.uf) : '') + ' · ' : ''}${brl(s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado)} · enviada em ${new Date(s.solicitada_em).toLocaleDateString('pt-BR')}</span></span>
       <span>${chip(s)}</span></button>`;
   }
@@ -186,7 +211,7 @@
     }
     const doPerfil = s.tipo === 'bolsa' && P[pe.papel] ? P[pe.papel].bolsa : null;   // valor da bolsa conforme o perfil (planilha do TED)
     const val = s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado != null ? s.valor_solicitado : doPerfil;
-    return `<div class="painel-cab"><div class="t"><span class="eyebrow">${TIPO[s.tipo]} · ${nomeMes(s.mes)}</span><h2 id="painel-t">${E(nomeDe(pe))}</h2>
+    return `<div class="painel-cab"><div class="t"><span class="eyebrow">${rotTipo(s)} · ${nomeMes(s.mes)}</span><h2 id="painel-t">${E(nomeDe(pe))}</h2>
         <span class="small muted">${E(P[pe.papel] ? P[pe.papel].nome : '')}${pe.uf ? ' · ' + E(pe.uf) : ''}${['auxiliar_adm', 'coord_geral'].includes(eu.papel) && pe.cpf ? ' · CPF ' + E(R.fmtCPF(pe.cpf)) : ''}</span></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo">
@@ -218,6 +243,7 @@
   async function recarregar() { await U().carregar(); U().render(); }
   async function clique(a, el) {
     if (a === 'pag-mes') { const n = +el.dataset.n; G.mes = n === 0 ? mesHoje() : somaMes(G.mes || mesHoje(), n); if (G.mes > mesHoje()) G.mes = mesHoje(); U().render(); }
+    else if (a === 'pag-mes-ir') { G.mes = el.dataset.mes <= mesHoje() ? el.dataset.mes : mesHoje(); U().render(); }
     else if (a === 'pag-ver') U().abrirPainel({ tipo: 'pag-ver', id: el.dataset.id });
   }
   document.addEventListener('click', ev => { const b = ev.target.closest('form[data-form=pag-aval] button[name=ok]'); if (b) b.form.dataset.ok = b.value; }, true);
@@ -233,7 +259,7 @@
       if (!(total > 0)) return U().mostrarErros(form, {}, 'O valor das visitas marcadas deu zero. Avise a coordenação.');
       await U().ocupado(form, async () => {
         await S().api.solicitarPagamento('ajuda_custo', mes + '-01', total, null, ids, { visitas: itens, total });
-        await recarregar(); U().toast('Ajuda de custo de ' + nomeMes(mes) + ' solicitada: ' + brl(total) + '. Agora vai para o aval.');
+        await recarregar(); U().toast((form.dataset.complementar ? 'Pedido complementar de ajuda de custo de ' : 'Ajuda de custo de ') + nomeMes(mes) + (form.dataset.complementar ? ' solicitado: ' : ' solicitada: ') + brl(total) + '. Agora vai para o aval.');
       });
     }
     if (tipo === 'pag-bolsa') {
@@ -280,4 +306,11 @@
     contaDevolvidas: () => lista().filter(s => s.equipe_id === S().eu.id && s.situacao === 'devolvida').length,   // meus pedidos para corrigir
     contaLancar: () => lista().filter(s => s.situacao === 'avalizada' && s.equipe_id !== S().eu.id).length,       // auxiliar: lançar no Arlo
     contaAval: () => { const eu = S().eu; const sem = U().semTecnica && U().semTecnica(); return lista().filter(s => s.situacao === 'solicitada' && s.equipe_id !== eu.id && (sem || quemAvaliza(s.tipo, pessoa(s.equipe_id).papel) === eu.papel)).length; } };
+
+  /* desmarcou ou marcou uma visita: o total e o botão mostram o que vai ser pedido de fato */
+  if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('change', ev => {
+    const c = ev.target; if (!c || c.name !== 'v' || !c.closest) return; const f = c.closest('form[data-form="pag-ajuda"]'); if (!f) return;
+    const t = Math.round([...f.querySelectorAll('input[name="v"]:checked')].reduce((a, x) => a + Math.round((Number(x.dataset.valor) || 0) * 100), 0)) / 100;
+    f.querySelectorAll('[data-pag-total]').forEach(e => { e.textContent = brl(t); });
+  });
 })();

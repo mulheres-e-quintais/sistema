@@ -35,7 +35,8 @@ test('telas: formulário pede o valor e mostra o saldo; aba da coordenação mos
   const t = await montar('bolsista');
   const f = texto(t.painel({ tipo: 'viag-nova', t: 'evento' }));
   assert.ok(f.includes('Valor estimado (R$)')); assert.ok(/Teto de eventos de PI: R\$\s?6\.000,00/.test(f));
-  assert.ok(/Teto de passagens do projeto: R\$\s?70\.000,00/.test(texto(t.painel({ tipo: 'viag-nova', t: 'passagem' }))));
+  { const fp = texto(t.painel({ tipo: 'viag-nova', t: 'passagem' }));   // 46: um teto por finalidade
+    assert.ok(/Teto de passagens de intercâmbio: R\$\s?70\.000,00/.test(fp)); assert.ok(/Teto de passagens de acompanhamento pedagógico: R\$\s?22\.400,00/.test(fp)); }
   const id = await t.api.salvarPedido(null, 'evento', 'Encontro com valor', diaMais(60), { valor_estimado: 1234.5, local: 'Sede' });
   await t.trocar('coord_tecnico'); await t.api.moverPedido(id, 'conferir');
   await t.trocar('coord_geral');
@@ -52,7 +53,7 @@ test('gastos separados: evento autorizado não entra no gasto de passagens (e vi
   const h = t.aba('viagens');
   const sec = id => { const i = h.indexOf(`id="${id}"`); const j = h.indexOf('</section>', i); return texto(h.slice(i, j)); };
   const P = sec('viag-passagens'), Ev = sec('viag-eventos');
-  assert.ok(/Autorizado em passagens\s*R\$\s?3\.800,00 de R\$\s?70\.000,00/.test(P), 'passagem: só o valor autorizado da passagem');
+  assert.ok(/Autorizado em passagens de intercâmbio\s*R\$\s?3\.800,00 de R\$\s?70\.000,00/.test(P), 'passagem: só o valor autorizado da passagem');
   assert.ok(/Em análise \(valor estimado\): R\$\s?1\.200,00/.test(P), 'passagem em análise pelo estimado');
   assert.ok(!/2\.500/.test(P), 'o evento não aparece nas passagens');
   assert.ok(/Piauí\s*R\$\s?[\d.,]+\s*R\$\s?2\.500,00/.test(Ev), 'evento no estado dele (teto, depois autorizado)');

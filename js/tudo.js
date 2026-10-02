@@ -40,7 +40,7 @@ MQ.UFS = [
 MQ.META_UF = { diagnosticos: 40, quintais: 40, visitas: 80 };
 
 MQ.PAPEIS = {
-  coord_geral:   { nome: 'Coordenação geral',    curto: 'Coord. geral',   bolsa: 70000 / 12, org: 'IFRN' },
+  coord_geral:   { nome: 'Coordenação geral',    curto: 'Coord. geral',   bolsa: 5000, org: 'IFRN' },   // 14 meses × R$ 5.000 = R$ 70.000 (planilha do TED; decisão de 01/10/2026)
   coord_tecnico: { nome: 'Coordenação técnica',  curto: 'Coord. técnica', bolsa: 56400 / 12, org: 'MPA' },
   articulacao:   { nome: 'Articulação estadual', curto: 'Articulação',    bolsa: 132000 / 5 / 12, org: 'MPA',
                    faz: 'Mobiliza as comunidades, organiza as atividades, acompanha as metas e elabora registros e relatórios.' },
@@ -212,8 +212,43 @@ MQ.ETAPAS_CUSTO = { diagnostico: 'Diagnóstico', implantacao: 'Implantação', a
 MQ.BANCOS = [['001', 'Banco do Brasil'], ['104', 'Caixa Econômica Federal'], ['004', 'Banco do Nordeste'], ['237', 'Bradesco'], ['341', 'Itaú'],
   ['033', 'Santander'], ['260', 'Nubank'], ['077', 'Inter'], ['756', 'Sicoob'], ['748', 'Sicredi'], ['336', 'C6 Bank'], ['323', 'Mercado Pago'],
   ['380', 'PicPay'], ['290', 'PagBank'], ['212', 'Banco Original'], ['070', 'BRB'], ['041', 'Banrisul']];
-/* tetos de gasto (35_tetos_passagens_eventos.sql): evento por estado; passagens no projeto todo */
-MQ.TETOS = { evento: 6000, passagem: 70000 };
+/* tetos de gasto (35_tetos_passagens_eventos.sql e 46_regras_decididas.sql): evento por estado; passagens no projeto todo, um teto por finalidade.
+   "passagem" é o teto do INTERCÂMBIO (nome antigo, mantido); passagem antiga, sem finalidade, conta no intercâmbio. */
+MQ.TETOS = { evento: 6000, passagem: 70000, passagem_pedagogico: 22400 };
+MQ.tetoPassagem = finalidade => finalidade === 'pedagogico' ? MQ.TETOS.passagem_pedagogico : MQ.TETOS.passagem;
+
+/* ---------- etapas do campo em ordem (46_regras_decididas.sql): as MESMAS mensagens do banco ----------
+   Implantação: só com o plano aprovado e com água na seca. Acompanhamento: só depois da implantação feita.
+   A data de uma etapa não pode ser anterior à da etapa anterior (a avaliação continua depois da implantação).
+   base = { visitas, diagnosticos } que a pessoa enxerga. op.visitaId: a visita que está sendo registrada; op.data: o dia
+   em que foi feita (vazio = só agendando); op.veTudo: quem enxerga todos os planos do estado (coordenação e bolsista):
+   para a agente, que só vê os planos que ela mesma fez, plano "não encontrado" não trava a tela (o banco confere). */
+MQ.MSG_ETAPA = {
+  semAgua: 'Este quintal está sem água na seca: foi encaminhado a programa de cisternas e não recebe implantação.',
+  plano: 'O plano deste quintal ainda não foi aprovado pela coordenação técnica.',
+  acompanhamento: 'O acompanhamento é feito depois da implantação do quintal.'
+};
+MQ.etapaMotivo = function (etapa, fichaId, base, op) {
+  op = op || {}; base = base || {};
+  const dataBR = d => String(d).slice(0, 10).split('-').reverse().join('/');
+  const feitas = et => (base.visitas || []).filter(v => v.ficha_id === fichaId && v.etapa === et && v.situacao === 'realizada' && v.id !== op.visitaId && v.data_realizada);
+  const ultima = et => feitas(et).map(v => String(v.data_realizada).slice(0, 10)).sort().pop() || null;
+  const antes = (et, nome, deQue) => { const u = ultima(et); return op.data && u && String(op.data).slice(0, 10) < u ? nome + ' não pode ter data anterior à ' + deQue + ' (' + dataBR(u) + ').' : null; };
+  if (etapa === 'implantacao') {
+    if (!op.soData) {
+      const dg = (base.diagnosticos || []).find(d => d.ficha_id === fichaId);
+      if (dg && dg.sem_agua) return MQ.MSG_ETAPA.semAgua;
+      if (dg ? dg.situacao !== 'aprovado' : !!op.veTudo) return MQ.MSG_ETAPA.plano;
+    }
+    return antes('diagnostico', 'A implantação', 'do diagnóstico');
+  }
+  if (etapa === 'acompanhamento') {
+    if (!op.soData && !feitas('implantacao').length && (op.veTudo || (base.visitas || []).some(v => v.ficha_id === fichaId && v.etapa === 'implantacao' && v.situacao !== 'cancelada'))) return MQ.MSG_ETAPA.acompanhamento;
+    return antes('implantacao', 'O acompanhamento', 'da implantação');
+  }
+  if (etapa === 'avaliacao') return antes('implantacao', 'A avaliação', 'da implantação');
+  return null;
+};
 /* carregando: uma mulher rega um broto, que cresce a cada ciclo (caule, folhas e flor), com as gotas caindo do regador.
    O leitor de tela ouve "Carregando". O nome MQ.ampulheta ficou por compatibilidade com as telas que já o chamam. */
 MQ.ampulheta = (grande) => `<span class="ampulheta${grande ? ' grande' : ''}" role="status" aria-label="Carregando"><svg viewBox="0 0 56 48" width="39" height="33" aria-hidden="true" focusable="false">`
@@ -790,6 +825,8 @@ MQ.ORCAMENTO = {
 
   function fichasExemplo(ana, maria, ct, gerarCPF) {
     const tudoSim = {}; MQ.CRITERIOS.forEach(([c]) => { tudoSim[c] = true; });
+    // 46: a data da ficha de exemplo nunca fica no futuro (a visita não pode ter data anterior à da ficha)
+    const dataFicha = (fixa, diasAtras) => fixa <= R.hoje() ? fixa : R.somaDias(R.hoje(), -diasAtras);
     const f = (n, o) => Object.assign({
       id: 'f' + n + 'x' + Math.random().toString(36).slice(2, 8), uf: 'PI', municipio: 'Paulistana', comunidade: 'Comunidade Lagoa do Mato',
       nome: '', cpf: gerarCPF(700000000 + n * 7919), data_nascimento: '1979-03-12', celular: '(89) 99' + String(4000000 + n).slice(-7),
@@ -799,14 +836,14 @@ MQ.ORCAMENTO = {
       resultado: 'selecionada', posicao_espera: null, encaminhada_para: null, justificativa: '',
       foto_ficha_path: 'exemplo', foto_termo_path: 'exemplo', latitude: null, longitude: null,
       situacao: 'aprovada', aprovada_por: ct.id, aprovada_em: '2026-10-22T14:00:00.000Z', obs_coordenacao: null,
-      bolsista_id: ana.id, data_ficha: '2026-10-20', criado_em: '2026-10-20T13:00:00.000Z', atualizado_em: '2026-10-22T14:00:00.000Z', exemplo: true
+      bolsista_id: ana.id, data_ficha: dataFicha('2026-10-20', 12), criado_em: '2026-10-20T13:00:00.000Z', atualizado_em: '2026-10-22T14:00:00.000Z', exemplo: true
     }, tudoSim, o);
     const lista = [
       f(1, { nome: 'Francisca Alves de Sousa (exemplo)', p_sustento: true, latitude: -8.1102, longitude: -41.1187 }),
       f(2, { nome: 'Raimunda Nonata Ribeiro (exemplo)', comunidade: 'Assentamento Novo Horizonte', endereco: 'Rua do Açude, 3', p_raca_povo: true, latitude: -8.1731, longitude: -41.1649 }),
       f(3, { nome: 'Antônia Pereira Lima (exemplo)', municipio: 'Pio IX', comunidade: 'Comunidade Barra', endereco: 'Sítio Barra, s/n', data_nascimento: '1998-07-02', p_jovem: true, bolsista_id: null, latitude: -6.8121, longitude: -40.5903 }),
-      f(4, { nome: 'Josefa Maria da Conceição (exemplo)', situacao: 'aguardando', aprovada_por: null, aprovada_em: null, data_ficha: '2026-10-24', criado_em: '2026-10-24T12:00:00.000Z' }),
-      f(5, { nome: 'Luzia Gomes Ferreira (exemplo)', situacao: 'aguardando', aprovada_por: null, aprovada_em: null, endereco: 'Sitio Lagoa do Mato 11', data_ficha: '2026-10-24', criado_em: '2026-10-24T12:30:00.000Z' }),
+      f(4, { nome: 'Josefa Maria da Conceição (exemplo)', situacao: 'aguardando', aprovada_por: null, aprovada_em: null, data_ficha: dataFicha('2026-10-24', 8), criado_em: '2026-10-24T12:00:00.000Z' }),
+      f(5, { nome: 'Luzia Gomes Ferreira (exemplo)', situacao: 'aguardando', aprovada_por: null, aprovada_em: null, endereco: 'Sitio Lagoa do Mato 11', data_ficha: dataFicha('2026-10-24', 8), criado_em: '2026-10-24T12:30:00.000Z' }),
       f(6, { nome: 'Maria do Socorro Silva (exemplo)', resultado: 'lista_espera', posicao_espera: 1, p_cadunico: false, p_sem_ater: false }),
       f(7, { nome: 'Cícera Rodrigues Nunes (exemplo)', resultado: 'sem_agua', c_agua: false, encaminhada_para: 'Programa Cisternas (ASA) – Paulistana', justificativa: 'Só tem cisterna de consumo; na seca usa carro-pipa.' }),
       f(8, { nome: 'Ivonete Barbosa (exemplo)', situacao: 'devolvida', aprovada_por: null, aprovada_em: null, obs_coordenacao: 'A foto do termo está cortada: falta a assinatura. Fotografe de novo.' }),
@@ -890,6 +927,12 @@ MQ.ORCAMENTO = {
     && (!m.cancelada_em || R.diaLocal(m.cancelada_em) > data)).map(m => m.equipe_id);
   const ficMesFechado = (d, prof, data) => (d.solicitacoes || []).some(s => s.tipo === 'bolsa' && s.equipe_id === prof && String(s.mes).slice(0, 7) === String(data).slice(0, 7)
     && ['solicitada', 'avalizada', 'lancada'].includes(s.situacao));
+  /* 46_regras_decididas.sql: o que o modo demonstração precisa para espelhar as regras novas do banco */
+  const dataExiste = t => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(t || '')); if (!m) return false; const x = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return x.getUTCFullYear() === +m[1] && x.getUTCMonth() === +m[2] - 1 && x.getUTCDate() === +m[3]; };
+  const ehPedagogico = p => p.tipo === 'passagem' && ((p.dados || {}).finalidade) === 'pedagogico';
+  const usadoPassagem = (d, pedag, semId) => (d.pedidos || []).filter(y => y.id !== semId && y.situacao === 'autorizado' && y.tipo === 'passagem' && ehPedagogico(y) === pedag).reduce((t, y) => t + (+y.valor_autorizado || 0), 0);
+  const visitaPaga = (d, vid) => { const sid = (d.solic_visitas || {})[vid]; return !!sid && ((d.solicitacoes || []).find(x => x.id === sid) || {}).situacao === 'lancada'; };
+  const MSG_ALTERADO = 'Este registro foi alterado enquanto você lia. Abra de novo e confira.';
   function euMesmo() {
     const d = ler();
     const id = d.eu[d.perfil];
@@ -938,7 +981,11 @@ MQ.ORCAMENTO = {
       if (!['feira', 'grupo', 'merenda', 'paa', 'comprador', 'outro'].includes(x.tipo)) throw falha('Escolha o tipo de canal.');
       if (String(x.nome || '').trim().length < 3) throw falha('Dê um nome ao canal (pelo menos 3 letras).');
       const igual = s => String(s || '').trim().toLowerCase();
-      if (!atual && d.canaisVenda.some(c => c.uf === uf && igual(c.municipio) === igual(x.municipio) && c.tipo === x.tipo && igual(c.nome) === igual(x.nome))) throw falha('Este canal já está cadastrado neste município.');
+      const mesmo = c => c.uf === uf && igual(c.municipio) === igual(x.municipio) && c.tipo === x.tipo && igual(c.nome) === igual(x.nome);
+      if (!atual && d.canaisVenda.some(mesmo)) throw falha('Este canal já está cadastrado neste município.');
+      // 46: ao mudar o nome, o tipo ou o município, o canal não pode virar repetido de outro
+      if (atual && (igual(x.nome) !== igual(atual.nome) || x.tipo !== atual.tipo || igual(x.municipio) !== igual(atual.municipio)) && d.canaisVenda.some(c => c.id !== atual.id && mesmo(c)))
+        throw falha('Já existe outro canal com este nome e tipo neste município.');
       const agora = new Date().toISOString();
       const novo = { uf, municipio: x.municipio.trim(), tipo: x.tipo, nome: x.nome.trim(), detalhe: String(x.detalhe || '').trim() || null, contato: String(x.contato || '').trim() || null, ativo: x.ativo !== false, atualizado_por: eu.id, atualizado_em: agora };
       if (atual) Object.assign(atual, novo); else d.canaisVenda.push(Object.assign({ id: uid(), criado_por: eu.id, criado_em: agora }, novo));
@@ -1014,6 +1061,7 @@ MQ.ORCAMENTO = {
       if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral anexa documentos do projeto.');
       const erros = MQ.docsUI ? MQ.docsUI.validarDocumento(dd, arquivo) : {};
       if (Object.keys(erros).length) { const e = falha(Object.values(erros)[0]); e.campos = erros; throw e; }
+      if (String(dd.data_documento) < '2025-01-01' || String(dd.data_documento) > R.somaDias(R.hoje(), 365)) throw falha('Confira a data do documento: precisa ser a partir de 01/01/2025 e no máximo um ano à frente.');   // 46
       const agora = new Date().toISOString(); const path = String(dd.data_documento).slice(0, 4) + '/' + uid() + '_' + arquivo.name;
       try { if (typeof URL !== 'undefined' && URL.createObjectURL && arquivo instanceof Blob) fotosMemoria.set(path, URL.createObjectURL(arquivo)); } catch (e) { /* sem arquivo na demonstração */ }
       const x = Object.assign({ id: uid() }, copia(dd), { arquivo_path: path, arquivo_nome: arquivo.name, tamanho: arquivo.size, mime: arquivo.type || null,
@@ -1054,14 +1102,35 @@ MQ.ORCAMENTO = {
       const dias = Math.round((new Date(data + 'T12:00:00') - new Date(R.hoje() + 'T12:00:00')) / 864e5);
       if (dias < ant && String(justificativa || '').trim().length < 15) throw falha('Pedido fora do prazo (' + ant + ' dias antes). Escreva a justificativa.');
       if (tipo === 'passagem' && !((dados && dados.passageiros) || []).length) throw falha('Informe pelo menos uma passageira ou passageiro.');
-      if (!(+(dados || {}).valor_estimado > 0)) throw falha('Informe o valor estimado do pedido (R$).');   // 35
-      const agora = new Date().toISOString(); let p;
-      if (!id) { p = { id: uid(), tipo, uf: eu.uf, solicitante_id: eu.id, criado_em: agora }; d.pedidos.push(p); }
-      else {
+      const ve = +(dados || {}).valor_estimado;
+      if (!(ve > 0)) throw falha('Informe o valor estimado do pedido (R$).');   // 35
+      // 46: valor de R$ 0,01 a R$ 1.000.000,00 já no envio; nascimento de verdade; ninguém duas vezes na lista
+      if (!(Math.round(ve * 100) / 100 >= 0.01 && ve <= 1000000)) throw falha('O valor estimado precisa ficar entre R$ 0,01 e R$ 1.000.000,00 (veio ' + R.fmtBRL(ve) + '). Confira.');
+      if (tipo === 'passagem') {
+        const cpfs = [];
+        for (const x of dados.passageiros) {
+          const nome = String((x || {}).nome || '').trim().slice(0, 60), nasc = (x || {}).nascimento;
+          if (nasc) {
+            if (!dataExiste(nasc)) throw falha('A data de nascimento de ' + nome + ' não é uma data que existe. Confira dia, mês e ano.');
+            if (nasc > R.hoje()) throw falha('A data de nascimento de ' + nome + ' está no futuro. Confira.');
+            if (nasc < '1901-01-01') throw falha('Confira a data de nascimento de ' + nome + ': o ano está antigo demais.');
+          }
+          const c = R.soDigitos((x || {}).cpf);
+          if (c && cpfs.includes(c)) throw falha('A mesma pessoa (CPF) aparece duas vezes na lista de passageiras. Deixe cada pessoa uma vez só.');
+          if (c) cpfs.push(c);
+        }
+        if (dados.volta && !dataExiste(dados.volta)) throw falha('A data da volta não é uma data que existe. Confira dia, mês e ano.');
+      }
+      const agora = new Date().toISOString(); let p = null;
+      if (id) {
         p = d.pedidos.find(x => x.id === id);
         if (!p || p.solicitante_id !== eu.id) throw falha('Pedido não encontrado.');
         if (p.situacao !== 'devolvido') throw falha('Só dá para corrigir pedido devolvido.');
       }
+      // 46: passagem nova (ou quando a finalidade muda) diz para quê; pedido antigo sem finalidade não trava
+      if (tipo === 'passagem' && (!p || (dados.finalidade || null) !== ((p.dados || {}).finalidade || null)) && !['intercambio', 'pedagogico'].includes(dados.finalidade))
+        throw falha('Escolha para que é a passagem: intercâmbio ou acompanhamento pedagógico.');
+      if (!p) { p = { id: uid(), tipo, uf: eu.uf, solicitante_id: eu.id, criado_em: agora }; d.pedidos.push(p); }
       Object.assign(p, { titulo, data_ref: data, dados: copia(dados), justificativa_prazo: justificativa || null, situacao: 'enviado', enviado_em: agora, conferido_por: null, conferido_em: null, decidido_por: null, decidido_em: null, valor_autorizado: null });
       const aud = Object.assign({}, p); delete aud.dados;
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'pedidos_apoio', registro_id: p.id, acao: id ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: null, depois: aud });
@@ -1072,20 +1141,28 @@ MQ.ORCAMENTO = {
       const d = ler(); const eu = euMesmo(); const p = (d.pedidos || []).find(x => x.id === id);
       if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral define o valor autorizado.');
       if (!(+valor > 0)) throw falha('Informe um valor maior que zero.');
+      if (!(Math.round(+valor * 100) / 100 >= 0.01)) throw falha('Informe um valor maior que zero (pelo menos R$ 0,01).');   // 46
+      if (!(+valor <= 1000000)) throw falha('Valor acima do esperado (' + R.fmtBRL(+valor) + '; o máximo é R$ 1.000.000,00). Confira.');
       if (!p || p.situacao !== 'conferido') throw falha('Só dá para definir o valor de pedido conferido, antes de autorizar.');
       p.valor_autorizado = Math.round(+valor * 100) / 100; gravar();
     },
     async saldoPedidos() {
       const d = ler(); const aut = (d.pedidos || []).filter(p => p.situacao === 'autorizado');
       const ev = {}; aut.filter(p => p.tipo === 'evento').forEach(p => { ev[p.uf] = (ev[p.uf] || 0) + (+p.valor_autorizado || 0); });
-      return { passagem_teto: MQ.TETOS.passagem, passagem_usado: aut.filter(p => p.tipo === 'passagem').reduce((t, p) => t + (+p.valor_autorizado || 0), 0), evento_teto: MQ.TETOS.evento, evento_usado: ev };
+      // 46: um saldo por finalidade; os nomes antigos (passagem_*) valem para o intercâmbio, onde conta a passagem antiga sem finalidade
+      const inter = usadoPassagem(d, false), pedag = usadoPassagem(d, true);
+      return { passagem_teto: MQ.TETOS.passagem, passagem_usado: inter, passagem_saldo: Math.max(MQ.TETOS.passagem - inter, 0),
+        passagem_pedagogico_teto: MQ.TETOS.passagem_pedagogico, passagem_pedagogico_usado: pedag, passagem_pedagogico_saldo: Math.max(MQ.TETOS.passagem_pedagogico - pedag, 0),
+        evento_teto: MQ.TETOS.evento, evento_usado: ev };
     },
     async moverPedido(id, acao, obs, protocolo) {
       const d = ler(); const eu = euMesmo(); const p = (d.pedidos || []).find(x => x.id === id);
       if (!eu || !p) throw falha('Pedido não encontrado.');
       const papel = eu.papel; const agora = new Date().toISOString(); const o = String(obs || '').trim();
-      const conferente = await this.quemConferePedidos();
+      const pedag = ehPedagogico(p);   // 46: passagem de acompanhamento pedagógico: só a coordenação geral confere (e autoriza)
+      const conferente = pedag ? 'coord_geral' : await this.quemConferePedidos();
       const nomeConf = { coord_tecnico: 'a coordenação técnica', auxiliar_adm: 'o auxiliar administrativo', coord_geral: 'a coordenação geral' }[conferente];
+      if (pedag && ['conferir', 'devolver'].includes(acao) && papel !== 'coord_geral') throw falha('Pedido de acompanhamento pedagógico: só a coordenação geral confere.');
       if (acao === 'conferir') {
         if (papel !== conferente) throw falha('Quem confere agora é ' + nomeConf + '.');
         if (p.solicitante_id === eu.id) throw falha('Ninguém confere o próprio pedido.');
@@ -1101,9 +1178,11 @@ MQ.ORCAMENTO = {
         if (p.conferido_por === eu.id && conferente !== 'coord_geral') throw falha('Quem conferiu não autoriza o mesmo pedido. Devolva para ' + nomeConf + '.');
         const v = +p.valor_autorizado || +(p.dados || {}).valor_estimado || 0;   // 35: teto por estado (evento) e do projeto (passagem)
         if (!(v > 0)) throw falha('Informe o valor para autorizar.');
-        const outros = (d.pedidos || []).filter(y => y.id !== p.id && y.situacao === 'autorizado' && y.tipo === p.tipo && (p.tipo === 'passagem' || y.uf === p.uf)).reduce((t, y) => t + (+y.valor_autorizado || 0), 0);
-        const teto = MQ.TETOS[p.tipo];
-        if (outros + v > teto) throw falha((p.tipo === 'evento' ? 'Passa do teto de eventos de ' + p.uf + ' (R$ 6.000,00)' : 'Passa do teto de passagens do projeto (R$ 70.000,00)') + ': já autorizado ' + R.fmtBRL(outros) + ', saldo ' + R.fmtBRL(teto - outros) + '.');
+        // 46: passagens têm um teto por finalidade (a antiga, sem finalidade, conta no intercâmbio)
+        const outros = p.tipo === 'evento' ? (d.pedidos || []).filter(y => y.id !== p.id && y.situacao === 'autorizado' && y.tipo === 'evento' && y.uf === p.uf).reduce((t, y) => t + (+y.valor_autorizado || 0), 0)
+          : usadoPassagem(d, pedag, p.id);
+        const teto = p.tipo === 'evento' ? MQ.TETOS.evento : MQ.tetoPassagem(pedag ? 'pedagogico' : 'intercambio');
+        if (outros + v > teto) throw falha((p.tipo === 'evento' ? 'Passa do teto de eventos de ' + p.uf + ' (R$ 6.000,00)' : pedag ? 'Passa do teto de passagens de acompanhamento pedagógico (R$ 22.400,00)' : 'Passa do teto de passagens de intercâmbio (R$ 70.000,00)') + ': já autorizado ' + R.fmtBRL(outros) + ', saldo ' + R.fmtBRL(teto - outros) + '.');
         p.valor_autorizado = v;
         Object.assign(p, { situacao: 'autorizado', decidido_por: eu.id, decidido_em: agora, obs: o || null, funcern_protocolo: String(protocolo || '').trim() || null });
       } else if (acao === 'recusar') {
@@ -1136,20 +1215,34 @@ MQ.ORCAMENTO = {
     async solicitarPagamento(tipo, mes, valor, relatorio, visitas, detalhe) {
       const d = ler(); const eu = euMesmo(); d.solicitacoes = d.solicitacoes || []; d.solic_visitas = d.solic_visitas || {};
       if (!eu) throw falha('Entre no sistema para solicitar.');
+      if (!['ajuda_custo', 'bolsa'].includes(tipo)) throw falha('Tipo de pagamento inválido: escolha ajuda de custo ou bolsa.');   // 46
+      if (!mes) throw falha('Informe o mês do pedido.');
       if (tipo === 'ajuda_custo' && !R.ehCampo(eu.papel)) throw falha('Ajuda de custo é só para bolsistas e agentes de campo que fazem visitas.');
       if (tipo === 'bolsa' && !['coord_tecnico', 'articulacao', 'apoio', 'professor_fic', 'auxiliar_adm'].includes(eu.papel)) throw falha('Seu perfil não recebe bolsa mensal pelo projeto.');
       if (!R.habilitado(eu)) throw falha('Sua habilitação ainda não está completa: sem ela não há pagamento.');
       const m = String(mes).slice(0, 7) + '-01'; if (m.slice(0, 7) > R.hoje().slice(0, 7)) throw falha('Só dá para solicitar o mês atual ou meses anteriores.');
       const ini = (d.equipe.find(x => x.id === eu.id) || eu).data_inicio;   // 32: nada antes do mês de início
       if (ini && m.slice(0, 7) < String(ini).slice(0, 7)) throw falha('Você começou no projeto em ' + String(ini).slice(5, 7) + '/' + String(ini).slice(0, 4) + ': só dá para solicitar a partir desse mês.');
-      const s = d.solicitacoes.find(x => x.tipo === tipo && x.equipe_id === eu.id && x.mes === m);
-      if (s && s.situacao !== 'devolvida') throw falha('Você já solicitou este mês. Acompanhe a situação na lista.');
+      // 46: a ajuda de custo pode ter mais de um pedido no mês (complementar); o devolvido é corrigido e reenviado (o mesmo registro).
+      //     A bolsa continua uma por mês por pessoa.
+      const doMes = d.solicitacoes.filter(x => x.tipo === tipo && x.equipe_id === eu.id && x.mes === m);
+      const s = tipo === 'ajuda_custo' ? doMes.filter(x => x.situacao === 'devolvida').sort((a, b) => String(b.aval_em || '').localeCompare(String(a.aval_em || '')))[0] : doMes[0];
+      if (tipo === 'bolsa' && s && s.situacao !== 'devolvida') throw falha('Você já solicitou este mês. Acompanhe a situação na lista.');
+      const complementar = tipo === 'ajuda_custo' && (s ? !!(s.detalhe || {}).complementar : doMes.some(x => x.situacao !== 'devolvida'));
       if (tipo === 'ajuda_custo') {
         if (!(visitas || []).length) throw falha('Marque as visitas feitas no mês.');
+        if (new Set(visitas).size !== visitas.length) throw falha('A mesma visita apareceu duas vezes no pedido. Marque cada visita uma vez só.');
         const ruim = visitas.some(id => { const v = (d.visitas || []).find(x => x.id === id); const sid = d.solic_visitas[id];
           return !v || v.executor_id !== eu.id || v.situacao !== 'realizada' || String(v.data_realizada).slice(0, 7) !== m.slice(0, 7) || (sid && (!s || sid !== s.id)); });
         if (ruim) throw falha('Há visita que não é sua, não está feita, é de outro mês ou já foi solicitada.');
-        if (!(+valor > 0)) throw falha('Valor inválido.');   // 32: ajuda de custo com valor zero, negativo ou vazio
+        if (!(+valor > 0)) throw falha('Valor inválido: informe um valor maior que zero.');   // 32: ajuda de custo com valor zero, negativo ou vazio
+        if (+valor > 2000 * visitas.length) throw falha('Valor acima do esperado para a ajuda de custo de ' + visitas.length + ' visita(s) (' + R.fmtBRL(+valor) + '; o máximo é R$ 2.000,00 por visita). Confira.');   // 45
+        // 46: o valor pedido não passa do total detalhado por visita (1 centavo de tolerância); sem detalhe, vale só o teto por visita
+        const det = detalhe && typeof detalhe === 'object' ? detalhe : {};
+        const total = typeof det.total === 'number' ? det.total : typeof det.total === 'string' ? R.numBR(det.total)
+          : Array.isArray(det.visitas) && det.visitas.length && det.visitas.every(x => x && typeof x.total === 'number') ? det.visitas.reduce((t, x) => t + x.total, 0) : null;
+        if (total != null && Math.round(+valor * 100) > Math.round(total * 100) + 1) throw falha('O valor pedido (' + R.fmtBRL(+valor) + ') passa do total das visitas detalhadas (' + R.fmtBRL(total) + '). Confira o pedido.');
+        detalhe = Object.assign({}, det); delete detalhe.complementar; if (complementar) detalhe.complementar = true;   // quem diz se é complementar é o sistema
       } else if (String(relatorio || '').trim().length < 50) throw falha('Escreva o relatório de atividades do mês (pelo menos algumas linhas).');
       const agora = new Date().toISOString(); let alvo = s;
       if (tipo === 'bolsa' && eu.papel === 'professor_fic') {   // 38: relatório com os encontros do mês e a presença, gravado pelo sistema
@@ -1178,10 +1271,10 @@ MQ.ORCAMENTO = {
       const agora = new Date().toISOString();
       const vAval = valor != null ? valor : s.valor_solicitado;
       if (ok && !(vAval > 0)) throw falha('Informe o valor do aval (maior que zero).');
-      if (ok && s.tipo === 'ajuda_custo') {   // teto de R$ 600 por visita da solicitação (erro de digitação de um zero não vira pagamento)
+      if (ok && s.tipo === 'ajuda_custo') {   // teto de R$ 2.000,00 por visita da solicitação, como no banco (45) e na tela: erro de digitação de um zero não vira pagamento
         const nVis = Object.values(d.solic_visitas || {}).filter(sid => sid === s.id).length || ((s.detalhe || {}).visitas || []).length;
-        const teto = nVis ? 600 * nVis : MQ.CUSTO_PADRAO.teto;
-        if (vAval > teto) throw falha('Valor muito acima do pedido (' + R.fmtBRL(+s.valor_solicitado || 0) + '). Confira o valor: o aval da ajuda de custo vai até R$ 600,00 por visita.');
+        const teto = nVis ? 2000 * nVis : MQ.CUSTO_PADRAO.teto;
+        if (vAval > teto) throw falha('Valor muito acima do pedido (' + R.fmtBRL(+s.valor_solicitado || 0) + '). Confira o valor: o aval da ajuda de custo vai até R$ 2.000,00 por visita.');
       }
       if (ok && s.tipo === 'bolsa' && s.valor_solicitado != null && vAval > s.valor_solicitado) throw falha('O aval passa do valor pedido. Para pagar mais, devolva para a pessoa corrigir o valor.');
       if (ok) Object.assign(s, { situacao: 'avalizada', valor_avalizado: vAval, aval_por: eu.id, aval_em: agora, obs_aval: obs || null });
@@ -1258,6 +1351,16 @@ MQ.ORCAMENTO = {
         if (d.ficPresencas.some(p => p.encontro_id === e.id && p.confirmado_em && (!pres.includes(p.equipe_id) || !mats.includes(p.equipe_id))))
           throw falha('Alguém que já confirmou a presença foi desmarcado (ou ficou fora da lista pela nova data). Quem confirmou continua presente.');
       }
+      { // 46: mesma turma, dia e modalidade = o mesmo encontro; os encontros da turma no dia somam até 12 horas.
+        //     No encontro que já existe, vale só quando o dia ou a modalidade mudam, ou quando as horas aumentam.
+        const outrosDia = d.ficEncontros.filter(y => y.turma_id === x.turma_id && y.data === x.data && !y.cancelado_em && y.id !== e.id);
+        const ch = Math.round(+x.carga_horaria * 10) / 10;
+        if ((!x.id || x.data !== e.data || x.modalidade !== e.modalidade) && outrosDia.some(y => y.modalidade === x.modalidade))
+          throw falha('Esta turma já tem encontro registrado neste dia nesta modalidade. Se houve mais horas, altere o encontro que já existe.');
+        const soma = outrosDia.reduce((t, y) => t + (+y.carga_horaria || 0), 0) + ch;
+        if ((!x.id || x.data !== e.data || ch > +e.carga_horaria) && soma > 12)
+          throw falha('Os encontros desta turma neste dia somariam ' + soma.toFixed(1).replace('.', ',') + ' horas: o máximo é 12 horas por dia.');
+      }
       if (!x.id) d.ficEncontros.push(e);
       Object.assign(e, { turma_id: x.turma_id, data: x.data, carga_horaria: Math.round(+x.carga_horaria * 10) / 10, modalidade: x.modalidade, conteudo: cont, atualizado_em: agora });
       mats.forEach(id => { const p = d.ficPresencas.find(y => y.encontro_id === e.id && y.equipe_id === id); const v = pres.includes(id);
@@ -1294,6 +1397,23 @@ MQ.ORCAMENTO = {
       if (String(t.nome || '').trim().length < 3) throw falha('Dê um nome à turma.');
       if (t.inicio && t.fim && t.fim < t.inicio) throw falha('O fim da turma é antes do início.');
       d.turmas = d.turmas || []; const agora = new Date().toISOString(); const i = d.turmas.findIndex(x => x.id === t.id);
+      { // 46: início e fim dentro do período do projeto (só ao criar ou quando a data muda)
+        const a0 = i >= 0 ? d.turmas[i] : {}; const fora = v => v < '2026-01-01' || v > '2027-12-31';
+        if (t.inicio && t.inicio !== a0.inicio && fora(t.inicio)) throw falha('O início da turma fica entre 01/01/2026 e 31/12/2027.');
+        if (t.fim && t.fim !== a0.fim && fora(t.fim)) throw falha('O fim da turma fica entre 01/01/2026 e 31/12/2027.');
+      }
+      // 46: o professor altera (e cria) só a turma em que ELE é o professor; só a coordenação geral passa a turma para outro
+      if (eu.papel === 'professor_fic') {
+        if (i >= 0 && d.turmas[i].professor_id !== eu.id) throw falha('Esta turma é de outro(a) professor(a): só ele(a) ou a coordenação geral altera.');
+        if (i >= 0 && t.professor_id !== d.turmas[i].professor_id) throw falha('Só a coordenação geral passa a turma para outro(a) professor(a).');
+        if (i < 0 && t.professor_id !== eu.id) throw falha('Você cria turmas só no seu nome. Turma de outro(a) professor(a) é criada por ele(a) ou pela coordenação geral.');
+      }
+      { // 46: turma repetida (mesmo nome, estado, professor e início), só ao criar ou quando um desses muda
+        const ig = v => String(v || '').trim().replace(/\s+/g, ' ').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); const a = i >= 0 ? d.turmas[i] : null;
+        const mudou = !a || ig(a.nome) !== ig(t.nome) || (a.uf || null) !== (t.uf || null) || a.professor_id !== t.professor_id || (a.inicio || null) !== (t.inicio || null);
+        if (mudou && d.turmas.some(x => x.id !== t.id && ig(x.nome) === ig(t.nome) && (x.uf || null) === (t.uf || null) && x.professor_id === t.professor_id && (x.inicio || null) === (t.inicio || null)))
+          throw falha('Já existe uma turma com este nome, estado, professor(a) e data de início. Use a que já existe ou mude o nome.');
+      }
       if (i >= 0) { const antes = d.turmas[i]; d.turmas[i] = Object.assign({}, antes, t, { atualizado_em: agora }); }
       else d.turmas.push(Object.assign({}, t, { id: uid(), criado_por: eu.id, criado_em: agora, atualizado_em: agora }));
       gravar(); return copia(i >= 0 ? d.turmas[i] : d.turmas[d.turmas.length - 1]);
@@ -1309,6 +1429,14 @@ MQ.ORCAMENTO = {
       if (!data || data > R.hoje()) throw falha('Data da matrícula vazia ou no futuro.');
       d.matriculas = d.matriculas || []; const atual = d.matriculas.find(x => x.equipe_id === equipe_id && !x.cancelada_em);
       if (atual && atual.turma_id !== turma_id) throw falha(p.nome + ' já está matriculada em outra turma. Cancele lá antes de trocar.');
+      { // 46: o número de matrícula é de uma pessoa só; ninguém é matriculado antes de a turma começar (só ao matricular ou quando o campo muda)
+        const num = String(numero).trim().toLowerCase();
+        if (!atual || String(atual.numero).trim().toLowerCase() !== num) {
+          const dono = d.matriculas.find(x => !x.cancelada_em && x.equipe_id !== equipe_id && String(x.numero).trim().toLowerCase() === num);
+          if (dono) { const q = d.equipe.find(y => y.id === dono.equipe_id) || {}; throw falha('O número de matrícula ' + String(numero).trim() + ' já é de ' + (q.nome_social || q.nome || 'outra pessoa') + '. Cada pessoa tem o seu número: confira no SUAP.'); }
+        }
+        if (t.inicio && data < t.inicio && (!atual || atual.matriculado_em !== data)) throw falha('A turma começa em ' + R.fmtData(t.inicio) + ': a data da matrícula não pode ser antes disso.');
+      }
       if (atual) Object.assign(atual, { numero: String(numero).trim(), matriculado_em: data });
       else d.matriculas.push({ id: uid(), turma_id, equipe_id, numero: String(numero).trim(), matriculado_em: data, criado_por: eu.id, criado_em: new Date().toISOString(), cancelada_em: null });
       const antes = copia(p); Object.assign(p, { matricula_fic_em: data, matricula_fic_numero: String(numero).trim(), atualizado_em: new Date().toISOString() });
@@ -1347,7 +1475,11 @@ MQ.ORCAMENTO = {
         if (p.data_inicio && m7 < String(p.data_inicio).slice(0, 7)) throw falha((p.nome_social || p.nome) + ' começou no projeto em ' + String(p.data_inicio).slice(5, 7) + '/' + String(p.data_inicio).slice(0, 4) + ': não há entrega antes desse mês.');
         if (item === 'ava' && (!p.matricula_fic_em || m7 < String(p.matricula_fic_em).slice(0, 7))) throw falha('Acesso ao AVA só a partir do mês da matrícula no FIC.');
       }
-d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes && x.item === item));
+      // 46: depois da bolsa lançada no Arlo, a entrega daquele mês não se desmarca
+      if (!marcar && d.entregas.some(x => x.equipe_id === equipe_id && x.mes === mes && x.item === item)
+          && (d.solicitacoes || []).some(x => x.tipo === 'bolsa' && x.equipe_id === equipe_id && String(x.mes).slice(0, 7) === String(mes).slice(0, 7) && x.situacao === 'lancada'))
+        throw falha('A bolsa de ' + String(mes).slice(5, 7) + '/' + String(mes).slice(0, 4) + ' já foi lançada no Arlo: a entrega deste mês não pode mais ser desmarcada.');
+      d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes && x.item === item));
       if (marcar) d.entregas.push({ equipe_id, mes, item, marcado_por: eu.id, marcado_em: new Date().toISOString() });
       gravar();
     },
@@ -1448,6 +1580,14 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       const pode = R.podeEditarDados(eu && eu.papel, antes.papel) || (soHab && R.podeEditarHabilitacao(eu && eu.papel, antes.papel));
       if (!pode) throw falha('Seu perfil não tem permissão para esta ação.');
       if (antes.status === 'desligada' && patch.status === 'ativa') throw falha('Registro desligado não pode ser reativado. Faça um novo cadastro.');
+      // 46: cadastro desligado não é mais alterado (só a coordenação geral corrige); "substitui" nunca a própria pessoa nem pessoa ativa de outro estado
+      if (antes.status === 'desligada' && eu && eu.papel !== 'coord_geral' && Object.keys(patch).some(k => !['atualizado_em', 'user_id'].includes(k) && (patch[k] == null ? null : patch[k]) !== (antes[k] == null ? null : antes[k])))
+        throw falha('Este cadastro está desligado e não é mais alterado. Se houver erro, peça à coordenação geral para corrigir.');
+      if (patch.substitui_id && patch.substitui_id !== antes.substitui_id) {
+        if (patch.substitui_id === id) throw falha('A pessoa não pode substituir a si mesma. Escolha quem saiu da vaga.');
+        const alvo = d.equipe.find(x => x.id === patch.substitui_id);
+        if (alvo && alvo.status === 'ativa' && (alvo.uf || null) !== (antes.uf || null)) throw falha((alvo.nome_social || alvo.nome) + ' está ativa em outro estado: a substituição é de quem saiu da mesma vaga.');
+      }
       ['papel', 'uf', 'cpf'].forEach(k => { if (k in patch && patch[k] !== antes[k]) throw falha('Papel, estado e CPF não podem ser alterados. Desligue e cadastre novamente.'); });
       const depois = Object.assign({}, antes, patch, { atualizado_em: new Date().toISOString() });
       if (depois.status === 'desligada' && (!depois.data_fim || String(depois.motivo_desligamento || '').trim().length < 5))
@@ -1477,6 +1617,21 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       const antes = i >= 0 ? d.fichas[i] : null;
       if (antes && antes.situacao === 'aprovada') throw falha('Ficha já aprovada pela coordenação técnica. Para corrigir, peça que ela devolva a ficha.');
       if (d.fichas.some(x => x.id !== dados.id && x.cpf === R.soDigitos(dados.cpf))) throw falha(R.mensagemErro('fichas_cpf_unico'));
+      { // 46: CPF de pessoa ativa da equipe, testemunha igual à mulher e posição na lista de espera (só na ficha nova ou quando o campo muda)
+        const cpf = R.soDigitos(dados.cpf), test = R.soDigitos(dados.testemunha_cpf || '');
+        if ((!antes || antes.cpf !== cpf) && d.equipe.some(m => m.status === 'ativa' && m.cpf === cpf))
+          throw falha('Este CPF é de uma pessoa ativa da equipe do projeto: quem trabalha no projeto não entra como beneficiária. Confira o CPF.');
+        if (test && test === cpf && (!antes || R.soDigitos(antes.testemunha_cpf || '') !== test || antes.cpf !== cpf))
+          throw falha('A testemunha da assinatura não pode ser a própria mulher (mesmo CPF). Informe o CPF de quem assistiu.');
+        if (dados.posicao_espera != null && dados.posicao_espera !== '') {
+          if (dados.resultado !== 'lista_espera') {
+            if (antes && antes.posicao_espera === dados.posicao_espera) { if (antes.resultado === 'lista_espera') dados = Object.assign({}, dados, { posicao_espera: null }); }
+            else throw falha('A posição na lista de espera só vale para quem está na lista de espera.');
+          } else if ((!antes || antes.posicao_espera !== dados.posicao_espera || antes.resultado !== 'lista_espera')
+              && d.fichas.some(x => x.id !== dados.id && x.uf === dados.uf && x.resultado === 'lista_espera' && +x.posicao_espera === +dados.posicao_espera))
+            throw falha('Já há outra mulher na posição ' + dados.posicao_espera + ' da lista de espera de ' + dados.uf + '. Escolha outra posição.');
+        }
+      }
       if (!dados.consent_dados) throw falha(R.mensagemErro('consent_dados'));
       if (['selecionada', 'lista_espera'].includes(dados.resultado) && !(R.criteriosOk(dados) && dados.autodeclaracao)) throw falha(R.mensagemErro('criterios_para_selecao'));
       const f = Object.assign({}, antes || {}, dados);
@@ -1492,11 +1647,16 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'fichas', registro_id: f.id, acao: antes ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: antes && copia(antes), depois: copia(f) });
       gravar(); return copia(f);
     },
-    async decidirFicha(id, situacao, obs) {
+    async decidirFicha(id, situacao, obs, marca) {
       const d = ler(); const eu = euMesmo();
       if (!eu || !R.decideCampo(eu.papel)) throw falha('Só a coordenação aprova ou devolve fichas.');
       const i = d.fichas.findIndex(x => x.id === id); if (i < 0) throw falha('Ficha não encontrada.');
       const antes = d.fichas[i];
+      // 46: a tela manda a marca (atualizado_em) da ficha que leu; se a ficha mudou depois, a aprovação é recusada. Sem a marca, aprova como antes.
+      if (situacao === 'aprovada' && antes.situacao !== 'aprovada' && marca && marca !== antes.atualizado_em) throw falha(MSG_ALTERADO);
+      // 46: quintal em andamento (com diagnóstico): a ficha não é devolvida
+      if (situacao === 'devolvida' && antes.situacao !== 'devolvida' && (d.diagnosticos || []).some(x => x.ficha_id === id))
+        throw falha('Este quintal já está em andamento (tem diagnóstico registrado): a ficha não pode ser devolvida nem mudar de resultado. Para corrigir um dado da ficha, a coordenação geral altera direto. Se a mulher saiu do projeto, cancele antes as visitas agendadas e registre a saída na observação.');
       if (situacao === 'devolvida' && String(obs || '').trim().length < 5) throw falha('Para devolver, escreva o que a bolsista precisa corrigir.');
       if (situacao === 'aprovada' && antes.resultado === 'selecionada' &&
           d.fichas.filter(x => x.uf === antes.uf && x.resultado === 'selecionada' && x.situacao === 'aprovada' && x.id !== id).length >= MQ.VAGAS_UF)
@@ -1537,7 +1697,14 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
         if (mesmas >= MQ.ETAPAS[v.etapa].max) throw falha(v.etapa === 'acompanhamento' ? 'Este quintal já tem as 2 visitas de acompanhamento.' : 'Este quintal já tem essa visita agendada ou feita.');
         if (v.etapa !== 'diagnostico' && !d.visitas.some(x => x.ficha_id === v.ficha_id && x.etapa === 'diagnostico' && x.situacao === 'realizada')) throw falha('Primeiro o diagnóstico: implantação, acompanhamento e avaliação só depois dele.');
         if (v.etapa === 'avaliacao' && !d.visitas.some(x => x.ficha_id === v.ficha_id && x.etapa === 'implantacao' && x.situacao === 'realizada')) throw falha('A avaliação é feita depois da implantação do quintal.');
+        // 46: cada etapa exige a anterior (só ao agendar visita NOVA: a que já existe não trava aqui)
+        if (v.situacao !== 'cancelada') { const mot = MQ.etapaMotivo(v.etapa, v.ficha_id, d, { veTudo: true, visitaId: v.id, data: v.situacao === 'realizada' ? v.data_realizada : null }); if (mot) throw falha(mot); }
         if (d.visitas.filter(x => x.uf === f.uf && x.situacao !== 'cancelada').length >= MQ.DIAS_CAMPO_UF) throw falha('O estado ' + f.uf + ' já usou os ' + MQ.DIAS_CAMPO_UF + ' dias de campo previstos.');
+      }
+      // 46: marcar como feita exige a etapa anterior e a data em ordem; corrigir a data de visita já feita confere só a ordem das datas
+      if (antes && v.situacao === 'realizada') {
+        const et = antes.etapa, virou = antes.situacao !== 'realizada';
+        if (virou || (v.data_realizada || null) !== (antes.data_realizada || null)) { const mot = MQ.etapaMotivo(et, antes.ficha_id, d, { veTudo: true, visitaId: antes.id, data: v.data_realizada, soData: !virou }); if (mot) throw falha(mot); }
       }
       if (v.situacao === 'realizada' && (!antes || antes.situacao !== 'realizada') && ['implantacao', 'acompanhamento'].includes(v.etapa)) {
         if (!v.data_realizada || v.data_realizada > R.hoje()) throw falha('Informe a data em que a visita foi feita (não pode ser no futuro).');
@@ -1567,6 +1734,15 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       if (v.situacao === 'cancelada') throw falha('A visita de avaliação foi cancelada.');
       if (!eu || !((R.ehBolsista(eu.papel) && eu.uf === v.uf) || v.executor_id === eu.id)) throw falha('Seu perfil não tem permissão para esta ação.');
       if (dados.data_visita > R.hoje()) throw falha('A data da avaliação não pode ser no futuro.');
+      { // 46: data a partir de 01/01/2026, nunca antes da ficha nem da implantação (só ao registrar ou quando a data muda)
+        const ja = d.avaliacoes.find(a => a.id === dados.id);
+        if (!ja || ja.data_visita !== dados.data_visita) {
+          const fx = (d.fichas || []).find(x => x.id === dados.ficha_id) || {};
+          if (dados.data_visita < '2026-01-01') throw falha('A data da visita não pode ser anterior a 01/01/2026 (o projeto ainda não tinha começado).');
+          if (fx.data_ficha && dados.data_visita < fx.data_ficha) throw falha('A data da visita (' + R.fmtData(dados.data_visita) + ') não pode ser anterior à data da ficha desta mulher (' + R.fmtData(fx.data_ficha) + ').');
+          const mot = MQ.etapaMotivo('avaliacao', dados.ficha_id, d, { visitaId: v.id, data: dados.data_visita }); if (mot) throw falha(mot);
+        }
+      }
       if (dados.latitude == null && String(dados.sem_gps_motivo || '').trim().length < 5) throw falha('Registre a localização ou explique por que não foi possível.');
       const fts = Object.keys(fotos || {}).filter(k => fotos[k]).map(k => v.uf + '/' + v.ficha_id + '/aval_' + k + '.jpg');
       const i = d.avaliacoes.findIndex(a => a.id === dados.id); const agora = new Date().toISOString();
@@ -1591,6 +1767,11 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       if (antes && antes.situacao === 'aprovado') throw falha('Plano já aprovado pela coordenação técnica. Peça que ela devolva para corrigir.');
       if (dados.data_visita && String(dados.data_visita).slice(0, 10) > R.hoje() && (!antes || dados.data_visita !== antes.data_visita)) throw falha('A data da visita não pode ser no futuro.');   // 42: ao criar ou ao mudar a data
       if (v.situacao === 'cancelada') throw falha('A visita de diagnóstico foi cancelada.');
+      if (dados.data_visita && (!antes || dados.data_visita !== antes.data_visita)) {   // 46: a partir de 01/01/2026 e nunca antes da ficha
+        const fx = (d.fichas || []).find(x => x.id === dados.ficha_id) || {};
+        if (dados.data_visita < '2026-01-01') throw falha('A data da visita não pode ser anterior a 01/01/2026 (o projeto ainda não tinha começado).');
+        if (fx.data_ficha && dados.data_visita < fx.data_ficha) throw falha('A data da visita (' + R.fmtData(dados.data_visita) + ') não pode ser anterior à data da ficha desta mulher (' + R.fmtData(fx.data_ficha) + ').');
+      }
       const kit = (dados.dados && dados.dados.kit) || dados.kit;   // o plano fica em dados.dados (como na produção)
       if (!dados.sem_agua && Array.isArray(kit)) {   // 42: kit até R$ 5.000,00 por quintal; quantidade tem de ser maior que zero
         let tot = 0;
@@ -1611,10 +1792,12 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'diagnosticos', registro_id: n.id, acao: antes ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: antes && copia(antes), depois: copia(n) });
       gravar(); return copia(n);
     },
-    async decidirDiagnostico(id, situacao, obs) {
+    async decidirDiagnostico(id, situacao, obs, marca) {
       const d = ler(); const eu = euMesmo();
       if (!eu || !R.decideCampo(eu.papel)) throw falha('Só a coordenação aprova ou devolve o plano.');
       const i = d.diagnosticos.findIndex(x => x.id === id); if (i < 0) throw falha('Diagnóstico não encontrado.');
+      // 46: aprovar com a marca do que foi lido; se o plano mudou depois, recusa. Sem a marca, aprova como antes.
+      if (situacao === 'aprovado' && d.diagnosticos[i].situacao !== 'aprovado' && marca && marca !== d.diagnosticos[i].atualizado_em) throw falha(MSG_ALTERADO);
       if (situacao === 'devolvido' && String(obs || '').trim().length < 5) throw falha('Para devolver, escreva o que precisa ser corrigido.');
       const agora = new Date().toISOString(); const antes = d.diagnosticos[i];
       // mesmas regras do 31_validacao_diagnostico.sql
@@ -1655,6 +1838,14 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       if (!dados.consentimento_lgpd) throw falha('É preciso aceitar o uso dos dados para o cadastro.');
       if (!dados.cadastro_arlo && !dados.data_nascimento) throw falha('Informe a data de nascimento.');
       const cpf = R.soDigitos(dados.cpf), email = String(dados.email || '').trim().toLowerCase();
+      // 46: o que vem do formulário é conferido antes de gravar
+      if (!/^[0-9]{11}$/.test(cpf)) throw falha('O CPF precisa ter 11 números. Confira.');
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw falha('E-mail inválido. Confira (sem espaços).');
+      if (dados.data_nascimento) {
+        if (!dataExiste(dados.data_nascimento)) throw falha('A data de nascimento não é uma data que existe. Confira dia, mês e ano.');
+        if (dados.data_nascimento > R.hoje()) throw falha('A data de nascimento não pode ser no futuro.');
+        if (dados.data_nascimento < '1901-01-01') throw falha('Confira a data de nascimento: o ano está antigo demais.');
+      }
       if (d.equipe.some(m => m.status === 'ativa' && (m.cpf === cpf || String(m.email).toLowerCase() === email))) throw falha('Já existe pessoa ativa na equipe com este CPF ou e-mail. Fale com a coordenação.');
       if ((d.pre_cadastros || []).some(x => x.situacao === 'aguardando' && (x.cpf === cpf || String(x.email).toLowerCase() === email)))
         throw falha('Seus dados já foram enviados e estão com a coordenação para conferir. Não precisa enviar de novo.');
@@ -1708,6 +1899,18 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     async lerParametros(chave) { const d = ler(); return copia((d.parametros || {})[chave] || MQ.CUSTO_PADRAO); },
     async salvarParametros(chave, valor) {
       const eu = euMesmo(); if (!eu || !/^coord/.test(eu.papel)) throw falha('Só a coordenação altera valores de pagamento.');
+      if (chave === 'custo_visita') {   // 46: números de verdade, dentro do que faz sentido (como no banco)
+        if (!valor || typeof valor !== 'object' || Array.isArray(valor)) throw falha('Os valores do custo da visita vieram num formato que o sistema não entende. Abra a aba Custos e salve os valores de novo.');
+        const ROT = { valor_hora: 'O valor da hora', refeicao: 'O valor da refeição', km_por_litro: 'O consumo do carro (km por litro)', preco_litro: 'O preço do litro da gasolina', fator_estrada: 'O fator estrada', teto: 'O teto das ajudas de custo' };
+        for (const k of Object.keys(ROT)) { if (!(k in valor)) continue; const x = valor[k];
+          if (typeof x !== 'number' || !isFinite(x)) throw falha(ROT[k] + ' precisa ser um número.');
+          if (['valor_hora', 'refeicao', 'teto'].includes(k) && x < 0) throw falha(ROT[k] + ' não pode ser negativo.');
+          if (['km_por_litro', 'preco_litro'].includes(k) && !(x > 0)) throw falha(ROT[k] + ' precisa ser maior que zero.');
+          if (k === 'fator_estrada' && x < 1) throw falha('O fator estrada precisa ser 1 ou mais (a estrada nunca é mais curta que a linha reta).'); }
+        if ('horas' in valor) { const h = valor.horas;
+          if (!h || typeof h !== 'object' || Array.isArray(h)) throw falha('As horas por etapa vieram num formato que o sistema não entende. Abra a aba Custos e salve os valores de novo.');
+          if (Object.values(h).some(x => typeof x !== 'number' || !(x >= 0 && x <= 24))) throw falha('As horas de cada etapa precisam ser um número entre 0 e 24.'); }
+      }
       const d = ler(); d.parametros = d.parametros || {}; d.parametros[chave] = copia(valor); gravar(); return copia(valor);
     },
     async listarCustos() {
@@ -1719,7 +1922,15 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     async salvarKm(visita_id, km_ida) {
       const eu = euMesmo(); if (!eu || !/^coord/.test(eu.papel)) throw falha('Só a coordenação altera valores de pagamento.');
       if (km_ida != null && !(km_ida >= 0 && km_ida < 1000)) throw falha('Distância inválida (0 a 999 km).');
-      const d = ler(); d.custos = (d.custos || []).filter(c => c.visita_id !== visita_id);
+      const d = ler();
+      { // 46: km de visita em pedido lançado no Arlo não muda mais, nem se apaga
+        const atual = (d.custos || []).find(c => c.visita_id === visita_id);
+        if (visitaPaga(d, visita_id)) {
+          if (km_ida == null) { if (atual) throw falha('Esta visita já foi paga (o pedido foi lançado no Arlo): a distância conferida não pode mais ser apagada.'); }
+          else if (!atual || +atual.km_ida !== +km_ida) throw falha('Esta visita já está num pedido lançado no Arlo: a distância (km) não muda mais.');
+        }
+      }
+      d.custos = (d.custos || []).filter(c => c.visita_id !== visita_id);
       if (km_ida != null) d.custos.push({ visita_id, km_ida, definido_em: new Date().toISOString() });
       gravar(); return km_ida;
     },
@@ -1739,7 +1950,9 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
         .slice(0, 24).map(v => ({ path: v.path, legenda: v.legenda, uf: v.uf, url: ilustracao(v.path) }));
       // 40: mulheres com ficha válida por município; menos de 3 vai sem o número (LGPD), nenhuma situação individual
       const porMun = {}; d.fichas.filter(f => f.resultado !== 'nao_atende' && String(f.municipio || '').trim()).forEach(f => {
-        const k = f.uf + '|' + String(f.municipio).trim().toLowerCase(); (porMun[k] = porMun[k] || { uf: f.uf, municipio: String(f.municipio).trim(), n: 0 }).n++; });
+        const nome = String(f.municipio).trim().replace(/\s+/g, ' '); const k = f.uf + '|' + nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');   // 46: com e sem acento é o mesmo município
+        const x = (porMun[k] = porMun[k] || { uf: f.uf, municipio: nome, n: 0 }); x.n++;
+        if (nome.normalize('NFD').length - nome.length > x.municipio.normalize('NFD').length - x.municipio.length) x.municipio = nome; });   // mostra a grafia com acento
       const municipios = Object.values(porMun).map(x => ({ uf: x.uf, municipio: x.municipio, n: x.n >= 3 ? x.n : null, menos_de_3: x.n < 3 }));
       return { atualizado_em: new Date().toISOString(), por_uf, fotos, municipios,
         equipe: { bolsistas: n(ativos, m => R.ehBolsista(m.papel)), agentes: n(ativos, m => m.papel === 'agente') } };
@@ -1780,6 +1993,9 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       const d2 = ler(); const quando = String(data_fim || R.hoje()).split('-').reverse().join('/');
       (d2.pedidos || []).filter(p => p.solicitante_id === id && ['enviado', 'devolvido', 'conferido'].includes(p.situacao)).forEach(p => {
         p.situacao = 'cancelado'; p.obs = (p.obs ? p.obs + ' · ' : '') + 'Cancelado pelo sistema: a solicitante foi desligada do projeto em ' + quando + '.'; });
+      // 46: a matrícula do FIC ainda ativa passa a cancelada (a presença nos encontros anteriores continua valendo)
+      (d2.matriculas || []).filter(x => x.equipe_id === id && !x.cancelada_em).forEach(x => {
+        x.cancelada_em = new Date().toISOString(); x.motivo_cancelamento = 'Cancelada pelo sistema: a pessoa foi desligada do projeto em ' + quando + '.'; });
       gravar(); return r;
     },
 
@@ -1794,7 +2010,8 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     async enviarTermo(id, arquivo) { return arquivo.name; },   // no demo guarda só o nome
     async linkTermo(path) { return null; },
     async entrar() { throw falha('No modo demonstração não há login: use o seletor de perfil.'); },
-    async entrarSenha() { throw falha('Na demonstração não há login: escolha um perfil acima.'); },   // a tela chama S.api.entrarSenha: sem isto aparecia "is not a function"
+    async entrarSenha() { throw falha('Na demonstração não há login: escolha um perfil acima.'); },
+    async criarSenha() { throw falha('Na demonstração não há primeiro acesso nem senha: escolha um perfil acima para conhecer o sistema.'); },   // 46: "Primeiro acesso" mostrava "Não deu certo…"   // a tela chama S.api.entrarSenha: sem isto aparecia "is not a function"
     async sair() {}
   };
 })();
@@ -1805,6 +2022,7 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
   const R = MQ.regras;
   let sb = null;
   let euCache = null;
+  const marcas = { fichas: {}, diagnosticos: {} };   // "atualizado_em" de cada registro na última leitura (item: aprovar o que foi lido)
 
   const erro = e => {
     const x = new Error(R.mensagemErro(e)); x.original = e;
@@ -1972,6 +2190,7 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     async listarFichas() {
       const { data, error } = await sb.from('fichas').select('*').order('criado_em', { ascending: false });
       if (error) throw erro(error);
+      (data || []).forEach(f => { marcas.fichas[f.id] = f.atualizado_em; });   // o que a coordenação leu (confere ao aprovar)
       return data;
     },
     async salvarFicha(dados, fotos) {
@@ -1988,9 +2207,13 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
         .forEach(k => delete f[k]);
       return gravar('fichas', f);
     },
-    async decidirFicha(id, situacao, obs) {
-      const { data, error } = await sb.from('fichas').update({ situacao, obs_coordenacao: obs || null }).eq('id', id).select().single();
+    // marca = "atualizado_em" do registro que a coordenação leu: se a ficha mudou depois disso, o servidor recusa a aprovação
+    async decidirFicha(id, situacao, obs, marca) {
+      const muda = { situacao, obs_coordenacao: obs || null }; const m = marca || marcas.fichas[id];
+      if (situacao === 'aprovada' && m) muda.atualizado_em = m;
+      const { data, error } = await sb.from('fichas').update(muda).eq('id', id).select().single();
       if (error) throw erro(error);
+      marcas.fichas[id] = data.atualizado_em;
       return data;
     },
     /* ---------- Visitas e diagnósticos ---------- */
@@ -2014,7 +2237,7 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     },
     async listarDiagnosticos() {
       const { data, error } = await sb.from('diagnosticos').select('*').order('data_visita', { ascending: false });
-      if (error) throw erro(error); return data;
+      if (error) throw erro(error); (data || []).forEach(d => { marcas.diagnosticos[d.id] = d.atualizado_em; }); return data;
     },
     async salvarDiagnostico(dados, fotos) {
       const d = Object.assign({}, dados);
@@ -2045,9 +2268,11 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       d.fotos = [...caminhos]; ['executor_id', 'criado_em', 'atualizado_em'].forEach(k => delete d[k]);
       return gravar('avaliacoes', d);
     },
-    async decidirDiagnostico(id, situacao, obs) {
-      const { data, error } = await sb.from('diagnosticos').update({ situacao, obs_coordenacao: obs || null }).eq('id', id).select().single();
-      if (error) throw erro(error); return data;
+    async decidirDiagnostico(id, situacao, obs, marca) {
+      const muda = { situacao, obs_coordenacao: obs || null }; const m = marca || marcas.diagnosticos[id];
+      if (situacao === 'aprovado' && m) muda.atualizado_em = m;
+      const { data, error } = await sb.from('diagnosticos').update(muda).eq('id', id).select().single();
+      if (error) throw erro(error); marcas.diagnosticos[id] = data.atualizado_em; return data;
     },
     async linkFoto(path) {
       const balde = /\/(diag_|visita_|aval_)/.test(path) ? 'campo' : 'fichas';
@@ -2464,6 +2689,48 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     });
   };
 
+  /* ---------- o arquivo é o que o nome diz? (confere pelo CONTEÚDO, não pela extensão nem pelo tipo que o navegador informa) ----------
+     Cada tipo de arquivo começa sempre com os mesmos bytes (a "assinatura"): PDF "%PDF-", JPEG FF D8 FF, PNG 89 50 4E 47,
+     Word/Excel novos e LibreOffice "PK" (são um zip), Word/Excel antigos D0 CF 11 E0. HTML ou programa renomeado para .pdf não passa.
+     MQ.arquivoConfere(arquivo, extensõesAceitas) devolve '' quando está certo, ou a mensagem para a tela. */
+  const FAMILIA = { pdf: 'pdf', jpg: 'jpg', jpeg: 'jpg', png: 'png', webp: 'webp', heic: 'heic', heif: 'heic', docx: 'zip', xlsx: 'zip', odt: 'zip', ods: 'zip', doc: 'ole', xls: 'ole' };
+  const NOME_TIPO = { pdf: ['um PDF', 'Gere o PDF de novo.'], jpg: ['uma foto', 'Tire a foto de novo ou escolha outra imagem.'], png: ['uma foto', 'Tire a foto de novo ou escolha outra imagem.'],
+    webp: ['uma foto', 'Tire a foto de novo ou escolha outra imagem.'], heic: ['uma foto', 'Tire a foto de novo ou escolha outra imagem.'],
+    docx: ['um documento do Word', 'Salve o documento de novo.'], doc: ['um documento do Word', 'Salve o documento de novo.'], odt: ['um documento de texto', 'Salve o documento de novo.'],
+    xlsx: ['uma planilha', 'Salve a planilha de novo.'], xls: ['uma planilha', 'Salve a planilha de novo.'], ods: ['uma planilha', 'Salve a planilha de novo.'] };
+  const extDe = nome => { const p = String(nome || '').toLowerCase().split('.'); return p.length > 1 ? p.pop() : ''; };
+  /* família do conteúdo pelos primeiros bytes: 'pdf', 'jpg', 'png', 'webp', 'heic', 'zip', 'ole' ou '' (não reconhecido) */
+  MQ.assinaturaDe = bytes => {
+    const b = bytes || []; const eh = (...x) => x.every((v, i) => b[i] === v); const t = (i, n) => String.fromCharCode(...Array.from(b).slice(i, i + n));
+    if (t(0, 5) === '%PDF-') return 'pdf';
+    if (eh(0xFF, 0xD8, 0xFF)) return 'jpg';
+    if (eh(0x89, 0x50, 0x4E, 0x47)) return 'png';
+    if (eh(0x50, 0x4B, 0x03, 0x04)) return 'zip';
+    if (eh(0xD0, 0xCF, 0x11, 0xE0)) return 'ole';
+    if (t(0, 4) === 'RIFF' && t(8, 4) === 'WEBP') return 'webp';
+    if (t(4, 4) === 'ftyp' && /^(heic|heix|hevc|hevx|heim|heis|mif1|msf1)$/.test(t(8, 4))) return 'heic';
+    return '';
+  };
+  MQ.MSG_ARQ_VAZIO = 'O arquivo está vazio. Escolha outro.';
+  MQ.msgArquivoFalso = ext => { const n = NOME_TIPO[ext] || ['do tipo que o nome diz', 'Escolha outro arquivo.']; return 'Este arquivo não é ' + n[0] + ' de verdade (ou está corrompido). ' + n[1]; };
+  MQ.arquivoConfere = async function (arquivo, aceitos, op) {
+    op = op || {};
+    if (!arquivo || !arquivo.name) return 'Escolha o arquivo.';
+    const ext = extDe(arquivo.name); const lista = (aceitos || Object.keys(FAMILIA)).map(x => String(x).toLowerCase().replace(/^\./, ''));
+    if (!lista.includes(ext) || !FAMILIA[ext]) return 'Tipo de arquivo não aceito. Use ' + (op.rotulo || 'PDF ou foto (JPG, PNG)') + '.';
+    if (!(arquivo.size > 0)) return MQ.MSG_ARQ_VAZIO;
+    let bytes;
+    try { bytes = new Uint8Array(await arquivo.slice(0, 1024).arrayBuffer()); } catch (e) { return 'Não foi possível ler o arquivo. Escolha de novo.'; }
+    let fam = MQ.assinaturaDe(bytes); const quer = FAMILIA[ext];
+    const txt = String.fromCharCode(...Array.from(bytes)); const FOTO = ['jpg', 'png', 'webp', 'heic'];
+    // tolerâncias para arquivo legítimo: PDF de scanner/impressora com bytes antes de "%PDF-"; foto com a extensão trocada
+    // (PNG chamado .jpg); .doc salvo como RTF; .xls/.doc que na verdade é o formato novo (zip)
+    if (!fam && quer === 'pdf' && txt.indexOf('%PDF-') > 0) fam = 'pdf';
+    if (FOTO.includes(quer) && FOTO.includes(fam)) return '';
+    if (quer === 'ole' && (fam === 'zip' || (ext === 'doc' && /^\s*\{\\rtf/.test(txt)))) return '';
+    return fam === quer ? '' : MQ.msgArquivoFalso(ext);
+  };
+
   MQ.novoId = () => (crypto.randomUUID ? crypto.randomUUID()
     : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
 })();
@@ -2541,15 +2808,33 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       <span class="sub">${mostrarUF ? E(f.uf) + ' · ' : ''}${E(f.municipio)} · ${E(f.comunidade)} · <span class="num">${R.pontosFicha(f)}</span> ponto${R.pontosFicha(f) === 1 ? '' : 's'} de prioridade${f._erro ? ' · <b style="color:var(--crit)">' + E(f._erro) + '</b>' : ''}</span></button>`;
   }
 
+  /* ---------- fichas que ainda estão só neste aparelho (sem internet, ou recusadas pelo servidor) ---------- */
+  const ROTULO_FILA = 'No aparelho: envia quando tiver internet';
+  function blocoAparelho(filaF, comErro) {
+    const pend = filaF.length;
+    const item = it => { const d = it.dados || {}; const onde = [d.municipio, d.comunidade].filter(Boolean).map(E).join(' · ');
+      return `<li class="fila-item${it.erro ? ' com-erro' : ''}"><div class="fila-txt"><b class="nm">${E(d.nome || 'Ficha sem nome')}</b>
+          ${it.erro ? '<span class="chip crit">Não enviada: corrigir</span>' : `<span class="chip pend">${ROTULO_FILA}</span>`}
+          ${onde ? `<span class="sub">${onde}</span>` : ''}
+          ${it.erro ? `<span class="fila-motivo"><b>Motivo:</b> ${E(it.erro)}</span>` : ''}</div>
+        ${it.erro ? `<button type="button" class="btn peq pri" data-acao="ficha-corrigir" data-id="${E(it.id)}" aria-label="Corrigir a ficha de ${E(d.nome || '')}">Corrigir</button>`
+          : `<button type="button" class="btn peq" data-acao="ficha-ver" data-id="${E(it.id)}" aria-label="Ver a ficha de ${E(d.nome || '')}">Ver</button>`}</li>`; };
+    return `<div class="bloco fila-aparelho${comErro ? ' com-erro' : ''}" role="status">
+      <div class="fila-cab"><span><b>${pend} ficha${pend > 1 ? 's' : ''} guardada${pend > 1 ? 's' : ''} neste aparelho</b>${comErro ? `, ${comErro} com problema para corrigir` : ', aguardando internet para enviar'}.</span>
+        ${navigator.onLine ? '<button type="button" class="btn peq" data-acao="ficha-enviar">Enviar agora</button>' : ''}</div>
+      <ul class="fila-lista">${filaF.slice().sort((a, b) => (b.erro ? 1 : 0) - (a.erro ? 1 : 0)).map(item).join('')}</ul></div>`;
+  }
+
   /* ---------- tela da bolsista ---------- */
   function secaoBolsista() {
     const S = U().S; const uf = S.eu.uf;
     const lista = todas().filter(f => f.uf === uf);
     const c = contar(lista, uf);
     const filaF = S.fila.filter(i => !i.tipo || i.tipo === 'ficha'); const pend = filaF.length, comErro = filaF.filter(i => i.erro).length;
-    const vis = lista;
-    const devolvidas = vis.filter(f => f.situacao === 'devolvida' || f._erro);
-    const resto = vis.filter(f => !(f.situacao === 'devolvida' || f._erro));
+    // o que ainda está só no aparelho aparece num bloco à parte, no topo (não se mistura com as fichas que já chegaram ao servidor)
+    const vis = lista.filter(f => !f._fila);
+    const devolvidas = vis.filter(f => f.situacao === 'devolvida');
+    const resto = vis.filter(f => f.situacao !== 'devolvida');
     return `<section class="secao" aria-labelledby="t-fichas">
       <div class="secao-cab"><div><h2 id="t-fichas">Seleção das mulheres · ${E(U().nomeUF(uf))}</h2>
         <p>Para cada mulher indicada pela comunidade você preenche uma <b>ficha de indicação</b>: dados dela, critérios do edital e o termo de consentimento assinado. A coordenação técnica aprova; as ${MQ.VAGAS_UF} primeiras aprovadas recebem o quintal e as outras ficam na lista de espera.</p></div>
@@ -2560,9 +2845,7 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
         <div><span class="v num">${c.espera}</span><span class="l">na lista de espera</span></div>
         <div><span class="v num">${c.sem_agua}</span><span class="l">sem água: encaminhadas</span></div>
       </div>
-      ${pend ? `<div class="aviso${comErro ? ' erro' : ''}" style="display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap">
-        <span><b>${pend} ficha${pend > 1 ? 's' : ''} guardada${pend > 1 ? 's' : ''} neste aparelho</b>${comErro ? `, ${comErro} com problema para corrigir` : ', aguardando internet para enviar'}.</span>
-        ${navigator.onLine ? '<button class="btn peq" data-acao="ficha-enviar">Enviar agora</button>' : ''}</div>` : ''}
+      ${pend ? blocoAparelho(filaF, comErro) : ''}
       ${devolvidas.length ? `<div class="bloco" style="border-color:var(--crit)"><h3>Para corrigir (${devolvidas.length})</h3><div class="lista-fichas">${devolvidas.map(f => linhaFicha(f)).join('')}</div></div>` : ''}
       ${resto.length ? U().dobra('fichas-todas', `<span><b>Ver as ${resto.length} fichas</b> <span class="small muted">· procurar por nome ou CPF</span></span>`,
           `${resto.length > 6 ? `<div class="campo"><label for="f-busca">Procurar por nome ou CPF</label><input id="f-busca" data-procura="lista-fichas-uf" autocomplete="off"></div>` : ''}
@@ -2612,7 +2895,9 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
             ${Object.entries(MQ.SITUACOES).map(([k, v]) => op(k, v.nome, filtro.situacao)).join('')}${Object.entries(MQ.RESULTADOS).map(([k, v]) => op(k, v.nome, filtro.situacao)).join('')}</select></div>
           <div class="campo"><label for="ff-busca">Nome ou CPF</label><input id="ff-busca" data-filtro="busca" value="${E(filtro.busca)}" autocomplete="off"></div>
         </div>
-        <div class="lista-fichas">${filtradas.slice(0, 200).map(f => linhaFicha(f, true)).join('') || '<p class="muted">Nenhuma ficha com esses filtros.</p>'}</div>
+        ${temFiltro() && filtradas.length ? `<p class="small muted filtro-estado" role="status">Mostrando ${filtradas.length} de ${lista.length} fichas. <button type="button" class="link" data-acao="ficha-limpar-filtros">Limpar filtros</button></p>` : ''}
+        ${filtradas.length ? `<div class="lista-fichas">${filtradas.slice(0, 200).map(f => linhaFicha(f, true)).join('')}</div>`
+          : `<div class="vazio filtro-vazio" role="status"><span>${temFiltro() ? 'Nenhuma ficha com esses filtros.' : 'Nenhuma ficha ainda.'}</span>${temFiltro() ? '<button type="button" class="btn peq" data-acao="ficha-limpar-filtros">Limpar filtros</button>' : ''}</div>`}
       </div></details>
     </section>`;
   }
@@ -2779,10 +3064,12 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     const sim = b => b ? '✓' : '✗';
     const podeCorrigir = souBolsista && f.situacao !== 'aprovada';
     const podeDecidir = souTec && !f._fila;
+    const ver = E(versaoDe(f));   // como a ficha estava quando esta tela foi desenhada (ver "duas abas", em enviar)
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">Ficha de indicação · ${E(f.uf)} · ${E(f.municipio)}</span>
         <h2 id="painel-t">${E(f.nome)}</h2><span style="display:flex;gap:6px;flex-wrap:wrap">${chipRes(f)}${chipSit(f)}</span></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo">
+        ${p.aviso ? `<div class="aviso erro ficha-mudou" role="alert">${E(p.aviso)}</div>` : ''}
         ${f._erro ? `<div class="aviso erro"><b>Não foi enviada:</b> ${E(f._erro)}</div>` : ''}
         ${f.situacao === 'devolvida' && f.obs_coordenacao ? `<div class="aviso erro"><b>Devolvida pela coordenação técnica:</b> ${E(f.obs_coordenacao)}</div>` : ''}
         ${casas.length ? `<div class="aviso erro"><b>Mesmo endereço</b> de ${casas.map(c => E(c.nome) + ' (' + E((MQ.RESULTADOS[c.resultado] || {}).nome || '') + ')').join(', ')}. Confira se são da mesma casa antes de aprovar.</div>` : ''}
@@ -2809,20 +3096,25 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
           <div class="acoes">${f.foto_termo_path ? `<button class="btn peq" data-acao="ficha-foto" data-path="${E(f.foto_termo_path)}">Ver termo assinado</button>` : ''}
             ${f.foto_ficha_path ? `<button class="btn peq" data-acao="ficha-foto" data-path="${E(f.foto_ficha_path)}">Ver ficha em papel</button>` : ''}</div>
           <div id="fi-foto-vista"></div></div>
-        ${podeDecidir && f.situacao !== 'aprovada' ? `<form class="bloco" data-form="ficha-decisao" data-id="${E(f.id)}" novalidate><h3>Decisão da coordenação</h3>
+        ${podeDecidir && f.situacao !== 'aprovada' ? `<form class="bloco" data-form="ficha-decisao" data-id="${E(f.id)}" data-ver="${ver}" novalidate><h3>Decisão da coordenação</h3>
           <p class="small muted">A bolsista marcou o resultado (${E(((MQ.RESULTADOS[f.resultado] || {}).nome || '').toLowerCase())}). Aqui você confere: aprove se os papéis fotografados batem com a ficha e os critérios foram aplicados como aprovado em ata. Se algo estiver errado, devolva dizendo o que corrigir.</p>
           <div class="campo"><label for="fd-obs">Observação para a bolsista</label><textarea id="fd-obs" name="obs">${E(f.obs_coordenacao || '')}</textarea></div>
           <div class="aviso erro" data-erro hidden></div>
           <div class="acoes"><button class="btn pri" type="submit" name="decisao" value="aprovada">Aprovar</button>
             <button class="btn perigo" type="submit" name="decisao" value="devolvida">Devolver para correção</button></div></form>` : ''}
         ${podeDecidir && f.situacao === 'aprovada' ? `<details class="hist reabrir-ficha"><summary>Achou um erro depois de aprovar? Reabrir esta ficha</summary>
-          <form class="f" data-form="ficha-decisao" data-id="${E(f.id)}" novalidate>
+          <form class="f" data-form="ficha-decisao" data-id="${E(f.id)}" data-ver="${ver}" novalidate>
           <p class="small muted">A ficha já foi conferida e aprovada: não há nada a fazer aqui. Só use isto se descobrir um erro. Ela volta para a bolsista corrigir e sai da contagem de aprovadas até ser aprovada de novo.</p>
           <div class="campo"><label for="fd-obs">O que precisa ser corrigido</label><textarea id="fd-obs" name="obs"></textarea></div>
           <div class="aviso erro" data-erro hidden></div>
           <div class="acoes"><button class="btn perigo" type="submit" name="decisao" value="devolvida">Reabrir: devolver para correção</button></div></form></details>` : ''}
       </div>`;
   }
+
+  /* "Versão" da ficha: o que muda quando outra pessoa (ou outra aba) aprova, devolve ou corrige. Serve para a tela
+     desatualizada não gravar por cima: antes de aprovar ou devolver, a ficha é lida de novo e comparada com a que foi aberta. */
+  const versaoDe = f => f ? [f.situacao || '', f.resultado || '', f.atualizado_em || '', f.aprovada_em || '', f.obs_coordenacao || '', f.cpf || '', f.nome || ''].join('|') : '';
+  const MSG_MUDOU = 'Esta ficha foi alterada em outra tela. Atualizamos os dados: confira antes de decidir.';
 
   /* ---------- ações ---------- */
   async function clique(a, el) {
@@ -2857,11 +3149,15 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       if (el.dataset.path === 'exemplo') { box.innerHTML = '<p class="nota">Ficha de exemplo: não há foto.</p>'; return; }
       try {
         const url = await S.api.linkFoto(el.dataset.path);
-        box.innerHTML = url ? (/\.pdf$/.test(el.dataset.path) ? `<a class="btn peq" href="${E(url)}" target="_blank" rel="noopener">Abrir PDF</a>` : `<a href="${E(url)}" target="_blank" rel="noopener"><img src="${E(url)}" alt="Documento fotografado" style="border-radius:8px;border:1px solid var(--line);margin-top:8px"></a>`)
+        box.innerHTML = url ? (/\.pdf$/.test(el.dataset.path) ? `<a class="btn peq" href="${E(url)}" target="_blank" rel="noopener">Abrir PDF</a>` : `<a href="${E(url)}" target="_blank" rel="noopener" aria-label="Abrir a foto do documento em tamanho grande"><img src="${E(url)}" alt="Documento fotografado" style="border-radius:8px;border:1px solid var(--line);margin-top:8px"></a>`)
           : '<p class="nota">A foto ainda está só no aparelho de quem preencheu.</p>';
       } catch (e) { box.innerHTML = `<p class="nota">${E(e.message)}</p>`; }
     }
     else if (a === 'ficha-csv') baixarCSV();
+    else if (a === 'ficha-limpar-filtros') {
+      filtro.uf = filtro.situacao = filtro.busca = ''; (S.aberto = S.aberto || {})['fichas-coord'] = true;   // a lista continua aberta, agora inteira
+      U().render(); const n = document.getElementById('ff-busca'); if (n) n.focus();
+    }
   }
 
   async function enviar(tipo, form, fd) {
@@ -2892,7 +3188,21 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
       const obs = String(fd.get('obs') || '').trim();
       if (decisao === 'devolvida' && obs.length < 5) return U().mostrarErros(form, { obs: 'Escreva o que a bolsista precisa corrigir.' });
       await U().ocupado(form, async () => {
-        await S.api.decidirFicha(form.dataset.id, decisao, obs);
+        // duas abas (ou duas pessoas): relê a ficha; se mudou desde que foi aberta aqui, avisa, mostra o dado novo e NÃO grava
+        if (form.dataset.ver != null) {
+          let frescas = null;
+          try { if (S.api.reler) await S.api.reler(); frescas = await S.api.listarFichas(); } catch (e) { if (!e || !e.semRede) throw e; }   // sem internet: segue (o servidor decide)
+          if (frescas) {
+            const atual = frescas.find(x => x.id === form.dataset.id);
+            if (!atual || versaoDe(atual) !== form.dataset.ver) {
+              S.fichas = frescas;
+              if (atual) U().abrirPainel(Object.assign({}, S.painel, { aviso: MSG_MUDOU })); else U().fecharPainel();
+              U().render(); U().toast(MSG_MUDOU); return;
+            }
+          }
+        }
+        const lida = (S.fichas || []).find(x => x.id === form.dataset.id);   // marca do que a coordenação leu: o banco recusa se a ficha mudou depois
+        await S.api.decidirFicha(form.dataset.id, decisao, obs, lida && lida.atualizado_em || null);
         await U().carregar(); U().fecharPainel(); U().render();
         U().toast(decisao === 'aprovada' ? 'Ficha aprovada.' : 'Ficha devolvida para a bolsista corrigir.');
       });
@@ -2939,7 +3249,7 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     const r = montarCSV();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([r.texto], { type: 'text/csv;charset=utf-8' }));
-    a.download = r.nome;
+    a.download = r.nome; a.hidden = true; a.setAttribute('aria-hidden', 'true'); a.tabIndex = -1;   // link só para disparar o download: não aparece nem entra na ordem do Tab
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
     U().toast((r.filtrado ? `Planilha gerada com ${r.n} de ${r.total} fichas (filtro da tela).` : 'Planilha gerada.') + ' Ela tem dados pessoais: guarde em pasta restrita.');
   }
@@ -2954,7 +3264,10 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
         const dica = form.querySelector('#fi-' + (campo === 'termo' ? 'ft' : 'ff') + '-dica');
         if (arq.size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; ev.target.value = ''; return; }
         dica.textContent = 'Preparando foto…';
-        if (arq.type === 'application/pdf' && arq.size > 0) { fotosTemp[campo] = arq; dica.textContent = 'Arquivo pronto (' + Math.round(arq.size / 1024) + ' KB). Fica no aparelho até enviar.'; return; }   // ficha digitalizada em PDF: vai como está
+        if (arq.type === 'application/pdf' || /\.pdf$/i.test(arq.name || '')) {   // ficha digitalizada em PDF: vai como está, se for PDF de verdade
+          const falso = MQ.arquivoConfere ? await MQ.arquivoConfere(arq, ['pdf']) : (arq.size > 0 ? '' : 'O arquivo está vazio. Escolha outro.');
+          if (falso) { fotosTemp[campo] = null; ev.target.value = ''; dica.textContent = falso; return; }
+          fotosTemp[campo] = arq; dica.textContent = 'Arquivo pronto (' + Math.max(1, Math.round(arq.size / 1024)) + ' KB). Fica no aparelho até enviar.'; return; }
         try { fotosTemp[campo] = await MQ.comprimirFoto(arq, undefined, undefined, { semAviso: true }); }
         catch (e) { fotosTemp[campo] = null; ev.target.value = ''; dica.textContent = e.message; return; }   // não é foto (txt renomeado, vazio, corrompido)
         dica.textContent = 'Foto pronta (' + Math.round(fotosTemp[campo].size / 1024) + ' KB). Fica no aparelho até enviar.';
@@ -2987,7 +3300,7 @@ d.entregas = d.entregas.filter(x => !(x.equipe_id === equipe_id && x.mes === mes
     if (b) b.form.dataset.decisao = b.value;
   }, true);
 
-  MQ.fichasUI = { secaoBolsista, secaoCoord, painel, clique, enviar, contar, casaBusca, filtrar, filtro, montarCSV, celCSV };
+  MQ.fichasUI = { secaoBolsista, secaoCoord, painel, clique, enviar, contar, casaBusca, filtrar, filtro, montarCSV, celCSV, versaoDe, MSG_MUDOU, ROTULO_FILA };
 })();
 ;
 /* ===== geo.js ===== */
@@ -3727,6 +4040,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     .sort((a, b) => a.municipio.localeCompare(b.municipio) || a.nome.localeCompare(b.nome));
   const ativasDe = (fid, etapa) => (visitas(), indice(memo.v.lista, 'ficha_id').get(fid) || []).filter(v => v.etapa === etapa && v.situacao !== 'cancelada')
     .sort((a, b) => String(a.data_prevista).localeCompare(String(b.data_prevista)));
+  /* por que esta etapa ainda não pode ser registrada neste quintal (null = pode). A mesma regra vale no servidor. */
+  const motivoEtapa = (v, op) => MQ.etapaMotivo(v.etapa, v.ficha_id, { visitas: visitas(), diagnosticos: diagnosticos() },
+    Object.assign({ visitaId: v.id, veTudo: (S().eu || {}).papel !== 'agente' }, op || {}));
+  const botaoFeita = v => { const m = motivoEtapa(v);
+    return m ? `<span class="small muted" data-etapa-trava>${E(m)}</span>` : `<button class="btn peq pri" data-acao="campo-feita" data-id="${E(v.id)}">Registrar visita feita</button>`; };
   const diasUsados = uf => visitas().filter(v => v.uf === uf && v.situacao !== 'cancelada').length;
   const mesAtual = () => R.hoje().slice(0, 7);
   const nomeMes = m => { const [a, b] = m.split('-'); return ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][+b - 1] + '/' + a; };
@@ -3767,7 +4085,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
             : v.etapa === 'avaliacao' ? (feita ? b('aval-ver', 'Ver avaliação') : podeMudar ? b('aval-novo', 'Registrar avaliação', true) : '')
             : v.etapa === 'diagnostico' ? (temDg ? b('campo-diag-ver', 'Ver diagnóstico') : podeMudar ? b('campo-diag-novo', 'Registrar diagnóstico', true) : '')
             : feita ? (v.relato ? `<span class="small muted" title="${E(v.relato)}">${E(String(v.relato).slice(0, 60))}${String(v.relato).length > 60 ? '…' : ''}</span>` : '')
-            : podeMudar ? b('campo-feita', 'Registrar visita feita', true) : '';
+            : podeMudar ? botaoFeita(v) : '';
           return `<tr><td class="num">${R.fmtData(v.data_realizada || v.data_prevista)}</td>${uf ? '' : `<td>${E(v.uf)}</td>`}<td>${E(f.nome || '—')}<br><span class="small muted">${E(f.municipio || '')}</span></td>
             <td>${E(MQ.ETAPAS[v.etapa].nome)}</td><td>${E(q.nome || '—')}<br><span class="small muted">${E((MQ.PAPEIS[q.papel] || {}).curto || '')}</span></td>
             <td>${feita ? '<span class="chip ok">Feita</span>' : v._fila ? '<span class="chip pend">No aparelho</span>' : v.data_prevista < R.hoje() ? '<span class="chip crit">Atrasada</span>' : '<span class="chip pend">Prevista</span>'}</td>
@@ -3790,7 +4108,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const f = ficha(v.ficha_id) || {}; const atras = v.data_prevista < hoje;
       const acao = v.etapa === 'diagnostico' ? `<button class="btn peq pri" data-acao="campo-diag-novo" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}">Registrar diagnóstico</button>`
         : v.etapa === 'avaliacao' ? `<button class="btn peq pri" data-acao="aval-novo" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}">Registrar avaliação</button>`
-        : `<button class="btn peq pri" data-acao="campo-feita" data-id="${E(v.id)}">Registrar visita feita</button>`;
+        : botaoFeita(v);
       itens.push({ o: atras ? 1 : 2, t: `<b>${E(f.nome || '—')}</b> · ${E(MQ.ETAPAS[v.etapa].nome)} ${atras ? `<span class="chip crit">atrasada desde ${R.fmtData(v.data_prevista)}</span>` : 'em ' + R.fmtData(v.data_prevista)}`,
         sub: E(((pessoa(v.executor_id) || {}).nome || '')), b: acao }); });
     const semAgenda = sel.filter(f => !diagnosticos().some(d => d.ficha_id === f.id) && !ativasDe(f.id, 'diagnostico').length);
@@ -3849,7 +4167,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           : v.etapa === 'avaliacao' ? (v.situacao === 'realizada' ? `<button class="btn peq" data-acao="aval-ver" data-ficha="${E(v.ficha_id)}">Ver avaliação</button>`
             : `<button class="btn peq pri" data-acao="aval-novo" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}">Registrar avaliação</button>`)
           : v.situacao === 'realizada' ? `<span class="small muted">${E(String(v.relato || '').slice(0, 90))}${String(v.relato || '').length > 90 ? '…' : ''}</span>${MQ.vendaUI ? MQ.vendaUI.botaoOrientar(v.ficha_id) : ''}`
-          : `<button class="btn peq pri" data-acao="campo-feita" data-id="${E(v.id)}">Registrar visita feita</button>`}</div></div>`; };
+          : botaoFeita(v)}</div></div>`; };
     const porMes = {}; feitas.forEach(v => { const m = String(v.data_realizada).slice(0, 7); porMes[m] = (porMes[m] || 0) + 1; });
     const pend = S().fila.filter(i => i.tipo === 'diagnostico');
     return `<main class="wrap" id="principal">
@@ -4165,7 +4483,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         ${MQ.sugestaoUI && !dg._fila ? MQ.sugestaoUI.bloco(f, dg) : ''}
         ${MQ.vitrineUI && !dg._fila ? MQ.vitrineUI.blocoPublicar(f, dg) : ''}
         ${souTec && !dg._fila ? (() => { const loc = localDiag(dg, f); const alterei = dg.conteudo_alterado_por && dg.conteudo_alterado_por === eu.id;
-          return `<form class="bloco" data-form="diag-decisao" data-id="${E(dg.id)}" data-conferir="${loc.alerta ? '1' : ''}" novalidate><h3>Decisão da coordenação</h3>
+          return `<form class="bloco" data-form="diag-decisao" data-id="${E(dg.id)}" data-marca="${E(dg.atualizado_em || '')}" data-conferir="${loc.alerta ? '1' : ''}" novalidate><h3>Decisão da coordenação</h3>
           <p class="small muted">${dg.sem_agua ? 'Confirme o encaminhamento por falta de água.' : 'Aprove se o kit está na lista aprovada e cabe no valor por quintal, e se o cronograma é viável.'}</p>
           ${alterei && dg.situacao !== 'aprovado' ? '<div class="aviso"><b>Você alterou este diagnóstico, então não aprova.</b> Quem aprova é a coordenação técnica. Sem técnica, devolva para quem aplicou corrigir: depois da correção dela, você pode aprovar.</div>' : ''}
           <div class="campo"><label for="dd-obs">${loc.alerta && dg.situacao !== 'aprovado' ? 'Observação: como você confirmou que a visita aconteceu?' : 'Observação'}</label><textarea id="dd-obs" name="obs" maxlength="2000">${dg.situacao === 'aprovado' ? E(dg.obs_coordenacao || '') : ''}</textarea>
@@ -4292,6 +4610,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         else if (v.etapa !== 'diagnostico' && !ativasDe(v.ficha_id, 'diagnostico').some(x => x.situacao === 'realizada')) e.etapa = 'Primeiro o diagnóstico.';
         const f = ficha(v.ficha_id); if (f && diasUsados(f.uf) >= MQ.DIAS_CAMPO_UF) e.ficha_id = 'O estado já usou os ' + MQ.DIAS_CAMPO_UF + ' dias de campo.';
         if (v.etapa === 'avaliacao' && !ativasDe(v.ficha_id, 'implantacao').some(x => x.situacao === 'realizada')) e.etapa = 'A avaliação é feita depois da implantação.';
+        // implantação só com o plano aprovado e com água; acompanhamento só depois da implantação feita
+        if (!e.etapa) { const m = motivoEtapa(v); if (m) e.etapa = m; }
       }
       if (Object.keys(e).length) return U().mostrarErros(form, e);
       await U().ocupado(form, async () => {
@@ -4342,6 +4662,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (relato.length < 20) e.relato = 'Conte em poucas linhas o que foi feito (pelo menos 20 letras).';
       else if (relato.length > 2000) e.relato = 'Texto muito longo (máximo 2.000 caracteres).';
       if (!fotosVis[1]) e.foto = 'Faça pelo menos 1 foto do que foi feito.';
+      if (v0 && !e.data_realizada) { const m = motivoEtapa(v0, { data }); if (m) e.data_realizada = m; }   // etapa na ordem e data depois da etapa anterior
       if (Object.keys(e).length) { const geral = e.foto; delete e.foto; return U().mostrarErros(form, e, geral && !Object.keys(e).length ? geral : undefined); }
       await U().ocupado(form, async () => {
         const v = Object.assign({}, v0, { situacao: 'realizada', data_realizada: data, relato });
@@ -4356,7 +4677,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (dec === 'devolvido' && obs.length < 5) return U().mostrarErros(form, { obs: 'Escreva o que precisa ser corrigido.' });
       if (dec === 'aprovado' && form.dataset.conferir && obs.length < 10) return U().mostrarErros(form, { obs: 'Escreva como você confirmou que a visita aconteceu (pelo menos 10 letras).' });
       await U().ocupado(form, async () => {
-        await S().api.decidirDiagnostico(form.dataset.id, dec, obs);
+        // a marca diz o que a coordenação leu: se o diagnóstico mudou depois, o servidor recusa a aprovação
+        await S().api.decidirDiagnostico(form.dataset.id, dec, obs, form.dataset.marca || undefined);
         await U().carregar(); U().fecharPainel(); U().render();
         U().toast(dec === 'aprovado' ? 'Plano aprovado.' : 'Diagnóstico devolvido para correção.');
       });
@@ -4674,6 +4996,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
    entre o município de quem visita e o quintal (GPS do diagnóstico, da ficha ou centro do município). */
 (function () {
   const U = () => MQ.ui; const S = () => MQ.ui.S; const E = s => MQ.ui.esc(s);
+  /* visita em pedido já lançado no Arlo: o km conferido não muda mais (o servidor também recusa) */
+  const visitaPaga = id => { const sid = (S().solicVis || {})[id]; const sol = sid && (S().solic || []).find(x => x.id === sid); return !!(sol && sol.situacao === 'lancada'); };
   const R = MQ.regras;
   const $ = s => document.querySelector(s);
   const C = { par: null, km: null, mes: null, carregado: false, erro: null };
@@ -4834,7 +5158,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <div class="cl-q"><b>${E(p.nome || '—')}</b> <span class="pil ${feita ? 'feito' : 'prev'}">${E(MQ.ETAPAS_CUSTO[v.etapa] || v.etapa)} · ${R.fmtData(v.data_realizada || v.data_prevista)}${feita ? '' : ' (prevista)'}</span>
         <span class="small muted">${E(p.municipio || 'município não informado')} → ${E(f.municipio || '')}/${E(v.uf)} · ${E(f.nome || '')}</span></div>
       <label class="cl-km"><span class="small muted">Km ida${k.fonte !== 'conferido' ? ` <i>(${E(k.fonte)})</i>` : ' <i>(conferido)</i>'}</span>
-        <input type="number" min="0" max="999" inputmode="decimal" value="${k.fonte === 'conferido' ? k.km : ''}" placeholder="${k.km != null ? k.km : 'km'}" data-km="${E(v.id)}" aria-label="Km de ida da visita de ${E(p.nome || '')}" ${/^coord/.test(S().eu.papel) ? '' : 'disabled'}></label>
+        <input type="number" min="0" max="999" inputmode="decimal" value="${k.fonte === 'conferido' ? k.km : ''}" placeholder="${k.km != null ? k.km : 'km'}" data-km="${E(v.id)}" aria-label="Km de ida da visita de ${E(p.nome || '')}" ${/^coord/.test(S().eu.papel) && !visitaPaga(v.id) ? '' : 'disabled'}${visitaPaga(v.id) ? ' title="Visita já paga (pedido lançado no Arlo): o km não muda mais."' : ''}></label>
       <div class="cl-v num"><b>${brl(c.total)}</b><span class="small muted">${brl(c.trabalho)} + ${c.combustivel == null ? '—' : brl(c.combustivel)} + ${brl(c.refeicao)}</span></div></div>`;
   }
 
@@ -5108,6 +5432,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const matriculas = () => S().matriculas || [];
   const souProf = () => S().eu.papel === 'professor_fic';
   const podeCriarTurma = () => R.podeMatricular(S().eu.papel);
+  const podeEditarTurma = t => S().eu.papel === 'coord_geral' || (souProf() && t.professor_id === S().eu.id);   // a turma é de quem dá a aula: o colega matricula nela, mas não altera
   const podeNaTurma = t => souProf() || S().eu.papel === 'coord_geral';   // qualquer professor do FIC, em qualquer turma (ninguém trava na ausência do outro)
   const deCampo = () => (S().equipe || []).filter(m => m.status === 'ativa' && R.matriculaFIC(m.papel));   // coordenação técnica, bolsistas e agentes
   const professores = () => (S().equipe || []).filter(m => m.status === 'ativa' && m.papel === 'professor_fic');
@@ -5169,7 +5494,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <div class="ft-tit"><h3>${E(t.nome)}</h3>
           <p class="ft-meta">${E(ondeT(t))} · ${E(periodo(t))} · Professor(a): ${E(nomeDe(prof))}</p></div>
         <div class="ft-dir"><span class="ft-total"><b class="num">${ms.length}</b> ${nMat.replace(/^\d+ /, '')}</span>
-          ${pode ? `<span class="acoes"><button class="btn pri peq" data-acao="fic-matricular" data-id="${E(t.id)}">+ Matricular</button><button class="btn peq" data-acao="fic-turma-editar" data-id="${E(t.id)}">Editar</button></span>` : ''}</div>
+          ${pode ? `<span class="acoes"><button class="btn pri peq" data-acao="fic-matricular" data-id="${E(t.id)}">+ Matricular</button>${podeEditarTurma(t) ? `<button class="btn peq" data-acao="fic-turma-editar" data-id="${E(t.id)}">Editar</button>` : ''}</span>` : ''}</div>
       </header>
       ${t.obs ? `<p class="ft-obs small">${E(t.obs)}</p>` : ''}
       ${ms.length ? `<ul class="ft-lista">${ms.map(({ x, m }) => `<li class="ft-linha">${U().avatar(m, 30)}
@@ -5283,6 +5608,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const txt = k => String(fd.get(k) || '').trim();
     if (tipo === 'fic-turma') {
       const id = form.dataset.id || null; const antes = id ? turmas().find(x => x.id === id) : null;
+      if (antes && !podeEditarTurma(antes)) return U().mostrarErros(form, {}, 'Esta turma é de outro(a) professor(a): só ele(a) ou a coordenação geral altera.');
       const t = { id, nome: txt('nome'), uf: txt('uf') || null, municipio: txt('municipio') || null, inicio: txt('inicio') || null, fim: txt('fim') || null, obs: txt('obs') || null,
         professor_id: souProf() ? (antes ? antes.professor_id : S().eu.id) : txt('professor_id') || (antes && antes.professor_id) };
       const e = {};
@@ -5300,6 +5626,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const marcados = fd.getAll('p'); const e = {};
       if (!data) e.data = 'Informe a data.'; else if (!dataExiste(data)) e.data = 'Data inválida.'; else if (data > R.hoje()) e.data = 'Data no futuro. Registre só a matrícula já feita.';
       else if (data < DATA_MIN) e.data = 'Data antes de 2026: confira o ano da matrícula.';
+      else { const tu = turmas().find(x => x.id === turma); if (tu && tu.inicio && data < tu.inicio) e.data = 'A turma começa em ' + R.fmtData(tu.inicio) + ': a data da matrícula não pode ser antes disso.'; }
       if (!marcados.length) return U().mostrarErros(form, e, 'Marque pelo menos uma pessoa.');
       const faltaNum = marcados.filter(id => txt('n_' + id).length < 3);
       if (faltaNum.length) return U().mostrarErros(form, e, 'Falta o número da matrícula (SUAP) de: ' + faltaNum.map(id => nomeDe(pessoa(id))).join(', ') + '.');
@@ -5493,7 +5820,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     else if (a === 'enc-imprimir') { const s = (S().solic || []).find(x => x.id === el.dataset.id); if (s) imprimir(s); }
     else if (a === 'enc-confirmar') {
       el.disabled = true;
-      try { await S().api.confirmarPresencaFic(el.dataset.id); await U().carregar(); U().render(); U().toast('Presença confirmada. Obrigado!'); }
+      try { await S().api.confirmarPresencaFic(el.dataset.id); await U().carregar(); U().render(); U().toast('Presença confirmada.'); }
       catch (e) { el.disabled = false; U().toast(e.message); }
     }
   }
@@ -5518,6 +5845,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (!x.data) e.data = 'Informe a data.'; else if (x.data > R.hoje()) e.data = 'A data não pode ser no futuro.';
     if (!(x.carga_horaria > 0 && x.carga_horaria <= 12)) e.carga_horaria = 'Informe a carga horária (até 12 horas).';
     if (x.conteudo.length < 10) e.conteudo = 'Escreva o que foi trabalhado (pelo menos 10 letras).';
+    if (!x.id && tid && x.data && !e.data) {   // mesma turma, dia e modalidade = o mesmo encontro; no dia, a turma soma no máximo 12 horas (o servidor confere de novo)
+      const doDia = (S().encontros || []).filter(y => y.turma_id === tid && y.data === x.data && !y.cancelado_em);
+      if (doDia.some(y => y.modalidade === x.modalidade)) e.modalidade = 'Esta turma já tem encontro registrado neste dia nesta modalidade. Se houve mais horas, altere o encontro que já existe.';
+      else if (!e.carga_horaria && doDia.reduce((t, y) => t + (+y.carga_horaria || 0), 0) + x.carga_horaria > 12) e.carga_horaria = 'Os encontros desta turma neste dia passariam de 12 horas.';
+    }
     if (Object.keys(e).length) return U().mostrarErros(form, e);
     await U().ocupado(form, async () => { await S().api.salvarEncontroFic(x); await U().carregar(); U().fecharPainel(); U().render(); U().toast(x.id ? 'Encontro atualizado.' : 'Encontro registrado.'); });
   }
@@ -5883,14 +6215,17 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     let m = G.mes || mesHoje(); if (mesIni && m < mesIni && mesIni <= mesHoje()) m = G.mes = mesIni;
     const minhas = lista().filter(s => s.equipe_id === eu.id);
     const doMes = t => minhas.find(s => s.tipo === t && String(s.mes).slice(0, 7) === m);
+    // a ajuda de custo pode ter mais de um pedido no mês (o primeiro e os complementares); a bolsa é uma só
+    const ajudasDoMes = minhas.filter(s => s.tipo === 'ajuda_custo' && String(s.mes).slice(0, 7) === m).sort((a, b) => String(a.solicitada_em).localeCompare(String(b.solicitada_em)));
     const hab = R.habilitado(eu);
     return `<section class="secao pag" aria-labelledby="t-pag">
       <div class="secao-cab"><div><h2 id="t-pag">Solicitar pagamento</h2><p>Você solicita, a ${quemAvaliza('bolsa', papel) === 'coord_geral' && !podeAjuda(papel) ? 'coordenação geral' : 'coordenação técnica'} dá o aval e o auxiliar administrativo lança no Arlo (FUNCERN).</p></div>
         <span class="seg"><button type="button" data-acao="pag-mes" data-n="-1" aria-label="Mês anterior" ${mesIni && m <= mesIni ? 'disabled' : ''}>‹</button><button type="button" data-acao="pag-mes" data-n="0">${nomeMes(m)}</button><button type="button" data-acao="pag-mes" data-n="1" aria-label="Próximo mês" ${m >= mesHoje() ? 'disabled' : ''}>›</button></span></div>
       ${mesIni && mesIni > mesHoje() ? `<div class="aviso">Você começa no projeto em ${nomeMes(mesIni)}: a partir desse mês dá para solicitar.</div>` : ''}
-      ${!hab ? '<div class="aviso erro"><b>Sua habilitação ainda não está completa.</b> Sem ela não há pagamento: veja os passos que faltam.</div>' : ''}
+      ${!hab ? '<div class="aviso erro"><b>Sua habilitação ainda não está completa.</b> Sem ela não há pagamento: <button type="button" class="link" data-acao="pend-ver">veja os passos que faltam</button>.</div>' : ''}
+      ${podeAjuda(papel) ? avisoMesesAnteriores(eu, m, mesIni) : ''}
       ${mesIni && m < mesIni ? '' : `<div class="pag-grade">
-        ${podeAjuda(papel) ? cartaoAjuda(eu, m, doMes('ajuda_custo'), hab) : ''}
+        ${podeAjuda(papel) ? cartaoAjuda(eu, m, ajudasDoMes, hab) : ''}
         ${podeBolsa(papel) ? cartaoBolsa(eu, m, doMes('bolsa'), hab) : ''}
       </div>`}
       ${minhas.length ? `<details class="hist"><summary>Minhas solicitações (${minhas.length})</summary><div class="pag-lista">${minhas.map(s => linha(s, false)).join('')}</div></details>` : ''}
@@ -5902,29 +6237,51 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       ${s.situacao === 'lancada' ? `<p class="small muted">Lançada no Arlo em ${new Date(s.arlo_em).toLocaleDateString('pt-BR')}${s.arlo_protocolo ? ' · protocolo ' + E(s.arlo_protocolo) : ''}.</p>` : ''}`;
   }
 
-  function cartaoAjuda(eu, m, s, hab) {
-    if (s && s.situacao !== 'devolvida') return `<div class="bloco pag-c"><h3>Ajuda de custo · ${nomeMes(m)}</h3>
-      <p class="num valor-destaque">${brl(s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado)}</p>${situacaoTxt(s)}</div>`;
-    if (!garantirCustos()) return '<div class="bloco pag-c"><p class="carregando">Calculando…</p></div>';
+  const ehCompl = s => s.tipo === 'ajuda_custo' && !!(s.detalhe && s.detalhe.complementar);
+  const rotTipo = s => (TIPO[s.tipo] || E(s.tipo)) + (ehCompl(s) ? ' (complementar)' : '');
+  /* visitas feitas no mês que ainda não estão em nenhum pedido (ou estão no pedido devolvido "dev", que volta para corrigir) */
+  function visitasLivres(eu, m, dev) {
     const vinc = vinculadas();
-    const feitas = (S().visitas || []).filter(v => v.executor_id === eu.id && v.situacao === 'realizada' && String(v.data_realizada).slice(0, 7) === m && !v._fila)
-      .sort((a, b) => String(a.data_realizada).localeCompare(String(b.data_realizada)));
-    const livres = feitas.filter(v => !vinc[v.id] || (s && vinc[v.id] === s.id));
+    return (S().visitas || []).filter(v => v.executor_id === eu.id && v.situacao === 'realizada' && String(v.data_realizada).slice(0, 7) === m && !v._fila
+      && (!vinc[v.id] || (dev && vinc[v.id] === dev.id))).sort((a, b) => String(a.data_realizada).localeCompare(String(b.data_realizada)));
+  }
+  /* visita feita em mês anterior que ficou fora do pedido: avisa e leva ao mês (lá aparece o pedido complementar) */
+  function avisoMesesAnteriores(eu, m, mesIni) {
+    const por = {};
+    (S().visitas || []).forEach(v => { if (v.executor_id !== eu.id || v.situacao !== 'realizada' || v._fila || vinculadas()[v.id]) return;
+      const k = String(v.data_realizada).slice(0, 7); if (k < m && (!mesIni || k >= mesIni)) por[k] = (por[k] || 0) + 1; });
+    const meses = Object.keys(por).sort();
+    return meses.length ? `<div class="aviso" data-pag-fora>${meses.map(k => `<span><b>${por[k]} visita${por[k] > 1 ? 's' : ''} de ${nomeMes(k)}</b> ${por[k] > 1 ? 'ficaram' : 'ficou'} fora do pedido. <button type="button" class="link" data-acao="pag-mes-ir" data-mes="${k}">Solicitar em ${nomeMes(k)}</button></span>`).join('<br>')}</div>` : '';
+  }
+
+  function cartaoAjuda(eu, m, pedidos, hab) {
+    pedidos = Array.isArray(pedidos) ? pedidos : pedidos ? [pedidos] : [];
+    const s = pedidos.filter(x => x.situacao === 'devolvida').sort((a, b) => String(b.aval_em || '').localeCompare(String(a.aval_em || '')))[0] || null;   // o devolvido volta para corrigir
+    const outros = pedidos.filter(x => x !== s);
+    const jaPedidos = outros.map(x => `<div class="pag-ja"><p class="num valor-destaque">${brl(x.valor_avalizado != null ? x.valor_avalizado : x.valor_solicitado)}</p>
+      ${ehCompl(x) ? '<span class="chip">Pedido complementar</span> ' : ''}${situacaoTxt(x)}</div>`).join('');
+    const livresAgora = outros.length && !s ? visitasLivres(eu, m, null) : null;
+    if (outros.length && !s && !livresAgora.length) return `<div class="bloco pag-c"><h3>Ajuda de custo · ${nomeMes(m)}</h3>${jaPedidos}</div>`;
+    if (!garantirCustos()) return '<div class="bloco pag-c"><p class="carregando">Calculando…</p></div>';
+    const compl = outros.length > 0 && !(s && !ehCompl(s));   // pedido novo num mês que já tem pedido (ou o complementar devolvido)
+    const livres = livresAgora || visitasLivres(eu, m, s);
     const itens = livres.map(v => ({ v, c: MQ.custosUI.custoVisita(v), f: (S().fichas || []).find(x => x.id === v.ficha_id) || {} }));
     const total = r2(itens.reduce((t, i) => t + i.c.total, 0));   // soma das visitas já arredondadas: é o valor enviado
     const estimado = itens.some(i => i.c.fonte !== 'conferido');
     const semKm = itens.some(i => !i.c.completo);
     const pend = (S().visitas || []).filter(v => v.executor_id === eu.id && v.situacao === 'prevista' && String(v.data_prevista).slice(0, 7) <= m).length;
-    return `<form class="bloco pag-c" data-form="pag-ajuda" data-mes="${m}" novalidate><h3>Ajuda de custo · ${nomeMes(m)}</h3>
+    return `<form class="bloco pag-c" data-form="pag-ajuda" data-mes="${m}"${compl ? ' data-complementar="1"' : ''} novalidate><h3>Ajuda de custo · ${nomeMes(m)}</h3>
+      ${jaPedidos}
       ${s ? situacaoTxt(s) : ''}
-      ${itens.length ? `<div class="pag-vis">${itens.map(i => `<label class="pv"><input type="checkbox" name="v" value="${E(i.v.id)}" checked>
+      ${compl && itens.length ? `<p class="aviso" data-pag-complementar><b>Pedido complementar:</b> ${itens.length} visita${itens.length > 1 ? 's' : ''} de ${nomeMes(m)} que ${itens.length > 1 ? 'ficaram' : 'ficou'} fora do pedido anterior.</p>` : ''}
+      ${itens.length ? `<div class="pag-vis">${itens.map(i => `<label class="pv"><input type="checkbox" name="v" value="${E(i.v.id)}" data-valor="${Number(i.c.total) || 0}" checked>
           <span><b>${E(MQ.ETAPAS_CUSTO[i.v.etapa])}</b> · ${R.fmtData(i.v.data_realizada)}<br><span class="small muted">${E(i.f.municipio || '')} · ${i.c.km != null ? i.c.km + ' km ' + (i.c.fonte === 'conferido' ? 'conferidos' : 'estimados') : 'sem distância'}</span></span>
           <span class="num">${brl(i.c.total)}</span></label>`).join('')}</div>
-        <p class="pag-total"><span>Total</span><b class="num">${brl(total)}</b></p>
+        <p class="pag-total"><span>Total</span><b class="num" data-pag-total>${brl(total)}</b></p>
         ${estimado ? '<p class="small muted">Distância estimada pelo município: a coordenação confere o km no aval e o valor pode mudar.</p>' : ''}
         ${semKm ? '<p class="small" style="color:var(--crit)">Há visita sem distância calculada: só as horas e a refeição entram. Avise a coordenação para conferir o km.</p>' : ''}
         <div class="aviso erro" data-erro hidden></div>
-        <button class="btn pri" type="submit" ${hab ? '' : 'disabled'}>${s ? 'Corrigir e reenviar' : 'Solicitar'} ${brl(total)}</button>`
+        <button class="btn pri" type="submit" ${hab ? '' : 'disabled'}>${s ? 'Corrigir e reenviar' : compl ? 'Solicitar pedido complementar' : 'Solicitar'} <span data-pag-total>${brl(total)}</span></button>`
         : `<p class="muted">Nenhuma visita feita em ${nomeMes(m)} para solicitar.</p>`}
       ${pend ? `<p class="small muted">${pend} visita${pend > 1 ? 's' : ''} ainda sem registro de feita. Registre na lista de visitas para entrarem aqui.</p>` : ''}</form>`;
   }
@@ -5945,7 +6302,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function linha(s, comPessoa) {
     const p = pessoa(s.equipe_id);
     return `<button class="vagabtn pag-l" data-acao="pag-ver" data-id="${E(s.id)}">
-      ${comPessoa ? U().avatar(p, 40) : ''}<span class="vb-t"><span class="nm">${comPessoa ? E(nomeDe(p)) + ' · ' : ''}${TIPO[s.tipo]} de ${nomeMes(s.mes)}</span>
+      ${comPessoa ? U().avatar(p, 40) : ''}<span class="vb-t"><span class="nm">${comPessoa ? E(nomeDe(p)) + ' · ' : ''}${rotTipo(s)} de ${nomeMes(s.mes)}</span>
       <span class="sub">${comPessoa ? E(P[p.papel] ? P[p.papel].curto : '') + (p.uf ? ' · ' + E(p.uf) : '') + ' · ' : ''}${brl(s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado)} · enviada em ${new Date(s.solicitada_em).toLocaleDateString('pt-BR')}</span></span>
       <span>${chip(s)}</span></button>`;
   }
@@ -6014,7 +6371,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     }
     const doPerfil = s.tipo === 'bolsa' && P[pe.papel] ? P[pe.papel].bolsa : null;   // valor da bolsa conforme o perfil (planilha do TED)
     const val = s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado != null ? s.valor_solicitado : doPerfil;
-    return `<div class="painel-cab"><div class="t"><span class="eyebrow">${TIPO[s.tipo]} · ${nomeMes(s.mes)}</span><h2 id="painel-t">${E(nomeDe(pe))}</h2>
+    return `<div class="painel-cab"><div class="t"><span class="eyebrow">${rotTipo(s)} · ${nomeMes(s.mes)}</span><h2 id="painel-t">${E(nomeDe(pe))}</h2>
         <span class="small muted">${E(P[pe.papel] ? P[pe.papel].nome : '')}${pe.uf ? ' · ' + E(pe.uf) : ''}${['auxiliar_adm', 'coord_geral'].includes(eu.papel) && pe.cpf ? ' · CPF ' + E(R.fmtCPF(pe.cpf)) : ''}</span></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo">
@@ -6046,6 +6403,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   async function recarregar() { await U().carregar(); U().render(); }
   async function clique(a, el) {
     if (a === 'pag-mes') { const n = +el.dataset.n; G.mes = n === 0 ? mesHoje() : somaMes(G.mes || mesHoje(), n); if (G.mes > mesHoje()) G.mes = mesHoje(); U().render(); }
+    else if (a === 'pag-mes-ir') { G.mes = el.dataset.mes <= mesHoje() ? el.dataset.mes : mesHoje(); U().render(); }
     else if (a === 'pag-ver') U().abrirPainel({ tipo: 'pag-ver', id: el.dataset.id });
   }
   document.addEventListener('click', ev => { const b = ev.target.closest('form[data-form=pag-aval] button[name=ok]'); if (b) b.form.dataset.ok = b.value; }, true);
@@ -6061,7 +6419,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (!(total > 0)) return U().mostrarErros(form, {}, 'O valor das visitas marcadas deu zero. Avise a coordenação.');
       await U().ocupado(form, async () => {
         await S().api.solicitarPagamento('ajuda_custo', mes + '-01', total, null, ids, { visitas: itens, total });
-        await recarregar(); U().toast('Ajuda de custo de ' + nomeMes(mes) + ' solicitada: ' + brl(total) + '. Agora vai para o aval.');
+        await recarregar(); U().toast((form.dataset.complementar ? 'Pedido complementar de ajuda de custo de ' : 'Ajuda de custo de ') + nomeMes(mes) + (form.dataset.complementar ? ' solicitado: ' : ' solicitada: ') + brl(total) + '. Agora vai para o aval.');
       });
     }
     if (tipo === 'pag-bolsa') {
@@ -6108,6 +6466,13 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     contaDevolvidas: () => lista().filter(s => s.equipe_id === S().eu.id && s.situacao === 'devolvida').length,   // meus pedidos para corrigir
     contaLancar: () => lista().filter(s => s.situacao === 'avalizada' && s.equipe_id !== S().eu.id).length,       // auxiliar: lançar no Arlo
     contaAval: () => { const eu = S().eu; const sem = U().semTecnica && U().semTecnica(); return lista().filter(s => s.situacao === 'solicitada' && s.equipe_id !== eu.id && (sem || quemAvaliza(s.tipo, pessoa(s.equipe_id).papel) === eu.papel)).length; } };
+
+  /* desmarcou ou marcou uma visita: o total e o botão mostram o que vai ser pedido de fato */
+  if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('change', ev => {
+    const c = ev.target; if (!c || c.name !== 'v' || !c.closest) return; const f = c.closest('form[data-form="pag-ajuda"]'); if (!f) return;
+    const t = Math.round([...f.querySelectorAll('input[name="v"]:checked')].reduce((a, x) => a + Math.round((Number(x.dataset.valor) || 0) * 100), 0)) / 100;
+    f.querySelectorAll('[data-pag-total]').forEach(e => { e.textContent = brl(t); });
+  });
 })();
 ;
 /* ===== viagens.js ===== */
@@ -6129,6 +6494,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const legado = () => !S().quemConfere;                            // 26 ainda não instalado: regra antiga
   const nomeConf = () => NOME_CONF[conf()];
   const souConferente = () => !!(S().eu && S().eu.papel === conf());
+  /* passagens: um teto por finalidade (46). A passagem antiga, sem finalidade, conta no intercâmbio.
+     O pedido de acompanhamento pedagógico só a coordenação geral confere (e autoriza). */
+  const finDe = p => p && p.tipo === 'passagem' && (p.dados || {}).finalidade === 'pedagogico' ? 'pedagogico' : 'intercambio';
+  const ehPedag = p => !!p && p.tipo === 'passagem' && finDe(p) === 'pedagogico';
+  const confDe = p => ehPedag(p) ? 'coord_geral' : conf();          // quem confere ESTE pedido
+  const NOME_FIN = { intercambio: 'intercâmbio', pedagogico: 'acompanhamento pedagógico' };
   const SIT = {
     enviado: ['pend', 'Com a coordenação técnica'], devolvido: ['crit', 'Devolvido para corrigir'], conferido: ['pend', 'Com a coordenação geral'],
     autorizado: ['ok', 'Autorizado · enviado à FUNCERN'], recusado: ['crit', 'Recusado'], cancelado: ['', 'Cancelado']
@@ -6140,7 +6511,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const pessoa = id => U().porId(id) || {};
   const nomeDe = m => (m && (m.nome_social || m.nome)) || '—';
   const sit = p => SIT[p.situacao] || ['', E(p.situacao || '—')];   // situação nova no banco não derruba a tela
-  const rotSit = p => p.situacao === 'enviado' ? 'Com ' + nomeConf() : sit(p)[1];
+  const rotSit = p => p.situacao === 'enviado' ? 'Com ' + NOME_CONF[confDe(p)] : sit(p)[1];
   const chip = p => `<span class="chip ${sit(p)[0]}">${rotSit(p)}</span>`;
   const podeVer = papel => ['articulacao', 'coord_tecnico', 'coord_geral'].includes(papel);
   /* ---------- tetos: R$ 6.000 por estado para eventos; R$ 70.000 para passagens (35_tetos_passagens_eventos.sql) ---------- */
@@ -6157,18 +6528,25 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (t < '1900-01-01') return 'Data de nascimento inválida: confira o ano.';
     return null; };
   let seqPass = 0;   // número único de cada bloco de passageira, para ligar cada rótulo (label for) ao seu campo
-  function saldo(tipo, uf, semId) {
-    const teto = MQ.TETOS[tipo]; const sd = S().saldoPed;
+  function saldo(tipo, uf, semId, finalidade) {
+    const fin = finalidade === 'pedagogico' ? 'pedagogico' : 'intercambio';
+    const teto = tipo === 'passagem' ? MQ.tetoPassagem(fin) : MQ.TETOS[tipo]; const sd = S().saldoPed;
+    const daLista = () => lista().filter(p => p.situacao === 'autorizado' && p.tipo === tipo && (tipo === 'passagem' ? finDe(p) === fin : p.uf === uf) && p.id !== semId).reduce((t, p) => t + (+p.valor_autorizado || 0), 0);
     let usado;
-    if (sd && !semId) usado = tipo === 'passagem' ? +sd.passagem_usado || 0 : +((sd.evento_usado || {})[uf]) || 0;
-    else usado = lista().filter(p => p.situacao === 'autorizado' && p.tipo === tipo && (tipo === 'passagem' || p.uf === uf) && p.id !== semId).reduce((t, p) => t + (+p.valor_autorizado || 0), 0);
+    if (sd && !semId && tipo === 'evento') usado = +((sd.evento_usado || {})[uf]) || 0;
+    else if (sd && !semId && fin === 'intercambio' && sd.passagem_pedagogico_usado != null) usado = +sd.passagem_usado || 0;
+    else if (sd && !semId && fin === 'pedagogico' && sd.passagem_pedagogico_usado != null) usado = +sd.passagem_pedagogico_usado || 0;
+    else usado = daLista();   // servidor ainda sem o 46 (um número só para todas as passagens): soma pela lista
     return { teto, usado, livre: Math.max(0, teto - usado) };
   }
-  const rotSaldo = (tipo, uf) => { const x = saldo(tipo, uf); return tipo === 'evento' ? `Teto de eventos de ${uf}: ${brl(x.teto)} · já autorizado ${brl(x.usado)} · saldo <b>${brl(x.livre)}</b>` : `Teto de passagens do projeto: ${brl(x.teto)} · já autorizado ${brl(x.usado)} · saldo <b>${brl(x.livre)}</b>`; };
+  const rotSaldoPass = fin => { const x = saldo('passagem', null, null, fin); return `Teto de passagens de ${NOME_FIN[fin]}: ${brl(x.teto)} · já autorizado ${brl(x.usado)} · saldo <b>${brl(x.livre)}</b>`; };
+  /* passagem sem finalidade escolhida (formulário novo, lista da bolsista): mostra os dois saldos */
+  const rotSaldo = (tipo, uf, finalidade) => { if (tipo === 'passagem') return finalidade ? rotSaldoPass(finalidade) : rotSaldoPass('intercambio') + '<br>' + rotSaldoPass('pedagogico');
+    const x = saldo(tipo, uf); return `Teto de eventos de ${uf}: ${brl(x.teto)} · já autorizado ${brl(x.usado)} · saldo <b>${brl(x.livre)}</b>`; };
   const semBanco = () => '<div class="aviso">Os pedidos de passagem e de evento ainda não estão instalados no servidor. A coordenação geral roda o arquivo <b>22_passagens_eventos.sql</b> no Supabase.</div>';
   const diasAte = R.diasAte;
   const minhaVez = p => { const eu = S().eu;
-    return (souConferente() && p.situacao === 'enviado' && p.solicitante_id !== eu.id) || (eu.papel === 'coord_geral' && p.situacao === 'conferido'); };
+    return (eu.papel === confDe(p) && p.situacao === 'enviado' && p.solicitante_id !== eu.id) || (eu.papel === 'coord_geral' && p.situacao === 'conferido'); };
   const nPass = p => p.tipo === 'passagem' ? ((p.dados && p.dados.passageiros) || []).length : 0;
 
   /* ---------- bolsista de articulação ---------- */
@@ -6196,7 +6574,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const extra = p.tipo === 'passagem' ? ` · ${nPass(p)} passageira${nPass(p) === 1 ? '' : 's'}` : '';
     const alerta = ['enviado', 'conferido'].includes(p.situacao) && d < 30 ? ` · <b style="color:var(--crit)">${d < 0 ? 'a data já passou' : d === 0 ? 'é hoje' : 'faltam ' + d + ' dia' + (d > 1 ? 's' : '')}</b>` : '';
     return `<button class="vagabtn ficha-linha viag-linha" data-acao="viag-ver" data-id="${E(p.id)}">
-      <span class="nm">${E(TIPO[p.tipo])} · ${E(p.uf)}</span>
+      <span class="nm">${E(TIPO[p.tipo])}${ehPedag(p) ? ' (acompanhamento pedagógico)' : ''} · ${E(p.uf)}</span>
       <span class="small muted">${comPessoa ? E(nomeDe(pessoa(p.solicitante_id))) + ' · ' : ''}${quando}${extra}${alerta}</span>
       <span class="small">${E(p.titulo)}</span>
       <span>${chip(p)}</span></button>`;
@@ -6205,9 +6583,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   /* ---------- gastos separados: passagens (teto do projeto) e eventos (teto por estado) ---------- */
   const EM_ANALISE = ['enviado', 'conferido', 'devolvido'];
   const estimado = p => +((p.dados || {}).valor_estimado) || 0;
-  function gastos(tipo, uf) {   // autorizado = valor da coordenação; em análise = valor estimado de quem pediu
-    const xs = lista().filter(p => p.tipo === tipo && (!uf || p.uf === uf));
-    const x = saldo(tipo, uf);
+  function gastos(tipo, uf, finalidade) {   // autorizado = valor da coordenação; em análise = valor estimado de quem pediu
+    const xs = lista().filter(p => p.tipo === tipo && (!uf || p.uf === uf) && (tipo !== 'passagem' || finDe(p) === (finalidade || 'intercambio')));
+    const x = saldo(tipo, uf, null, finalidade);
     const analise = xs.filter(p => EM_ANALISE.includes(p.situacao)).reduce((t, p) => t + estimado(p), 0);
     return { teto: x.teto, usado: x.usado, livre: x.livre, analise, estoura: x.usado + analise > x.teto };
   }
@@ -6237,27 +6615,27 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const vez = t.filter(minhaVez), outros = t.filter(p => ['enviado', 'conferido'].includes(p.situacao) && !minhaVez(p));
       const dev = t.filter(p => p.situacao === 'devolvido'), au = t.filter(p => p.situacao === 'autorizado'), fim = t.filter(p => ['recusado', 'cancelado'].includes(p.situacao));
       return `${bloco(tituloVez, vez, 'Nada esperando você.')}
-        ${outros.length ? bloco(souGeral ? 'Com ' + nomeConf() + (legado() ? ' (você pode conferir se ela não puder)' : '') : 'Com a coordenação geral', outros, '') : ''}
+        ${outros.length ? bloco(souGeral ? 'Com ' + nomeConf() + (legado() ? ' (você pode conferir se ela não puder)' : '') : outros.some(p => p.situacao === 'enviado') && !outros.some(p => p.situacao === 'conferido') ? 'Aguardando a coordenação geral (acompanhamento pedagógico)' : 'Com a coordenação geral', outros, '') : ''}
         ${dev.length ? bloco('Devolvidos para a bolsista corrigir', dev, '') : ''}
         <details class="hist"><summary>Autorizados (${au.length})</summary><div class="pag-lista" style="padding:0 18px 16px">${au.map(p => linha(p, true)).join('') || '<p class="muted">Nenhum ainda.</p>'}</div></details>
         ${fim.length ? `<details class="hist"><summary>Recusados e cancelados (${fim.length})</summary><div class="pag-lista" style="padding:0 18px 16px">${fim.map(p => linha(p, true)).join('')}</div></details>` : ''}`; };
-    const gp = gastos('passagem');
+    const gp = gastos('passagem', null, 'intercambio'), gpp = gastos('passagem', null, 'pedagogico');
     const ge = MQ.UFS.map(u => Object.assign({ uf: u.uf, nome: u.nome }, gastos('evento', u.uf)));
     const somaE = k => ge.reduce((t, g) => t + g[k], 0);
     const nVez = tipo => vezTodos.filter(p => p.tipo === tipo).length;
     return `<div class="cab"><div><span class="eyebrow">Viagens e eventos</span><h1>Passagens e eventos</h1>
         <p>A bolsista de articulação estadual pede; ${souGeral ? (conf() === 'coord_geral' ? 'você confere e autoriza' : nomeConf() + ' confere; você autoriza') + ' e manda para a FUNCERN, que compra ou contrata.' : 'você confere e manda para a coordenação geral, que autoriza e manda para a FUNCERN.'}
-        Prazos: passagem ${PRAZO.passagem} dias antes da viagem (a FUNCERN exige 30); evento ${PRAZO.evento} dias antes. <b>Os gastos são separados:</b> passagens têm um teto para o projeto todo; eventos, um teto por estado.</p></div></div>
+        Prazos: passagem ${PRAZO.passagem} dias antes da viagem (a FUNCERN exige 30); evento ${PRAZO.evento} dias antes. <b>Os gastos são separados:</b> passagens têm um teto para cada finalidade (intercâmbio e acompanhamento pedagógico), no projeto todo; eventos, um teto por estado.</p></div></div>
       <div class="resumo">
         <div><span class="v num" ${vezTodos.length ? 'style="color:var(--crit)"' : ''}>${vezTodos.length}</span><span class="l">esperando você</span></div>
-        <div><span class="v num">${brl(gp.usado)}</span><span class="l">gasto com passagens</span></div>
+        <div><span class="v num">${brl(gp.usado + gpp.usado)}</span><span class="l">gasto com passagens</span></div>
         <div><span class="v num">${brl(somaE('usado'))}</span><span class="l">gasto com eventos</span></div></div>
       <nav class="viag-ir small" aria-label="Ir para"><a href="#viag-passagens">Passagens aéreas${nVez('passagem') ? ` (${nVez('passagem')} esperando)` : ''}</a><a href="#viag-eventos">Eventos${nVez('evento') ? ` (${nVez('evento')} esperando)` : ''}</a></nav>
       ${souGeral && conf() === 'auxiliar_adm' ? '<div class="aviso">Sem coordenação técnica ativa: quem confere os pedidos é o auxiliar administrativo; você autoriza. Assim cada pedido passa por duas pessoas. Quando a técnica for cadastrada, ela volta a conferir.</div>' : ''}
       ${souGeral && conf() === 'coord_geral' && !legado() ? '<div class="aviso erro">Sem coordenação técnica e sem auxiliar administrativo: você confere e autoriza sozinho (fica registrado). Cadastre a técnica ou o auxiliar para voltar a ter duas pessoas em cada pedido.</div>' : ''}
       <section class="secao viag-tipo" id="viag-passagens" aria-labelledby="t-vp"><div class="secao-cab"><div><h2 id="t-vp">Passagens aéreas</h2>
-          <p class="small muted">Teto de ${brl(MQ.TETOS.passagem)} para o projeto todo, somando os 5 estados. Passagens contadas por pessoa (ida e volta).</p></div></div>
-        <div class="bloco viag-tetos"><h3>Tetos de gasto · passagens</h3>${cartaoGasto(gp, 'Autorizado em passagens')}
+          <p class="small muted">Dois tetos para o projeto todo, somando os 5 estados: ${brl(MQ.tetoPassagem('intercambio'))} para o intercâmbio e ${brl(MQ.tetoPassagem('pedagogico'))} para o acompanhamento pedagógico (um não cobre o outro). Passagens contadas por pessoa (ida e volta). ${souGeral ? 'O pedido de acompanhamento pedagógico é conferido e autorizado só por você.' : 'O pedido de acompanhamento pedagógico é conferido só pela coordenação geral.'}</p></div></div>
+        <div class="bloco viag-tetos"><h3>Tetos de gasto · passagens</h3>${cartaoGasto(gp, 'Autorizado em passagens de intercâmbio')}${cartaoGasto(gpp, 'Autorizado em passagens de acompanhamento pedagógico')}
           <ul class="pp"><li><span>Intercâmbio entre as beneficiárias</span><b class="num">${usados('intercambio')}<small class="muted"> de ${PREVISTO.intercambio} passagens</small></b></li>
             <li><span>Acompanhamento pedagógico</span><b class="num">${usados('pedagogico')}<small class="muted"> de ${PREVISTO.pedagogico} passagens</small></b></li></ul></div>
         ${listas('passagem')}</section>
@@ -6305,7 +6683,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (tipo === 'passagem') {
       const ps = (d.passageiros && d.passageiros.length) ? d.passageiros : [{}];
       corpo = `<fieldset><legend>Viagem</legend><div class="campos">${comum}
-          <div class="campo inteiro"><label for="vg-fin">Para quê</label><select id="vg-fin" name="finalidade"><option value="">Selecione…</option>${Object.entries(FINALIDADE).map(([k, t]) => `<option value="${k}" ${d.finalidade === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+          <div class="campo inteiro"><label for="vg-fin">Para quê</label><select id="vg-fin" name="finalidade" aria-describedby="vg-fin-dica"><option value="">Selecione…</option>${Object.entries(FINALIDADE).map(([k, t]) => `<option value="${k}" ${d.finalidade === k ? 'selected' : ''}>${t}</option>`).join('')}</select><span class="dica" id="vg-fin-dica">Cada finalidade tem o seu teto. O pedido de acompanhamento pedagógico é conferido só pela coordenação geral.</span></div>
           <div class="campo"><label for="vg-ori">Cidade de origem</label><input id="vg-ori" name="origem" value="${v('origem')}" placeholder="Ex.: Teresina/PI"></div>
           <div class="campo"><label for="vg-des">Cidade de destino</label><input id="vg-des" name="destino" value="${v('destino')}" placeholder="Ex.: Salvador/BA"></div>
           <div class="campo"><label for="vg-ida">Data de ida</label><input id="vg-ida" name="data_ref" type="date" min="${R.hoje()}" max="${FIM_PROJETO}" value="${E(x ? x.data_ref : '')}"></div>
@@ -6407,14 +6785,18 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (souDono && x.situacao === 'devolvido') acoes.push(`<div class="acoes"><button class="btn pri" data-acao="viag-nova" data-t="${x.tipo}" data-id="${E(x.id)}">Corrigir e reenviar</button></div>`);
     if (souDono && ['enviado', 'devolvido'].includes(x.situacao)) acoes.push(formMover(x, 'Cancelar este pedido', [['cancelar', 'Cancelar o pedido', 'perigo']], 'Motivo (opcional)'));
     const geral = papel === 'coord_geral';
-    if (!souDono && papel !== 'coord_geral' && souConferente() && x.situacao === 'enviado') acoes.push(formMover(x, 'Conferência', [['conferir', 'Conferido', 'pri'], ['devolver', 'Devolver para correção', 'perigo']], 'Observação (obrigatória para devolver)'));
+    const pedag = ehPedag(x);
+    if (!souDono && papel !== 'coord_geral' && pedag && x.situacao === 'enviado' && (souConferente() || papel === 'coord_tecnico'))
+      acoes.push('<div class="aviso" data-viag-pedag><b>Pedido de acompanhamento pedagógico: aguardando a coordenação geral.</b> Só ela confere e autoriza este tipo de pedido.</div>');
+    if (!souDono && papel !== 'coord_geral' && !pedag && souConferente() && x.situacao === 'enviado') acoes.push(formMover(x, 'Conferência', [['conferir', 'Conferido', 'pri'], ['devolver', 'Devolver para correção', 'perigo']], 'Observação (obrigatória para devolver)'));
     if (geral && x.situacao === 'enviado') {
-      if (souConferente()) acoes.push(formMover(x, 'Conferência (sem coordenação técnica e sem auxiliar)', [['conferir', 'Conferido', 'pri'], ['devolver', 'Devolver para correção', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)'));
+      if (pedag && !souDono) acoes.push(formMover(x, 'Conferência (acompanhamento pedagógico: só a coordenação geral confere)', [['conferir', 'Conferido', 'pri'], ['devolver', 'Devolver para correção', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)'));
+      else if (souConferente()) acoes.push(formMover(x, 'Conferência (sem coordenação técnica e sem auxiliar)', [['conferir', 'Conferido', 'pri'], ['devolver', 'Devolver para correção', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)'));
       else if (legado()) acoes.push(formMover(x, 'Conferir no lugar da coordenação técnica', [['conferir', 'Conferido', ''], ['devolver', 'Devolver para correção', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)'));
       else acoes.push(`<div class="aviso">Quem confere este pedido é ${nomeConf()}. Depois da conferência, ele volta para você autorizar.</div>` + formMover(x, 'Recusar sem esperar a conferência', [['recusar', 'Recusar', 'perigo']], 'Motivo da recusa (obrigatório)'));
     }
     if (geral && x.situacao === 'conferido') {
-      const mesmo = x.conferido_por === eu.id && conf() !== 'coord_geral' && !legado();
+      const mesmo = x.conferido_por === eu.id && confDe(x) !== 'coord_geral' && !legado();
       if (mesmo) acoes.push(`<div class="aviso erro">Você conferiu este pedido, então não pode autorizá-lo: cada pedido passa por duas pessoas. Devolva para ${nomeConf()} conferir.</div>` + formMover(x, 'Devolver ou recusar', [['devolver', 'Devolver para correção', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória)'));
       else acoes.push(formMover(x, 'Autorizar e mandar para a FUNCERN', [['autorizar', 'Autorizar', 'pri'], ['devolver', 'Devolver para correção', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)', true, true));
     }
@@ -6437,9 +6819,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
   function formMover(x, titulo, botoes, rotObs, protocolo, valor) {
     const vl = +x.valor_autorizado || +(x.dados || {}).valor_estimado || '';
-    return `<form class="bloco" data-form="viag-mover" data-id="${E(x.id)}" data-tipo="${E(x.tipo)}" data-uf="${E(x.uf)}" novalidate><h3>${titulo}</h3>
+    return `<form class="bloco" data-form="viag-mover" data-id="${E(x.id)}" data-tipo="${E(x.tipo)}" data-uf="${E(x.uf)}" data-fin="${finDe(x)}" novalidate><h3>${titulo}</h3>
       ${valor ? `<div class="campo"><label for="vm-valor">Valor autorizado (R$)</label><input id="vm-valor" name="valor" inputmode="decimal" value="${E(vl ? String(vl).replace('.', ',') : '')}">
-        <span class="dica">Vem o estimado pela bolsista; ajuste pelo orçamento da FUNCERN, se tiver.</span></div><p class="small muted">${rotSaldo(x.tipo, x.uf)}</p>` : ''}
+        <span class="dica">Vem o estimado pela bolsista; ajuste pelo orçamento da FUNCERN, se tiver.</span></div><p class="small muted">${rotSaldo(x.tipo, x.uf, finDe(x))}</p>` : ''}
       ${protocolo ? `<div class="campo"><label for="vm-prot">Protocolo ou número do pedido na FUNCERN <span class="muted">(se já tiver)</span></label><input id="vm-prot" name="protocolo" value="${E(x.funcern_protocolo || '')}"></div>` : ''}
       ${rotObs ? `<div class="campo"><label for="vm-obs-${E(x.id)}">${rotObs}</label><textarea id="vm-obs-${E(x.id)}" name="obs"></textarea></div>` : ''}
       <div class="aviso erro" data-erro hidden></div>
@@ -6536,7 +6918,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const e = validar(t, titulo, data, just, d);
       if (d.valor_estimado < 0) e.valor_estimado = 'O valor não pode ser negativo.';
       else if (!(d.valor_estimado > 0)) e.valor_estimado = 'Informe o valor estimado (R$).';
-      else { const sd = saldo(t, S().eu.uf); if (d.valor_estimado > sd.livre) e.valor_estimado = 'Passa do saldo: restam ' + brl(sd.livre) + (t === 'evento' ? ' para eventos em ' + S().eu.uf : ' para passagens no projeto') + '.'; }
+      else { const sd = saldo(t, S().eu.uf, null, d.finalidade); if (d.valor_estimado > sd.livre) e.valor_estimado = 'Passa do saldo: restam ' + brl(sd.livre) + (t === 'evento' ? ' para eventos em ' + S().eu.uf : ' para passagens de ' + NOME_FIN[d.finalidade === 'pedagogico' ? 'pedagogico' : 'intercambio'] + ' no projeto') + '.'; }
       const lp = e._pass || []; const geral = e._geral; delete e._pass; delete e._geral;
       if (Object.keys(e).length || lp.length || geral) {
         const total = Object.keys(e).length + lp.length;
@@ -6549,7 +6931,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       await U().ocupado(form, async () => {
         await S().api.salvarPedido(form.dataset.id || null, t, titulo, data, d, just || null);
         await recarregar(); U().fecharPainel();
-        U().toast((form.dataset.id ? 'Pedido reenviado' : 'Pedido enviado') + ' para ' + nomeConf() + ' conferir.');
+        U().toast((form.dataset.id ? 'Pedido reenviado' : 'Pedido enviado') + ' para ' + NOME_CONF[t === 'passagem' && d.finalidade === 'pedagogico' ? 'coord_geral' : conf()] + ' conferir.');
       });
     }
     if (tipo === 'viag-mover') {
@@ -6559,7 +6941,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (acao === 'autorizar' && form.querySelector('[name=valor]')) {
         if (valor < 0) return U().mostrarErros(form, { valor: 'O valor não pode ser negativo.' });
         if (!(valor > 0)) return U().mostrarErros(form, { valor: 'Informe o valor para autorizar.' });
-        const sd = saldo(form.dataset.tipo, form.dataset.uf);
+        const sd = saldo(form.dataset.tipo, form.dataset.uf, null, form.dataset.fin);
         if (valor > sd.livre) return U().mostrarErros(form, { valor: 'Passa do teto: o saldo é ' + brl(sd.livre) + '. Ajuste o valor, devolva ou recuse.' });
       }
       await U().ocupado(form, async () => {
@@ -6793,7 +7175,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const d = { tipo: String(fd.get('tipo') || ''), titulo: String(fd.get('titulo') || '').trim().replace(/\s+/g, ' '), data_documento: String(fd.get('data_documento') || ''),
         uf: String(fd.get('uf') || '') || null, descricao: String(fd.get('descricao') || '').trim() || null };
       const arq = fd.get('arquivo'); const arquivo = arq && arq.name ? arq : null;
-      const e = validarDocumento(d, arquivo); if (Object.keys(e).length) return U().mostrarErros(form, e);
+      const e = validarDocumento(d, arquivo);
+      // o conteúdo é o que o nome diz? (HTML ou programa renomeado para .pdf não entra)
+      if (!e.arquivo && arquivo && MQ.arquivoConfere) { const falso = await MQ.arquivoConfere(arquivo, EXT, { rotulo: 'PDF, Word, planilha ou foto (JPG, PNG)' }); if (falso) e.arquivo = falso; }
+      if (Object.keys(e).length) return U().mostrarErros(form, e);
       await U().ocupado(form, async () => { await S().api.enviarDocumento(d, arquivo); await U().carregar(); U().fecharPainel(); U().render(); U().toast('Documento anexado.'); });
     }
     if (tipo === 'doc-arquivar') {
@@ -7066,7 +7451,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       return (S().solic || []).filter(s => (a.ajuda ? s.tipo === 'ajuda_custo' : (s.tipo === 'bolsa' && papelDe(s.equipe_id) === a.bolsa))
         && (s.situacao === 'avalizada' || (s.situacao === 'lancada' && depois(s.arlo_em)))).reduce((t, s) => t + val(s), 0);
     }
-    return (S().pedidos || []).filter(p => p.situacao === 'autorizado' && depois(p.decidido_em) && (a.evento ? p.tipo === 'evento' : p.tipo === 'passagem' && (p.dados || {}).finalidade === a.passagem))
+    return (S().pedidos || []).filter(p => p.situacao === 'autorizado' && depois(p.decidido_em) && (a.evento ? p.tipo === 'evento' : p.tipo === 'passagem' && ((p.dados || {}).finalidade === 'pedagogico' ? 'pedagogico' : 'intercambio') === a.passagem))   // passagem antiga, sem finalidade, conta no intercâmbio (46)
       .reduce((t, p) => t + (+p.valor_autorizado || +(p.dados || {}).valor_estimado || 0), 0);
   }
   function numeros() {
@@ -7467,7 +7852,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     }
     if (a === 'ent-ciencia') {
       el.disabled = true;
-      try { await S().api.darCiencia(eu.id, el.dataset.doc); S().ciencias = (S().ciencias || []).concat([{ equipe_id: eu.id, documento: el.dataset.doc, em: new Date().toISOString() }]); U().toast('Obrigada! Leitura registrada.'); }
+      try { await S().api.darCiencia(eu.id, el.dataset.doc); S().ciencias = (S().ciencias || []).concat([{ equipe_id: eu.id, documento: el.dataset.doc, em: new Date().toISOString() }]); U().toast('Leitura registrada.'); }
       catch (e) { el.disabled = false; U().toast(e.message || String(e)); }
       U().render();
     }
@@ -7502,7 +7887,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       { t: 'Achar uma visita para fazer', p: ['Procure "Trabalho de campo" e depois "Para fazer agora".', 'Se tiver uma visita, toque no botão dela (por exemplo, "Registrar diagnóstico").'], v: 'Abre o formulário da visita. Se não houver visita marcada, responda "Deu certo" e escreva "sem visita".' },
       { t: 'Achar ajuda', p: ['Toque no "?" no alto da tela.', 'Procure como pedir o pagamento da bolsa.'], v: 'A ajuda explica onde pedir a bolsa.' },
       { t: 'Entender os números nos botões', p: ['Em "O que você quer fazer?", veja se algum botão tem um número.'], v: 'O número mostra quantas coisas esperam você ali (ex.: algo devolvido para corrigir).', pergunta: 'Você entendeu o que o número queria dizer?' },
-      { t: 'Pedir uma passagem (só articulação estadual)', p: ['Se você é de apoio, responda "Deu certo" e escreva "sou de apoio".', 'Procure "Passagens aéreas e eventos" e toque em "Pedir passagem aérea".', 'Preencha com dados inventados e envie.'], v: 'O pedido aparece em "Meus pedidos", com a coordenação técnica.' },
+      { t: 'Pedir uma passagem (só articulação estadual)', p: ['Se você é de apoio, responda "Deu certo" e escreva "sou de apoio".', 'Procure "Passagens aéreas e eventos" e toque em "Pedir passagem aérea".', 'Preencha com dados inventados e envie.'], v: 'O pedido aparece em "Meus pedidos", com a coordenação técnica (ou com a coordenação geral, se for de acompanhamento pedagógico).' },
       { t: 'Sair sozinho depois de 15 minutos', p: ['Com internet, deixe o sistema aberto e não toque no celular por 15 minutos.', 'Aos 13 minutos deve aparecer um aviso com contagem e o botão "Continuar usando".'], v: 'Aos 15 minutos o sistema sai e explica por quê. Os dados não se perdem.', pergunta: 'O aviso apareceu antes de sair? Deu tempo de ler?' }
     ] },
     agente: { nome: 'Agente de campo', tarefas: [
@@ -7540,7 +7925,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       { t: 'Marcar uma visita', p: ['Na aba Campo, no roteiro, marque uma visita para uma bolsista ou agente.'], v: 'A visita aparece no roteiro com a data.' },
       { t: 'Aprovar um plano de quintal', p: ['Na aba Campo, abra "Planos para você aprovar".', 'Abra um plano e aprove ou devolva.'], v: 'O plano sai da lista de espera. Se não houver plano, responda "Deu certo" e escreva "sem plano".' },
       { t: 'Achar ajuda', p: ['Toque no "?" no alto da tela.'], v: 'Abre a ajuda da aba em que você está.' },
-      { t: 'Conferir um pedido de passagem', p: ['Abra a aba "Viagens e eventos" (o número na aba mostra quantos esperam você).', 'Abra o pedido e toque em "Conferido" ou devolva dizendo o que corrigir.'], v: 'O pedido vai para a coordenação geral (ou volta para a bolsista). Se não houver pedido, responda "Deu certo" e escreva "sem pedido".' }
+      { t: 'Conferir um pedido de passagem', p: ['Abra a aba "Viagens e eventos" (o número na aba mostra quantos esperam você).', 'Abra o pedido e toque em "Conferido" ou devolva dizendo o que corrigir.'], v: 'O pedido vai para a coordenação geral (ou volta para a bolsista). Pedido de acompanhamento pedagógico só a coordenação geral confere: para você ele aparece como "aguardando a coordenação geral". Se não houver pedido, responda "Deu certo" e escreva "sem pedido".' }
     ] },
     geral: { nome: 'Coordenação geral', tarefas: [
       { t: 'Cadastrar a coordenação técnica', p: ['Na aba Equipe, toque em "Cadastrar coordenação técnica".', 'Toque em "Digitar os dados agora" e preencha com dados inventados.'], v: 'A pessoa aparece na Equipe.' },
@@ -8056,21 +8441,21 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <p class="small muted" data-arlo-nota ${arlo ? '' : 'hidden'}>Então bastam os dados básicos: nome, CPF, celular e e-mail${campo ? ', mais o município onde mora (o sistema não lê o Arlo e calcula a ajuda de custo das visitas pela distância do município até os quintais)' : ''}. Nascimento, NIS, endereço e conta bancária ficam no Arlo.</p>
       </fieldset>
       <div data-arlo-opc ${arlo ? 'hidden' : ''}><fieldset><legend>Mais dados pessoais</legend><div class="campos">
-        <div class="campo"><label for="dp-soc">Nome social <span class="muted">(se usar)</span></label><input id="dp-soc" name="nome_social" value="${v(d.nome_social)}" placeholder="Como prefere ser chamada"></div>
-        <div class="campo"><label for="dp-nasc">Data de nascimento</label><input id="dp-nasc" name="data_nascimento" type="date" value="${v(d.data_nascimento)}" max="${R.hoje()}"></div>
-        <div class="campo inteiro"><label for="dp-nis">PIS/NIS/PASEP <span class="muted">(se tiver)</span></label><input id="dp-nis" name="nis" inputmode="numeric" value="${v(d.nis)}" placeholder="000.00000.00-0"></div>
+        <div class="campo"><label for="dp-soc">Nome social <span class="muted">(se usar)</span></label><input id="dp-soc" name="nome_social" value="${v(d.nome_social)}" maxlength="120" placeholder="Como prefere ser chamada"></div>
+        <div class="campo"><label for="dp-nasc">Data de nascimento</label><input id="dp-nasc" name="data_nascimento" type="date" value="${v(d.data_nascimento)}" min="1900-01-01" max="${(h => (+h.slice(0, 4) - 16) + h.slice(4))(R.hoje())}"></div>
+        <div class="campo inteiro"><label for="dp-nis">PIS/NIS/PASEP <span class="muted">(se tiver)</span></label><input id="dp-nis" name="nis" inputmode="numeric" value="${v(d.nis)}" maxlength="14" placeholder="000.00000.00-0"></div>
       </div></fieldset></div>
       ${campo ? '<input type="hidden" name="_campo" value="1">' : ''}<fieldset ${campo ? '' : `data-arlo-opc ${arlo ? 'hidden' : ''}`} data-endereco><legend data-arlo-opc ${arlo ? 'hidden' : ''}>Endereço</legend>
         ${campo ? `<legend data-arlo-so ${arlo ? '' : 'hidden'}>Município onde mora</legend>` : ''}
         <p class="small muted" style="margin-top:-6px" data-arlo-opc ${arlo ? 'hidden' : ''}>Usado para calcular a ajuda de custo das visitas (distância até os quintais) e para a FUNCERN.</p>
         ${campo ? `<p class="small muted" style="margin-top:-6px" data-arlo-so ${arlo ? '' : 'hidden'}>O endereço e a conta ficam no Arlo. Só o município fica aqui: é dele que o sistema calcula a distância até os quintais e a ajuda de custo das visitas.</p>` : ''}
         <div class="campos">
-        <div class="campo" data-arlo-opc ${arlo ? 'hidden' : ''}><label for="dp-cep">CEP</label><input id="dp-cep" name="cep" inputmode="numeric" value="${v(en.cep)}" placeholder="00000-000" data-cep><span class="dica" id="dp-cep-dica">Preenche o resto sozinho quando há internet.</span></div>
-        <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo"><label for="dp-num">Número</label><input id="dp-num" name="numero" value="${v(en.numero)}" placeholder="s/n se não tiver"></div>
-        <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo inteiro"><label for="dp-log">Logradouro (rua, sítio, estrada)</label><input id="dp-log" name="logradouro" value="${v(en.logradouro)}"></div>
-        <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo"><label for="dp-comp">Complemento</label><input id="dp-comp" name="complemento" value="${v(en.complemento)}"></div>
-        <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo"><label for="dp-bai">Bairro ou comunidade</label><input id="dp-bai" name="bairro" value="${v(en.bairro)}"></div>
-        <div class="campo"><label for="dp-cid">Município onde mora</label><input id="dp-cid" name="cidade" value="${v(en.cidade || d.municipio)}" ${munis && munis.length ? 'list="lista-mun"' : ''} autocomplete="address-level2">
+        <div class="campo" data-arlo-opc ${arlo ? 'hidden' : ''}><label for="dp-cep">CEP</label><input id="dp-cep" name="cep" inputmode="numeric" value="${v(en.cep)}" placeholder="00000-000" maxlength="9" data-cep><span class="dica" id="dp-cep-dica">Preenche o resto sozinho quando há internet.</span></div>
+        <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo"><label for="dp-num">Número</label><input id="dp-num" name="numero" value="${v(en.numero)}" maxlength="20" placeholder="s/n se não tiver"></div>
+        <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo inteiro"><label for="dp-log">Logradouro (rua, sítio, estrada)</label><input id="dp-log" name="logradouro" value="${v(en.logradouro)}" maxlength="120"></div>
+        <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo"><label for="dp-comp">Complemento</label><input id="dp-comp" name="complemento" value="${v(en.complemento)}" maxlength="120"></div>
+        <div data-arlo-opc ${arlo ? 'hidden' : ''} class="campo"><label for="dp-bai">Bairro ou comunidade</label><input id="dp-bai" name="bairro" value="${v(en.bairro)}" maxlength="120"></div>
+        <div class="campo"><label for="dp-cid">Município onde mora</label><input id="dp-cid" name="cidade" value="${v(en.cidade || d.municipio)}" maxlength="120" ${munis && munis.length ? 'list="lista-mun"' : ''} autocomplete="address-level2">
           ${munis && munis.length ? `<datalist id="lista-mun">${munis.map(x => `<option value="${E(x)}">`).join('')}</datalist><span class="dica">A lista traz os municípios do projeto no estado.</span>` : ''}</div>
         <div class="campo" data-arlo-opc ${arlo ? 'hidden' : ''}><label for="dp-uf">Estado</label><select id="dp-uf" name="uf_end">${op(['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE', 'Outro'], en.uf)}</select></div>
       </div></fieldset>
@@ -8492,6 +8877,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const U = () => MQ.ui; const S = () => MQ.ui.S; const E = s => MQ.ui.esc(s);
   const R = MQ.regras;
   const CHAVE = 'mq-pend-visto-';
+  /* limites dos dados pessoais (os mesmos do cadastro pelo link, em convites.js): nascimento de 1900 até hoje menos 16 anos; textos com tamanho máximo */
+  const NASC_MIN = '1900-01-01';
+  const nascMax = () => { const h = R.hoje(); return (+h.slice(0, 4) - 16) + h.slice(4); };
+  const LIM = { logradouro: 120, bairro: 120, complemento: 120, cidade: 120, numero: 20, cep: 9, nis: 14 };
+  const ROT = { logradouro: 'Logradouro', bairro: 'Bairro', complemento: 'Complemento', cidade: 'Cidade', numero: 'Número' };
 
   function eu() {
     const s = S(); if (!s.eu || s.eu.papel === 'coord_geral') return null;
@@ -8567,7 +8957,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const k = CHAVE + l.m.id;
     try { if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1'); } catch (e) { if (S().pendVisto) return; }
     S().pendVisto = true;
-    U().abrirPainel({ tipo: 'pend' });
+    // abre sozinho: ao fechar, o foco vai para o botão "Resolver" da faixa (não fica solto na página)
+    const quem = document.querySelector('.pend-faixa [data-acao="pend-ver"]'); if (quem) S().acionador = quem;
+    try { U().abrirPainel({ tipo: 'pend' }); } finally { if (S().acionador === quem) S().acionador = null; }
   }
 
   function painel(p) {
@@ -8597,15 +8989,15 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const arlo = !!m.cadastro_arlo;
     return `<form class="f" data-form="pend-dados" novalidate>
       ${arlo ? '<p class="small muted">Você tem cadastro no Arlo: os outros dados ficam lá. Aqui só a cidade, para calcular a ajuda de custo das visitas.</p>' : `<div class="campos">
-        <div class="campo"><label for="dp-nasc">Data de nascimento</label><input id="dp-nasc" name="data_nascimento" type="date" value="${v(pv.data_nascimento)}" max="${R.hoje()}" required></div>
-        <div class="campo"><label for="dp-nis">PIS/NIS/PASEP <span class="muted">(se tiver)</span></label><input id="dp-nis" name="nis" inputmode="numeric" value="${v(pv.nis)}"></div></div>`}
+        <div class="campo"><label for="dp-nasc">Data de nascimento</label><input id="dp-nasc" name="data_nascimento" type="date" value="${v(pv.data_nascimento)}" min="${NASC_MIN}" max="${nascMax()}" required></div>
+        <div class="campo"><label for="dp-nis">PIS/NIS/PASEP <span class="muted">(se tiver)</span></label><input id="dp-nis" name="nis" inputmode="numeric" value="${v(pv.nis)}" maxlength="${LIM.nis}"></div></div>`}
       <div class="campos">
-        ${arlo ? '' : `<div class="campo"><label for="dp-cep">CEP</label><input id="dp-cep" name="cep" inputmode="numeric" value="${v(en.cep)}" placeholder="00000-000" data-cep><span class="dica" id="dp-cep-dica">Preenche o resto sozinho quando há internet.</span></div>
-        <div class="campo"><label for="dp-num">Número</label><input id="dp-num" name="numero" value="${v(en.numero)}" placeholder="s/n se não tiver"></div>
-        <div class="campo inteiro"><label for="dp-log">Logradouro (rua, sítio, estrada)</label><input id="dp-log" name="logradouro" value="${v(en.logradouro)}" required></div>
-        <div class="campo"><label for="dp-comp">Complemento</label><input id="dp-comp" name="complemento" value="${v(en.complemento)}"></div>
-        <div class="campo"><label for="dp-bai">Bairro ou comunidade</label><input id="dp-bai" name="bairro" value="${v(en.bairro)}"></div>`}
-        <div class="campo"><label for="dp-cid">Cidade</label><input id="dp-cid" name="cidade" value="${v(en.cidade)}" required></div>
+        ${arlo ? '' : `<div class="campo"><label for="dp-cep">CEP</label><input id="dp-cep" name="cep" inputmode="numeric" value="${v(en.cep)}" placeholder="00000-000" maxlength="${LIM.cep}" data-cep><span class="dica" id="dp-cep-dica">Preenche o resto sozinho quando há internet.</span></div>
+        <div class="campo"><label for="dp-num">Número</label><input id="dp-num" name="numero" value="${v(en.numero)}" maxlength="${LIM.numero}" placeholder="s/n se não tiver"></div>
+        <div class="campo inteiro"><label for="dp-log">Logradouro (rua, sítio, estrada)</label><input id="dp-log" name="logradouro" value="${v(en.logradouro)}" maxlength="${LIM.logradouro}" required></div>
+        <div class="campo"><label for="dp-comp">Complemento</label><input id="dp-comp" name="complemento" value="${v(en.complemento)}" maxlength="${LIM.complemento}"></div>
+        <div class="campo"><label for="dp-bai">Bairro ou comunidade</label><input id="dp-bai" name="bairro" value="${v(en.bairro)}" maxlength="${LIM.bairro}"></div>`}
+        <div class="campo"><label for="dp-cid">Cidade</label><input id="dp-cid" name="cidade" value="${v(en.cidade)}" maxlength="${LIM.cidade}" required></div>
         <div class="campo"><label for="dp-uf">Estado</label><select id="dp-uf" name="uf_end">${op(en.uf)}</select></div>
       </div>
       <div class="aviso erro" data-erro hidden></div>
@@ -8624,7 +9016,13 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       endereco: en, socioeconomico: pv.socioeconomico || null };
     const e = {};
     if (!arlo && !d.data_nascimento) e.data_nascimento = 'Informe a data de nascimento.';
-    else if (!arlo && (d.data_nascimento > R.hoje() || R.idade(d.data_nascimento) < 16)) e.data_nascimento = 'Data de nascimento inválida.';
+    else if (!arlo && d.data_nascimento !== (pv.data_nascimento || null)) {   // data antiga que não mudou não trava
+      if (!R.dataValida(d.data_nascimento) || d.data_nascimento > R.hoje()) e.data_nascimento = 'Data de nascimento inválida.';
+      else if (d.data_nascimento < NASC_MIN) e.data_nascimento = 'Confira o ano: a data de nascimento não pode ser antes de 1900.';
+      else if (d.data_nascimento > nascMax()) e.data_nascimento = 'Confira o ano: é preciso ter pelo menos 16 anos.';
+    }
+    // tamanho dos textos do endereço (o que já estava gravado e não mudou não trava)
+    Object.keys(ROT).forEach(k => { const antes = (pv.endereco || {})[k] || ''; if (en[k] && en[k] !== antes && String(en[k]).length > LIM[k]) e[k] = ROT[k] + ': texto muito longo (máximo ' + LIM[k] + ' caracteres).'; });
     if (d.nis && d.nis.length !== 11) e.nis = 'O PIS/NIS tem 11 números.';
     if (en.cep && en.cep.length !== 8) e.cep = 'O CEP tem 8 números.';
     if (!arlo && !en.logradouro) e.logradouro = 'Informe a rua, sítio ou estrada.';
@@ -8896,6 +9294,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       ],
       passos: [
         'A tabela mostra, por estado, os dias de campo feitos e previstos, diagnósticos, planos aprovados, casos sem água e agentes.',
+        'As etapas seguem uma ordem: a <b>implantação</b> só é agendada ou registrada com o plano do quintal aprovado (e nunca em quintal sem água); o <b>acompanhamento</b>, só depois da implantação feita. A data de cada etapa não pode ser anterior à da etapa de antes. Quando a etapa ainda não pode, a tela mostra o motivo no lugar do botão.',
         'Em <b>Planos para você aprovar</b>, abra o diagnóstico, confira as fotos, o kit (itens da lista aprovada, com preço, até o valor por quintal) e o cronograma, e <b>aprove</b> ou <b>devolva</b>.',
         '<b>Investimento nos quintais</b> mostra o valor do kit por quintal (R$ 5.000,00, fixado no plano de trabalho) e a soma projetada pelos planos.',
         'O <b>roteiro</b> lista cada visita: data, quem vai e a situação, com o botão do que fazer. Visitas vencidas aparecem como atrasadas.',
@@ -8943,9 +9342,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       ],
       duvidas: [
         ['Quem começou no meio do mês recebe o mês inteiro?', 'Sim. A bolsa é pedida a partir do mês de início no projeto e, pedida no mês, vale o mês inteiro (decisão da coordenação geral). Antes do mês de início o sistema não deixa pedir.'],
-        ['Uma visita pode entrar em dois pedidos?', 'Não. Depois de pedida, a visita fica travada (data, pessoa e situação) até o pedido ser devolvido.'],
+        ['Uma visita pode entrar em dois pedidos?', 'Não. Depois de pedida, a visita fica travada (data, pessoa e situação) até o pedido ser devolvido. Depois que o pedido é lançado no Arlo, o km conferido da visita também não muda mais.'],
         ['A lista de presença está marcada, mas não vi o papel.', 'A marcação é a bolsista quem faz. Confira as listas assinadas antes de dar o aval.'],
-        ['Quanto é a ajuda de custo?', 'É calculada na aba Custos: horas da visita, combustível pela distância e refeição.']
+        ['Quanto é a ajuda de custo?', 'É calculada na aba Custos: horas da visita, combustível pela distância e refeição.'],
+        ['Ficou uma visita fora do pedido de ajuda de custo. E agora?', 'A pessoa faz um <b>pedido complementar</b> do mesmo mês, só com as visitas que ficaram de fora. Ele aparece na lista com a palavra "complementar" e passa pelo mesmo aval. A bolsa continua sendo um pedido só por mês.'],
       ]
     },
     custos: {
@@ -8978,6 +9378,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         'A coordenação técnica confere os dados (nomes iguais ao documento, datas, CPF e RG, quantidades) e toca em <b>Conferido</b>, ou <b>Devolve</b> dizendo o que corrigir.',
         '<b>Sem coordenação técnica ativa</b>, quem confere é o <b>auxiliar administrativo</b> (na tela dele aparece "Passagens e eventos para conferir"). Sem os dois, a coordenação geral confere e autoriza, com aviso. Quando a técnica é cadastrada, volta tudo para ela.',
         'Cada pedido passa por <b>duas pessoas</b>: quem conferiu não autoriza o mesmo pedido.',
+        'O pedido de passagem de <b>acompanhamento pedagógico</b> é diferente: só a <b>coordenação geral</b> confere e autoriza. Para a coordenação técnica ele aparece como "aguardando a coordenação geral".',
+        'As passagens têm <b>dois tetos</b>, que não se misturam: R$ 70.000,00 para o intercâmbio e R$ 22.400,00 para o acompanhamento pedagógico. Os eventos têm R$ 6.000,00 por estado.',
         'A <b>coordenação geral</b> autoriza (ou devolve, ou recusa com o motivo). Depois de autorizar, use <b>Copiar texto</b> para mandar o pedido à FUNCERN e registre o protocolo.',
         'Prazos: passagem <b>40 dias</b> antes da viagem (a FUNCERN exige 30); evento <b>45 dias</b> antes. Fora do prazo, o pedido só vai com justificativa.',
         'Os contadores mostram quantas passagens já foram autorizadas (25 de intercâmbio e 8 de acompanhamento pedagógico, por pessoa) e quantos estados já têm evento (5).'
@@ -9579,27 +9981,36 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     </section>`;
   }
 
+  const APL_MAX_ITEM = 80, APL_MAX_ITENS = 30;
   async function clique(a, el) {
     if (a === 'apl-editar') {
       const x = aplDe(el.dataset.uf, el.dataset.mun) || { apls: [], obs: '' };
       const box = $('#apl-form'); if (!box) return;
       box.innerHTML = `<form class="f" data-form="apl" data-uf="${E(el.dataset.uf)}" data-mun="${E(el.dataset.mun)}" novalidate>
-        <div class="campo"><label for="apl-l">Arranjos produtivos de ${E(el.dataset.mun)} (separe por vírgula)</label><input id="apl-l" name="apls" value="${E(x.apls.join(', '))}" placeholder="apicultura, caprinocultura, feira agroecológica"></div>
-        <div class="campo"><label for="apl-o">Compradores, feiras, cooperativas, PAA/PNAE</label><textarea id="apl-o" name="obs">${E(x.obs || '')}</textarea></div>
+        <div class="campo"><label for="apl-l">Arranjos produtivos de ${E(el.dataset.mun)} (separe por vírgula)</label><input id="apl-l" name="apls" value="${E(x.apls.join(', '))}" placeholder="apicultura, caprinocultura, feira agroecológica"><span class="dica">Até ${APL_MAX_ITENS} arranjos, cada um com até ${APL_MAX_ITEM} letras.</span></div>
+        <div class="campo"><label for="apl-o">Compradores, feiras, cooperativas, PAA/PNAE</label><textarea id="apl-o" name="obs" maxlength="2000">${E(x.obs || '')}</textarea></div>
         <div class="aviso erro" data-erro hidden></div><div class="acoes"><button class="btn pri" type="submit">Salvar</button></div></form>`;
       box.querySelector('input').focus();
     }
   }
   async function enviar(tipo, form, fd) {
     if (tipo !== 'apl') return;
-    const apls = String(fd.get('apls') || '').split(',').map(x => x.trim()).filter(Boolean);
+    const apls = String(fd.get('apls') || '').split(',').map(x => x.trim().replace(/\s+/g, ' ')).filter(Boolean);
+    const obs = String(fd.get('obs') || '').trim();
+    // limites: cada arranjo com até 80 letras, no máximo 30 arranjos por município
+    const e = {};
+    const longo = apls.find(x => x.length > APL_MAX_ITEM);
+    if (longo) e.apls = 'Cada arranjo pode ter no máximo ' + APL_MAX_ITEM + ' letras. Este passou: "' + longo.slice(0, 30) + '…". Escreva só o nome (ex.: apicultura) e separe por vírgula.';
+    else if (apls.length > APL_MAX_ITENS) e.apls = 'No máximo ' + APL_MAX_ITENS + ' arranjos por município (você escreveu ' + apls.length + '). Deixe só os principais.';
+    if (obs.length > 2000) e.obs = 'Texto muito longo (máximo 2.000 caracteres).';
+    if (Object.keys(e).length) return U().mostrarErros(form, e);
     await U().ocupado(form, async () => {
-      await S().api.salvarAPL(form.dataset.uf, form.dataset.mun, apls, String(fd.get('obs') || '').trim() || null);
+      await S().api.salvarAPL(form.dataset.uf, form.dataset.mun, apls, obs || null);
       A.lista = null; carregarAPL(); U().toast('Arranjo produtivo salvo para ' + form.dataset.mun + '.');
     });
   }
 
-  MQ.sugestaoUI = { bloco, sugerir, clique, enviar };
+  MQ.sugestaoUI = { bloco, sugerir, clique, enviar, APL_MAX_ITEM, APL_MAX_ITENS };
 })();
 ;
 /* ===== sessao.js ===== */
@@ -9877,6 +10288,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (passou < ABERTURA_MIN) await new Promise(r => setTimeout(r, ABERTURA_MIN - passou));
   }
   async function boot() {
+    limparRascunhosVencidos();
     const producao = !!(MQ.CONFIG && MQ.CONFIG.supabaseUrl);
     // Em produção nunca cai no modo demonstração: se a biblioteca não carregou, para e avisa.
     if (producao && !window.supabase) {
@@ -9899,6 +10311,20 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     }
   }
   const modoDemoAtivo = () => !!(S.api && S.api.modo === 'demo');
+  /* Entrando ou trocando de perfil com a internet lenta: em vez da tela parada, o desenho de carregamento da abertura.
+     Só aparece se a espera passar de um quarto de segundo (com internet boa, a tela nova entra direto, sem piscar). */
+  function telaCarregando(texto) {
+    const app = $('#app'); if (!app) return;
+    const m = app.querySelector('main');
+    const h = `<p class="carregando">${MQ.ampulheta(true)}<span class="carregando-t">${esc(texto || 'Carregando…')}</span></p>`;
+    if (m && !/\bent\b/.test(m.className)) { m.innerHTML = h; m.setAttribute('aria-busy', 'true'); }
+    else app.innerHTML = barra(true, true) + `<main class="wrap" id="principal" aria-busy="true">${h}</main>`;
+    app.querySelectorAll('.pend-faixa, [data-parcial]').forEach(x => x.remove());   // avisos da pessoa anterior não ficam na tela de espera
+  }
+  async function comCarregando(fn, texto) {
+    const t = setTimeout(() => telaCarregando(texto), 250);
+    try { return await fn(); } finally { clearTimeout(t); }
+  }
   /* o servidor responde? (sinal fraco engana o navigator.onLine). Qualquer resposta = tem conexão; 5 s no máximo */
   async function temConexao() {
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
@@ -9935,10 +10361,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const AVISO_INATIVO = 'Você saiu do sistema depois de 15 minutos sem uso. Entre de novo. O que estava guardado no celular não se perdeu: é enviado quando você entrar.';
   /* sai do sistema (botão Sair ou 15 minutos sem uso): fecha o painel, apaga do aparelho a cópia dos dados e volta para a entrada */
   async function sairDoSistema(aviso) {
-    if (aviso) guardarRascunhoPainel();   // saiu sozinho: guarda o formulário pela metade
+    if (aviso) guardarRascunhoPainel('inatividade');   // saiu sozinho: guarda o formulário pela metade
     if (S.eu && !S.verEntrada) await registrarAcesso(aviso ? 'saida_inatividade' : 'saida');   // antes de encerrar a sessão no servidor
     try { sessionStorage.removeItem(CHAVE_ABRIU); } catch (e) {}
-    fecharPainel({ semFoco: true });
+    fecharPainel({ semFoco: true, manterRascunho: !!aviso });
+    if (!aviso) { try { localStorage.removeItem(chaveRasc()); } catch (e) {} }   // saiu da conta por vontade própria: os rascunhos dela não ficam no aparelho (LGPD)
     S.menuAberto = false; S.aba = null; lembrarAba(); limparHashAba(); if (MQ.bancoUI) MQ.bancoUI.limpar();
     try { Object.keys(sessionStorage).filter(k => /^mq-pend-visto-/.test(k)).forEach(k => sessionStorage.removeItem(k)); } catch (e) {}
     S.pendVisto = false; S.avisoLogin = aviso || null;
@@ -10120,17 +10547,19 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
   const selectMudou = i => { const ops = [...i.options]; const temPadrao = ops.some(o => o.defaultSelected); return ops.some((o, n) => o.selected !== (temPadrao ? o.defaultSelected : n === 0)); };
   /* há formulário em uso? Compara cada campo com o valor que ele tinha quando foi desenhado (nada é guardado à parte). */
+  function formAlterado(f) {
+    for (const i of f.querySelectorAll('input,select,textarea')) {
+      if (i.disabled || /^(hidden|submit|button|reset|image)$/.test(i.type) || (i.dataset && (i.dataset.procura != null || i.dataset.filtro != null))) continue;
+      if (i.type === 'file') { if (i.files && i.files.length) return true; continue; }
+      if (i.type === 'checkbox' || i.type === 'radio') { if (i.checked !== i.defaultChecked) return true; continue; }
+      if (i.tagName === 'SELECT') { if (selectMudou(i)) return true; continue; }
+      if (i.value !== i.defaultValue) return true;
+    }
+    return false;
+  }
   function alterado(raiz, selForm) {
     if (!raiz || !raiz.querySelectorAll) return false;
-    for (const f of raiz.querySelectorAll(selForm || 'form[data-form]')) {
-      for (const i of f.querySelectorAll('input,select,textarea')) {
-        if (i.disabled || /^(hidden|submit|button|reset|image)$/.test(i.type) || (i.dataset && (i.dataset.procura != null || i.dataset.filtro != null))) continue;
-        if (i.type === 'file') { if (i.files && i.files.length) return true; continue; }
-        if (i.type === 'checkbox' || i.type === 'radio') { if (i.checked !== i.defaultChecked) return true; continue; }
-        if (i.tagName === 'SELECT') { if (selectMudou(i)) return true; continue; }
-        if (i.value !== i.defaultValue) return true;
-      }
-    }
+    for (const f of raiz.querySelectorAll(selForm || 'form[data-form]')) if (formAlterado(f)) return true;
     return false;
   }
   const painelAlterado = () => alterado($('#painel'));
@@ -10185,9 +10614,20 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       else if (aberto && !S.acaoNoPainel && painelAlterado()) redesenharPreservando();   // um dado chegou depois (ex.: dados pessoais, APL) com a pessoa já digitando
       else desenharPainel();
     }
+    rolagensNoTeclado(app);
     refocar();
     if (S.rolarPara && S.eu && !S.verEntrada) { const y = S.rolarPara; S.rolarPara = 0; requestAnimationFrame(() => window.scrollTo(0, y)); }
     else if (S.eu && !S.verEntrada && MQ.pendUI) MQ.pendUI.cobrar();
+  }
+
+  /* tabela ou quadro que rola para o lado (celular): quem usa teclado precisa conseguir parar nele e rolar com as setas */
+  function rolagensNoTeclado(raiz) {
+    todosDe(raiz, '.quadro-scroll, .rel-previa, .eg-caixa').forEach(c => {
+      if (c.hasAttribute('tabindex') || !(c.scrollWidth > c.clientWidth + 1 || c.scrollHeight > c.clientHeight + 1)) return;
+      if (c.querySelector('a[href],button:not([disabled]),input,select,textarea,[tabindex]')) return;   // já tem onde parar
+      c.setAttribute('tabindex', '0'); if (!c.getAttribute('role')) c.setAttribute('role', 'region');
+      if (!c.getAttribute('aria-label') && !c.getAttribute('aria-labelledby')) { const t = c.querySelector('caption, h1, h2, h3'); c.setAttribute('aria-label', (t && t.textContent.trim()) || 'Tabela: role para o lado para ver tudo'); }
+    });
   }
 
   /* rodapé de todas as páginas */
@@ -10356,7 +10796,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const quem = ant ? `Substituta de ${esc(ant.nome)}, desligada em ${R.fmtData(ant.data_fim)}` : 'Aguardando indicação do MPA';
     if (!posso) return `<button class="vagabtn livre" disabled><span class="add">Vaga aberta</span><span class="sub">${quem}</span></button>`;
     return `<div class="vaga-slot"><span class="vs-quem">${ant ? avatar({ id: ant.id, nome: ant.nome }, 36) : '<span class="av vs-vazio" style="--av:36px" aria-hidden="true">?</span>'}<span class="sub">${quem}</span></span>${MQ.botaoAcao({ acao: 'novo', icone: 'pessoa_mais', sec: true, peq: true,
-      texto: 'Cadastrar ' + (ant ? 'substituta' : P[papel].curto.toLowerCase()), curto: 'Cadastrar', rotulo: 'Cadastrar ' + (ant ? 'substituta' : P[papel].curto.toLowerCase()) + ' em ' + uf,
+      texto: 'Cadastrar ' + (ant ? 'substituta' : P[papel].curto.toLowerCase()), rotulo: 'Cadastrar ' + (ant ? 'substituta' : P[papel].curto.toLowerCase()) + ' em ' + uf,
       attrs: `data-papel="${papel}" data-uf="${uf}"${ant ? ` data-subst="${ant.id}"` : ''}` })}</div>`;
   }
 
@@ -10473,6 +10913,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       return `${Q} atualizou o diagnóstico de ${mulher(alvo.ficha_id)}.`;
     }
     if (a.tabela === 'avaliacoes') return `${Q} ${a.acao === 'INSERT' ? 'registrou' : 'atualizou'} a avaliação final do quintal de ${mulher(alvo.ficha_id)}.`;
+    if (a.tabela === 'equipe_privado') return `${Q} alterou dados pessoais de <b>${esc((porId(a.registro_id) || {}).nome || 'uma pessoa')}</b> (o histórico guarda só quais campos mudaram).`;
+    if (a.tabela === 'solicitacao_visitas') return `${Q} ${a.acao === 'DELETE' ? 'tirou uma visita de' : 'incluiu uma visita em'} um pedido de ajuda de custo.`;
+    if (a.tabela === 'entregas_mes') return `${Q} ${a.acao === 'DELETE' ? 'desmarcou' : 'marcou'} uma entrega do mês.`;
+    if (a.tabela === 'apl_municipios') return `${Q} atualizou os arranjos produtivos de um município.`;
     if (a.tabela === 'custos_visita') return `${Q} definiu a distância (ajuda de custo) de uma visita${alvo.km_ida != null ? ': ' + esc(alvo.km_ida) + ' km de ida' : ''}.`;
     if (a.tabela === 'solicitacoes_pagamento') {
       const tipo = alvo.tipo === 'ajuda_custo' ? 'ajuda de custo' : 'bolsa';
@@ -10723,16 +11167,19 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
      costuma ser redesenhada enquanto o painel está aberto e o botão antigo deixa de existir. */
   const aspas = v => String(v).replace(/["\\]/g, '\\$&');
   function descreverAbridor(el) {
-    if (!el || !el.closest || el.closest('#painel')) return null;
+    if (!el || !el.closest || el.closest('#painel') || el === document.body || el === document.documentElement) return null;
     const alvo = el.closest('[data-acao]') || el; let sel = '';
     if (alvo.dataset && alvo.dataset.acao && alvo.attributes) {
       sel = [...alvo.attributes].filter(a => /^data-/.test(a.name) && a.value.length < 80 && a.name !== 'data-ok').map(a => `[${a.name}="${aspas(a.value)}"]`).join('');
     } else if (alvo.id) sel = '[id="' + aspas(alvo.id) + '"]';
     let n = 0; if (sel) { try { n = Math.max(0, [...document.querySelectorAll(sel)].indexOf(alvo)); } catch (e) { sel = ''; } }
-    return { el: alvo, sel, n };
+    // a seção da página em que o botão estava: se ele sumir (a lista foi redesenhada), o foco volta para o primeiro controle dela
+    const sc = alvo.closest('section[aria-labelledby], section[aria-label], nav[aria-label], header.barra');
+    const sec = !sc ? '' : sc.getAttribute('aria-labelledby') ? 'section[aria-labelledby="' + aspas(sc.getAttribute('aria-labelledby')) + '"]' : sc.tagName === 'HEADER' ? 'header.barra' : sc.tagName.toLowerCase() + '[aria-label="' + aspas(sc.getAttribute('aria-label')) + '"]';
+    return { el: alvo, sel, n, sec };
   }
   const acharAbridor = d => { if (!d) return null;
-    if (d.el && document.body.contains(d.el)) return d.el;
+    if (d.el && d.el !== document.body && document.body.contains(d.el)) return d.el;
     if (d.sel) { try { const l = document.querySelectorAll(d.sel); return l[d.n] || l[0] || null; } catch (e) {} }
     return null; };
   function focar(el) {
@@ -10740,18 +11187,28 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     try { el.focus({ preventScroll: true }); } catch (e) { try { el.focus(); } catch (x) {} }
     return document.activeElement === el;
   }
+  /* o botão que abriu o painel não existe mais (ou o painel abriu sozinho): o foco vai para o primeiro controle da seção
+     em que ele estava; sem seção, para o primeiro controle da página; em último caso, para a própria página. Nunca fica "em lugar nenhum". */
+  function focoDeReserva(d) {
+    const app = $('#app'); const raizes = [];
+    if (d && d.sec) { try { const sc = document.querySelector(d.sec); if (sc) raizes.push(sc); } catch (e) {} }
+    const pr = $('#principal') || (app && app.querySelector && app.querySelector('main')); if (pr) raizes.push(pr);
+    for (const r of raizes) { const l = focaveis(r); for (const x of l) if (focar(x)) return true; }
+    if (pr && pr.setAttribute) { pr.setAttribute('tabindex', '-1'); return focar(pr); }
+    return false;
+  }
   function devolverFoco() {
-    const d = S.focoVolta; S.focoVolta = null; if (!d) return;
+    const d = S.focoVolta; S.focoVolta = null;
     const el = acharAbridor(d);
-    if (!el || !focar(el)) { const t = $('#principal'); if (t && t.setAttribute) { t.setAttribute('tabindex', '-1'); focar(t); } }
-    S.focoDepois = { d, ate: Date.now() + 2500 };   // se a página for redesenhada logo depois (salvou e atualizou a lista), o foco volta de novo
+    if (!el || !focar(el)) focoDeReserva(d);
+    S.focoDepois = { d: d || { sel: '', n: 0, sec: '' }, ate: Date.now() + 2500 };   // se a página for redesenhada logo depois (salvou e atualizou a lista), o foco volta de novo
   }
   /* chamado no fim de cada desenho da página: devolve o foco ao botão que abriu o painel recém-fechado */
   function refocar() {
     const f = S.focoDepois; if (!f) return;
     if (S.painel || Date.now() > f.ate) { S.focoDepois = null; return; }
     const a = document.activeElement; if (a && a !== document.body && document.body.contains(a) && a.tagName !== 'BODY') return;
-    const el = acharAbridor({ sel: f.d.sel, n: f.d.n }); if (el) focar(el);
+    const el = acharAbridor({ sel: f.d.sel, n: f.d.n }); if (!el || !focar(el)) focoDeReserva(f.d);
   }
   /* a página de trás não recebe toque, Tab nem leitor de tela enquanto o painel está aberto */
   const prenderFundo = sim => { const app = $('#app'); if (!app || !app.setAttribute) return; if (sim) app.setAttribute('inert', ''); else app.removeAttribute('inert'); };
@@ -10780,6 +11237,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function abrirPainel(p) {
     const novo = !S.painel || !$('#painel');
     if (novo) { S.focoVolta = descreverAbridor(S.acionador || document.activeElement); S.focoDepois = null; }
+    else if (S.acionador && S.acionador.closest && !S.acionador.closest('#painel') && document.body.contains(S.acionador)) S.focoVolta = descreverAbridor(S.acionador);   // outro botão da página abriu por cima
+    // trocou de formulário sem salvar (Voltar, outro painel): o rascunho do anterior, se era deste painel, não fica
+    const chAntes = S.painel ? chavePainel(S.painel) : null, chNova = chavePainel(p);
+    if (chAntes && chAntes !== chNova) { clearTimeout(rascT); if (rascAtivo === chAntes) removerRascunho(chAntes); rascAtivo = null; }
     S.painel = p; desenharPainel();
     if (!novo || !H || S.painelHist) return;
     if (S.histSobra) { S.histSobra = false; S.painelHist = true; return; }   // fechou um e abriu outro: a mesma entrada
@@ -10790,6 +11251,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function fecharPainel(op) {
     op = op || {};
     const havia = !!(S.painel || $('#painel'));
+    // fechou depois de salvar ou por "Sair sem salvar": o rascunho deste painel é apagado (menos quando o sistema sai sozinho)
+    clearTimeout(rascT);
+    if (S.painel && !op.manterRascunho) { const ch = chavePainel(S.painel); if (rascAtivo === ch) removerRascunho(ch); }
+    rascAtivo = null;
     S.painel = null; const f = $('#painel'); if (f) f.remove();
     prenderFundo(false);
     if (S.painelHist) { S.painelHist = false; if (!op.semHistorico) sobraDoPainel(); }
@@ -10798,7 +11263,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   /* o formulário do painel foi mexido desde que abriu? Então pergunta antes de fechar (no padrão dos avisos do sistema) */
   function pedirFechar() {
     if (!S.painel && !$('#painel')) return;
-    if ($('#painel .confirma-sair')) return;   // já está perguntando
+    if ($('#painel .confirma-sair')) return;   // já está perguntando (sair sem salvar, ou continuar o rascunho)
     if (!painelAlterado()) return fecharPainel();
     confirmarSaida();
   }
@@ -10814,14 +11279,24 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     focar(c.querySelector('[data-acao="painel-ficar"]'));
   }
   function desistirDeSair() {
-    const c = $('#painel .confirma-sair'); if (!c) return false;
+    const c = $('#painel .confirma-sair:not(.confirma-rasc)'); if (!c) return false;
     const volta = c._volta; c.remove(); const lado = $('#painel aside'); if (lado) lado.removeAttribute('inert');
     if (!(volta && document.body.contains(volta) && focar(volta))) focar($('#painel .fechar'));
     return true;
   }
   /* Tab e Shift+Tab ficam dentro do painel (ou da pergunta "Sair sem salvar?") */
   const visivel = e => !!(e.offsetWidth || e.offsetHeight || (e.getClientRects && e.getClientRects().length));
-  const focaveis = raiz => [...raiz.querySelectorAll('a[href],button,input,select,textarea,summary,[tabindex]')].filter(e => !e.disabled && e.tabIndex >= 0 && e.type !== 'hidden' && visivel(e) && !e.closest('[inert]'));
+  const focaveis = raiz => [...raiz.querySelectorAll('a[href],button,input,select,textarea,summary,[tabindex]')].filter(e => !e.disabled && e.tabIndex >= 0 && e.type !== 'hidden' && visivel(e) && !e.closest('[inert]') && !(e.classList && e.classList.contains('foco-guarda')));
+  /* Guardas de foco: um ponto invisível no começo e outro no fim do painel. A conta acima nem sempre bate com a do navegador
+     (num grupo de opções "sim/não" o Tab para numa só; há campos que aparecem e somem): quando o Tab passa do último campo
+     de verdade, cai na guarda, e a guarda devolve o foco para o outro lado. Assim o foco nunca escapa para a página de trás. */
+  const GUARDA = '<span class="foco-guarda" tabindex="0"></span>';
+  document.addEventListener('focusin', ev => {
+    const g = ev.target; if (!g || !g.classList || !g.classList.contains('foco-guarda')) return;
+    const lado = g.closest('aside'); if (!lado) return;
+    const l = focaveis(lado); if (!l.length) return;
+    focar(g === lado.firstElementChild ? l[l.length - 1] : l[0]);
+  });
   document.addEventListener('keydown', ev => {
     if (ev.key !== 'Tab' || !S.painel) return;
     const p = $('#painel'); if (!p || !p.querySelector) return;
@@ -10832,43 +11307,157 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     else if (ev.shiftKey && i <= 0 && (i === 0 || a === raiz)) { ev.preventDefault(); focar(l[l.length - 1]); }
     else if (!ev.shiftKey && i === l.length - 1) { ev.preventDefault(); focar(l[0]); }
   });
-  /* rascunho do formulário aberto: se o sistema sair sozinho (15 minutos sem uso) com um formulário
-     pela metade, o que foi digitado fica guardado neste aparelho (só para a mesma pessoa, por 24 horas)
-     e volta quando ela abrir o mesmo formulário. Senha e arquivo nunca são guardados. */
-  const RASC_VALIDADE = 24 * 60 * 60 * 1000;
-  const chaveRasc = () => 'mq-rascunho-painel-' + (S.eu && S.eu.id);
-  const registroDoPainel = () => (S.painel && (S.painel.id || (S.painel.dados && S.painel.dados.id))) || null;   // ficha A não volta na ficha B
-  function guardarRascunhoPainel() {
-    const f = $('#painel form[data-form]'); if (!f || !S.eu || !S.painel) return;
-    const campos = {}; let algum = false;
-    f.querySelectorAll('input,select,textarea').forEach(i => {
-      if (/^(password|file|hidden|submit|button)$/.test(i.type)) return;
-      const k = i.type === 'radio' ? (i.name ? 'r:' + i.name + '=' + i.value : null) : i.id ? 'i:' + i.id : null; if (!k) return;
-      const v = (i.type === 'checkbox' || i.type === 'radio') ? (i.checked ? '1' : '') : i.value;
-      campos[k] = v; if (v && i.type !== 'checkbox' && i.type !== 'radio' && i.tagName !== 'SELECT') algum = true;
+  /* ---------- rascunho do formulário do painel ----------
+     O que a pessoa digita num formulário do painel (ficha, diagnóstico, avaliação, visita, cadastro, pedido de passagem,
+     orientação de venda, encontro…) fica guardado NESTE aparelho: cerca de 1 segundo depois da última tecla, quando a
+     página vai para o fundo ou é fechada (o Android mata a aba, a pessoa recarrega) e quando o sistema sai sozinho por
+     15 minutos sem uso. Ao abrir de novo o MESMO formulário (mesmo registro, mesma mulher), o sistema pergunta
+     "Continuar de onde parou?". O rascunho some ao salvar, ao "Sair sem salvar" e ao sair da conta; vale 24 horas;
+     é de uma pessoa só (a chave leva o id dela e o conteúdo confere o dono). Senha, conta bancária, arquivo e foto
+     nunca são guardados. */
+  const RASC_VALIDADE = 24 * 60 * 60 * 1000, RASC_ESPERA = 1000, RASC_MAX = 6;
+  const RASC_PREFIXO = 'mq-rascunho-painel-';
+  const RASC_FORA = /^(login|esqueci|trocar-senha|banco|doc-rel-filtro)$/;   // senha, conta bancária e filtro não viram rascunho
+  const chaveRasc = () => RASC_PREFIXO + (S.eu && S.eu.id);
+  const registroDoPainel = p => { p = p || S.painel; return (p && (p.id || (p.dados && p.dados.id))) || null; };   // ficha A não volta na ficha B
+  /* "endereço" do formulário: tipo do painel + o registro (ou a mulher, a visita, a vaga) a que ele se refere */
+  const chavePainel = p => p ? ['tipo', 'id', 'ficha', 'visita', 'papel', 'uf', 'subst', 'pre', 't'].map(k => k === 'id' ? (registroDoPainel(p) || '') : (p[k] == null ? '' : String(p[k]))).join('|') : '';
+  let rascAtivo = null, rascT = null;   // rascAtivo: o rascunho desta chave é do painel que está aberto agora (não se pergunta de novo)
+  function lerRascunhos() {
+    let r = null; try { r = JSON.parse(localStorage.getItem(chaveRasc()) || 'null'); } catch (e) { r = null; }
+    if (!r || typeof r !== 'object') return { v: 2, dono: S.eu && S.eu.id, itens: {} };
+    if (r.v !== 2) {   // formato antigo (um rascunho só, guardado na saída por inatividade)
+      const it = r.campos ? { tipo: r.tipo, id: r.id || null, forms: { [(r.form || '') + '#0']: r.campos }, linhas: {}, em: r.em, motivo: 'inatividade' } : null;
+      r = { v: 2, dono: S.eu && S.eu.id, itens: it ? { [chavePainel({ tipo: r.tipo, id: r.id || null })]: it } : {} };
+    }
+    if (r.dono && S.eu && r.dono !== S.eu.id) return { v: 2, dono: S.eu.id, itens: {} };   // nunca o rascunho de outra pessoa
+    r.itens = r.itens || {};
+    Object.keys(r.itens).forEach(k => { if (!r.itens[k] || Date.now() - r.itens[k].em > RASC_VALIDADE) delete r.itens[k]; });
+    return r;
+  }
+  function gravarRascunhos(r) {
+    try {
+      const ks = Object.keys(r.itens);
+      if (!ks.length) { localStorage.removeItem(chaveRasc()); return; }
+      ks.sort((a, b) => r.itens[b].em - r.itens[a].em).slice(RASC_MAX).forEach(k => delete r.itens[k]);   // só os mais recentes
+      r.dono = S.eu && S.eu.id; localStorage.setItem(chaveRasc(), JSON.stringify(r));
+    } catch (e) { /* aparelho sem espaço ou navegação privada: segue sem rascunho */ }
+  }
+  function removerRascunho(ch) { if (!S.eu || !ch) return; const r = lerRascunhos(); if (r.itens[ch]) { delete r.itens[ch]; gravarRascunhos(r); } else if (!Object.keys(r.itens).length) { try { localStorage.removeItem(chaveRasc()); } catch (e) {} } }
+  /* rascunhos com mais de 24 horas saem do aparelho, de quem for (roda ao abrir o sistema e ao entrar) */
+  function limparRascunhosVencidos() {
+    try { Object.keys(localStorage).filter(k => k.indexOf(RASC_PREFIXO) === 0).forEach(k => {
+      let r = null; try { r = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) {}
+      const datas = !r ? [] : r.v === 2 ? Object.keys(r.itens || {}).map(x => (r.itens[x] || {}).em || 0) : [r.em || 0];
+      if (!datas.length || datas.every(em => Date.now() - em > RASC_VALIDADE)) localStorage.removeItem(k);
+    }); } catch (e) {}
+  }
+  /* cada campo do formulário tem um nome estável: pelo id; sem id, pelo "name" e a ordem em que aparece */
+  function camposDoForm(f) {
+    const vez = {}, mapa = {};
+    todosDe(f, 'input,select,textarea').forEach(i => {
+      if (/^(password|file|hidden|submit|button|reset|image)$/.test(i.type) || (i.dataset && (i.dataset.procura != null || i.dataset.filtro != null))) return;
+      const marca = i.type === 'checkbox' || i.type === 'radio'; let k;
+      if (i.type === 'radio') { if (!i.name) return; k = 'r:' + i.name + '=' + i.value; }
+      else if (i.id) k = 'i:' + i.id;
+      else if (i.name) k = (marca ? 'c:' : 'n:') + i.name + (marca ? '=' + i.value : '');
+      else return;
+      const n = vez[k] = (vez[k] || 0) + 1; if (n > 1) k += '#' + n;
+      mapa[k] = i;
     });
-    if (!algum) return;
-    try { localStorage.setItem(chaveRasc(), JSON.stringify({ tipo: S.painel.tipo, id: registroDoPainel(), form: f.dataset.form, campos, em: Date.now() })); } catch (e) {}
+    return mapa;
+  }
+  const formsDoPainel = el => todosDe(el, 'form[data-form]').filter(f => !RASC_FORA.test(f.dataset.form));
+  const nomeForm = (f, lista) => f.dataset.form + '#' + lista.filter(x => x.dataset.form === f.dataset.form).indexOf(f);
+  /* linhas que a pessoa acrescenta (família, itens do kit, passageiros): quantas havia em cada grupo, na ordem dos botões "+" */
+  const gruposDeLinhas = f => todosDe(f, '.btn-add').map(b => b.previousElementSibling).filter(Boolean);
+  function guardarRascunhoPainel(motivo) {
+    clearTimeout(rascT);
+    const el = $('#painel'); if (!el || !S.eu || !S.painel || S.verEntrada || el.querySelector('.confirma-rasc')) return;
+    const ch = chavePainel(S.painel); const lista = formsDoPainel(el); const mexidos = lista.filter(f => formAlterado(f));
+    if (!mexidos.length) { if (rascAtivo === ch) removerRascunho(ch); return; }   // desfez o que tinha digitado: não há o que guardar
+    const forms = {}, linhas = {};
+    mexidos.forEach(f => { const nome = nomeForm(f, lista), mapa = camposDoForm(f), campos = {};
+      // só o que a pessoa MUDOU: o que ela não tocou vem do registro como estiver no servidor ao reabrir (não se regrava dado velho por cima de dado novo)
+      Object.keys(mapa).forEach(k => { const i = mapa[k]; const marca = i.type === 'checkbox' || i.type === 'radio';
+        const mudou = marca ? i.checked !== i.defaultChecked : i.tagName === 'SELECT' ? selectMudou(i) : i.value !== i.defaultValue;
+        if (mudou) campos[k] = marca ? (i.checked ? '1' : '') : i.value; });
+      forms[nome] = campos; const g = gruposDeLinhas(f).map(c => c.children.length); if (g.some(n => n > 1)) linhas[nome] = g; });
+    const r = lerRascunhos();
+    r.itens[ch] = { tipo: S.painel.tipo, id: registroDoPainel(), forms, linhas, em: Date.now(), motivo: motivo || 'auto' };
+    gravarRascunhos(r); rascAtivo = ch;
+  }
+  /* devolve ao formulário o que estava no rascunho. Devolve quantos campos não voltaram (linha que não existe mais). */
+  function aplicarRascunho(el, it) {
+    let faltou = 0; const lista = formsDoPainel(el);
+    Object.keys(it.forms || {}).forEach(nome => {
+      const f = lista.find(x => nomeForm(x, lista) === nome); const campos = it.forms[nome]; if (!f) { faltou += Object.keys(campos).filter(k => campos[k]).length; return; }
+      // primeiro as linhas que a pessoa tinha acrescentado (o próprio botão "+" do formulário as cria)
+      const quer = (it.linhas || {})[nome] || []; const botoes = todosDe(f, '.btn-add');
+      gruposDeLinhas(f).forEach((c, n) => { const b = botoes[n]; let voltas = 0;
+        while (b && quer[n] && c.children.length < quer[n] && voltas++ < 40) { const antes = c.children.length; acrescentarLinha(b); if (c.children.length === antes) break; } });
+      // depois os valores; repete até assentar (há opções que só aparecem depois que as outras respostas voltam)
+      for (let volta = 0; volta < 4; volta++) {
+        const mapa = camposDoForm(f), mexidos = []; faltou = 0;
+        Object.keys(campos).forEach(k => { const i = mapa[k]; const v = campos[k];
+          if (!i) { if (v) faltou++; return; }
+          if (i.type === 'checkbox' || i.type === 'radio') { const m = v === '1'; if (i.type === 'radio' && !m) return; if (i.checked !== m && !i.disabled) { i.checked = m; mexidos.push(i); } }
+          else if (i.value !== v) { i.value = v; if (i.value === v || i.tagName !== 'SELECT') mexidos.push(i); }
+        });
+        if (!mexidos.length) break;
+        mexidos.forEach(i => { if (!i.isConnected) return; const marca = i.tagName === 'SELECT' || i.type === 'checkbox' || i.type === 'radio';
+          i.dispatchEvent(new Event(marca ? 'change' : 'input', { bubbles: true })); });
+      }
+    });
+    return faltou;
+  }
+  /* aciona o botão "+" de um grupo de linhas sem passar pela trava de toque duplo (são vários toques seguidos, de propósito) */
+  function acrescentarLinha(b) { emAndamento.delete(chaveAcao(b)); b.click(); emAndamento.delete(chaveAcao(b)); }
+  function notaRascunho(el, texto, faltou) {
+    const f = formsDoPainel(el)[0]; if (!f) return;
+    todosDe(el, '.rascunho-volta').forEach(x => x.remove());
+    const nota = document.createElement('p'); nota.className = 'aviso rascunho-volta'; nota.setAttribute('role', 'status');
+    nota.textContent = texto + (el.querySelector('form[data-form] input[type=file]') ? ' Fotos e arquivos não ficam guardados: se já tinha escolhido, tire a foto ou escolha o arquivo de novo.' : '')
+      + (faltou ? ' Alguma linha que você tinha acrescentado pode não ter voltado: confira.' : '');
+    f.prepend(nota);
   }
   function restaurarRascunhoPainel(el) {
-    let r; try { r = JSON.parse(localStorage.getItem(chaveRasc()) || 'null'); } catch (e) { r = null; }
-    if (!r) return;
-    if (Date.now() - r.em > RASC_VALIDADE) { try { localStorage.removeItem(chaveRasc()); } catch (e) {} return; }
-    const f = el.querySelector(`form[data-form="${r.form}"]`);
-    if (!f || r.tipo !== S.painel.tipo || (r.id || null) !== registroDoPainel()) return;
-    const limpo = x => String(x).replace(/["\\]/g, '');
-    Object.keys(r.campos).forEach(k => {
-      const m = /^r:(.*)=(.*)$/.exec(k);
-      const i = m ? f.querySelector(`input[type=radio][name="${limpo(m[1])}"][value="${limpo(m[2])}"]`) : f.querySelector(`[id="${limpo(k.slice(2))}"]`);
-      if (!i) return; const id = k;
-      if (i.type === 'checkbox' || i.type === 'radio') { if (i.type === 'checkbox' || r.campos[id] === '1') i.checked = r.campos[id] === '1'; } else i.value = r.campos[id];
-      if (i.tagName === 'SELECT' || i.type === 'checkbox' || (i.type === 'radio' && i.checked)) i.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-    const nota = document.createElement('p'); nota.className = 'aviso rascunho-volta'; nota.setAttribute('role', 'status');
-    nota.textContent = 'Recuperamos o que você tinha digitado antes de o sistema sair sozinho. Confira e salve.';
-    f.prepend(nota);
-    try { localStorage.removeItem(chaveRasc()); } catch (e) {}
+    if (!S.eu || !S.painel) return;
+    const ch = chavePainel(S.painel); if (rascAtivo === ch) return;
+    const r = lerRascunhos(); const it = r.itens[ch]; if (!it) return;
+    const lista = formsDoPainel(el); if (!Object.keys(it.forms || {}).some(nome => lista.some(x => nomeForm(x, lista) === nome))) return;   // o formulário ainda não está na tela
+    if (it.motivo === 'inatividade') {   // o sistema saiu sozinho: o que foi digitado volta direto, com aviso
+      const faltou = aplicarRascunho(el, it); notaRascunho(el, 'Recuperamos o que você tinha digitado antes de o sistema sair sozinho. Confira e salve.', faltou);
+      delete r.itens[ch]; gravarRascunhos(r); rascAtivo = ch; return;
+    }
+    // a página foi recarregada ou fechada no meio: pergunta, no padrão dos avisos do sistema
+    const lado = el.querySelector('aside');
+    const c = document.createElement('div'); c.className = 'confirma-sair confirma-rasc'; c.setAttribute('role', 'alertdialog'); c.setAttribute('aria-modal', 'true');
+    c.setAttribute('aria-labelledby', 'cr-t'); c.setAttribute('aria-describedby', 'cr-d');
+    c.innerHTML = `<div class="sessao-in confirma-in"><b id="cr-t">Você tinha começado a preencher.</b><span id="cr-d">Continuar de onde parou?</span>
+      <div class="acoes"><button type="button" class="btn pri" data-acao="rasc-continuar" autofocus>Continuar</button><button type="button" class="btn" data-acao="rasc-novo">Começar de novo</button></div></div>`;
+    el.appendChild(c); if (lado) lado.setAttribute('inert', '');
   }
+  /* resposta à pergunta "Continuar de onde parou?" */
+  function responderRascunho(continuar) {
+    const el = $('#painel'); const c = el && el.querySelector('.confirma-rasc'); if (!c || !S.painel) return false;
+    const ch = chavePainel(S.painel); const r = lerRascunhos(); const it = r.itens[ch];
+    c.remove(); const lado = el.querySelector('aside'); if (lado) lado.removeAttribute('inert');
+    rascAtivo = ch;
+    if (continuar && it) { const faltou = aplicarRascunho(el, it); notaRascunho(el, 'Pronto: o que você tinha digitado voltou. Confira e salve.', faltou); }
+    else { delete r.itens[ch]; gravarRascunhos(r); }
+    const alvo = el.querySelector('.rascunho-volta') ? el.querySelector('.fechar') : (el.querySelector('[autofocus]:not([data-acao^="rasc-"])') || el.querySelector('.fechar'));
+    const corpo = el.querySelector('.painel-corpo'); if (corpo) corpo.scrollTop = 0;
+    focar(alvo);
+    return true;
+  }
+  /* guarda sozinho: ~1 s depois da última tecla ou escolha, e na hora em que a página vai para o fundo ou é fechada */
+  const agendarRascunho = ev => { const t = ev.target; if (!S.painel || !t || !t.closest || !t.closest('#painel form[data-form]')) return;
+    clearTimeout(rascT); rascT = setTimeout(() => guardarRascunhoPainel('auto'), RASC_ESPERA); if (rascT && rascT.unref) rascT.unref(); };
+  document.addEventListener('input', agendarRascunho, true);
+  document.addEventListener('change', agendarRascunho, true);
+  window.addEventListener('pagehide', () => { if (S.painel) guardarRascunhoPainel('auto'); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && S.painel) guardarRascunhoPainel('auto'); });
   /* O painel precisa ser redesenhado (chegou um dado que ele esperava) e a pessoa já digitou algo nele.
      Formulário grande, com linhas que a pessoa acrescenta ou com foto escolhida: não redesenha (nada se perde).
      Formulário pequeno: redesenha e devolve o que ela tinha mudado, o foco, o cursor e a rolagem. */
@@ -10945,13 +11534,13 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
     const p = S.painel;
     const corpo = p.tipo === 'roteiro' && MQ.roteiroUI ? MQ.roteiroUI.painel(p) : p.tipo === 'ajuda' ? MQ.ajudaUI.painel(p) : p.tipo === 'meus-dados' ? painelMeusDados() : /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^viag-/.test(p.tipo) && MQ.viagUI ? MQ.viagUI.painel(p) : /^doc-/.test(p.tipo) && MQ.docsUI ? MQ.docsUI.painel(p) : /^exec-/.test(p.tipo) && MQ.execUI ? MQ.execUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : /^enc-/.test(p.tipo) && MQ.encUI ? MQ.encUI.painel(p) : /^agua-/.test(p.tipo) && MQ.aguaUI ? MQ.aguaUI.painel(p) : /^venda-/.test(p.tipo) && MQ.vendaUI ? MQ.vendaUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
-    el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel${/^(ficha|diag|aval)-(form|ver)$/.test(p.tipo) ? ' largo' : ''}" role="dialog" aria-modal="true" aria-labelledby="painel-t">${corpo}</aside>`;   // formulários longos do campo: painel mais largo
+    el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel${/^(ficha|diag|aval)-(form|ver)$/.test(p.tipo) ? ' largo' : ''}" role="dialog" aria-modal="true" aria-labelledby="painel-t">${GUARDA}${corpo}${GUARDA}</aside>`;   // formulários longos do campo: painel mais largo
     restaurarRascunhoPainel(el);
     // questionário de campo: opção de imprimir em branco para aplicar no papel (só para quem preenche)
     if (MQ.imprimirUI) { const fm = el.querySelector('.painel-corpo > form[data-form]'); const b = fm && MQ.imprimirUI.barra(fm); if (b) fm.insertAdjacentHTML('beforebegin', b); }
     prenderFundo(true);
-    encurtarEscolhas(el);
-    const foco = el.querySelector('[autofocus]') || el.querySelector('.fechar');
+    encurtarEscolhas(el); rolagensNoTeclado(el);
+    const foco = el.querySelector('.confirma-rasc [autofocus]') || el.querySelector('aside [autofocus]') || el.querySelector('.fechar');
     if (foco) foco.focus();
   }
 
@@ -11318,11 +11907,17 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const travados = bs.concat(outros).map(x => [x, x.disabled]);
     const txt = b ? b.textContent : '';
     form._ocupado = true; if (form.setAttribute) form.setAttribute('aria-busy', 'true');
-    travados.forEach(([x]) => { x.disabled = true; }); if (b) b.textContent = 'Salvando…';
-    try { await fn(); } finally {
+    travados.forEach(([x]) => { x.disabled = true; }); if (b) b.textContent = (op && op.texto) || 'Salvando…';
+    const chRasc = S.painel && form.closest && form.closest('#painel') ? chavePainel(S.painel) : null; let deuCerto = false;
+    try { await fn(); deuCerto = true; } finally {
       form._ocupado = false; if (form.removeAttribute) form.removeAttribute('aria-busy');
       travados.forEach(([x, antes]) => { if (document.body.contains(x)) x.disabled = !!antes; });
       if (b && document.body.contains(b)) b.textContent = txt;
+    }
+    // gravou: o rascunho deste formulário não é mais preciso (se ficou erro na tela, não gravou: o rascunho continua)
+    if (deuCerto && chRasc && rascAtivo === chRasc) {
+      const caixa = document.body.contains(form) ? form.querySelector('[data-erro]') : null;
+      if (!(document.body.contains(form) && (form.querySelector('.tem-erro') || (caixa && !caixa.hidden)))) { clearTimeout(rascT); removerRascunho(chRasc); }
     }
   }
   async function recarregar() { S.eu = await S.api.eu(true); await carregar(); render(); }
@@ -11345,12 +11940,16 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (a === 'lembrete-ok') { MQ.lembreteUI.dispensar(el.dataset.id); render(); return; }
       if (a === 'painel-ficar') { desistirDeSair(); return; }
       if (a === 'painel-sair') { fecharPainel(); return; }
+      if (a === 'rasc-continuar' || a === 'rasc-novo') { responderRascunho(a === 'rasc-continuar'); return; }
       if (a === 'versao-nova') { if (painelAlterado() || paginaEmUso()) { toast('Salve ou feche o que você está preenchendo antes de atualizar.'); return; } location.reload(); return; }
       if (a === 'carga-tentar') { el.disabled = true; try { await carregar(); } finally { el.disabled = false; } render(); toast(S.cargaParcial ? 'Ainda não deu para carregar tudo. Tente de novo daqui a pouco.' : 'Dados carregados.'); return; }
       if (a === 'data-hoje') { const i = document.getElementById(el.dataset.alvo); if (i) { i.value = R.hoje(); i.dispatchEvent(new Event('input', { bubbles: true })); i.focus(); } return; }
       if (a === 'perfil' && el.dataset.p === 'entrada') { S.verEntrada = true; fecharPainel({ semFoco: true }); render(); window.scrollTo(0, 0); }
-      else if (a === 'perfil') { S.verEntrada = false; S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); S.aba = null; lembrarAba(); limparHashAba(); fecharPainel({ semFoco: true }); S.eu = await S.api.trocarPerfil(el.dataset.p); marcarAbriu(); registrarAcesso('entrada'); await carregar(); render(); }
-      else if (a === 'recomecar') { fecharPainel({ semFoco: true }); S.eu = await S.api.recomecar(); await carregar(); render(); toast('Demonstração recomeçada com os dados de exemplo.'); }
+      else if (a === 'perfil') { S.verEntrada = false; S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); S.aba = null; lembrarAba(); limparHashAba(); fecharPainel({ semFoco: true });
+        todosDe(el.parentElement, '[data-acao=perfil]').forEach(b => b.setAttribute('aria-pressed', String(b === el))); el.setAttribute('aria-busy', 'true');   // o perfil escolhido já aparece marcado enquanto os dados chegam
+        try { await comCarregando(async () => { S.eu = await S.api.trocarPerfil(el.dataset.p); marcarAbriu(); registrarAcesso('entrada'); await carregar(); }); }
+        finally { if (el.isConnected) el.removeAttribute('aria-busy'); render(); } }
+      else if (a === 'recomecar') { fecharPainel({ semFoco: true }); try { await comCarregando(async () => { S.eu = await S.api.recomecar(); await carregar(); }); } finally { render(); } toast('Demonstração recomeçada com os dados de exemplo.'); }
       else if (a === 'gerar-codigo-nao') { S.confirmaAcesso = null; abrirPainel(S.painel); }
       else if (a === 'acesso-descartar') {
         // descartar apaga o pedido da pessoa: pede confirmação (toque de novo), como o botão Sair
@@ -11430,6 +12029,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   document.addEventListener('keydown', ev => { if (ev.key !== 'Escape') return;
     if (desistirDeSair()) return;   // Esc na pergunta "Sair sem salvar?": continua preenchendo
+    if (responderRascunho(true)) return;   // Esc na pergunta "Continuar de onde parou?": continua (nada se perde)
     if (S.painel) pedirFechar(); else if (S.menuAberto) { S.menuAberto = false; render(); } });
   // foto da equipe: recorta quadrada, 320 px, JPEG (tira dados do celular, como a localização)
   function fotoQuadrada(arq, lado = 320) {
@@ -11487,7 +12087,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (voltasNossas.length) { voltasNossas.shift(); soltarFila(); return; }   // fomos nós, ao fechar o painel
     if ((S.painel || $('#painel')) && S.painelHist) {            // Voltar com painel aberto: fecha o painel, não sai do sistema
       S.painelHist = false;                                      // a entrada do painel já saiu do histórico
-      if (painelAlterado()) { try { H.pushState({ mq: 'painel' }, ''); S.painelHist = true; } catch (e) {} confirmarSaida(); return; }
+      if (painelAlterado() || $('#painel .confirma-rasc')) { try { H.pushState({ mq: 'painel' }, ''); S.painelHist = true; } catch (e) {} if (!$('#painel .confirma-rasc')) confirmarSaida(); return; }   // com uma pergunta na tela, o Voltar não fecha: a pessoa responde
       fecharPainel(); return;
     }
     const st = ev && ev.state;
@@ -11581,9 +12181,13 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         if (modoDemoAtivo() && S.modoLogin !== 'primeiro') return mostrarErros(form, {}, 'Esta é a demonstração: aqui não se entra com senha. Escolha um perfil nos botões "Ver como", no alto da tela.');
         await ocupado(form, async () => {
           S.eu = S.modoLogin === 'primeiro' ? await S.api.criarSenha(email, senha, codigo) : await S.api.entrarSenha(email, senha);
-          if (S.eu) { S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); marcarAbriu(); registrarAcesso(S.modoLogin === 'primeiro' ? 'primeiro_acesso' : 'entrada'); await carregar(); setTimeout(() => sincronizar(false), 500); }
+          if (S.eu) { S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); marcarAbriu(); registrarAcesso(S.modoLogin === 'primeiro' ? 'primeiro_acesso' : 'entrada');
+            limparRascunhosVencidos();
+            telaCarregando('Carregando os seus dados…');   // a senha foi aceita: agora é a espera dos dados (o desenho da abertura)
+            try { await carregar(); } catch (e) { render(); toast(avisarErro(e)); return; }   // a tela de entrada já saiu: o aviso vai no pé da tela
+            setTimeout(() => sincronizar(false), 500); }
           render();
-        });
+        }, { texto: 'Entrando…' });
       }
       if (/^ficha/.test(tipo) && MQ.fichasUI) await MQ.fichasUI.enviar(tipo, form, fd);
       if (/^pend-/.test(tipo) && MQ.pendUI) await MQ.pendUI.enviar(tipo, form, fd);
@@ -11659,10 +12263,13 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         if (patch.obs_habilitacao && patch.obs_habilitacao.length > 2000) erros.obs_habilitacao = 'Texto muito longo (máximo 2.000 caracteres).';
         if (patch.matricula_fic_em && !(patch.matricula_fic_numero || m.matricula_fic_numero)) erros.matricula_fic_numero = 'Informe o número da matrícula.';
         const arq = fd.get('termo');
-        if (arq && arq.size && arq.size > 10 * 1024 * 1024) erros.termo = 'Arquivo acima de 10 MB. Envie um PDF menor ou uma foto.';
+        const temArq = !!(arq && arq.name);
+        if (temArq && arq.size > 10 * 1024 * 1024) erros.termo = 'Arquivo acima de 10 MB. Envie um PDF menor ou uma foto.';
+        // PDF ou foto de verdade: confere a extensão e o começo do arquivo (programa ou página renomeada para .pdf não passa)
+        else if (temArq && MQ.arquivoConfere) { const falso = await MQ.arquivoConfere(arq, ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'], { rotulo: 'PDF ou foto (JPG, PNG)' }); if (falso) erros.termo = falso; }
         if (Object.keys(erros).length) return mostrarErros(form, erros);
         await ocupado(form, async () => {
-          if (arq && arq.size) patch.termo_path = await S.api.enviarTermo(id, arq);
+          if (temArq) patch.termo_path = await S.api.enviarTermo(id, arq);
           if (!Object.keys(patch).length) { toast('Nada mudou.'); return; }
           await S.api.atualizar(id, patch); await recarregar(); abrirPainel({ tipo: 'detalhe', id });
           const n = porId(id); toast(R.situacao(n).cod === 'ok' ? n.nome.split(' ')[0] + ' está habilitada: todos os passos concluídos.' : 'Habilitação atualizada.');

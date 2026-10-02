@@ -46,7 +46,7 @@ describe('fichas de indicação', () => {
     const ja = (await api.listarFichas()).filter(x => x.uf === 'PI' && x.resultado === 'selecionada' && x.situacao === 'aprovada').length;
     await como('bolsista'); const ids = [];
     for (let i = ja; i < MQ.VAGAS_UF + 1; i++) ids.push((await api.salvarFicha(ficha(), {})).id);
-    const espera = await api.salvarFicha(ficha({ resultado: 'lista_espera', posicao_espera: 1 }), {});
+    const espera = await api.salvarFicha(ficha({ resultado: 'lista_espera', posicao_espera: 77 }), {});
     await como('coord_tecnico');
     for (const id of ids.slice(0, -1)) await api.decidirFicha(id, 'aprovada');
     await falha(api.decidirFicha(ids[ids.length - 1], 'aprovada'), /já tem 40 selecionadas/);
@@ -87,7 +87,12 @@ describe('visitas de campo', () => {
   });
   test('visita de implantação feita exige data não futura e relato de 20 letras', async () => {
     const f = await fichaAprovada(); const ex = await pessoa('agente', m => R.habilitado(m) && m.uf === 'PI');
-    await api.salvarVisita(visita(f, ex, { situacao: 'realizada', data_realizada: diaMais(-1) }), {});
+    const vd = await api.salvarVisita(visita(f, ex, { situacao: 'realizada', data_realizada: diaMais(-1) }), {});
+    // 46: a implantação só é agendada com o plano do quintal aprovado
+    await falha(api.salvarVisita(visita(f, ex, { etapa: 'implantacao' }), {}), /plano deste quintal ainda não foi aprovado/);
+    await como('bolsista');
+    const dg = await api.salvarDiagnostico({ id: 'dg' + f.id, ficha_id: f.id, visita_id: vd.id, uf: f.uf, data_visita: diaMais(-1), latitude: -8.1, longitude: -41.1, sem_agua: false, lote: 1, dados: {} }, {});
+    await como('coord_tecnico'); await api.decidirDiagnostico(dg.id, 'aprovado', 'Plano conferido.');
     const imp = await api.salvarVisita(visita(f, ex, { etapa: 'implantacao' }), {});
     await falha(api.salvarVisita(Object.assign({}, imp, { situacao: 'realizada', data_realizada: diaMais(1), relato: 'Implantamos os canteiros e o gotejamento.' }), {}), /não pode ser no futuro/);
     await falha(api.salvarVisita(Object.assign({}, imp, { situacao: 'realizada', data_realizada: diaMais(0), relato: 'Feito.' }), {}), /20 letras/);

@@ -3,6 +3,8 @@
    entre o município de quem visita e o quintal (GPS do diagnóstico, da ficha ou centro do município). */
 (function () {
   const U = () => MQ.ui; const S = () => MQ.ui.S; const E = s => MQ.ui.esc(s);
+  /* visita em pedido já lançado no Arlo: o km conferido não muda mais (o servidor também recusa) */
+  const visitaPaga = id => { const sid = (S().solicVis || {})[id]; const sol = sid && (S().solic || []).find(x => x.id === sid); return !!(sol && sol.situacao === 'lancada'); };
   const R = MQ.regras;
   const $ = s => document.querySelector(s);
   const C = { par: null, km: null, mes: null, carregado: false, erro: null };
@@ -163,7 +165,7 @@
       <div class="cl-q"><b>${E(p.nome || '—')}</b> <span class="pil ${feita ? 'feito' : 'prev'}">${E(MQ.ETAPAS_CUSTO[v.etapa] || v.etapa)} · ${R.fmtData(v.data_realizada || v.data_prevista)}${feita ? '' : ' (prevista)'}</span>
         <span class="small muted">${E(p.municipio || 'município não informado')} → ${E(f.municipio || '')}/${E(v.uf)} · ${E(f.nome || '')}</span></div>
       <label class="cl-km"><span class="small muted">Km ida${k.fonte !== 'conferido' ? ` <i>(${E(k.fonte)})</i>` : ' <i>(conferido)</i>'}</span>
-        <input type="number" min="0" max="999" inputmode="decimal" value="${k.fonte === 'conferido' ? k.km : ''}" placeholder="${k.km != null ? k.km : 'km'}" data-km="${E(v.id)}" aria-label="Km de ida da visita de ${E(p.nome || '')}" ${/^coord/.test(S().eu.papel) ? '' : 'disabled'}></label>
+        <input type="number" min="0" max="999" inputmode="decimal" value="${k.fonte === 'conferido' ? k.km : ''}" placeholder="${k.km != null ? k.km : 'km'}" data-km="${E(v.id)}" aria-label="Km de ida da visita de ${E(p.nome || '')}" ${/^coord/.test(S().eu.papel) && !visitaPaga(v.id) ? '' : 'disabled'}${visitaPaga(v.id) ? ' title="Visita já paga (pedido lançado no Arlo): o km não muda mais."' : ''}></label>
       <div class="cl-v num"><b>${brl(c.total)}</b><span class="small muted">${brl(c.trabalho)} + ${c.combustivel == null ? '—' : brl(c.combustivel)} + ${brl(c.refeicao)}</span></div></div>`;
   }
 

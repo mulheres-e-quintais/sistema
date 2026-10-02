@@ -200,7 +200,10 @@
       const d = { tipo: String(fd.get('tipo') || ''), titulo: String(fd.get('titulo') || '').trim().replace(/\s+/g, ' '), data_documento: String(fd.get('data_documento') || ''),
         uf: String(fd.get('uf') || '') || null, descricao: String(fd.get('descricao') || '').trim() || null };
       const arq = fd.get('arquivo'); const arquivo = arq && arq.name ? arq : null;
-      const e = validarDocumento(d, arquivo); if (Object.keys(e).length) return U().mostrarErros(form, e);
+      const e = validarDocumento(d, arquivo);
+      // o conteúdo é o que o nome diz? (HTML ou programa renomeado para .pdf não entra)
+      if (!e.arquivo && arquivo && MQ.arquivoConfere) { const falso = await MQ.arquivoConfere(arquivo, EXT, { rotulo: 'PDF, Word, planilha ou foto (JPG, PNG)' }); if (falso) e.arquivo = falso; }
+      if (Object.keys(e).length) return U().mostrarErros(form, e);
       await U().ocupado(form, async () => { await S().api.enviarDocumento(d, arquivo); await U().carregar(); U().fecharPainel(); U().render(); U().toast('Documento anexado.'); });
     }
     if (tipo === 'doc-arquivar') {

@@ -25,11 +25,11 @@ select t('turma encerrada não segura o desligamento', null, format($q$do $x$ be
   update public.equipe set status = 'desligada', data_fim = current_date, motivo_desligamento = 'Teste de desligamento' where id = %L; end $x$$q$, :'dprof', :'dprof'), 'ok');
 select t('desligar cancela os pedidos não autorizados e mantém o autorizado', null, format($q$do $x$ declare r record; begin
   set local role none;
-  update public.equipe set status = 'desligada', data_fim = date '2026-10-01', motivo_desligamento = 'Teste de desligamento' where id = %L;
+  update public.equipe set status = 'desligada', data_fim = public.fic_hoje(), motivo_desligamento = 'Teste de desligamento' where id = %L;
   for r in select titulo, situacao, obs from public.pedidos_apoio where solicitante_id = %L and titulo like '%%do teste' loop
     if r.titulo like 'Pedido autorizado%%' and r.situacao <> 'autorizado' then raise exception 'mexeu no autorizado'; end if;
     if r.titulo not like 'Pedido autorizado%%' and r.situacao <> 'cancelado' then raise exception 'não cancelou %%', r.titulo; end if;
-    if r.titulo like 'Pedido enviado%%' and r.obs <> 'Cancelado pelo sistema: a solicitante foi desligada do projeto em 01/10/2026.' then raise exception 'obs errada: %%', r.obs; end if;
+    if r.titulo like 'Pedido enviado%%' and r.obs <> 'Cancelado pelo sistema: a solicitante foi desligada do projeto em ' || to_char(public.fic_hoje(), 'DD/MM/YYYY') || '.' then raise exception 'obs errada: %%', r.obs; end if;
     if r.titulo like 'Pedido conferido%%' and r.obs not like 'Conferido sem ressalvas · Cancelado pelo sistema%%' then raise exception 'perdeu a obs anterior: %%', r.obs; end if;
   end loop; end $x$$q$, :'dtec', :'dtec'), 'ok');
 select t('quem continua ativa não tem pedido cancelado', null, $q$do $x$ begin set local role none;

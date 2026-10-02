@@ -103,6 +103,48 @@
     });
   };
 
+  /* ---------- o arquivo é o que o nome diz? (confere pelo CONTEÚDO, não pela extensão nem pelo tipo que o navegador informa) ----------
+     Cada tipo de arquivo começa sempre com os mesmos bytes (a "assinatura"): PDF "%PDF-", JPEG FF D8 FF, PNG 89 50 4E 47,
+     Word/Excel novos e LibreOffice "PK" (são um zip), Word/Excel antigos D0 CF 11 E0. HTML ou programa renomeado para .pdf não passa.
+     MQ.arquivoConfere(arquivo, extensõesAceitas) devolve '' quando está certo, ou a mensagem para a tela. */
+  const FAMILIA = { pdf: 'pdf', jpg: 'jpg', jpeg: 'jpg', png: 'png', webp: 'webp', heic: 'heic', heif: 'heic', docx: 'zip', xlsx: 'zip', odt: 'zip', ods: 'zip', doc: 'ole', xls: 'ole' };
+  const NOME_TIPO = { pdf: ['um PDF', 'Gere o PDF de novo.'], jpg: ['uma foto', 'Tire a foto de novo ou escolha outra imagem.'], png: ['uma foto', 'Tire a foto de novo ou escolha outra imagem.'],
+    webp: ['uma foto', 'Tire a foto de novo ou escolha outra imagem.'], heic: ['uma foto', 'Tire a foto de novo ou escolha outra imagem.'],
+    docx: ['um documento do Word', 'Salve o documento de novo.'], doc: ['um documento do Word', 'Salve o documento de novo.'], odt: ['um documento de texto', 'Salve o documento de novo.'],
+    xlsx: ['uma planilha', 'Salve a planilha de novo.'], xls: ['uma planilha', 'Salve a planilha de novo.'], ods: ['uma planilha', 'Salve a planilha de novo.'] };
+  const extDe = nome => { const p = String(nome || '').toLowerCase().split('.'); return p.length > 1 ? p.pop() : ''; };
+  /* família do conteúdo pelos primeiros bytes: 'pdf', 'jpg', 'png', 'webp', 'heic', 'zip', 'ole' ou '' (não reconhecido) */
+  MQ.assinaturaDe = bytes => {
+    const b = bytes || []; const eh = (...x) => x.every((v, i) => b[i] === v); const t = (i, n) => String.fromCharCode(...Array.from(b).slice(i, i + n));
+    if (t(0, 5) === '%PDF-') return 'pdf';
+    if (eh(0xFF, 0xD8, 0xFF)) return 'jpg';
+    if (eh(0x89, 0x50, 0x4E, 0x47)) return 'png';
+    if (eh(0x50, 0x4B, 0x03, 0x04)) return 'zip';
+    if (eh(0xD0, 0xCF, 0x11, 0xE0)) return 'ole';
+    if (t(0, 4) === 'RIFF' && t(8, 4) === 'WEBP') return 'webp';
+    if (t(4, 4) === 'ftyp' && /^(heic|heix|hevc|hevx|heim|heis|mif1|msf1)$/.test(t(8, 4))) return 'heic';
+    return '';
+  };
+  MQ.MSG_ARQ_VAZIO = 'O arquivo está vazio. Escolha outro.';
+  MQ.msgArquivoFalso = ext => { const n = NOME_TIPO[ext] || ['do tipo que o nome diz', 'Escolha outro arquivo.']; return 'Este arquivo não é ' + n[0] + ' de verdade (ou está corrompido). ' + n[1]; };
+  MQ.arquivoConfere = async function (arquivo, aceitos, op) {
+    op = op || {};
+    if (!arquivo || !arquivo.name) return 'Escolha o arquivo.';
+    const ext = extDe(arquivo.name); const lista = (aceitos || Object.keys(FAMILIA)).map(x => String(x).toLowerCase().replace(/^\./, ''));
+    if (!lista.includes(ext) || !FAMILIA[ext]) return 'Tipo de arquivo não aceito. Use ' + (op.rotulo || 'PDF ou foto (JPG, PNG)') + '.';
+    if (!(arquivo.size > 0)) return MQ.MSG_ARQ_VAZIO;
+    let bytes;
+    try { bytes = new Uint8Array(await arquivo.slice(0, 1024).arrayBuffer()); } catch (e) { return 'Não foi possível ler o arquivo. Escolha de novo.'; }
+    let fam = MQ.assinaturaDe(bytes); const quer = FAMILIA[ext];
+    const txt = String.fromCharCode(...Array.from(bytes)); const FOTO = ['jpg', 'png', 'webp', 'heic'];
+    // tolerâncias para arquivo legítimo: PDF de scanner/impressora com bytes antes de "%PDF-"; foto com a extensão trocada
+    // (PNG chamado .jpg); .doc salvo como RTF; .xls/.doc que na verdade é o formato novo (zip)
+    if (!fam && quer === 'pdf' && txt.indexOf('%PDF-') > 0) fam = 'pdf';
+    if (FOTO.includes(quer) && FOTO.includes(fam)) return '';
+    if (quer === 'ole' && (fam === 'zip' || (ext === 'doc' && /^\s*\{\\rtf/.test(txt)))) return '';
+    return fam === quer ? '' : MQ.msgArquivoFalso(ext);
+  };
+
   MQ.novoId = () => (crypto.randomUUID ? crypto.randomUUID()
     : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
 })();

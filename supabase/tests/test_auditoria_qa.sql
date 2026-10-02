@@ -23,10 +23,10 @@ begin
     insert into public.fichas (id, uf, municipio, comunidade, nome, cpf, data_nascimento, endereco,
       c_agricultora,c_maior18,c_espaco,c_agua,c_disponibilidade,c_sem_kit,c_sem_parentesco,c_casa_unica,autodeclaracao, consent_dados, resultado, data_ficha, situacao, bolsista_id)
     values (('e1000000-0000-0000-0000-00000000000' || i)::uuid, 'BA', 'Juazeiro', 'Lagoa Auditoria', 'Maria Auditoria ' || i, (91000000000 + i)::text, '1980-01-01', 'Sítio ' || i,
-      true,true,true,true,true,true,true,true,true,true,'selecionada', case when i = 5 then date '2025-06-01' else hoje end, case when i in (5, 6) then 'aguardando' else 'aprovada' end, b.id);
+      true,true,true,true,true,true,true,true,true,true,'selecionada', case when i = 5 then date '2025-06-01' else hoje - 30 end, case when i in (5, 6) then 'aguardando' else 'aprovada' end, b.id);
   end loop;
   insert into public.visitas (id, ficha_id, uf, etapa, executor_id, data_prevista, data_realizada, situacao, relato) values
-    ('e2000000-0000-0000-0000-000000000011', 'e1000000-0000-0000-0000-000000000001', 'BA', 'diagnostico',    ag, hoje, hoje, 'realizada', null),
+    ('e2000000-0000-0000-0000-000000000011', 'e1000000-0000-0000-0000-000000000001', 'BA', 'diagnostico',    ag, hoje - 5, hoje - 5, 'realizada', null),
     ('e2000000-0000-0000-0000-000000000001', 'e1000000-0000-0000-0000-000000000001', 'BA', 'implantacao',    ag, hoje, hoje, 'realizada', 'Implantação feita com a família, canteiros prontos.'),
     ('e2000000-0000-0000-0000-000000000002', 'e1000000-0000-0000-0000-000000000001', 'BA', 'acompanhamento', ag, hoje, hoje, 'realizada', 'Acompanhamento: horta produzindo, orientação de rega.'),
     ('e2000000-0000-0000-0000-000000000003', 'e1000000-0000-0000-0000-000000000002', 'BA', 'diagnostico',    ag, hoje, null, 'prevista', null),
@@ -34,9 +34,9 @@ begin
     ('e2000000-0000-0000-0000-000000000004', 'e1000000-0000-0000-0000-000000000003', 'BA', 'implantacao',    ag, hoje, null, 'prevista', null),
     ('e2000000-0000-0000-0000-000000000005', 'e1000000-0000-0000-0000-000000000004', 'BA', 'diagnostico',  b.id, hoje, null, 'prevista', null),
     ('e2000000-0000-0000-0000-000000000027', 'e1000000-0000-0000-0000-000000000007', 'BA', 'avaliacao',      ag, hoje, hoje, 'realizada', null);
-  insert into public.diagnosticos (id, ficha_id, visita_id, uf, executor_id, data_visita, agua_seca, lote, latitude, longitude) values
-    ('e3000000-0000-0000-0000-000000000001', 'e1000000-0000-0000-0000-000000000001', 'e2000000-0000-0000-0000-000000000011', 'BA', ag, hoje, 'sim', 1, -9.41, -40.5),
-    ('e3000000-0000-0000-0000-000000000003', 'e1000000-0000-0000-0000-000000000003', 'e2000000-0000-0000-0000-000000000013', 'BA', ag, hoje, 'sim', 1, -9.41, -40.5);
+  insert into public.diagnosticos (id, ficha_id, visita_id, uf, executor_id, data_visita, agua_seca, lote, latitude, longitude, situacao) values
+    ('e3000000-0000-0000-0000-000000000001', 'e1000000-0000-0000-0000-000000000001', 'e2000000-0000-0000-0000-000000000011', 'BA', ag, hoje - 5, 'sim', 1, -9.41, -40.5, 'aguardando'),
+    ('e3000000-0000-0000-0000-000000000003', 'e1000000-0000-0000-0000-000000000003', 'e2000000-0000-0000-0000-000000000013', 'BA', ag, hoje, 'sim', 1, -9.41, -40.5, 'aprovado');   -- 46: a implantação só é feita com o plano aprovado
   insert into public.avaliacoes (id, ficha_id, visita_id, uf, executor_id, data_visita, latitude, longitude, quintal_produz) values
     ('e4000000-0000-0000-0000-000000000007', 'e1000000-0000-0000-0000-000000000007', 'e2000000-0000-0000-0000-000000000027', 'BA', ag, hoje, -9.41, -40.5, 'sim');
   alter table public.equipe enable trigger user; alter table public.fichas enable trigger user; alter table public.visitas enable trigger user;
@@ -145,7 +145,7 @@ select t('visita agendada para 1900 é recusada', :BB, :'VI' || $q$'1900-01-01')
 select t('visita agendada para 2028 é recusada', :BB, :'VI' || $q$'2028-01-01')$q$, 'entre 01/01/2026 e 31/12/2027');
 select t('reagendar visita para 2030 é recusado', :BB, $q$update public.visitas set data_prevista = '2030-05-01'$q$ || :'V4', 'entre 01/01/2026 e 31/12/2027');
 select t('visita agendada dentro do projeto é aceita', :BB, $q$insert into public.visitas (id, ficha_id, uf, etapa, executor_id, data_prevista)
-  values ('e2000000-0000-0000-0000-000000000098', 'e1000000-0000-0000-0000-000000000003', 'BA', 'acompanhamento', 'e0000000-0000-0000-0000-000000000001', '2027-03-10')$q$, 'ok');
+  values ('e2000000-0000-0000-0000-000000000098', 'e1000000-0000-0000-0000-000000000001', 'BA', 'acompanhamento', 'e0000000-0000-0000-0000-000000000001', '2027-03-10')$q$, 'ok');   -- 46: acompanhamento só em quintal já implantado
 -- visita antiga com data fora do período não trava ao ser alterada em outro campo
 alter table public.visitas disable trigger user;
 update public.visitas set data_prevista = '2025-11-20' where id = 'e2000000-0000-0000-0000-000000000005';
@@ -318,7 +318,7 @@ select t('teto de passagens: a mensagem mostra os valores no padrão brasileiro'
   perform public.definir_valor_pedido(%L, 69500);
   begin perform public.mover_pedido_apoio(%L, 'autorizar', null, 'PROT-9'); m := 'autorizou';
   exception when others then m := sqlerrm; end;
-  if m !~ 'teto de passagens do projeto \(R\$ 70\.000,00\): já autorizado R\$ [0-9.]+,[0-9]{2}, saldo R\$ [0-9.]+,[0-9]{2}\.$' then raise exception '%%', m; end if; end $x$$q$, :'pconf', :'pconf'), 'ok');
+  if m !~ 'teto de passagens de intercâmbio \(R\$ 70\.000,00\): já autorizado R\$ [0-9.]+,[0-9]{2}, saldo R\$ [0-9.]+,[0-9]{2}\.$' then raise exception '%%', m; end if; end $x$$q$, :'pconf', :'pconf'), 'ok');
 select t('teto de eventos: a mensagem mostra os valores no padrão brasileiro', :G, $q$do $x$ declare m text; p uuid; begin
   select id into p from public.pedidos_apoio where tipo = 'evento' and situacao = 'conferido' limit 1;
   if p is null then raise exception 'sem pedido de evento conferido no cenário'; end if;

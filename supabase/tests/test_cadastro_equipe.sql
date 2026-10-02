@@ -64,7 +64,7 @@ select logar('tecnica@t.com') \gset t_
 \set T '''' :t_logar ''''
 
 -- ===== 2. Coordenação técnica: bolsistas e agentes
-select t('T cadastra articulacao PI', :T, ins('articulacao','PI','Ana Articulação Lima','52998224725x','a@t.com'), 'equipe_cpf_check');
+select t('T cadastra articulacao PI', :T, ins('articulacao','PI','Ana Articulação Lima','52998224725x','a@t.com'), 'CPF precisa ter 11 números');
 select t('T cadastra articulacao PI (CPF ok)', :T, ins('articulacao','PI','Ana Articulação Lima','15350946056','art.pi@t.com'), 'ok');
 select f(:T, ins('articulacao','PI','Ana Articulação Lima','15350946056','art.pi@t.com'));
 select t('T: segunda articulacao PI bloqueada', :T, ins('articulacao','PI','Bia Segunda Lima','86288366757','b@t.com'), 'equipe_uma_bolsista_por_uf');
@@ -78,9 +78,9 @@ select t('T cadastra 2a agente PI (sem limite)', :T, ins('agente','PI','Fia Agen
 select f(:T, ins('agente','PI','Fia Agente Costa','23100562090','ag2@t.com'));
 select t('agente sem UF bloqueada', :T, ins('agente','','Gil Agente Sem','04253865058','ag3@t.com'), 'uf_por_papel');
 select t('UF fora do projeto (CE) bloqueada', :T, ins('agente','CE','Gil Agente Ceará','04253865058','ag3@t.com'), 'equipe_uf_check');
-select t('CPF repetido bloqueado', :T, ins('agente','PI','Outra Pessoa Igual','15350946056','x1@t.com'), 'equipe_cpf_ativo');
-select t('e-mail repetido (maiúsculas) bloqueado', :T, ins('agente','PI','Outra Pessoa Igual','04253865058','ART.PI@T.COM'), 'equipe_email_ativo');
-select t('e-mail inválido bloqueado', :T, ins('agente','PI','Outra Pessoa Igual','04253865058','semarroba.com'), 'equipe_email_check');
+select t('CPF repetido bloqueado', :T, ins('agente','PI','Outra Pessoa Igual','15350946056','x1@t.com'), 'já ocupa outra vaga ativa');
+select t('e-mail repetido (maiúsculas) bloqueado', :T, ins('agente','PI','Outra Pessoa Igual','04253865058','ART.PI@T.COM'), 'e-mail já está em uso');
+select t('e-mail inválido bloqueado', :T, ins('agente','PI','Outra Pessoa Igual','04253865058','semarroba.com'), 'E-mail inválido');
 select t('nome curto bloqueado', :T, ins('agente','PI','Ana','04253865058','n@t.com'), 'equipe_nome_check');
 select t('sem LGPD bloqueado', :T, replace(ins('agente','PI','Hana Sem Lgpd','04253865058','l@t.com'), 'current_date, true', 'current_date, false'), 'consentimento');
 select t('SIAPE com 4 números bloqueado', :T, ins('agente','PI','Iara Siape Curto','04253865058','s@t.com','siape=''1234'''), 'siape_ok');
@@ -192,7 +192,7 @@ select f(null, envia('apBA', replace(replace(replace(:'D','Luzia Rural Silva','M
 select f(null, envia('apBA2', replace(replace(replace(:'D','Luzia Rural Silva','Maria Dois Bahia'),'476.024.360-00','71428793860'),' Luzia@Gmail.com ','m2@t.com')));
 
 -- ===== 9. Desligar e substituir
-select t('T desliga sem motivo bloqueado', :T, $$update public.equipe set status='desligada', data_fim=current_date where email='art.pi@t.com'$$, 'desligamento_completo');
+select t('T desliga sem motivo bloqueado', :T, $$update public.equipe set status='desligada', data_fim=current_date where email='art.pi@t.com'$$, 'informe a data e o motivo do desligamento');
 select f(:T, $$update public.equipe set status='desligada', data_fim=current_date, motivo_desligamento='Pediu para sair do projeto' where email='art.pi@t.com'$$);
 select t('T cadastra substituta na vaga', :T, $q$insert into public.equipe(papel, uf, nome, cpf, email, telefone, data_inicio, consentimento_lgpd, substitui_id) values ('articulacao','PI','Nova Substituta Pi','34608514300','subst@t.com','(86) 90000-0000', current_date, true, (select id from public.equipe where email='art.pi@t.com'))$q$, 'ok');
 select t('não reativa desligada', :T, $$update public.equipe set status='ativa', data_fim=null, motivo_desligamento=null where email='art.pi@t.com'$$, 'não pode ser reativado');

@@ -128,6 +128,7 @@
       ],
       passos: [
         'A tabela mostra, por estado, os dias de campo feitos e previstos, diagnósticos, planos aprovados, casos sem água e agentes.',
+        'As etapas seguem uma ordem: a <b>implantação</b> só é agendada ou registrada com o plano do quintal aprovado (e nunca em quintal sem água); o <b>acompanhamento</b>, só depois da implantação feita. A data de cada etapa não pode ser anterior à da etapa de antes. Quando a etapa ainda não pode, a tela mostra o motivo no lugar do botão.',
         'Em <b>Planos para você aprovar</b>, abra o diagnóstico, confira as fotos, o kit (itens da lista aprovada, com preço, até o valor por quintal) e o cronograma, e <b>aprove</b> ou <b>devolva</b>.',
         '<b>Investimento nos quintais</b> mostra o valor do kit por quintal (R$ 5.000,00, fixado no plano de trabalho) e a soma projetada pelos planos.',
         'O <b>roteiro</b> lista cada visita: data, quem vai e a situação, com o botão do que fazer. Visitas vencidas aparecem como atrasadas.',
@@ -175,9 +176,10 @@
       ],
       duvidas: [
         ['Quem começou no meio do mês recebe o mês inteiro?', 'Sim. A bolsa é pedida a partir do mês de início no projeto e, pedida no mês, vale o mês inteiro (decisão da coordenação geral). Antes do mês de início o sistema não deixa pedir.'],
-        ['Uma visita pode entrar em dois pedidos?', 'Não. Depois de pedida, a visita fica travada (data, pessoa e situação) até o pedido ser devolvido.'],
+        ['Uma visita pode entrar em dois pedidos?', 'Não. Depois de pedida, a visita fica travada (data, pessoa e situação) até o pedido ser devolvido. Depois que o pedido é lançado no Arlo, o km conferido da visita também não muda mais.'],
         ['A lista de presença está marcada, mas não vi o papel.', 'A marcação é a bolsista quem faz. Confira as listas assinadas antes de dar o aval.'],
-        ['Quanto é a ajuda de custo?', 'É calculada na aba Custos: horas da visita, combustível pela distância e refeição.']
+        ['Quanto é a ajuda de custo?', 'É calculada na aba Custos: horas da visita, combustível pela distância e refeição.'],
+        ['Ficou uma visita fora do pedido de ajuda de custo. E agora?', 'A pessoa faz um <b>pedido complementar</b> do mesmo mês, só com as visitas que ficaram de fora. Ele aparece na lista com a palavra "complementar" e passa pelo mesmo aval. A bolsa continua sendo um pedido só por mês.'],
       ]
     },
     custos: {
@@ -210,6 +212,8 @@
         'A coordenação técnica confere os dados (nomes iguais ao documento, datas, CPF e RG, quantidades) e toca em <b>Conferido</b>, ou <b>Devolve</b> dizendo o que corrigir.',
         '<b>Sem coordenação técnica ativa</b>, quem confere é o <b>auxiliar administrativo</b> (na tela dele aparece "Passagens e eventos para conferir"). Sem os dois, a coordenação geral confere e autoriza, com aviso. Quando a técnica é cadastrada, volta tudo para ela.',
         'Cada pedido passa por <b>duas pessoas</b>: quem conferiu não autoriza o mesmo pedido.',
+        'O pedido de passagem de <b>acompanhamento pedagógico</b> é diferente: só a <b>coordenação geral</b> confere e autoriza. Para a coordenação técnica ele aparece como "aguardando a coordenação geral".',
+        'As passagens têm <b>dois tetos</b>, que não se misturam: R$ 70.000,00 para o intercâmbio e R$ 22.400,00 para o acompanhamento pedagógico. Os eventos têm R$ 6.000,00 por estado.',
         'A <b>coordenação geral</b> autoriza (ou devolve, ou recusa com o motivo). Depois de autorizar, use <b>Copiar texto</b> para mandar o pedido à FUNCERN e registre o protocolo.',
         'Prazos: passagem <b>40 dias</b> antes da viagem (a FUNCERN exige 30); evento <b>45 dias</b> antes. Fora do prazo, o pedido só vai com justificativa.',
         'Os contadores mostram quantas passagens já foram autorizadas (25 de intercâmbio e 8 de acompanhamento pedagógico, por pessoa) e quantos estados já têm evento (5).'
