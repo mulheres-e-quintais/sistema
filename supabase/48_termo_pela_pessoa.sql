@@ -1,4 +1,4 @@
--- Mulheres & Quintais — etapa 47: o termo de compromisso é anexado pela PRÓPRIA pessoa
+-- Mulheres & Quintais — etapa 48: o termo de compromisso é anexado pela PRÓPRIA pessoa
 -- (decisão da coordenação geral em 02/10/2026)
 --
 -- Como fica:
@@ -9,12 +9,12 @@
 --   3. a data do termo NÃO é aceita sem o termo anexado.
 --   4. depois de conferido, a pessoa não troca mais o arquivo (só quem confere).
 --
--- Rode depois do 46_regras_decididas.sql. Pode ser rodado de novo sem estragar dados.
+-- Rode depois do 47_auditoria_bd.sql. Pode ser rodado de novo sem estragar dados.
 -- Registros antigos (data do termo sem arquivo) continuam valendo: a regra 3 só vale para datas novas.
 
 -- 1. No próprio cadastro, o auxiliar administrativo também anexa o seu termo (o resto continua com a coordenação geral)
 create or replace function public.equipe_antes() returns trigger
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare so_hab text[] := array['docs_funcern_em','termo_path','termo_assinado_em','obs_habilitacao','atualizado_em'];
         proprio text[] := array['user_id','foto_path','atualizado_em'];
 begin
@@ -49,9 +49,11 @@ begin
   return new;
 end $$;
 
+revoke all on function public.equipe_antes() from public, anon, authenticated;
+
 -- 2. A data do termo só entra com o termo anexado (vale para quem está logado; datas antigas não são mexidas)
 create or replace function public.equipe_termo() returns trigger
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 begin
   if auth.uid() is null then return new; end if;   -- scripts do dono do banco (dados de exemplo, correções)
   if new.termo_assinado_em is not null
@@ -67,7 +69,7 @@ create trigger equipe_d_termo before insert or update on public.equipe for each 
 
 -- 3. A própria pessoa anexa o termo: grava só o arquivo, na pasta dela, enquanto o termo não foi conferido
 create or replace function public.enviar_meu_termo(p_path text) returns void
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare eu public.equipe;
 begin
   select * into eu from public.equipe where id = public.meu_id();
@@ -84,7 +86,7 @@ begin
   update public.equipe set termo_path = p_path where id = eu.id;
   perform set_config('mq.meu_termo', '', true);
 end $$;
-revoke all on function public.enviar_meu_termo(text) from public, anon;
+revoke all on function public.enviar_meu_termo(text) from public, anon, authenticated;
 grant execute on function public.enviar_meu_termo(text) to authenticated;
 
 -- 4. Arquivos: a própria pessoa envia para a pasta dela no bucket "termos" e lê só o que é dela
@@ -98,7 +100,7 @@ create policy termos_ler_proprio on storage.objects for select to authenticated
   using (bucket_id = 'termos' and public.meu_id() is not null
          and (storage.foldername(name))[1] = 'equipe' and (storage.foldername(name))[2] = public.meu_id()::text);
 
-select 'Etapa 47 instalada: termo anexado pela própria pessoa' as resultado,
+select 'Etapa 48 instalada: termo anexado pela própria pessoa' as resultado,
        count(*) filter (where termo_path is not null and termo_assinado_em is null) as termos_aguardando_conferencia,
        count(*) filter (where termo_assinado_em is not null and termo_path is null) as datas_antigas_sem_arquivo
   from public.equipe where status = 'ativa';

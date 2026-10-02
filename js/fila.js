@@ -27,6 +27,35 @@
     });
   }
 
+  /* 47: o que a pessoa MUDOU em relação ao registro que ela leu (lista de campos). Num conflito, a tela mostra o registro
+     como está no servidor e, por cima, só estes campos: dado velho não volta por cima de dado novo. */
+  MQ.camposMudados = (dados, base, jaMudados) => {
+    const fora = /^(_|atualizado_em$|criado_em$)/; const m = new Set(jaMudados || []);
+    Object.keys(dados || {}).forEach(k => { if (fora.test(k)) return;
+      if (!base || JSON.stringify(dados[k] == null ? null : dados[k]) !== JSON.stringify(base[k] == null ? null : base[k])) m.add(k); });
+    return [...m];
+  };
+  /* o registro como a tela deve mostrar: servidor + fila. Em conflito, só os campos mudados vêm da fila. */
+  MQ.juntarFila = (base, it) => {
+    if (!(it.conflito && base && it.mud)) return Object.assign({}, base || {}, it.dados);
+    const r = Object.assign({}, base); it.mud.forEach(k => { if (k in it.dados) r[k] = it.dados[k]; }); return r;
+  };
+  /* marca para o envio: a do item que já está na fila (edição sobre edição, ainda não enviada) ou o atualizado_em do registro lido.
+     "vista" = as listas como estavam quando o formulário abriu; "agora" = as de agora. */
+  MQ.marcaDe = (tipo, id, vista, agora) => {
+    const lista = { ficha: 'fichas', visita: 'visitas', diagnostico: 'diagnosticos', avaliacao: 'avaliacoes' }[tipo];
+    const doTipo = i => i.id === id && (i.tipo || 'ficha') === tipo;
+    const reg = b => ((b && b[lista]) || []).find(x => x.id === id);
+    const it = ((vista && vista.fila) || []).find(doTipo);
+    if (it && !it.conflito && 'marca' in it) {
+      if (it.marca) return it.marca;
+      // era registro novo na fila; se já foi enviado enquanto o formulário estava aberto, vale a marca do que subiu
+      const subiu = !((agora && agora.fila) || []).some(doTipo) && reg(agora);
+      return subiu ? subiu.atualizado_em || null : null;
+    }
+    const r = reg(vista); return r ? r.atualizado_em || null : null;
+  };
+
   const F = (MQ.fila = {
     async listar(dono) {
       const todos = await tx('readonly', l => l ? l.getAll() : { result: [...memoria.values()] });
@@ -50,14 +79,19 @@
         for (const it of await F.listar(dono)) {
           if (it.erro && !it.reenviar) continue;
           try {
-            if (it.tipo === 'visita') await api.salvarVisita(it.dados, it.fotos || {});
-            else if (it.tipo === 'diagnostico') await api.salvarDiagnostico(it.dados, it.fotos || {});
-            else if (it.tipo === 'avaliacao') await api.salvarAvaliacao(it.dados, it.fotos || {});
-            else await api.salvarFicha(it.dados, it.fotos || {});
+            // 47: a marca (versão do registro que a pessoa leu) vai junto; se o registro mudou no servidor, o envio é recusado
+            const op = { marca: it.marca || null };
+            if (it.tipo === 'visita') await api.salvarVisita(it.dados, it.fotos || {}, op);
+            else if (it.tipo === 'diagnostico') await api.salvarDiagnostico(it.dados, it.fotos || {}, op);
+            else if (it.tipo === 'avaliacao') await api.salvarAvaliacao(it.dados, it.fotos || {}, op);
+            else await api.salvarFicha(it.dados, it.fotos || {}, op);
             await F.remover(it.id); enviados++;
           } catch (e) {
             if (e.semRede) break;
-            it.erro = (MQ.regras && MQ.regras.mensagemErro ? MQ.regras.mensagemErro(e) : e.message) || 'Não foi possível enviar. Tente de novo.'; it.reenviar = false; await F.salvar(it);   // mensagem já traduzida, não o texto cru do servidor
+            it.erro = (MQ.regras && MQ.regras.mensagemErro ? MQ.regras.mensagemErro(e) : e.message) || 'Não foi possível enviar. Tente de novo.'; it.reenviar = false;   // mensagem já traduzida, não o texto cru do servidor
+            // recusado porque outra pessoa alterou: o item NÃO é descartado (o que foi digitado fica); a tela reabre com o dado novo e só o que ela mudou
+            it.conflito = !!(MQ.regras && MQ.regras.ehConflito && (MQ.regras.ehConflito(e) || MQ.regras.ehConflito(it.erro)));
+            await F.salvar(it);
           }
         }
       } finally { F.enviando = false; }

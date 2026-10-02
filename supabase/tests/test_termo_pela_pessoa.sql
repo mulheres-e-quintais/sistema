@@ -1,12 +1,12 @@
 -- roda na MESMA sessão do psql, depois do test_cadastro_equipe.sql (usa :G, :T, :X, :BB, t(), f(), logar(), ins()):
 --   psql -d teste -f tests/test_cadastro_equipe.sql -f tests/test_termo_pela_pessoa.sql
 -- e ANTES do test_conferencia_auxiliar.sql
--- 47_termo_pela_pessoa.sql: a própria pessoa anexa o termo; a data só entra com o termo anexado; quem confere registra a data.
+-- 48_termo_pela_pessoa.sql: a própria pessoa anexa o termo; a data só entra com o termo anexado; quem confere registra a data.
 \set QUIET on
 truncate res;
 grant select, insert on storage.objects to authenticated;  -- no Supabase de verdade essa permissão já existe; o stub local não tem
 -- cenário: o auxiliar do test_cadastro_equipe.sql (:X) e uma agente nova, com login (sem termo). Os nomes começam com "tp_" para não trocar :A do outro teste.
-select f(:T, ins('agente','BA','Tina Termo Agente','83698741029','ag47@t.com'));
+select f(:T, ins('agente','BA','Tina Termo Agente','83698741008','ag47@t.com'));
 select logar('ag47@t.com') \gset tp_
 \set TA '''' :tp_logar ''''
 select id as ag from public.equipe where email = 'ag47@t.com' \gset

@@ -34,20 +34,20 @@ begin
     execute format('alter table public.%I disable trigger user', t);
   end loop;
   insert into public.equipe (id, papel, uf, nome, cpf, email, data_inicio, consentimento_lgpd, matricula_fic_em, docs_funcern_em, termo_assinado_em, municipio) values
-    (rg,  'agente', 'BA', 'Rita Agente Regras', '96000000001', 'r46.ag@t.com',  mes - 40, true, mes - 40, mes - 40, mes - 40, 'Juazeiro'),
-    (rg2, 'agente', 'BA', 'Rosa Agente Regras', '96000000002', 'r46.ag2@t.com', mes - 40, true, mes - 45, mes - 40, mes - 40, 'Juazeiro');
+    (rg,  'agente', 'BA', 'Rita Agente Regras', '96000000189', 'r46.ag@t.com',  mes - 40, true, mes - 40, mes - 40, mes - 40, 'Juazeiro'),
+    (rg2, 'agente', 'BA', 'Rosa Agente Regras', '96000000260', 'r46.ag2@t.com', mes - 40, true, mes - 45, mes - 40, mes - 40, 'Juazeiro');
   insert into public.equipe (id, papel, nome, cpf, email, data_inicio, consentimento_lgpd, docs_funcern_em, termo_assinado_em) values
-    (rp,  'professor_fic', 'Paulo Professor Regras', '96000000003', 'r46.prof@t.com',  mes - 40, true, mes - 40, mes - 40),
-    (rp2, 'professor_fic', 'Paula Professora Regras', '96000000004', 'r46.prof2@t.com', mes - 40, true, mes - 40, mes - 40);
+    (rp,  'professor_fic', 'Paulo Professor Regras', '96000000340', 'r46.prof@t.com',  mes - 40, true, mes - 40, mes - 40),
+    (rp2, 'professor_fic', 'Paula Professora Regras', '96000000421', 'r46.prof2@t.com', mes - 40, true, mes - 40, mes - 40);
   insert into public.equipe (id, papel, uf, nome, cpf, email, data_inicio, consentimento_lgpd, status, data_fim, motivo_desligamento) values
-    ('f6000000-0000-0000-0000-000000000005', 'agente', 'BA', 'Zeca Desligado Regras', '96000000005', 'r46.desl@t.com', mes - 40, true, 'desligada', mes - 10, 'Saiu do projeto');
+    ('f6000000-0000-0000-0000-000000000005', 'agente', 'BA', 'Zeca Desligado Regras', '96000000502', 'r46.desl@t.com', mes - 40, true, 'desligada', mes - 10, 'Saiu do projeto');
   insert into public.equipe_privado (equipe_id, data_nascimento, nis) values (rg, '1990-01-01', '12345678901');
   -- fichas da BA (data da ficha: 60 dias antes do dia 1º)
   for i in 1..14 loop
     insert into public.fichas (id, uf, municipio, comunidade, nome, cpf, data_nascimento, endereco,
       c_agricultora,c_maior18,c_espaco,c_agua,c_disponibilidade,c_sem_kit,c_sem_parentesco,c_casa_unica,autodeclaracao, consent_dados, resultado, data_ficha, situacao, bolsista_id, posicao_espera, obs_coordenacao)
     values (('f6100000-0000-0000-0000-0000000000' || lpad(i::text, 2, '0'))::uuid, 'BA', 'Juazeiro', 'Lagoa das Regras', 'Maria Regras ' || i,
-      case when i = 12 then '96000000002' else (96100000000 + i)::text end,   -- 12: ficha ANTIGA com o CPF de pessoa ativa da equipe
+      case when i = 12 then '96000000260' else cpf_t(96100000000 + i) end,   -- 12: ficha ANTIGA com o CPF de pessoa ativa da equipe
       '1980-01-01', 'Sítio ' || i, true,true,true,true,true,true,true,true,true,true,
       case when i in (13, 14) then 'lista_espera' else 'selecionada' end, mes - 60,
       case when i in (7, 13, 14) then 'aguardando' when i = 11 then 'devolvida' else 'aprovada' end, b.id,
@@ -296,7 +296,12 @@ select t('8. parâmetro ANTIGO com valor impossível não trava outra alteraçã
   update public.parametros set atualizado_em = now() where chave = 'custo_visita';                                            -- regravar sem mudar os valores
   update public.parametros set valor = valor || '{"km_por_litro": 10, "valor_hora": 50}' where chave = 'custo_visita';      -- corrigir
   if (select (valor ->> 'km_por_litro')::numeric from public.parametros where chave = 'custo_visita') <> 10 then raise exception 'não corrigiu'; end if; end $x$$q$, :'g_logar'), 'ok');
-select t('8. outras chaves de parâmetro não são afetadas', :G, $q$insert into public.parametros (chave, valor) values ('r46_outra', '"texto livre"')$q$, 'ok');
+-- (47: chave desconhecida não entra mais; a chave antiga, que já existe no banco, continua podendo ser alterada, sem conferência do valor)
+alter table public.parametros disable trigger user;
+insert into public.parametros (chave, valor) values ('r46_outra', '"antigo"') on conflict (chave) do nothing;
+alter table public.parametros enable trigger user;
+select t('8. outras chaves de parâmetro (antigas) não são afetadas', :G, $q$update public.parametros set valor = '"texto livre"' where chave = 'r46_outra'$q$, 'ok');
+delete from public.parametros where chave = 'r46_outra';
 
 -- =====================================================================
 -- 16. entrega do mês × bolsa lançada (e 22: mensagens)
@@ -568,7 +573,9 @@ select t('9. o histórico das outras tabelas continua completo e lido só pela c
 select t('10. ficha: aprovação com a marca do que foi lido é aceita quando nada mudou', :T, $q$update public.fichas set situacao = 'aprovada', atualizado_em = (select x.atualizado_em from public.fichas x where x.id = 'f6100000-0000-0000-0000-000000000007')$q$ || :'F7', 'ok');
 select t('10. ficha: aprovação com marca antiga é recusada', :T, $q$update public.fichas set situacao = 'aprovada', atualizado_em = now() - interval '1 hour'$q$ || :'F7', 'Este registro foi alterado enquanto você lia. Abra de novo e confira.');
 select t('10. ficha: sem a marca (celular com versão antiga), aprova como antes', :T, $q$update public.fichas set situacao = 'aprovada'$q$ || :'F7', 'ok');
-select t('10. ficha: a marca só é conferida na aprovação (devolver com marca antiga passa)', :T, $q$update public.fichas set situacao = 'devolvida', obs_coordenacao = 'Rever o endereço', atualizado_em = now() - interval '1 hour'$q$ || :'F7', 'ok');
+-- (47: a marca passou a valer em qualquer alteração, não só na aprovação)
+select t('10. ficha: desde o 47 a marca é conferida em qualquer alteração (devolver com marca antiga é recusado)', :T, $q$update public.fichas set situacao = 'devolvida', obs_coordenacao = 'Rever o endereço', atualizado_em = now() - interval '1 hour'$q$ || :'F7', 'alterado por outra pessoa enquanto você editava');
+select t('10. ficha: devolver sem a marca (tela antiga) continua passando', :T, $q$update public.fichas set situacao = 'devolvida', obs_coordenacao = 'Rever o endereço'$q$ || :'F7', 'ok');
 select t('10. ficha: a técnica lê, a bolsista altera, a técnica aprova o que leu: recusado; lendo de novo, aprova', :T, format($q$do $x$ declare lido timestamptz; m text; begin
   select atualizado_em into lido from public.fichas where id = 'f6100000-0000-0000-0000-000000000007';
   perform r46_como(%L); perform pg_sleep(0.01);
@@ -688,32 +695,32 @@ select t('13. link já usado continua podendo ser cancelado', :T, $q$do $x$ decl
   get diagnostics n = row_count; if n <> 1 then raise exception 'não cancelou'; end if; end $x$$q$, 'ok');
 select t('13. link ainda aberto continua podendo ser cancelado', :T, $q$update public.convites set cancelado_em = now()$q$ || :'C2', 'ok');
 select t('13. link aberto é usado normalmente (o cadastro pelo link continua funcionando)', null, $q$select public.enviar_pre_cadastro('r46aberto' || md5('b'),
-  '{"nome": "Nova Agente Pelo Link", "cpf": "960.000.000-99", "email": "nova.r46@t.com", "data_nascimento": "1990-03-02", "consentimento_lgpd": true}')$q$, 'ok');
+  '{"nome": "Nova Agente Pelo Link", "cpf": "960.000.099-92", "email": "nova.r46@t.com", "data_nascimento": "1990-03-02", "consentimento_lgpd": true}')$q$, 'ok');
 select t('22. cadastro pelo link com nascimento que não existe (30/02): mensagem clara', null, $q$select public.enviar_pre_cadastro('r46aberto' || md5('b'),
-  '{"nome": "Nova Agente Pelo Link", "cpf": "960.000.000-99", "email": "nova.r46@t.com", "data_nascimento": "1990-02-30", "consentimento_lgpd": true}')$q$, 'A data de nascimento não é uma data que existe');
+  '{"nome": "Nova Agente Pelo Link", "cpf": "960.000.099-92", "email": "nova.r46@t.com", "data_nascimento": "1990-02-30", "consentimento_lgpd": true}')$q$, 'A data de nascimento não é uma data que existe');
 select t('22. cadastro pelo link com nascimento no futuro: mensagem clara', null, $q$select public.enviar_pre_cadastro('r46aberto' || md5('b'),
-  '{"nome": "Nova Agente Pelo Link", "cpf": "960.000.000-99", "email": "nova.r46@t.com", "data_nascimento": "2090-01-01", "consentimento_lgpd": true}')$q$, 'não pode ser no futuro');
+  '{"nome": "Nova Agente Pelo Link", "cpf": "960.000.099-92", "email": "nova.r46@t.com", "data_nascimento": "2090-01-01", "consentimento_lgpd": true}')$q$, 'não pode ser no futuro');
 select t('22. cadastro pelo link com CPF de 10 números: mensagem clara', null, $q$select public.enviar_pre_cadastro('r46aberto' || md5('b'),
   '{"nome": "Nova Agente Pelo Link", "cpf": "1234567890", "email": "nova.r46@t.com", "data_nascimento": "1990-03-02", "consentimento_lgpd": true}')$q$, 'O CPF precisa ter 11 números');
 select t('22. cadastro pelo link com e-mail inválido: mensagem clara', null, $q$select public.enviar_pre_cadastro('r46aberto' || md5('b'),
-  '{"nome": "Nova Agente Pelo Link", "cpf": "960.000.000-99", "email": "sem arroba", "data_nascimento": "1990-03-02", "consentimento_lgpd": true}')$q$, 'E-mail inválido');
+  '{"nome": "Nova Agente Pelo Link", "cpf": "960.000.099-92", "email": "sem arroba", "data_nascimento": "1990-03-02", "consentimento_lgpd": true}')$q$, 'E-mail inválido');
 
 -- =====================================================================
 -- 14. ficha: CPF da equipe, testemunha e lista de espera (e 22)
 -- =====================================================================
-select t('14. ficha com o CPF de pessoa ATIVA da equipe é recusada', :BB, r46_fi(21, '96000000001'), 'Este CPF é de uma pessoa ativa da equipe do projeto');
-select t('14. ficha com o CPF de pessoa DESLIGADA da equipe é aceita', :BB, r46_fi(21, '96000000005'), 'ok');
-select t('14. trocar o CPF de uma ficha para o de pessoa ativa da equipe é recusado', :G, $q$update public.fichas set cpf = '96000000001'$q$ || :'F9', 'Este CPF é de uma pessoa ativa da equipe do projeto');
-select t('14. testemunha com o mesmo CPF da mulher é recusada', :BB, r46_fi(22, '96200000022', ', assinatura, testemunha_nome, testemunha_cpf', $q$, 'digital', 'Maria Regra Nova 22', '96200000022'$q$), 'A testemunha da assinatura não pode ser a própria mulher');
-select t('14. testemunha com outro CPF é aceita', :BB, r46_fi(22, '96200000022', ', assinatura, testemunha_nome, testemunha_cpf', $q$, 'digital', 'Joana Testemunha', '96200000023'$q$), 'ok');
-select t('14. posição na lista de espera em ficha SELECIONADA é recusada', :BB, r46_fi(23, '96200000023', ', posicao_espera', ', 5'), 'A posição na lista de espera só vale para quem está na lista de espera');
-select t('14. posição livre na lista de espera é aceita', :BB, r46_fi(23, '96200000023', ', posicao_espera', ', 5', 'lista_espera'), 'ok');
-select t('14. posição repetida na lista de espera do estado é recusada', :BB, 'do $x$ begin ' || r46_fi(23, '96200000023', ', posicao_espera', ', 5', 'lista_espera') || '; ' || r46_fi(24, '96200000024', ', posicao_espera', ', 5', 'lista_espera') || '; end $x$', 'Já há outra mulher na posição 5 da lista de espera de BA');
-select t('14. mudar a posição para uma já ocupada é recusado', :BB, 'do $x$ begin ' || r46_fi(23, '96200000023', ', posicao_espera', ', 5', 'lista_espera') || '; ' || r46_fi(24, '96200000024', ', posicao_espera', ', 6', 'lista_espera') || $q$;
-  update public.fichas set posicao_espera = 5 where cpf = '96200000024'; end $x$$q$, 'Já há outra mulher na posição 5 da lista de espera de BA');
-select t('14. quem sai da lista de espera (foi selecionada) perde a posição sozinha', :BB, 'do $x$ begin ' || r46_fi(23, '96200000023', ', posicao_espera', ', 5', 'lista_espera') || $q$;
-  update public.fichas set resultado = 'selecionada' where cpf = '96200000023';
-  if (select posicao_espera from public.fichas where cpf = '96200000023') is not null then raise exception 'ficou com a posição'; end if; end $x$$q$, 'ok');
+select t('14. ficha com o CPF de pessoa ATIVA da equipe é recusada', :BB, r46_fi(21, '96000000189'), 'Este CPF é de uma pessoa ativa da equipe do projeto');
+select t('14. ficha com o CPF de pessoa DESLIGADA da equipe é aceita', :BB, r46_fi(21, '96000000502'), 'ok');
+select t('14. trocar o CPF de uma ficha para o de pessoa ativa da equipe é recusado', :G, $q$update public.fichas set cpf = '96000000189'$q$ || :'F9', 'Este CPF é de uma pessoa ativa da equipe do projeto');
+select t('14. testemunha com o mesmo CPF da mulher é recusada', :BB, r46_fi(22, '96200002266', ', assinatura, testemunha_nome, testemunha_cpf', $q$, 'digital', 'Maria Regra Nova 22', '96200002266'$q$), 'A testemunha da assinatura não pode ser a própria mulher');
+select t('14. testemunha com outro CPF é aceita', :BB, r46_fi(22, '96200002266', ', assinatura, testemunha_nome, testemunha_cpf', $q$, 'digital', 'Joana Testemunha', '96200002347'$q$), 'ok');
+select t('14. posição na lista de espera em ficha SELECIONADA é recusada', :BB, r46_fi(23, '96200002347', ', posicao_espera', ', 5'), 'A posição na lista de espera só vale para quem está na lista de espera');
+select t('14. posição livre na lista de espera é aceita', :BB, r46_fi(23, '96200002347', ', posicao_espera', ', 5', 'lista_espera'), 'ok');
+select t('14. posição repetida na lista de espera do estado é recusada', :BB, 'do $x$ begin ' || r46_fi(23, '96200002347', ', posicao_espera', ', 5', 'lista_espera') || '; ' || r46_fi(24, '96200002428', ', posicao_espera', ', 5', 'lista_espera') || '; end $x$', 'Já há outra mulher na posição 5 da lista de espera de BA');
+select t('14. mudar a posição para uma já ocupada é recusado', :BB, 'do $x$ begin ' || r46_fi(23, '96200002347', ', posicao_espera', ', 5', 'lista_espera') || '; ' || r46_fi(24, '96200002428', ', posicao_espera', ', 6', 'lista_espera') || $q$;
+  update public.fichas set posicao_espera = 5 where cpf = '96200002428'; end $x$$q$, 'Já há outra mulher na posição 5 da lista de espera de BA');
+select t('14. quem sai da lista de espera (foi selecionada) perde a posição sozinha', :BB, 'do $x$ begin ' || r46_fi(23, '96200002347', ', posicao_espera', ', 5', 'lista_espera') || $q$;
+  update public.fichas set resultado = 'selecionada' where cpf = '96200002347';
+  if (select posicao_espera from public.fichas where cpf = '96200002347') is not null then raise exception 'ficou com a posição'; end if; end $x$$q$, 'ok');
 select t('14. ficha ANTIGA (CPF de pessoa da equipe, posição em selecionada) continua podendo ser devolvida', :T, $q$update public.fichas set situacao = 'devolvida', obs_coordenacao = 'Conferir o CPF'$q$ || :'F' || $q$12'$q$, 'ok');
 select t('14. ... e corrigida em outro campo pela coordenação geral', :G, $q$do $x$ declare n int; begin update public.fichas set celular = '(74) 98888-0000' where id = 'f6100000-0000-0000-0000-000000000012';
   get diagnostics n = row_count; if n <> 1 or (select posicao_espera from public.fichas where id = 'f6100000-0000-0000-0000-000000000012') <> 3 then raise exception 'não gravou ou mexeu na posição'; end if; end $x$$q$, 'ok');
@@ -722,12 +729,12 @@ select t('14. fichas ANTIGAS com a mesma posição na lista de espera continuam 
   perform r46_como(%L);
   update public.fichas set situacao = 'aprovada' where id = 'f6100000-0000-0000-0000-000000000013';
   update public.fichas set situacao = 'devolvida', obs_coordenacao = 'Rever a posição' where id = 'f6100000-0000-0000-0000-000000000014'; end $x$$q$, :'t_logar'), 'ok');
-select t('22. CPF com pontos e traço: mensagem clara', :BB, r46_fi(25, '962.000.000-25'), 'O CPF da mulher precisa ter 11 números');
-select t('22. CPF repetido: mensagem clara', :BB, r46_fi(25, '96100000004'), 'Esta mulher (CPF) já tem ficha no projeto');
-select t('22. menor de 18 anos selecionada: mensagem clara', :BB, 'do $x$ begin ' || r46_fi(25, '96200000025', ', p_jovem', ', true') || $q$; update public.fichas set data_nascimento = public.fic_hoje() - 6000 where cpf = '96200000025'; end $x$$q$, 'Ela tem menos de 18 anos na data da ficha');
-select t('22. família com 0 pessoas: mensagem clara', :BB, r46_fi(25, '96200000025', ', pessoas_familia', ', 0'), 'O número de pessoas da família precisa ficar entre 1 e 30');
+select t('22. CPF com pontos e traço: mensagem clara', :BB, r46_fi(25, '962.000.025-09'), 'O CPF da mulher precisa ter 11 números');
+select t('22. CPF repetido: mensagem clara', :BB, r46_fi(25, '96100000458'), 'Esta mulher (CPF) já tem ficha no projeto');
+select t('22. menor de 18 anos selecionada: mensagem clara', :BB, 'do $x$ begin ' || r46_fi(25, '96200002509', ', p_jovem', ', true') || $q$; update public.fichas set data_nascimento = public.fic_hoje() - 6000 where cpf = '96200002509'; end $x$$q$, 'Ela tem menos de 18 anos na data da ficha');
+select t('22. família com 0 pessoas: mensagem clara', :BB, r46_fi(25, '96200002509', ', pessoas_familia', ', 0'), 'O número de pessoas da família precisa ficar entre 1 e 30');
 select t('22. selecionada sem um critério obrigatório: mensagem clara', :G, $q$update public.fichas set c_sem_kit = false$q$ || :'F9', 'Selecionada ou lista de espera só com todos os critérios obrigatórios');
-select t('14. ficha com latitude 500 é recusada', :BB, r46_fi(25, '96200000025', ', latitude, longitude', ', 500, -40'), 'Localização inválida');
+select t('14. ficha com latitude 500 é recusada', :BB, r46_fi(25, '96200002509', ', latitude, longitude', ', 500, -40'), 'Localização inválida');
 
 -- =====================================================================
 -- 20. equipe: cadastro desligado, substituição e matrícula no desligamento (e 22)
@@ -828,7 +835,7 @@ select t('22. lançamento de R$ 2.000.000,00 continua aceito', :G, $q$insert int
 select t('23. vitrine: município com e sem acento conta como um só, com o nome acentuado', null, $q$do $x$ declare v jsonb; n int; begin set local role none;
   alter table public.fichas disable trigger user;
   insert into public.fichas (id, uf, municipio, comunidade, nome, cpf, data_nascimento, endereco, c_agricultora,c_maior18,c_espaco,c_agua,c_disponibilidade,c_sem_kit,c_sem_parentesco,c_casa_unica,autodeclaracao, consent_dados, resultado, data_ficha)
-  select gen_random_uuid(), 'PE', m, 'Vila', 'Maria Vitrine ' || i, (96300000000 + i)::text, '1980-01-01', 'Sítio', true,true,true,true,true,true,true,true,true,true, 'selecionada', public.fic_hoje()
+  select gen_random_uuid(), 'PE', m, 'Vila', 'Maria Vitrine ' || i, cpf_t(96300000000 + i), '1980-01-01', 'Sítio', true,true,true,true,true,true,true,true,true,true, 'selecionada', public.fic_hoje()
     from unnest(array['São José do Belmonte', 'Sao Jose do Belmonte', 'SÃO JOSÉ DO  BELMONTE ', 'sao jose do belmonte']) with ordinality x(m, i);
   alter table public.fichas enable trigger user;
   v := public.vitrine_municipios();
@@ -847,7 +854,7 @@ select t('46. gatilhos, regras e funções novas instalados; funções de gatilh
   select count(*) into n from pg_trigger where not tgisinternal and tgname in ('a1_versao', 'diagnosticos_a1_versao', 'diagnosticos_a2_limites', 'avaliacoes_a2_limites', 'fichas_c_regras', 'equipe_c_regras',
     'custos_visita_a0_travas', 'parametros_a0_validar', 'convites_a0_travas', 'entregas_a0_travas', 'equipe_desligada_matricula', 'equipe_privado_auditoria', 'solicitacao_visitas_auditoria',
     'entregas_mes_auditoria', 'apl_municipios_auditoria');
-  if n <> 15 then raise exception 'gatilhos: %', n; end if;
+  if n <> 16 then raise exception 'gatilhos: %', n; end if;   -- (16 desde o 47: "a1_versao" também nas visitas)
   if (select pg_get_expr(polqual, polrelid) from pg_policy where polname = 'turmas_alterar') not like '%professor_id = %meu_id()%' then raise exception 'regra das turmas'; end if;
   if exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname in ('visita_etapa_motivo', 'custos_visita_travas', 'parametros_validar', 'auditar_sem_id', 'versao_conferir',
        'campo_formulario_limites', 'fichas_regras', 'convites_travas', 'entregas_travas', 'equipe_regras', 'equipe_desligada_matricula', 'sem_acento')

@@ -4,6 +4,13 @@
 alter table auth.users add column if not exists raw_user_meta_data jsonb;
 create table if not exists res (n serial, caso text, ok boolean, det text);
 truncate res;
+-- CPF de teste com os dígitos verificadores certos (desde o 47 o banco confere o dígito na ficha, na equipe e no cadastro
+-- pelo link). Recebe o número "de mentira" com 11 algarismos, mantém os 3 primeiros e os 6 últimos e calcula os dois dígitos.
+create or replace function cpf_t(n bigint) returns text language sql immutable as $f$
+  with a as (select substr(lpad(n::text, 11, '0'), 1, 3) || substr(lpad(n::text, 11, '0'), 6, 6) as b),
+       b as (select b || ((((select sum(substr(b, i, 1)::int * (11 - i)) from generate_series(1, 9) i) * 10) % 11) % 10)::text as c from a)
+  select c || ((((select sum(substr(c, i, 1)::int * (12 - i)) from generate_series(1, 10) i) * 10) % 11) % 10)::text from b
+$f$;
 -- executa SQL como um usuário (uuid do auth) e compara com o esperado ('ok' ou trecho do erro)
 create or replace function t(caso text, quem uuid, cmd text, espera text) returns void language plpgsql as $$
 declare msg text := 'ok'; r text;
@@ -72,31 +79,31 @@ select t('T cadastra apoio PI', :T, ins('apoio','PI','Carla Apoio Nunes','862883
 select f(:T, ins('apoio','PI','Carla Apoio Nunes','86288366757','apoio.pi@t.com'));
 select t('T cadastra articulacao BA', :T, ins('articulacao','BA','Dora Bahia Santos','74682489070','art.ba@t.com'), 'ok');
 select f(:T, ins('articulacao','BA','Dora Bahia Santos','74682489070','art.ba@t.com'));
-select t('T cadastra agente PI', :T, ins('agente','PI','Eva Agente Rocha','60724123055','ag1@t.com'), 'ok');
-select f(:T, ins('agente','PI','Eva Agente Rocha','60724123055','ag1@t.com'));
-select t('T cadastra 2a agente PI (sem limite)', :T, ins('agente','PI','Fia Agente Costa','23100562090','ag2@t.com'), 'ok');
-select f(:T, ins('agente','PI','Fia Agente Costa','23100562090','ag2@t.com'));
-select t('agente sem UF bloqueada', :T, ins('agente','','Gil Agente Sem','04253865058','ag3@t.com'), 'uf_por_papel');
-select t('UF fora do projeto (CE) bloqueada', :T, ins('agente','CE','Gil Agente Ceará','04253865058','ag3@t.com'), 'equipe_uf_check');
+select t('T cadastra agente PI', :T, ins('agente','PI','Eva Agente Rocha','60712305513','ag1@t.com'), 'ok');
+select f(:T, ins('agente','PI','Eva Agente Rocha','60712305513','ag1@t.com'));
+select t('T cadastra 2a agente PI (sem limite)', :T, ins('agente','PI','Fia Agente Costa','23156209023','ag2@t.com'), 'ok');
+select f(:T, ins('agente','PI','Fia Agente Costa','23156209023','ag2@t.com'));
+select t('agente sem UF bloqueada', :T, ins('agente','','Gil Agente Sem','04286505898','ag3@t.com'), 'uf_por_papel');
+select t('UF fora do projeto (CE) bloqueada', :T, ins('agente','CE','Gil Agente Ceará','04286505898','ag3@t.com'), 'equipe_uf_check');
 select t('CPF repetido bloqueado', :T, ins('agente','PI','Outra Pessoa Igual','15350946056','x1@t.com'), 'já ocupa outra vaga ativa');
-select t('e-mail repetido (maiúsculas) bloqueado', :T, ins('agente','PI','Outra Pessoa Igual','04253865058','ART.PI@T.COM'), 'e-mail já está em uso');
-select t('e-mail inválido bloqueado', :T, ins('agente','PI','Outra Pessoa Igual','04253865058','semarroba.com'), 'E-mail inválido');
-select t('nome curto bloqueado', :T, ins('agente','PI','Ana','04253865058','n@t.com'), 'equipe_nome_check');
-select t('sem LGPD bloqueado', :T, replace(ins('agente','PI','Hana Sem Lgpd','04253865058','l@t.com'), 'current_date, true', 'current_date, false'), 'consentimento');
-select t('SIAPE com 4 números bloqueado', :T, ins('agente','PI','Iara Siape Curto','04253865058','s@t.com','siape=''1234'''), 'siape_ok');
-select t('meta acima de 40 bloqueada', :T, ins('apoio','BA','Jana Meta Alta','04253865058','m@t.com','meta_quintais=41'), 'meta_quintais');
-select t('T não cadastra professor_fic', :T, ins('professor_fic','','Prof Tentativa Silva','04253865058','p@t.com'), 'row-level security');
-select t('T não cadastra auxiliar', :T, ins('auxiliar_adm','','Aux Tentativa Silva','04253865058','x@t.com'), 'row-level security');
-select t('T não cadastra outra coord_tecnico', :T, ins('coord_tecnico','','Coord Tentativa Silva','04253865058','c@t.com'), 'row-level security');
-select t('T não cadastra coord_geral', :T, ins('coord_geral','','Geral Tentativa Silva','04253865058','g@t.com'), 'row-level security');
+select t('e-mail repetido (maiúsculas) bloqueado', :T, ins('agente','PI','Outra Pessoa Igual','04286505898','ART.PI@T.COM'), 'e-mail já está em uso');
+select t('e-mail inválido bloqueado', :T, ins('agente','PI','Outra Pessoa Igual','04286505898','semarroba.com'), 'E-mail inválido');
+select t('nome curto bloqueado', :T, ins('agente','PI','Ana','04286505898','n@t.com'), 'equipe_nome_check');
+select t('sem LGPD bloqueado', :T, replace(ins('agente','PI','Hana Sem Lgpd','04286505898','l@t.com'), 'current_date, true', 'current_date, false'), 'consentimento');
+select t('SIAPE com 4 números bloqueado', :T, ins('agente','PI','Iara Siape Curto','04286505898','s@t.com','siape=''1234'''), 'siape_ok');
+select t('meta acima de 40 bloqueada', :T, ins('apoio','BA','Jana Meta Alta','04286505898','m@t.com','meta_quintais=41'), 'meta_quintais');
+select t('T não cadastra professor_fic', :T, ins('professor_fic','','Prof Tentativa Silva','04286505898','p@t.com'), 'row-level security');
+select t('T não cadastra auxiliar', :T, ins('auxiliar_adm','','Aux Tentativa Silva','04286505898','x@t.com'), 'row-level security');
+select t('T não cadastra outra coord_tecnico', :T, ins('coord_tecnico','','Coord Tentativa Silva','04286505898','c@t.com'), 'row-level security');
+select t('T não cadastra coord_geral', :T, ins('coord_geral','','Geral Tentativa Silva','04286505898','g@t.com'), 'row-level security');
 
 -- ===== 3. Coordenação geral: professor e auxiliar
-select t('G cadastra professor_fic', :G, ins('professor_fic','','Paulo Professor Dias','04253865058','prof1@t.com'), 'ok');
-select f(:G, ins('professor_fic','','Paulo Professor Dias','04253865058','prof1@t.com'));
+select t('G cadastra professor_fic', :G, ins('professor_fic','','Paulo Professor Dias','04286505898','prof1@t.com'), 'ok');
+select f(:G, ins('professor_fic','','Paulo Professor Dias','04286505898','prof1@t.com'));
 select t('G cadastra 2o professor', :G, ins('professor_fic','','Pedro Professor Reis','34608514300','prof2@t.com'), 'ok');
 select t('professor com UF bloqueado', :G, ins('professor_fic','RN','Pedro Professor Reis','34608514300','prof2@t.com'), 'equipe_uf_check');
-select t('G cadastra auxiliar', :G, ins('auxiliar_adm','','Rita Auxiliar Melo','20578318044','aux@t.com'), 'ok');
-select f(:G, ins('auxiliar_adm','','Rita Auxiliar Melo','20578318044','aux@t.com'));
+select t('G cadastra auxiliar', :G, ins('auxiliar_adm','','Rita Auxiliar Melo','20531804470','aux@t.com'), 'ok');
+select f(:G, ins('auxiliar_adm','','Rita Auxiliar Melo','20531804470','aux@t.com'));
 select t('G: segundo auxiliar bloqueado', :G, ins('auxiliar_adm','','Rui Auxiliar Dois','34608514300','aux2@t.com'), 'equipe_um_auxiliar');
 select t('G cadastra articulacao AL', :G, ins('articulacao','AL','Sara Alagoas Pinto','34608514300','art.al@t.com'), 'ok');
 select t('G não cadastra outra coord_geral', :G, ins('coord_geral','','Geral Dois Silva','34608514300','g2@t.com'), 'row-level security');
@@ -153,20 +160,23 @@ select t('agente não gera link', :A, $$select public.criar_convite('agente','PI
 -- cria links reais
 create temp table lk(k text, token text); grant all on lk to authenticated, anon;
 select f(:T, $$insert into lk select 'ag', public.criar_convite('agente','PI')$$);
+-- (47: o mesmo link pedido de novo em menos de 2 minutos devolve o que já existe; para ter dois links da mesma vaga, o primeiro fica "antigo")
+update public.convites set criado_em = now() - interval '3 minutes' where token = (select token from lk where k='ag');
 select f(:T, $$insert into lk select 'ag2', public.criar_convite('agente','PI')$$);
 select f(:T, $$insert into lk select 'apBA', public.criar_convite('apoio','BA')$$);
+update public.convites set criado_em = now() - interval '3 minutes' where token = (select token from lk where k='apBA');
 select f(:T, $$insert into lk select 'apBA2', public.criar_convite('apoio','BA')$$);
 select f(:G, $$insert into lk select 'prof', public.criar_convite('professor_fic')$$);
 select f(:G, $$insert into lk select 'venc', public.criar_convite('agente','SE')$$);
 update public.convites set expira_em = now() - interval '1 minute' where token = (select token from lk where k='venc');
 create or replace function envia(k text, dados text) returns text language sql as $$
   select format('select public.enviar_pre_cadastro((select token from lk where k=%L), %L::jsonb)', k, dados) $$;
-\set D '{"nome":"Luzia Rural Silva","cpf":"476.024.360-00","email":" Luzia@Gmail.com ","telefone":"(89) 99911-2233","consentimento_lgpd":true,"cadastro_arlo":false,"data_nascimento":"1985-03-10","endereco":{"cidade":"Picos","uf":"PI"},"perfil":{"agricultora":true,"atua_mulheres":true,"mora_rural":true,"internet":true,"outra_bolsa":false,"experiencia":"mais5"}}'
+\set D '{"nome":"Luzia Rural Silva","cpf":"476.436.000-40","email":" Luzia@Gmail.com ","telefone":"(89) 99911-2233","consentimento_lgpd":true,"cadastro_arlo":false,"data_nascimento":"1985-03-10","endereco":{"cidade":"Picos","uf":"PI"},"perfil":{"agricultora":true,"atua_mulheres":true,"mora_rural":true,"internet":true,"outra_bolsa":false,"experiencia":"mais5"}}'
 select t('link: anônima vê o convite', null, $$select public.ver_convite((select token from lk where k='ag'))$$, 'ok');
 select t('link: sem LGPD bloqueado', null, envia('ag', replace(:'D', '"consentimento_lgpd":true', '"consentimento_lgpd":false')), 'aceitar o uso');
 select t('link: sem nascimento (sem Arlo) bloqueado', null, envia('ag', replace(:'D', '"data_nascimento":"1985-03-10",', '')), 'nascimento');
 select t('link: com Arlo não exige nascimento', null, envia('ag', replace(replace(:'D', '"data_nascimento":"1985-03-10",', ''), '"cadastro_arlo":false', '"cadastro_arlo":true')), 'ok');
-select t('link: CPF de pessoa ativa bloqueado', null, envia('ag', replace(:'D', '476.024.360-00', '15350946056')), 'Já existe pessoa ativa');
+select t('link: CPF de pessoa ativa bloqueado', null, envia('ag', replace(:'D', '476.436.000-40', '15350946056')), 'Já existe pessoa ativa');
 select t('link: e-mail de pessoa ativa bloqueado', null, envia('ag', replace(:'D', ' Luzia@Gmail.com ', 'AG1@t.com')), 'Já existe pessoa ativa');
 select t('link: vencido bloqueado', null, envia('venc', :'D'), 'não vale mais');
 select t('link: token inventado bloqueado', null, 'select public.enviar_pre_cadastro(''abc'', ''{}''::jsonb)', 'não vale mais');
@@ -176,20 +186,21 @@ select t('link: mesmo link 2a vez bloqueado', null, envia('ag', :'D'), 'não val
 select t('link: e-mail guardado em minúsculas sem espaço', :T, $q$do $x$ begin if (select email from public.pre_cadastros where nome='Luzia Rural Silva') <> 'luzia@gmail.com' then raise exception 'email=%', (select email from public.pre_cadastros where nome='Luzia Rural Silva'); end if; end $x$ $q$, 'ok');
 select t('link: perfil no campo guardado', :T, $q$do $x$ begin if (select perfil->>'experiencia' from public.pre_cadastros where nome='Luzia Rural Silva') is distinct from 'mais5' then raise exception 'perfil perdido'; end if; end $x$ $q$, 'ok');
 select t('link: mesma pessoa por outro link (duplicado pendente)', null, envia('ag2', :'D'), 'Já');
-select t('link: anônima não lê pré-cadastros', null, $q$do $x$ begin if exists(select 1 from public.pre_cadastros) then raise exception 'LEU'; end if; end $x$ $q$, 'permission denied');
+-- (aceita os dois comportamentos: "permission denied" ou nenhuma linha visível pela segurança por linha)
+select t('link: anônima não lê pré-cadastros', null, $q$do $x$ begin if exists(select 1 from public.pre_cadastros) then raise exception 'LEU'; end if; raise exception 'permission denied (nenhuma linha visível)'; end $x$ $q$, 'permission denied');
 select t('bolsista não lê pré-cadastros', :B, $q$do $x$ begin if exists(select 1 from public.pre_cadastros) then raise exception 'LEU'; end if; end $x$ $q$, 'ok');
 select t('auxiliar não lê pré-cadastros', :X, $q$do $x$ begin if exists(select 1 from public.pre_cadastros) then raise exception 'LEU'; end if; end $x$ $q$, 'ok');
 -- professor pelo link
-select t('link professor: envio válido', null, envia('prof', replace(replace(replace(:'D','Luzia Rural Silva','Otávio Professor Luz'),'476.024.360-00','12345678909'),'Luzia@Gmail.com','otavio@t.com')), 'ok');
+select t('link professor: envio válido', null, envia('prof', replace(replace(replace(:'D','Luzia Rural Silva','Otávio Professor Luz'),'476.436.000-40','12345678909'),'Luzia@Gmail.com','otavio@t.com')), 'ok');
 select t('T não vê pré-cadastro de professor', :T, $q$do $x$ begin if exists(select 1 from public.pre_cadastros where papel='professor_fic') then raise exception 'VIU'; end if; end $x$ $q$, 'ok');
 -- aprovação
 select t('T aprova: cria na equipe', :T, $$insert into public.equipe(papel, uf, nome, cpf, email, telefone, data_inicio, consentimento_lgpd) select papel, uf, nome, cpf, email, telefone, current_date, true from public.pre_cadastros where nome='Luzia Rural Silva'$$, 'ok');
 select f(:T, $$insert into public.equipe(papel, uf, nome, cpf, email, telefone, data_inicio, consentimento_lgpd) select papel, uf, nome, cpf, email, telefone, current_date, true from public.pre_cadastros where nome='Luzia Rural Silva'$$);
-select t('T marca pré-cadastro aprovado', :T, $$update public.pre_cadastros set situacao='aprovado', equipe_id=(select id from public.equipe where cpf='47602436000') where nome='Luzia Rural Silva'$$, 'ok');
-select t('T salva perfil da aprovada (equipe_privado)', :T, $$insert into public.equipe_privado(equipe_id, perfil) select id, '{"agricultora":true}' from public.equipe where cpf='47602436000'$$, 'ok');
+select t('T marca pré-cadastro aprovado', :T, $$update public.pre_cadastros set situacao='aprovado', equipe_id=(select id from public.equipe where cpf='47643600040') where nome='Luzia Rural Silva'$$, 'ok');
+select t('T salva perfil da aprovada (equipe_privado)', :T, $$insert into public.equipe_privado(equipe_id, perfil) select id, '{"agricultora":true}' from public.equipe where cpf='47643600040'$$, 'ok');
 -- duas pessoas pela mesma vaga de apoio BA
-select f(null, envia('apBA', replace(replace(replace(:'D','Luzia Rural Silva','Maria Um Bahia'),'476.024.360-00','39053344705'),' Luzia@Gmail.com ','m1@t.com')));
-select f(null, envia('apBA2', replace(replace(replace(:'D','Luzia Rural Silva','Maria Dois Bahia'),'476.024.360-00','71428793860'),' Luzia@Gmail.com ','m2@t.com')));
+select f(null, envia('apBA', replace(replace(replace(:'D','Luzia Rural Silva','Maria Um Bahia'),'476.436.000-40','39053344705'),' Luzia@Gmail.com ','m1@t.com')));
+select f(null, envia('apBA2', replace(replace(replace(:'D','Luzia Rural Silva','Maria Dois Bahia'),'476.436.000-40','71428793860'),' Luzia@Gmail.com ','m2@t.com')));
 
 -- ===== 9. Desligar e substituir
 select t('T desliga sem motivo bloqueado', :T, $$update public.equipe set status='desligada', data_fim=current_date where email='art.pi@t.com'$$, 'informe a data e o motivo do desligamento');

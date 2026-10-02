@@ -1,4 +1,4 @@
-/* 02/10/2026 (etapa 47): o termo de compromisso é anexado pela própria pessoa; a data só entra com o termo anexado;
+/* 02/10/2026 (etapa 48): o termo de compromisso é anexado pela própria pessoa; a data só entra com o termo anexado;
    tela de entrada com uma ajuda só; pergunta do Arlo com explicação; coordenação técnica sem auxiliar e professores na aba Equipe. */
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
