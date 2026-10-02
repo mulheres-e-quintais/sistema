@@ -419,9 +419,9 @@ select t('J. orientação de venda repetida em menos de 2 minutos devolve a mesm
   c := public.registrar_orientacao_venda('f4710000-0000-0000-0000-000000000001', '{"sobra": ["Ovos"], "caf": "sim"}');
   perform b47_como(null); select count(*) into n from public.orientacoes_venda where ficha_id = 'f4710000-0000-0000-0000-000000000001';
   if a <> b or a = c or n <> 2 then raise exception 'orientações: %', n; end if; end $x$$q$, 'ok');
-select t('J. link de cadastro pedido de novo em menos de 2 minutos devolve o mesmo link; usado ou cancelado, gera outro', :T, $q$do $x$ declare a text; b text; c text; d text; begin
+select t('J. link de agente (várias vagas): dois pedidos seguidos são dois links; cancelado, gera outro', :T, $q$do $x$ declare a text; b text; c text; d text; begin
   a := public.criar_convite('agente', 'ba'); b := public.criar_convite('agente', 'BA'); c := public.criar_convite('agente', 'PE');
-  if a <> b or a = c then raise exception 'links: % % %', a, b, c; end if;
+  if a = b or a = c then raise exception 'links: % % %', a, b, c; end if;
   update public.convites set cancelado_em = now() where token = a;
   d := public.criar_convite('agente', 'BA'); if d = a then raise exception 'devolveu link cancelado'; end if; end $x$$q$, 'ok');
 select t('J. documento anexado duas vezes em menos de 2 minutos fica um só; título diferente é outro documento', :G, $q$do $x$ declare n int; begin

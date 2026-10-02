@@ -1052,13 +1052,15 @@ begin
   if p_papel = 'auxiliar_adm' and exists (select 1 from public.equipe where papel = 'auxiliar_adm' and status = 'ativa') then
     raise exception 'Já há auxiliar administrativo ativo. Desligue antes de convidar outro.';
   end if;
-  -- 47: repetição depois de uma falha de rede: o mesmo link (mesma função, estado e vaga), da mesma pessoa, há menos de 2 minutos,
+  -- 47: repetição depois de uma falha de rede: o mesmo link (mesma função, estado e vaga), da mesma pessoa, há menos de 20 segundos,
   --     devolve o link que já foi criado (se ainda não foi usado nem cancelado)
   perform public.trava_aviso('convite_' || coalesce(public.meu_id()::text, ''));
   select c.token into t from public.convites c
    where c.criado_por = public.meu_id() and c.papel = p_papel and c.substitui_id is not distinct from p_substitui
      and c.uf is not distinct from (case when p_papel in ('coord_tecnico','professor_fic','auxiliar_adm') then null else upper(p_uf) end)::char(2)
-     and c.usado_em is null and c.cancelado_em is null and c.expira_em > now() and c.criado_em > now() - interval '2 minutes'
+     and c.usado_em is null and c.cancelado_em is null and c.expira_em > now() and c.criado_em > now() - interval '20 seconds'
+     -- só nas funções de vaga única (ou substituição): para agente e professor há mais de uma vaga, e dois links seguidos são dois convites
+     and (p_papel in ('coord_tecnico', 'articulacao', 'apoio', 'auxiliar_adm') or p_substitui is not null)
    order by c.criado_em desc limit 1;
   if t is not null then return t; end if;
   t := replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');   -- sem pgcrypto (no Supabase ela fica em outro schema)
@@ -1210,7 +1212,10 @@ begin
     select a.municipio into v_ja from public.apl_municipios a
      where a.uf = new.uf and a.municipio <> new.municipio and public.sem_acento(a.municipio) = public.sem_acento(new.municipio) limit 1;
     if v_ja is not null then
-      if tg_op = 'INSERT' then new.municipio := v_ja;
+      if tg_op = 'INSERT' then
+        -- só leva para a grafia que já existe quando ESTA grafia ainda não está na lista (duplicado antigo, "São Gabriel" e
+        -- "Sao Gabriel": cada linha continua sendo editada por ela mesma)
+        if not exists (select 1 from public.apl_municipios a where a.uf = new.uf and a.municipio = new.municipio) then new.municipio := v_ja; end if;
       else raise exception 'Este município já está na lista de APL do estado (%). Altere o registro que já existe.', v_ja; end if;
     elsif public.sem_acento(new.municipio) !~ '[a-z].*[a-z]'
           and not (tg_op = 'INSERT' and exists (select 1 from public.apl_municipios a where a.uf = new.uf and a.municipio = new.municipio)) then
@@ -1545,7 +1550,9 @@ do $$ declare f record; begin
   end loop;
 end $$;
 
--- O que for criado daqui para a frente já nasce fechado para anon e authenticated (cada script concede o que precisa).
+-- Tabelas e numerações criadas daqui para a frente já nascem fechadas para anon e authenticated (cada script concede o que
+-- precisa). FUNÇÕES NÃO: toda função nova continua nascendo executável por "public" (padrão do Postgres), então todo script
+-- novo tem de fazer `revoke all on function ... from public, anon` e conceder só a quem precisa, como os scripts 20 a 48 fazem.
 -- Vale para o que o dono do banco criar; se este usuário não puder mudar o padrão, segue sem erro.
 do $$
 declare alvo text; obj text;
