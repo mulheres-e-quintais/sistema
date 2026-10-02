@@ -4261,10 +4261,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
             : v.etapa === 'diagnostico' ? (temDg ? b('campo-diag-ver', 'Ver diagnóstico') : podeMudar ? b('campo-diag-novo', 'Registrar diagnóstico', true) : '')
             : feita ? (v.relato ? `<span class="small muted" title="${E(v.relato)}">${E(String(v.relato).slice(0, 60))}${String(v.relato).length > 60 ? '…' : ''}</span>` : '')
             : podeMudar ? botaoFeita(v) : '';
-          return `<tr><td class="num">${R.fmtData(v.data_realizada || v.data_prevista)}</td>${uf ? '' : `<td>${E(v.uf)}</td>`}<td>${E(f.nome || '—')}<br><span class="small muted">${E(f.municipio || '')}</span></td>
-            <td>${E(MQ.ETAPAS[v.etapa].nome)}</td><td>${E(q.nome || '—')}<br><span class="small muted">${E((MQ.PAPEIS[q.papel] || {}).curto || '')}</span></td>
-            <td>${feita ? '<span class="chip ok">Feita</span>' : v._fila ? '<span class="chip pend">No aparelho</span>' : v.data_prevista < R.hoje() ? '<span class="chip crit">Atrasada</span>' : '<span class="chip pend">Prevista</span>'}</td>
-            <td><div class="rot-acoes">${acoes}${podeMudar && v.situacao === 'prevista' && !v._fila ? `<button class="link small" data-acao="campo-visita-editar" data-id="${E(v.id)}">Mudar data ou pessoa</button>` : ''}</div></td></tr>`; }).join('')}
+          return `<tr><td class="num rt-data">${R.fmtData(v.data_realizada || v.data_prevista)}</td>${uf ? '' : `<td class="rt-uf">${E(v.uf)}</td>`}<td class="rt-mulher">${E(f.nome || '—')}<br><span class="small muted">${E(f.municipio || '')}${uf ? '' : `<span class="rt-ufm"> · ${E(v.uf)}</span>`}</span></td>
+            <td class="rt-etapa">${E(MQ.ETAPAS[v.etapa].nome)}</td><td class="rt-quem">${E(q.nome || '—')}<br><span class="small muted">${E((MQ.PAPEIS[q.papel] || {}).curto || '')}</span></td>
+            <td class="rt-sit">${feita ? '<span class="chip ok">Feita</span>' : v._fila ? '<span class="chip pend">No aparelho</span>' : v.data_prevista < R.hoje() ? '<span class="chip crit">Atrasada</span>' : '<span class="chip pend">Prevista</span>'}</td>
+            <td class="rt-acao"><div class="rot-acoes">${acoes}${podeMudar && v.situacao === 'prevista' && !v._fila ? `<button class="link small" data-acao="campo-visita-editar" data-id="${E(v.id)}">Mudar data ou pessoa</button>` : ''}</div></td></tr>`; }).join('')}
         </tbody></table></div>
         <div class="dias-pessoa">${Object.entries(porPessoa).map(([id, c]) => `<span><b>${E(primeiroNome((pessoa(id) || {}).nome))}</b> ${c.feitas + c.prev} dia${c.feitas + c.prev > 1 ? 's' : ''} <span class="muted">(${c.feitas} feita${c.feitas === 1 ? '' : 's'})</span></span>`).join('')}</div>`
         : '<p class="muted">Nenhuma visita neste mês.</p>'}
