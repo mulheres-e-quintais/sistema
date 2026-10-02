@@ -591,6 +591,16 @@
       if (error) throw erro(error);
       return path;
     },
+    /* 48: a própria pessoa anexa o termo (pasta com o id dela) e o banco grava só o arquivo; a data é de quem confere */
+    async enviarMeuTermo(id, arquivo) {
+      const ext = (arquivo.name.split('.').pop() || 'pdf').toLowerCase();
+      const path = 'equipe/' + id + '/termo_' + Date.now() + '.' + ext;
+      const { error: e1 } = await sb.storage.from('termos').upload(path, arquivo, { upsert: false });
+      if (e1) throw erro(/row-level security|policy|permission|not authorized|unauthorized/i.test(e1.message || '') ? 'O envio do termo pela própria pessoa ainda não foi instalado no servidor: rode o arquivo 48_termo_pela_pessoa.sql no Supabase.' : e1);
+      const { error } = await sb.rpc('enviar_meu_termo', { p_path: path });
+      if (error) throw erro(/enviar_meu_termo/.test(error.message || '') && /not find|does not exist|schema cache/i.test(error.message || '') ? 'O envio do termo pela própria pessoa ainda não foi instalado no servidor: rode o arquivo 48_termo_pela_pessoa.sql no Supabase.' : error);
+      return path;
+    },
     async linkTermo(path) {
       const { data, error } = await sb.storage.from('termos').createSignedUrl(path, 300);
       if (error) throw erro(error);

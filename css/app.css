@@ -2379,7 +2379,7 @@ p.carregando:has(.carregando-t) { flex-direction: column; gap: 12px; }
 
 /* --- MAPA DA TELA DE ENTRADA: institucional, tons suaves, Apodi como foco (02/10/2026) ---
    Só apresentação: mesmos estados, municípios, pontos e números. Hierarquia: Apodi > estados > municípios > rotas. */
-.ent-hero .vit-mapa.vit-info { background: transparent; border-color: transparent; box-shadow: none; }
+/* (02/10/2026) a moldura ao redor do mapa da entrada volta: fundo claro e borda, como antes do v179 */
 .ent-hero .mapa-info {
   --uf-RN: color-mix(in srgb, #A44934 34%, #FAF7F1); --uf-PI: color-mix(in srgb, #2E7D43 26%, #FAF7F1); --uf-BA: color-mix(in srgb, #885B44 24%, #FAF7F1);
   --uf-PE: color-mix(in srgb, #C29A2E 30%, #FAF7F1); --uf-AL: color-mix(in srgb, #A44934 17%, #FAF7F1); --uf-SE: color-mix(in srgb, #5C7A3A 30%, #FAF7F1); }
@@ -2502,3 +2502,24 @@ p.carregando:has(.carregando-t) { flex-direction: column; gap: 12px; }
   .dx-duas .dx-meta .dx-meta-mais { padding-left: 54px; }
   .dx-agua .agua-sit { grid-template-columns: 1fr 1fr; }
 }
+/* --- 47. habilitação: data, "Hoje" e "Limpar" juntos na mesma linha; termo anexado pela própria pessoa; explicação que abre com um toque --- */
+.hab .data-hoje { flex-wrap: nowrap; }
+.hab .data-hoje input { flex: 0 1 220px; }
+.data-btns { display: inline-flex; gap: 8px; flex: none; }
+@media (max-width: 420px) { .hab .data-hoje { flex-wrap: wrap; } .hab .data-hoje input { flex: 1 1 100%; } }
+fieldset.hab-termo { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 14px; margin-bottom: 4px; display: grid; gap: 12px; min-width: 0; }
+fieldset.hab-termo > legend { padding: 0 6px; margin: 0; }
+.termo-arq { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); overflow-wrap: anywhere; }
+.rot-com-link { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
+.rot-com-link > label { font-size: var(--t-sm); font-weight: 500; color: var(--ink-2); }
+.termo-passos { margin: 0; }
+.termo-acoes { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+details.explica { font-size: var(--t-sm); min-width: 0; }
+details.explica > summary { list-style: none; cursor: pointer; width: fit-content; max-width: 100%; min-height: 32px; display: inline-flex; align-items: center; gap: 6px; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+details.explica > summary::-webkit-details-marker { display: none; }
+details.explica > summary::before { content: "+"; flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; border: 1px solid currentColor; border-radius: 50%; font-weight: 700; line-height: 1; text-decoration: none; }
+details.explica[open] > summary::before { content: "–"; }
+details.explica[open] > summary { margin-bottom: 6px; }
+details.explica > p { margin: 0 0 6px; color: var(--ink-2); line-height: 1.45; }
+details.explica > p:last-child { margin-bottom: 0; }
+@media (max-width: 420px) { details.explica > summary { min-height: 44px; } }

@@ -265,7 +265,7 @@
     irParaAba: x => irParaAba(x), avisarVersaoNova: () => avisarVersaoNova(), declarados: (f, r) => declarados(f, r),
     vista: () => vistaDoPainel(), marcaAberta: (t, id) => marcaAberta(t, id), reabrirComConflito: m => reabrirComConflito(m),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), sincronizar: a => sincronizar(a),
-    porId: id => porId(id), avatar: (m, t) => avatar(m, t), passos: m => passos(m), dadosDL: m => dadosDL(m), botaoFoto: m => botaoFoto(m), cartaoPessoa: m => cartaoPessoa(m),
+    recarregar: () => recarregar(), porId: id => porId(id), avatar: (m, t) => avatar(m, t), passos: m => passos(m), dadosDL: m => dadosDL(m), botaoFoto: m => botaoFoto(m), cartaoPessoa: m => cartaoPessoa(m),
     atualizar: f => atualizarEmSegundoPlano(f), aparelho: () => aparelho(), ipCurto: ip => ipCurto(ip), sair: a => sairDoSistema(a) };
 
   /* ---------- consultas ---------- */
@@ -346,7 +346,7 @@
       else if (S.eu.papel === 'auxiliar_adm') h += telaAuxiliar();
       else h += telaBolsista();
     }
-    app.innerHTML = h + rodape() + (S.eu && MQ.roteiroUI ? MQ.roteiroUI.barra() : '');
+    app.innerHTML = h + rodape(telaEntrada || !S.eu) + (S.eu && MQ.roteiroUI ? MQ.roteiroUI.barra() : '');
     app.querySelectorAll('.atalhos [data-alvo]').forEach(b => { b.hidden = !document.querySelector(b.dataset.alvo); });
     if (S.eu && MQ.roteiroUI) MQ.roteiroUI.verificarLink();
     // desenho em segundo plano: o painel aberto fica como está (o que a pessoa digitou, a foto e o cursor continuam lá)
@@ -373,11 +373,11 @@
   }
 
   /* rodapé de todas as páginas */
-  function rodape() {
+  function rodape(semAjuda) {
     return `<footer class="rodape"><div class="rodape-in">
       <div class="rodape-marca"><img src="assets/isotipo.svg" alt="" width="26" height="37"><span><b>Mulheres &amp; Quintais</b><small>Quintais Produtivos para Mulheres Rurais</small></span></div>
       <p class="rodape-org">IFRN Campus Apodi · MPA · FUNCERN<br><span>Processo ${esc(MQ.PROJETO.processo)}</span></p>
-      <div class="rodape-lgpd"><button type="button" class="rodape-ajuda" data-acao="ajuda"><span class="rodape-ajuda-ic" aria-hidden="true">?</span>Ajuda desta página</button>
+      <div class="rodape-lgpd">${semAjuda ? '' : '<button type="button" class="rodape-ajuda" data-acao="ajuda"><span class="rodape-ajuda-ic" aria-hidden="true">?</span>Ajuda desta página</button>'}
         <p>Dados protegidos pela LGPD (Lei nº 13.709/2018), usados só para o projeto.</p></div>
     </div></footer>`;
   }
@@ -452,7 +452,7 @@
       : 'Cadastre as bolsistas indicadas pelo MPA: uma de articulação estadual e uma de apoio estadual por estado.';
     let corpo = '';
     if (aba === 'visao') corpo = MQ.painelUI ? MQ.painelUI.visaoGeral(S) : '';
-    else if (aba === 'equipe') corpo = (!R.temProfessorHabilitado(S.equipe) ? `<div class="aviso erro" role="status"><b>Cadastre e habilite primeiro um professor do FIC.</b> Sem professor com cadastro no Arlo e termo assinado, o sistema não cadastra coordenação técnica, bolsistas nem agentes de campo (a matrícula no curso depende dele).</div>` : '') + secaoPedidosAcesso() + (MQ.convitesUI ? MQ.convitesUI.secaoPendentes() : '') + `
+    else if (aba === 'equipe') corpo = (!R.temProfessorHabilitado(S.equipe) ? `<div class="aviso erro" role="status"><b>${souGeral ? 'Cadastre e habilite primeiro um professor do FIC.' : 'Ainda não há professor do FIC habilitado.'}</b> Sem professor com cadastro no Arlo e termo assinado, o sistema não cadastra coordenação técnica, bolsistas nem agentes de campo (a matrícula no curso depende dele).${souGeral ? '' : ' Quem cadastra e habilita o professor é a coordenação geral.'}</div>` : '') + secaoPedidosAcesso() + (MQ.convitesUI ? MQ.convitesUI.secaoPendentes() : '') + `
       <div class="cab eq-cab"><div><span class="eyebrow">Equipe do projeto</span><h1>Coordenação e bolsistas</h1><p class="eq-intro">${intro}</p>${prazoChip()}</div></div>
       <div class="eq-kpis" aria-label="Resumo da equipe">
         ${kpiEq(ct ? 1 : 0, 1, 'coordenação técnica cadastrada')}
@@ -464,8 +464,8 @@
         <div class="secao-cab"><div><h2 id="t-ct">Coordenação técnica</h2><p>Uma para os 5 estados · indicada pelo MPA · cadastrada pela coordenação geral</p></div></div>
         ${ct ? cartaoPessoa(ct) : vagaCoordTecnica(souGeral)}
       </section>
-      ${secaoAuxiliares(souGeral)}
-      ${MQ.ficUI && !S.ficSemBanco ? MQ.ficUI.secaoEquipe() : ''}
+      ${souGeral ? secaoAuxiliares(souGeral) : ''}
+      ${souGeral && MQ.ficUI && !S.ficSemBanco ? MQ.ficUI.secaoEquipe() : ''}
       <section class="secao" aria-labelledby="t-b">
         <div class="secao-cab"><div><h2 id="t-b">Bolsistas por estado</h2><p>1 de articulação e 1 de apoio por estado · cadastradas pela coordenação técnica · meta de 40 quintais por estado</p></div></div>
         ${quadroTabela()}${quadroCartoes()}
@@ -777,6 +777,7 @@
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo"><div class="bloco"><div class="cab-av">${avatar(m, 96)}<div style="display:grid;gap:6px"><h3>${esc(nomeDe(m))}</h3>${botaoFoto(m)}</div></div>${dadosDL(m)}
         ${NOTA_DADOS[m.papel] ? `<p class="small muted">Algum dado errado? Fale com ${NOTA_DADOS[m.papel]}, que corrige o cadastro.</p>` : ''}</div>
+        ${m.papel !== 'coord_geral' && MQ.pendUI ? MQ.pendUI.secaoTermo() : ''}
         ${m.papel !== 'coord_geral' && !m.cadastro_arlo && MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
         <details class="hist trocar-senha"><summary>Trocar minha senha</summary>
           <form class="f" data-form="trocar-senha" novalidate>
@@ -1332,7 +1333,7 @@
 
   function passos(m) {
     return `<ol class="passos">${R.passosHabilitacao(m).map((p, i) => `<li class="${p.feito ? 'feito' : ''}"><span class="mk" aria-hidden="true">${p.feito ? '✓' : i + 1}</span>
-      <span><span>${esc(p.nome)}</span><br><span class="q">${p.feito ? 'Feito em ' + R.fmtData(p.quando) + (p.extra ? ' · ' + esc(String(p.extra).split('/').pop()) : '') : 'Pendente'}</span></span></li>`).join('')}</ol>`;
+      <span><span>${esc(p.nome)}</span><br><span class="q">${p.feito ? 'Feito em ' + R.fmtData(p.quando) + (p.extra ? ' · ' + esc(String(p.extra).split('/').pop()) : '') : p.enviado ? 'Termo anexado pela pessoa: falta conferir e registrar a data' : 'Pendente'}</span></span></li>`).join('')}</ol>`;
   }
 
   function painelDetalhe(p) {
@@ -1343,11 +1344,16 @@
     const plano = R.ehBolsista(m.papel) ? `<div class="bloco"><h3>Previsão de atividades (plano individual)</h3>
       ${m.meta_diagnosticos != null ? `<dl class="dl"><dt>Diagnósticos</dt><dd class="num">${m.meta_diagnosticos ?? '—'}</dd><dt>Quintais</dt><dd class="num">${m.meta_quintais ?? '—'}</dd><dt>Visitas</dt><dd class="num">${m.meta_visitas ?? '—'}</dd></dl>` : '<p class="muted small">Não preenchido.</p>'}</div>` : '';
     const hoje = R.hoje() > m.data_inicio ? R.hoje() : m.data_inicio;
+    // habilitação pendente vem PRIMEIRO na ficha (era o último bloco: quem habilita não achava); completa, volta para o fim
+    const blocoHab = `<div class="bloco" id="bloco-hab"><h3>Habilitação</h3>${m.papel === 'coord_geral' ? '<p class="small muted">Não se aplica.</p>' : passos(m)}
+          ${editaHab && m.papel !== 'coord_geral' ? formHabilitacao(m) : ''}</div>`;
+    const habPrimeiro = editaHab && m.status === 'ativa' && m.papel !== 'coord_geral' && R.situacao(m).cod !== 'ok';
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(nomeUF(m.uf)) : ''}</span>
         <div class="cab-av">${avatar(m, 96)}<div style="display:grid;gap:4px"><h2 id="painel-t">${esc(nomeDe(m))}</h2><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span></div></div>
         ${botaoFoto(m) ? `<span>${botaoFoto(m)}</span>` : ''}</div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo">
+        ${habPrimeiro ? blocoHab : ''}
         <div class="bloco"><h3>Dados</h3>${dadosDL(m)}
           ${editaDados ? `<div class="acoes"><button class="btn" data-acao="editar" data-id="${m.id}">Editar</button><button class="btn perigo" data-acao="desligar-abrir">Desligar</button></div>` : ''}
           </div>
@@ -1378,8 +1384,7 @@
         ${m.id === S.eu.id && m.papel !== 'coord_geral' && !m.cadastro_arlo && MQ.bancoUI ? MQ.bancoUI.secaoMinha() : ''}
         ${m.id !== S.eu.id && MQ.bancoUI ? MQ.bancoUI.blocoContaArlo(m) : ''}
 
-        <div class="bloco"><h3>Habilitação</h3>${m.papel === 'coord_geral' ? '<p class="small muted">Não se aplica.</p>' : passos(m)}
-          ${editaHab && m.papel !== 'coord_geral' ? formHabilitacao(m) : ''}</div>
+        ${habPrimeiro ? '' : blocoHab}
       </div>`;
   }
 
@@ -1429,11 +1434,21 @@
         <button class="btn" type="button" data-acao="copiar-texto">Copiar</button></div></div>`;
   }
 
+  /* data de um passo da habilitação: campo, "Hoje" e "Limpar" sempre juntos, na mesma linha
+     (passo ainda não feito: a data vem EM BRANCO; nada é gravado sem a pessoa escolher o dia) */
+  function dataPasso(id, k, rot, m, dica) {
+    return `<div class="campo inteiro"><label for="${id}">${rot}</label><div class="data-hoje"><input id="${id}" name="${k}" type="date" min="${R.LIM.equipeMin}" max="${R.hoje()}" value="${esc(m[k] || '')}">
+      <span class="data-btns"><button type="button" class="btn peq" data-acao="data-hoje" data-alvo="${id}" aria-label="${rot}: hoje">Hoje</button>
+      <button type="button" class="btn peq" data-acao="data-limpar" data-alvo="${id}" aria-label="Limpar: ${rot}">Limpar</button></span></div>
+      ${m[k] || !dica ? '' : `<span class="dica">${dica}</span>`}</div>`;
+  }
+
   function formHabilitacao(m) {
     const fic = R.fazFIC(m.papel);
     const lista = fic ? [m.matricula_fic_em, m.docs_funcern_em, m.termo_assinado_em] : [m.docs_funcern_em, m.termo_assinado_em];
     const feitos = lista.filter(Boolean).length, total = lista.length;
     const mt = (S.matriculas || []).find(x => x.equipe_id === m.id); const turma = mt && (S.turmas || []).find(t => t.id === mt.turma_id);
+    const termo = R.termoSituacao(m);
     return `<details class="hab${feitos === total ? ' completa' : ''}" ${feitos === total ? '' : 'open'}><summary class="hab-sum">
         <span class="hab-ic" aria-hidden="true">${feitos === total ? '✓' : feitos + '/' + total}</span>
         <span class="hab-t"><b>${feitos === total ? 'Datas da habilitação' : 'Registrar passos da habilitação'}</b><span class="small muted">${feitos === total ? 'Os ' + total + ' passos estão registrados · abra para ver ou corrigir uma data' : (fic ? 'Cadastro no Arlo e termo assinado (a matrícula no FIC é dos professores do curso)' : 'Cadastro no Arlo e termo assinado')}</span></span>
@@ -1442,14 +1457,17 @@
       <div class="campos">
         ${!fic ? '' : `<div class="campo inteiro"><span class="dica">${turma ? `Matrícula no FIC registrada pelo professor na turma <b>${esc(turma.nome)}</b> (nº ${esc(mt.numero)}, ${R.fmtData(mt.matriculado_em)}).`
           : m.matricula_fic_em ? `Matrícula no FIC registrada em ${R.fmtData(m.matricula_fic_em)} (nº ${esc(m.matricula_fic_numero || '')}), ainda sem turma no sistema.` : '<b>Matrícula no FIC: aguardando.</b>'} A matrícula é registrada só pelos professores do curso, na aba Curso FIC.</span></div>`}
-        ${[['h-fun', 'docs_funcern_em', 'Cadastrado no Arlo (FUNCERN) em'], ['h-ter', 'termo_assinado_em', 'Termo de compromisso assinado em']].map(([id, k, rot]) => {
-          // passo ainda não feito: a data vem EM BRANCO (nada é gravado sem a pessoa escolher o dia); "Hoje" preenche com um toque
-          return `<div class="campo"><label for="${id}">${rot}</label><div class="data-hoje"><input id="${id}" name="${k}" type="date" min="${R.LIM.equipeMin}" max="${R.hoje()}" value="${esc(m[k] || '')}">
-            <button type="button" class="btn peq" data-acao="data-hoje" data-alvo="${id}" aria-label="${rot} hoje">Hoje</button>
-            <button type="button" class="btn peq" data-acao="data-limpar" data-alvo="${id}" aria-label="Limpar: ${rot}">Limpar</button></div>
-            ${m[k] ? '' : '<span class="dica">Ainda não registrado. Se já aconteceu, escolha o dia no calendário ou toque em Hoje. Se não, deixe em branco.</span>'}</div>`; }).join('')}
-        <div class="campo inteiro"><label for="h-arq">Termo assinado (PDF ou foto)</label><input id="h-arq" name="termo" type="file" accept="application/pdf,image/*">
-          <span class="dica">${m.termo_path ? 'Já enviado: ' + esc(String(m.termo_path).split('/').pop()) + '. Enviar outro substitui o link.' : 'Com assinaturas da bolsista, da coordenação técnica e da coordenação geral.'}</span></div>
+        ${dataPasso('h-fun', 'docs_funcern_em', 'Cadastrado no Arlo (FUNCERN) em', m, 'Ainda não registrado. Se já aconteceu, escolha o dia no calendário ou toque em Hoje. Se não, deixe em branco.')}
+        <fieldset class="campo inteiro hab-termo" id="w-termo"><legend>Termo de compromisso</legend>
+          ${termo === 'falta' ? `<div class="aviso" role="status"><b>${esc(nomeDe(m).split(' ')[0])} ainda não anexou o termo.</b> Cada pessoa baixa o modelo, preenche, assina e anexa no próprio cadastro (em Pendências ou em Meus dados). A data só é registrada depois, com o termo aberto e conferido.</div>`
+            : `<div class="termo-arq"><span><b>${termo === 'conferido' ? 'Termo conferido' : 'Termo anexado: falta conferir'}</b><br><span class="small muted">${esc(R.nomeArquivo(m.termo_path))}</span></span>
+                <button type="button" class="btn peq${termo === 'enviado' ? ' pri' : ''}" data-acao="termo-abrir" data-path="${esc(m.termo_path)}">Abrir o termo</button></div><div id="termo-vista" aria-live="polite"></div>`}
+          ${dataPasso('h-ter', 'termo_assinado_em', 'Termo assinado em (a data que está no documento)', m, termo === 'falta' ? 'Fica em branco até o termo estar anexado: data sem anexo não é aceita.' : 'Abra o termo, confira os dados, as assinaturas e a data que está no documento, e preencha aqui.')}
+          <details class="explica"><summary>${m.termo_path ? 'Trocar o arquivo do termo' : 'Recebeu o termo por fora (papel ou WhatsApp)? Anexe aqui'}</summary>
+            <div class="campo"><div class="rot-com-link"><label for="h-arq">Termo preenchido e assinado (PDF ou foto)</label>${MQ.pendUI ? MQ.pendUI.linkModelo(m) : ''}</div>
+              <input id="h-arq" name="termo" type="file" accept="application/pdf,image/*">
+              <span class="dica">${m.termo_path ? 'Já anexado: ' + esc(R.nomeArquivo(m.termo_path)) + '. Enviar outro substitui o anterior (por exemplo, a via com todas as assinaturas).' : 'Até 10 MB. Com as assinaturas legíveis.'}</span></div></details>
+        </fieldset>
         <div class="campo inteiro"><label for="h-obs">Observações</label><textarea id="h-obs" name="obs_habilitacao" maxlength="2000" placeholder="Ex.: falta comprovante de conta; Pix informado em 02/10.">${esc(m.obs_habilitacao || '')}</textarea></div>
       </div>
       <div class="aviso erro" data-erro hidden></div>
@@ -1737,6 +1755,13 @@
           if (m.user_id) { m.user_id = null; toast('Senha antiga apagada. Mande o código novo para ' + nomeDe(m).split(' ')[0] + '.'); }
           abrirPainel(S.painel);
         } catch (e) { el.disabled = false; toast(avisarErro(e)); }
+      }
+      else if (a === 'termo-abrir') {   // quem confere abre o termo anexado (link temporário do servidor)
+        const box = document.getElementById('termo-vista'); if (!box) return;
+        try { const url = await S.api.linkTermo(el.dataset.path);
+          box.innerHTML = url ? `<a class="btn peq pri" href="${esc(url)}" target="_blank" rel="noopener">Abrir ${/\.pdf$/i.test(el.dataset.path) ? 'o PDF' : 'a foto'} em outra janela</a><span class="small muted"> O link vale 5 minutos.</span>`
+            : '<p class="nota">Na demonstração o arquivo não é guardado (só o nome). No sistema de verdade, o termo abre aqui.</p>';
+        } catch (e) { box.innerHTML = `<p class="nota">${esc(e.message)}</p>`; }
       }
       else if (a === 'data-limpar') { const i = document.getElementById(el.dataset.alvo); if (i) { i.value = ''; i.dispatchEvent(new Event('input', { bubbles: true })); i.focus(); } }
       else if (a === 'cad-modo') {
@@ -2042,6 +2067,12 @@
         if (temArq && arq.size > 10 * 1024 * 1024) erros.termo = 'Arquivo acima de 10 MB. Envie um PDF menor ou uma foto.';
         // PDF ou foto de verdade: confere a extensão e o começo do arquivo (programa ou página renomeada para .pdf não passa)
         else if (temArq && MQ.arquivoConfere) { const falso = await MQ.arquivoConfere(arq, ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'], { rotulo: 'PDF ou foto (JPG, PNG)' }); if (falso) erros.termo = falso; }
+        // 48: a data do termo só é salva com o termo anexado (pela pessoa, antes, ou por quem confere, agora)
+        if (!erros.termo && patch.termo_assinado_em && !m.termo_path && !temArq) erros.termo_assinado_em = R.MSG_TERMO_SEM_ARQUIVO;
+        // anexo sem data também não passa: quem anexa confere no documento a data da assinatura e preenche
+        const dataTermo = String(fd.get('termo_assinado_em') || '').trim();
+        if (!erros.termo && !erros.termo_assinado_em && temArq && !dataTermo) erros.termo_assinado_em = R.MSG_TERMO_SEM_DATA;
+        if (erros.termo) { const dt = form.querySelector('details.explica'); if (dt) dt.open = true; }
         if (Object.keys(erros).length) return mostrarErros(form, erros);
         await ocupado(form, async () => {
           if (temArq) patch.termo_path = await S.api.enviarTermo(id, arq);
