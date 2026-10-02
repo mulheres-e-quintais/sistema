@@ -24,7 +24,7 @@
   --campo-borda: #96795F;   /* borda dos campos de formulário: um tom mais escuro que --line-2, para dar 3:1 com o fundo (só em input, select e textarea) */
   --accent: #A44934;
   --accent-ink: #FFFCF8;
-  --focus: #2A6FB5;
+  --focus: #452B1A;   /* foco do teclado: marrom da marca (era azul) */
   --ok: #276B3A; --ok-bg: #DDEBDD;   /* verde #2E7D43 nas barras e pontos; texto um tom abaixo (contraste ≥ 4,5) */   /* era #2F7D32: 4,4 → 4,9 */
   --pend: #8A5A00; --pend-bg: #FBEFD2;
   --off: #6B5C52; --off-bg: #ECE4DA;   /* era #7A6A60: 4,1 → 5,1 */
@@ -52,7 +52,7 @@
     color-scheme: dark;
     --verde: #DAC9B5; --verde-2: #B08A72; --ocre: #D9725A; --sel-bg: #DAC9B5; --sel-ink: #452B1A;
     --bg: #16110E; --surface: #211A16; --surface-2: #2A211C; --ink: #F6EDE4; --ink-2: #D2C1B2; --muted: #A08D7E;
-    --line: #3A2F28; --line-2: #54453B; --campo-borda: #8A7565; --accent: #D9725A; --accent-ink: #1B1411; --focus: #6EA8E8;
+    --line: #3A2F28; --line-2: #54453B; --campo-borda: #8A7565; --accent: #D9725A; --accent-ink: #1B1411; --focus: #F2D9B8;
     --ok: #7CC77F; --ok-bg: #1E3120; --pend: #F0B94A; --pend-bg: #3A2E14; --off: #B3A396; --off-bg: #2E2621;
     --crit: #F08A7C; --crit-bg: #3E211C;
     --vaga-bg: repeating-linear-gradient(135deg, transparent 0 7px, rgba(218, 201, 181, .06) 7px 8px);
@@ -63,7 +63,7 @@
   color-scheme: dark;
   --verde: #DAC9B5; --verde-2: #B08A72; --ocre: #D9725A; --sel-bg: #DAC9B5; --sel-ink: #452B1A;
   --bg: #16110E; --surface: #211A16; --surface-2: #2A211C; --ink: #F6EDE4; --ink-2: #D2C1B2; --muted: #A08D7E;
-  --line: #3A2F28; --line-2: #54453B; --campo-borda: #8A7565; --accent: #D9725A; --accent-ink: #1B1411; --focus: #6EA8E8;
+  --line: #3A2F28; --line-2: #54453B; --campo-borda: #8A7565; --accent: #D9725A; --accent-ink: #1B1411; --focus: #F2D9B8;
   --ok: #7CC77F; --ok-bg: #1E3120; --pend: #F0B94A; --pend-bg: #3A2E14; --off: #B3A396; --off-bg: #2E2621;
   --crit: #F08A7C; --crit-bg: #3E211C;
   --vaga-bg: repeating-linear-gradient(135deg, transparent 0 7px, rgba(218, 201, 181, .06) 7px 8px);
@@ -2523,3 +2523,31 @@ details.explica[open] > summary { margin-bottom: 6px; }
 details.explica > p { margin: 0 0 6px; color: var(--ink-2); line-height: 1.45; }
 details.explica > p:last-child { margin-bottom: 0; }
 @media (max-width: 420px) { details.explica > summary { min-height: 44px; } }
+
+/* --- foco pelo teclado (02/10/2026): contorno na cor da marca, com um respiro, em vez do azul do navegador --- */
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; transition: outline-offset .12s ease; }
+:where(a, summary, button, [tabindex]):focus-visible { border-radius: 6px; }   /* só para quem não tem canto próprio (o :where não ganha de nenhuma regra do componente) */
+.btn:focus-visible, .btn-acao:focus-visible, .btn-add:focus-visible, .btn-voz:focus-visible, .cad-modo:focus-visible, .vagabtn:focus-visible { outline-offset: 3px; box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 16%, transparent); }
+.campo input:focus, .campo select:focus, .campo textarea:focus, .campo input:focus-visible, .campo select:focus-visible, .campo textarea:focus-visible,
+.linha-din input:focus, .linha-din select:focus, .prod-l input:focus { outline: 2px solid var(--focus); outline-offset: 0; border-color: transparent; box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent); }
+/* sobre fundo escuro (barra do topo, rodapé, opção marcada): o contorno é claro */
+header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="true"]:focus-visible, .seg button.ativo:focus-visible { outline-color: #F6EDE4; }
+.seg button:focus-visible { outline-width: 2px; }
+@media (prefers-reduced-motion: reduce) { :focus-visible { transition: none; } }
+
+/* --- detalhe da meta ("Ver detalhes"): nota em destaque, dados em quadrinhos e marcos em linha do tempo (02/10/2026) --- */
+.dx-duas .dx-meta .dx-meta-mais { margin: 2px 10px 14px 70px; padding: 14px 16px; display: grid; gap: 12px; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 12px; background: var(--bg); font-size: var(--t-sm); color: var(--ink-2); }
+.dx-meta-mais p { margin: 0; }
+.dx-meta-mais .mm-nota { font-size: var(--t-md); line-height: 1.45; color: var(--ink); }
+.mm-dados { margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.mm-dados > div { display: grid; gap: 2px; min-width: 120px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.mm-dados dt { font: 600 var(--t-2xs)/1.2 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.mm-dados dd { margin: 0; font-weight: 600; font-size: var(--t-md); color: var(--ink); }
+.mm-marcos { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.mm-marcos .mm-t { font: 600 var(--t-2xs)/1.2 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.mm-marcos ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mm-marcos li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: center; color: var(--ink); }
+.mm-marcos time { display: inline-flex; align-items: baseline; gap: 5px; padding: 4px 10px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line)); color: var(--accent); font-size: var(--t-xs); font-weight: 600; white-space: nowrap; }
+.mm-marcos time b { font: 600 var(--t-md)/1 var(--serif); }
+.mm-marcos li.passou { color: var(--muted); } .mm-marcos li.passou time { background: var(--surface-2); border-color: var(--line); color: var(--muted); }
+@media (max-width: 640px) { .dx-duas .dx-meta .dx-meta-mais { margin: 2px 4px 12px 4px; padding: 12px; } .mm-marcos li { grid-template-columns: 1fr; gap: 4px; } .mm-marcos time { justify-self: start; } }
