@@ -13,10 +13,10 @@
 
   const CSS = `@page { size: A4; margin: 18mm 18mm 16mm 22mm; }
     * { box-sizing: border-box; } html, body { margin: 0; background: #fff; color: #111; }
-    body { font: 11pt/1.5 "Times New Roman", Georgia, serif; }
-    .tela { position: sticky; top: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; padding: 10px 14px; background: #F3EBE1; border-bottom: 1px solid #CDB79D; font: 10.5pt "Public Sans", Arial, sans-serif; }
+    body { font: 11pt/1.5 Manrope, system-ui, Arial, Helvetica, sans-serif; }
+    .tela { position: sticky; top: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; padding: 10px 14px; background: #F3EBE1; border-bottom: 1px solid #CDB79D; font: 10.5pt Manrope, system-ui, Arial, sans-serif; }
     .tela span { margin-right: auto; color: #452B1A; max-width: 60ch; }
-    .tela button { font: 600 11pt "Public Sans", Arial, sans-serif; padding: 9px 16px; border-radius: 999px; border: 1px solid #CDB79D; background: #FFFCF8; color: #2E1D15; cursor: pointer; }
+    .tela button { font: 600 11pt Manrope, system-ui, Arial, sans-serif; padding: 9px 16px; border-radius: 999px; border: 1px solid #CDB79D; background: #FFFCF8; color: #2E1D15; cursor: pointer; }
     .tela button.pri { background: #A44934; border-color: #A44934; color: #FFFCF8; }
     main { max-width: 172mm; margin: 0 auto; padding: 14px 14px 28px; }
     h1 { font-size: 13pt; text-align: center; margin: 0 0 2px; } .c { text-align: center; margin: 0 0 3px; } .peq { font-size: 9.5pt; }
@@ -105,7 +105,7 @@
   function pagina(m) {
     const serv = R.tipoTermo(m) === 'servidor'; const f = faltando(m);
     return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-      <title>${serv ? 'Termo de autorização' : 'Termo de compromisso'} · ${E(m.nome || '')}</title><style>${CSS}</style></head>
+      <title>${serv ? 'Termo de autorização' : 'Termo de compromisso'} · ${E(m.nome || '')}</title>${MQ.FONTES_LINK || ''}<style>${CSS}</style></head>
       <body><div class="tela"><span>Confira os dados. ${f.length ? 'Complete à mão: <b>' + E(f.join(', ')) + '</b>. ' : ''}Depois imprima (ou salve em PDF), assine e anexe no sistema.</span>
         <button type="button" onclick="window.close()">Fechar</button><button type="button" class="pri" onclick="window.print()">Imprimir ou salvar em PDF</button></div>
       <main>${serv ? corpoServidor(m) : corpoBolsista(m)}</main></body></html>`;

@@ -17,6 +17,10 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
    e do projeto técnico (Anexo F do Ofício 612/2026). Mude aqui, não no resto do código. */
 window.MQ = window.MQ || {};
 
+/* fontes do sistema (Manrope em tudo; Lora só no nome do projeto), para as páginas que abrem em outra janela (impressão, termo, relatório) */
+MQ.FONTES_LINK = '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap">';
+MQ.FONTE = 'Manrope, system-ui, Arial, Helvetica, sans-serif';
+
 MQ.PROJETO = {
   nome: 'Quintais Produtivos para Mulheres Rurais',
   marca: 'Mulheres & Quintais',
@@ -6257,14 +6261,14 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     L.push('Mulheres & Quintais');
     return L.join('\n').replace(/\n{3,}/g, '\n\n');
   }
-  const CSS_PAPEL = `@page { size: A4; margin: 16mm; } body { font: 12pt/1.5 system-ui, Arial, sans-serif; color: #2E1D15; margin: 0; }
+  const CSS_PAPEL = `@page { size: A4; margin: 16mm; } body { font: 12pt/1.5 Manrope, system-ui, Arial, sans-serif; color: #2E1D15; margin: 0; }
     .tela { padding: 10px; display: flex; gap: 8px; } .tela button { font: inherit; padding: 8px 14px; } @media print { .tela { display: none; } }
-    .vd-folha { max-width: 170mm; margin: 0 auto; } .vd-proj { font-size: 9pt; color: #634F43; margin: 0; letter-spacing: .04em; } h3 { font: 600 18pt/1.2 Georgia, serif; margin: 4px 0 2px; }
+    .vd-folha { max-width: 170mm; margin: 0 auto; } .vd-proj { font-size: 9pt; color: #634F43; margin: 0; letter-spacing: .04em; } h3 { font: 600 18pt/1.2 Manrope, system-ui, Arial, sans-serif; margin: 4px 0 2px; }
     .vd-quem { margin: 0 0 12px; color: #634F43; } h4 { font-size: 12pt; margin: 14px 0 4px; border-bottom: 1px solid #CDB79D; padding-bottom: 2px; }
     .vd-dest, .vd-aviso { background: #F1E7DB; padding: 8px 10px; border-radius: 4px; } ol, ul { margin: 4px 0; padding-left: 20px; } .vd-cam > li { margin-bottom: 8px; break-inside: avoid; } .vd-cam p { margin: 2px 0; }
     .vd-tipo { font-size: 9pt; color: #634F43; } .vd-cont { font-size: 10pt; } footer { margin-top: 16px; font-size: 8.5pt; color: #634F43; border-top: 1px solid #E2D3C1; padding-top: 6px; }`;
   function imprimir(html) {
-    const pag = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Como vender o que sobra do quintal · Mulheres & Quintais</title><style>${CSS_PAPEL}</style></head>
+    const pag = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Como vender o que sobra do quintal · Mulheres & Quintais</title>${MQ.FONTES_LINK || ''}<style>${CSS_PAPEL}</style></head>
       <body><div class="tela"><button type="button" onclick="window.close()">Fechar</button><button type="button" onclick="window.print()">Imprimir</button></div>${html}</body></html>`;
     const w = window.open('', '_blank');
     if (w) { w.document.open(); w.document.write(pag); w.document.close(); w.onload = () => { try { w.focus(); w.print(); } catch (e) {} }; return; }
@@ -7310,10 +7314,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <p class="rel-nota">Números a partir dos registros do sistema Mulheres &amp; Quintais. Não contém nome, CPF ou endereço das beneficiárias (LGPD).</p>
     </article>`;
   }
-  const CSS_REL = `body{font-family:Arial,Helvetica,sans-serif;color:#222;margin:32px;font-size:12pt}h1{font-size:18pt;margin:4px 0 8px}h2{font-size:13pt;margin:20px 0 6px}
+  const CSS_REL = `body{font-family:Manrope,system-ui,Arial,Helvetica,sans-serif;color:#222;margin:32px;font-size:12pt}h1{font-size:18pt;margin:4px 0 8px}h2{font-size:13pt;margin:20px 0 6px}
     table{border-collapse:collapse;width:100%;margin:6px 0 10px}th,td{border:1px solid #999;padding:4px 8px;text-align:left;font-size:10.5pt}th{background:#eee}
     .rel-sobre{font-size:9.5pt;color:#555;margin:0}.rel-nota{font-size:9pt;color:#555;margin-top:18px}`;
-  const documentoCompleto = corpo => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório da ação do projeto</title><style>${CSS_REL}</style></head><body>${corpo}</body></html>`;
+  const documentoCompleto = corpo => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório da ação do projeto</title>${MQ.FONTES_LINK || ''}<style>${CSS_REL}</style></head><body>${corpo}</body></html>`;
 
   /* ---------- tela ---------- */
   function aba() {
@@ -9132,10 +9136,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   const CSS = `@page { size: A4; margin: 18mm 18mm 16mm 22mm; }
     * { box-sizing: border-box; } html, body { margin: 0; background: #fff; color: #111; }
-    body { font: 11pt/1.5 "Times New Roman", Georgia, serif; }
-    .tela { position: sticky; top: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; padding: 10px 14px; background: #F3EBE1; border-bottom: 1px solid #CDB79D; font: 10.5pt "Public Sans", Arial, sans-serif; }
+    body { font: 11pt/1.5 Manrope, system-ui, Arial, Helvetica, sans-serif; }
+    .tela { position: sticky; top: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; padding: 10px 14px; background: #F3EBE1; border-bottom: 1px solid #CDB79D; font: 10.5pt Manrope, system-ui, Arial, sans-serif; }
     .tela span { margin-right: auto; color: #452B1A; max-width: 60ch; }
-    .tela button { font: 600 11pt "Public Sans", Arial, sans-serif; padding: 9px 16px; border-radius: 999px; border: 1px solid #CDB79D; background: #FFFCF8; color: #2E1D15; cursor: pointer; }
+    .tela button { font: 600 11pt Manrope, system-ui, Arial, sans-serif; padding: 9px 16px; border-radius: 999px; border: 1px solid #CDB79D; background: #FFFCF8; color: #2E1D15; cursor: pointer; }
     .tela button.pri { background: #A44934; border-color: #A44934; color: #FFFCF8; }
     main { max-width: 172mm; margin: 0 auto; padding: 14px 14px 28px; }
     h1 { font-size: 13pt; text-align: center; margin: 0 0 2px; } .c { text-align: center; margin: 0 0 3px; } .peq { font-size: 9.5pt; }
@@ -9224,7 +9228,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function pagina(m) {
     const serv = R.tipoTermo(m) === 'servidor'; const f = faltando(m);
     return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-      <title>${serv ? 'Termo de autorização' : 'Termo de compromisso'} · ${E(m.nome || '')}</title><style>${CSS}</style></head>
+      <title>${serv ? 'Termo de autorização' : 'Termo de compromisso'} · ${E(m.nome || '')}</title>${MQ.FONTES_LINK || ''}<style>${CSS}</style></head>
       <body><div class="tela"><span>Confira os dados. ${f.length ? 'Complete à mão: <b>' + E(f.join(', ')) + '</b>. ' : ''}Depois imprima (ou salve em PDF), assine e anexe no sistema.</span>
         <button type="button" onclick="window.close()">Fechar</button><button type="button" class="pri" onclick="window.print()">Imprimir ou salvar em PDF</button></div>
       <main>${serv ? corpoServidor(m) : corpoBolsista(m)}</main></body></html>`;
@@ -10646,16 +10650,16 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <p class="instr">Preencha à mão, com letra legível. Depois, lance no sistema assim que tiver internet: a folha não substitui o registro no sistema.</p>`;
   }
   const CSS = `@page { size: A4; margin: 14mm 14mm 16mm; }
-    * { box-sizing: border-box; } body { margin: 0; color: #2E1D15; font: 10.5pt/1.45 "Public Sans", Arial, Helvetica, sans-serif; background: #fff; }
+    * { box-sizing: border-box; } body { margin: 0; color: #2E1D15; font: 10.5pt/1.45 Manrope, system-ui, Arial, Helvetica, sans-serif; background: #fff; }
     .tela { display: flex; gap: 8px; justify-content: flex-end; padding: 10px 14px; background: #F3EBE1; border-bottom: 1px solid #E2D3C1; position: sticky; top: 0; }
-    .tela button { font: 600 11pt "Public Sans", Arial, sans-serif; padding: 9px 16px; border-radius: 999px; border: 1px solid #CDB79D; background: #FFFCF8; color: #2E1D15; cursor: pointer; }
+    .tela button { font: 600 11pt Manrope, system-ui, Arial, sans-serif; padding: 9px 16px; border-radius: 999px; border: 1px solid #CDB79D; background: #FFFCF8; color: #2E1D15; cursor: pointer; }
     .tela button.pri { background: #A44934; border-color: #A44934; color: #FFFCF8; }
     main { max-width: 190mm; margin: 0 auto; padding: 12px 14px 24px; }
     .topo { display: flex; align-items: center; gap: 12px; border-bottom: 2px solid #452B1A; padding-bottom: 8px; }
-    .marca { margin: 0; font: 600 14pt Fraunces, Georgia, "Times New Roman", serif; color: #452B1A; } .sub { margin: 0; font-size: 9pt; color: #634F43; }
-    h1 { font: 600 15pt Fraunces, Georgia, "Times New Roman", serif; margin: 12px 0 8px; color: #2E1D15; }
-    h2 { font: 700 10.5pt "Public Sans", Arial, sans-serif; text-transform: uppercase; letter-spacing: .04em; color: #A44934; margin: 14px 0 6px; border-bottom: 1px solid #E2D3C1; padding-bottom: 3px; }
-    h3 { font: 700 10.5pt "Public Sans", Arial, sans-serif; margin: 10px 0 4px; }
+    .marca { margin: 0; font: 600 14pt Lora, Georgia, "Times New Roman", serif; color: #452B1A; } .sub { margin: 0; font-size: 9pt; color: #634F43; }
+    h1 { font: 600 15pt Manrope, system-ui, Arial, sans-serif; margin: 12px 0 8px; color: #2E1D15; }
+    h2 { font: 700 10.5pt Manrope, system-ui, Arial, sans-serif; text-transform: uppercase; letter-spacing: .04em; color: #A44934; margin: 14px 0 6px; border-bottom: 1px solid #E2D3C1; padding-bottom: 3px; }
+    h3 { font: 700 10.5pt Manrope, system-ui, Arial, sans-serif; margin: 10px 0 4px; }
     section { break-inside: auto; } h2, h3, .q-t { break-after: avoid; page-break-after: avoid; } .q { break-inside: avoid; margin: 0 0 8px; } .q-t { margin: 0 0 3px; font-weight: 600; }
     .dados dl { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; margin: 0; } .dados dl div { display: flex; gap: 6px; align-items: baseline; }
     dt { font-weight: 600; white-space: nowrap; } dd { margin: 0; flex: 1; border-bottom: 1px solid #CDB79D; min-height: 1.3em; }
@@ -10674,7 +10678,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function pagina(tipo, form) {
     return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
       <title>${E(TIPOS[tipo].titulo)} · Mulheres & Quintais</title>
-      <style>${CSS}</style></head>
+      ${MQ.FONTES_LINK || ''}<style>${CSS}</style></head>
       <body><div class="tela"><button type="button" onclick="window.close()">Fechar</button><button type="button" class="pri" onclick="window.print()">Imprimir</button></div>
       <main>${cabecalho(tipo)}${converter(form, true)}
         <div class="assina"><div>${linha()}<p>Local e data</p></div><div>${linha()}<p>Assinatura de quem aplicou</p></div>

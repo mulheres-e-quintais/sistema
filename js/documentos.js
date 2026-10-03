@@ -108,10 +108,10 @@
       <p class="rel-nota">Números a partir dos registros do sistema Mulheres &amp; Quintais. Não contém nome, CPF ou endereço das beneficiárias (LGPD).</p>
     </article>`;
   }
-  const CSS_REL = `body{font-family:Arial,Helvetica,sans-serif;color:#222;margin:32px;font-size:12pt}h1{font-size:18pt;margin:4px 0 8px}h2{font-size:13pt;margin:20px 0 6px}
+  const CSS_REL = `body{font-family:Manrope,system-ui,Arial,Helvetica,sans-serif;color:#222;margin:32px;font-size:12pt}h1{font-size:18pt;margin:4px 0 8px}h2{font-size:13pt;margin:20px 0 6px}
     table{border-collapse:collapse;width:100%;margin:6px 0 10px}th,td{border:1px solid #999;padding:4px 8px;text-align:left;font-size:10.5pt}th{background:#eee}
     .rel-sobre{font-size:9.5pt;color:#555;margin:0}.rel-nota{font-size:9pt;color:#555;margin-top:18px}`;
-  const documentoCompleto = corpo => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório da ação do projeto</title><style>${CSS_REL}</style></head><body>${corpo}</body></html>`;
+  const documentoCompleto = corpo => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório da ação do projeto</title>${MQ.FONTES_LINK || ''}<style>${CSS_REL}</style></head><body>${corpo}</body></html>`;
 
   /* ---------- tela ---------- */
   function aba() {

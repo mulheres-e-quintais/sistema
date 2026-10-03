@@ -1,5 +1,5 @@
 /* Mulheres & Quintais — cores da identidade visual do projeto (marrom, terracota, areia e creme);
-   títulos em serifa, texto em Public Sans */
+   tudo em Manrope; só o nome "Mulheres & Quintais" em Lora */
 :root {
   color-scheme: light;
   --marrom: #452B1A;      /* marrom escuro da marca */
@@ -43,9 +43,10 @@
   --t-2xl: 22px;   /* títulos de seção (h2) e números médios */
   --t-3xl: 28px;   /* números grandes dos painéis */
   --t-h1: clamp(26px, 3.2vw, 34px);  /* título de cada tela (h1) */
-  --sans: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --cond: "Public Sans", system-ui, sans-serif;
-  --serif: "Fraunces", Georgia, "Times New Roman", serif;
+  --sans: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --cond: "Manrope", system-ui, sans-serif;
+  --serif: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;   /* 03/10/2026: títulos também em Manrope (o nome da variável ficou) */
+  --marca: "Lora", Georgia, "Times New Roman", serif;   /* só o nome "Mulheres & Quintais" */
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -1126,7 +1127,7 @@ form .acoes:last-child .btn.pri { min-width: 160px; }
 .ent-marca img { height: 64px; width: 64px; object-fit: contain; padding: 8px; border-radius: 18px; background: var(--barra-bg);
   box-shadow: 0 8px 20px -10px color-mix(in srgb, var(--barra-bg) 80%, transparent), inset 0 0 0 1px rgba(246, 237, 228, .12); }
 @media (max-width: 640px) { .ent-marca img { height: 54px; width: 54px; padding: 7px; border-radius: 16px; } }
-/* título do login: tamanho óptico médio (o "f" do Fraunces em tamanho de cartaz fica fino demais e encosta no "o") */
+/* título do login: ajuste de eixo óptico herdado da fonte anterior (sem efeito na Manrope) e leve aperto entre letras */
 .ent-t { font-variation-settings: "opsz" 48; font-optical-sizing: none; letter-spacing: -.01em; }
 
 /* títulos: tamanho único por nível em todas as telas */
@@ -2867,3 +2868,10 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 .eq-quadro tbody td { height: inherit; }
 @-moz-document url-prefix() { .eq-quadro tbody td { height: 100%; } }
 .eq-quadro tbody td > .vagabtn.com-foto { height: 100%; box-sizing: border-box; align-items: center; }
+
+/* --- TIPOGRAFIA (03/10/2026): Manrope em todo texto e número; Lora 600 só no nome "Mulheres & Quintais" ---
+   Os controles nativos não herdam a fonte sozinhos: a regra abaixo garante campos, botões, listas e tabelas. Só a família muda. */
+html, body, button, input, select, textarea, option, optgroup, label, legend, fieldset, table, caption, th, td, summary, dialog { font-family: var(--sans); }
+svg text, svg tspan { font-family: var(--sans); }
+::placeholder { font-family: var(--sans); }
+.ent-marca b, .rodape-marca b { font-family: var(--marca); font-weight: 600; }
