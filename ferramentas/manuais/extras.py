@@ -135,14 +135,30 @@ G = [
    ('Lançar um pagamento no Arlo', ['Toque em <b>Lançar pagamentos no Arlo</b>.', 'Abra o pedido, lance o valor no Arlo e digite o protocolo.', 'Toque em <b>Registrar: lançado no Arlo</b>.']),
    TERMO,
   ], ['Cada consulta a conta bancária e Pix fica registrada no histórico.', 'Sem o termo anexado pela própria pessoa, o sistema não aceita a data do termo.', 'Só chega para lançar o pedido que já tem aval.', 'Não repasse dados bancários por WhatsApp ou e-mail.']),
+ ('Acompanhamento · MDA', 'Acompanha a execução do projeto em números. Só leitura, sem parte financeira e sem dado pessoal.', [
+   ENTRAR,
+   ('Ler os números do alto', ['Veja mulheres selecionadas, pessoas nas famílias e quintais implantados.', 'Abaixo de cada número está o previsto no plano de trabalho.']),
+   ('Acompanhar as etapas e as metas', ['Em <b>O caminho de cada quintal</b>, compare o feito com o previsto.', 'Em <b>Metas físicas</b>, leia a situação: em andamento, atenção, atrasada ou concluída.']),
+   ('Ver onde o projeto está', ['No mapa, cada círculo é um município com mulheres selecionadas.', 'A tabela traz os números por estado.']),
+   ('Conhecer as beneficiárias e o impacto', ['Em <b>Quem são as mulheres</b>, veja as prioridades e a idade.', 'Em <b>O que muda na vida das famílias</b>, compare o antes e o depois.']),
+   ('Atualizar e guardar', ['Toque em <b>Atualizar agora</b> para buscar os números na hora.', 'Toque em <b>Imprimir ou salvar em PDF</b> para guardar ou enviar.']),
+  ], ['Os números são ao vivo: mostram o que a equipe registrou até agora.', 'Grupo com 1 a 4 mulheres aparece como "menos de 5".', 'Esta área não mostra nome, CPF, endereço nem foto de ninguém.', 'Dados de exemplo usados em testes ficam fora das contas.']),
+ ('Acompanhamento · MPA', 'Acompanha o andamento no território, estado por estado. Só leitura, sem dado pessoal.', [
+   ENTRAR,
+   ('Ler os números do alto', ['Veja selecionadas, comunidades e equipe de campo.', 'Confira as visitas feitas, agendadas e atrasadas.']),
+   ('Acompanhar cada estado', ['Em <b>Estado por estado</b>, abra o cartão do estado.', 'Compare com a meta: 40 mulheres, 40 diagnósticos, 40 quintais e 80 acompanhamentos.', 'Veja a equipe, as comunidades e a lista de espera.']),
+   ('Ver o que pede atenção', ['Leia <b>O que pede atenção</b>.', 'Ali estão as visitas com a data vencida, a equipe incompleta e os casos sem água.']),
+   ('Acompanhar a formação', ['Em <b>Formação da equipe</b>, veja turmas, matrículas e encontros.']),
+   ('Atualizar e guardar', ['Toque em <b>Atualizar agora</b> para buscar os números na hora.', 'Toque em <b>Imprimir ou salvar em PDF</b> para guardar ou enviar.']),
+  ], ['Os números são ao vivo: visita atrasada aparece no mesmo dia.', 'Para corrigir um registro, fale com a bolsista do estado ou com a coordenação técnica.', 'Esta área não mostra nome, CPF, endereço nem foto de ninguém.', 'Dados de exemplo usados em testes ficam fora das contas.']),
 ]
 P = []
 for nome, papel, tarefas, lembre in G:
     cards = ''.join('<div class="gc"><h3>%s</h3><ol class="passos">%s</ol></div>' % (t, ''.join('<li>%s</li>' % x for x in ps)) for t, ps in tarefas)
     P.append('''<section class="guia"><header><div class="g-logo">%s</div><div class="g-id"><div class="g-marca">Mulheres &amp; Quintais</div><div class="g-k">Guia rápido</div></div><div class="g-end"><span>Endereço do sistema</span><b>%s</b></div></header>
 <h1>%s</h1><p class="g-papel">%s</p><div class="g-grade">%s</div>
-<div class="g-pe"><div class="g-lembre"><div class="rot">Lembre-se</div><ul class="lst">%s</ul></div><div class="g-ajuda"><div class="rot">Precisa de ajuda?</div><p>Em qualquer tela, toque em %s.</p><p>Para entrar no sistema: coordenação do projeto, WhatsApp <b>(84) 9 9992-7943</b>.</p><p class="g-lgpd">Os dados das pessoas são protegidos pela LGPD: não fotografe telas nem repasse informações.</p></div></div>
-<footer>Guia rápido · %s · versão @@VER@@ do sistema, @@QUANDO@@ · Passo a passo completo no Manual do Usuário</footer></section>''' % (iso, END, nome, papel, cards, ''.join('<li>%s</li>' % x for x in lembre), ic('ajuda'), nome))
+<div class="g-pe"><div class="g-lembre"><div class="rot">Lembre-se</div><ul class="lst">%s</ul></div><div class="g-ajuda"><div class="rot">Precisa de ajuda?</div><p>%s</p><p>Para entrar no sistema: coordenação do projeto, WhatsApp <b>(84) 9 9992-7943</b>.</p><p class="g-lgpd">Os dados das pessoas são protegidos pela LGPD: não fotografe telas nem repasse informações.</p></div></div>
+<footer>Guia rápido · %s · versão @@VER@@ do sistema, @@QUANDO@@ · Passo a passo completo no Manual do Usuário</footer></section>''' % (iso, END, nome, papel, cards, ''.join('<li>%s</li>' % x for x in lembre), 'Fale com a coordenação geral do projeto.' if nome.startswith('Acompanhamento') else 'Em qualquer tela, toque em %s.' % ic('ajuda'), nome))
 CSS_G = CSS + '''
 @page{size:A4;margin:0}
 html{font-size:10pt;line-height:1.38}

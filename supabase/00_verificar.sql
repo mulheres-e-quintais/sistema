@@ -125,6 +125,7 @@ chk as (
                    exists (select 1 from pg_proc where proname = 'documentos_antes' and prosrc like '%o título e a data não mudam mais%')
                    and exists (select 1 from pg_proc where proname = 'enviar_pre_cadastro' and prosrc like '%não é uma data que existe%')
                    and exists (select 1 from pg_proc where proname = 'vitrine_municipios' and prosrc like '%sem_acento%')
+  union all select '52_acompanhamento (perfis de acompanhamento do MDA e do MPA)', to_regclass('public.observadores') is not null and exists (select 1 from pg_proc where proname = 'acompanhamento_dados') and exists (select 1 from pg_proc where proname = 'bloquear_conta_nao_cadastrada' and prosrc like '%observadores%')
   union all select '51_kit_itens (itens do kit com preço de referência)', to_regclass('public.kit_itens') is not null and exists (select 1 from pg_proc where proname = 'salvar_kit_item')
   union all select '50_limite_professores (no máximo 2 professores do FIC ativos)', exists (select 1 from pg_trigger where not tgisinternal and tgname = 'equipe_limite_professores') and exists (select 1 from pg_trigger where not tgisinternal and tgname = 'convites_limite_professores')
   union all select '47_auditoria_bd (correções da auditoria do banco de dados)',

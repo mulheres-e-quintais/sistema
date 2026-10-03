@@ -8,6 +8,8 @@ PERFIS = {
  'agente': ('Agente de campo', ['Agente de campo'], set(), 'Agente_de_campo'),
  'professor': ('Professor(a) do curso FIC', ['Professor(a) do curso FIC'], set(), 'Professor_FIC'),
  'auxiliar': ('Auxiliar administrativo', ['Auxiliar administrativo'], set(), 'Auxiliar_administrativo'),
+ 'mda': ('Acompanhamento · MDA', ['Acompanhamento do projeto (MDA e MPA)'], {'A tela do MPA', 'A barra do alto e as abas', 'Meus dados e termo de compromisso', 'Usar no celular e sem internet', 'Símbolos dos botões'}, 'Acompanhamento_MDA'),
+ 'mpa': ('Acompanhamento · MPA', ['Acompanhamento do projeto (MDA e MPA)'], {'A tela do MDA', 'A barra do alto e as abas', 'Meus dados e termo de compromisso', 'Usar no celular e sem internet', 'Símbolos dos botões'}, 'Acompanhamento_MPA'),
 }
 PERFIL = os.environ.get('PERFIL', '')
 COMUNS = ['Conheça o sistema', 'Primeiros passos', 'Dúvidas e solução de problemas', 'Glossário', 'Sobre este manual']
@@ -33,6 +35,7 @@ A(tabela(['Perfil', 'O que faz no sistema', 'Capítulo'], [
     ['Agente de campo', 'Registra as visitas atribuídas a ela e pede a ajuda de custo', '[[L:Agente de campo]]'],
     ['Professor(a) do FIC', 'Cria turmas, matricula, registra encontros e presença, confirma o acesso ao AVA', '[[L:Professor(a) do curso FIC]]'],
     ['Auxiliar administrativo', 'Registra o cadastro no Arlo e o termo de compromisso; lança os pagamentos no Arlo', '[[L:Auxiliar administrativo]]'],
+    ['Acompanhamento (MDA e MPA)', 'Só leitura: vê os números do projeto, sem nome nem dado pessoal de ninguém. Não altera nada', '[[L:Acompanhamento do projeto (MDA e MPA)]]'],
 ]))
 A(novo.quem_faz())
 A(sec('O caminho de um quintal'))
@@ -134,6 +137,9 @@ A(passos('atender um “Esqueci a senha” (coordenação geral)', ['Na aba Equi
 A(passos('desligar e pôr substituta', ['Abra a ficha da pessoa e toque em <b class="bt">Desligar</b>.', 'Escolha o motivo e explique em uma frase.', 'Toque em <b class="bt">Confirmar desligamento</b>.', 'Na vaga que abriu, toque em ' + b('Cadastrar substituta', 'pessoa_mais') + '.'], 'A vaga volta a ficar aberta e o histórico da pessoa desligada continua guardado.'))
 A(caixa('atencao', 'Desligamento não tem volta: quem foi desligado não pode ser reativado. Para voltar, é preciso um cadastro novo.'))
 
+A(tela('acomp_coord', 'Equipe: acompanhamento externo (só a coordenação geral)', [(1, 'Nome e e-mail', 'Dados de quem vai acompanhar o projeto.'), (2, 'Órgão', 'MDA (ministério) ou MPA (movimento parceiro). Define qual tela a pessoa vê.'), (3, 'Ver como o MDA vê', 'Mostra, na sua tela, o que cada órgão enxerga.')]))
+A(passos('liberar o acesso de quem acompanha o projeto', ['Na aba Equipe, vá até <b>Acompanhamento externo (MDA e MPA)</b>.', 'Preencha o nome, o e-mail e o órgão e toque em <b class="bt">Gravar</b>.', 'Na linha da pessoa, toque em <b class="bt">Gerar código</b>.', 'Passe o código e o endereço do sistema. Ela entra por <b>Primeiro acesso</b> e cria a senha.'], 'A pessoa passa a ver só a área de acompanhamento do seu órgão.'))
+A(caixa('importante', 'Quem acompanha não entra na equipe: não vê nome, CPF, endereço, pagamento nem histórico. Vê só contagens. Para tirar o acesso, toque em <b>Alterar</b> e desmarque <b>Acesso ativo</b>. O código vale 7 dias e uma vez só, e não aparece de novo.'))
 A(sec('Seleção das mulheres'))
 A(serve('Reúne as fichas de indicação dos cinco estados. A coordenação técnica aprova ou devolve cada ficha antes do diagnóstico.'))
 A(acesso(['Abas', 'Gestão', 'Seleção'], 'coordenação técnica e coordenação geral.'))
@@ -291,6 +297,33 @@ A(passos('lançar um pagamento no Arlo', ['Toque em <b class="bt">Lançar pagame
 A(caixa('importante', 'Sem o termo anexado pela própria pessoa, o sistema não aceita a data do termo. Cada consulta a conta bancária fica registrada no histórico.'))
 A(fimcap())
 
+# =========================== ACOMPANHAMENTO EXTERNO ===========================
+A(cap('Acompanhamento do projeto (MDA e MPA)', 'Área só de leitura para quem acompanha o projeto de fora: o ministério e o movimento parceiro.'))
+A(sec('Como funciona'))
+A(serve('Mostra a execução do projeto em números, ao vivo. Não permite alterar nada e não mostra dado pessoal de ninguém.'))
+A(acesso(['Entrar no sistema'], 'pessoas cadastradas pela coordenação geral como acompanhamento do MDA ou do MPA.'))
+A(passos('entrar pela primeira vez', ['Abra o endereço do sistema.', 'Toque em <b class="bt">Primeiro acesso</b>.', 'Digite o seu e-mail e o código de 8 letras e números que a coordenação geral enviou.', 'Crie a senha e entre.'], 'A área de acompanhamento do seu órgão abre direto. Nas próximas vezes, entre com o e-mail e a senha.'))
+A(passos('atualizar e guardar os números', ['Os números se atualizam sozinhos a cada 5 minutos.', 'Para buscar na hora, toque em <b class="bt">Atualizar agora</b>.', 'Para guardar ou enviar, toque em <b class="bt">Imprimir ou salvar em PDF</b>.'], 'A data e a hora da última atualização aparecem no alto da tela.'))
+A(caixa('importante', 'Os números são ao vivo: mostram o que a equipe registrou até agora, inclusive visitas atrasadas. Dados de exemplo usados em testes ficam fora das contas. Grupo com 1 a 4 mulheres aparece como "menos de 5", para ninguém ser identificada.'))
+A(sec('A tela do MDA'))
+A(serve('O projeto inteiro em números, sem parte financeira: alcance, etapas, metas físicas, mapa, evolução, perfil das beneficiárias e impacto.'))
+A(tela('acomp_mda', 'Acompanhamento: tela do MDA', [(1, 'Atualizar agora', 'Busca os números de novo.'), (2, 'Números do alto', 'Mulheres selecionadas, pessoas nas famílias, quintais implantados, municípios, comunidades e visitas feitas.'), (3, 'O caminho de cada quintal', 'Da indicação à avaliação final, com o previsto de cada etapa.'), (4, 'Metas físicas', 'As metas do plano de trabalho, com a situação de cada uma.')]))
+A(tabela(['Parte da tela', 'O que mostra'], [
+    ['Onde o projeto está', 'Mapa dos 5 estados, municípios com mais quintais e tabela por estado'],
+    ['Evolução do trabalho de campo', 'Visitas feitas em cada mês, por etapa'],
+    ['Quem são as mulheres', 'Prioridades de seleção e idade, em número e percentual. Aparece a partir de 5 mulheres selecionadas'],
+    ['O que muda na vida das famílias', 'Linha de base (diagnóstico) e avaliação final: produção do quintal e situação alimentar'],
+]))
+A(sec('A tela do MPA'))
+A(serve('O andamento no território: cada estado, a equipe de campo, a formação e o que pede atenção.'))
+A(tela('acomp_mpa', 'Acompanhamento: tela do MPA', [(1, 'Atualizar agora', 'Busca os números de novo.'), (2, 'Números do alto', 'Selecionadas, comunidades, equipe de campo e visitas feitas, agendadas e atrasadas.'), (3, 'Estado por estado', 'Um cartão por estado, com as metas do estado, a equipe e as comunidades.'), (4, 'O que pede atenção', 'Visitas com a data vencida, equipe incompleta, casos sem água e lista de espera.')]))
+A(tabela(['Parte da tela', 'O que mostra'], [
+    ['Formação da equipe', 'Turmas, matrículas e encontros registrados no curso de formação'],
+    ['Onde o projeto está', 'Mapa, municípios com mais quintais e tabela por estado, com bolsistas e agentes'],
+    ['Evolução do trabalho de campo', 'Visitas feitas em cada mês, por etapa'],
+]))
+A(fimcap())
+
 # =========================== 9. DÚVIDAS ===========================
 A(cap('Dúvidas e solução de problemas', 'O que verificar nas situações mais comuns.'))
 prob = [
@@ -328,6 +361,7 @@ gl = [
     ('Ficha de indicação', 'Registro da mulher indicada pela comunidade, com os critérios do edital e o termo de consentimento.'),
     ('FUNCERN', 'Fundação de apoio ao IFRN, que faz os pagamentos e as contratações do projeto.'),
     ('Habilitação', 'Os passos que tornam a pessoa apta a visitar e a receber: curso FIC, cadastro no Arlo e termo de compromisso.'),
+    ('Acompanhamento externo', 'Área só de leitura para o MDA e o MPA, com números do projeto e sem dado pessoal de ninguém. O acesso é liberado pela coordenação geral.'),
     ('Kit', 'Conjunto de itens do quintal (mudas, ferramentas, materiais), de até R$ 5.000 por quintal.'),
     ('Preço de referência', 'Valor estimado de cada item do kit, usado para projetar o investimento no quintal. Não é o preço da compra. A coordenação técnica mantém a lista na aba Campo.'),
     ('Croqui', 'Desenho do quintal feito no papel na visita de diagnóstico e fotografado. Aparece dentro do plano do quintal e na folha impressa.'),

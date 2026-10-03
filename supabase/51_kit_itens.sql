@@ -33,11 +33,11 @@ revoke all on public.kit_itens from anon, authenticated;
 grant select on public.kit_itens to authenticated;                 -- gravar só pela função abaixo
 drop policy if exists kit_itens_ler on public.kit_itens;
 create policy kit_itens_ler on public.kit_itens for select to authenticated
-  using (public.meu_papel() is not null);
+  using ((select public.meu_papel()) is not null);
 
 create or replace function public.salvar_kit_item(p_id uuid, p_item text, p_unidade text, p_valor numeric,
   p_fonte text, p_preliminar boolean, p_ativo boolean) returns uuid
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare v_id uuid; v_item text := trim(coalesce(p_item, '')); v_un text := trim(coalesce(p_unidade, '')); v_fonte text := nullif(trim(coalesce(p_fonte, '')), '');
 begin
   if coalesce(public.meu_papel(), '') not in ('coord_geral', 'coord_tecnico') then
@@ -69,12 +69,13 @@ revoke all on function public.salvar_kit_item(uuid, text, text, numeric, text, b
 grant execute on function public.salvar_kit_item(uuid, text, text, numeric, text, boolean, boolean) to authenticated;
 
 create or replace function public.kit_itens_nao_apaga() returns trigger
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 begin
   raise exception 'Item do kit não se apaga. Tire-o da lista (inativo) na aba Campo.';
 end $$;
 drop trigger if exists kit_itens_nao_apaga on public.kit_itens;
 create trigger kit_itens_nao_apaga before delete on public.kit_itens for each row execute function public.kit_itens_nao_apaga();
+revoke all on function public.kit_itens_nao_apaga() from public, anon, authenticated;   -- função de gatilho: ninguém chama direto
 
 drop trigger if exists kit_itens_auditoria on public.kit_itens;
 create trigger kit_itens_auditoria after insert or update on public.kit_itens for each row execute function public.auditar();

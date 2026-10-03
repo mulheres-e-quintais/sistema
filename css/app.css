@@ -2920,3 +2920,63 @@ small { font-size: max(12px, .85em); }
 .tab-kit-itens tr.apagado td { opacity: .6; }
 .kit-item-form { display: grid; gap: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
 .croqui img { display: block; max-width: 100%; max-height: 70vh; border-radius: 8px; border: 1px solid var(--line); }
+
+/* perfis de acompanhamento, MDA e MPA (v223): tela só de leitura, com números agregados */
+.ac { display: grid; gap: 28px; padding-bottom: 32px; }
+.ac-cab { align-items: end; }
+.ac-cab h1 { font-family: var(--serif, Lora, serif); }
+.ac-vivo { display: inline-flex; align-items: center; gap: 8px; margin: 6px 0 0; color: var(--ink-2); font-size: var(--t-sm); }
+.ac-pulso { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 var(--ok); animation: ac-pulso 2.4s ease-out infinite; flex: none; }
+@keyframes ac-pulso { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent); } 70%, 100% { box-shadow: 0 0 0 9px transparent; } }
+@media (prefers-reduced-motion: reduce) { .ac-pulso { animation: none; } }
+.ac-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+.ac-kpis-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ac-kpi { display: grid; gap: 2px; align-content: start; padding: 16px 16px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.ac-kpi b { font-size: clamp(26px, 3.2vw, 38px); line-height: 1.05; color: var(--ink); font-weight: 700; }
+.ac-kpi .l { font-size: var(--t-sm); color: var(--ink); font-weight: 600; }
+.ac-kpi small { font-size: var(--t-2xs); color: var(--ink-2); }
+.ac-sec { display: grid; gap: 14px; }
+.ac-sec > h2 { margin: 0; font-size: var(--t-xl); padding-top: 18px; border-top: 1px solid var(--line); }
+.ac-sub { margin: -8px 0 0; color: var(--ink-2); max-width: 70ch; }
+.ac-funil, .ac-metas { display: grid; gap: 12px; }
+.ac-metas { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ac-meta { display: grid; gap: 6px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.ac-meta-t { display: grid; gap: 4px; justify-items: start; }
+.ac-meta-n b { font-size: var(--t-xl); }
+.ac-barra { display: grid; gap: 4px; }
+.ac-barra-t { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.ac-barra-t small { font-weight: 400; color: var(--ink-2); font-size: var(--t-sm); }
+.ac .medidor { display: block; height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.ac .medidor i { display: block; height: 100%; border-radius: 999px; background: var(--marrom-2, #885B44); min-width: 0; }
+.ac-duo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.ac-duo h3 { margin: 0 0 8px; }
+.ac-duo > div { display: grid; gap: 10px; align-content: start; }
+.ac-mapa svg { width: 100%; height: auto; max-height: 420px; }
+.ac-tab td.num, .ac-tab th.num { text-align: right; }
+.ac-evo { display: grid; gap: 12px; }
+.ac-svg { display: block; max-width: 100%; height: auto; }
+.ac-col { fill: var(--marrom-2, #885B44); }
+.ac-col-n { font: 600 12px var(--sans); fill: var(--ink); }
+.ac-col-m { font: 400 12px var(--sans); fill: var(--ink-2); }
+.ac-eixo { stroke: var(--line-2, var(--line)); stroke-width: 1; }
+.ac-ufs { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
+.ac-uf { display: grid; gap: 10px; align-content: start; }
+.ac-uf h3 { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; }
+.ac-dl { margin-top: 4px; }
+.ac-frase { margin: 0; font-size: var(--t-md); }
+.ac-frase b { font-size: var(--t-lg); }
+.ac-lista { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.ac-nota { margin: 0; padding-top: 14px; border-top: 1px solid var(--line); max-width: 90ch; }
+.ac-coord { display: grid; gap: 12px; }
+.ac-form { display: grid; gap: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.ac-cod { font-size: var(--t-lg); letter-spacing: .08em; }
+.ac-previa { margin-top: 12px; padding: 16px; border: 1px dashed var(--line-2, var(--line)); border-radius: 14px; }
+@media (max-width: 1000px) { .ac-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .ac-metas { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .ac-kpis, .ac-kpis-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ac-duo { grid-template-columns: 1fr; } .ac-acoes .btn { flex: 1 1 100%; justify-content: center; } }
+@media print { .ac-acoes, .demo, .barra .btn-sair, .ac-pulso { display: none !important; } .ac { gap: 16px; } .ac-sec { break-inside: avoid; } }
+.ac-tab th { white-space: normal; vertical-align: bottom; line-height: 1.25; }
+.ac-duo .ac-tab { width: 100%; table-layout: auto; }
+.ac-duo > div { min-width: 0; }
+.ac-tab { min-width: 0; }
+.ac-tab th { letter-spacing: .02em; padding-inline: 8px; }
+@media (max-width: 340px) { .demo-ver .seg { flex-wrap: wrap; max-width: 100%; } }   /* 9 perfis na demonstração: em tela muito estreita quebra a linha em vez de empurrar a página */
