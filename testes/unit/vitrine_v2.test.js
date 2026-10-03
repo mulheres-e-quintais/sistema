@@ -36,3 +36,12 @@ test('página pública: narrativa em ordem (números, onde, estados, mulheres, i
   const ordem = ['O projeto em números', 'Onde estão os quintais', 'Distribuição por estado', 'Como o projeto anda', 'Instituições'].map(s => x.indexOf(s));
   assert.ok(ordem.every(i => i >= 0), JSON.stringify(ordem)); assert.ok(ordem.every((v, i) => !i || v > ordem[i - 1]), 'ordem ' + JSON.stringify(ordem));
 });
+
+test('tela de entrada: terceiro quadro com o alcance do projeto (mais de 1.000 km de Apodi), sem "raio"', async () => {
+  const t = await montar('coord_geral');
+  const rad = x => x * Math.PI / 180, A = [-37.7989, -5.6649]; let max = 0;
+  Object.values(t.MQ.GEO.mun).forEach(ms => Object.values(ms).forEach(c => { const h = Math.sin(rad(c[1] - A[1]) / 2) ** 2 + Math.cos(rad(A[1])) * Math.cos(rad(c[1])) * Math.sin(rad(c[0] - A[0]) / 2) ** 2; max = Math.max(max, 2 * 6371 * Math.asin(Math.sqrt(h))); }));
+  assert.ok(max > 1000 && max < 1100, 'município mais distante a ' + Math.round(max) + ' km: o quadro diz "mais de 1.000 km"');
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../../js/vitrine.js'), 'utf8');
+  assert.match(src, /de Apodi ao quintal mais distante/); assert.doesNotMatch(src, /raio de abrang/i);
+});

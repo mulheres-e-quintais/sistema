@@ -4967,12 +4967,22 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (t.diagnosticos) return { n: 2, nome: 'Diagnóstico e plano de cada quintal', txt: 'Na primeira visita, cada mulher monta com a equipe o plano do seu quintal.' };
     return { n: 1, nome: 'Seleção das mulheres', txt: 'As equipes estaduais visitam as comunidades e indicam as mulheres pelos critérios do edital.' };
   }
-  function tiles(t) {
+  function tiles(t, entrada) {
     // três indicadores; o primeiro nunca fica em zero quando há dado real: antes da seleção mostra as indicadas, antes disso a meta
     const mulheres = t.selecionadas ? { v: t.selecionadas, de: 200, l: 'mulheres selecionadas' } : t.fichas ? { v: t.fichas, l: 'mulheres indicadas pelo MPA' } : { v: 200, l: 'quintais previstos no projeto' };
+    // tela de entrada: no lugar da equipe, o alcance (de Apodi ao município mais distante, em linha reta, arredondado para baixo)
+    if (entrada && alcanceKm() >= 100) return [mulheres, { v: 5, l: 'estados do Nordeste' }, { v: alcanceKm(), pre: 'mais de ', un: ' km', l: 'de Apodi ao quintal mais distante' }];
     return [mulheres, { v: t.equipe, l: 'pessoas na equipe de campo' }, { v: 5, l: 'estados do Nordeste' }].filter((x, i) => i !== 1 || x.v > 0);
   }
-  const tile = x => `<div class="vt"><span class="vt-n num">${fmt(x.v)}${x.de ? `<small> de ${x.de}</small>` : ''}</span><span class="vt-l">${E(x.l)}</span></div>`;
+  const APODI = [-37.7989, -5.6649];
+  function alcanceKm() {
+    const rad = x => x * Math.PI / 180; let max = 0;
+    Object.values((MQ.GEO && MQ.GEO.mun) || {}).forEach(ms => Object.values(ms).forEach(c => {
+      const h = Math.sin(rad(c[1] - APODI[1]) / 2) ** 2 + Math.cos(rad(APODI[1])) * Math.cos(rad(c[1])) * Math.sin(rad(c[0] - APODI[0]) / 2) ** 2;
+      max = Math.max(max, 2 * 6371 * Math.asin(Math.sqrt(h))); }));
+    return Math.floor(max / 100) * 100;
+  }
+  const tile = x => `<div class="vt${x.pre ? ' vt-alc' : ''}"><span class="vt-n num">${x.pre ? `<small>${E(x.pre)}</small>` : ''}${fmt(x.v)}${x.un ? `<small>${E(x.un)}</small>` : ''}${x.de ? `<small> de ${x.de}</small>` : ''}</span><span class="vt-l">${E(x.l)}</span></div>`;
   const quando = () => V.em ? new Date(V.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
 
   /* ---------- ilustrações: enquanto nenhuma foto real foi publicada, o mosaico mostra desenhos
@@ -5060,7 +5070,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const t = totais(d);
     return `<span class="eyebrow">O projeto agora</span>
       <h2 id="vit-t" class="serif">Mulheres &amp; Quintais em números</h2>
-      <div class="vts">${tiles(t).map(tile).join('')}</div>
+      <div class="vts">${tiles(t, true).map(tile).join('')}</div>
       <div class="vit-duo">
         <div class="vit-mapa vit-info">${/* tela de entrada (02/10/2026): pontos FIXOS, um por município que terá quintais (os mesmos do mapa da Visão geral, MQ.GEO.mun), todos iguais, tenha ou não cadastro; o círculo pelo número de cadastradas fica só na página pública */ MQ.painelUI.mapaUFs({ entrada: true, animar: rotasSaindo() })}</div>
         <div id="vit-foto">${miniMosaico(d, V.foto) || `<div class="vit-sem-foto"><span>As fotos dos quintais aparecem aqui quando a coordenação aprovar, só de quem autorizou.</span></div>`}</div>
