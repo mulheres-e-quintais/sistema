@@ -2880,3 +2880,15 @@ details.termo-gov > p { margin: 10px 0 0; }
 /* abas agrupadas: o realce de foco fica por dentro do botão e o nome do grupo ganha folga, para a borda não encostar em "Gestão", "Execução"… */
 .abas-grupos .aba-grupo { gap: 6px; }
 .abas-grupos button:focus-visible { outline-offset: -3px; border-radius: 8px; }
+
+/* Documentos: quadro de impressões (relatórios por tipo e fichas de cadastro) */
+.imp-uf { display: grid; gap: 4px; font-size: var(--t-sm); color: var(--ink-2); }
+.imp-uf select { min-height: 40px; }
+.imp-lista { list-style: none; margin: 0; padding: 0; display: grid; }
+.imp-lista li { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); }
+.imp-lista li:first-child { border-top: 0; }
+.imp-lista li > div { display: grid; gap: 2px; min-width: 0; }
+.imp-lista .btn { flex: none; }
+.secao-cab:has(.imp-uf) { align-items: end; }
+.secao-cab:has(.imp-uf) > div { flex: 1 1 320px; }
+.imp-uf select { padding: 8px 12px; border: 1px solid var(--campo-borda); border-radius: 10px; background: var(--surface); font: inherit; color: var(--ink); }

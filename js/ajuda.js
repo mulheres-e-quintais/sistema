@@ -248,9 +248,11 @@
         ['Anexar um documento', ['Toque em <b>Anexar documento</b>.', 'Escolha o tipo, a data e escreva o título (o estado é opcional).', 'Escolha o arquivo: PDF, Word, planilha ou foto, até 20 MB.', 'Toque em <b>Anexar</b>.']],
         ['Abrir um documento', ['Toque no documento na lista.', 'Toque em <b>Abrir o arquivo</b>: ele abre numa aba nova por alguns minutos.']],
         ['Arquivar um documento errado', ['Abra o documento.', 'Em <b>Arquivar</b>, escreva o motivo.', 'Toque em <b>Arquivar</b>. Ele sai da lista, mas não é apagado.']],
-        ['Gerar o relatório da ação', ['Toque em <b>Gerar relatório da ação</b>.', 'Escolha o período e, se quiser, um estado; toque em <b>Atualizar o relatório</b>.', 'Toque em <b>Imprimir</b> ou em <b>Baixar para o Word</b>.']]
+        ['Gerar o relatório da ação', ['Toque em <b>Gerar relatório da ação</b>.', 'Escolha o período e, se quiser, um estado; toque em <b>Atualizar o relatório</b>.', 'Toque em <b>Imprimir</b> ou em <b>Baixar para o Word</b>.']],
+        ['Imprimir relatórios por tipo e fichas de cadastro', ['Em <b>Imprimir relatórios e fichas de cadastro</b>, escolha o estado (ou deixe Todos).', 'Na linha do que você quer (equipe, seleção, campo, fichas das bolsistas ou dos demais membros), toque em <b>Imprimir</b>.', 'Na janela de impressão, imprima ou escolha <b>Salvar como PDF</b>.']]
       ],
       passos: [
+        'Os relatórios por tipo e as fichas de cadastro trazem nomes e, nas fichas, CPF e contato: são de uso interno. Nenhum traz dados bancários.',
         'O relatório junta equipe, seleção, campo, curso FIC, pagamentos, viagens e eventos e a lista de documentos do período, só com números: nenhum nome, CPF ou endereço das mulheres.',
         'Documento não é apagado: arquivado, continua em <b>Arquivados</b> e no histórico.'
       ],

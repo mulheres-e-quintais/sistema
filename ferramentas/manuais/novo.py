@@ -21,6 +21,7 @@ def matriz():
      ('Autorizar passagem ou evento', S,N,N,N,N,N),
      ('Criar turma, matricular, registrar encontro e presença', S,N,N,N,S,N),
      ('Enviar planilha de gastos, documentos e histórico', S,N,N,N,N,N),
+     ('Imprimir relatórios por tipo e fichas de cadastro', S,N,N,N,N,N),
     ]
     return tabela(['Ação', 'Coord. geral', 'Coord. técnica', 'Bolsista', 'Agente', 'Professor', 'Auxiliar'], [list(x) for x in L], 'mat') + \
       '<p class="nota"><sup>1</sup> Só a bolsista de articulação estadual. &nbsp;Ninguém dá aval, confere ou autoriza o próprio pedido, e quem confere um pedido de passagem ou evento não autoriza o mesmo pedido.</p>'

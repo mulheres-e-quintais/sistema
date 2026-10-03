@@ -200,10 +200,12 @@ A(caixa('exemplo', '<b>Executado</b> é o que a planilha trouxe. <b>Comprometido
 A(sec('Documentos'))
 A(serve('É a pasta de documentos do projeto (atas, ofícios, listas de presença) e o lugar de gerar o relatório da ação.'))
 A(acesso(['Abas', 'Documentação', 'Documentos'], 'só a coordenação geral.'))
-A(tela('documentos', 'Documentos do projeto', [(1, 'Anexar documento', 'Guarda um arquivo na pasta do projeto.'), (2, 'Gerar relatório da ação', 'Monta o relatório com os dados do sistema.'), (3, 'Lista de documentos', 'Os documentos anexados; toque para abrir.')]))
+A(tela('documentos', 'Documentos do projeto', [(1, 'Anexar documento', 'Guarda um arquivo na pasta do projeto.'), (2, 'Gerar relatório da ação', 'Monta o relatório com os dados do sistema.'), (3, 'Imprimir relatórios e fichas de cadastro', 'Relatórios por tipo e fichas de cadastro da equipe, por estado.'), (4, 'Lista de documentos', 'Os documentos anexados; toque para abrir.')]))
 A(passos('anexar um documento', ['Toque em ' + b('Anexar documento', 'anexo') + '.', 'Escolha o tipo, a data e escreva o título.', 'Escolha o arquivo: PDF, Word, planilha ou foto, até 20 MB.', 'Toque em <b class="bt">Anexar</b>.'], 'O documento aparece na lista. Documento errado é arquivado, não apagado.'))
 A(passos('gerar o relatório da ação', ['Toque em ' + b('Gerar relatório da ação', 'relatorio') + '.', 'Escolha o período e, se quiser, um estado.', 'Toque em <b class="bt">Imprimir</b> ou em <b class="bt">Baixar para o Word</b>.'], 'O relatório sai com os números do período, sem nome nem CPF das beneficiárias.'))
 
+A(passos('imprimir relatórios por tipo e fichas de cadastro', ['Em <b>Imprimir relatórios e fichas de cadastro</b>, escolha o estado ou deixe Todos.', 'Na linha do que você quer, toque em <b class="bt">Imprimir</b>.', 'Na janela de impressão, imprima ou escolha Salvar como PDF.'], 'Sai o relatório (equipe e habilitação, seleção das mulheres ou campo e visitas) ou uma ficha de cadastro por pessoa (bolsistas ou demais membros).'))
+A(caixa('atencao', 'Essas impressões trazem nomes e, nas fichas, CPF e contato. São de uso interno da coordenação: não repasse nem publique. Nenhuma traz dados bancários.'))
 A(sec('Histórico'))
 A(serve('Registra tudo o que foi feito no sistema: quem cadastrou, alterou, aprovou, devolveu e desligou, e quando.'))
 A(acesso(['Abas', 'Documentação', 'Histórico'], 'só a coordenação geral.'))
@@ -355,7 +357,7 @@ rapido = [
     ('Instalar no celular e usar sem internet', 'Usar no celular e sem internet'), ('Ver o que pede atenção no projeto', 'Visão geral'), ('Cadastrar uma pessoa da equipe', 'Equipe'),
     ('Mandar o código de acesso', 'Equipe'), ('Desligar e substituir', 'Equipe'), ('Aprovar ou devolver uma ficha', 'Seleção das mulheres'), ('Aprovar o plano do quintal', 'Trabalho de campo'),
     ('Dar aval em um pagamento', 'Pagamentos'), ('Conferir o km de uma visita', 'Custos'), ('Conferir ou autorizar passagem e evento', 'Viagens e eventos'), ('Enviar a planilha de gastos', 'Execução do orçamento'),
-    ('Anexar documento ou gerar o relatório', 'Documentos'), ('Ver quem alterou um registro', 'Histórico'), ('Lançar a ficha de uma mulher', 'Lançar a ficha de uma mulher'), ('Agendar ou registrar uma visita', 'Agendar e registrar visitas'),
+    ('Anexar documento ou gerar o relatório', 'Documentos'), ('Imprimir relatórios e fichas de cadastro', 'Documentos'), ('Ver quem alterou um registro', 'Histórico'), ('Lançar a ficha de uma mulher', 'Lançar a ficha de uma mulher'), ('Agendar ou registrar uma visita', 'Agendar e registrar visitas'),
     ('Pedir bolsa ou ajuda de custo', 'Entregas do mês e pagamento'), ('Pedir passagem ou evento', 'Pedir passagem ou evento'),
 ]
 def linha_r(tarefa, tit):

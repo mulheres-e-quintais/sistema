@@ -20,7 +20,7 @@ const TELAS = [
   { id: 'custos', perfil: 'coord_geral', aba: 'custos', clip: 'main', m: [['t:Pagamento do mês', 1], ['t:Proposta de roteiro', 2], ['t:Visitas do mês', 3], ['t:Valores usados', 4]] },
   { id: 'viagens', perfil: 'coord_geral', aba: 'viagens', clip: 'main', m: [['#t-vp', 1], ['t:Tetos de gasto · passagens', 2], ['t:Esperando a sua autorização', 3], ['#t-ve', 4]] },
   { id: 'execucao', perfil: 'coord_geral', aba: 'execucao', clip: 'main', m: [['t:Enviar planilha de gastos', 1], ['.fin-resumo', 2], ['.exec-grafs', 3], ['.fin-rub', 4]] },
-  { id: 'documentos', perfil: 'coord_geral', aba: 'documentos', clip: 'main', m: [['t:Anexar documento', 1], ['t:Gerar relatório da ação', 2], ['#t-docs', 3]] },
+  { id: 'documentos', perfil: 'coord_geral', aba: 'documentos', clip: 'main', m: [['t:Anexar documento', 1], ['t:Gerar relatório da ação', 2], ['#t-imp', 3], ['#t-docs', 4]] },
   { id: 'historico', perfil: 'coord_geral', aba: 'historico', clip: 'main', m: [['#t-acessos', 1], ['#t-reg', 2]] },
   { id: 'bolsista', perfil: 'bolsista', clip: 'de:main h1:section[aria-labelledby=t-ent]', m: [['t:+ Nova ficha de mulher', 1], ['t:Visitas e diagnósticos', 2], [CEL ? 'b:Entregas do mês' : 't:Entregas do mês', 3], ['t:Pedir pagamento', 4], ['t:Passagem ou evento', 5], ['t:Entreguei', 6]] },
   { id: 'bolsista_campo', perfil: 'bolsista', clip: 'el:section[aria-labelledby=t-campo]', m: [['t:Para fazer agora', 1], ['t:+ Agendar visita', 2], ['.tab-rot', 3]] },
