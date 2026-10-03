@@ -46,6 +46,14 @@ const R = []; const ok = (n, c, d = '') => { R.push(c); console.log((c ? 'PASSOU
   ok('a folha impressa traz kit, projeção, cronograma, croqui e assinaturas', /Kit e projeção do investimento/.test(html) && /Projeção do investimento no quintal: R\$/.test(html) && /Cronograma/.test(html) && /<img src="data:image/.test(html) && /Coordenação técnica/.test(html));
   ok('a folha impressa não leva CPF nem endereço', await p.evaluate(({ f, html }) => { const fi = MQ.ui.S.fichas.find(x => x.id === f); return !(fi.cpf && html.includes(fi.cpf)) && !(fi.endereco && html.includes(fi.endereco)); }, { f: ficha, html }));
 
+  // impressão com a política de conteúdo de verdade ligada (este roteiro não a desliga)
+  const imp = await p.evaluate(async () => { let n = 0; document.querySelector('#painel [data-acao=campo-plano-imprimir]').click();
+    for (let i = 0; i < 40 && !document.querySelector('iframe[aria-hidden=true]'); i++) await new Promise(r => setTimeout(r, 50));
+    const q = document.querySelector('iframe[aria-hidden=true]'); if (!q) return 'sem moldura'; q.contentWindow.print = () => { n++; }; await new Promise(r => setTimeout(r, 900));
+    const st = q.contentWindow.getComputedStyle(q.contentDocument.querySelector('th')); return n + '|' + st.backgroundColor + '|' + q.contentDocument.querySelectorAll('table').length; });
+  ok('Imprimir o plano funciona com a política de conteúdo ligada (folha montada e com estilo)', /^1\|rgb\(238, 238, 238\)\|2$/.test(imp), imp);
+  await p.waitForTimeout(2200);
+
   // ---------- bolsista: escolher o item preenche o preço ----------
   await como('bolsista');
   const fb = await p.evaluate(() => { const S = MQ.ui.S; const d = S.diagnosticos.find(x => x.uf === S.eu.uf && x.situacao !== 'aprovado' && !x.sem_agua); return d && d.ficha_id; });

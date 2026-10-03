@@ -31,7 +31,7 @@ const R = []; const ok = (n, c, d = '') => { R.push([c ? 'PASSOU' : 'FALHOU', n,
   const [w] = await Promise.all([ctx.waitForEvent('page'), p.evaluate(() => document.querySelector('#painel [data-acao=imp-form]').click())]); await w.waitForTimeout(700);
   await w.evaluate(() => { window.print = () => { window.__imp = 1; }; }); await w.click('[data-jan=imprimir]');
   ok('janela de impressão: Imprimir funciona', await w.evaluate(() => window.__imp === 1));
-  const fechou = new Promise(r => w.on('close', () => r(true))); await w.click('[data-jan=fechar]');
+  const fechou = new Promise(r => w.on('close', () => r(true))); await w.click('[data-jan=fechar]').catch(() => {});   // a janela fecha no meio do clique: o navegador de teste pode acusar "página fechada", que é o resultado esperado
   ok('janela de impressão: Fechar funciona', await Promise.race([fechou, new Promise(r => setTimeout(() => r(false), 1500))]));
   ok('nenhuma violação nas janelas de impressão', viol.length === 0, [...new Set(viol)].slice(0, 2).join(' || '));
   ok('nenhum erro de página', errs.length === 0, errs[0] || '');
