@@ -2681,3 +2681,12 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 .vaga-slot .btn-acao .ba-tx, .grade-uf .cartao > .btn-acao .ba-tx, .vaga-aberta > .btn-acao .ba-tx { overflow: visible; text-overflow: clip; white-space: normal; text-align: center; }
 /* Agentes de campo: "Adicionar agente" centralizado no cartão do estado, como os botões das vagas */
 .grade-uf .cartao > .btn-acao { justify-self: center; margin-inline: auto; }
+
+/* Seleção e Campo (tabelas por estado): cabeçalho igual ao de "Bolsistas por estado" — faixa de fundo, centralizado, negrito */
+.quadro-scroll:has(> .quadro-sel), .quadro-scroll:has(> .tab-campo-uf) { padding: 0 0 6px; }
+.quadro-sel thead th, .tab-campo-uf thead th { background: var(--surface-2); text-align: center; font-weight: 700; color: var(--ink); padding-top: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.quadro-sel thead tr.grupo th { padding-bottom: 2px; border-bottom: 0; }
+.quadro-sel thead tr.grupo + tr th { padding-top: 4px; }
+.quadro-sel td:first-child, .tab-campo-uf td:first-child, .quadro-sel th:first-child, .tab-campo-uf th:first-child { padding-left: 20px; }
+.quadro-sel td:last-child, .tab-campo-uf td:last-child, .quadro-sel th:last-child, .tab-campo-uf th:last-child { padding-right: 18px; }
+.quadro-sel tbody tr:hover td:first-child, .tab-campo-uf tbody tr:hover td:first-child, .quadro-sel tbody tr:hover td:last-child, .tab-campo-uf tbody tr:hover td:last-child { border-radius: 0; }
