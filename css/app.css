@@ -2673,3 +2673,11 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 
 /* Equipe, "Bolsistas por estado": cabeçalho centralizado e em negrito */
 .eq-quadro thead th { text-align: center; font-weight: 700; color: var(--ink); }
+
+/* Equipe: botão de cadastro centralizado na vaga; o texto nunca é cortado com "…" (quebra em duas linhas só se faltar espaço) */
+.vaga-slot .btn-acao { margin-inline: auto; }
+.vaga-slot .btn-acao, .grade-uf .cartao > .btn-acao, .vaga-aberta > .btn-acao { height: auto; min-height: 44px; padding-block: 8px; white-space: normal; }
+.vaga-aberta > .btn-acao { min-height: var(--h); }
+.vaga-slot .btn-acao .ba-tx, .grade-uf .cartao > .btn-acao .ba-tx, .vaga-aberta > .btn-acao .ba-tx { overflow: visible; text-overflow: clip; white-space: normal; text-align: center; }
+/* Agentes de campo: "Adicionar agente" centralizado no cartão do estado, como os botões das vagas */
+.grade-uf .cartao > .btn-acao { justify-self: center; margin-inline: auto; }
