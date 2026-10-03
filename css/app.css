@@ -2861,3 +2861,9 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 .eq-quadro .vaga-slot .btn-acao { margin-inline: 0; min-height: 44px; border-color: var(--line-2); box-shadow: 0 2px 6px color-mix(in srgb, var(--ink) 8%, transparent); }
 .eq-quadro .vagabtn.com-foto { padding: 10px 12px; }
 @media (max-width: 1100px) { .eq-quadro col.c-uf { width: 150px; } .eq-quadro td.uf { padding-left: 14px; } .eq-quadro td.uf .ag-uf { gap: 8px; } }
+
+/* Equipe, "Bolsistas por estado": os cartões de articulação e de apoio da mesma linha ficam com a mesma altura */
+.eq-quadro tbody tr { height: 1px; }
+.eq-quadro tbody td { height: inherit; }
+@-moz-document url-prefix() { .eq-quadro tbody td { height: 100%; } }
+.eq-quadro tbody td > .vagabtn.com-foto { height: 100%; box-sizing: border-box; align-items: center; }
