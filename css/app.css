@@ -2690,3 +2690,8 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 .quadro-sel td:first-child, .tab-campo-uf td:first-child, .quadro-sel th:first-child, .tab-campo-uf th:first-child { padding-left: 20px; }
 .quadro-sel td:last-child, .tab-campo-uf td:last-child, .quadro-sel th:last-child, .tab-campo-uf th:last-child { padding-right: 18px; }
 .quadro-sel tbody tr:hover td:first-child, .tab-campo-uf tbody tr:hover td:first-child, .quadro-sel tbody tr:hover td:last-child, .tab-campo-uf tbody tr:hover td:last-child { border-radius: 0; }
+
+/* vagas da coordenação técnica, do auxiliar e do professor do FIC: os três botões com a mesma largura e a mesma altura */
+.vaga-aberta > .btn-acao { width: 400px; max-width: 100%; flex: 0 0 auto; height: var(--h); min-height: var(--h); }
+@media (min-width: 641px) { .vaga-aberta > .btn-acao .ba-tx { white-space: nowrap; } }
+@media (max-width: 640px) { .vaga-aberta > .btn-acao { width: 100%; height: auto; } }
