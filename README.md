@@ -22,7 +22,7 @@ Sistema web do projeto **Quintais Produtivos para Mulheres Rurais** (TED 7AAEKA,
 - A tela de entrada e a página "O projeto em números" (`#numeros`) mostram só totais por estado e fotos escolhidas pela coordenação, de mulheres que autorizaram uso de imagem. Nada individual fica público; se a autorização for retirada, a foto sai na hora.
 - A aba **Custos** calcula a ajuda de custo de cada visita: horas × valor da hora + combustível de ida e volta + 1 refeição. A distância vem do km conferido pela coordenação ou, sem ele, de uma estimativa (linha reta × fator de estrada entre o município de quem visita e o quintal). Gera planilha do mês por pessoa.
 
-**Visual:** estilo da proposta ao MDA (papel claro, verde profundo, títulos em serifa Fraunces, texto em Public Sans), com modo escuro.
+**Visual:** estilo da proposta ao MDA (papel claro, verde profundo, tipografia Manrope em todo o sistema; Lora só no nome "Mulheres & Quintais"), com modo escuro.
 
 ---
 
@@ -60,13 +60,47 @@ supabase/10_apl.sql              etapa 10: arranjo produtivo local por municípi
 supabase/11_fic.sql              etapa 11: professores do FIC, turmas e matrículas; cadastro no Arlo e SIAPE; auxiliar administrativo (um só)
 supabase/12_pagamentos.sql       etapa 12: visita feita (implantação/acompanhamento) e solicitação de pagamento: solicita → aval → auxiliar lança no Arlo
 supabase/13_avaliacao.sql        etapa 13: visita de avaliação (5ª visita, 200 dias de campo por estado) e medidas de impacto antes × depois
-supabase/48_termo_pela_pessoa.sql etapa 48: a própria pessoa anexa o termo de compromisso; a data só entra com o termo anexado (decisão de 02/10/2026)
+supabase/48_termo_pela_pessoa.sql Etapa 48: a própria pessoa anexa o termo de compromisso; a data só entra com o termo anexado (decisão de 02/10/2026)
 supabase/06_apagar_exemplo.sql   apaga os dados inventados
 supabase/00_verificar.sql        só lê: mostra quais etapas já estão instaladas e quantos registros há
 supabase/15_coord_geral_total.sql etapa 15: coordenação geral com todos os acessos (decisão de 28/09/2026)
 supabase/17_corrige_link_cadastro.sql correção: "Gerar link de cadastro" (erro gen_random_bytes)
 supabase/16_popular_teste.sql    depois do 14 e do 05: logins de teste por perfil e dados em todas as etapas (troque o e-mail)
 supabase/14_zerar_para_teste.sql apaga TUDO menos a coordenação geral (pede confirmação ZERAR; sem desfazer)
+supabase/18_codigo_primeiro_acesso.sql Código de primeiro acesso (fecha a brecha do login)
+supabase/19_entregas_do_mes.sql Entregas do mês e ciência do guia
+supabase/20_organizar_texto.sql Organizar texto (controle de uso da IA)
+supabase/21_roteiro_testes.sql Roteiro de testes (respostas "Deu certo / Não deu certo")
+supabase/22_passagens_eventos.sql Pedidos de passagem aérea e de estrutura de evento
+supabase/23_fic_coordenacao_tecnica.sql Coordenação técnica também faz o curso FIC
+supabase/24_documentos.sql Documentos do projeto (atas, ofícios, relatórios…) — só a coordenação geral
+supabase/25_historico_e_cadastro.sql Histórico só para a coordenação geral + cadastro repetido pelo link
+supabase/26_conferencia_auxiliar.sql Quem confere os pedidos de passagem e evento na falta da coordenação técnica
+supabase/27_seguranca_revisao.sql Correções de segurança da revisão de 29/09/2026
+supabase/28_pedido_novo_acesso.sql "esqueci a senha" pela tela de entrada
+supabase/29_desempenho.sql Desempenho do banco (revisão de 29/09/2026)
+supabase/30_ultimos_acessos.sql Últimos acessos (quem entrou, quando e de que aparelho)
+supabase/31_validacao_diagnostico.sql Validação do diagnóstico (decisão da coordenação geral, 29/09/2026)
+supabase/32_desde_o_inicio.sql Pagamento e entregas só a partir do mês de início (decisão da coordenação geral, 29/09/2026)
+supabase/33_exige_professor_fic.sql Cadastro só com professor do FIC habilitado (decisão da coordenação geral, 29/09/2026)
+supabase/34_popular_teste.sql Popular o banco com dados de teste (fictícios)
+supabase/35_tetos_passagens_eventos.sql Tetos de passagens e eventos (decisão da coordenação geral, 29/09/2026)
+supabase/36_execucao_financeira.sql Execução financeira (painel da coordenação geral, 30/09/2026)
+supabase/37_execucao_planilhas.sql Execução pela planilha do mês (30/09/2026)
+supabase/38_fic_encontros.sql Encontros do curso FIC, lista de presença e relatório do professor (30/09/2026)
+supabase/39_agua.sql Acompanhamento do acesso à água (01/10/2026)
+supabase/40_vitrine_municipios.sql Vitrine pública por município (01/10/2026)
+supabase/41_desligamento.sql Desligamento com pendências (01/10/2026)
+supabase/42_revisao_seguranca.sql Revisão de segurança e consistência (01/10/2026)
+supabase/43_lgpd_equipe.sql Proteção dos dados da equipe e conta da coordenação geral (01/10/2026)
+supabase/44_venda.sql Orientação de venda do excedente (01/10/2026)
+supabase/45_auditoria_qa.sql Correções da auditoria de qualidade (01/10/2026)
+supabase/46_regras_decididas.sql Regras decididas pela coordenação geral e pendências da auditoria (02/10/2026)
+supabase/47_auditoria_bd.sql Correções da auditoria do banco de dados (02/10/2026)
+supabase/49_popular_fic.sql Popular o curso FIC com dados de teste (fictícios) (03/10/2026)
+supabase/50_limite_professores.sql No máximo 2 professores do FIC ativos (decisão da coordenação geral em 03/10/2026)
+supabase/90_auditoria_dados.sql Auditoria da qualidade dos dados (só lê, não muda nada)
+supabase/99_zerar_tudo.sql Zerar todo o banco (02/10/2026)
 supabase/tests/         testes das regras do banco
 ```
 
@@ -85,7 +119,7 @@ Use o seletor "Ver como" para alternar entre coordenação geral, coordenação 
 ## Colocar em produção (cerca de 1 hora)
 
 1. **Criar o projeto no Supabase** (supabase.com, plano gratuito). Escolha a região **South America (São Paulo)** para os dados ficarem no Brasil. Crie a conta com um e-mail institucional, não pessoal, para o projeto não depender de uma pessoa.
-2. **Criar o banco:** em *SQL Editor*, rode em ordem, cada um inteiro: `01_criar_banco.sql`, `02_fichas.sql`, `03_campo.sql`, `04_vitrine_e_custos.sql`, `07_fotos_equipe.sql`, `08_convites.sql`, `09_dados_bancarios.sql`, `10_apl.sql`, `11_fic.sql`, `12_pagamentos.sql`, `13_avaliacao.sql`, `15_coord_geral_total.sql`, `17_corrige_link_cadastro.sql`. O 02, o 03 e o 04 podem ser rodados de novo sem estragar dados. Enquanto uma etapa não for rodada, o sistema funciona e mostra "Ainda não instalado no servidor" na parte correspondente.
+2. **Criar o banco:** em *SQL Editor*, rode em ordem, cada um inteiro: `01_criar_banco.sql`, `02_fichas.sql`, `03_campo.sql`, `04_vitrine_e_custos.sql`, `07_fotos_equipe.sql`, `08_convites.sql`, `09_dados_bancarios.sql`, `10_apl.sql`, `11_fic.sql`, `12_pagamentos.sql`, `13_avaliacao.sql`, `15_coord_geral_total.sql`, `17_corrige_link_cadastro.sql`, `18_codigo_primeiro_acesso.sql`, `19_entregas_do_mes.sql`, `21_roteiro_testes.sql`, `22_passagens_eventos.sql`, `23_fic_coordenacao_tecnica.sql`, `24_documentos.sql`, `25_historico_e_cadastro.sql`, `26_conferencia_auxiliar.sql`, `27_seguranca_revisao.sql`, `28_pedido_novo_acesso.sql`, `29_desempenho.sql`, `30_ultimos_acessos.sql`, `31_validacao_diagnostico.sql`, `32_desde_o_inicio.sql`, `33_exige_professor_fic.sql`, `35_tetos_passagens_eventos.sql`, `36_execucao_financeira.sql`, `37_execucao_planilhas.sql`, `38_fic_encontros.sql`, `39_agua.sql`, `40_vitrine_municipios.sql`, `41_desligamento.sql`, `42_revisao_seguranca.sql`, `43_lgpd_equipe.sql`, `44_venda.sql`, `45_auditoria_qa.sql`, `46_regras_decididas.sql`, `47_auditoria_bd.sql`, `48_termo_pela_pessoa.sql`, `50_limite_professores.sql`. Todos podem ser rodados de novo, desde que em ordem e até o fim (os mais antigos recriam funções que os mais novos atualizam). O `20_organizar_texto.sql` é opcional (só se ligar a IA). No fim, rode o `00_verificar.sql`: ele mostra ok ou FALTA em cada etapa. Não fazem parte da instalação: `05`, `06`, `14`, `16`, `34`, `49` (dados de teste) e `99` (zera o banco). Enquanto uma etapa não for rodada, o sistema funciona e mostra "Ainda não instalado no servidor" na parte correspondente.
 3. **Cadastrar a coordenação geral:** o fim do `01_criar_banco.sql` tem um `insert` com os dados da coordenação geral. Confira nome, CPF, e-mail e telefone antes de rodar.
 4. **Login com senha:** em *Authentication > Sign In / Providers > Email*, **desligue "Confirm email"**. Cada pessoa cria a própria senha em "Primeiro acesso", e o banco só aceita e-mails já cadastrados pela coordenação. Assim o sistema não depende de servidor de e-mail. Para "esqueci a senha": a coordenação geral apaga o usuário em *Authentication > Users* e a pessoa faz o primeiro acesso de novo (o cadastro na equipe não é afetado). No painel, cada pessoa mostra se já fez o primeiro acesso: confira logo depois de cadastrar alguém.
 5. **Ligar o sistema ao banco:** em `js/config.js`, preencha `supabaseUrl` e `supabaseAnonKey` (em *Project Settings > API*). A chave anon é pública por desenho; quem protege os dados são as regras do banco.

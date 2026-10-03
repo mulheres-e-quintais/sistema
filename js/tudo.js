@@ -19,7 +19,6 @@ window.MQ = window.MQ || {};
 
 /* fontes do sistema (Manrope em tudo; Lora só no nome do projeto), para as páginas que abrem em outra janela (impressão, termo, relatório) */
 MQ.FONTES_LINK = '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap">';
-MQ.FONTE = 'Manrope, system-ui, Arial, Helvetica, sans-serif';
 
 MQ.PROJETO = {
   nome: 'Quintais Produtivos para Mulheres Rurais',
@@ -9915,7 +9914,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       duvidas: [
         ['Posso falar em vez de digitar?', 'Sim. Nos campos de texto, toque em Falar e fale; o texto vai aparecendo. Revise antes de salvar. Evite dizer nomes e CPF. Precisa de internet.'],
         ['Prefiro aplicar no papel.', 'Abra o formulário (ficha, diagnóstico, registro de visita ou avaliação) e toque em <b>Imprimir em branco</b>, no alto. A folha sai com o símbolo do projeto e os seus dados de quem aplica já preenchidos. Depois, lance as respostas no sistema: o papel não substitui o registro.'],
-        ['Estou sem internet no campo.', 'Pode preencher fichas, diagnósticos, visitas e avaliações. Ficam guardados no celular e sobem quando a internet voltar ("Enviar agora"). Não toque em Sair enquanto estiver sem sinal. Sem internet o sistema não sai sozinho; ele só sai depois de 15 minutos sem uso quando o sinal voltar.'],
+        ['Estou sem internet no campo.', 'Pode preencher fichas, diagnósticos, visitas e avaliações. Ficam guardados no celular e sobem quando a internet voltar ("Enviar agora"). Não saia do sistema (o símbolo da porta, no alto) enquanto estiver sem sinal. Sem internet o sistema não sai sozinho; ele só sai depois de 15 minutos sem uso quando o sinal voltar.'],
         ['A localização foi negada.', 'Libere a localização para o site nas permissões do navegador (cadeado ao lado do endereço) e tente de novo. Se não der, escolha o motivo e explique com suas palavras (pelo menos 15 letras).'],
         ['Posso corrigir uma ficha aprovada?', 'Não. Peça à coordenação técnica para devolvê-la.'],
         ['Uma entrega está com "!".', 'Ainda falta. Veja a linha de baixo: ela diz o que fazer. Sem as entregas, a bolsa do mês não é paga.']

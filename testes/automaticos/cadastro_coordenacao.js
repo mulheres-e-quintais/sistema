@@ -191,7 +191,12 @@ let seq = 100000000; const cpf = () => { const b = String(seq++).padStart(9, '0'
   ok('Coord. geral: auxiliar ocupado, sem botão', !(await vis('[data-acao=novo][data-papel=auxiliar_adm]')));
   // professor pelo FIC
   await aba('equipe');
-  ok('Coord. geral vê "Cadastrar professor"', await vis('[data-acao=novo][data-papel=professor_fic]'));
+  // 50: no máximo 2 professores do FIC ativos. A demonstração começa com 2: sem botão; com uma vaga aberta, o botão volta
+  ok('50: com 2 professores ativos não há botão de cadastrar professor', !(await vis('[data-acao=novo][data-papel=professor_fic]')) && /As 2 vagas de professor do FIC estão ocupadas/.test(await p.textContent('main')));
+  await p.evaluate(async () => { const d = JSON.parse(localStorage.getItem('mq-demo-v4')); const semTurma = d.equipe.filter(m => m.papel === 'professor_fic' && m.status === 'ativa' && !(d.turmas || []).some(t => t.professor_id === m.id))[0];
+    semTurma.status = 'desligada'; semTurma.data_fim = '2026-10-02'; semTurma.motivo_desligamento = 'teste: abre vaga de professor'; localStorage.setItem('mq-demo-v4', JSON.stringify(d)); await MQ.ui.S.api.reler(); await MQ.ui.carregar(); });
+  await aba('visao'); await aba('equipe');
+  ok('Coord. geral vê "Cadastrar professor" quando há vaga', await vis('[data-acao=novo][data-papel=professor_fic]'));
   ok('Abre cadastro de professor', await abrirManual('[data-acao=novo][data-papel=professor_fic]'));
   ok('Professor: sem perfil no campo', !(await p.$('.perfil-campo')));
   ok('Professor: sem previsão de atividades', !(await p.$('#c-md')));
@@ -199,6 +204,8 @@ let seq = 100000000; const cpf = () => { const b = String(seq++).padStart(9, '0'
   t = await toastTxt(); const ot = (await equipe()).find(m => m.email === 'otavio@ifrn.edu.br');
   ok('Professor cadastrado com SIAPE', ot && ot.siape === '1234567', await erroTxt());
   ok('Mensagem do professor fala de Arlo e termo (não de FIC)', /Arlo/.test(t) && !/FIC\./.test(t), t);
+  await p.evaluate(() => MQ.ui.fecharPainel()); await aba('equipe');
+  ok('50: com a vaga ocupada de novo, o botão some', !(await vis('[data-acao=novo][data-papel=professor_fic]')));
   // desligar auxiliar e cadastrar outro
   await p.evaluate(() => MQ.ui.fecharPainel()); await aba('equipe');
   const aux = (await equipe()).find(m => m.papel === 'auxiliar_adm' && m.status === 'ativa');
