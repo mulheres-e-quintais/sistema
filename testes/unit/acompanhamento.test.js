@@ -119,3 +119,48 @@ describe('proteção contra identificação (contagem pequena)', () => {
     assert.equal(soma(a, 'indicadas'), 0); assert.equal(a.municipios.length, 0); assert.equal(a.mensal.length, 0); assert.equal(a.perfil.base, 0); assert.equal(a.impacto.renda_quintal_media, null);
   });
 });
+
+describe('teste por sorteio (300 bancos inventados)', () => {
+  // gerador simples e repetível: o mesmo sorteio a cada rodada
+  let semente = 20261003; const rnd = n => { semente = (semente * 1103515245 + 12345) & 0x7fffffff; return semente % n; };
+  const UFS = ['AL', 'BA', 'PE', 'PI', 'SE'], RES = ['selecionada', 'selecionada', 'selecionada', 'lista_espera', 'nao_atende', 'sem_agua'], SIT = ['aprovada', 'aprovada', 'aguardando', 'devolvida'];
+  const ET = ['diagnostico', 'implantacao', 'acompanhamento', 'avaliacao'], SV = ['prevista', 'realizada', 'realizada', 'cancelada'];
+  const banco = () => {
+    const nf = rnd(60), fichas = Array.from({ length: nf }, (_, i) => ({ id: 'f' + i, uf: UFS[rnd(5)], municipio: ['Picos', 'PICOS', 'Itiúba', 'Itiuba ', 'Arapiraca'][rnd(5)], comunidade: 'Comunidade Reservada ' + rnd(6), nome: 'Nome Reservado ' + i, cpf: String(10000000000 + i * 7919),
+      endereco: 'Endereço Reservado ' + i, celular: '8499' + (1000000 + i), data_nascimento: (1940 + rnd(68)) + '-' + String(1 + rnd(12)).padStart(2, '0') + '-' + String(1 + rnd(28)).padStart(2, '0'), pessoas_familia: 1 + rnd(9),
+      resultado: RES[rnd(6)], situacao: SIT[rnd(4)], p_sustento: !rnd(2), p_cadunico: !rnd(2), p_sem_ater: !rnd(3), p_raca_povo: !rnd(4), p_jovem: !rnd(5), p_grupo: !rnd(2), p_caf: !rnd(3) }));
+    const visitas = Array.from({ length: rnd(120) }, (_, i) => { const f = fichas[rnd(Math.max(1, nf))] || { id: 'x', uf: 'PI' }; const sit = SV[rnd(4)]; const d = '2026-' + String(10 + rnd(3)).padStart(2, '0') + '-' + String(1 + rnd(28)).padStart(2, '0');
+      return { id: 'v' + i, ficha_id: rnd(15) ? f.id : 'orfa', uf: f.uf, etapa: ET[rnd(4)], situacao: sit, data_prevista: d, data_realizada: sit === 'realizada' ? d : null }; });
+    const diagnosticos = fichas.filter(() => !rnd(3)).map(f => ({ ficha_id: f.id, uf: f.uf, situacao: ['aprovado', 'aguardando', 'devolvido'][rnd(3)], sem_agua: !rnd(6), area_m2: rnd(900), renda_quintal: rnd(4) ? rnd(500) : null }));
+    const avaliacoes = fichas.filter(() => !rnd(5)).map(f => ({ ficha_id: f.id, uf: f.uf, quintal_produz: ['sim', 'em_parte', 'nao'][rnd(3)], ebia_nivel: ['seguranca', 'leve', 'moderada', 'grave'][rnd(4)] }));
+    const equipe = Array.from({ length: rnd(25) }, (_, i) => ({ id: 'e' + i, nome: 'Equipe Reservada ' + i, email: 'reservado' + i + '@x.br', cpf: String(20000000000 + i), status: rnd(4) ? 'ativa' : 'desligada', papel: ['articulacao', 'apoio', 'agente', 'coord_tecnico'][rnd(4)], uf: UFS[rnd(5)] }));
+    return { fichas, visitas, diagnosticos, avaliacoes, equipe, turmas: [], matriculas: [], encontros: [] };
+  };
+  test('em qualquer banco: as somas fecham, nada pessoal sai, grupo pequeno não aparece', () => {
+    for (let k = 0; k < 300; k++) {
+      const d = banco(); const hoje = '2026-' + String(10 + rnd(3)) + '-' + String(1 + rnd(28)).padStart(2, '0');
+      for (const o of ['mda', 'mpa']) {
+        const a = MQ.acomp.calcular(d, o, hoje), txt = JSON.stringify(a), ctx = 'rodada ' + k + ' ' + o;
+        const sel = d.fichas.filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada');
+        assert.equal(a.por_uf.length, 5, ctx);
+        assert.equal(soma(a, 'indicadas'), d.fichas.length, ctx + ' indicadas');
+        assert.equal(soma(a, 'selecionadas'), sel.length, ctx + ' selecionadas');
+        assert.equal(a.municipios.reduce((t, m) => t + m.n, 0), sel.length, ctx + ' municípios');
+        assert.equal(a.mensal.reduce((t, m) => t + m.diagnostico + m.implantacao + m.acompanhamento + m.avaliacao, 0), soma(a, 'visitas_feitas'), ctx + ' meses');
+        const ids = new Set(d.fichas.map(f => f.id));
+        assert.equal(soma(a, 'visitas_feitas'), d.visitas.filter(v => v.situacao === 'realizada' && ids.has(v.ficha_id)).length, ctx + ' visitas');
+        assert.ok(a.por_uf.every(u => Object.entries(u).every(([c, v]) => c === 'uf' || (Number.isInteger(v) && v >= 0))), ctx + ' só inteiros não negativos por estado');
+        assert.ok(a.por_uf.every(u => u.selecionadas <= u.indicadas && u.planos <= u.diagnosticos && u.implantados + u.acompanhamentos <= u.visitas_feitas && u.municipios <= u.comunidades), ctx + ' coerência entre as etapas');
+        assert.ok(!/Reservad|reservado|8499\d|1000000\d{4}|2000000\d{4}/.test(txt), ctx + ' vazou dado pessoal');
+        assert.ok(!/bolsa|pagament|orcament|saldo|pix|banco|teto|valor/i.test(txt), ctx + ' parte financeira');
+        if (o === 'mda') {
+          const p = a.perfil, todos = [p.sustento, p.cadunico, p.sem_ater, p.raca_povo, p.jovem, p.grupo, p.caf].concat(Object.values(p.faixas), Object.values(a.impacto.produz), Object.values(a.impacto.ebia_final));
+          assert.ok(todos.every(v => v === -1 || v === 0 || v >= 5), ctx + ' apareceu contagem de 1 a 4: ' + todos.join(','));
+          assert.ok(todos.every(v => v <= Math.max(p.base, a.impacto.final_n)), ctx + ' parcela maior que o todo');
+          const fx = Object.values(p.faixas); if (fx.every(v => v >= 0)) assert.equal(fx.reduce((t, v) => t + v, 0), p.base, ctx + ' faixas de idade somam a base');
+          assert.equal(a.formacao, undefined, ctx);
+        } else { assert.equal(a.perfil, undefined, ctx); assert.equal(a.impacto, undefined, ctx); }
+      }
+    }
+  });
+});

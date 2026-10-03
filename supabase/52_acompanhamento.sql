@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Mulheres & Quintais — 52: PERFIS DE ACOMPANHAMENTO (MDA e MPA) (03/10/2026)
 -- Supabase > SQL Editor > New query > cole este arquivo inteiro > Run. Pode rodar de novo.
--- Precisa do 01, 02, 03, 11, 13, 18, 38 e 43 (equipe, fichas, campo, curso FIC, avaliação, código de acesso).
+-- Precisa do 01, 02, 03, 11, 13, 18, 38, 43 e 47 (equipe, fichas, campo, curso FIC, avaliação, código de acesso, trava com limite de espera).
 --
 -- Dois perfis só de LEITURA para quem acompanha o projeto de fora:
 --   mda: o ministério que financia. Vê o projeto inteiro em números: alcance, etapas, mapa, evolução,
@@ -64,7 +64,7 @@ revoke all on function public.listar_observadores() from public, anon;
 grant execute on function public.listar_observadores() to authenticated;
 
 create or replace function public.salvar_observador(p_id uuid, p_nome text, p_email text, p_orgao text, p_cargo text, p_ativo boolean) returns uuid
-language plpgsql security definer set search_path = public, pg_temp as $$
+language plpgsql security definer set search_path = public, pg_temp set lock_timeout = '5s' as $$
 declare v_id uuid; v_nome text := regexp_replace(trim(coalesce(p_nome, '')), '\s+', ' ', 'g'); v_email text := lower(trim(coalesce(p_email, '')));
         v_cargo text := nullif(trim(coalesce(p_cargo, '')), ''); o public.observadores;
 begin
@@ -79,8 +79,12 @@ begin
   if exists (select 1 from public.observadores x where lower(trim(x.email)) = v_email and (p_id is null or x.id <> p_id)) then
     raise exception 'Este e-mail já está cadastrado no acompanhamento.';
   end if;
+  -- um cadastro de cada vez: sem isso, dois cadastros simultâneos passariam juntos pela conta do limite
+  perform public.trava_aviso('mq_observadores');   -- espera no máximo 5 segundos (47_auditoria_bd.sql)
+  if coalesce(p_ativo, true) and (select count(*) from public.observadores x where x.status = 'ativo' and (p_id is null or x.id <> p_id)) >= 20 then
+    raise exception 'Limite de 20 pessoas de acompanhamento ativas.';
+  end if;
   if p_id is null then
-    if (select count(*) from public.observadores where status = 'ativo') >= 20 then raise exception 'Limite de 20 pessoas de acompanhamento ativas.'; end if;
     insert into public.observadores (nome, email, orgao, cargo, status, criado_por)
     values (v_nome, v_email, p_orgao, v_cargo, case when coalesce(p_ativo, true) then 'ativo' else 'inativo' end, public.meu_id()) returning id into v_id;
   else
@@ -153,8 +157,9 @@ begin
   select * into m from public.equipe
    where lower(email::text) = lower(new.email::text) and status = 'ativa' and user_id is null limit 1;
   if m.id is null then
+    -- "for update": duas tentativas ao mesmo tempo com o mesmo código entram em fila; a segunda já encontra a conta ligada e é recusada
     select * into o from public.observadores
-     where lower(trim(email)) = lower(trim(new.email::text)) and status = 'ativo' and user_id is null limit 1;
+     where lower(trim(email)) = lower(trim(new.email::text)) and status = 'ativo' and user_id is null limit 1 for update;
     if o.id is null then raise exception 'E-mail não cadastrado no projeto.'; end if;
     if o.codigo_hash is null then raise exception 'Código de acesso não gerado.'; end if;
     if o.codigo_expira < now() then raise exception 'Código de acesso vencido.'; end if;
