@@ -2876,3 +2876,7 @@ details.termo-gov > p { margin: 10px 0 0; }
 /* ajuda: links dos manuais em PDF do perfil */
 .ajuda-manuais { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 6px; }
 .ajuda-manuais .btn { text-decoration: none; }
+
+/* abas agrupadas: o realce de foco fica por dentro do botão e o nome do grupo ganha folga, para a borda não encostar em "Gestão", "Execução"… */
+.abas-grupos .aba-grupo { gap: 6px; }
+.abas-grupos button:focus-visible { outline-offset: -3px; border-radius: 8px; }
