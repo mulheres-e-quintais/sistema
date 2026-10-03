@@ -131,6 +131,7 @@
         '<b>Impacto: antes × depois</b> compara o diagnóstico com a avaliação final de cada quintal.'
       ],
       duvidas: [
+        ['O roteiro não mostra todas as visitas do mês.', 'Com muitas visitas, o roteiro mostra as 60 primeiras. Toque em Mostrar mais ou em Mostrar todas, no fim da tabela.'],
         ['Por que não consigo agendar a visita para uma agente?', 'Quem visita precisa estar habilitada (FIC, Arlo e termo); senão a visita não pode ser paga.'],
         ['O que conta como dia de campo?', 'Cada visita feita a um quintal é 1 dia de campo de quem visitou, e é a base da ajuda de custo.'],
         ['Um plano passou de R$ 5.000.', 'O sistema não deixa salvar acima do valor. Se aparecer acima, devolva pedindo para tirar ou trocar itens.'],

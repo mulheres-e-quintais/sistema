@@ -2892,3 +2892,6 @@ details.termo-gov > p { margin: 10px 0 0; }
 .secao-cab:has(.imp-uf) { align-items: end; }
 .secao-cab:has(.imp-uf) > div { flex: 1 1 320px; }
 .imp-uf select { padding: 8px 12px; border: 1px solid var(--campo-borda); border-radius: 10px; background: var(--surface); font: inherit; color: var(--ink); }
+
+/* listas longas (roteiro do campo, visitas do mês em Custos): botão para desenhar mais linhas */
+.mais-linhas { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 12px 0 0; }

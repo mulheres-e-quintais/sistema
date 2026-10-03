@@ -7,8 +7,10 @@
   const visitaPaga = id => { const sid = (S().solicVis || {})[id]; const sol = sid && (S().solic || []).find(x => x.id === sid); return !!(sol && sol.situacao === 'lancada'); };
   const R = MQ.regras;
   const $ = s => document.querySelector(s);
-  const C = { par: null, km: null, mes: null, carregado: false, erro: null };
-  const brl = v => (Math.round((+v || 0) * 100) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const PASSO = 60;   // a lista de visitas do mês desenha as primeiras linhas e o resto sob pedido
+  const C = { par: null, km: null, mes: null, carregado: false, erro: null, lim: PASSO };
+  const FMT_BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });   // criado uma vez: toLocaleString monta um novo a cada chamada
+  const brl = v => FMT_BRL.format(Math.round((+v || 0) * 100) / 100);
   const norm = t => String(t || '').split('/')[0].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
   const r2 = x => Math.round((+x || 0) * 100) / 100;   // centavos: cada visita é arredondada e as telas somam sempre os valores já arredondados
   /* célula de CSV: aspas dobradas e, se começar por = + - @ (tab ou enter), apóstrofo na frente para o Excel não executar como fórmula */
@@ -131,7 +133,7 @@
             ${Object.values(porPessoa).sort((a, b) => b.total - a.total).map(x => `<tr><td><b>${E(x.p.nome || '—')}</b><br><span class="small muted">${E((MQ.PAPEIS[x.p.papel] || {}).nome || '')} · ${E(x.p.uf || '')}${x.falta ? ` · <span class="crit-txt">${x.falta} sem km</span>` : ''}</span></td>
               <td class="num">${x.n}</td><td class="num" style="text-align:right"><b>${brl(x.total)}</b></td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">Nenhuma visita feita neste mês.</p>'}
           <h2 style="margin-top:12px">Visitas do mês</h2>
-          ${linhas.length ? `<div class="lista-custo">${linhas.map(linha).join('')}</div>` : '<p class="muted">Nenhuma visita neste mês.</p>'}
+          ${linhas.length ? `<div class="lista-custo">${linhas.slice(0, C.lim).map(linha).join('')}</div>${linhas.length > C.lim ? `<p class="mais-linhas"><button type="button" class="btn peq" data-acao="custo-mais">Mostrar mais ${Math.min(PASSO, linhas.length - C.lim)}</button><button type="button" class="link small" data-acao="custo-todas">Mostrar todas</button><span class="small muted">Mostrando ${C.lim} de ${linhas.length} visitas do mês</span></p>` : ''}` : '<p class="muted">Nenhuma visita neste mês.</p>'}
         </section>
         <aside class="secao">
           <form class="bloco" data-form="custo-sim" novalidate><h2>Simular uma visita</h2>
@@ -189,7 +191,8 @@
       if (k === 'locais') C.medidas.locais = C.medidas.locais ? null : (C.teto && C.teto.longe); else C.medidas[k] = !C.medidas[k];
       C.plano = null; C.planoAtual = null; C.teto = null; U().render(); return; }
     if (a === 'custo-plano-csv') { csvPlano(); return; }
-    if (a === 'custo-mes') { C.mes = somaMes(C.mes || mesHoje(), +el.dataset.n); U().render(); }
+    if (a === 'custo-mes') { C.mes = somaMes(C.mes || mesHoje(), +el.dataset.n); C.lim = PASSO; U().render(); }
+    else if (a === 'custo-mais' || a === 'custo-todas') { C.lim = a === 'custo-todas' ? Infinity : C.lim + PASSO; S().rolarPara = window.scrollY; U().render(); return; }
     else if (a === 'custo-csv') csv();
   }
   async function enviar(tipo, form, fd) {

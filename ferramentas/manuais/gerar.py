@@ -151,6 +151,7 @@ A(tela('campo_estados', 'Campo: andamento por estado', [(1, '+ Agendar visita', 
 A(tela('campo_roteiro', 'Campo: planos para aprovar e roteiro do mês', [
     (1, 'Planos para você aprovar', 'Diagnósticos com plano esperando a coordenação técnica.'), (2, 'Roteiro de campo', 'As visitas do mês, com data, mulher, etapa, quem visita e situação.'), (3, 'Ações da visita', 'Abre o registro ou permite mudar data ou pessoa.')]))
 A(passos('aprovar o plano do quintal', ['Em Planos para você aprovar, abra o diagnóstico.', 'Confira as fotos, o kit (até R$ 5.000) e o cronograma.', 'Toque em <b class="bt">Aprovar</b>. Ou escreva o motivo e toque em <b class="bt">Devolver para correção</b>.'], 'Com o plano aprovado, a implantação pode ser agendada.'))
+A(caixa('dica', 'Em mês com muitas visitas, o roteiro mostra as 60 primeiras. No fim da tabela, toque em <b>Mostrar mais</b> ou em <b>Mostrar todas</b>. A lista de visitas da aba Custos funciona do mesmo jeito.'))
 A(passos('mudar ou cancelar uma visita', ['No roteiro, na linha da visita, toque em <b class="bt">Mudar data ou pessoa</b>.', 'Altere e salve, ou toque em <b class="bt">Cancelar esta visita</b>.'], 'O roteiro é atualizado. Visita cancelada não volta: agenda-se outra.'))
 A(caixa('importante', 'Quem agenda a visita é a bolsista do estado, na tela dela. Só visita quem está habilitada (FIC, Arlo e termo) e é do mesmo estado do quintal.'))
 
