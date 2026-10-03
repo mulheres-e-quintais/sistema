@@ -11050,7 +11050,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function rodape(semAjuda) {
     return `<footer class="rodape"><div class="rodape-in">
       <div class="rodape-marca"><img src="assets/isotipo.svg" alt="" width="26" height="37"><span><b>Mulheres &amp; Quintais</b><small>Quintais Produtivos para Mulheres Rurais</small></span></div>
-      <p class="rodape-org">IFRN Campus Apodi · MPA · FUNCERN<br><span>Processo ${esc(MQ.PROJETO.processo)}</span></p>
+      <p class="rodape-org">IFRN Campus Apodi · MPA · FUNCERN${S.eu ? `<br><span>Processo ${esc(MQ.PROJETO.processo)}</span>` : ''}</p>
       <div class="rodape-lgpd">${semAjuda ? '' : '<button type="button" class="rodape-ajuda" data-acao="ajuda"><span class="rodape-ajuda-ic" aria-hidden="true">?</span>Ajuda desta página</button>'}
         <p>Dados protegidos pela LGPD (Lei nº 13.709/2018), usados só para o projeto.</p></div>
     </div></footer>`;
