@@ -385,12 +385,12 @@
     const d = dados(S);
     const mes = mesDoProjeto();
     const diasFim = R.diasAte(MQ.PROJETO.vigencia.fim);
-    const al = alertas(S, d);
+    const ORD_N = { crit: 0, pend: 1, info: 2 }; const al = alertas(S, d).map((x, i) => [x, i]).sort((a, b) => ORD_N[a[0].nivel] - ORD_N[b[0].nivel] || a[1] - b[1]).map(x => x[0]);   // o mais grave primeiro
     const feito = { equipe: () => d.pagaveis.length >= 11, diagnostico_inicio: () => (S.diagnosticos || []).length > 0, M2: () => (S.diagnosticos || []).length >= 200 };
     const marcos = MQ.MARCOS.filter(m => R.diasAte(m.d) >= -7 && !(m.feito && feito[m.feito] && feito[m.feito]())).slice(0, 4);   // marco já cumprido sai da lista
     const aguard = d.fichas.filter(f => f.situacao === 'aguardando').length;
     const NOME_ABA = { equipe: 'Equipe', selecao: 'Seleção', campo: 'Campo', custos: 'Custos', historico: 'Histórico', visao: 'Visão geral' };
-    const NIVEL = { crit: ['st-atr', 'Requer ação'], pend: ['st-aten', 'Atenção'], info: ['st-nao', 'Informação'] };
+    const NIVEL = { crit: ['st-atr', 'Requer ação'], pend: ['st-aten', 'Atenção'], info: ['st-nao', 'Aviso'] };
     const ex = execucaoGeral(S, d, mes);
     const dg = S.diagnosticos || [];
     const impl = (S.visitas || []).filter(v => v.etapa === 'implantacao' && v.situacao === 'realizada').length;
@@ -421,13 +421,13 @@
         </div>
       </section>
 
-      <section class="secao dx-atencao" aria-labelledby="t-alertas">
-        <div class="secao-cab"><div><h2 id="t-alertas">O que pede atenção</h2></div>${al.length ? `<span class="dx-conta"><span class="dx-ct dx-ct-crit"><b class="num">${al.filter(x => x.nivel === 'crit').length}</b> requer${al.filter(x => x.nivel === 'crit').length === 1 ? '' : 'em'} ação</span><span class="so-leitor"> · </span><span class="dx-ct dx-ct-pend"><b class="num">${al.filter(x => x.nivel === 'pend').length}</b> atenção</span></span>` : ''}</div>
+      <section class="secao dx-atencao dx-topo-${al.some(x => x.nivel === 'crit') ? 'crit' : al.some(x => x.nivel === 'pend') ? 'pend' : 'ok'}" aria-labelledby="t-alertas">
+        <div class="secao-cab"><div><h2 id="t-alertas">O que pede atenção</h2></div>${al.length ? `<span class="dx-conta">${[['crit', n => n === 1 ? 'requer ação' : 'requerem ação'], ['pend', () => 'atenção'], ['info', n => n === 1 ? 'aviso' : 'avisos']].map(([k, r]) => { const n = al.filter(x => x.nivel === k).length; return n ? `<span class="dx-ct dx-ct-${k}"><b class="num">${n}</b> ${r(n)}</span>` : ''; }).filter(Boolean).join('<span class="so-leitor"> · </span>')}</span>` : ''}</div>
         ${al.length ? `<div class="dx-tab" role="table" aria-label="Pendências">
           <div class="dx-tr dx-th" role="row"><span role="columnheader">Problema</span><span role="columnheader">Prazo</span><span role="columnheader"><span class="sr">Ação</span></span></div>
-          ${al.map(x => `<div class="dx-tr dx-n-${x.nivel}" role="row"><span role="cell" class="dx-prob"><span class="st-pt ${NIVEL[x.nivel][0]}" aria-hidden="true"></span><span><span class="sr">${NIVEL[x.nivel][1]}: </span><b>${E(x.texto)}</b><small>${E(x.det)}</small></span></span>
+          ${al.map(x => `<div class="dx-tr dx-n-${x.nivel}" role="row"><span role="cell" class="dx-prob"><span class="st-pt ${NIVEL[x.nivel][0]}" aria-hidden="true"></span><span><span class="dx-selo dx-selo-${x.nivel}">${NIVEL[x.nivel][1]}</span><span class="sr">: </span><b>${E(x.texto)}</b><small>${E(x.det)}</small></span></span>
             <span role="cell" class="dx-prazo num">${prazoTxt(x)}</span>
-            <span role="cell">${x.aba ? MQ.botaoAcao({ acao: 'aba', texto: 'Resolver', icone: 'resolver', mini: true, cls: 'dx-ir', rotulo: `Resolver: ${E(x.texto)} (abre ${NOME_ABA[x.aba] || x.aba})`, attrs: `data-aba="${x.aba}" title="Abre ${NOME_ABA[x.aba] || x.aba}"` }) : ''}</span></div>`).join('')}
+            <span role="cell">${x.aba ? MQ.botaoAcao({ acao: 'aba', texto: x.nivel === 'info' ? 'Ver' : 'Resolver', icone: x.nivel === 'info' ? 'ver' : 'resolver', sec: x.nivel === 'info', mini: true, cls: 'dx-ir', rotulo: `${x.nivel === 'info' ? 'Ver' : 'Resolver'}: ${E(x.texto)} (abre ${NOME_ABA[x.aba] || x.aba})`, attrs: `data-aba="${x.aba}" title="Abre ${NOME_ABA[x.aba] || x.aba}"` }) : ''}</span></div>`).join('')}
         </div>` : `<p class="dx-ok">${chipStatus('concluida', 'Nada pendente')} nos dados do sistema.</p>`}
       </section>
 
