@@ -2115,6 +2115,20 @@ MQ.ORCAMENTO = {
   let euCache = null;
   const marcas = { fichas: {}, diagnosticos: {} };   // "atualizado_em" de cada registro na última leitura (item: aprovar o que foi lido)
 
+  /* Listas inteiras, em partes. O Supabase devolve no máximo 1.000 linhas por pedido (configuração "Max rows") e corta o resto sem avisar:
+     aqui o sistema pede de 1.000 em 1.000 até chegar ao total que o próprio banco informa. `montar` devolve a consulta já com filtros e ordem
+     (a ordem termina na chave da tabela, para as partes não se repetirem nem pularem linha). Devolve { data, error }, como uma consulta comum. */
+  const PARTE = 1000, CT = { count: 'exact' };
+  async function todas(montar) {
+    let tudo = [];
+    for (let de = 0; de < 200000;) {   // teto de segurança: 200 partes
+      const { data, error, count } = await montar().range(de, de + PARTE - 1);
+      if (error) return { data: null, error };
+      const l = data || []; tudo = tudo.concat(l); de += l.length;
+      if (!l.length || (count == null ? l.length < PARTE : tudo.length >= count)) break;
+    }
+    return { data: tudo, error: null };
+  }
   const erro = e => {
     const x = new Error(R.mensagemErro(e)); x.original = e;
     x.semRede = !navigator.onLine || /Failed to fetch|NetworkError|Load failed|network/i.test(String((e && e.message) || e));
@@ -2252,18 +2266,18 @@ MQ.ORCAMENTO = {
       if (!data || !data.proposta) throw erro((data && data.erro) || 'Não veio texto. Tente de novo.');
       return data.proposta;
     },
-    async listarPerfisEquipe() { const { data, error } = await sb.from('equipe_privado').select('equipe_id, perfil'); if (error) throw erro(error); return data; },
+    async listarPerfisEquipe() { const { data, error } = await todas(() => sb.from('equipe_privado').select('equipe_id, perfil', CT).order('equipe_id')); if (error) throw erro(error); return data; },
     /* roteiro de testes (21_roteiro_testes.sql) */
-    async listarTestes() { const { data, error } = await sb.from('testes_resultados').select('*'); if (error) throw erro(error); return data; },
+    async listarTestes() { const { data, error } = await todas(() => sb.from('testes_resultados').select('*', CT).order('equipe_id').order('tarefa')); if (error) throw erro(error); return data; },
     async salvarTeste(r) { const { error } = await sb.from('testes_resultados').upsert(r, { onConflict: 'equipe_id,tarefa' }); if (error) throw erro(error); },
     /* entregas do mês (19_entregas_do_mes.sql) */
-    async listarEntregas() { const { data, error } = await sb.from('entregas_mes').select('*'); if (error) throw erro(error); return data; },
+    async listarEntregas() { const { data, error } = await todas(() => sb.from('entregas_mes').select('*', CT).order('equipe_id').order('mes').order('item')); if (error) throw erro(error); return data; },
     async marcarEntrega(equipe_id, mes, item, marcar) {
       const q = marcar ? sb.from('entregas_mes').insert({ equipe_id, mes, item })
         : sb.from('entregas_mes').delete().match({ equipe_id, mes, item });
       const { error } = await q; if (error && !(marcar && error.code === '23505')) throw erro(error);
     },
-    async listarCiencias() { const { data, error } = await sb.from('ciencias').select('*'); if (error) throw erro(error); return data; },
+    async listarCiencias() { const { data, error } = await todas(() => sb.from('ciencias').select('*', CT).order('equipe_id').order('documento')); if (error) throw erro(error); return data; },
     async darCiencia(equipe_id, documento) {
       const { error } = await sb.from('ciencias').insert({ equipe_id, documento }); if (error && error.code !== '23505') throw erro(error);
     },
@@ -2274,7 +2288,7 @@ MQ.ORCAMENTO = {
       if (error) throw erro(/pedir_novo_acesso|PGRST202/.test(error.message) ? 'O pedido de novo acesso ainda não está instalado. Fale direto com a coordenação geral.' : error);
     },
     async listarPedidosAcesso() {
-      const { data, error } = await sb.from('pedidos_novo_acesso').select('*').eq('situacao', 'aguardando').order('pedido_em'); if (error) throw erro(error); return data;
+      const { data, error } = await todas(() => sb.from('pedidos_novo_acesso').select('*', CT).eq('situacao', 'aguardando').order('pedido_em').order('id')); if (error) throw erro(error); return data;
     },
     async descartarPedidoAcesso(id) {
       const { data, error } = await sb.from('pedidos_novo_acesso').update({ situacao: 'descartado' }).eq('id', id).select('id'); if (error) throw erro(error);
@@ -2291,7 +2305,7 @@ MQ.ORCAMENTO = {
     async gerarCodigoAcesso(id) { const { data, error } = await sb.rpc('gerar_codigo_acesso', { p_equipe: id }); if (error) throw erro(error); return data; },
     /* ---------- Fichas de indicação ---------- */
     async listarFichas() {
-      const { data, error } = await sb.from('fichas').select('*').order('criado_em', { ascending: false });
+      const { data, error } = await todas(() => sb.from('fichas').select('*', CT).order('criado_em', { ascending: false }).order('id'));
       if (error) throw erro(error);
       (data || []).forEach(f => { marcas.fichas[f.id] = f.atualizado_em; });   // o que a coordenação leu (confere ao aprovar)
       return data;
@@ -2322,7 +2336,7 @@ MQ.ORCAMENTO = {
     },
     /* ---------- Visitas e diagnósticos ---------- */
     async listarVisitas() {
-      const { data, error } = await sb.from('visitas').select('*').order('data_prevista');
+      const { data, error } = await todas(() => sb.from('visitas').select('*', CT).order('data_prevista').order('id'));
       if (error) throw erro(error); return data;
     },
     async salvarVisita(v, fotos, op) {
@@ -2341,7 +2355,7 @@ MQ.ORCAMENTO = {
       return gravar('visitas', r, marca);
     },
     async listarDiagnosticos() {
-      const { data, error } = await sb.from('diagnosticos').select('*').order('data_visita', { ascending: false });
+      const { data, error } = await todas(() => sb.from('diagnosticos').select('*', CT).order('data_visita', { ascending: false }).order('id'));
       if (error) throw erro(error); (data || []).forEach(d => { marcas.diagnosticos[d.id] = d.atualizado_em; }); return data;
     },
     async salvarDiagnostico(dados, fotos, op) {
@@ -2360,7 +2374,7 @@ MQ.ORCAMENTO = {
       { const g = await gravar('diagnosticos', d, marca); marcas.diagnosticos[g.id] = g.atualizado_em; return g; }
     },
     async listarAvaliacoes() {
-      const { data, error } = await sb.from('avaliacoes').select('*').order('data_visita', { ascending: false }); if (error) throw erro(error); return data;
+      const { data, error } = await todas(() => sb.from('avaliacoes').select('*', CT).order('data_visita', { ascending: false }).order('id')); if (error) throw erro(error); return data;
     },
     async salvarAvaliacao(dados, fotos, op) {
       const d = Object.assign({}, dados); const caminhos = new Set(d.fotos || []); const marca = (op && op.marca) || null;
@@ -2422,14 +2436,14 @@ MQ.ORCAMENTO = {
     async verContaArlo(id) { const { data, error } = await sb.rpc('ver_conta_para_arlo', { p_equipe: id }); if (error) throw erro(error); return data; },
     async situacaoBancaria() { const { data, error } = await sb.rpc('situacao_bancaria'); if (error) throw erro(error); return data; },
     async listarAPL() {
-      const { data, error } = await sb.from('apl_municipios').select('*'); if (error) throw erro(error); return data;
+      const { data, error } = await todas(() => sb.from('apl_municipios').select('*', CT).order('uf').order('municipio')); if (error) throw erro(error); return data;
     },
     async salvarAPL(uf, municipio, apls, obs) {
       const { error } = await sb.from('apl_municipios').upsert({ uf, municipio, apls, obs }, { onConflict: 'uf,municipio' });
       if (error) throw erro(/apl_municipios|PGRST205/.test(error.message) ? 'O cadastro de APL ainda não foi instalado no servidor: rode o arquivo 10_apl.sql.' : error);
     },
     async listarPreCadastros() {
-      const { data, error } = await sb.from('pre_cadastros').select('*').eq('situacao', 'aguardando').order('enviado_em');
+      const { data, error } = await todas(() => sb.from('pre_cadastros').select('*', CT).eq('situacao', 'aguardando').order('enviado_em').order('id'));
       if (error) throw erro(error); return data;
     },
     async decidirPreCadastro(id, situacao, obs, equipe_id) {
@@ -2463,7 +2477,7 @@ MQ.ORCAMENTO = {
       if (error) throw erro(error); return data.valor;
     },
     async listarCustos() {
-      const { data, error } = await sb.from('custos_visita').select('visita_id, km_ida, obs, definido_em');
+      const { data, error } = await todas(() => sb.from('custos_visita').select('visita_id, km_ida, obs, definido_em', CT).order('visita_id'));
       if (error) throw erro(error); return data;
     },
     async salvarKm(visita_id, km_ida) {
@@ -2482,7 +2496,7 @@ MQ.ORCAMENTO = {
       return data;
     },
     async listarVitrine() {
-      const { data, error } = await sb.from('vitrine_fotos').select('*').order('publicada_em', { ascending: false });
+      const { data, error } = await todas(() => sb.from('vitrine_fotos').select('*', CT).order('publicada_em', { ascending: false }).order('id'));
       if (error) throw erro(error);
       data.forEach(f => { f.url = sb.storage.from('vitrine').getPublicUrl(f.path).data.publicUrl; });
       return data;
@@ -2509,7 +2523,7 @@ MQ.ORCAMENTO = {
     },
     /* Fotos cuja autorização foi retirada: o banco já tirou da vitrine; aqui apaga o arquivo público */
     async limparVitrinePendente() {
-      const { data, error } = await sb.from('vitrine_remover').select('path');
+      const { data, error } = await todas(() => sb.from('vitrine_remover').select('path', CT).order('path'));
       if (error || !data || !data.length) return 0;
       const paths = data.map(x => x.path);
       const { error: e1 } = await sb.storage.from('vitrine').remove(paths);
@@ -2528,7 +2542,7 @@ MQ.ORCAMENTO = {
     },
 
     async listarEquipe() {
-      const { data, error } = await sb.from('equipe').select('*').order('criado_em');
+      const { data, error } = await todas(() => sb.from('equipe').select('*', CT).order('criado_em').order('id'));
       if (error) throw erro(error);
       // 43_lgpd_equipe.sql: a bolsista vê as colegas do estado só com os dados de trabalho (sem CPF, e-mail, SIAPE)
       try { const r = await sb.rpc('equipe_do_estado'); if (!r.error && Array.isArray(r.data)) { const ja = new Set(data.map(m => m.id)); r.data.forEach(m => { if (!ja.has(m.id)) data.push(m); }); } } catch (e) { /* 43 ainda não instalado */ }
@@ -2558,8 +2572,8 @@ MQ.ORCAMENTO = {
     },
     /* ---------- Solicitação de pagamento (12_pagamentos.sql) ---------- */
     async listarSolicitacoes() {
-      const { data, error } = await sb.from('solicitacoes_pagamento').select('*').order('solicitada_em', { ascending: false }); if (error) throw erro(error);
-      const { data: vs, error: e2 } = await sb.from('solicitacao_visitas').select('*'); if (e2) throw erro(e2);
+      const { data, error } = await todas(() => sb.from('solicitacoes_pagamento').select('*', CT).order('solicitada_em', { ascending: false }).order('id')); if (error) throw erro(error);
+      const { data: vs, error: e2 } = await todas(() => sb.from('solicitacao_visitas').select('*', CT).order('visita_id')); if (e2) throw erro(e2);
       return { lista: data, vinculos: Object.fromEntries((vs || []).map(x => [x.visita_id, x.solicitacao_id])) };
     },
     async solicitarPagamento(tipo, mes, valor, relatorio, visitas, detalhe) {
@@ -2572,14 +2586,14 @@ MQ.ORCAMENTO = {
     /* ---------- Documentos do projeto (24_documentos.sql): só a coordenação geral ---------- */
     /* execução (37): planilha de gastos do mês; só a coordenação geral; sem update nem delete */
     /* acesso à água (39): coordenação lê e registra; sem update nem delete */
-    async listarCanaisVenda() { const { data, error } = await sb.from('canais_venda').select('*').order('uf').order('municipio'); if (error) throw erro(error); return data; },
+    async listarCanaisVenda() { const { data, error } = await todas(() => sb.from('canais_venda').select('*', CT).order('uf').order('municipio').order('id')); if (error) throw erro(error); return data; },
     async salvarCanalVenda(x) { const { data, error } = await sb.rpc('salvar_canal_venda', { p_id: x.id || null, p_uf: x.uf, p_municipio: x.municipio, p_tipo: x.tipo, p_nome: x.nome, p_detalhe: x.detalhe || null, p_contato: x.contato || null, p_ativo: x.ativo !== false }); if (error) throw erro(error); return data; },
-    async listarOrientacoesVenda() { const { data, error } = await sb.from('orientacoes_venda').select('*').order('feito_em', { ascending: false }); if (error) throw erro(error); return data; },
+    async listarOrientacoesVenda() { const { data, error } = await todas(() => sb.from('orientacoes_venda').select('*', CT).order('feito_em', { ascending: false }).order('id')); if (error) throw erro(error); return data; },
     async registrarOrientacaoVenda(ficha_id, dados) { const { data, error } = await sb.rpc('registrar_orientacao_venda', { p_ficha: ficha_id, p_dados: dados }); if (error) throw erro(error); return data; },
-    async listarAgua() { const { data, error } = await sb.from('agua_situacoes').select('*').order('registrado_em', { ascending: true }); if (error) throw erro(error); return data; },
+    async listarAgua() { const { data, error } = await todas(() => sb.from('agua_situacoes').select('*', CT).order('registrado_em', { ascending: true }).order('id')); if (error) throw erro(error); return data; },
     async registrarSituacaoAgua(ficha_id, situacao, obs) { const { data, error } = await sb.rpc('registrar_situacao_agua', { p_ficha: ficha_id, p_situacao: situacao, p_obs: obs }); if (error) throw erro(error); return data; },
     async listarPlanilhasExec() {
-      const { data, error } = await sb.from('execucao_planilhas').select('*').order('posicao_em', { ascending: false }).order('enviado_em', { ascending: false }); if (error) throw erro(error); return data;
+      const { data, error } = await todas(() => sb.from('execucao_planilhas').select('*', CT).order('posicao_em', { ascending: false }).order('enviado_em', { ascending: false }).order('id')); if (error) throw erro(error); return data;
     },
     async enviarPlanilhaExec(d, arquivo) {
       const limpo = String(arquivo.name).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w.-]+/g, '_').slice(-80);
@@ -2592,7 +2606,7 @@ MQ.ORCAMENTO = {
     },
     async linkPlanilhaExec(path) { const { data, error } = await sb.storage.from('execucao').createSignedUrl(path, 600); if (error) throw erro(error); return data.signedUrl; },
     async listarDocumentos() {
-      const { data, error } = await sb.from('documentos_projeto').select('*').order('data_documento', { ascending: false }); if (error) throw erro(error); return data;
+      const { data, error } = await todas(() => sb.from('documentos_projeto').select('*', CT).order('data_documento', { ascending: false }).order('id')); if (error) throw erro(error); return data;
     },
     async enviarDocumento(d, arquivo) {
       const limpo = String(arquivo.name).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w.-]+/g, '_').slice(-80);
@@ -2624,7 +2638,7 @@ MQ.ORCAMENTO = {
       return data;
     },
     async listarPedidos() {
-      const { data, error } = await sb.from('pedidos_apoio').select('*').order('enviado_em', { ascending: false }); if (error) throw erro(error); return data;
+      const { data, error } = await todas(() => sb.from('pedidos_apoio').select('*', CT).order('enviado_em', { ascending: false }).order('id')); if (error) throw erro(error); return data;
     },
     async salvarPedido(id, tipo, titulo, data, dados, justificativa) {
       const { data: r, error } = await sb.rpc('salvar_pedido_apoio', { p_id: id || null, p_tipo: tipo, p_titulo: titulo, p_data: data, p_dados: dados, p_justificativa: justificativa || null });
@@ -2654,7 +2668,7 @@ MQ.ORCAMENTO = {
     },
     /* encontros do FIC e lista de presença (38) */
     async listarEncontrosFic() {
-      const { data, error } = await sb.from('fic_encontros').select('*, presencas:fic_presencas(*)').order('data', { ascending: false }); if (error) throw erro(error); return data;
+      const { data, error } = await todas(() => sb.from('fic_encontros').select('*, presencas:fic_presencas(*)', CT).order('data', { ascending: false }).order('id')); if (error) throw erro(error); return data;
     },
     async salvarEncontroFic(x) {
       const { data, error } = await sb.rpc('registrar_encontro_fic', { p_id: x.id || null, p_turma: x.turma_id, p_data: x.data, p_carga: +x.carga_horaria, p_modalidade: x.modalidade,
@@ -2663,8 +2677,8 @@ MQ.ORCAMENTO = {
     },
     async cancelarEncontroFic(id, motivo) { const { error } = await sb.rpc('cancelar_encontro_fic', { p_id: id, p_motivo: motivo }); if (error) throw erro(error); },
     async confirmarPresencaFic(encontro_id) { const { error } = await sb.rpc('confirmar_presenca_fic', { p_encontro: encontro_id }); if (error) throw erro(error); },
-    async listarTurmas() { const { data, error } = await sb.from('turmas_fic').select('*').order('criado_em'); if (error) throw erro(error); return data; },
-    async listarMatriculas() { const { data, error } = await sb.from('matriculas_fic').select('*').is('cancelada_em', null).order('criado_em'); if (error) throw erro(error); return data; },
+    async listarTurmas() { const { data, error } = await todas(() => sb.from('turmas_fic').select('*', CT).order('criado_em').order('id')); if (error) throw erro(error); return data; },
+    async listarMatriculas() { const { data, error } = await todas(() => sb.from('matriculas_fic').select('*', CT).is('cancelada_em', null).order('criado_em').order('id')); if (error) throw erro(error); return data; },
     async salvarTurma(t) {
       const reg = { id: t.id || crypto.randomUUID(), nome: t.nome, uf: t.uf || null, municipio: t.municipio || null, inicio: t.inicio || null, fim: t.fim || null, professor_id: t.professor_id, obs: t.obs || null };
       return gravar('turmas_fic', reg);
@@ -9777,6 +9791,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         '<b>Financeiro e entregas</b> abre o painel de recursos, rubricas e metas físicas. Só a coordenação geral vê esse botão.'
       ],
       duvidas: [
+        ['Como coloco a minha foto?', 'Em Meus dados, toque em Tirar foto para usar a câmera do celular ou do computador, ou em Adicionar foto para escolher uma que já está no aparelho. Na primeira vez o navegador pede permissão para usar a câmera.'],
         ['Os números estão zerados.', 'Eles só contam registros reais. Dados de teste (exemplo) ficam de fora dos números e da vitrine.'],
         ['Qual a diferença entre "na equipe" e "habilitadas"?', 'Na equipe é quem está cadastrado e ativo. Habilitada é quem completou os passos para receber: matrícula no FIC (coordenação técnica, bolsistas e agentes), cadastro no Arlo e termo de compromisso.']
       ]
@@ -11312,7 +11327,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `<span class="av" style="--av:${tam || 32}px;--avc:${CORES_AV[h % CORES_AV.length]}" aria-hidden="true">${esc(ini)}${m.foto_url ? `<img src="${esc(m.foto_url)}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span>`;
   }
   const podeTrocarFoto = m => m.status === 'ativa' && (S.eu.id === m.id || (/^coord/.test(S.eu.papel) && R.podeEditarDados(S.eu.papel, m.papel)));
-  const botaoFoto = m => podeTrocarFoto(m) ? `<label class="btn peq foto-btn">${m.foto_url ? 'Trocar foto' : 'Adicionar foto'}<input type="file" accept="image/*" data-foto-equipe="${m.id}" hidden></label>` : '';
+  /* foto da pessoa: tirar na hora (câmera do celular ou do computador) ou escolher uma que já está no aparelho */
+  const botaoFoto = m => podeTrocarFoto(m) ? `<span class="foto-acoes"><button type="button" class="btn peq foto-btn" data-acao="foto-camera" data-id="${m.id}">Tirar foto</button><input type="file" accept="image/*" capture="user" data-foto-equipe="${m.id}" data-foto-cam hidden><label class="btn peq foto-btn">${m.foto_url ? 'Trocar foto' : 'Adicionar foto'}<input type="file" accept="image/*" data-foto-equipe="${m.id}" hidden></label></span>` : '';
 
   function cartaoPessoa(m) {
     const s = R.situacao(m);
@@ -12571,6 +12587,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           abrirPainel(S.painel);
         } catch (e) { el.disabled = false; toast(avisarErro(e)); }
       }
+      else if (a === 'foto-camera') cameraFoto(el.dataset.id);
       else if (a === 'termo-abrir') {   // quem confere abre o termo anexado (link temporário do servidor)
         const box = document.getElementById('termo-vista'); if (!box) return;
         try { const url = await S.api.linkTermo(el.dataset.path);
@@ -12647,13 +12664,39 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       img.src = url;
     });
   }
+  async function guardarFotoEquipe(id, imagem) {
+    await S.api.enviarFotoEquipe(id, await fotoQuadrada(imagem));
+    S.equipe = await S.api.listarEquipe(); if (S.eu.id === id) S.eu = Object.assign({}, S.eu, porId(S.eu.id));
+  }
+  /* "Tirar foto": no celular abre a câmera do aparelho; no computador, uma janela com a imagem da webcam */
+  async function cameraFoto(id) {
+    const entrada = [...document.querySelectorAll('input[data-foto-cam]')].find(i => i.dataset.fotoEquipe === id);
+    const celular = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    if (celular || !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { if (entrada) entrada.click(); return; }
+    let fluxo;
+    try { fluxo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 960 }, height: { ideal: 960 } }, audio: false }); }
+    catch (e) { toast('Não foi possível abrir a câmera. Confira a permissão do navegador ou escolha uma foto do aparelho.'); return; }
+    const j = document.createElement('div'); j.className = 'cam-janela'; j.setAttribute('role', 'dialog'); j.setAttribute('aria-modal', 'true'); j.setAttribute('aria-label', 'Tirar foto');
+    j.innerHTML = '<div class="cam-caixa"><video autoplay playsinline muted></video><p class="small muted">Centralize o rosto e toque em Tirar foto.</p><div class="acoes"><button type="button" class="btn pri" data-cam="tirar">Tirar foto</button><button type="button" class="btn" data-cam="cancelar">Cancelar</button></div></div>';
+    const video = j.querySelector('video'); video.srcObject = fluxo; document.body.appendChild(j); j.querySelector('[data-cam=tirar]').focus();
+    const fechar = () => { fluxo.getTracks().forEach(t => t.stop()); j.remove(); document.removeEventListener('keydown', tecla); };
+    const tecla = ev => { if (ev.key === 'Escape') fechar(); }; document.addEventListener('keydown', tecla);
+    j.addEventListener('click', async ev => {
+      const b = ev.target.closest('[data-cam]'); if (!b) { if (ev.target === j) fechar(); return; }
+      if (b.dataset.cam === 'cancelar') { fechar(); return; }
+      if (!video.videoWidth) return;
+      const c = document.createElement('canvas'); c.width = video.videoWidth; c.height = video.videoHeight; c.getContext('2d').drawImage(video, 0, 0);
+      b.disabled = true; b.textContent = 'Enviando…';
+      c.toBlob(async blob => { fechar();
+        try { await guardarFotoEquipe(id, blob); render(); toast('Foto salva.'); } catch (e) { toast(avisarErro(e)); } }, 'image/jpeg', 0.9);
+    });
+  }
   document.addEventListener('change', async ev => {
     const inp = ev.target.closest('input[data-foto-equipe]'); if (!inp || !inp.files[0]) return;
     const lab = inp.closest('label'); const txt = lab ? lab.firstChild.textContent : '';
     try {
       if (lab) lab.firstChild.textContent = 'Enviando…';
-      await S.api.enviarFotoEquipe(inp.dataset.fotoEquipe, await fotoQuadrada(inp.files[0]));
-      S.equipe = await S.api.listarEquipe(); if (S.eu.id === inp.dataset.fotoEquipe) S.eu = Object.assign({}, S.eu, porId(S.eu.id));
+      await guardarFotoEquipe(inp.dataset.fotoEquipe, inp.files[0]);
       render();   // se há algo digitado no painel, o desenho devolve o que foi digitado (ver redesenharPreservando) if (lab && lab.isConnected) lab.firstChild.textContent = txt; toast('Foto salva.');
     } catch (e) { if (lab) lab.firstChild.textContent = txt; toast(avisarErro(e)); }
   });
