@@ -102,6 +102,8 @@
     if (!e.email && ativos.some(x => String(x.email).toLowerCase() === em)) e.email = 'Este e-mail já está em uso por outra pessoa ativa.';
     if (m.papel === 'auxiliar_adm' && !m.id && ativos.some(x => x.papel === 'auxiliar_adm'))
       e.papel = 'Já existe auxiliar administrativo ativo. Desligue antes de cadastrar outro.';
+    if (m.papel === 'professor_fic' && !m.id && ativos.filter(x => x.papel === 'professor_fic').length >= R.MAX_PROFESSORES)
+      e.papel = R.MSG_MAX_PROFESSORES;
     if (m.papel === 'coord_tecnico' && !m.id && ativos.some(x => x.papel === 'coord_tecnico'))
       e.papel = 'Já existe coordenação técnica ativa. Desligue a atual antes de cadastrar outra.';
     if (R.ehBolsista(m.papel)) {
@@ -369,6 +371,9 @@
   R.ehCampo = p => p === 'articulacao' || p === 'apoio' || p === 'agente';
   /* 33: técnica, bolsistas e agentes precisam da matrícula no FIC; só se cadastram com professor do FIC ativo e habilitado */
   R.PRECISA_PROFESSOR = ['coord_tecnico', 'articulacao', 'apoio', 'agente'];
+  /* 50: o orçamento prevê 2 professores do FIC; o banco recusa o terceiro */
+  R.MAX_PROFESSORES = 2;
+  R.MSG_MAX_PROFESSORES = 'O projeto tem no máximo 2 professores do FIC ativos. Desligue um antes de cadastrar outro.';
   R.temProfessorHabilitado = equipe => (equipe || []).some(m => m.papel === 'professor_fic' && m.status === 'ativa' && m.docs_funcern_em && m.termo_assinado_em);
   R.MSG_SEM_PROFESSOR = 'Antes, cadastre e habilite um professor do FIC (cadastro no Arlo e termo assinado): sem ele, ninguém consegue a matrícula no curso.';
   R.habilitado = m => !!(m && m.status === 'ativa' && (m.matricula_fic_em || !R.fazFIC(m.papel)) && m.docs_funcern_em && m.termo_assinado_em);
