@@ -4,7 +4,6 @@ window.MQ = window.MQ || {};
 
 /* fontes do sistema (Manrope em tudo; Lora só no nome do projeto), para as páginas que abrem em outra janela (impressão, termo, relatório) */
 MQ.FONTES_LINK = '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap">';
-MQ.FONTE = 'Manrope, system-ui, Arial, Helvetica, sans-serif';
 
 MQ.PROJETO = {
   nome: 'Quintais Produtivos para Mulheres Rurais',
