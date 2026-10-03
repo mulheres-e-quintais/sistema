@@ -1,0 +1,12 @@
+node_modules/
+shots/
+shots_q/
+saida/
+*.html
+*.pdf
+paginas.json
+ids.json
+shots.json
+shots_cel.json
+package-lock.json
+__pycache__/

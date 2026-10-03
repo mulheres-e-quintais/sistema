@@ -1,6 +1,6 @@
 /* Guarda o sistema no aparelho para abrir e preencher fichas sem internet.
    Os dados vão para o servidor pela fila do próprio app quando a conexão volta. */
-const VERSAO = 'mq-v212';
+const VERSAO = 'mq-v213';
 const ARQUIVOS = ['./', 'index.html', 'css/app.css', 'js/config.js', 'js/tudo.js',
   'assets/logo-claro.svg', 'assets/isotipo.svg', 'assets/icon-192.png', 'manifest.webmanifest'];
 const EXTERNOS = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
@@ -20,6 +20,7 @@ self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
   const proprio = u.origin === location.origin;
   if (!proprio && !EXTERNOS.includes(u.hostname)) return;   // API do Supabase passa direto
+  if (proprio && u.pathname.includes('/manuais/')) return;   // manuais em PDF: direto da internet, sem guardar no aparelho (são grandes)
   // a página: internet com prazo de 3 s (para pegar versão nova); sem sinal, abre a guardada
   if (e.request.mode === 'navigate') {
     e.respondWith(comPrazo(e.request, 3000).catch(() => caches.match('index.html')));
