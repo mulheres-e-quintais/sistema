@@ -256,8 +256,7 @@ describe('entrada e mapa', () => {
     const T = await montar('coord_geral'); const mapa = () => T.MQ.painelUI.mapaUFs({ entrada: true });
     let h = mapa(); const pontos = h.match(/<g class="mun-pt[^>]*>/g) || [];
     assert.ok(pontos.length >= 20, pontos.length + ' pontos');
-    for (const g of pontos) { assert.match(g, /role="img"/); assert.match(g, /aria-label="[^"]+\/[A-Z]{2}[^"]*"/); assert.match(g, /sede-pt/.test(g) ? /tabindex="0"/ : /tabindex="-1"/); }
-    assert.equal(pontos.filter(g => /tabindex="0"/.test(g)).length, 1, 'na entrada o mapa é uma parada só do Tab (as setas passam pelos municípios)');
+    for (const g of pontos) { assert.match(g, /role="img"/); assert.match(g, /aria-label="[^"]+\/[A-Z]{2}[^"]*"/); assert.match(g, /tabindex="-1"/); }
     assert.match(h, /aria-label="Apodi\/RN: IFRN Campus Apodi/);
     T.janela.location.hash = '#numeros'; h = mapa();
     for (const g of h.match(/<g class="mun-pt[^>]*>/g)) assert.match(g, /tabindex="0"/);
