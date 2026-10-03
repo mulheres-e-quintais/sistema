@@ -1,0 +1,155 @@
+@font-face{font-family:Manrope;src:url("FD/@fontsource/manrope/files/manrope-latin-400-normal.woff2") format("woff2");font-weight:400}
+@font-face{font-family:Manrope;src:url("FD/@fontsource/manrope/files/manrope-latin-500-normal.woff2") format("woff2");font-weight:500}
+@font-face{font-family:Manrope;src:url("FD/@fontsource/manrope/files/manrope-latin-600-normal.woff2") format("woff2");font-weight:600}
+@font-face{font-family:Manrope;src:url("FD/@fontsource/manrope/files/manrope-latin-700-normal.woff2") format("woff2");font-weight:700}
+@font-face{font-family:Manrope;src:url("FD/@fontsource/manrope/files/manrope-latin-800-normal.woff2") format("woff2");font-weight:800}
+@font-face{font-family:Manrope;src:url("FD/@fontsource/manrope/files/manrope-latin-ext-400-normal.woff2") format("woff2");font-weight:400;unicode-range:U+0100-02BA}
+@font-face{font-family:Manrope;src:url("FD/@fontsource/manrope/files/manrope-latin-ext-500-normal.woff2") format("woff2");font-weight:500;unicode-range:U+0100-02BA}
+@font-face{font-family:Manrope;src:url("FD/@fontsource/manrope/files/manrope-latin-ext-600-normal.woff2") format("woff2");font-weight:600;unicode-range:U+0100-02BA}
+@font-face{font-family:Manrope;src:url("FD/@fontsource/manrope/files/manrope-latin-ext-700-normal.woff2") format("woff2");font-weight:700;unicode-range:U+0100-02BA}
+@font-face{font-family:Manrope;src:url("FD/@fontsource/manrope/files/manrope-latin-ext-800-normal.woff2") format("woff2");font-weight:800;unicode-range:U+0100-02BA}
+@font-face{font-family:Lora;src:url("FD/@fontsource/lora/files/lora-latin-600-normal.woff2") format("woff2");font-weight:600}
+@font-face{font-family:Lora;src:url("FD/@fontsource/lora/files/lora-latin-700-normal.woff2") format("woff2");font-weight:700}
+:root{--m:#452B1A;--m2:#885B44;--t:#A44934;--areia:#DAC9B5;--creme:#F6EDE4;--ink:#3A2519;--ink2:#6B594A;--line:#E2D3C1;--s2:#F8F2EA}
+@page{size:A4;margin:24mm 20mm 22mm 20mm;
+  @top-left{content:"Mulheres & Quintais";padding-left:5mm;background:url("ISO") no-repeat left 1.6mm bottom 3.6mm / 3.1mm auto;font:600 9pt Lora;color:#452B1A;vertical-align:bottom;padding-bottom:4mm;border-bottom:.5pt solid #E2D3C1}
+  @top-right{content:"Manual do Usuário";font:500 8.5pt Manrope;color:#6B594A;vertical-align:bottom;padding-bottom:4mm;border-bottom:.5pt solid #E2D3C1}
+  @bottom-left{content:"Manual do Usuário — Mulheres & Quintais";font:500 8pt Manrope;color:#6B594A;vertical-align:top;padding-top:4mm;border-top:.5pt solid #E2D3C1}
+  @bottom-right{content:counter(page);font:700 9pt Manrope;color:#452B1A;vertical-align:top;padding-top:4mm;border-top:.5pt solid #E2D3C1}}
+@page capa{margin:0;@top-left{content:none;border:0}@top-right{content:none;border:0}@bottom-left{content:none;border:0}@bottom-right{content:none;border:0}}
+*{box-sizing:border-box}
+html{font-family:Manrope,sans-serif;font-size:10.6pt;line-height:1.42;color:var(--ink);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{margin:0}
+p{margin:0 0 7pt;orphans:3;widows:3}
+a{color:inherit;text-decoration:none}
+b{font-weight:700}
+/* capa */
+.capa{page:capa;height:297mm;width:210mm;background:var(--creme);display:flex;flex-direction:column;justify-content:space-between;align-items:center;text-align:center;padding:34mm 24mm 24mm;break-after:page}
+.capa-logo svg{width:34mm;height:auto}
+.capa-marca{font:700 25pt Lora;color:var(--m);margin-top:6mm}
+.capa-sub{font-weight:500;font-size:10.5pt;color:var(--ink2);margin-top:2mm}
+.capa-fio{width:22mm;height:2.5pt;background:var(--t);margin:0 auto 9mm;border-radius:2pt}
+.capa-t{font-weight:800;font-size:31pt;letter-spacing:.06em;color:var(--m);line-height:1.1}
+.capa-n{font:600 19pt Lora;color:var(--t);margin-top:5mm}
+.capa-d{font-weight:500;font-size:12pt;color:var(--ink2);margin-top:4mm}
+.capa-parc{font-weight:600;font-size:9pt;letter-spacing:.04em;color:var(--ink2)}
+.capa-v{font-weight:700;font-size:10.5pt;color:var(--m);margin-top:4mm}
+/* sumário */
+.sum{break-after:page}
+h1.semn{font-weight:800;font-size:22pt;color:var(--m);margin:0 0 9mm;padding-bottom:3mm;border-bottom:2pt solid var(--t)}
+.sum ul{list-style:none;margin:0;padding:0}
+.sum li a{display:flex;align-items:baseline;gap:6pt}
+.sum li.n1{margin-top:9pt;font-weight:700;color:var(--m);font-size:11pt}
+.sum li.n2{font-size:9.8pt;padding-left:18pt;margin-top:2.5pt;color:var(--ink)}
+.sn{min-width:18pt;color:var(--t);font-weight:700}
+.n2 .sn{min-width:24pt;color:var(--m2);font-weight:600}
+.pt{flex:1;border-bottom:.6pt dotted #B9A48D;transform:translateY(-2.5pt)}
+.sp{font-weight:700;min-width:16pt;text-align:right}
+/* capítulos */
+.cap{break-before:page}
+.cap-abre{display:grid;grid-template-columns:auto 1fr;column-gap:5mm;align-items:center;background:var(--creme);border-left:4pt solid var(--t);border-radius:0 8pt 8pt 0;padding:7mm 7mm;margin-bottom:8mm}
+.cap-n{font-weight:800;font-size:34pt;color:var(--t);line-height:1;grid-row:span 2}
+.cap-abre h1{font-weight:700;font-size:20pt;line-height:1.15;color:var(--m);margin:0}
+.cap-sub{grid-column:2;margin:2mm 0 0;color:var(--ink2);font-size:10.5pt}
+h2{font-weight:700;font-size:14pt;color:var(--m);margin:9mm 0 3mm;padding-bottom:1.6mm;border-bottom:.8pt solid var(--line);break-after:avoid}
+h2 .n{color:var(--t);margin-right:7pt}
+.cap-abre+h2{margin-top:0}
+h3{font-weight:600;font-size:11.5pt;color:var(--m);margin:6mm 0 2mm;break-after:avoid}
+.rot{font-weight:700;font-size:8.3pt;letter-spacing:.09em;text-transform:uppercase;color:var(--t);margin:5mm 0 1.6mm;break-after:avoid}
+.caminho{font-weight:600;margin-bottom:3pt}
+.caminho span:not(.seta){background:var(--creme);border:.6pt solid var(--line);border-radius:5pt;padding:1.5pt 7pt;display:inline-block}
+.seta{color:var(--t);font-weight:700;margin:0 2pt}
+.quem{font-size:9.6pt;color:var(--ink2)}
+.tarefa{break-inside:avoid}
+ol.passos{list-style:none;counter-reset:p;margin:0 0 6pt;padding:0}
+ol.passos li{counter-increment:p;position:relative;padding:0 0 0 22pt;margin:0 0 4.5pt}
+ol.passos li::before{content:counter(p);position:absolute;left:0;top:.5pt;width:15pt;height:15pt;border-radius:50%;background:var(--m);color:#fff;font-weight:700;font-size:8.3pt;line-height:15pt;text-align:center}
+ul.lst{margin:0 0 7pt;padding-left:15pt}ul.lst li{margin-bottom:3pt}
+.res{background:var(--s2);border-left:2.5pt solid var(--m2);padding:5pt 9pt;border-radius:0 5pt 5pt 0;font-size:10pt}
+.bt{font-weight:700;color:var(--m)}
+/* caixas */
+.cx{break-inside:avoid;border-radius:7pt;padding:7pt 11pt 8pt;margin:5mm 0;border-left:3.5pt solid;font-size:10pt}
+.cx p{margin:0}
+.cx-t{display:block;font-weight:800;font-size:8.2pt;letter-spacing:.1em;text-transform:uppercase;margin-bottom:2pt}
+.cx.atencao{background:#FBEDE8;border-color:#A44934}.cx.atencao .cx-t{color:#8F3A27}
+.cx.importante{background:#F3EAE0;border-color:#452B1A}.cx.importante .cx-t{color:#452B1A}
+.cx.dica{background:#EDF3EA;border-color:#4F7A4A}.cx.dica .cx-t{color:#3C6238}
+.cx.exemplo{background:#EAF0F5;border-color:#4A6D8C}.cx.exemplo .cx-t{color:#375772}
+/* tabelas */
+table{width:100%;border-collapse:collapse;margin:2mm 0 5mm;font-size:9.5pt;line-height:1.35}
+thead{display:table-header-group}
+th{text-align:left;font-weight:700;font-size:8.3pt;letter-spacing:.05em;text-transform:uppercase;color:var(--m);background:var(--creme);padding:5pt 8pt;border-bottom:1pt solid var(--areia)}
+td{padding:5pt 8pt;border-bottom:.5pt solid var(--line);vertical-align:top}
+tr{break-inside:avoid}
+table.elem td:first-child,table.elem th:first-child{width:26pt;text-align:center}
+table.elem td:nth-child(2){width:32%}
+.num{display:inline-block;width:15pt;height:15pt;border-radius:50%;background:var(--t);color:#fff;font-weight:700;font-size:8.3pt;line-height:15pt;text-align:center}
+table.simb td:first-child,table.simb th:first-child{width:46pt;text-align:center}
+table.rap td:last-child,table.rap th:last-child{width:34pt;text-align:right;font-weight:700}
+table.rap td:nth-child(2){color:var(--m);font-weight:600}
+table.rap{font-size:9.3pt}table.rap td{padding:3.6pt 8pt}
+/* figuras */
+figure{margin:4mm 0 5mm;text-align:center;break-inside:avoid}
+figure.tela img{max-width:100%;max-height:200mm;border:.6pt solid var(--areia);border-radius:6pt;box-shadow:0 1.5pt 6pt rgba(69,43,26,.10)}
+figure.tela.est img{max-width:62%;max-height:175mm}
+figcaption{font-weight:500;font-size:8.6pt;color:var(--ink2);margin-top:2.5mm}
+figure.dia{background:var(--s2);border:.6pt solid var(--line);border-radius:8pt;padding:5mm 5mm 3mm}
+svg.fluxo{width:100%;height:auto;font-family:Manrope}
+.ft{font-weight:700;font-size:12px;fill:#452B1A}
+.fq{font-weight:600;font-size:9.5px;fill:#6B594A}
+.fa{font-weight:700;font-size:11.5px;fill:#3A2519}
+.fb{fill:#fff;stroke:#CDB79D;stroke-width:1}
+.fb.d{fill:#F6EDE4;stroke:#A44934;stroke-width:1.4}
+.fl{fill:none;stroke:#8A7968;stroke-width:1.3}
+.fl.tr{stroke-dasharray:4 3}
+/* ícones */
+.ic{display:inline-flex;align-items:center;justify-content:center;width:15pt;height:15pt;vertical-align:-3.5pt;margin-right:3pt;color:var(--m)}
+.ic svg{width:13pt;height:13pt}
+.ic.esc{background:var(--m);color:var(--creme);border-radius:50%}
+.ic.esc svg{width:9.5pt;height:9.5pt}
+.ic.txt{font-weight:800;font-size:9pt}
+/* problemas e glossário */
+.prob{break-inside:avoid;border:.6pt solid var(--line);border-radius:7pt;padding:7pt 11pt;margin-bottom:3.2mm}
+.prob p{margin:0 0 3pt}.prob p:last-child{margin:0}.prob p:first-child{font-weight:600}
+.pl{display:inline-block;font-weight:800;font-size:7.6pt;letter-spacing:.08em;text-transform:uppercase;color:#8F3A27;min-width:92pt}
+.pl.v{color:#3C6238}
+.glos{margin:0}
+.glos div{display:grid;grid-template-columns:44mm 1fr;gap:5mm;padding:5pt 0;border-bottom:.5pt solid var(--line);break-inside:avoid}
+.glos dt{font-weight:700;color:var(--m)}.glos dd{margin:0}
+.prob p{display:grid;grid-template-columns:92pt 1fr;align-items:baseline}
+.prob p>*{min-width:0}
+.seta{font-size:12pt}
+.cab-logo{display:none}
+.cab-logo svg{width:100%;height:auto;display:block}
+figure.tela img{max-height:188mm}
+table.simb td{padding:3.4pt 8pt}
+table.simb td{padding:2.2pt 8pt}table.simb{font-size:9.2pt}
+.capa-vs{font-weight:500;font-size:8.5pt;color:var(--ink2);margin-top:1.5mm}
+.lado{display:grid;grid-template-columns:64mm 1fr;column-gap:7mm;align-items:start;break-inside:avoid;margin:4mm 0 5mm}
+.lado figure{margin:0}.lado .rot{margin-top:0}
+figure.tela.cel img{max-width:100%;max-height:none;border-radius:9pt;border:1pt solid var(--areia)}
+.lado table.elem td:nth-child(2){width:38%}
+.sim{color:var(--t);font-size:11pt;line-height:1}
+table.mat{font-size:8.8pt}
+table.mat th{font-size:7.2pt;letter-spacing:.02em;padding:5pt 3pt;text-align:center;vertical-align:bottom}
+table.mat th:first-child{text-align:left;padding-left:8pt}
+table.mat td{text-align:center;padding:3.6pt 3pt;vertical-align:middle}
+table.mat td:first-child{text-align:left;padding-left:8pt;width:44%}
+table.mat td:nth-child(2),table.mat th:nth-child(2){background:#FBF6F0}
+.nota{font-size:8.6pt;color:var(--ink2)}
+.cor{display:inline-block;width:9pt;height:9pt;border-radius:50%;margin-right:5pt;vertical-align:-1pt}
+.cor.crit{background:#B3261E}.cor.pend{background:#C98A1B}.cor.ok{background:#4F7A4A}.cor.info{background:#9A8B7C}
+table.cores td:first-child{font-weight:700;white-space:nowrap}
+table.ciclo td:first-child{font-weight:700;color:var(--m);width:27%}table.ciclo td:last-child{width:24%;color:var(--ink2)}
+table.curta td:first-child{font-weight:700;color:var(--m);width:32%}
+table.sem-cab th{font-size:8.3pt}
+table.msg td:first-child{font-weight:600;width:47%}
+.duas{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin:3mm 0 4mm;break-inside:avoid}
+.duas>div{border-radius:7pt;padding:7pt 10pt 4pt;font-size:9.6pt}
+.duas .rot{margin-top:0}
+.pode{background:#EDF3EA}.pode .rot{color:#3C6238}
+.naopode{background:#FBEDE8}.naopode .rot{color:#8F3A27}
+.duas ul.lst{margin-bottom:3pt}
+.sim{display:inline-block;width:6.5pt;height:6.5pt;border-radius:50%;background:var(--t);vertical-align:middle}
+.capa-perfil{display:inline-block;margin-top:9mm;padding:5pt 16pt;border:1.2pt solid var(--t);border-radius:99pt;font-weight:700;font-size:13pt;color:var(--t)}
+.fora{color:var(--ink2)}

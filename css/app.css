@@ -2872,3 +2872,7 @@ svg text, svg tspan { font-family: var(--sans); }
 details.termo-gov { margin: 4px 0 14px; }
 details.termo-gov[open] > .termo-passos { margin-top: 10px; }
 details.termo-gov > p { margin: 10px 0 0; }
+
+/* ajuda: links dos manuais em PDF do perfil */
+.ajuda-manuais { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 6px; }
+.ajuda-manuais .btn { text-decoration: none; }

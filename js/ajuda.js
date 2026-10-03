@@ -442,6 +442,9 @@
   }
 
   const guiaDe = k => k === 'bolsista' ? 'guia_bolsista' : k === 'agente' ? 'guia_agente' : null;
+  /* manuais em PDF por perfil (pasta manuais/): só o link; o arquivo só é baixado se a pessoa tocar */
+  const MANUAL = { coord_geral: 'geral', coord_tecnico: 'tecnica', articulacao: 'bolsista', apoio: 'bolsista', agente: 'agente', professor_fic: 'professor', auxiliar_adm: 'auxiliar' };
+  const manualDe = papel => MANUAL[papel] || '';
   function painel(p) {
     const k = p.k && A[p.k] ? p.k : chaveAtual(); const a = A[k];
     const s = S(); const coord = s.eu && /^coord/.test(s.eu.papel) && !s.verEntrada;
@@ -459,6 +462,9 @@
         ${a.duvidas && a.duvidas.length ? `<h3>Dúvidas comuns</h3><div class="ajuda-duvidas">${a.duvidas.map(([q, r]) => `<details><summary>${E(q)}</summary><p>${E(r)}</p></details>`).join('')}</div>` : ''}
         ${k !== 'entrada' && s.eu && MQ.roteiroUI && MQ.roteiroUI.grupoDe(s.eu.papel) ? `<button type="button" class="cad-modo cad-modo-2" data-acao="rot-abrir"><b>${s.eu.papel === 'coord_geral' ? 'Teste do sistema' : 'Ajudar a testar o sistema'}</b><span>${s.eu.papel === 'coord_geral' ? 'Seu roteiro, convites para a equipe e resultados de todos.' : 'Tarefas curtas do seu perfil, uma de cada vez: você diz se deu certo.'}</span></button>` : ''}
         ${k !== 'geral' && k !== 'entrada' ? `<button type="button" class="cad-modo cad-modo-2" data-acao="ajuda" data-k="geral"><b>Dicas para usar o sistema</b><span>Falar em vez de digitar, uso sem internet, Meus dados e proteção dos dados.</span></button>` : ''}
+        ${k !== 'entrada' && s.eu && manualDe(s.eu.papel) ? `<h3>Manual do seu perfil</h3>
+        <div class="ajuda-manuais"><a class="btn peq pri" href="manuais/guia-${manualDe(s.eu.papel)}.pdf" target="_blank" rel="noopener">Guia rápido (1 página)</a><a class="btn peq" href="manuais/manual-${manualDe(s.eu.papel)}.pdf" target="_blank" rel="noopener">Manual completo (PDF)</a></div>
+        <p class="small muted">Abrem em outra janela e precisam de internet. O manual completo é um arquivo maior: prefira abrir com Wi-Fi.</p>` : ''}
         ${outros.length ? `<h3>Ajuda de outras seções</h3><div class="ajuda-outros">${outros.map(x => `<button type="button" class="btn peq" data-acao="ajuda" data-k="${x}">${E(A[x].t)}</button>`).join('')}</div>` : ''}
         ${a.rodape ? `<p class="small muted ajuda-real">${E(a.rodape)}</p>` : ''}
         <p class="small muted">Não achou a resposta? Fale com ${s.eu && ['articulacao', 'apoio', 'agente'].includes(s.eu.papel) ? 'a coordenação técnica' : 'a coordenação geral'}.</p>

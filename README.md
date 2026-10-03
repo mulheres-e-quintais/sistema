@@ -189,3 +189,7 @@ psql -d teste4 -f supabase/tests/test_vitrine.sql     # 14 casos da vitrine e do
 2. Relatório de visita técnica (implantação e acompanhamentos; a visita final repete a pergunta de renda da linha de base).
 3. Termo de recebimento do kit (depende da lista do kit aprovada).
 4. Relatório mensal da bolsista gerado a partir dos registros do mês.
+
+## Manuais em PDF
+
+O manual completo, os guias rápidos e o manual de cada perfil são gerados das telas reais por `bash ferramentas/manuais/gerar_tudo.sh` (detalhes em `ferramentas/manuais/LEIA-ME.md`). Os de cada perfil ficam em `manuais/` e abrem pelo botão de ajuda. Toda mudança de funcionalidade pede gerar de novo.

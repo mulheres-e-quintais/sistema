@@ -1,0 +1,10 @@
+{
+  "name": "manuais-mulheres-e-quintais",
+  "private": true,
+  "description": "Fontes usadas para gerar os manuais em PDF (as mesmas do sistema: Manrope e Lora).",
+  "dependencies": {
+    "@fontsource-variable/manrope": "*",
+    "@fontsource/manrope": "*",
+    "@fontsource/lora": "*"
+  }
+}
