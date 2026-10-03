@@ -18,6 +18,8 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
 window.MQ = window.MQ || {};
 
 /* fontes do sistema (Manrope em tudo; Lora só no nome do projeto), para as páginas que abrem em outra janela (impressão, termo, relatório) */
+/* Janelas de impressão: os botões Fechar e Imprimir são ligados daqui (sem código dentro do HTML, por causa da política de conteúdo da página) */
+MQ.ligarJanela = w => { try { w.document.addEventListener('click', ev => { const b = ev.target && ev.target.closest && ev.target.closest('[data-jan]'); if (!b) return; if (b.getAttribute('data-jan') === 'fechar') w.close(); else w.print(); }); } catch (e) {} };
 MQ.FONTES_LINK = '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap">';
 
 MQ.PROJETO = {
@@ -6290,9 +6292,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     .vd-tipo { font-size: 9pt; color: #634F43; } .vd-cont { font-size: 10pt; } footer { margin-top: 16px; font-size: 8.5pt; color: #634F43; border-top: 1px solid #E2D3C1; padding-top: 6px; }`;
   function imprimir(html) {
     const pag = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Como vender o que sobra do quintal · Mulheres & Quintais</title>${MQ.FONTES_LINK || ''}<style>${CSS_PAPEL}</style></head>
-      <body><div class="tela"><button type="button" onclick="window.close()">Fechar</button><button type="button" onclick="window.print()">Imprimir</button></div>${html}</body></html>`;
+      <body><div class="tela"><button type="button" data-jan="fechar">Fechar</button><button type="button" data-jan="imprimir">Imprimir</button></div>${html}</body></html>`;
     const w = window.open('', '_blank');
-    if (w) { w.document.open(); w.document.write(pag); w.document.close(); w.onload = () => { try { w.focus(); w.print(); } catch (e) {} }; return; }
+    if (w) { w.document.open(); w.document.write(pag); w.document.close(); MQ.ligarJanela(w); w.onload = () => { try { w.focus(); w.print(); } catch (e) {} }; return; }
     const fr = document.createElement('iframe'); fr.style.cssText = 'position:fixed;width:0;height:0;border:0'; fr.setAttribute('aria-hidden', 'true');
     document.body.appendChild(fr); fr.contentDocument.open(); fr.contentDocument.write(pag); fr.contentDocument.close();
     setTimeout(() => { fr.contentWindow.focus(); fr.contentWindow.print(); setTimeout(() => fr.remove(), 2000); }, 400);
@@ -8378,7 +8380,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <div class="fic-lista">${gente.map(x => `<div class="fic-pessoa">${U().avatar(x, 32)}<span class="fp-t"><b>${E(x.nome_social || x.nome)}</b><span class="small muted">${E(MQ.PAPEIS[x.papel].nome)}${x.uf ? ' · ' + E(x.uf) : ''} · ${E(x.email)} · ${x.user_id ? 'já tem senha' : 'ainda não entrou'}</span></span>
         <button class="btn peq${conv && conv.id === x.id ? ' pri' : ''}" data-acao="rot-convite" data-id="${E(x.id)}">Gerar convite</button></div>
         ${conv && conv.id === x.id ? `<div class="bloco aviso-acesso rot-conv">${conv.cod ? `<div class="cod-acesso"><span class="small muted">Código de acesso</span><b class="num">${E(conv.cod)}</b><span class="small muted">vale 7 dias</span></div>` : ''}
-          <textarea readonly rows="10" aria-label="Mensagem do convite" onclick="this.select()">${E(conv.msg)}</textarea>
+          <textarea readonly rows="10" aria-label="Mensagem do convite" data-selecionar>${E(conv.msg)}</textarea>
           <div class="acoes"><a class="btn pri" target="_blank" rel="noopener" href="${E(conv.wa)}">Mandar por WhatsApp</a><button class="btn" type="button" data-acao="copiar-texto">Copiar</button></div></div>` : ''}`).join('') || '<p class="muted">Ninguém cadastrado ainda.</p>'}</div></div></details>`;
     return cab('Resultados do teste') + `<div class="painel-corpo rot"><div class="rot-abas"><button class="btn peq" data-acao="rot-abrir">Meu roteiro</button><button class="btn peq pri" type="button">Resultados de todos</button></div>
       <p>${todos.length} resposta${todos.length === 1 ? '' : 's'} · <b>${nNao}</b> "não deu certo". Para convidar, mande o link <b>${E(location.origin + location.pathname)}#teste</b>: a pessoa entra e o roteiro do perfil dela abre sozinho.</p>
@@ -8911,7 +8913,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <span class="conv-selo"><span aria-hidden="true">✓</span> Link pronto</span>
       <b>Mande para a pessoa</b>
       <span>Ela preenche os próprios dados pelo celular e aceita o termo. O cadastro aparece na aba Equipe, em "Cadastros enviados pelo link", para você conferir e aprovar.</span>
-      <div class="conv-url"><input readonly value="${E(url)}" aria-label="Link de cadastro" onclick="this.select()"></div>
+      <div class="conv-url"><input readonly value="${E(url)}" aria-label="Link de cadastro" data-selecionar></div>
       <div class="conv-botoes">
         <a class="btn pri" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(msg)}">Enviar pelo WhatsApp</a>
         <button class="btn" type="button" data-acao="conv-copiar" data-url="${E(url)}">Copiar link</button>
@@ -9336,14 +9338,14 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
       <title>${serv ? 'Termo de autorização' : 'Termo de compromisso'} · ${E(m.nome || '')}</title>${MQ.FONTES_LINK || ''}<style>${CSS}</style></head>
       <body><div class="tela"><span>Confira os dados. ${f.length ? 'Complete à mão: <b>' + E(f.join(', ')) + '</b>. ' : ''}Depois imprima (ou salve em PDF), assine e anexe no sistema.</span>
-        <button type="button" onclick="window.close()">Fechar</button><button type="button" class="pri" onclick="window.print()">Imprimir ou salvar em PDF</button></div>
+        <button type="button" data-jan="fechar">Fechar</button><button type="button" class="pri" data-jan="imprimir">Imprimir ou salvar em PDF</button></div>
       <main>${serv ? corpoServidor(m) : corpoBolsista(m)}</main></body></html>`;
   }
   /* abre em outra aba (funciona também no celular); sem aba, imprime por um quadro escondido */
   function abrir(m) {
     const html = pagina(m);
     const w = window.open('', '_blank');
-    if (w) { w.document.open(); w.document.write(html); w.document.close(); return true; }
+    if (w) { w.document.open(); w.document.write(html); w.document.close(); MQ.ligarJanela(w); return true; }
     const q = document.createElement('iframe'); q.style.position = 'fixed'; q.style.width = q.style.height = '0'; q.style.border = '0'; q.setAttribute('aria-hidden', 'true');
     document.body.appendChild(q); q.contentDocument.open(); q.contentDocument.write(html); q.contentDocument.close();
     setTimeout(() => { q.contentWindow.focus(); q.contentWindow.print(); setTimeout(() => q.remove(), 2000); }, 400);
@@ -10802,7 +10804,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
       <title>${E(TIPOS[tipo].titulo)} · Mulheres & Quintais</title>
       ${MQ.FONTES_LINK || ''}<style>${CSS}</style></head>
-      <body><div class="tela"><button type="button" onclick="window.close()">Fechar</button><button type="button" class="pri" onclick="window.print()">Imprimir</button></div>
+      <body><div class="tela"><button type="button" data-jan="fechar">Fechar</button><button type="button" class="pri" data-jan="imprimir">Imprimir</button></div>
       <main>${cabecalho(tipo)}${converter(form, true)}
         <div class="assina"><div>${linha()}<p>Local e data</p></div><div>${linha()}<p>Assinatura de quem aplicou</p></div>
           <div>${linha()}<p>Assinatura ou digital de quem respondeu</p></div><div>${linha()}<p>Lançado no sistema em (data)</p></div></div>
@@ -10814,7 +10816,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const form = document.querySelector(`#painel form[data-form="${tipo}"]`); if (!form || !pode(tipo)) return;
     const html = pagina(tipo, form);
     const w = window.open('', '_blank');
-    if (w) { w.document.open(); w.document.write(html); w.document.close(); w.onload = () => { try { w.focus(); w.print(); } catch (e) {} }; return; }
+    if (w) { w.document.open(); w.document.write(html); w.document.close(); MQ.ligarJanela(w); w.onload = () => { try { w.focus(); w.print(); } catch (e) {} }; return; }
     const f = document.createElement('iframe'); f.style.position = 'fixed'; f.style.width = f.style.height = '0'; f.style.border = '0'; f.setAttribute('aria-hidden', 'true');
     document.body.appendChild(f); f.contentDocument.open(); f.contentDocument.write(html); f.contentDocument.close();
     setTimeout(() => { f.contentWindow.focus(); f.contentWindow.print(); setTimeout(() => f.remove(), 2000); }, 400);
@@ -11328,7 +11330,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const p = String(m.nome || '?').replace(/\(.*?\)/g, ' ').trim().split(/\s+/).filter(x => x && !/^(d[aeo]s?|e)$/i.test(x));
     const ini = ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
     let h = 0; for (const c of String(m.id || m.nome)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-    return `<span class="av" style="--av:${tam || 32}px;--avc:${CORES_AV[h % CORES_AV.length]}" aria-hidden="true">${esc(ini)}${m.foto_url ? `<img src="${esc(m.foto_url)}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span>`;
+    return `<span class="av" style="--av:${tam || 32}px;--avc:${CORES_AV[h % CORES_AV.length]}" aria-hidden="true">${esc(ini)}${m.foto_url ? `<img src="${esc(m.foto_url)}" alt="" loading="lazy" data-some-se-falhar>` : ''}</span>`;
   }
   const podeTrocarFoto = m => m.status === 'ativa' && (S.eu.id === m.id || (/^coord/.test(S.eu.papel) && R.podeEditarDados(S.eu.papel, m.papel)));
   /* foto da pessoa: tirar na hora (câmera do celular ou do computador) ou escolher uma que já está no aparelho */
@@ -12263,7 +12265,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `<div class="bloco aviso-acesso"><h3>Avisar o acesso</h3>
       <div class="cod-acesso"><span class="small muted">Código de acesso</span><b class="num">${esc(cod)}</b><span class="small muted">vale 7 dias · aparece só agora</span></div>
       <p class="small muted">O sistema não manda e-mail: envie esta mensagem por WhatsApp. Mande só para ela.</p>
-      <textarea readonly rows="8" aria-label="Mensagem de acesso" onclick="this.select()">${esc(msg)}</textarea>
+      <textarea readonly rows="8" aria-label="Mensagem de acesso" data-selecionar>${esc(msg)}</textarea>
       <div class="acoes"><a class="btn pri" target="_blank" rel="noopener" href="${esc(wa)}">Mandar por WhatsApp</a>
         <a class="btn" href="mailto:${esc(m.email)}?subject=${encodeURIComponent('Acesso ao sistema Mulheres & Quintais')}&body=${encodeURIComponent(msg)}">Mandar por e-mail</a>
         <button class="btn" type="button" data-acao="copiar-texto">Copiar</button></div></div>`;
@@ -12695,6 +12697,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         try { await guardarFotoEquipe(id, blob); render(); toast('Foto salva.'); } catch (e) { toast(avisarErro(e)); } }, 'image/jpeg', 0.9);
     });
   }
+  /* sem código dentro do HTML (política de conteúdo): foto que não carrega some; campo de copiar seleciona o texto ao tocar; fontes entram quando chegam */
+  document.addEventListener('error', ev => { const t = ev.target; if (t && t.matches && t.matches('img[data-some-se-falhar]')) t.remove(); }, true);
+  document.addEventListener('click', ev => { const t = ev.target && ev.target.closest && ev.target.closest('[data-selecionar]'); if (t && t.select) t.select(); });
+  { const l = document.querySelector('link[data-fontes]'); if (l) { const ligar = () => { l.media = 'all'; }; if (l.sheet) ligar(); else l.addEventListener('load', ligar); } }
   document.addEventListener('change', async ev => {
     const inp = ev.target.closest('input[data-foto-equipe]'); if (!inp || !inp.files[0]) return;
     const lab = inp.closest('label'); const txt = lab ? lab.firstChild.textContent : '';

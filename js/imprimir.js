@@ -144,7 +144,7 @@
     return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
       <title>${E(TIPOS[tipo].titulo)} · Mulheres & Quintais</title>
       ${MQ.FONTES_LINK || ''}<style>${CSS}</style></head>
-      <body><div class="tela"><button type="button" onclick="window.close()">Fechar</button><button type="button" class="pri" onclick="window.print()">Imprimir</button></div>
+      <body><div class="tela"><button type="button" data-jan="fechar">Fechar</button><button type="button" class="pri" data-jan="imprimir">Imprimir</button></div>
       <main>${cabecalho(tipo)}${converter(form, true)}
         <div class="assina"><div>${linha()}<p>Local e data</p></div><div>${linha()}<p>Assinatura de quem aplicou</p></div>
           <div>${linha()}<p>Assinatura ou digital de quem respondeu</p></div><div>${linha()}<p>Lançado no sistema em (data)</p></div></div>
@@ -156,7 +156,7 @@
     const form = document.querySelector(`#painel form[data-form="${tipo}"]`); if (!form || !pode(tipo)) return;
     const html = pagina(tipo, form);
     const w = window.open('', '_blank');
-    if (w) { w.document.open(); w.document.write(html); w.document.close(); w.onload = () => { try { w.focus(); w.print(); } catch (e) {} }; return; }
+    if (w) { w.document.open(); w.document.write(html); w.document.close(); MQ.ligarJanela(w); w.onload = () => { try { w.focus(); w.print(); } catch (e) {} }; return; }
     const f = document.createElement('iframe'); f.style.position = 'fixed'; f.style.width = f.style.height = '0'; f.style.border = '0'; f.setAttribute('aria-hidden', 'true');
     document.body.appendChild(f); f.contentDocument.open(); f.contentDocument.write(html); f.contentDocument.close();
     setTimeout(() => { f.contentWindow.focus(); f.contentWindow.print(); setTimeout(() => f.remove(), 2000); }, 400);

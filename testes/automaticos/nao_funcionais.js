@@ -2,7 +2,7 @@ const { chromium } = require(process.argv[2]); const fs = require('fs');
 const AXE = fs.readFileSync('/tmp/claude-0/pw/node_modules/axe-core/axe.min.js', 'utf8');
 const CFG = "window.MQ=window.MQ||{};MQ.CONFIG={supabaseUrl:'',supabaseAnonKey:'',semServiceWorker:true};";
 const R = []; const log = (...a) => { const l = a.join(' | '); R.push(l); console.log(l); };
-async function nova(b, w = 390) { const ctx = await b.newContext({ viewport: { width: w, height: 844 } }); const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => { errs.push('ALERTA: ' + d.message()); d.dismiss(); });
+async function nova(b, w = 390) { const ctx = await b.newContext({ viewport: { width: w, height: 844 }, bypassCSP: true }); const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => { errs.push('ALERTA: ' + d.message()); d.dismiss(); });
   await ctx.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: CFG })); await ctx.route('**/cdn.jsdelivr.net/**', r => r.abort()); await ctx.route('**/fonts.g*/**', r => r.abort());
   await p.goto('http://localhost:8766/'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector('main'); return { ctx, p, errs }; }
 const perfil = async (p, pf) => { await p.evaluate(pf => { MQ.ui.fecharPainel(); MQ.ui.S.verEntrada = false; document.querySelector(`button[data-p=${pf}]`).click(); }, pf); await p.waitForTimeout(400); await p.evaluate(() => MQ.ui.fecharPainel()); };

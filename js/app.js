@@ -501,7 +501,7 @@
     const p = String(m.nome || '?').replace(/\(.*?\)/g, ' ').trim().split(/\s+/).filter(x => x && !/^(d[aeo]s?|e)$/i.test(x));
     const ini = ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
     let h = 0; for (const c of String(m.id || m.nome)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-    return `<span class="av" style="--av:${tam || 32}px;--avc:${CORES_AV[h % CORES_AV.length]}" aria-hidden="true">${esc(ini)}${m.foto_url ? `<img src="${esc(m.foto_url)}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span>`;
+    return `<span class="av" style="--av:${tam || 32}px;--avc:${CORES_AV[h % CORES_AV.length]}" aria-hidden="true">${esc(ini)}${m.foto_url ? `<img src="${esc(m.foto_url)}" alt="" loading="lazy" data-some-se-falhar>` : ''}</span>`;
   }
   const podeTrocarFoto = m => m.status === 'ativa' && (S.eu.id === m.id || (/^coord/.test(S.eu.papel) && R.podeEditarDados(S.eu.papel, m.papel)));
   /* foto da pessoa: tirar na hora (câmera do celular ou do computador) ou escolher uma que já está no aparelho */
@@ -1436,7 +1436,7 @@
     return `<div class="bloco aviso-acesso"><h3>Avisar o acesso</h3>
       <div class="cod-acesso"><span class="small muted">Código de acesso</span><b class="num">${esc(cod)}</b><span class="small muted">vale 7 dias · aparece só agora</span></div>
       <p class="small muted">O sistema não manda e-mail: envie esta mensagem por WhatsApp. Mande só para ela.</p>
-      <textarea readonly rows="8" aria-label="Mensagem de acesso" onclick="this.select()">${esc(msg)}</textarea>
+      <textarea readonly rows="8" aria-label="Mensagem de acesso" data-selecionar>${esc(msg)}</textarea>
       <div class="acoes"><a class="btn pri" target="_blank" rel="noopener" href="${esc(wa)}">Mandar por WhatsApp</a>
         <a class="btn" href="mailto:${esc(m.email)}?subject=${encodeURIComponent('Acesso ao sistema Mulheres & Quintais')}&body=${encodeURIComponent(msg)}">Mandar por e-mail</a>
         <button class="btn" type="button" data-acao="copiar-texto">Copiar</button></div></div>`;
@@ -1868,6 +1868,10 @@
         try { await guardarFotoEquipe(id, blob); render(); toast('Foto salva.'); } catch (e) { toast(avisarErro(e)); } }, 'image/jpeg', 0.9);
     });
   }
+  /* sem código dentro do HTML (política de conteúdo): foto que não carrega some; campo de copiar seleciona o texto ao tocar; fontes entram quando chegam */
+  document.addEventListener('error', ev => { const t = ev.target; if (t && t.matches && t.matches('img[data-some-se-falhar]')) t.remove(); }, true);
+  document.addEventListener('click', ev => { const t = ev.target && ev.target.closest && ev.target.closest('[data-selecionar]'); if (t && t.select) t.select(); });
+  { const l = document.querySelector('link[data-fontes]'); if (l) { const ligar = () => { l.media = 'all'; }; if (l.sheet) ligar(); else l.addEventListener('load', ligar); } }
   document.addEventListener('change', async ev => {
     const inp = ev.target.closest('input[data-foto-equipe]'); if (!inp || !inp.files[0]) return;
     const lab = inp.closest('label'); const txt = lab ? lab.firstChild.textContent : '';
