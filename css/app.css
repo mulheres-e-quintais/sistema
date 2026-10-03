@@ -2669,7 +2669,7 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 @media (max-width: 640px) { .vaga-slot .btn-acao, .grade-uf .cartao > .btn-acao, .vaga-aberta > .btn-acao { width: 100%; } }
 
 /* "O que pede atenção": "Ver" (aviso) com a mesma largura de "Resolver" */
-.dx-atencao .btn-acao.dx-ir { min-width: 132px; justify-content: center; }
+.dx-atencao .btn-acao.dx-ir { min-width: 144px; justify-content: center; }
 
 /* Equipe, "Bolsistas por estado": cabeçalho centralizado e em negrito */
 .eq-quadro thead th { text-align: center; font-weight: 700; color: var(--ink); }
@@ -2695,3 +2695,29 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 .vaga-aberta > .btn-acao { width: 400px; max-width: 100%; flex: 0 0 auto; height: var(--h); min-height: var(--h); }
 @media (min-width: 641px) { .vaga-aberta > .btn-acao .ba-tx { white-space: nowrap; } }
 @media (max-width: 640px) { .vaga-aberta > .btn-acao { width: 100%; height: auto; } }
+
+/* --- Equipe, "Agentes de campo" (03/10/2026): um quadro só, uma linha por estado, no estilo de "Bolsistas por estado" --- */
+.ag-quadro { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); overflow: hidden; box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 8px 22px rgba(69, 43, 26, .06); }
+.ag-th, .ag-tr { display: grid; grid-template-columns: 190px minmax(0, 1fr) auto; gap: 16px 20px; align-items: center; padding: 14px 20px 14px 24px; }
+.ag-th { background: var(--surface-2); border-bottom: 1px solid var(--line); padding-top: 13px; padding-bottom: 13px; font-size: var(--t-xs); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); text-align: center; }
+.ag-th span:last-child { min-width: 190px; }
+.ag-tr + .ag-tr { border-top: 1px solid var(--line); }
+.ag-tr:hover { background: color-mix(in srgb, var(--surface-2) 38%, transparent); }
+.ag-uf { display: flex; align-items: center; gap: 12px; }
+.ag-uf .sigla { display: inline-grid; place-items: center; width: 44px; height: 44px; flex: none; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line)); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); font: 600 var(--t-md)/1 var(--serif); color: var(--accent); }
+.ag-nome { display: grid; gap: 2px; } .ag-nome b { font-size: var(--t-md); } .ag-nome small { font-size: var(--t-sm); color: var(--ink-2); }
+.ag-lista { display: flex; flex-wrap: wrap; gap: 10px; }
+.ag-lista .vagabtn.com-foto { flex: 0 1 270px; min-height: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--bg); text-align: left; }
+.ag-lista .vagabtn.com-foto:hover { border-color: var(--line-2); background: var(--surface); }
+.ag-lista .vagabtn .nm { font-weight: 600; }
+.ag-vazio { margin: 0; font-size: var(--t-sm); color: var(--muted); }
+.ag-acao { min-width: 190px; display: flex; justify-content: flex-end; }
+.ag-acao .btn-acao { width: fit-content; flex: none; min-height: 44px; justify-content: center; padding-right: 18px; }
+.ag-acao .btn-acao .ba-tx { flex: none; width: auto; overflow: visible; }
+.ag-acao:empty { display: none; }
+@media (max-width: 860px) {
+  .ag-th { display: none; }
+  .ag-tr { grid-template-columns: 1fr; gap: 12px; padding: 16px 14px; }
+  .ag-lista .vagabtn.com-foto { flex: 1 1 100%; }
+  .ag-acao { min-width: 0; justify-content: stretch; } .ag-acao .btn-acao { width: 100%; }
+}
