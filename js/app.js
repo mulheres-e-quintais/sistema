@@ -574,7 +574,7 @@
     const ok = pessoas.filter(m => m.docs_funcern_em && m.termo_assinado_em);
     const linha = m => `<button class="vagabtn com-foto" data-acao="ver" data-id="${m.id}">${avatar(m, 44)}<span class="vb-t"><span class="nm">${esc(nomeDe(m))}</span>
         <span class="sub">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(m.uf) : ''}${!m.docs_funcern_em && m.cadastro_arlo ? ' · <b>diz que já tem Arlo: confira e registre</b>' : ''}</span></span></button>`;
-    const grupo = (t, l, vazio, id) => `<section class="secao"><div class="secao-cab"><h2${id ? ` id="${id}"` : ''}>${t} <span class="conta-t${l.length ? '' : ' zero'}">${l.length}</span></h2></div>
+    const grupo = (t, l, vazio, id) => `<section class="secao${MQ.sit(l.length)}"><div class="secao-cab"><h2${id ? ` id="${id}"` : ''}>${t} <span class="conta-t${l.length ? '' : ' zero'}">${l.length}</span></h2></div>
       ${l.length ? `<div class="grade-prof">${l.map(linha).join('')}</div>` : `<p class="muted">${vazio}</p>`}</section>`;
     return `<main class="wrap" id="principal">
       <div class="cab"><div><span class="eyebrow">${esc(P.auxiliar_adm.nome)}</span><h1>Olá, ${esc(nomeDe(eu).split(' ')[0])}</h1><p>${esc(P.auxiliar_adm.faz)}</p></div>
@@ -1395,7 +1395,7 @@
   function secaoPedidosAcesso() {
     const l = (S.pedidosAcesso || []).map(p => [p, porId(p.equipe_id)]).filter(([, m]) => m);
     if (S.eu.papel !== 'coord_geral' || !l.length) return '';
-    return `<section class="secao" aria-labelledby="t-acesso"><div class="secao-cab"><div><h2 id="t-acesso">Pedidos de novo acesso <span class="conta-t">${l.length}</span></h2>
+    return `<section class="secao${MQ.sit(l.length)}" aria-labelledby="t-acesso"><div class="secao-cab"><div><h2 id="t-acesso">Pedidos de novo acesso <span class="conta-t">${l.length}</span></h2>
         <p>Pessoas que tocaram em "Esqueci a senha". Abra a ficha, toque em <b>Liberar novo primeiro acesso</b> e mande o código pelo WhatsApp do cadastro. Se não foi a própria pessoa que pediu (ela não sabe do pedido), descarte.</p></div></div>
       <div class="lista-fichas">${l.map(([p, m]) => `<div class="vagabtn ficha-linha pedido-acesso">
           <span class="nm">${esc(nomeDe(m))}</span><span class="small muted">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(m.uf) : ''} · pediu em ${quandoPediu(p)}</span>

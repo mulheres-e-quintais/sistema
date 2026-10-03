@@ -782,6 +782,8 @@ MQ.ORCAMENTO = {
   };
   const SETA = p('<path d="M5 12h13"/><path d="m13 6.5 5.5 5.5-5.5 5.5"/>');
   MQ.ICONES = ICONES;
+  /* faixa no alto do painel conforme a situação: 'crit' (devolvido/atrasado), 'pend' (esperando quem está olhando), neutra se não há nada */
+  MQ.sit = (n, nivel) => ' painel-sit sit-' + (n ? (nivel || 'pend') : 'ok');
   MQ.botaoAcao = o => `<button type="button" class="btn-acao${o.sec ? ' sec' : ''}${o.peq ? ' peq' : ''}${o.mini ? ' mini' : ''}${o.cls ? ' ' + o.cls : ''}" data-acao="${o.acao}"${o.rotulo || o.curto ? ` aria-label="${o.rotulo || o.texto}"` : ''} ${o.attrs || ''}>`
     + `${o.icone === false ? '' : `<span class="ba-ic">${ICONES[o.icone] || ICONES.pessoa_mais}</span>`}<span class="ba-tx">${o.curto ? `<span class="ba-l">${o.texto}</span><span class="ba-c" aria-hidden="true">${o.curto}</span>` : o.texto}</span><span class="ba-seta">${SETA}</span></button>`;
   /* botão de ação com a explicação curta embaixo (substitui os antigos cartões "cad-modo" das páginas) */
@@ -3005,7 +3007,7 @@ MQ.ORCAMENTO = {
         <div><span class="v num">${c.sem_agua}</span><span class="l">sem água: encaminhadas</span></div>
       </div>
       ${pend ? blocoAparelho(filaF, comErro) : ''}
-      ${devolvidas.length ? `<div class="bloco" style="border-color:var(--crit)"><h3>Para corrigir (${devolvidas.length})</h3><div class="lista-fichas">${devolvidas.map(f => linhaFicha(f)).join('')}</div></div>` : ''}
+      ${devolvidas.length ? `<div class="bloco${MQ.sit(1, 'crit')}"><h3>Para corrigir (${devolvidas.length})</h3><div class="lista-fichas">${devolvidas.map(f => linhaFicha(f)).join('')}</div></div>` : ''}
       ${resto.length ? U().dobra('fichas-todas', `<span><b>Ver as ${resto.length} fichas</b> <span class="small muted">· procurar por nome ou CPF</span></span>`,
           `${resto.length > 6 ? `<div class="campo"><label for="f-busca">Procurar por nome ou CPF</label><input id="f-busca" data-procura="lista-fichas-uf" autocomplete="off"></div>` : ''}
            <div class="lista-fichas" id="lista-fichas-uf">${resto.map(f => linhaFicha(f)).join('')}</div>`)
@@ -3045,7 +3047,7 @@ MQ.ORCAMENTO = {
         <tbody>${MQ.UFS.map(u => linha(u.uf, u.nome)).join('')}
         <tr><td class="uf"><b>Total</b></td><td class="num"><b>${tot.total}</b></td><td class="num sep"><b>${tot.aprovadas}</b> de ${MQ.VAGAS_UF * 5}</td><td class="num sep">${tot.espera}</td><td class="num">${tot.sem_agua}</td><td class="num">${tot.nao_atende}</td><td class="num sep"><b>${tot.aguardando}</b></td><td class="num">${tot.devolvidas}</td></tr>
         </tbody></table></div><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p>
-      ${aguardando.length ? `<div class="bloco"><h3>${souTec ? 'Para você aprovar' : 'Aguardando a coordenação técnica'} (${aguardando.length})</h3>
+      ${aguardando.length ? `<div class="bloco${MQ.sit(souTec ? 1 : 0)}"><h3>${souTec ? 'Para você aprovar' : 'Aguardando a coordenação técnica'} (${aguardando.length})</h3>
         <div class="lista-fichas">${aguardando.slice(0, 30).map(f => linhaFicha(f, true)).join('')}</div></div>` : ''}
       <details class="hist" data-lembrar="fichas-coord" ${(U().S.aberto || {})['fichas-coord'] || filtro.uf || filtro.situacao || filtro.busca ? 'open' : ''}><summary>Todas as fichas (${conta})</summary><div style="padding:0 18px 16px;display:grid;gap:12px">
         <div class="campos" style="grid-template-columns:repeat(3,minmax(0,1fr))">
@@ -4386,7 +4388,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <p class="small muted" style="margin:6px 2px 0"><b>Sem água na seca:</b> diagnósticos em que a água não dura no período seco. Essa mulher não recebe o kit (é encaminhada a programa de cisternas) e a vaga dela precisa ser preenchida pela lista de espera. Acima de 30% no estado é sinal de alerta.</p><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p>
       ${blocoKitPar()}
       ${MQ.impactoUI ? MQ.impactoUI.secaoCoord() : ''}
-      ${aguard.length ? `<div class="bloco"><h3>${souTec ? 'Planos para você aprovar' : 'Planos aguardando a coordenação técnica'} (${aguard.length})</h3><div class="lista-fichas">
+      ${aguard.length ? `<div class="bloco${MQ.sit(souTec ? 1 : 0)}"><h3>${souTec ? 'Planos para você aprovar' : 'Planos aguardando a coordenação técnica'} (${aguard.length})</h3><div class="lista-fichas">
         ${aguard.map(d => { const f = ficha(d.ficha_id) || {}; return `<button class="vagabtn ficha-linha" data-acao="campo-diag-ver" data-ficha="${E(d.ficha_id)}"><span class="nm">${E(f.nome || '—')}</span>
           <span style="display:flex;gap:6px;flex-wrap:wrap">${chipLocal(localDiag(d, f))}${d.sem_agua ? '<span class="chip crit">Sem água: sem plano</span>' : `<span class="chip pend">Lote ${d.lote}</span>`}<span class="chip off">${E((d.dados && d.dados.kit || []).filter(k => k.item).length)} itens no kit${totalKit(d.dados && d.dados.kit) ? ' · ' + brl(totalKit(d.dados && d.dados.kit)) : ''}</span></span>
           <span class="sub">${E(d.uf)} · ${E(f.municipio || '')} · visita em ${R.fmtData(d.data_visita)} por ${E((pessoa(d.executor_id) || {}).nome || '—')}</span></button>`; }).join('')}</div></div>` : ''}
@@ -6534,7 +6536,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const outrasAval = lista().filter(s => s.situacao === 'solicitada' && !minhaVez(s));
     const arlo = lista().filter(s => s.situacao === 'avalizada'), dev = lista().filter(s => s.situacao === 'devolvida'), lanc = lista().filter(s => s.situacao === 'lancada');
     const soma = l => l.reduce((t, s) => t + (+(s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado) || 0), 0);
-    const bloco = (t, l, vazio, aberto) => `<section class="secao"><div class="secao-cab"><h2>${t} <span class="conta-t${l.length ? '' : ' zero'}">${l.length}</span></h2>${l.length ? `<span class="muted">${brl(soma(l))}</span>` : ''}</div>
+    const bloco = (t, l, vazio, nivel) => `<section class="secao${MQ.sit(nivel ? l.length : 0, nivel)}"><div class="secao-cab"><h2>${t} <span class="conta-t${l.length ? '' : ' zero'}">${l.length}</span></h2>${l.length ? `<span class="muted">${brl(soma(l))}</span>` : ''}</div>
       ${l.length ? `<div class="pag-lista">${l.map(s => linha(s, true)).join('')}</div>` : `<p class="muted">${vazio}</p>`}</section>`;
     return `<div class="cab"><div><span class="eyebrow">Pagamentos</span><h1>Solicitações de pagamento</h1>
         <p>Quem visita ou recebe bolsa solicita; ${souGeral ? 'a coordenação técnica dá o aval na ajuda de custo e na bolsa das bolsistas; você, na bolsa da coordenação técnica, dos professores e do auxiliar administrativo (e pode substituir a técnica)' : 'você dá o aval na ajuda de custo e na bolsa das bolsistas'}. Com o aval, o auxiliar administrativo lança no Arlo.</p></div></div>
@@ -6544,10 +6546,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <div><span class="v num">${dev.length}</span><span class="l">devolvidas para corrigir</span></div>
         <div><span class="v num">${brl(soma(lanc))}</span><span class="l">lançado no Arlo (${lanc.length})</span></div></div>
       ${U().semTecnica && U().semTecnica() ? '<div class="aviso">Sem coordenação técnica ativa: os avais que seriam dela estão com você.</div>' : ''}
-      ${bloco('Esperando o seu aval', aval, 'Nada esperando o seu aval.')}
+      ${bloco('Esperando o seu aval', aval, 'Nada esperando o seu aval.', 'pend')}
       ${outrasAval.length ? bloco(souGeral ? 'Com a coordenação técnica (você pode dar o aval se ela não puder)' : 'Com a coordenação geral', outrasAval, '') : ''}
       ${bloco('Com aval, falta o auxiliar lançar no Arlo', arlo, 'Nenhuma.')}
-      ${dev.length ? bloco('Devolvidas para corrigir', dev, '') : ''}
+      ${dev.length ? bloco('Devolvidas para corrigir', dev, '', 'crit') : ''}
       <details class="hist"><summary>Lançadas no Arlo (${lanc.length})</summary><div class="pag-lista" style="padding:0 18px 16px">${lanc.map(s => linha(s, true)).join('') || '<p class="muted">Nenhuma ainda.</p>'}</div></details>
       ${eu.papel === 'coord_tecnico' ? secaoMinha() : ''}`;
   }
@@ -6558,7 +6560,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const eu = S().eu;
     const fila = lista().filter(s => s.situacao === 'avalizada' && s.equipe_id !== eu.id).sort((a, b) => String(a.aval_em).localeCompare(String(b.aval_em)));
     const feitas = lista().filter(s => s.situacao === 'lancada').slice(0, 30);
-    return `<section class="secao"><div class="secao-cab"><div><h2 id="t-lancar">Pagamentos para lançar no Arlo <span class="conta-t${fila.length ? '' : ' zero'}">${fila.length}</span></h2>
+    return `<section class="secao${MQ.sit(fila.length)}"><div class="secao-cab"><div><h2 id="t-lancar">Pagamentos para lançar no Arlo <span class="conta-t${fila.length ? '' : ' zero'}">${fila.length}</span></h2>
         <p>Já têm o aval da coordenação. Lance no Arlo e registre aqui (com o número do protocolo, se houver).</p></div></div>
       ${fila.length ? `<div class="pag-lista">${fila.map(s => linha(s, true)).join('')}</div>` : '<p class="muted">Nada para lançar agora.</p>'}
       ${feitas.length ? `<details class="hist"><summary>Já lançadas (${feitas.length} mais recentes)</summary><div class="pag-lista" style="padding:0 18px 16px">${feitas.map(s => linha(s, true)).join('')}</div></details>` : ''}
@@ -7177,7 +7179,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const eu = S().eu; if (!eu || eu.papel !== 'auxiliar_adm' || S().quemConfere !== 'auxiliar_adm') return '';
     const vez = lista().filter(minhaVez);
     const meus = lista().filter(p => p.conferido_por === eu.id);
-    return `<section class="secao viag" aria-labelledby="t-conf">
+    return `<section class="secao viag${MQ.sit(vez.length)}" aria-labelledby="t-conf">
       <div class="secao-cab"><div><h2 id="t-conf">Passagens e eventos para conferir <span class="conta-t${vez.length ? '' : ' zero'}">${vez.length}</span></h2>
         <p>Enquanto o projeto está sem coordenação técnica, você confere os pedidos das bolsistas de articulação e a coordenação geral autoriza. Assim cada pedido passa por duas pessoas. Quando a técnica for cadastrada, os pedidos voltam para ela e somem desta tela.</p></div></div>
       <p class="small muted">Confira: prazo (passagem ${PRAZO.passagem} dias, evento ${PRAZO.evento} dias antes, ou justificativa), finalidade, trecho e datas, e se os dados das passageiras estão completos e iguais aos documentos. Os dados pessoais são só para a conferência: não copie nem repasse.</p>
@@ -8797,7 +8799,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function secaoPendentes() {
     const lista = S().pre || [];
     if (!lista.length) return '';
-    return `<section class="secao" aria-labelledby="t-pre"><div class="secao-cab"><div><h2 id="t-pre">Cadastros enviados pelo link <span class="conta-t">${lista.length}</span></h2>
+    return `<section class="secao${MQ.sit(lista.length)}" aria-labelledby="t-pre"><div class="secao-cab"><div><h2 id="t-pre">Cadastros enviados pelo link <span class="conta-t">${lista.length}</span></h2>
         <p>Confira os dados, complete o que falta e aprove. Só depois de aprovada a pessoa entra na equipe e pode fazer o primeiro acesso.</p></div></div>
       <div class="lista-fichas">${lista.map(x => `<button class="vagabtn ficha-linha pre-linha" data-acao="conv-ver" data-id="${E(x.id)}">
           <span class="nm">${E(x.nome)}</span><span class="small muted">${E(funcao(x.papel, x.uf))} · enviado em ${R.fmtData(x.enviado_em)}</span>
@@ -11258,7 +11260,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const ok = pessoas.filter(m => m.docs_funcern_em && m.termo_assinado_em);
     const linha = m => `<button class="vagabtn com-foto" data-acao="ver" data-id="${m.id}">${avatar(m, 44)}<span class="vb-t"><span class="nm">${esc(nomeDe(m))}</span>
         <span class="sub">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(m.uf) : ''}${!m.docs_funcern_em && m.cadastro_arlo ? ' · <b>diz que já tem Arlo: confira e registre</b>' : ''}</span></span></button>`;
-    const grupo = (t, l, vazio, id) => `<section class="secao"><div class="secao-cab"><h2${id ? ` id="${id}"` : ''}>${t} <span class="conta-t${l.length ? '' : ' zero'}">${l.length}</span></h2></div>
+    const grupo = (t, l, vazio, id) => `<section class="secao${MQ.sit(l.length)}"><div class="secao-cab"><h2${id ? ` id="${id}"` : ''}>${t} <span class="conta-t${l.length ? '' : ' zero'}">${l.length}</span></h2></div>
       ${l.length ? `<div class="grade-prof">${l.map(linha).join('')}</div>` : `<p class="muted">${vazio}</p>`}</section>`;
     return `<main class="wrap" id="principal">
       <div class="cab"><div><span class="eyebrow">${esc(P.auxiliar_adm.nome)}</span><h1>Olá, ${esc(nomeDe(eu).split(' ')[0])}</h1><p>${esc(P.auxiliar_adm.faz)}</p></div>
@@ -12079,7 +12081,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function secaoPedidosAcesso() {
     const l = (S.pedidosAcesso || []).map(p => [p, porId(p.equipe_id)]).filter(([, m]) => m);
     if (S.eu.papel !== 'coord_geral' || !l.length) return '';
-    return `<section class="secao" aria-labelledby="t-acesso"><div class="secao-cab"><div><h2 id="t-acesso">Pedidos de novo acesso <span class="conta-t">${l.length}</span></h2>
+    return `<section class="secao${MQ.sit(l.length)}" aria-labelledby="t-acesso"><div class="secao-cab"><div><h2 id="t-acesso">Pedidos de novo acesso <span class="conta-t">${l.length}</span></h2>
         <p>Pessoas que tocaram em "Esqueci a senha". Abra a ficha, toque em <b>Liberar novo primeiro acesso</b> e mande o código pelo WhatsApp do cadastro. Se não foi a própria pessoa que pediu (ela não sabe do pedido), descarte.</p></div></div>
       <div class="lista-fichas">${l.map(([p, m]) => `<div class="vagabtn ficha-linha pedido-acesso">
           <span class="nm">${esc(nomeDe(m))}</span><span class="small muted">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(m.uf) : ''} · pediu em ${quandoPediu(p)}</span>
