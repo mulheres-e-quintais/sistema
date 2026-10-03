@@ -11,14 +11,10 @@
         ['Entrar pela primeira vez', ['Abra o endereço que veio no WhatsApp (no Chrome ou no Safari).', 'Toque em <b>Primeiro acesso</b>.', 'Digite o e-mail cadastrado e o <b>código de acesso</b> da mensagem.', 'Crie uma senha com pelo menos 8 caracteres, com letras e números, e repita.', 'Toque em <b>Criar senha e entrar</b>.']],
         ['Entrar nas próximas vezes', ['Toque em <b>Já tenho senha</b>.', 'Digite o e-mail e a senha.', 'Toque em <b>Entrar</b>.']]
       ],
-      passos: [
-        '<b>Primeira vez:</b> toque em <b>Primeiro acesso</b>, digite o e-mail cadastrado e o <b>código de acesso</b> (8 letras e números, como ABCD-2345) que veio na mensagem da coordenação. Depois crie uma senha com pelo menos 8 caracteres, misturando letras e números.',
-        '<b>Das próximas vezes:</b> use <b>Já tenho senha</b>, com o mesmo e-mail e a senha que você criou.',
-        'Abra no <b>Chrome</b> (Android) ou no <b>Safari</b> (iPhone). Dentro do WhatsApp ou do Instagram algumas funções, como localização e fotos, não funcionam.',
-        'Para usar como aplicativo: no menu do navegador, toque em <b>Adicionar à tela inicial</b>. Assim ele também funciona no campo sem internet.'
-      ],
+      contato: { nome: 'coordenação do projeto', tel: '(84) 9 9992-7943', wa: '5584999927943' },
+      secoes: [['Antes de entrar', ['Abra no <b>Chrome</b> (Android) ou no <b>Safari</b> (iPhone). Aberto por dentro do WhatsApp ou do Instagram, a localização e as fotos não funcionam.', 'Para usar como aplicativo, no menu do navegador toque em <b>Adicionar à tela inicial</b>. Assim ele também funciona no campo sem internet.']]],
       duvidas: [
-        ['Aparece "confira o e-mail e o código de acesso".', 'O e-mail tem de ser exatamente o do cadastro (confira pontos e o final @gmail.com, @ifrn.edu.br…). O código vale 7 dias e uma vez só. Se venceu ou se perdeu, peça um novo a quem cadastrou você.'],
+        ['Aparece "confira o e-mail e o código de acesso".', 'O e-mail tem de ser exatamente o do cadastro (confira pontos e o final @gmail.com, @ifrn.edu.br…). O código vale 7 dias e uma vez só. Se venceu ou se perdeu, peça um novo à coordenação pelo WhatsApp (84) 9 9992-7943.'],
         ['Aparece "Este e-mail já tem senha".', 'Você já fez o primeiro acesso. Use "Já tenho senha".'],
         ['Quero trocar a minha senha.', 'Toque na sua foto ou nas suas iniciais, no alto, para abrir <b>Meus dados</b>. Abra <b>Trocar minha senha</b>, digite a senha atual, a nova duas vezes e toque em <b>Trocar senha</b>.'],
         ['Esqueci a senha.', 'Na tela de entrada, toque em <b>Esqueci a senha</b>, digite o seu e-mail e toque em <b>Pedir novo acesso</b>. A coordenação geral recebe o pedido e manda um código novo para o WhatsApp do seu cadastro. Com o código, entre em <b>Primeiro acesso</b> e crie outra senha. Seus dados não se perdem.'],
@@ -454,6 +450,7 @@
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo ajuda">
         <p class="ajuda-intro">${a.intro}</p>
+        ${a.contato ? `<p class="ajuda-contato"><span>Não conseguiu entrar? Fale com a ${E(a.contato.nome)}:</span> <a class="btn pri" href="https://wa.me/${a.contato.wa}" target="_blank" rel="noopener">WhatsApp ${E(a.contato.tel)}</a></p>` : ''}
         ${a.tarefas && a.tarefas.length ? `<h3>Passo a passo</h3><div class="ajuda-duvidas ajuda-tarefas">${a.tarefas.map(([t, ps], i) => `<details ${i === 0 ? 'open' : ''}><summary>${E(t)}</summary><ol class="ajuda-passos">${ps.map(x => `<li>${x}</li>`).join('')}</ol></details>`).join('')}</div>` : ''}
         ${a.passos && a.passos.length ? `<h3>${a.tarefas ? 'Como funciona' : 'Como fazer'}</h3>
         <ol class="ajuda-passos">${a.passos.map(x => `<li>${x}</li>`).join('')}</ol>` : ''}
