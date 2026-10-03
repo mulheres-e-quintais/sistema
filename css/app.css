@@ -2629,3 +2629,17 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 .vt-alc .vt-n { white-space: nowrap; }
 .vt-alc .vt-n small { font-size: var(--t-sm); }
 @media (max-width: 560px) { .vitrine .vt-alc .vt-n small { font-size: var(--t-xs); } .vitrine .vt-alc .vt-n small:first-child { display: block; margin-bottom: 2px; } }
+
+/* "O que pede atenção": cada linha diz o seu nível (mesma cor do contador do alto); aviso não tem nada a resolver */
+.dx-selo { display: inline-block; margin: 0 0 4px; padding: 2px 9px; border-radius: 99px; font-size: var(--t-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.dx-prob > span:last-child > .dx-selo { display: table; }
+.dx-selo-crit { background: var(--crit-bg); color: var(--crit); }
+.dx-selo-pend { background: var(--pend-bg); color: var(--pend); }
+.dx-selo-info, .dx-ct-info { background: color-mix(in srgb, var(--muted) 16%, transparent); color: var(--ink-2); }
+.dx-atencao .dx-tr.dx-n-info::before { background: color-mix(in srgb, var(--muted) 55%, transparent); }
+.dx-atencao .dx-tr.dx-n-pend { background: color-mix(in srgb, var(--pend-bg) 40%, var(--surface)); border-color: color-mix(in srgb, var(--pend) 22%, var(--line)); }
+.dx-atencao .dx-prob .st-pt { display: none; }
+/* a faixa do alto do quadro segue o item mais grave: vermelha só se algo requer ação; âmbar se há atenção; sem cor se está tudo em dia */
+.dx-atencao.dx-topo-pend { border-top-color: var(--pend); }
+.dx-atencao.dx-topo-ok { border-top-color: var(--line); }
+.dx-atencao.dx-topo-crit { border-top-color: var(--crit); }
