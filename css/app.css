@@ -2895,3 +2895,10 @@ details.termo-gov > p { margin: 10px 0 0; }
 
 /* listas longas (roteiro do campo, visitas do mês em Custos): botão para desenhar mais linhas */
 .mais-linhas { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 12px 0 0; }
+
+/* foto da pessoa: tirar na hora ou escolher do aparelho; janela da webcam no computador */
+.foto-acoes { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cam-janela { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; padding: 16px; background: rgba(40, 26, 16, .62); }
+.cam-caixa { width: min(440px, 100%); display: grid; gap: 12px; padding: 16px; border-radius: 16px; background: var(--surface); box-shadow: 0 18px 48px rgba(0, 0, 0, .3); }
+.cam-caixa video { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; background: #1c130d; transform: scaleX(-1); }
+.cam-caixa p { margin: 0; }

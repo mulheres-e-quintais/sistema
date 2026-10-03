@@ -500,7 +500,8 @@
     return `<span class="av" style="--av:${tam || 32}px;--avc:${CORES_AV[h % CORES_AV.length]}" aria-hidden="true">${esc(ini)}${m.foto_url ? `<img src="${esc(m.foto_url)}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span>`;
   }
   const podeTrocarFoto = m => m.status === 'ativa' && (S.eu.id === m.id || (/^coord/.test(S.eu.papel) && R.podeEditarDados(S.eu.papel, m.papel)));
-  const botaoFoto = m => podeTrocarFoto(m) ? `<label class="btn peq foto-btn">${m.foto_url ? 'Trocar foto' : 'Adicionar foto'}<input type="file" accept="image/*" data-foto-equipe="${m.id}" hidden></label>` : '';
+  /* foto da pessoa: tirar na hora (câmera do celular ou do computador) ou escolher uma que já está no aparelho */
+  const botaoFoto = m => podeTrocarFoto(m) ? `<span class="foto-acoes"><button type="button" class="btn peq foto-btn" data-acao="foto-camera" data-id="${m.id}">Tirar foto</button><input type="file" accept="image/*" capture="user" data-foto-equipe="${m.id}" data-foto-cam hidden><label class="btn peq foto-btn">${m.foto_url ? 'Trocar foto' : 'Adicionar foto'}<input type="file" accept="image/*" data-foto-equipe="${m.id}" hidden></label></span>` : '';
 
   function cartaoPessoa(m) {
     const s = R.situacao(m);
@@ -1759,6 +1760,7 @@
           abrirPainel(S.painel);
         } catch (e) { el.disabled = false; toast(avisarErro(e)); }
       }
+      else if (a === 'foto-camera') cameraFoto(el.dataset.id);
       else if (a === 'termo-abrir') {   // quem confere abre o termo anexado (link temporário do servidor)
         const box = document.getElementById('termo-vista'); if (!box) return;
         try { const url = await S.api.linkTermo(el.dataset.path);
@@ -1835,13 +1837,39 @@
       img.src = url;
     });
   }
+  async function guardarFotoEquipe(id, imagem) {
+    await S.api.enviarFotoEquipe(id, await fotoQuadrada(imagem));
+    S.equipe = await S.api.listarEquipe(); if (S.eu.id === id) S.eu = Object.assign({}, S.eu, porId(S.eu.id));
+  }
+  /* "Tirar foto": no celular abre a câmera do aparelho; no computador, uma janela com a imagem da webcam */
+  async function cameraFoto(id) {
+    const entrada = [...document.querySelectorAll('input[data-foto-cam]')].find(i => i.dataset.fotoEquipe === id);
+    const celular = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    if (celular || !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { if (entrada) entrada.click(); return; }
+    let fluxo;
+    try { fluxo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 960 }, height: { ideal: 960 } }, audio: false }); }
+    catch (e) { toast('Não foi possível abrir a câmera. Confira a permissão do navegador ou escolha uma foto do aparelho.'); return; }
+    const j = document.createElement('div'); j.className = 'cam-janela'; j.setAttribute('role', 'dialog'); j.setAttribute('aria-modal', 'true'); j.setAttribute('aria-label', 'Tirar foto');
+    j.innerHTML = '<div class="cam-caixa"><video autoplay playsinline muted></video><p class="small muted">Centralize o rosto e toque em Tirar foto.</p><div class="acoes"><button type="button" class="btn pri" data-cam="tirar">Tirar foto</button><button type="button" class="btn" data-cam="cancelar">Cancelar</button></div></div>';
+    const video = j.querySelector('video'); video.srcObject = fluxo; document.body.appendChild(j); j.querySelector('[data-cam=tirar]').focus();
+    const fechar = () => { fluxo.getTracks().forEach(t => t.stop()); j.remove(); document.removeEventListener('keydown', tecla); };
+    const tecla = ev => { if (ev.key === 'Escape') fechar(); }; document.addEventListener('keydown', tecla);
+    j.addEventListener('click', async ev => {
+      const b = ev.target.closest('[data-cam]'); if (!b) { if (ev.target === j) fechar(); return; }
+      if (b.dataset.cam === 'cancelar') { fechar(); return; }
+      if (!video.videoWidth) return;
+      const c = document.createElement('canvas'); c.width = video.videoWidth; c.height = video.videoHeight; c.getContext('2d').drawImage(video, 0, 0);
+      b.disabled = true; b.textContent = 'Enviando…';
+      c.toBlob(async blob => { fechar();
+        try { await guardarFotoEquipe(id, blob); render(); toast('Foto salva.'); } catch (e) { toast(avisarErro(e)); } }, 'image/jpeg', 0.9);
+    });
+  }
   document.addEventListener('change', async ev => {
     const inp = ev.target.closest('input[data-foto-equipe]'); if (!inp || !inp.files[0]) return;
     const lab = inp.closest('label'); const txt = lab ? lab.firstChild.textContent : '';
     try {
       if (lab) lab.firstChild.textContent = 'Enviando…';
-      await S.api.enviarFotoEquipe(inp.dataset.fotoEquipe, await fotoQuadrada(inp.files[0]));
-      S.equipe = await S.api.listarEquipe(); if (S.eu.id === inp.dataset.fotoEquipe) S.eu = Object.assign({}, S.eu, porId(S.eu.id));
+      await guardarFotoEquipe(inp.dataset.fotoEquipe, inp.files[0]);
       render();   // se há algo digitado no painel, o desenho devolve o que foi digitado (ver redesenharPreservando) if (lab && lab.isConnected) lab.firstChild.textContent = txt; toast('Foto salva.');
     } catch (e) { if (lab) lab.firstChild.textContent = txt; toast(avisarErro(e)); }
   });

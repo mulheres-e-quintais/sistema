@@ -64,6 +64,7 @@
         '<b>Financeiro e entregas</b> abre o painel de recursos, rubricas e metas físicas. Só a coordenação geral vê esse botão.'
       ],
       duvidas: [
+        ['Como coloco a minha foto?', 'Em Meus dados, toque em Tirar foto para usar a câmera do celular ou do computador, ou em Adicionar foto para escolher uma que já está no aparelho. Na primeira vez o navegador pede permissão para usar a câmera.'],
         ['Os números estão zerados.', 'Eles só contam registros reais. Dados de teste (exemplo) ficam de fora dos números e da vitrine.'],
         ['Qual a diferença entre "na equipe" e "habilitadas"?', 'Na equipe é quem está cadastrado e ativo. Habilitada é quem completou os passos para receber: matrícula no FIC (coordenação técnica, bolsistas e agentes), cadastro no Arlo e termo de compromisso.']
       ]
