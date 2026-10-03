@@ -25,10 +25,10 @@ um() {   # um <perfil ou vazio> <arquivo de saída>
 }
 # 2. manual completo e um por perfil
 um "" saida/Manual_do_Usuario_Mulheres_e_Quintais.pdf
-for p in geral tecnica bolsista agente professor auxiliar; do um $p "$R/manuais/manual-$p.pdf"; done
+for p in geral tecnica bolsista agente professor auxiliar mda mpa; do um $p "$R/manuais/manual-$p.pdf"; done
 # 3. guias rápidos (uma folha por perfil) e documento para o contratante
 python3 extras.py >/dev/null; node pdf2.js
 mv Guias_rapidos_por_perfil_Mulheres_e_Quintais.pdf Por_que_o_sistema_e_essencial_Mulheres_e_Quintais.pdf saida/
-i=1; for p in geral tecnica bolsista agente professor auxiliar; do qpdf saida/Guias_rapidos_por_perfil_Mulheres_e_Quintais.pdf --pages . $i -- "$R/manuais/guia-$p.pdf"; i=$((i+1)); done
+i=1; for p in geral tecnica bolsista agente professor auxiliar mda mpa; do qpdf saida/Guias_rapidos_por_perfil_Mulheres_e_Quintais.pdf --pages . $i -- "$R/manuais/guia-$p.pdf"; i=$((i+1)); done
 rm -f manual.pdf manual.html essencial.html guias.html logo.pdf
 echo "Pronto. Completo, guias e contratante em ferramentas/manuais/saida; os de cada perfil em manuais/ (vão ao ar no próximo envio)."

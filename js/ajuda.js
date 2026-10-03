@@ -77,7 +77,8 @@
         ['Cadastrar digitando', ['Toque na vaga ou em <b>Cadastrar</b> → <b>Digitar os dados agora</b>.', 'Preencha nome, CPF, celular e e-mail.', 'Responda se a pessoa já tem cadastro no Arlo e, para quem vai a campo, o perfil no campo.', 'Marque a ciência sobre o uso dos dados.', 'Toque em <b>Cadastrar</b>.']],
         ['Mandar o acesso para a pessoa', ['Abra a ficha da pessoa.', 'Toque em <b>Gerar código de acesso</b>.', 'Toque em <b>Mandar por WhatsApp</b>: a mensagem já leva endereço, e-mail e código.']],
         ['Registrar a habilitação', ['Abra a ficha da pessoa.', 'Toque em <b>Registrar passos da habilitação</b>.', 'Em cada passo feito, toque em <b>Hoje</b> (ou escolha a data).', 'Toque em <b>Salvar</b>.']],
-        ['Desligar e pôr substituta', ['Abra a ficha da pessoa → <b>Desligar</b>.', 'Escolha o motivo e explique em uma frase.', 'Toque em <b>Confirmar desligamento</b> (não tem volta).', 'Na vaga que abriu, toque em <b>Cadastrar substituta</b>.']]
+        ['Desligar e pôr substituta', ['Abra a ficha da pessoa → <b>Desligar</b>.', 'Escolha o motivo e explique em uma frase.', 'Toque em <b>Confirmar desligamento</b> (não tem volta).', 'Na vaga que abriu, toque em <b>Cadastrar substituta</b>.']],
+        ['Liberar o acompanhamento do MDA ou do MPA (só a coordenação geral)', ['No fim da aba <b>Equipe</b>, vá até <b>Acompanhamento externo (MDA e MPA)</b>.', 'Preencha nome, e-mail e órgão e toque em <b>Gravar</b>.', 'Na linha da pessoa, toque em <b>Gerar código</b> e passe o código a ela.', 'Para conferir o que ela enxerga, toque em <b>Ver como o MDA vê</b> ou <b>Ver como o MPA vê</b>.']]
       ],
       passos: [
         'Toque na vaga ou em <b>Cadastrar</b> e escolha: <b>Gerar link de cadastro</b> (a pessoa preenche pelo celular e você confere e aprova) ou <b>Digitar os dados agora</b> (você mesmo preenche). O link é o recomendado: menos digitação e a própria pessoa aceita o termo de dados.',
@@ -86,7 +87,8 @@
         'Depois de salvar, abra a ficha da pessoa e toque em <b>Gerar código de acesso</b>. Mande a mensagem pronta pelo WhatsApp: ela traz o endereço, o e-mail e o código.',
         'Cadastros que chegam pelo link aparecem em <b>Cadastros enviados pelo link</b>. Abra, confira, complete e salve: ao salvar, o cadastro é aprovado.',
         'Na ficha da pessoa ficam a <b>habilitação</b> (FIC, Arlo e termo), a <b>leitura do guia</b> e o <b>perfil no campo</b>. O botão <b>Hoje</b> preenche a data do dia.',
-        '<b>Desligar</b> não apaga o cadastro: a vaga fica livre para a substituta e o histórico guarda quem desligou, quando e por quê.'
+        '<b>Desligar</b> não apaga o cadastro: a vaga fica livre para a substituta e o histórico guarda quem desligou, quando e por quê.',
+        '<b>Acompanhamento externo:</b> quem acompanha pelo MDA ou pelo MPA entra numa área própria, só de leitura e só com números. Não vê nome, CPF, endereço, pagamento nem a equipe. O MDA vê o projeto inteiro, sem parte financeira; o MPA vê o andamento em cada estado. Os números são ao vivo e não contam os dados de exemplo.'
       ],
       duvidas: [
         ['Quem cadastra quem?', 'A coordenação geral cadastra a coordenação técnica, os professores do FIC e o auxiliar, e pode cadastrar todos os outros. A coordenação técnica cadastra bolsistas e agentes.'],

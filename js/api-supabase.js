@@ -90,6 +90,10 @@
       const { data, error } = await sb.rpc('vincular_conta');
       if (error) throw erro(error);
       euCache = data && data.id ? data : null;
+      if (!euCache) {   // não é da equipe: pode ser de acompanhamento (52_acompanhamento.sql); sem a função no banco, segue como "sem cadastro"
+        try { const r = await sb.rpc('acompanhamento_eu'); const o = r && !r.error ? r.data : null;
+          if (o && o.id) euCache = { id: o.id, nome: o.nome, cargo: o.cargo || null, orgao: o.orgao, papel: 'obs_' + o.orgao, observador: true, status: 'ativa' }; } catch (e) {}
+      }
       try { if (euCache) localStorage.setItem('mq-eu', JSON.stringify(euCache)); else localStorage.removeItem('mq-eu'); } catch (e) {}
       this.offline = false;
       return euCache;
@@ -480,6 +484,11 @@
     async salvarCanalVenda(x) { const { data, error } = await sb.rpc('salvar_canal_venda', { p_id: x.id || null, p_uf: x.uf, p_municipio: x.municipio, p_tipo: x.tipo, p_nome: x.nome, p_detalhe: x.detalhe || null, p_contato: x.contato || null, p_ativo: x.ativo !== false }); if (error) throw erro(error); return data; },
     async listarOrientacoesVenda() { const { data, error } = await todas(() => sb.from('orientacoes_venda').select('*', CT).order('feito_em', { ascending: false }).order('id')); if (error) throw erro(error); return data; },
     async registrarOrientacaoVenda(ficha_id, dados) { const { data, error } = await sb.rpc('registrar_orientacao_venda', { p_ficha: ficha_id, p_dados: dados }); if (error) throw erro(error); return data; },
+    /* perfis de acompanhamento, MDA e MPA (52_acompanhamento.sql): só contagens */
+    async dadosAcompanhamento(orgao) { const { data, error } = await sb.rpc('acompanhamento_dados', { p_orgao: orgao || null }); if (error) throw erro(error); return data; },
+    async listarObservadores() { const { data, error } = await sb.rpc('listar_observadores'); if (error) throw erro(error); return data || []; },
+    async salvarObservador(x) { const { data, error } = await sb.rpc('salvar_observador', { p_id: x.id || null, p_nome: x.nome, p_email: x.email, p_orgao: x.orgao, p_cargo: x.cargo || null, p_ativo: x.ativo !== false }); if (error) throw erro(error); return data; },
+    async gerarCodigoObservador(id) { const { data, error } = await sb.rpc('gerar_codigo_observador', { p_id: id }); if (error) throw erro(error); return data; },
     /* itens do kit com preço de referência (51_kit_itens.sql) */
     async listarKitItens() { const { data, error } = await todas(() => sb.from('kit_itens').select('*', CT).order('item').order('id')); if (error) throw erro(error); return data; },
     async salvarKitItem(x) { const { data, error } = await sb.rpc('salvar_kit_item', { p_id: x.id || null, p_item: x.item, p_unidade: x.unidade, p_valor: x.valor_ref, p_fonte: x.fonte || null, p_preliminar: !!x.preliminar, p_ativo: x.ativo !== false }); if (error) throw erro(error); return data; },

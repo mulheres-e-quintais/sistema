@@ -28,6 +28,9 @@ const TELAS = [
   { id: 'agente', perfil: 'agente', clip: 'main', m: [['t:Minhas próximas visitas', 1], ['t:Registrar diagnóstico', 2], ['t:Pedir ajuda de custo', 3]] },
   { id: 'professor', perfil: 'professor', clip: 'main', m: [['t:Matricular alunas', 1], ['t:Registrar encontro e presença', 2], ['t:Confirmar acesso ao AVA', 3], ['t:Pedir a minha bolsa', 4], ['t:+ Nova turma', 5]] },
   { id: 'auxiliar', perfil: 'auxiliar', clip: 'main', m: [['t:Cadastrar no Arlo', 1], ['t:Lançar pagamentos no Arlo', 2], ['#t-arlo', 3], ['t:No Arlo, falta registrar o termo', 4]] },
+  { id: 'acomp_mda', perfil: 'obs_mda', clip: 'de:main h1:#ac-metas', m: [['t:Atualizar agora', 1], ['.ac-kpis', 2], ['#ac-caminho', 3], ['#ac-metas', 4]] },
+  { id: 'acomp_mpa', perfil: 'obs_mpa', clip: 'de:main h1:#ac-parado', m: [['t:Atualizar agora', 1], ['.ac-kpis', 2], ['#ac-estados', 3], ['#ac-parado', 4]] },
+  { id: 'acomp_coord', perfil: 'coord_geral', aba: 'equipe', clip: 'el:#ac-coord', m: [['#ac-nome', 1], ['#ac-orgao', 2], ['t:Ver como o MDA vê', 3]] },
   { id: 'meus_dados', perfil: 'bolsista', clique: '.btn-meus', clip: 'el:aside.painel', m: [['p:Trocar foto', 1], ['aside.painel dl', 2], ['p:Termo de compromisso', 3], ['p:Gerar o termo preenchido', 4]] },
   { id: 'ficha_nova', perfil: 'bolsista', clique: '[data-acao=ficha-nova]', clip: 'el:aside.painel', m: [['p:Imprimir em branco', 1], ['aside.painel input', 2], ['p:Salvar', 3]] },
 ];

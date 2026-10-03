@@ -196,8 +196,10 @@
   /* 47: versão do registro, como no banco: a tela manda a marca (atualizado_em que leu); se o registro mudou depois, recusa. Sem marca, grava como antes. */
   const conferirVersao = (lista, id, op) => { const marca = op && op.marca; if (!marca) return;
     const x = (lista || []).find(y => y.id === id); if (x && x.atualizado_em && x.atualizado_em !== marca) throw falha(R.MSG_CONFLITO); };
+  const OBS_DEMO = { obs_mda: { id: 'obs-demo-mda', nome: 'Marta Lima (exemplo)', cargo: 'Analista', orgao: 'mda' }, obs_mpa: { id: 'obs-demo-mpa', nome: 'Paulo Rocha (exemplo)', cargo: 'Coordenação estadual', orgao: 'mpa' } };
   function euMesmo() {
     const d = ler();
+    if (OBS_DEMO[d.perfil]) return Object.assign({ papel: d.perfil, observador: true, status: 'ativa' }, OBS_DEMO[d.perfil]);   // perfis de acompanhamento: não são da equipe
     const id = d.eu[d.perfil];
     return d.equipe.find(x => x.id === id && x.status === 'ativa') || null;
   }
@@ -273,6 +275,41 @@
       if (!['sim', 'nao', 'nao_sabe'].includes(dados.caf)) throw falha('Responda se a família tem CAF ou DAP.');
       const o = { id: uid(), ficha_id, uf: f.uf, dados: copia(dados), feito_por: eu.id, feito_em: new Date().toISOString() };
       d.orientacoesVenda.push(o); gravar(d); return o.id;
+    },
+    /* perfis de acompanhamento (mesmas regras do 52_acompanhamento.sql): só contagens; na demonstração os dados de exemplo entram na conta */
+    async dadosAcompanhamento(orgao) {
+      const d = ler(); const eu = euMesmo(); let org = eu && eu.observador ? eu.orgao : null;
+      if (!org) { if (eu && ['coord_geral', 'coord_tecnico'].includes(eu.papel) && ['mda', 'mpa'].includes(orgao)) org = orgao; else throw falha('Acesso restrito ao acompanhamento do projeto.'); }
+      return copia(MQ.acomp.calcular({ fichas: d.fichas, visitas: d.visitas, diagnosticos: d.diagnosticos, avaliacoes: d.avaliacoes, equipe: d.equipe, turmas: d.turmas, matriculas: d.matriculas, encontros: d.ficEncontros || d.encontros }, org, R.hoje()));
+    },
+    async listarObservadores() {
+      const d = ler(); const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral vê quem acompanha o projeto.');
+      return copia(d.observadores || []).map(o => ({ id: o.id, nome: o.nome, email: o.email, orgao: o.orgao, cargo: o.cargo, status: o.status, tem_senha: !!o.tem_senha, codigo_vale_ate: o.tem_senha ? null : o.codigo_vale_ate || null, criado_em: o.criado_em }))
+        .sort((a, b) => a.orgao.localeCompare(b.orgao) || a.nome.localeCompare(b.nome, 'pt-BR'));
+    },
+    async salvarObservador(x) {
+      const d = ler(); const eu = euMesmo(); d.observadores = d.observadores || [];
+      if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral cadastra quem acompanha o projeto.');
+      const nome = String(x.nome || '').replace(/\s+/g, ' ').trim(), email = String(x.email || '').trim().toLowerCase();
+      if (nome.length < 5 || nome.length > 120) throw falha('Escreva o nome completo (de 5 a 120 letras).');
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 160) throw falha('E-mail inválido.');
+      if (!['mda', 'mpa'].includes(x.orgao)) throw falha('Escolha o órgão: MDA ou MPA.');
+      if (d.equipe.some(m => String(m.email || '').toLowerCase() === email)) throw falha('Este e-mail já é de uma pessoa da equipe. Quem é da equipe não pode ser também de acompanhamento.');
+      if (d.observadores.some(o => o.id !== x.id && o.email === email)) throw falha('Este e-mail já está cadastrado no acompanhamento.');
+      let r = x.id && d.observadores.find(o => o.id === x.id); const antes = r ? copia(r) : null;
+      if (r && r.tem_senha && r.email !== email) throw falha('Esta pessoa já criou a senha com este e-mail. Para trocar o e-mail, desative este cadastro e faça outro.');
+      if (!r) { if (d.observadores.filter(o => o.status === 'ativo').length >= 20) throw falha('Limite de 20 pessoas de acompanhamento ativas.'); r = { id: uid(), criado_em: new Date().toISOString(), criado_por: eu.id }; d.observadores.push(r); }
+      Object.assign(r, { nome, email, orgao: x.orgao, cargo: String(x.cargo || '').trim().slice(0, 120) || null, status: x.ativo === false ? 'inativo' : 'ativo' });
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'observadores', registro_id: r.id, acao: antes ? 'UPDATE' : 'INSERT', por: eu.id, em: new Date().toISOString(), antes, depois: copia(r) });
+      gravar(); return r.id;
+    },
+    async gerarCodigoObservador(id) {
+      const d = ler(); const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral gera o código de quem acompanha o projeto.');
+      const r = (d.observadores || []).find(o => o.id === id); if (!r || r.status !== 'ativo') throw falha('Cadastro não encontrado ou desativado.');
+      const alf = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; let c = ''; const sorteio = new Uint32Array(8); globalThis.crypto.getRandomValues(sorteio); for (let i = 0; i < 8; i++) c += alf[sorteio[i] % alf.length];
+      const tinha = !!r.tem_senha; r.tem_senha = false; r.codigo_vale_ate = new Date(Date.now() + 7 * 864e5).toISOString();
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'observadores', registro_id: r.id, acao: tinha ? 'NOVO_ACESSO' : 'CODIGO', por: eu.id, em: new Date().toISOString(), antes: null, depois: { expira_em: r.codigo_vale_ate, senha_anterior_apagada: tinha } });
+      gravar(); return c.slice(0, 4) + '-' + c.slice(4);
     },
     /* itens do kit com preço de referência (mesmas regras do 51_kit_itens.sql) */
     async listarKitItens() { const d = ler(); if (!d.kitItens) { d.kitItens = MQ.KIT_ITENS.map(x => Object.assign({ id: uid(), atualizado_em: '2026-10-03T12:00:00.000Z', atualizado_por: null }, x)); gravar(); } return copia(d.kitItens).sort((a, b) => a.item.localeCompare(b.item, 'pt-BR')); },

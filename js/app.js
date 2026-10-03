@@ -124,6 +124,9 @@
   }
   const chaveCache = () => 'mq-cache-' + (S.eu && S.eu.id);
   async function carregar() {
+    // perfis de acompanhamento (MDA e MPA): só os números agregados; nada da equipe, das fichas ou dos pagamentos é pedido
+    if (S.eu && S.eu.observador) { S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.fila = []; S.cargaParcial = null;
+      if (MQ.acompUI) { await MQ.acompUI.carregar(); MQ.acompUI.vigiar(); } return; }
     try {
       /* Tudo o que não depende de outra coisa é buscado AO MESMO TEMPO (antes eram ~18 esperas em fila:
          6 a 12 segundos em internet fraca). Cada parte continua com o seu tratamento: "sem o script no
@@ -210,6 +213,12 @@
       if (S.api.listarKitItens && (campoPapel || coord)) {
         try { const r = await talvez(() => S.api.listarKitItens(), semFic); S.kitItensSemBanco = !r[0]; S.kitItens = r[0] ? r[1] : []; }
         catch (e) { if (e && e.semRede) throw e; falhas.push('itens do kit'); }
+      }
+      /* quem acompanha o projeto de fora (52_acompanhamento.sql): a lista é só da coordenação geral */
+      S.obsSemBanco = true;
+      if (papel === 'coord_geral' && S.api.listarObservadores) {
+        try { const r = await talvez(() => S.api.listarObservadores(), semFic); S.obsSemBanco = !r[0]; S.observadores = r[0] ? r[1] : []; }
+        catch (e) { if (e && e.semRede) throw e; falhas.push('acompanhamento externo'); }
       }
       S.cargaParcial = falhas.length ? falhas : null;
       // cálculo de custos carregado em segundo plano: a aba Custos abre pronta, sem "Carregando…" e sem a página pular
@@ -342,6 +351,10 @@
     if (location.hash === '#numeros' && MQ.vitrineUI) { app.innerHTML = barra(true) + MQ.vitrineUI.pagina() + rodape(); document.title = 'O projeto em números · Mulheres & Quintais'; return; }
     document.title = 'Mulheres & Quintais';
     const telaEntrada = (modoDemo && S.verEntrada) || (!S.eu && !modoDemo && !S.api.temSessao);
+    if (S.eu && S.eu.observador && !telaEntrada && MQ.acompUI) {   // tela própria de quem acompanha: nenhuma parte da tela da equipe é montada
+      if (S.painel) fecharPainel({ semFoco: true, semHistorico: true });
+      app.innerHTML = (modoDemo ? faixaDemo() : '') + avisoRede() + MQ.acompUI.pagina(); document.title = 'Acompanhamento · Mulheres & Quintais'; return;
+    }
     let h = (telaEntrada ? '' : barra()) + (modoDemo ? faixaDemo() : '');
     h += avisoRede();
     if (S.eu && !telaEntrada && (S.cargaParcial || []).length)
@@ -405,7 +418,7 @@
     const p = S.api.perfisDemo();
     const b = (id, t) => `<button type="button" data-acao="perfil" data-p="${id}" aria-pressed="${S.verEntrada ? id === 'entrada' : p === id}">${t}</button>`;
     return `<div class="demo"><div class="demo-in"><span class="demo-selo"><span aria-hidden="true">⚠</span> <b>Ambiente de demonstração</b> · os dados exibidos são fictícios</span>
-      <span class="demo-ver">Ver como: <span class="seg" role="group" aria-label="Perfil">${b('coord_geral', 'Coordenação geral')}${b('coord_tecnico', 'Coordenação técnica')}${b('bolsista', 'Bolsista')}${b('agente', 'Agente de campo')}${b('professor', 'Professor FIC')}${b('auxiliar', 'Auxiliar adm.')}${b('entrada', 'Tela de entrada')}</span></span>
+      <span class="demo-ver">Ver como: <span class="seg" role="group" aria-label="Perfil">${b('coord_geral', 'Coord. geral')}${b('coord_tecnico', 'Coord. técnica')}${b('bolsista', 'Bolsista')}${b('agente', 'Agente')}${b('professor', 'Professor FIC')}${b('auxiliar', 'Auxiliar adm.')}${b('obs_mda', 'MDA')}${b('obs_mpa', 'MPA')}${b('entrada', 'Tela de entrada')}</span></span>
       <details class="demo-mais"><summary>Ver detalhes</summary><p>Os dados ficam gravados só neste navegador e servem para testar. Nada aqui vai para o servidor nem para a vitrine pública.</p>
         <button class="link" data-acao="recomecar">Recomeçar demonstração</button></details></div></div>`;
   }
@@ -496,6 +509,7 @@
       <section class="secao" aria-label="Registros"><div class="secao-cab"><div><h2 id="t-reg">Alterações</h2></div></div>${historico()}</section>`;
     const avisoEx = S.exemplo ? `<details class="aviso-ex" role="status"><summary><span aria-hidden="true">⚠</span> <b>Dados de exemplo no servidor</b> · ${S.exemplo} registros inventados <span class="link">Ver detalhes</span></summary>
       <p>Servem para testar; não aparecem na vitrine pública. Antes de cadastrar a equipe e as fichas de verdade, a coordenação geral roda o arquivo 06_apagar_exemplo.sql no Supabase.</p></details>` : '';
+    if (aba === 'equipe' && souGeral && MQ.acompUI) corpo += MQ.acompUI.blocoCoord();   // quem acompanha o projeto de fora (MDA e MPA)
     return `<main class="wrap" id="principal">${avisoEx}${nav}${corpo}</main>`;
   }
 
@@ -1820,6 +1834,7 @@
       else if (/^ent-/.test(a) && MQ.entregasUI) await MQ.entregasUI.clique(a, el);
       else if (/^rot-/.test(a) && MQ.roteiroUI) { S.voltarFoco = null; await MQ.roteiroUI.clique(a, el); }
       else if (/^campo-/.test(a) && MQ.campoUI) { S.voltarFoco = el; await MQ.campoUI.clique(a, el); }
+      else if (/^acomp-/.test(a) && MQ.acompUI) await MQ.acompUI.clique(a, el);
       else if (a === 'ver') { S.voltarFoco = el; abrirPainel({ tipo: 'detalhe', id: el.dataset.id }); }
       else if (a === 'ir') { const t = document.querySelector(el.dataset.alvo); if (t) { const sec = t.closest('section, .bloco') || t; sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); t.setAttribute('tabindex', '-1'); t.focus({ preventScroll: true }); } }
       else if (a === 'novo') { S.voltarFoco = el; abrirPainel({ tipo: 'cadastro', papel: el.dataset.papel, uf: el.dataset.uf, subst: el.dataset.subst }); }
@@ -2026,6 +2041,7 @@
       if (/^ficha/.test(tipo) && MQ.fichasUI) await MQ.fichasUI.enviar(tipo, form, fd);
       if (/^pend-/.test(tipo) && MQ.pendUI) await MQ.pendUI.enviar(tipo, form, fd);
       if (/^(visita|diag)/.test(tipo) && MQ.campoUI) await MQ.campoUI.enviar(tipo, form, fd);
+      if (/^acomp-/.test(tipo) && MQ.acompUI) await MQ.acompUI.enviar(tipo, form, fd);
       if (/^vit-/.test(tipo) && MQ.vitrineUI) await MQ.vitrineUI.enviar(tipo, form, fd);
       if (/^custo-/.test(tipo) && MQ.custosUI) await MQ.custosUI.enviar(tipo, form, fd);
       if (/^fic-/.test(tipo) && MQ.ficUI) await MQ.ficUI.enviar(tipo, form, fd);

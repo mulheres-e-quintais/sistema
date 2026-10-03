@@ -47,11 +47,11 @@ begin
 end $$;
 
 -- ===================================================================== 1. TABELAS
-select est_lista('as 37 tabelas do sistema existem (nenhuma a menos, nenhuma a mais)',
+select est_lista('as 39 tabelas do sistema existem (nenhuma a menos, nenhuma a mais)',
   $q$select c.relname::text from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind = 'r' and c.relname <> 'res'$q$,
   array['acesso_codigos','acessos','agua_situacoes','apl_municipios','auditoria','avaliacoes','canais_venda','ciencias','contas_ja_ligadas','convites','custos_visita',
-        'diagnosticos','documentos_projeto','entregas_mes','equipe','equipe_bancario','equipe_privado','execucao_lancamentos','execucao_planilhas','exemplo','fic_encontros',
-        'fic_presencas','fichas','ia_usos','matriculas_fic','orientacoes_venda','parametros','pedidos_apoio','pedidos_novo_acesso','pre_cadastros','solicitacao_visitas',
+        'diagnosticos','documentos_projeto','entregas_mes','equipe','equipe_bancario','equipe_privado','execucao_lancamentos','execucao_planilhas','exemplo','fic_encontros','fic_presencas',
+        'fichas','ia_usos','kit_itens','matriculas_fic','observadores','orientacoes_venda','parametros','pedidos_apoio','pedidos_novo_acesso','pre_cadastros','solicitacao_visitas',
         'solicitacoes_pagamento','testes_resultados','turmas_fic','visitas','vitrine_fotos','vitrine_remover']);
 select est_caso('toda tabela tem chave primária',
   $q$select c.relname::text from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind = 'r' and c.relname <> 'res'
@@ -62,10 +62,10 @@ select est_caso('não há visão (view) nem tabela materializada no schema publi
 -- ===================================================================== 2. RLS
 select est_caso('toda tabela tem RLS ligada',
   $q$select c.relname::text from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind = 'r' and c.relname <> 'res' and not c.relrowsecurity$q$);
-select est_lista('tabelas com RLS e NENHUMA regra de acesso são só as três que ninguém lê pelo app (acesso só por função)',
+select est_lista('tabelas com RLS e NENHUMA regra de acesso são só as quatro que ninguém lê pelo app (acesso só por função)',
   $q$select c.relname::text from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind = 'r' and c.relname <> 'res' and c.relrowsecurity
       and not exists (select 1 from pg_policy p where p.polrelid = c.oid)$q$,
-  array['acesso_codigos','contas_ja_ligadas','equipe_bancario']);
+  array['acesso_codigos','contas_ja_ligadas','equipe_bancario','observadores']);
 select est_caso('toda regra de acesso (policy) é só para quem entrou no sistema (authenticated): nenhuma para anon ou public',
   $q$select tablename || '.' || policyname from pg_policies where schemaname in ('public', 'storage') and roles <> '{authenticated}'$q$);
 select est_caso('nenhuma regra de acesso "aberta" (true) para ler ou gravar',
@@ -87,11 +87,11 @@ select est_caso('ninguém (anon, authenticated) tem TRUNCATE, REFERENCES ou TRIG
 select est_lista('tabelas sem NENHUM privilégio direto para quem entrou (só por função do banco)',
   $q$select c.relname::text from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind = 'r' and c.relname <> 'res'
       and not exists (select 1 from information_schema.role_table_grants g where g.table_schema = 'public' and g.table_name = c.relname and g.grantee = 'authenticated')$q$,
-  array['acesso_codigos','contas_ja_ligadas','equipe_bancario']);
+  array['acesso_codigos','contas_ja_ligadas','equipe_bancario','observadores']);
 select est_lista('tabelas que quem entrou só LÊ (toda gravação passa por função do banco ou não existe)',
   $q$select table_name::text from information_schema.role_table_grants where table_schema = 'public' and grantee = 'authenticated' and table_name <> 'res'
       group by table_name having string_agg(privilege_type, ',' order by privilege_type) = 'SELECT'$q$,
-  array['acessos','agua_situacoes','auditoria','canais_venda','exemplo','fic_encontros','fic_presencas','ia_usos','matriculas_fic','orientacoes_venda','pedidos_apoio',
+  array['acessos','agua_situacoes','auditoria','canais_venda','exemplo','fic_encontros','fic_presencas','ia_usos','kit_itens','matriculas_fic','orientacoes_venda','pedidos_apoio',
         'solicitacao_visitas','solicitacoes_pagamento']);
 select est_caso('o histórico (auditoria) não pode ser gravado, alterado nem apagado por ninguém pelo app',
   $q$select grantee || ':' || privilege_type from information_schema.role_table_grants where table_schema = 'public' and table_name = 'auditoria'
@@ -117,7 +117,7 @@ select est_lista('funções internas que NINGUÉM chama pelo app (nem quem entro
   $q$select p.proname::text from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prorettype <> 'trigger'::regtype
       and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
       and not has_function_privilege('authenticated', p.oid, 'EXECUTE')$q$,
-  array['codigo_coordenacao_geral','cpf_valido','fic_matriculados_em','fic_mes_fechado','novo_codigo_acesso','sem_acento','trava_aviso','visita_etapa_motivo']);
+  array['acomp_n','codigo_coordenacao_geral','cpf_valido','fic_matriculados_em','fic_mes_fechado','novo_codigo_acesso','sem_acento','trava_aviso','visita_etapa_motivo']);
 select est_caso('o único SQL montado em tempo de execução (EXECUTE) é o de vitrine_municipios, que não recebe parâmetro',
   $q$select p.oid::regprocedure::text from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prolang = (select oid from pg_language where lanname = 'plpgsql')
       and (p.prosecdef or p.prorettype = 'trigger'::regtype or has_function_privilege('anon', p.oid, 'EXECUTE') is false)   -- funções do sistema (as de apoio dos testes ficam de fora)
@@ -141,10 +141,10 @@ select est_caso('as funções chamadas pelo app (js/api-supabase.js) existem com
                          and (e.f in ('pedir_novo_acesso', 'ver_convite', 'enviar_pre_cadastro', 'vitrine', 'vitrine_municipios') or has_function_privilege('authenticated', p.oid, 'EXECUTE')))$q$);
 
 -- ===================================================================== 5. VÍNCULOS (FK)
-select est_lista('os 69 vínculos entre tabelas (tabela.coluna > tabela de destino) existem',
+select est_lista('os 71 vínculos entre tabelas (tabela.coluna > tabela de destino) existem',
   $q$select k.conrelid::regclass::text || '.' || a.attname || '>' || k.confrelid::regclass::text from pg_constraint k
        join pg_attribute a on a.attrelid = k.conrelid and a.attnum = k.conkey[1] where k.contype = 'f' and k.connamespace = 'public'::regnamespace$q$,
-  array['acesso_codigos.equipe_id>equipe','acessos.equipe_id>equipe','agua_situacoes.ficha_id>fichas','agua_situacoes.registrado_por>equipe','apl_municipios.atualizado_por>equipe',
+  array['kit_itens.atualizado_por>equipe','observadores.criado_por>equipe','acesso_codigos.equipe_id>equipe','acessos.equipe_id>equipe','agua_situacoes.ficha_id>fichas','agua_situacoes.registrado_por>equipe','apl_municipios.atualizado_por>equipe',
         'avaliacoes.executor_id>equipe','avaliacoes.ficha_id>fichas','avaliacoes.visita_id>visitas','canais_venda.atualizado_por>equipe','canais_venda.criado_por>equipe',
         'ciencias.equipe_id>equipe','contas_ja_ligadas.equipe_id>equipe','convites.criado_por>equipe','convites.substitui_id>equipe','custos_visita.definido_por>equipe',
         'custos_visita.visita_id>visitas','diagnosticos.aprovado_por>equipe','diagnosticos.conteudo_alterado_por>equipe','diagnosticos.executor_id>equipe','diagnosticos.ficha_id>fichas',
