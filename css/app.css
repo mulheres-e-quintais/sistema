@@ -2721,3 +2721,27 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
   .ag-lista .vagabtn.com-foto { flex: 1 1 100%; }
   .ag-acao { min-width: 0; justify-content: stretch; } .ag-acao .btn-acao { width: 100%; }
 }
+
+/* --- Execução, "Por rubrica" (03/10/2026): quadro em cartão, cabeçalho em faixa, rubricas como títulos de grupo, itens limpos --- */
+.fin-wrap:has(> .exec-fin) { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); overflow: hidden; box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 8px 22px rgba(69, 43, 26, .06); }
+@media (min-width: 901px) {
+  table.exec-fin thead th { background: var(--surface-2); color: var(--ink); padding: 14px 14px; border-bottom: 1px solid var(--line); font-size: var(--t-xs); }
+  table.exec-fin thead th:first-child { padding-left: 24px; } table.exec-fin thead th:last-child, table.exec-fin td:last-child { padding-right: 24px; }
+  table.exec-fin tbody + tbody .fin-grupo > * { border-top: 0; }
+  table.exec-fin .fin-grupo > * { background: color-mix(in srgb, var(--surface-2) 55%, var(--surface)); border-radius: 0 !important; border-top: 1px solid var(--line) !important; border-bottom: 1px solid var(--line); padding-top: 13px; padding-bottom: 13px; }
+  table.exec-fin tbody:first-of-type .fin-grupo > * { border-top: 0 !important; }
+  table.exec-fin .fin-grupo > th { padding-left: 24px; font-size: var(--t-md); box-shadow: inset 4px 0 0 var(--accent); }
+  table.exec-fin .fin-item > th { padding-left: 40px; }
+  table.exec-fin .fin-item > * { padding-top: 11px; padding-bottom: 11px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+  table.exec-fin tbody tr.fin-item:last-of-type > * { border-bottom: 0; }
+  table.exec-fin .fin-item:hover > * { background: color-mix(in srgb, var(--surface-2) 30%, transparent); }
+  table.exec-fin .fin-detalhe > td { padding-left: 40px; padding-right: 24px; background: color-mix(in srgb, var(--surface-2) 30%, transparent); }
+  table.exec-fin .fin-tot > * { background: var(--surface-2); border-top: 2px solid var(--ink); padding-top: 16px; padding-bottom: 16px; }
+  table.exec-fin .fin-tot > th { padding-left: 24px; }
+}
+/* nome do item: sem sublinhado; uma setinha diz que abre a composição */
+.exec-fin .fin-nome:not(.sem) { text-decoration: none; display: inline-flex; align-items: baseline; gap: 8px; }
+.exec-fin .fin-nome:not(.sem)::before { content: ""; flex: none; width: 6px; height: 6px; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transform: translateY(-2px) rotate(-45deg); transition: transform .15s; }
+.exec-fin .fin-nome[aria-expanded="true"]::before { transform: translateY(-3px) rotate(45deg); border-color: var(--accent); }
+.exec-fin .fin-nome:not(.sem):hover { color: var(--accent); }
+@media (max-width: 900px) { .fin-wrap:has(> .exec-fin) { padding: 4px 10px 10px; } }
