@@ -2660,3 +2660,13 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 .painel-sit.sit-crit { border-top-color: var(--crit); }
 .secao.painel-sit + .secao.painel-sit { margin-top: 4px; }
 @media (max-width: 640px) { .secao.painel-sit { padding: 16px 14px 14px; border-radius: 14px; } }
+
+/* aba Equipe (03/10/2026): botões de cadastro do tamanho do texto (não da coluna) e com o conteúdo centralizado */
+.vaga-slot .btn-acao, .grade-uf .cartao > .btn-acao, .vaga-aberta > .btn-acao { width: fit-content; max-width: 100%; flex: 0 0 auto; justify-content: center; padding-right: 18px; }
+.vaga-slot .btn-acao .ba-tx, .grade-uf .cartao > .btn-acao .ba-tx, .vaga-aberta > .btn-acao .ba-tx { flex: 0 1 auto; width: auto; }
+.vaga-slot .btn-acao, .grade-uf .cartao > .btn-acao { min-height: 44px; }
+.grade-uf .cartao > .btn-acao { justify-self: start; align-self: end; }
+@media (max-width: 640px) { .vaga-slot .btn-acao, .grade-uf .cartao > .btn-acao, .vaga-aberta > .btn-acao { width: 100%; } }
+
+/* "O que pede atenção": "Ver" (aviso) com a mesma largura de "Resolver" */
+.dx-atencao .btn-acao.dx-ir { min-width: 132px; justify-content: center; }
