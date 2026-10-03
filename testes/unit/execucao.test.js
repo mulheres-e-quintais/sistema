@@ -91,7 +91,7 @@ test('gráficos: ritmo com os gastos da planilha por mês; uma barra por rubrica
   if (sr.idxHoje >= 0 && sr.idxHoje < 12) assert.equal(sr.executado[sr.idxHoje + 1], null, 'futuro em branco');
   const h = t.aba('execucao');
   assert.equal((h.match(/data-exg="/g) || []).length, 13); assert.equal((h.match(/class="eg-bar[" ]/g) || []).length, t.MQ.ORCAMENTO.rubricas.length);
-  assert.ok(/data-acao="exec-rub" data-id="r13"/.test(h) && /<tbody id="exr-r13">/.test(h));
+  assert.ok(/data-acao="exec-rub" data-id="r13"/.test(h) && /<tbody id="exr-r13" class="fin-rubrica">/.test(h));
   assert.ok(!/\d\.\d%/.test(texto(h)), 'porcentagem com vírgula');
 });
 
