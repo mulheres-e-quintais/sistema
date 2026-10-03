@@ -461,6 +461,8 @@
   };
   const SETA = p('<path d="M5 12h13"/><path d="m13 6.5 5.5 5.5-5.5 5.5"/>');
   MQ.ICONES = ICONES;
+  /* faixa no alto do painel conforme a situação: 'crit' (devolvido/atrasado), 'pend' (esperando quem está olhando), neutra se não há nada */
+  MQ.sit = (n, nivel) => ' painel-sit sit-' + (n ? (nivel || 'pend') : 'ok');
   MQ.botaoAcao = o => `<button type="button" class="btn-acao${o.sec ? ' sec' : ''}${o.peq ? ' peq' : ''}${o.mini ? ' mini' : ''}${o.cls ? ' ' + o.cls : ''}" data-acao="${o.acao}"${o.rotulo || o.curto ? ` aria-label="${o.rotulo || o.texto}"` : ''} ${o.attrs || ''}>`
     + `${o.icone === false ? '' : `<span class="ba-ic">${ICONES[o.icone] || ICONES.pessoa_mais}</span>`}<span class="ba-tx">${o.curto ? `<span class="ba-l">${o.texto}</span><span class="ba-c" aria-hidden="true">${o.curto}</span>` : o.texto}</span><span class="ba-seta">${SETA}</span></button>`;
   /* botão de ação com a explicação curta embaixo (substitui os antigos cartões "cad-modo" das páginas) */

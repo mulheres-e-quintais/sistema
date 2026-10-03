@@ -481,7 +481,7 @@
     const eu = S().eu; if (!eu || eu.papel !== 'auxiliar_adm' || S().quemConfere !== 'auxiliar_adm') return '';
     const vez = lista().filter(minhaVez);
     const meus = lista().filter(p => p.conferido_por === eu.id);
-    return `<section class="secao viag" aria-labelledby="t-conf">
+    return `<section class="secao viag${MQ.sit(vez.length)}" aria-labelledby="t-conf">
       <div class="secao-cab"><div><h2 id="t-conf">Passagens e eventos para conferir <span class="conta-t${vez.length ? '' : ' zero'}">${vez.length}</span></h2>
         <p>Enquanto o projeto está sem coordenação técnica, você confere os pedidos das bolsistas de articulação e a coordenação geral autoriza. Assim cada pedido passa por duas pessoas. Quando a técnica for cadastrada, os pedidos voltam para ela e somem desta tela.</p></div></div>
       <p class="small muted">Confira: prazo (passagem ${PRAZO.passagem} dias, evento ${PRAZO.evento} dias antes, ou justificativa), finalidade, trecho e datas, e se os dados das passageiras estão completos e iguais aos documentos. Os dados pessoais são só para a conferência: não copie nem repasse.</p>

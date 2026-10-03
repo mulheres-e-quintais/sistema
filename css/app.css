@@ -2650,3 +2650,13 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 .dx-mapa > .secao-cab { margin: 0 0 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
 .dx-mapa h2 { font-size: var(--t-xl); }
 @media (max-width: 640px) { .dx-mapa { padding: 16px 14px 14px; border-radius: 14px; } }
+
+/* --- FAIXA DE SITUAÇÃO (03/10/2026): painéis que pedem ação de quem está olhando ganham cartão com faixa no alto.
+   Vermelha: devolvido ou atrasado. Âmbar: esperando você. Sem cor: nada pendente. --- */
+.secao.painel-sit { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px 18px;
+  box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 8px 22px rgba(69, 43, 26, .06); }
+.painel-sit { border-top: 3px solid var(--line); }
+.painel-sit.sit-pend { border-top-color: var(--pend); }
+.painel-sit.sit-crit { border-top-color: var(--crit); }
+.secao.painel-sit + .secao.painel-sit { margin-top: 4px; }
+@media (max-width: 640px) { .secao.painel-sit { padding: 16px 14px 14px; border-radius: 14px; } }

@@ -196,7 +196,7 @@
   function secaoPendentes() {
     const lista = S().pre || [];
     if (!lista.length) return '';
-    return `<section class="secao" aria-labelledby="t-pre"><div class="secao-cab"><div><h2 id="t-pre">Cadastros enviados pelo link <span class="conta-t">${lista.length}</span></h2>
+    return `<section class="secao${MQ.sit(lista.length)}" aria-labelledby="t-pre"><div class="secao-cab"><div><h2 id="t-pre">Cadastros enviados pelo link <span class="conta-t">${lista.length}</span></h2>
         <p>Confira os dados, complete o que falta e aprove. Só depois de aprovada a pessoa entra na equipe e pode fazer o primeiro acesso.</p></div></div>
       <div class="lista-fichas">${lista.map(x => `<button class="vagabtn ficha-linha pre-linha" data-acao="conv-ver" data-id="${E(x.id)}">
           <span class="nm">${E(x.nome)}</span><span class="small muted">${E(funcao(x.papel, x.uf))} · enviado em ${R.fmtData(x.enviado_em)}</span>

@@ -108,7 +108,7 @@
         <div><span class="v num">${c.sem_agua}</span><span class="l">sem água: encaminhadas</span></div>
       </div>
       ${pend ? blocoAparelho(filaF, comErro) : ''}
-      ${devolvidas.length ? `<div class="bloco" style="border-color:var(--crit)"><h3>Para corrigir (${devolvidas.length})</h3><div class="lista-fichas">${devolvidas.map(f => linhaFicha(f)).join('')}</div></div>` : ''}
+      ${devolvidas.length ? `<div class="bloco${MQ.sit(1, 'crit')}"><h3>Para corrigir (${devolvidas.length})</h3><div class="lista-fichas">${devolvidas.map(f => linhaFicha(f)).join('')}</div></div>` : ''}
       ${resto.length ? U().dobra('fichas-todas', `<span><b>Ver as ${resto.length} fichas</b> <span class="small muted">· procurar por nome ou CPF</span></span>`,
           `${resto.length > 6 ? `<div class="campo"><label for="f-busca">Procurar por nome ou CPF</label><input id="f-busca" data-procura="lista-fichas-uf" autocomplete="off"></div>` : ''}
            <div class="lista-fichas" id="lista-fichas-uf">${resto.map(f => linhaFicha(f)).join('')}</div>`)
@@ -148,7 +148,7 @@
         <tbody>${MQ.UFS.map(u => linha(u.uf, u.nome)).join('')}
         <tr><td class="uf"><b>Total</b></td><td class="num"><b>${tot.total}</b></td><td class="num sep"><b>${tot.aprovadas}</b> de ${MQ.VAGAS_UF * 5}</td><td class="num sep">${tot.espera}</td><td class="num">${tot.sem_agua}</td><td class="num">${tot.nao_atende}</td><td class="num sep"><b>${tot.aguardando}</b></td><td class="num">${tot.devolvidas}</td></tr>
         </tbody></table></div><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p>
-      ${aguardando.length ? `<div class="bloco"><h3>${souTec ? 'Para você aprovar' : 'Aguardando a coordenação técnica'} (${aguardando.length})</h3>
+      ${aguardando.length ? `<div class="bloco${MQ.sit(souTec ? 1 : 0)}"><h3>${souTec ? 'Para você aprovar' : 'Aguardando a coordenação técnica'} (${aguardando.length})</h3>
         <div class="lista-fichas">${aguardando.slice(0, 30).map(f => linhaFicha(f, true)).join('')}</div></div>` : ''}
       <details class="hist" data-lembrar="fichas-coord" ${(U().S.aberto || {})['fichas-coord'] || filtro.uf || filtro.situacao || filtro.busca ? 'open' : ''}><summary>Todas as fichas (${conta})</summary><div style="padding:0 18px 16px;display:grid;gap:12px">
         <div class="campos" style="grid-template-columns:repeat(3,minmax(0,1fr))">
