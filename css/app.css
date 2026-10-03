@@ -2745,3 +2745,22 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 .exec-fin .fin-nome[aria-expanded="true"]::before { transform: translateY(-3px) rotate(45deg); border-color: var(--accent); }
 .exec-fin .fin-nome:not(.sem):hover { color: var(--accent); }
 @media (max-width: 900px) { .fin-wrap:has(> .exec-fin) { padding: 4px 10px 10px; } }
+
+/* --- Campo, "Roteiro de campo" em telas largas (03/10/2026): cabeçalho em faixa, UF em selo, data compacta, nomes em destaque --- */
+@media (min-width: 721px) {
+  .quadro-scroll:has(> .tab-rot) { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); overflow: hidden; overflow-x: auto; }
+  table.quadro.tab-rot { border-collapse: collapse; width: 100%; }
+  table.quadro.tab-rot thead th { background: var(--surface-2); color: var(--ink); font-weight: 700; text-align: center; padding: 13px 14px; border: 0; border-bottom: 1px solid var(--line); }
+  table.quadro.tab-rot thead th:nth-child(3), table.quadro.tab-rot thead th:nth-child(4), table.quadro.tab-rot thead th:nth-child(5) { text-align: left; }
+  table.quadro.tab-rot tbody td { padding: 14px 14px; vertical-align: middle; border: 0; border-top: 1px solid var(--line); background: transparent; }
+  table.quadro.tab-rot tbody tr:first-child td { border-top: 0; }
+  table.quadro.tab-rot tbody tr:hover td { background: color-mix(in srgb, var(--surface-2) 38%, transparent); border-radius: 0; }
+  table.quadro.tab-rot td.rt-data { padding-left: 20px; font-size: var(--t-md); font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0; white-space: nowrap; text-align: center; color: var(--ink); }
+  table.quadro.tab-rot td.rt-uf { text-align: center; white-space: nowrap; overflow-wrap: normal; width: 1%; font: 600 var(--t-sm)/1 var(--serif); color: var(--accent); }
+  table.quadro.tab-rot td.rt-mulher { font-weight: 600; color: var(--ink); }
+  table.quadro.tab-rot td.rt-mulher .small, table.quadro.tab-rot td.rt-quem .small { display: block; margin-top: 2px; font-weight: 400; font-size: var(--t-sm); color: var(--ink-2); }
+  table.quadro.tab-rot td.rt-etapa { color: var(--ink-2); font-size: var(--t-sm); }
+  table.quadro.tab-rot td.rt-sit { text-align: center; white-space: nowrap; }
+  table.quadro.tab-rot td.rt-acao { text-align: right; padding-right: 20px; white-space: nowrap; }
+  table.quadro.tab-rot td.rt-acao .btn { min-height: 38px; padding: 6px 14px; font-size: var(--t-sm); }
+}
