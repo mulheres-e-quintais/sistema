@@ -22,6 +22,7 @@ test('pedido devolvido perde o valor autorizado (42_revisao_seguranca.sql)', asy
 });
 test('e-mail do cadastro é guardado em minúsculas', async () => {
   const T = await montar('coord_geral');
+  await editarDemo(T, d => { d.equipe.filter(m => m.papel === 'professor_fic').slice(1).forEach(m => { m.status = 'desligada'; }); });   // 50: no máximo 2 professores; abre uma vaga
   const novo = await T.api.criar({ papel: 'professor_fic', nome: 'Pessoa Teste', cpf: cpfValido(444555666), email: '  Pessoa.Teste@IFRN.edu.br ', telefone: '84999990000', data_inicio: '2026-10-01', consentimento_lgpd: true });
   assert.equal(novo.email, 'pessoa.teste@ifrn.edu.br');
 });
@@ -100,4 +101,16 @@ test('relatório da bolsa do professor: carga horária somada com 1 casa (0,1 + 
   await T.api.solicitarPagamento('bolsa', hoje, 2200, 'Aulas dadas, materiais preparados e acompanhamento das turmas no mês.', [], {});
   const s = lerDemo(T).solicitacoes.find(x => x.tipo === 'bolsa');
   assert.equal(s.detalhe.fic_carga_horaria, 0.3);
+});
+
+test('50: no máximo 2 professores do FIC ativos (cadastro direto e link); com vaga, volta a aceitar', async () => {
+  const T = await montar('coord_geral');
+  const prof = n => ({ papel: 'professor_fic', nome: 'Professor Teste ' + n, cpf: cpfValido(555666770 + n), email: 'prof' + n + '@ifrn.edu.br', telefone: '84999990000', data_inicio: '2026-10-01', consentimento_lgpd: true });
+  await assert.rejects(() => T.api.criar(prof(1)), /no máximo 2 professores/);
+  await assert.rejects(() => T.api.criarConvite('professor_fic'), /no máximo 2 professores/);
+  await editarDemo(T, d => { d.equipe.filter(m => m.papel === 'professor_fic').slice(1).forEach(m => { m.status = 'desligada'; }); });
+  const novo = await T.api.criar(prof(2)); assert.equal(novo.papel, 'professor_fic');
+  await assert.rejects(() => T.api.criar(prof(3)), /no máximo 2 professores/);
+  const h = (await montar('coord_geral')).aba('equipe');
+  assert.match(h, /As 2 vagas de professor do FIC estão ocupadas/);
 });

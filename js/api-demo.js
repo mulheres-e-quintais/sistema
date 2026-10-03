@@ -1086,6 +1086,7 @@
       const ativa = d.equipe.find(m => m.status === 'ativa' && m.papel === papel && (papel === 'coord_tecnico' || (R.ehBolsista(papel) && m.uf === uf)));
       if (ativa && papel !== 'agente') throw falha(papel === 'coord_tecnico' ? 'Já há coordenação técnica ativa. Desligue antes de convidar outra.' : 'Esta vaga já está ocupada no estado.');
       if (papel === 'auxiliar_adm' && d.equipe.some(m => m.status === 'ativa' && m.papel === 'auxiliar_adm')) throw falha('Já há auxiliar administrativo ativo. Desligue antes de convidar outro.');
+      if (papel === 'professor_fic' && d.equipe.filter(m => m.status === 'ativa' && m.papel === 'professor_fic').length >= R.MAX_PROFESSORES) throw falha('O projeto tem no máximo 2 professores do FIC ativos. Desligue um antes de convidar outro.');   // 50
       const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
       d.convites = (d.convites || []).concat([{ id: uid(), token, papel, uf: ['coord_tecnico', 'professor_fic', 'auxiliar_adm'].includes(papel) ? null : uf, substitui_id: subst || null, criado_por: eu.id,
         criado_em: new Date().toISOString(), expira_em: new Date(Date.now() + 7 * 864e5).toISOString(), usado_em: null }]);

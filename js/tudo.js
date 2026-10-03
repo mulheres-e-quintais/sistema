@@ -423,6 +423,8 @@ MQ.ORCAMENTO = {
     if (!e.email && ativos.some(x => String(x.email).toLowerCase() === em)) e.email = 'Este e-mail já está em uso por outra pessoa ativa.';
     if (m.papel === 'auxiliar_adm' && !m.id && ativos.some(x => x.papel === 'auxiliar_adm'))
       e.papel = 'Já existe auxiliar administrativo ativo. Desligue antes de cadastrar outro.';
+    if (m.papel === 'professor_fic' && !m.id && ativos.filter(x => x.papel === 'professor_fic').length >= R.MAX_PROFESSORES)
+      e.papel = R.MSG_MAX_PROFESSORES;
     if (m.papel === 'coord_tecnico' && !m.id && ativos.some(x => x.papel === 'coord_tecnico'))
       e.papel = 'Já existe coordenação técnica ativa. Desligue a atual antes de cadastrar outra.';
     if (R.ehBolsista(m.papel)) {
@@ -690,6 +692,9 @@ MQ.ORCAMENTO = {
   R.ehCampo = p => p === 'articulacao' || p === 'apoio' || p === 'agente';
   /* 33: técnica, bolsistas e agentes precisam da matrícula no FIC; só se cadastram com professor do FIC ativo e habilitado */
   R.PRECISA_PROFESSOR = ['coord_tecnico', 'articulacao', 'apoio', 'agente'];
+  /* 50: o orçamento prevê 2 professores do FIC; o banco recusa o terceiro */
+  R.MAX_PROFESSORES = 2;
+  R.MSG_MAX_PROFESSORES = 'O projeto tem no máximo 2 professores do FIC ativos. Desligue um antes de cadastrar outro.';
   R.temProfessorHabilitado = equipe => (equipe || []).some(m => m.papel === 'professor_fic' && m.status === 'ativa' && m.docs_funcern_em && m.termo_assinado_em);
   R.MSG_SEM_PROFESSOR = 'Antes, cadastre e habilite um professor do FIC (cadastro no Arlo e termo assinado): sem ele, ninguém consegue a matrícula no curso.';
   R.habilitado = m => !!(m && m.status === 'ativa' && (m.matricula_fic_em || !R.fazFIC(m.papel)) && m.docs_funcern_em && m.termo_assinado_em);
@@ -1879,6 +1884,7 @@ MQ.ORCAMENTO = {
       const ativa = d.equipe.find(m => m.status === 'ativa' && m.papel === papel && (papel === 'coord_tecnico' || (R.ehBolsista(papel) && m.uf === uf)));
       if (ativa && papel !== 'agente') throw falha(papel === 'coord_tecnico' ? 'Já há coordenação técnica ativa. Desligue antes de convidar outra.' : 'Esta vaga já está ocupada no estado.');
       if (papel === 'auxiliar_adm' && d.equipe.some(m => m.status === 'ativa' && m.papel === 'auxiliar_adm')) throw falha('Já há auxiliar administrativo ativo. Desligue antes de convidar outro.');
+      if (papel === 'professor_fic' && d.equipe.filter(m => m.status === 'ativa' && m.papel === 'professor_fic').length >= R.MAX_PROFESSORES) throw falha('O projeto tem no máximo 2 professores do FIC ativos. Desligue um antes de convidar outro.');   // 50
       const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
       d.convites = (d.convites || []).concat([{ id: uid(), token, papel, uf: ['coord_tecnico', 'professor_fic', 'auxiliar_adm'].includes(papel) ? null : uf, substitui_id: subst || null, criado_por: eu.id,
         criado_em: new Date().toISOString(), expira_em: new Date(Date.now() + 7 * 864e5).toISOString(), usado_em: null }]);
@@ -5749,8 +5755,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `<section class="secao" aria-labelledby="t-prof">
       <div class="secao-cab"><div><h2 id="t-prof">Professores do curso FIC</h2><p>IFRN · cadastrados pela coordenação geral · criam as turmas e matriculam a coordenação técnica, as bolsistas e as agentes</p></div></div>
       ${l.map(m => U().cartaoPessoa(m)).join('')}
-      ${U().vagaAberta ? U().vagaAberta(l.length ? `<b>${l.length} professor${l.length > 1 ? 'es' : ''} cadastrado${l.length > 1 ? 's' : ''}.</b> Pode cadastrar mais, se o curso tiver outro professor.` : 'Nenhum professor do FIC cadastrado. Digite os dados ou gere um link para ele preencher.', souGeral,
-        MQ.botaoAcao({ acao: 'novo', icone: 'capelo', texto: 'Cadastrar professor(a) do FIC', curto: 'Cadastrar', attrs: 'data-papel="professor_fic"' }), l.length ? 'Pode ter mais' : 'Vaga aberta') : ''}
+      ${l.length >= MQ.regras.MAX_PROFESSORES ? `<p class="small muted vagas-cheias">As ${MQ.regras.MAX_PROFESSORES} vagas de professor do FIC estão ocupadas. Para trocar, desligue um e cadastre o outro.</p>`
+        : U().vagaAberta ? U().vagaAberta(l.length ? `<b>1 professor cadastrado.</b> Falta 1: o projeto tem ${MQ.regras.MAX_PROFESSORES} professores do FIC.` : `Nenhum professor do FIC cadastrado. O projeto tem ${MQ.regras.MAX_PROFESSORES}. Digite os dados ou gere um link para ele preencher.`, souGeral,
+        MQ.botaoAcao({ acao: 'novo', icone: 'capelo', texto: 'Cadastrar professor(a) do FIC', curto: 'Cadastrar', attrs: 'data-papel="professor_fic"' }), 'Vaga aberta') : ''}
     </section>`;
   }
 

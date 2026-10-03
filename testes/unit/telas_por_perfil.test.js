@@ -39,7 +39,8 @@ describe('Equipe', () => {
   test('coordenação geral: cadastra professor e vaga livre de bolsista; não oferece vaga ocupada', async () => {
     const t = await montar('coord_geral'); const h = t.aba('equipe');
     const novos = botoes(h, 'novo');
-    assert.ok(novos.some(b => /data-papel="professor_fic"/.test(b)), 'professor');
+    assert.ok(!novos.some(b => /data-papel="professor_fic"/.test(b)), '50: com 2 professores ativos não oferece cadastrar o terceiro');
+    assert.match(h, /As 2 vagas de professor do FIC estão ocupadas/);
     assert.ok(novos.some(b => /data-papel="articulacao" data-uf="AL"/.test(b)), 'vaga livre em AL');
     assert.ok(!novos.some(b => /data-papel="articulacao" data-uf="PI"/.test(b)), 'vaga ocupada em PI');
     assert.ok(!novos.some(b => /data-papel="coord_tecnico"/.test(b)), 'coordenação técnica já ocupada');
