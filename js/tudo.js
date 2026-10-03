@@ -4192,6 +4192,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
   let mesRoteiro = null;          // 'AAAA-MM'
   let ufRoteiro = '';
+  const ROT_PASSO = 60; let limRot = ROT_PASSO;   // o roteiro desenha as primeiras linhas e o resto sob pedido: com o mês cheio a tela ficava lenta
 
   /* ---------- dados combinados: servidor + fila do aparelho ---------- */
   /* visitas() e diagnosticos() são chamadas várias vezes por quintal em cada tela: calcula UMA vez por mudança
@@ -4260,24 +4261,26 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       .sort((a, b) => String(a.data_realizada || a.data_prevista).localeCompare(String(b.data_realizada || b.data_prevista)));
     const porPessoa = {};
     vs.forEach(v => { const k = v.executor_id; porPessoa[k] = porPessoa[k] || { prev: 0, feitas: 0 }; porPessoa[k][v.situacao === 'realizada' ? 'feitas' : 'prev']++; });
+    const mostra = vs.slice(0, limRot); const dgFichas = new Set(diagnosticos().map(d => d.ficha_id)); const hoje = R.hoje();
     return `<div class="bloco roteiro">
       <div class="secao-cab"><h3>Roteiro de campo · ${nomeMes(m)}</h3>
         <span class="seg"><button type="button" data-acao="campo-mes" data-n="-1" aria-label="Mês anterior">‹</button><button type="button" data-acao="campo-mes" data-n="0">Este mês</button><button type="button" data-acao="campo-mes" data-n="1" aria-label="Próximo mês">›</button></span></div>
       <p class="small muted">Cada visita a um quintal é 1 dia de campo de quem visita, e é a base da ajuda de custo. O roteiro do mês seguinte fica fechado até o dia 20.</p>
       ${vs.length ? `<div class="quadro-scroll" style="display:block"><table class="quadro tab-rot"><thead><tr><th>Data</th>${uf ? '' : '<th>UF</th>'}<th>Mulher</th><th>Etapa</th><th>Quem visita</th><th>Situação</th><th>O que fazer</th></tr></thead><tbody>
-        ${vs.map(v => { const f = ficha(v.ficha_id) || {}; const q = pessoa(v.executor_id) || {};
-          const feita = v.situacao === 'realizada'; const temDg = diagnosticos().some(d => d.ficha_id === v.ficha_id);
+        ${mostra.map(v => { const f = ficha(v.ficha_id) || {}; const q = pessoa(v.executor_id) || {};
+          const feita = v.situacao === 'realizada'; const temDg = dgFichas.has(v.ficha_id);
           const b = (acao, txt, pri, extra) => `<button class="btn peq${pri ? ' pri' : ''}" data-acao="${acao}" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}" data-id="${E(v.id)}"${extra || ''}>${txt}</button>`;
           const acoes = v._fila ? '<span class="small muted">Aguardando internet</span>'
             : v.etapa === 'avaliacao' ? (feita ? b('aval-ver', 'Ver avaliação') : podeMudar ? b('aval-novo', 'Registrar avaliação', true) : '')
             : v.etapa === 'diagnostico' ? (temDg ? b('campo-diag-ver', 'Ver diagnóstico') : podeMudar ? b('campo-diag-novo', 'Registrar diagnóstico', true) : '')
             : feita ? (v.relato ? `<span class="small muted" title="${E(v.relato)}">${E(String(v.relato).slice(0, 60))}${String(v.relato).length > 60 ? '…' : ''}</span>` : '')
             : podeMudar ? botaoFeita(v) : '';
-          return `<tr class="rt-s-${feita ? 'ok' : v._fila ? 'pend' : v.data_prevista < R.hoje() ? 'crit' : 'pend'}"><td class="num rt-data">${R.fmtData(v.data_realizada || v.data_prevista)}</td>${uf ? '' : `<td class="rt-uf">${E(v.uf)}</td>`}<td class="rt-mulher">${E(f.nome || '—')}<br><span class="small muted">${E(f.municipio || '')}${uf ? '' : `<span class="rt-ufm"> · ${E(v.uf)}</span>`}</span></td>
+          return `<tr class="rt-s-${feita ? 'ok' : v._fila ? 'pend' : v.data_prevista < hoje ? 'crit' : 'pend'}"><td class="num rt-data">${R.fmtData(v.data_realizada || v.data_prevista)}</td>${uf ? '' : `<td class="rt-uf">${E(v.uf)}</td>`}<td class="rt-mulher">${E(f.nome || '—')}<br><span class="small muted">${E(f.municipio || '')}${uf ? '' : `<span class="rt-ufm"> · ${E(v.uf)}</span>`}</span></td>
             <td class="rt-etapa">${E(MQ.ETAPAS[v.etapa].nome)}</td><td class="rt-quem">${E(q.nome || '—')}<br><span class="small muted">${E((MQ.PAPEIS[q.papel] || {}).curto || '')}</span></td>
-            <td class="rt-sit">${feita ? '<span class="chip ok">Feita</span>' : v._fila ? '<span class="chip pend">No aparelho</span>' : v.data_prevista < R.hoje() ? '<span class="chip crit">Atrasada</span>' : '<span class="chip pend">Prevista</span>'}</td>
+            <td class="rt-sit">${feita ? '<span class="chip ok">Feita</span>' : v._fila ? '<span class="chip pend">No aparelho</span>' : v.data_prevista < hoje ? '<span class="chip crit">Atrasada</span>' : '<span class="chip pend">Prevista</span>'}</td>
             <td class="rt-acao"><div class="rot-acoes">${acoes}${podeMudar && v.situacao === 'prevista' && !v._fila ? `<button class="link small" data-acao="campo-visita-editar" data-id="${E(v.id)}">Mudar data ou pessoa</button>` : ''}</div></td></tr>`; }).join('')}
         </tbody></table></div>
+        ${vs.length > mostra.length ? `<p class="mais-linhas"><button type="button" class="btn peq" data-acao="campo-rot-mais">Mostrar mais ${Math.min(ROT_PASSO, vs.length - mostra.length)}</button><button type="button" class="link small" data-acao="campo-rot-todas">Mostrar todas</button><span class="small muted">Mostrando ${mostra.length} de ${vs.length} visitas do mês</span></p>` : ''}
         <div class="dias-pessoa">${Object.entries(porPessoa).map(([id, c]) => `<span><b>${E(primeiroNome((pessoa(id) || {}).nome))}</b> ${c.feitas + c.prev} dia${c.feitas + c.prev > 1 ? 's' : ''} <span class="muted">(${c.feitas} feita${c.feitas === 1 ? '' : 's'})</span></span>`).join('')}</div>`
         : '<p class="muted">Nenhuma visita neste mês.</p>'}
     </div>`;
@@ -4460,7 +4463,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   /* projeção do investimento no quintal: soma de quantidade × valor estimado de cada item */
   const numBR = t => R.numBR(t);   // 1.250,50 → 1250.5 · 1.250 → 1250 · 12.50 → 12.5
   const totalKit = kit => R.totalKit(kit);   // item com quantidade ou valor negativo não abate o total (regras.js)
-  const brl = v => (+v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const FMT_BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });   // criado uma vez: toLocaleString monta um novo a cada chamada
+  const brl = v => FMT_BRL.format(+v || 0);
   function projKit(kit) {
     const tot = totalKit(kit); const lim = +((S().kitPar || {}).valor_quintal) || 0;
     const semValor = (kit || []).filter(x => x.item && (x.valor == null || !(+x.valor > 0))).length;
@@ -4756,8 +4760,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     else if (a === 'campo-visita-nova') U().abrirPainel({ tipo: 'visita-form', uf: eu.uf });
     else if (a === 'campo-visita-editar') U().abrirPainel({ tipo: 'visita-form', id: el.dataset.id });
     else if (a === 'campo-feita') { Object.keys(fotosVis).forEach(k => delete fotosVis[k]); U().abrirPainel({ tipo: 'visita-feita', id: el.dataset.id }); }
-    else if (a === 'campo-mes') { const n = +el.dataset.n; mesRoteiro = n === 0 ? mesAtual() : mesMais(mesRoteiro || mesAtual(), n); U().render(); }
-    else if (a === 'campo-uf') { ufRoteiro = el.dataset.uf; U().render(); }
+    else if (a === 'campo-mes') { const n = +el.dataset.n; mesRoteiro = n === 0 ? mesAtual() : mesMais(mesRoteiro || mesAtual(), n); limRot = ROT_PASSO; U().render(); }
+    else if (a === 'campo-uf') { ufRoteiro = el.dataset.uf; limRot = ROT_PASSO; U().render(); }
+    else if (a === 'campo-rot-mais' || a === 'campo-rot-todas') { limRot = a === 'campo-rot-todas' ? Infinity : limRot + ROT_PASSO; S().rolarPara = window.scrollY; U().render(); }
     else if (a === 'campo-diag-ver') U().abrirPainel({ tipo: 'diag-ver', ficha: el.dataset.ficha });
     else if (a === 'campo-diag-novo') {
       Object.keys(fotosTemp).forEach(k => delete fotosTemp[k]);
@@ -5229,8 +5234,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const visitaPaga = id => { const sid = (S().solicVis || {})[id]; const sol = sid && (S().solic || []).find(x => x.id === sid); return !!(sol && sol.situacao === 'lancada'); };
   const R = MQ.regras;
   const $ = s => document.querySelector(s);
-  const C = { par: null, km: null, mes: null, carregado: false, erro: null };
-  const brl = v => (Math.round((+v || 0) * 100) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const PASSO = 60;   // a lista de visitas do mês desenha as primeiras linhas e o resto sob pedido
+  const C = { par: null, km: null, mes: null, carregado: false, erro: null, lim: PASSO };
+  const FMT_BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });   // criado uma vez: toLocaleString monta um novo a cada chamada
+  const brl = v => FMT_BRL.format(Math.round((+v || 0) * 100) / 100);
   const norm = t => String(t || '').split('/')[0].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
   const r2 = x => Math.round((+x || 0) * 100) / 100;   // centavos: cada visita é arredondada e as telas somam sempre os valores já arredondados
   /* célula de CSV: aspas dobradas e, se começar por = + - @ (tab ou enter), apóstrofo na frente para o Excel não executar como fórmula */
@@ -5353,7 +5360,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
             ${Object.values(porPessoa).sort((a, b) => b.total - a.total).map(x => `<tr><td><b>${E(x.p.nome || '—')}</b><br><span class="small muted">${E((MQ.PAPEIS[x.p.papel] || {}).nome || '')} · ${E(x.p.uf || '')}${x.falta ? ` · <span class="crit-txt">${x.falta} sem km</span>` : ''}</span></td>
               <td class="num">${x.n}</td><td class="num" style="text-align:right"><b>${brl(x.total)}</b></td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">Nenhuma visita feita neste mês.</p>'}
           <h2 style="margin-top:12px">Visitas do mês</h2>
-          ${linhas.length ? `<div class="lista-custo">${linhas.map(linha).join('')}</div>` : '<p class="muted">Nenhuma visita neste mês.</p>'}
+          ${linhas.length ? `<div class="lista-custo">${linhas.slice(0, C.lim).map(linha).join('')}</div>${linhas.length > C.lim ? `<p class="mais-linhas"><button type="button" class="btn peq" data-acao="custo-mais">Mostrar mais ${Math.min(PASSO, linhas.length - C.lim)}</button><button type="button" class="link small" data-acao="custo-todas">Mostrar todas</button><span class="small muted">Mostrando ${C.lim} de ${linhas.length} visitas do mês</span></p>` : ''}` : '<p class="muted">Nenhuma visita neste mês.</p>'}
         </section>
         <aside class="secao">
           <form class="bloco" data-form="custo-sim" novalidate><h2>Simular uma visita</h2>
@@ -5411,7 +5418,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (k === 'locais') C.medidas.locais = C.medidas.locais ? null : (C.teto && C.teto.longe); else C.medidas[k] = !C.medidas[k];
       C.plano = null; C.planoAtual = null; C.teto = null; U().render(); return; }
     if (a === 'custo-plano-csv') { csvPlano(); return; }
-    if (a === 'custo-mes') { C.mes = somaMes(C.mes || mesHoje(), +el.dataset.n); U().render(); }
+    if (a === 'custo-mes') { C.mes = somaMes(C.mes || mesHoje(), +el.dataset.n); C.lim = PASSO; U().render(); }
+    else if (a === 'custo-mais' || a === 'custo-todas') { C.lim = a === 'custo-todas' ? Infinity : C.lim + PASSO; S().rolarPara = window.scrollY; U().render(); return; }
     else if (a === 'custo-csv') csv();
   }
   async function enviar(tipo, form, fd) {
@@ -9836,6 +9844,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         '<b>Impacto: antes × depois</b> compara o diagnóstico com a avaliação final de cada quintal.'
       ],
       duvidas: [
+        ['O roteiro não mostra todas as visitas do mês.', 'Com muitas visitas, o roteiro mostra as 60 primeiras. Toque em Mostrar mais ou em Mostrar todas, no fim da tabela.'],
         ['Por que não consigo agendar a visita para uma agente?', 'Quem visita precisa estar habilitada (FIC, Arlo e termo); senão a visita não pode ser paga.'],
         ['O que conta como dia de campo?', 'Cada visita feita a um quintal é 1 dia de campo de quem visitou, e é a base da ajuda de custo.'],
         ['Um plano passou de R$ 5.000.', 'O sistema não deixa salvar acima do valor. Se aparecer acima, devolva pedindo para tirar ou trocar itens.'],

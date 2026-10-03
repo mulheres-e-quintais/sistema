@@ -72,6 +72,7 @@
   }
   let mesRoteiro = null;          // 'AAAA-MM'
   let ufRoteiro = '';
+  const ROT_PASSO = 60; let limRot = ROT_PASSO;   // o roteiro desenha as primeiras linhas e o resto sob pedido: com o mês cheio a tela ficava lenta
 
   /* ---------- dados combinados: servidor + fila do aparelho ---------- */
   /* visitas() e diagnosticos() são chamadas várias vezes por quintal em cada tela: calcula UMA vez por mudança
@@ -140,24 +141,26 @@
       .sort((a, b) => String(a.data_realizada || a.data_prevista).localeCompare(String(b.data_realizada || b.data_prevista)));
     const porPessoa = {};
     vs.forEach(v => { const k = v.executor_id; porPessoa[k] = porPessoa[k] || { prev: 0, feitas: 0 }; porPessoa[k][v.situacao === 'realizada' ? 'feitas' : 'prev']++; });
+    const mostra = vs.slice(0, limRot); const dgFichas = new Set(diagnosticos().map(d => d.ficha_id)); const hoje = R.hoje();
     return `<div class="bloco roteiro">
       <div class="secao-cab"><h3>Roteiro de campo · ${nomeMes(m)}</h3>
         <span class="seg"><button type="button" data-acao="campo-mes" data-n="-1" aria-label="Mês anterior">‹</button><button type="button" data-acao="campo-mes" data-n="0">Este mês</button><button type="button" data-acao="campo-mes" data-n="1" aria-label="Próximo mês">›</button></span></div>
       <p class="small muted">Cada visita a um quintal é 1 dia de campo de quem visita, e é a base da ajuda de custo. O roteiro do mês seguinte fica fechado até o dia 20.</p>
       ${vs.length ? `<div class="quadro-scroll" style="display:block"><table class="quadro tab-rot"><thead><tr><th>Data</th>${uf ? '' : '<th>UF</th>'}<th>Mulher</th><th>Etapa</th><th>Quem visita</th><th>Situação</th><th>O que fazer</th></tr></thead><tbody>
-        ${vs.map(v => { const f = ficha(v.ficha_id) || {}; const q = pessoa(v.executor_id) || {};
-          const feita = v.situacao === 'realizada'; const temDg = diagnosticos().some(d => d.ficha_id === v.ficha_id);
+        ${mostra.map(v => { const f = ficha(v.ficha_id) || {}; const q = pessoa(v.executor_id) || {};
+          const feita = v.situacao === 'realizada'; const temDg = dgFichas.has(v.ficha_id);
           const b = (acao, txt, pri, extra) => `<button class="btn peq${pri ? ' pri' : ''}" data-acao="${acao}" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}" data-id="${E(v.id)}"${extra || ''}>${txt}</button>`;
           const acoes = v._fila ? '<span class="small muted">Aguardando internet</span>'
             : v.etapa === 'avaliacao' ? (feita ? b('aval-ver', 'Ver avaliação') : podeMudar ? b('aval-novo', 'Registrar avaliação', true) : '')
             : v.etapa === 'diagnostico' ? (temDg ? b('campo-diag-ver', 'Ver diagnóstico') : podeMudar ? b('campo-diag-novo', 'Registrar diagnóstico', true) : '')
             : feita ? (v.relato ? `<span class="small muted" title="${E(v.relato)}">${E(String(v.relato).slice(0, 60))}${String(v.relato).length > 60 ? '…' : ''}</span>` : '')
             : podeMudar ? botaoFeita(v) : '';
-          return `<tr class="rt-s-${feita ? 'ok' : v._fila ? 'pend' : v.data_prevista < R.hoje() ? 'crit' : 'pend'}"><td class="num rt-data">${R.fmtData(v.data_realizada || v.data_prevista)}</td>${uf ? '' : `<td class="rt-uf">${E(v.uf)}</td>`}<td class="rt-mulher">${E(f.nome || '—')}<br><span class="small muted">${E(f.municipio || '')}${uf ? '' : `<span class="rt-ufm"> · ${E(v.uf)}</span>`}</span></td>
+          return `<tr class="rt-s-${feita ? 'ok' : v._fila ? 'pend' : v.data_prevista < hoje ? 'crit' : 'pend'}"><td class="num rt-data">${R.fmtData(v.data_realizada || v.data_prevista)}</td>${uf ? '' : `<td class="rt-uf">${E(v.uf)}</td>`}<td class="rt-mulher">${E(f.nome || '—')}<br><span class="small muted">${E(f.municipio || '')}${uf ? '' : `<span class="rt-ufm"> · ${E(v.uf)}</span>`}</span></td>
             <td class="rt-etapa">${E(MQ.ETAPAS[v.etapa].nome)}</td><td class="rt-quem">${E(q.nome || '—')}<br><span class="small muted">${E((MQ.PAPEIS[q.papel] || {}).curto || '')}</span></td>
-            <td class="rt-sit">${feita ? '<span class="chip ok">Feita</span>' : v._fila ? '<span class="chip pend">No aparelho</span>' : v.data_prevista < R.hoje() ? '<span class="chip crit">Atrasada</span>' : '<span class="chip pend">Prevista</span>'}</td>
+            <td class="rt-sit">${feita ? '<span class="chip ok">Feita</span>' : v._fila ? '<span class="chip pend">No aparelho</span>' : v.data_prevista < hoje ? '<span class="chip crit">Atrasada</span>' : '<span class="chip pend">Prevista</span>'}</td>
             <td class="rt-acao"><div class="rot-acoes">${acoes}${podeMudar && v.situacao === 'prevista' && !v._fila ? `<button class="link small" data-acao="campo-visita-editar" data-id="${E(v.id)}">Mudar data ou pessoa</button>` : ''}</div></td></tr>`; }).join('')}
         </tbody></table></div>
+        ${vs.length > mostra.length ? `<p class="mais-linhas"><button type="button" class="btn peq" data-acao="campo-rot-mais">Mostrar mais ${Math.min(ROT_PASSO, vs.length - mostra.length)}</button><button type="button" class="link small" data-acao="campo-rot-todas">Mostrar todas</button><span class="small muted">Mostrando ${mostra.length} de ${vs.length} visitas do mês</span></p>` : ''}
         <div class="dias-pessoa">${Object.entries(porPessoa).map(([id, c]) => `<span><b>${E(primeiroNome((pessoa(id) || {}).nome))}</b> ${c.feitas + c.prev} dia${c.feitas + c.prev > 1 ? 's' : ''} <span class="muted">(${c.feitas} feita${c.feitas === 1 ? '' : 's'})</span></span>`).join('')}</div>`
         : '<p class="muted">Nenhuma visita neste mês.</p>'}
     </div>`;
@@ -340,7 +343,8 @@
   /* projeção do investimento no quintal: soma de quantidade × valor estimado de cada item */
   const numBR = t => R.numBR(t);   // 1.250,50 → 1250.5 · 1.250 → 1250 · 12.50 → 12.5
   const totalKit = kit => R.totalKit(kit);   // item com quantidade ou valor negativo não abate o total (regras.js)
-  const brl = v => (+v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const FMT_BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });   // criado uma vez: toLocaleString monta um novo a cada chamada
+  const brl = v => FMT_BRL.format(+v || 0);
   function projKit(kit) {
     const tot = totalKit(kit); const lim = +((S().kitPar || {}).valor_quintal) || 0;
     const semValor = (kit || []).filter(x => x.item && (x.valor == null || !(+x.valor > 0))).length;
@@ -636,8 +640,9 @@
     else if (a === 'campo-visita-nova') U().abrirPainel({ tipo: 'visita-form', uf: eu.uf });
     else if (a === 'campo-visita-editar') U().abrirPainel({ tipo: 'visita-form', id: el.dataset.id });
     else if (a === 'campo-feita') { Object.keys(fotosVis).forEach(k => delete fotosVis[k]); U().abrirPainel({ tipo: 'visita-feita', id: el.dataset.id }); }
-    else if (a === 'campo-mes') { const n = +el.dataset.n; mesRoteiro = n === 0 ? mesAtual() : mesMais(mesRoteiro || mesAtual(), n); U().render(); }
-    else if (a === 'campo-uf') { ufRoteiro = el.dataset.uf; U().render(); }
+    else if (a === 'campo-mes') { const n = +el.dataset.n; mesRoteiro = n === 0 ? mesAtual() : mesMais(mesRoteiro || mesAtual(), n); limRot = ROT_PASSO; U().render(); }
+    else if (a === 'campo-uf') { ufRoteiro = el.dataset.uf; limRot = ROT_PASSO; U().render(); }
+    else if (a === 'campo-rot-mais' || a === 'campo-rot-todas') { limRot = a === 'campo-rot-todas' ? Infinity : limRot + ROT_PASSO; S().rolarPara = window.scrollY; U().render(); }
     else if (a === 'campo-diag-ver') U().abrirPainel({ tipo: 'diag-ver', ficha: el.dataset.ficha });
     else if (a === 'campo-diag-novo') {
       Object.keys(fotosTemp).forEach(k => delete fotosTemp[k]);
