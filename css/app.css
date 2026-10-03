@@ -2670,3 +2670,6 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 
 /* "O que pede atenção": "Ver" (aviso) com a mesma largura de "Resolver" */
 .dx-atencao .btn-acao.dx-ir { min-width: 132px; justify-content: center; }
+
+/* Equipe, "Bolsistas por estado": cabeçalho centralizado e em negrito */
+.eq-quadro thead th { text-align: center; font-weight: 700; color: var(--ink); }
