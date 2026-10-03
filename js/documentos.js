@@ -110,8 +110,81 @@
   }
   const CSS_REL = `body{font-family:Manrope,system-ui,Arial,Helvetica,sans-serif;color:#222;margin:32px;font-size:12pt}h1{font-size:18pt;margin:4px 0 8px}h2{font-size:13pt;margin:20px 0 6px}
     table{border-collapse:collapse;width:100%;margin:6px 0 10px}th,td{border:1px solid #999;padding:4px 8px;text-align:left;font-size:10.5pt}th{background:#eee}
-    .rel-sobre{font-size:9.5pt;color:#555;margin:0}.rel-nota{font-size:9pt;color:#555;margin-top:18px}`;
+    table.fc th{width:34%;background:#f4f4f4}.fc-quem{font-size:12pt;font-weight:600;margin:0}.ficha-cad{break-after:page;page-break-after:always}.ficha-cad:last-child{break-after:auto;page-break-after:auto}@media print{body{margin:0}@page{margin:16mm}}.rel-sobre{font-size:9.5pt;color:#555;margin:0}.rel-nota{font-size:9pt;color:#555;margin-top:18px}`;
   const documentoCompleto = corpo => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório da ação do projeto</title>${MQ.FONTES_LINK || ''}<style>${CSS_REL}</style></head><body>${corpo}</body></html>`;
+
+  /* ---------- impressões da coordenação geral: relatórios por tipo e fichas de cadastro ---------- */
+  const IMPRESSOES = {
+    'rel-equipe': ['Relatório: equipe e habilitação', 'Todas as pessoas ativas, por função e estado, com a situação do curso FIC, do Arlo e do termo.'],
+    'rel-selecao': ['Relatório: seleção das mulheres', 'Totais por estado e a lista das fichas, com município, resultado e situação.'],
+    'rel-campo': ['Relatório: campo e visitas', 'Visitas por estado e etapa, e a lista de visitas com data, quintal e quem visita.'],
+    'fic-bolsistas': ['Fichas de cadastro: bolsistas', 'Uma página por bolsista de articulação e de apoio, com os dados do cadastro.'],
+    'fic-membros': ['Fichas de cadastro: demais membros', 'Uma página por pessoa: coordenação técnica, agentes de campo, professores do FIC e auxiliar.']
+  };
+  const ORDEM_PAPEL = ['coord_tecnico', 'professor_fic', 'auxiliar_adm', 'articulacao', 'apoio', 'agente'];
+  const ativosDaEquipe = (s, uf) => (s.equipe || []).filter(m => m.status === 'ativa' && m.papel !== 'coord_geral' && (!uf || !m.uf || m.uf === uf))
+    .sort((x, y) => ORDEM_PAPEL.indexOf(x.papel) - ORDEM_PAPEL.indexOf(y.papel) || String(x.uf || '').localeCompare(String(y.uf || '')) || nomeDe(x).localeCompare(nomeDe(y), 'pt-BR'));
+  const dt = v => v ? R.fmtData(v) : '—';
+  /* dados de cada impressão (usados pela tela e pelos testes). Nenhuma traz conta bancária nem Pix. */
+  function dadosImpressao(tipo, s, uf) {
+    uf = uf || null; const daUF = x => !uf || x.uf === uf; const ufs = uf ? MQ.UFS.filter(u => u.uf === uf) : MQ.UFS;
+    if (tipo === 'rel-equipe') {
+      const l = ativosDaEquipe(s, uf);
+      return { tipo, uf, total: l.length, habilitados: l.filter(m => R.situacao(m).cod === 'ok').length,
+        linhas: l.map(m => ({ nome: nomeDe(m), funcao: (P[m.papel] || {}).nome || m.papel, uf: m.uf || '—', inicio: m.data_inicio, fic: R.matriculaFIC(m.papel) ? (m.matricula_fic_em || null) : 'nao', arlo: m.docs_funcern_em || null, termo: m.termo_assinado_em || null, situacao: R.situacao(m).rot })) };
+    }
+    if (tipo === 'rel-selecao') {
+      const l = (s.fichas || []).filter(daUF);
+      const res = k => (MQ.RESULTADOS[k] || {}).nome || k || '—', sit = k => (MQ.SITUACOES[k] || {}).nome || k || '—';
+      return { tipo, uf, total: l.length,
+        porUF: ufs.map(u => { const x = l.filter(f => f.uf === u.uf); return { uf: u.uf, lancadas: x.length, selecionadas: x.filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada').length, aguardando: x.filter(f => f.situacao === 'aguardando').length, espera: x.filter(f => f.resultado === 'lista_espera').length, sem_agua: x.filter(f => f.resultado === 'sem_agua').length, nao_atende: x.filter(f => f.resultado === 'nao_atende').length }; }),
+        linhas: l.slice().sort((x, y) => String(x.uf).localeCompare(String(y.uf)) || String(x.municipio || '').localeCompare(String(y.municipio || ''), 'pt-BR') || String(x.nome || '').localeCompare(String(y.nome || ''), 'pt-BR'))
+          .map(f => ({ uf: f.uf, municipio: f.municipio || '—', comunidade: f.comunidade || '—', nome: f.nome || '—', resultado: res(f.resultado), situacao: sit(f.situacao) })) };
+    }
+    if (tipo === 'rel-campo') {
+      const l = (s.visitas || []).filter(v => daUF(v) && v.situacao !== 'cancelada'); const fichas = s.fichas || []; const hoje = R.hoje();
+      const sitV = v => v.situacao === 'realizada' ? 'Feita' : (String(v.data_prevista || '') < hoje ? 'Atrasada' : 'Agendada');
+      return { tipo, uf, total: l.length, feitas: l.filter(v => v.situacao === 'realizada').length,
+        planosAprovados: (s.diagnosticos || []).filter(d => (!uf || !d.uf || d.uf === uf) && d.situacao === 'aprovado').length,
+        porUF: ufs.map(u => { const x = l.filter(v => v.uf === u.uf); const o = { uf: u.uf, feitas: x.filter(v => v.situacao === 'realizada').length, agendadas: x.filter(v => v.situacao !== 'realizada').length };
+          Object.keys(MQ.ETAPAS).forEach(k => { o[k] = x.filter(v => v.etapa === k && v.situacao === 'realizada').length; }); return o; }),
+        linhas: l.slice().sort((x, y) => String(x.uf).localeCompare(String(y.uf)) || String(x.data_realizada || x.data_prevista || '').localeCompare(String(y.data_realizada || y.data_prevista || '')))
+          .map(v => { const f = fichas.find(q => q.id === v.ficha_id) || {}; const ex = (s.equipe || []).find(q => q.id === v.executor_id);
+            return { uf: v.uf, data: v.data_realizada || v.data_prevista, etapa: (MQ.ETAPAS[v.etapa] || {}).curto || v.etapa, quintal: f.nome || '—', municipio: f.municipio || '—', quem: ex ? nomeDe(ex) : '—', situacao: sitV(v) }; }) };
+    }
+    const bols = tipo === 'fic-bolsistas';
+    const l = ativosDaEquipe(s, uf).filter(m => bols ? R.ehBolsista(m.papel) : !R.ehBolsista(m.papel));
+    return { tipo, uf, total: l.length, pessoas: l.map(m => ({ nome: m.nome || '—', nome_social: m.nome_social || '', funcao: (P[m.papel] || {}).nome || m.papel, uf: m.uf || '', cpf: m.cpf ? R.fmtCPF(m.cpf) : '—', email: m.email || '—', telefone: m.telefone ? R.fmtFone(m.telefone) : '—',
+      municipio: m.municipio || '—', organizacao: m.organizacao || '', siape: m.siape || '', inicio: m.data_inicio, fazFIC: R.matriculaFIC(m.papel), fic: m.matricula_fic_em || null, ficNumero: m.matricula_fic_numero || '', arlo: m.docs_funcern_em || null, termo: m.termo_assinado_em || null, situacao: R.situacao(m).rot })) };
+  }
+  function htmlImpressao(d, autor) {
+    const t = (cab, linhas) => `<table><thead><tr>${cab.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${linhas.map(l => `<tr>${l.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    const onde = d.uf ? E(U().nomeUF(d.uf)) : 'Alagoas, Bahia, Pernambuco, Piauí e Sergipe';
+    const cab = (titulo) => `<header><p class="rel-sobre">${E(MQ.PROJETO.nome)} · Processo ${E(MQ.PROJETO.processo)}</p><h1>${titulo}</h1>
+      <p>Estados: ${onde}<br>Gerado em ${new Date().toLocaleString('pt-BR')}${autor ? ' por ' + E(autor) : ''}, com os dados registrados no sistema.</p></header>`;
+    const interno = '<p class="rel-nota"><b>Uso interno da coordenação.</b> Contém dados pessoais protegidos pela LGPD (Lei nº 13.709/2018): não repasse nem publique. Não traz dados bancários.</p>';
+    if (d.tipo === 'rel-equipe') return `<article class="rel">${cab('Relatório da equipe e da habilitação')}
+      <p>${d.total} pessoa${d.total === 1 ? '' : 's'} ativa${d.total === 1 ? '' : 's'} na equipe de execução; ${d.habilitados} habilitada${d.habilitados === 1 ? '' : 's'}.</p>
+      ${d.linhas.length ? t(['Nome', 'Função', 'UF', 'Início', 'Curso FIC', 'Arlo', 'Termo', 'Situação'], d.linhas.map(x => [E(x.nome), E(x.funcao), E(x.uf), dt(x.inicio), x.fic === 'nao' ? 'não se aplica' : dt(x.fic), dt(x.arlo), dt(x.termo), E(x.situacao)])) : '<p>Nenhuma pessoa ativa.</p>'}${interno}</article>`;
+    if (d.tipo === 'rel-selecao') return `<article class="rel">${cab('Relatório da seleção das mulheres')}
+      <p>${d.total} ficha${d.total === 1 ? '' : 's'} lançada${d.total === 1 ? '' : 's'} (meta: 40 selecionadas por estado).</p>
+      ${t(['Estado', 'Fichas lançadas', 'Selecionadas aprovadas', 'Aguardando aprovação', 'Lista de espera', 'Sem água', 'Não atendem'], d.porUF.map(x => [x.uf, x.lancadas, x.selecionadas, x.aguardando, x.espera, x.sem_agua, x.nao_atende]))}
+      <h2>Fichas</h2>
+      ${d.linhas.length ? t(['UF', 'Município', 'Comunidade', 'Nome', 'Resultado', 'Situação'], d.linhas.map(x => [E(x.uf), E(x.municipio), E(x.comunidade), E(x.nome), E(x.resultado), E(x.situacao)])) : '<p>Nenhuma ficha lançada.</p>'}${interno}</article>`;
+    if (d.tipo === 'rel-campo') { const et = Object.keys(MQ.ETAPAS);
+      return `<article class="rel">${cab('Relatório do campo e das visitas')}
+      <p>${d.feitas} visita${d.feitas === 1 ? '' : 's'} feita${d.feitas === 1 ? '' : 's'} e ${d.total - d.feitas} agendada${d.total - d.feitas === 1 ? '' : 's'}; ${d.planosAprovados} plano${d.planosAprovados === 1 ? '' : 's'} de quintal aprovado${d.planosAprovados === 1 ? '' : 's'}.</p>
+      ${t(['Estado'].concat(et.map(k => E(MQ.ETAPAS[k].curto) + ' (feitas)'), ['Total feitas', 'Agendadas']), d.porUF.map(x => [x.uf].concat(et.map(k => x[k]), [x.feitas, x.agendadas])))}
+      <h2>Visitas</h2>
+      ${d.linhas.length ? t(['UF', 'Data', 'Etapa', 'Quintal de', 'Município', 'Quem visita', 'Situação'], d.linhas.map(x => [E(x.uf), dt(x.data), E(x.etapa), E(x.quintal), E(x.municipio), E(x.quem), E(x.situacao)])) : '<p>Nenhuma visita agendada.</p>'}${interno}</article>`; }
+    const campo = (r, v) => `<tr><th>${r}</th><td>${v}</td></tr>`;
+    if (!d.pessoas.length) return `<article class="rel">${cab(IMPRESSOES[d.tipo][0].replace('Fichas de cadastro: ', 'Fichas de cadastro — '))}<p>Nenhuma pessoa ativa neste grupo.</p></article>`;
+    return d.pessoas.map(x => `<article class="rel ficha-cad"><header><p class="rel-sobre">${E(MQ.PROJETO.nome)} · Processo ${E(MQ.PROJETO.processo)}</p><h1>Ficha de cadastro</h1><p class="fc-quem">${E(x.funcao)}${x.uf ? ' · ' + E(U().nomeUF(x.uf)) : ''}</p></header>
+      <h2>Identificação</h2><table class="fc">${campo('Nome', E(x.nome))}${x.nome_social ? campo('Nome social', E(x.nome_social)) : ''}${campo('CPF', E(x.cpf))}${x.siape ? campo('SIAPE', E(x.siape)) : ''}${campo('E-mail', E(x.email))}${campo('Celular', E(x.telefone))}${campo('Município onde mora', E(x.municipio))}${x.organizacao ? campo('Organização de vínculo', E(x.organizacao)) : ''}</table>
+      <h2>No projeto</h2><table class="fc">${campo('Função', E(x.funcao))}${x.uf ? campo('Estado de atuação', E(U().nomeUF(x.uf))) : ''}${campo('Início', dt(x.inicio))}${campo('Situação', E(x.situacao))}</table>
+      <h2>Habilitação</h2><table class="fc">${x.fazFIC ? campo('Matrícula no curso FIC', dt(x.fic) + (x.ficNumero ? ' · nº ' + E(x.ficNumero) : '')) : ''}${campo('Cadastro no Arlo (FUNCERN)', dt(x.arlo))}${campo('Termo de compromisso', dt(x.termo))}</table>
+      <p class="rel-nota">Gerado em ${new Date().toLocaleString('pt-BR')}${autor ? ' por ' + E(autor) : ''}, com os dados registrados no sistema Mulheres &amp; Quintais. <b>Uso interno da coordenação:</b> contém dados pessoais protegidos pela LGPD. Não traz dados bancários.</p></article>`).join('');
+  }
 
   /* ---------- tela ---------- */
   function aba() {
@@ -129,6 +202,10 @@
         <div><span class="v num">${ativos.length}</span><span class="l">documentos anexados</span></div>
         ${porTipo.slice(0, 3).map(([k, n]) => `<div><span class="v num">${n}</span><span class="l">${E(TIPOS[k].toLowerCase())}${n > 1 && !/s$/.test(TIPOS[k]) ? 's' : ''}</span></div>`).join('')}
       </div>
+      <section class="secao" aria-labelledby="t-imp"><div class="secao-cab"><div><h2 id="t-imp">Imprimir relatórios e fichas de cadastro</h2>
+          <p>Saem dos dados do sistema, prontos para imprimir ou salvar em PDF. Uso interno: trazem nomes e, nas fichas, CPF e contato. Nenhum traz dados bancários.</p></div>
+          <label class="imp-uf"><span>Estado</span><select data-imp-uf aria-label="Estado das impressões"><option value="">Todos</option>${MQ.UFS.map(u => `<option value="${E(u.uf)}"${G.impUF === u.uf ? ' selected' : ''}>${E(u.nome)}</option>`).join('')}</select></label></div>
+        <ul class="imp-lista">${Object.keys(IMPRESSOES).map(k => `<li><div><b>${E(IMPRESSOES[k][0])}</b><span class="small muted">${E(IMPRESSOES[k][1])}</span></div><button type="button" class="btn peq" data-acao="doc-imprimir" data-t="${k}">Imprimir</button></li>`).join('')}</ul></section>
       <section class="secao" aria-labelledby="t-docs"><div class="secao-cab"><h2 id="t-docs">Documentos <span class="conta-t${ativos.length ? '' : ' zero'}">${ativos.length}</span></h2>
           ${ativos.length > 5 ? '<input class="procura" type="search" placeholder="Procurar por título ou tipo" data-procura="lista-docs" aria-label="Procurar documento">' : ''}</div>
         ${ativos.length ? `<div class="pag-lista" id="lista-docs">${ativos.map(linha).join('')}</div>` : '<p class="muted">Nenhum documento anexado ainda.</p>'}</section>
@@ -183,16 +260,24 @@
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   }
   function relatorioAtual() { return htmlRelatorio(dadosRelatorio(S(), G.rel || {}), nomeDe(U().porId(S().eu.id))); }
+  function imprimirHTML(html) {
+    const f = document.createElement('iframe'); f.style.position = 'fixed'; f.style.width = f.style.height = '0'; f.style.border = '0'; f.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(f); f.contentDocument.open(); f.contentDocument.write(html); f.contentDocument.close();
+    setTimeout(() => { f.contentWindow.focus(); f.contentWindow.print(); setTimeout(() => f.remove(), 2000); }, 250);
+  }
   async function clique(a, el) {
     if (a === 'doc-novo') U().abrirPainel({ tipo: 'doc-novo' });
     else if (a === 'doc-ver') U().abrirPainel({ tipo: 'doc-ver', id: el.dataset.id });
     else if (a === 'doc-relatorio') { G.rel = null; U().abrirPainel({ tipo: 'doc-relatorio' }); }
     else if (a === 'doc-abrir') { const d = lista().find(x => x.id === el.dataset.id); const url = await S().api.linkDocumento(d.arquivo_path); if (url) window.open(url, '_blank', 'noopener'); else U().toast('No modo demonstração o arquivo não fica guardado.'); }
     else if (a === 'doc-rel-word') baixar('relatorio_mulheres_e_quintais_' + R.hoje() + '.doc', '﻿' + documentoCompleto(relatorioAtual()), 'application/msword');
+    else if (a === 'doc-imprimir') {
+      const sel = document.querySelector('[data-imp-uf]'); G.impUF = sel ? sel.value : (G.impUF || '');
+      if (S().eu.papel !== 'coord_geral' || !IMPRESSOES[el.dataset.t]) return;
+      imprimirHTML(documentoCompleto(htmlImpressao(dadosImpressao(el.dataset.t, S(), G.impUF || null), nomeDe(U().porId(S().eu.id)))).replace('<title>Relatório da ação do projeto</title>', '<title>' + E(IMPRESSOES[el.dataset.t][0]) + '</title>'));
+    }
     else if (a === 'doc-rel-imprimir') {
-      const f = document.createElement('iframe'); f.style.position = 'fixed'; f.style.width = f.style.height = '0'; f.style.border = '0'; f.setAttribute('aria-hidden', 'true');
-      document.body.appendChild(f); f.contentDocument.open(); f.contentDocument.write(documentoCompleto(relatorioAtual())); f.contentDocument.close();
-      setTimeout(() => { f.contentWindow.focus(); f.contentWindow.print(); setTimeout(() => f.remove(), 2000); }, 250);
+      imprimirHTML(documentoCompleto(relatorioAtual()));
     }
   }
   async function enviar(tipo, form, fd) {
@@ -219,5 +304,5 @@
     }
   }
 
-  MQ.docsUI = { aba, painel, clique, enviar, validarDocumento, dadosRelatorio, htmlRelatorio, documentoCompleto, TIPOS };
+  MQ.docsUI = { aba, painel, clique, enviar, validarDocumento, dadosRelatorio, htmlRelatorio, documentoCompleto, dadosImpressao, htmlImpressao, IMPRESSOES, TIPOS };
 })();
