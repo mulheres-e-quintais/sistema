@@ -11442,6 +11442,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (modoDemoAtivo()) { S.verEntrada = true; render(); return; }   // demonstração: volta para a tela de entrada
     try { await S.api.sair(); } catch (e) { /* sem internet: a sessão já foi apagada do aparelho */ }
     S.eu = null; S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.documentos = []; S.acessos = []; S.execPlanilhas = []; S.encontros = []; S.agua = [];
+    S.acomp = null; S.acompErro = null; S.acompPrevia = null; S.acompCodigo = null; S.acompConfirma = null; S.observadores = []; S.kitItens = [];   // números do acompanhamento, código de acesso recém-gerado e listas da coordenação não ficam na memória depois de sair
     S.solic = []; S.pedidos = []; S.pre = []; S.pedidosAcesso = []; S.entregas = []; S.matriculas = []; S.turmas = []; S.avaliacoes = []; S.codigos = {}; S.confirmaAcesso = null; S.painel = null; S.solicVis = {}; S.canaisVenda = []; S.orientacoesVenda = []; S.vendaFolha = null; S.ciencias = []; S.testes = []; S.saldoPed = null; S.quemConfere = null;   // nada da pessoa anterior fica na memória
     if (MQ.convitesUI && MQ.convitesUI.limparCache) MQ.convitesUI.limparCache();
     render();
@@ -11677,7 +11678,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const telaEntrada = (modoDemo && S.verEntrada) || (!S.eu && !modoDemo && !S.api.temSessao);
     if (S.eu && S.eu.observador && !telaEntrada && MQ.acompUI) {   // tela própria de quem acompanha: nenhuma parte da tela da equipe é montada
       if (S.painel) fecharPainel({ semFoco: true, semHistorico: true });
-      app.innerHTML = (modoDemo ? faixaDemo() : '') + avisoRede() + MQ.acompUI.pagina(); document.title = 'Acompanhamento · Mulheres & Quintais'; return;
+      app.innerHTML = (modoDemo ? faixaDemo() : '') + avisoRede() + MQ.acompUI.pagina(); document.title = 'Acompanhamento · Mulheres & Quintais';
+      rolagensNoTeclado(app); return;   // tabela que rola para o lado no celular: quem usa teclado precisa conseguir parar nela
     }
     let h = (telaEntrada ? '' : barra()) + (modoDemo ? faixaDemo() : '');
     h += avisoRede();
