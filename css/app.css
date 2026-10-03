@@ -2840,3 +2840,9 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 @media (max-width: 720px) {
   table.quadro.tab-rot td.rt-etapa, table.quadro.tab-rot td.rt-quem { background: var(--bg) !important; border-radius: 12px !important; }
 }
+
+/* botão de sair na barra: só o símbolo (porta com seta), do mesmo tamanho do "?" */
+.btn-sair { display: inline-grid; place-items: center; padding: 0; }
+.btn-sair svg { display: block; transition: transform .18s ease; }
+.btn-sair:hover svg { transform: translateX(2px); }
+@media (prefers-reduced-motion: reduce) { .btn-sair svg { transition: none; } .btn-sair:hover svg { transform: none; } }
