@@ -81,14 +81,14 @@
     L.push('Mulheres & Quintais');
     return L.join('\n').replace(/\n{3,}/g, '\n\n');
   }
-  const CSS_PAPEL = `@page { size: A4; margin: 16mm; } body { font: 12pt/1.5 system-ui, Arial, sans-serif; color: #2E1D15; margin: 0; }
+  const CSS_PAPEL = `@page { size: A4; margin: 16mm; } body { font: 12pt/1.5 Manrope, system-ui, Arial, sans-serif; color: #2E1D15; margin: 0; }
     .tela { padding: 10px; display: flex; gap: 8px; } .tela button { font: inherit; padding: 8px 14px; } @media print { .tela { display: none; } }
-    .vd-folha { max-width: 170mm; margin: 0 auto; } .vd-proj { font-size: 9pt; color: #634F43; margin: 0; letter-spacing: .04em; } h3 { font: 600 18pt/1.2 Georgia, serif; margin: 4px 0 2px; }
+    .vd-folha { max-width: 170mm; margin: 0 auto; } .vd-proj { font-size: 9pt; color: #634F43; margin: 0; letter-spacing: .04em; } h3 { font: 600 18pt/1.2 Manrope, system-ui, Arial, sans-serif; margin: 4px 0 2px; }
     .vd-quem { margin: 0 0 12px; color: #634F43; } h4 { font-size: 12pt; margin: 14px 0 4px; border-bottom: 1px solid #CDB79D; padding-bottom: 2px; }
     .vd-dest, .vd-aviso { background: #F1E7DB; padding: 8px 10px; border-radius: 4px; } ol, ul { margin: 4px 0; padding-left: 20px; } .vd-cam > li { margin-bottom: 8px; break-inside: avoid; } .vd-cam p { margin: 2px 0; }
     .vd-tipo { font-size: 9pt; color: #634F43; } .vd-cont { font-size: 10pt; } footer { margin-top: 16px; font-size: 8.5pt; color: #634F43; border-top: 1px solid #E2D3C1; padding-top: 6px; }`;
   function imprimir(html) {
-    const pag = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Como vender o que sobra do quintal · Mulheres & Quintais</title><style>${CSS_PAPEL}</style></head>
+    const pag = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Como vender o que sobra do quintal · Mulheres & Quintais</title>${MQ.FONTES_LINK || ''}<style>${CSS_PAPEL}</style></head>
       <body><div class="tela"><button type="button" onclick="window.close()">Fechar</button><button type="button" onclick="window.print()">Imprimir</button></div>${html}</body></html>`;
     const w = window.open('', '_blank');
     if (w) { w.document.open(); w.document.write(pag); w.document.close(); w.onload = () => { try { w.focus(); w.print(); } catch (e) {} }; return; }

@@ -115,16 +115,16 @@
       <p class="instr">Preencha à mão, com letra legível. Depois, lance no sistema assim que tiver internet: a folha não substitui o registro no sistema.</p>`;
   }
   const CSS = `@page { size: A4; margin: 14mm 14mm 16mm; }
-    * { box-sizing: border-box; } body { margin: 0; color: #2E1D15; font: 10.5pt/1.45 "Public Sans", Arial, Helvetica, sans-serif; background: #fff; }
+    * { box-sizing: border-box; } body { margin: 0; color: #2E1D15; font: 10.5pt/1.45 Manrope, system-ui, Arial, Helvetica, sans-serif; background: #fff; }
     .tela { display: flex; gap: 8px; justify-content: flex-end; padding: 10px 14px; background: #F3EBE1; border-bottom: 1px solid #E2D3C1; position: sticky; top: 0; }
-    .tela button { font: 600 11pt "Public Sans", Arial, sans-serif; padding: 9px 16px; border-radius: 999px; border: 1px solid #CDB79D; background: #FFFCF8; color: #2E1D15; cursor: pointer; }
+    .tela button { font: 600 11pt Manrope, system-ui, Arial, sans-serif; padding: 9px 16px; border-radius: 999px; border: 1px solid #CDB79D; background: #FFFCF8; color: #2E1D15; cursor: pointer; }
     .tela button.pri { background: #A44934; border-color: #A44934; color: #FFFCF8; }
     main { max-width: 190mm; margin: 0 auto; padding: 12px 14px 24px; }
     .topo { display: flex; align-items: center; gap: 12px; border-bottom: 2px solid #452B1A; padding-bottom: 8px; }
-    .marca { margin: 0; font: 600 14pt Fraunces, Georgia, "Times New Roman", serif; color: #452B1A; } .sub { margin: 0; font-size: 9pt; color: #634F43; }
-    h1 { font: 600 15pt Fraunces, Georgia, "Times New Roman", serif; margin: 12px 0 8px; color: #2E1D15; }
-    h2 { font: 700 10.5pt "Public Sans", Arial, sans-serif; text-transform: uppercase; letter-spacing: .04em; color: #A44934; margin: 14px 0 6px; border-bottom: 1px solid #E2D3C1; padding-bottom: 3px; }
-    h3 { font: 700 10.5pt "Public Sans", Arial, sans-serif; margin: 10px 0 4px; }
+    .marca { margin: 0; font: 600 14pt Lora, Georgia, "Times New Roman", serif; color: #452B1A; } .sub { margin: 0; font-size: 9pt; color: #634F43; }
+    h1 { font: 600 15pt Manrope, system-ui, Arial, sans-serif; margin: 12px 0 8px; color: #2E1D15; }
+    h2 { font: 700 10.5pt Manrope, system-ui, Arial, sans-serif; text-transform: uppercase; letter-spacing: .04em; color: #A44934; margin: 14px 0 6px; border-bottom: 1px solid #E2D3C1; padding-bottom: 3px; }
+    h3 { font: 700 10.5pt Manrope, system-ui, Arial, sans-serif; margin: 10px 0 4px; }
     section { break-inside: auto; } h2, h3, .q-t { break-after: avoid; page-break-after: avoid; } .q { break-inside: avoid; margin: 0 0 8px; } .q-t { margin: 0 0 3px; font-weight: 600; }
     .dados dl { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; margin: 0; } .dados dl div { display: flex; gap: 6px; align-items: baseline; }
     dt { font-weight: 600; white-space: nowrap; } dd { margin: 0; flex: 1; border-bottom: 1px solid #CDB79D; min-height: 1.3em; }
@@ -143,7 +143,7 @@
   function pagina(tipo, form) {
     return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
       <title>${E(TIPOS[tipo].titulo)} · Mulheres & Quintais</title>
-      <style>${CSS}</style></head>
+      ${MQ.FONTES_LINK || ''}<style>${CSS}</style></head>
       <body><div class="tela"><button type="button" onclick="window.close()">Fechar</button><button type="button" class="pri" onclick="window.print()">Imprimir</button></div>
       <main>${cabecalho(tipo)}${converter(form, true)}
         <div class="assina"><div>${linha()}<p>Local e data</p></div><div>${linha()}<p>Assinatura de quem aplicou</p></div>
