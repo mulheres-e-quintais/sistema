@@ -251,7 +251,7 @@
     const onde = focoMun ? E(nomeMun) + '/' + foco : foco ? E(U.nomeUF(foco)) : 'nos 5 estados';
     const munLista = !focoMun && lista.length ? `<div class="mun-lista"><h3 class="mapa-h3">${foco ? 'Municípios' : 'Municípios com mais fichas'}</h3>
         ${lista.slice(0, foco ? 20 : 8).map(g => `<button type="button" class="link" data-acao="mapa-mun" data-uf="${g.uf}" data-mun="${E(g.k)}"><span>${E(baseDe(g).nome)}${foco ? '' : '/' + g.uf}</span><i class="pontilhado" aria-hidden="true"></i><b class="num">${g.itens.length}</b></button>`).join('')}</div>` : '';
-    return `<section class="secao" aria-labelledby="t-mapa">
+    return `<section class="secao dx-mapa" aria-labelledby="t-mapa">
       <div class="secao-cab"><div><h2 id="t-mapa">Onde estão os quintais produtivos</h2>
         <p>${pts.length ? (foco ? `${pts.length} mulher${pts.length > 1 ? 'es' : ''} com ficha ${onde}${focoMun ? ` · ${exatos} com localização do GPS, ${pts.length - exatos} aproximada${pts.length - exatos === 1 ? '' : 's'}` : ''}`
           : `${pts.length} mulher${pts.length > 1 ? 'es' : ''} com ficha válida em ${nUF} estado${nUF === 1 ? '' : 's'} do Nordeste · ${d.fichas.length} fichas lançadas${foraMapa ? ` (${foraMapa} fora do mapa: ${naoAtende ? naoAtende + ' não atende' + (naoAtende > 1 ? 'm' : '') + ' aos critérios' : ''}${naoAtende && semLocal ? ', ' : ''}${semLocal ? semLocal + ' sem município reconhecido' : ''})` : ''}`) : 'Cada ficha lançada aparece aqui.'}</p></div>

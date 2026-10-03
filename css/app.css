@@ -2643,3 +2643,10 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 .dx-atencao.dx-topo-pend { border-top-color: var(--pend); }
 .dx-atencao.dx-topo-ok { border-top-color: var(--line); }
 .dx-atencao.dx-topo-crit { border-top-color: var(--crit); }
+
+/* "Onde estão os quintais produtivos": o mesmo cartão das metas e do acesso à água (o mapa em si não muda) */
+.dx-mapa { margin-top: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px 20px;
+  box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 8px 22px rgba(69, 43, 26, .06); }
+.dx-mapa > .secao-cab { margin: 0 0 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.dx-mapa h2 { font-size: var(--t-xl); }
+@media (max-width: 640px) { .dx-mapa { padding: 16px 14px 14px; border-radius: 14px; } }
