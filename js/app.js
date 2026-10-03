@@ -613,8 +613,9 @@
   function quadroTabela() {
     return `<div class="quadro-scroll eq-cx"><table class="quadro eq-quadro"><colgroup><col class="c-uf"><col><col><col class="c-plano"></colgroup><thead><tr><th scope="col">Estado</th><th scope="col">Articulação estadual</th>
       <th scope="col">Apoio estadual</th><th scope="col">Seleção no estado</th></tr></thead><tbody>
-      ${MQ.UFS.map(u => `<tr><td class="uf"><span class="sigla">${u.uf}</span><span class="nomeuf">${u.nome}</span></td>
-        <td>${botaoVaga('articulacao', u.uf)}</td><td>${botaoVaga('apoio', u.uf)}</td><td>${planoUF(u.uf)}</td></tr>`).join('')}
+      ${MQ.UFS.map(u => { const nb = ativos().filter(m => m.uf === u.uf && (m.papel === 'articulacao' || m.papel === 'apoio')).length;
+        return `<tr><td class="uf"><span class="ag-uf"><span class="sigla">${u.uf}</span><span class="ag-nome"><b>${esc(u.nome)}</b>${nb ? `<small>${nb} de 2 bolsistas</small>` : ''}</span></span></td>
+        <td>${botaoVaga('articulacao', u.uf)}</td><td>${botaoVaga('apoio', u.uf)}</td><td>${planoUF(u.uf)}</td></tr>`; }).join('')}
       </tbody></table></div>`;
   }
   function quadroCartoes() {

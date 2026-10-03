@@ -2846,3 +2846,18 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 .btn-sair svg { display: block; transition: transform .18s ease; }
 .btn-sair:hover svg { transform: translateX(2px); }
 @media (prefers-reduced-motion: reduce) { .btn-sair svg { transition: none; } .btn-sair:hover svg { transform: none; } }
+
+/* Equipe, "Bolsistas por estado" no modelo de "Agentes de campo" (03/10/2026): selo do estado com nome e contagem,
+   vaga sem moldura (texto discreto + botão), pessoa em cartão claro */
+.eq-quadro td.uf { padding: 14px 20px 14px 24px; }
+.eq-quadro td.uf .ag-uf .sigla { display: inline-grid; place-items: center; width: 44px; height: 44px; flex: none; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line)); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); font: 600 var(--t-md)/1 var(--serif); color: var(--accent); letter-spacing: 0; }
+.eq-quadro tbody td { padding-top: 14px; padding-bottom: 14px; }
+.eq-quadro col.c-uf { width: 190px; }
+.eq-quadro .vaga-slot { border: 0; background: transparent; padding: 0; gap: 8px; }
+.eq-quadro .vaga-slot .av.vs-vazio { display: none; }
+.eq-quadro .vaga-slot .vs-quem { grid-template-columns: minmax(0, 1fr); }
+.eq-quadro .vaga-slot .vs-quem .av { display: none; }
+.eq-quadro .vaga-slot .sub { color: var(--muted); }
+.eq-quadro .vaga-slot .btn-acao { margin-inline: 0; min-height: 44px; border-color: var(--line-2); box-shadow: 0 2px 6px color-mix(in srgb, var(--ink) 8%, transparent); }
+.eq-quadro .vagabtn.com-foto { padding: 10px 12px; }
+@media (max-width: 1100px) { .eq-quadro col.c-uf { width: 150px; } .eq-quadro td.uf { padding-left: 14px; } .eq-quadro td.uf .ag-uf { gap: 8px; } }
