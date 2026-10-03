@@ -190,6 +190,24 @@ MQ.DIAG = {
 /* ---------- Ajuda de custo por visita (valores padrão; a coordenação altera na aba Custos) ---------- */
 /* Kit do quintal: até R$ 5.000 por quintal (plano de trabalho, item 14.7: 200 × R$ 5.000 = R$ 1 milhão; confirmado pela coordenação em 01/10/2026) */
 MQ.KIT_QUINTAL = 5000;
+/* Itens do kit com preço de referência (51_kit_itens.sql). Esta lista vale enquanto a tabela não existe no banco
+   ou está vazia; depois, quem manda é a tabela, que a coordenação técnica edita na aba Campo.
+   São ESTIMATIVAS PRELIMINARES pesquisadas em 03/10/2026, não cotação: a fonte de cada uma vai junto. */
+MQ.KIT_ITENS = [
+  { item: "Caixa d'água 1.000 L", unidade: 'un', valor_ref: 502.84, fonte: 'SINAPI, insumo 34636, média nacional, jul/2026' },
+  { item: 'Kit de gotejamento', unidade: 'un', valor_ref: 350, fonte: 'Estimativa sem fonte verificada (kit pequeno, sem bomba)' },
+  { item: 'Regador e mangueira', unidade: 'un', valor_ref: 120, fonte: 'Estimativa sem fonte verificada' },
+  { item: 'Tela de sombreamento 50%', unidade: 'm²', valor_ref: 7, fonte: 'Estimativa: varejo on-line tem a tela de 80% a R$ 8,67/m²; a de 50% não foi cotada' },
+  { item: 'Tela para galinheiro', unidade: 'm', valor_ref: 7.4, fonte: 'Varejo on-line, rolo de 50 m × 1,5 m a R$ 369,36, out/2026' },
+  { item: 'Ferramentas manuais', unidade: 'kit', valor_ref: 250, fonte: 'Estimativa sem fonte verificada' },
+  { item: 'Mudas frutíferas', unidade: 'un', valor_ref: 20, fonte: 'Codevasf, pregão 90006/2026: de R$ 7 a R$ 39 conforme a espécie' },
+  { item: 'Sementes de hortaliças', unidade: 'pacote', valor_ref: 5, fonte: 'Estimativa sem fonte verificada' },
+  { item: 'Esterco curtido', unidade: 'saco', valor_ref: 15, fonte: 'Estimativa sem fonte verificada' }
+].map(x => Object.assign({ preliminar: true, ativo: true }, x));
+MQ.chaveItem = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[’`´]/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
+/* lista em uso (só os ativos) e a busca de um item pelo nome, sem ligar para acento, maiúscula ou tipo de apóstrofo */
+MQ.kitItens = () => { const t = MQ.ui && MQ.ui.S && MQ.ui.S.kitItens; return (t && t.length ? t : MQ.KIT_ITENS).filter(x => x.ativo !== false); };
+MQ.kitItem = nome => { const k = MQ.chaveItem(nome); return k ? MQ.kitItens().find(x => MQ.chaveItem(x.item) === k) || null : null; };
 
 /* localização negada: o navegador não pergunta de novo sozinho, então explicamos como liberar */
 MQ.dicaGPS = (err, fim) => {

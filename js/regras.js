@@ -384,6 +384,10 @@
   /* projeção do kit: quantidade × valor de cada item. Item com quantidade ou valor negativo NÃO abate o total. */
   R.totalKit = kit => (Array.isArray(kit) ? kit : []).reduce((s, x) => { const q = R.numBR(x && x.qtd), v = x && x.valor != null && x.valor !== '' ? Number(x.valor) : 0;
     return s + (q > 0 && v > 0 ? q * v : 0); }, 0);
+  /* para mostrar a projeção de um plano antigo, sem valor digitado: usa o preço de referência do item (se houver) */
+  R.kitComRef = (kit, achar) => (Array.isArray(kit) ? kit : []).map(x => {
+    if (!x || (x.valor != null && x.valor !== '' && Number(x.valor) > 0)) return x;
+    const r = achar && achar(x.item); return r && r.valor_ref > 0 ? Object.assign({}, x, { valor: Number(r.valor_ref), ref: true }) : x; });
   /* confere o kit item por item (as mesmas travas do banco, 45): valor ≥ 0, quantidade > 0 em item com valor */
   R.erroKit = kit => {
     for (const x of (kit || [])) {
