@@ -2913,3 +2913,10 @@ small { font-size: max(12px, .85em); }
   .seg button { min-width: 44px; min-height: 44px; }
   .fic-pessoa .ava-check { min-height: 44px; min-width: 44px; justify-content: center; }
 }
+
+/* itens do kit com preço de referência, croqui dentro do plano (v222) */
+.kit-dica { margin: 0 0 8px; }
+.kit-itens { display: grid; gap: 10px; }
+.tab-kit-itens tr.apagado td { opacity: .6; }
+.kit-item-form { display: grid; gap: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.croqui img { display: block; max-width: 100%; max-height: 70vh; border-radius: 8px; border: 1px solid var(--line); }

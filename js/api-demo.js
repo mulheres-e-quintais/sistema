@@ -274,6 +274,22 @@
       const o = { id: uid(), ficha_id, uf: f.uf, dados: copia(dados), feito_por: eu.id, feito_em: new Date().toISOString() };
       d.orientacoesVenda.push(o); gravar(d); return o.id;
     },
+    /* itens do kit com preço de referência (mesmas regras do 51_kit_itens.sql) */
+    async listarKitItens() { const d = ler(); if (!d.kitItens) { d.kitItens = MQ.KIT_ITENS.map(x => Object.assign({ id: uid(), atualizado_em: '2026-10-03T12:00:00.000Z', atualizado_por: null }, x)); gravar(); } return copia(d.kitItens).sort((a, b) => a.item.localeCompare(b.item, 'pt-BR')); },
+    async salvarKitItem(x) {
+      const d = ler(); const eu = euMesmo(); if (!d.kitItens) await this.listarKitItens();
+      if (!eu || !['coord_geral', 'coord_tecnico'].includes(eu.papel)) throw falha('Quem altera a lista de itens do kit é a coordenação.');
+      const item = String(x.item || '').trim(), un = String(x.unidade || '').trim(), v = Number(x.valor_ref);
+      if (item.length < 2 || item.length > 120) throw falha('Escreva o nome do item (de 2 a 120 letras).');
+      if (!un || un.length > 20) throw falha('Informe a unidade (un, m, m², saco...).');
+      if (!(v > 0) || v > 5000) throw falha('O preço de referência precisa ser maior que zero e não passar de R$ 5.000,00.');
+      if (d.kitItens.some(k => k.id !== x.id && MQ.chaveItem(k.item) === MQ.chaveItem(item))) throw falha('Já existe um item com este nome.');
+      let r = x.id && d.kitItens.find(k => k.id === x.id); const antes = r ? copia(r) : null;
+      if (!r) { r = { id: uid() }; d.kitItens.push(r); }
+      Object.assign(r, { item, unidade: un, valor_ref: Math.round(v * 100) / 100, fonte: String(x.fonte || '').trim().slice(0, 300) || null, preliminar: !!x.preliminar, ativo: x.ativo !== false, atualizado_por: eu.id, atualizado_em: new Date().toISOString() });
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'kit_itens', registro_id: r.id, acao: antes ? 'UPDATE' : 'INSERT', por: eu.id, em: r.atualizado_em, antes, depois: copia(r) });
+      gravar(); return r.id;
+    },
     async listarAgua() {
       const eu = euMesmo(); if (!eu || !['coord_geral', 'coord_tecnico'].includes(eu.papel)) return [];
       return copia(ler().aguaSituacoes || []);

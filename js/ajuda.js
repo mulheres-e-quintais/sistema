@@ -120,13 +120,14 @@
       intro: 'As 5 visitas de cada quintal: diagnóstico e plano, implantação, 2 acompanhamentos e avaliação final. São até 200 dias de campo por estado.',
       tarefas: [
         ['Agendar uma visita', ['Quem agenda é a bolsista do estado: na tela dela, em <b>Visitas e diagnósticos</b>, toque em <b>+ Agendar visita</b>.', 'Escolha o quintal, a etapa, a data e quem vai (só aparece quem está habilitada).', 'Toque em <b>Agendar</b>. A coordenação muda a data ou a pessoa depois, pelo roteiro.']],
-        ['Aprovar o plano do quintal', ['Em <b>Planos para você aprovar</b>, abra o diagnóstico.', 'Confira fotos, kit (até R$ 5.000) e cronograma.', 'Toque em <b>Aprovar</b>, ou escreva o motivo e toque em <b>Devolver para correção</b>.']],
+        ['Aprovar o plano do quintal', ['Em <b>Planos para você aprovar</b>, abra o diagnóstico.', 'Confira fotos, croqui, kit (até R$ 5.000) e cronograma. Item sem valor aparece com o preço de referência, marcado (ref.).', 'Toque em <b>Aprovar</b>, ou escreva o motivo e toque em <b>Devolver para correção</b>.']],
         ['Mudar ou cancelar uma visita', ['Abra a visita no roteiro.', 'Toque em <b>Mudar data ou pessoa</b>, ou em <b>Cancelar esta visita</b>.']]
       ],
       passos: [
         'A tabela mostra, por estado, os dias de campo feitos e previstos, diagnósticos, planos aprovados, casos sem água e agentes.',
         'As etapas seguem uma ordem: a <b>implantação</b> só é agendada ou registrada com o plano do quintal aprovado (e nunca em quintal sem água); o <b>acompanhamento</b>, só depois da implantação feita. A data de cada etapa não pode ser anterior à da etapa de antes. Quando a etapa ainda não pode, a tela mostra o motivo no lugar do botão.',
-        'Em <b>Planos para você aprovar</b>, abra o diagnóstico, confira as fotos, o kit (itens da lista aprovada, com preço, até o valor por quintal) e o cronograma, e <b>aprove</b> ou <b>devolva</b>.',
+        'Em <b>Planos para você aprovar</b>, abra o diagnóstico, confira as fotos, o croqui, o kit (itens da lista, com preço, até o valor por quintal) e o cronograma, e <b>aprove</b> ou <b>devolva</b>. <b>Imprimir o plano</b> gera a folha com o kit, a projeção, o cronograma e o croqui.',
+        '<b>Itens do kit e preços de referência</b> é a lista que quem faz o diagnóstico usa: ao escolher o item, o preço entra sozinho. Use <b>Alterar</b> para trocar a estimativa preliminar pelo preço da cotação e marque <b>Preço confirmado</b>, dizendo de onde ele veio. Item que sai da lista não é apagado: desmarque <b>Item na lista</b>.',
         '<b>Investimento nos quintais</b> mostra o valor do kit por quintal (R$ 5.000,00, fixado no plano de trabalho) e a soma projetada pelos planos.',
         'O <b>roteiro</b> lista cada visita: data, quem vai e a situação, com o botão do que fazer. Visitas vencidas aparecem como atrasadas.',
         '<b>Impacto: antes × depois</b> compara o diagnóstico com a avaliação final de cada quintal.'
@@ -298,7 +299,8 @@
         'Na primeira vez, leia os pontos importantes do Guia e toque em <b>Li e entendi</b>.',
         'Se aparecer <b>pendências no seu cadastro</b>, resolva primeiro: sem elas a FUNCERN não paga.',
         'Os botões de <b>O que você quer fazer?</b>, no topo, levam direto a cada parte da tela.',
-        '<b>Diagnóstico:</b> 3 fotos (visão geral, água e plantio), localização e o kit com o preço de cada item, sem passar de R$ 5.000.',
+        '<b>Diagnóstico:</b> 3 fotos (visão geral, água e plantio), localização e o kit com o preço de cada item, sem passar de R$ 5.000. Escolha o item na lista: o preço de referência entra sozinho e você pode ajustar ao preço do seu estado. A tela mostra a projeção do investimento no quintal.',
+        '<b>Croqui:</b> desenhe o quintal no papel (casa, água, canteiros, árvores, animais, cerca e norte) e fotografe. A foto aparece dentro do plano e na folha de <b>Imprimir o plano</b>.',
         '<b>Localização do diagnóstico:</b> registre em pé, no quintal, durante a visita (o ponto da ficha não vale). Sem localização, escolha o motivo e explique com suas palavras: a coordenação só aprova depois de confirmar a visita de outro jeito.',
         'As <b>Entregas do mês</b> (fotos, lista de presença, relatório, fichas, AVA e metas) liberam a bolsa do mês.'
       ],
@@ -383,7 +385,7 @@
           'A coordenação técnica confere e dá o aval; o pagamento é lançado na FUNCERN.']],
         ['Em cada visita', [
           'Registre no sistema no mesmo dia: fotos, localização e um relato curto do que foi feito.',
-          'No diagnóstico: as 3 fotos (visão geral, água e plantio) e o kit com o preço de cada item, sem passar do valor por quintal.',
+          'No diagnóstico: as 3 fotos (visão geral, água e plantio), a foto do croqui e o kit, sem passar do valor por quintal. Escolha cada item na lista: o preço de referência entra sozinho.',
           'Sem internet, pode preencher: o registro fica guardado no aparelho e é enviado depois.']],
         ['Importante', [
           'A ajuda de custo não gera vínculo empregatício com o IFRN, a FUNCERN ou o MDA.',
