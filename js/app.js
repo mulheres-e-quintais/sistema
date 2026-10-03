@@ -548,11 +548,12 @@
     const ag = ativos().filter(m => m.papel === 'agente');
     return `<section class="secao" aria-labelledby="t-ag">
       <div class="secao-cab"><div><h2 id="t-ag">Agentes de campo</h2><p>Alunas do FIC que fazem visitas por ajuda de custo · sem limite por estado · cadastradas pela coordenação técnica · veem só os quintais atribuídos</p></div></div>
-      <div class="grade-uf">${MQ.UFS.map(u => { const l = ag.filter(m => m.uf === u.uf);
-        return `<div class="cartao"><div class="cab-uf"><span class="uf"><span class="sigla">${u.uf}</span></span><span class="nomeuf muted">${u.nome}</span></div>
-          ${l.map(m => { const s = R.situacao(m); const nv = (S.visitas || []).filter(v => v.executor_id === m.id && v.situacao === 'realizada').length;
-            return `<button class="vagabtn com-foto" data-acao="ver" data-id="${m.id}">${avatar(m, 48)}<span class="vb-t"><span class="nm">${esc(nomeDe(m))}</span><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span><span class="sub">${nv ? nv + ' visita' + (nv > 1 ? 's' : '') + ' feita' + (nv > 1 ? 's' : '') : 'Nenhuma visita ainda'}</span></span></button>`; }).join('') || '<p class="small muted" style="padding:4px">Nenhuma agente.</p>'}
-          ${podeCad ? MQ.botaoAcao({ acao: 'novo', icone: 'pessoa_mais', texto: 'Adicionar agente', rotulo: 'Adicionar agente em ' + u.uf, sec: true, peq: true, attrs: `data-papel="agente" data-uf="${u.uf}"` }) : ''}</div>`; }).join('')}</div>
+      <div class="ag-quadro"><div class="ag-th" aria-hidden="true"><span>Estado</span><span>Agentes</span><span></span></div>
+        ${MQ.UFS.map(u => { const l = ag.filter(m => m.uf === u.uf);
+        return `<div class="ag-tr" role="group" aria-label="${esc(u.nome)}: ${l.length} agente${l.length === 1 ? '' : 's'}"><div class="ag-uf"><span class="sigla">${u.uf}</span><span class="ag-nome"><b>${esc(u.nome)}</b>${l.length ? `<small>${l.length} agente${l.length > 1 ? 's' : ''}</small>` : ''}</span></div>
+          <div class="ag-lista">${l.map(m => { const s = R.situacao(m); const nv = (S.visitas || []).filter(v => v.executor_id === m.id && v.situacao === 'realizada').length;
+            return `<button class="vagabtn com-foto" data-acao="ver" data-id="${m.id}">${avatar(m, 44)}<span class="vb-t"><span class="nm">${esc(nomeDe(m))}</span><span><span class="chip ${s.cod}">${esc(s.rot)}</span></span><span class="sub">${nv ? nv + ' visita' + (nv > 1 ? 's' : '') + ' feita' + (nv > 1 ? 's' : '') : 'Nenhuma visita ainda'}</span></span></button>`; }).join('') || '<p class="ag-vazio">Ainda sem agente de campo neste estado.</p>'}</div>
+          <div class="ag-acao">${podeCad ? MQ.botaoAcao({ acao: 'novo', icone: 'pessoa_mais', texto: 'Adicionar agente', rotulo: 'Adicionar agente em ' + u.uf, sec: true, peq: true, attrs: `data-papel="agente" data-uf="${u.uf}"` }) : ''}</div></div>`; }).join('')}</div>
     </section>`;
   }
 
