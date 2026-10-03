@@ -107,14 +107,14 @@
     return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
       <title>${serv ? 'Termo de autorização' : 'Termo de compromisso'} · ${E(m.nome || '')}</title>${MQ.FONTES_LINK || ''}<style>${CSS}</style></head>
       <body><div class="tela"><span>Confira os dados. ${f.length ? 'Complete à mão: <b>' + E(f.join(', ')) + '</b>. ' : ''}Depois imprima (ou salve em PDF), assine e anexe no sistema.</span>
-        <button type="button" onclick="window.close()">Fechar</button><button type="button" class="pri" onclick="window.print()">Imprimir ou salvar em PDF</button></div>
+        <button type="button" data-jan="fechar">Fechar</button><button type="button" class="pri" data-jan="imprimir">Imprimir ou salvar em PDF</button></div>
       <main>${serv ? corpoServidor(m) : corpoBolsista(m)}</main></body></html>`;
   }
   /* abre em outra aba (funciona também no celular); sem aba, imprime por um quadro escondido */
   function abrir(m) {
     const html = pagina(m);
     const w = window.open('', '_blank');
-    if (w) { w.document.open(); w.document.write(html); w.document.close(); return true; }
+    if (w) { w.document.open(); w.document.write(html); w.document.close(); MQ.ligarJanela(w); return true; }
     const q = document.createElement('iframe'); q.style.position = 'fixed'; q.style.width = q.style.height = '0'; q.style.border = '0'; q.setAttribute('aria-hidden', 'true');
     document.body.appendChild(q); q.contentDocument.open(); q.contentDocument.write(html); q.contentDocument.close();
     setTimeout(() => { q.contentWindow.focus(); q.contentWindow.print(); setTimeout(() => q.remove(), 2000); }, 400);

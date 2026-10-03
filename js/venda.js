@@ -89,9 +89,9 @@
     .vd-tipo { font-size: 9pt; color: #634F43; } .vd-cont { font-size: 10pt; } footer { margin-top: 16px; font-size: 8.5pt; color: #634F43; border-top: 1px solid #E2D3C1; padding-top: 6px; }`;
   function imprimir(html) {
     const pag = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Como vender o que sobra do quintal · Mulheres & Quintais</title>${MQ.FONTES_LINK || ''}<style>${CSS_PAPEL}</style></head>
-      <body><div class="tela"><button type="button" onclick="window.close()">Fechar</button><button type="button" onclick="window.print()">Imprimir</button></div>${html}</body></html>`;
+      <body><div class="tela"><button type="button" data-jan="fechar">Fechar</button><button type="button" data-jan="imprimir">Imprimir</button></div>${html}</body></html>`;
     const w = window.open('', '_blank');
-    if (w) { w.document.open(); w.document.write(pag); w.document.close(); w.onload = () => { try { w.focus(); w.print(); } catch (e) {} }; return; }
+    if (w) { w.document.open(); w.document.write(pag); w.document.close(); MQ.ligarJanela(w); w.onload = () => { try { w.focus(); w.print(); } catch (e) {} }; return; }
     const fr = document.createElement('iframe'); fr.style.cssText = 'position:fixed;width:0;height:0;border:0'; fr.setAttribute('aria-hidden', 'true');
     document.body.appendChild(fr); fr.contentDocument.open(); fr.contentDocument.write(pag); fr.contentDocument.close();
     setTimeout(() => { fr.contentWindow.focus(); fr.contentWindow.print(); setTimeout(() => fr.remove(), 2000); }, 400);

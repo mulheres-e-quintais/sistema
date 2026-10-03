@@ -184,7 +184,7 @@
       <span class="conv-selo"><span aria-hidden="true">✓</span> Link pronto</span>
       <b>Mande para a pessoa</b>
       <span>Ela preenche os próprios dados pelo celular e aceita o termo. O cadastro aparece na aba Equipe, em "Cadastros enviados pelo link", para você conferir e aprovar.</span>
-      <div class="conv-url"><input readonly value="${E(url)}" aria-label="Link de cadastro" onclick="this.select()"></div>
+      <div class="conv-url"><input readonly value="${E(url)}" aria-label="Link de cadastro" data-selecionar></div>
       <div class="conv-botoes">
         <a class="btn pri" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(msg)}">Enviar pelo WhatsApp</a>
         <button class="btn" type="button" data-acao="conv-copiar" data-url="${E(url)}">Copiar link</button>

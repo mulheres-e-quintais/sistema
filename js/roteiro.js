@@ -167,7 +167,7 @@
       <div class="fic-lista">${gente.map(x => `<div class="fic-pessoa">${U().avatar(x, 32)}<span class="fp-t"><b>${E(x.nome_social || x.nome)}</b><span class="small muted">${E(MQ.PAPEIS[x.papel].nome)}${x.uf ? ' · ' + E(x.uf) : ''} · ${E(x.email)} · ${x.user_id ? 'já tem senha' : 'ainda não entrou'}</span></span>
         <button class="btn peq${conv && conv.id === x.id ? ' pri' : ''}" data-acao="rot-convite" data-id="${E(x.id)}">Gerar convite</button></div>
         ${conv && conv.id === x.id ? `<div class="bloco aviso-acesso rot-conv">${conv.cod ? `<div class="cod-acesso"><span class="small muted">Código de acesso</span><b class="num">${E(conv.cod)}</b><span class="small muted">vale 7 dias</span></div>` : ''}
-          <textarea readonly rows="10" aria-label="Mensagem do convite" onclick="this.select()">${E(conv.msg)}</textarea>
+          <textarea readonly rows="10" aria-label="Mensagem do convite" data-selecionar>${E(conv.msg)}</textarea>
           <div class="acoes"><a class="btn pri" target="_blank" rel="noopener" href="${E(conv.wa)}">Mandar por WhatsApp</a><button class="btn" type="button" data-acao="copiar-texto">Copiar</button></div></div>` : ''}`).join('') || '<p class="muted">Ninguém cadastrado ainda.</p>'}</div></div></details>`;
     return cab('Resultados do teste') + `<div class="painel-corpo rot"><div class="rot-abas"><button class="btn peq" data-acao="rot-abrir">Meu roteiro</button><button class="btn peq pri" type="button">Resultados de todos</button></div>
       <p>${todos.length} resposta${todos.length === 1 ? '' : 's'} · <b>${nNao}</b> "não deu certo". Para convidar, mande o link <b>${E(location.origin + location.pathname)}#teste</b>: a pessoa entra e o roteiro do perfil dela abre sozinho.</p>

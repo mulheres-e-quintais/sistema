@@ -3,6 +3,8 @@
 window.MQ = window.MQ || {};
 
 /* fontes do sistema (Manrope em tudo; Lora só no nome do projeto), para as páginas que abrem em outra janela (impressão, termo, relatório) */
+/* Janelas de impressão: os botões Fechar e Imprimir são ligados daqui (sem código dentro do HTML, por causa da política de conteúdo da página) */
+MQ.ligarJanela = w => { try { w.document.addEventListener('click', ev => { const b = ev.target && ev.target.closest && ev.target.closest('[data-jan]'); if (!b) return; if (b.getAttribute('data-jan') === 'fechar') w.close(); else w.print(); }); } catch (e) {} };
 MQ.FONTES_LINK = '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap">';
 
 MQ.PROJETO = {

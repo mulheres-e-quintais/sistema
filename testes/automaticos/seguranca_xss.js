@@ -15,7 +15,8 @@ function envenenar(o, trilha) {
 }
 function marcar(v, onde) { const i = n++; campos[i] = onde; return v + `<img src=x onerror="(window.__xss=window.__xss||[]).push(${i})"><svg onload="(window.__xss=window.__xss||[]).push(${i})"></svg>`; }
 (async () => {
-  const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1280, height: 900 } }); const p = await ctx.newPage();
+  const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1280, height: 900 }, bypassCSP: true })   // sem a política de conteúdo: aqui se testa a 1ª barreira (o texto escapado); a 2ª (CSP) é testada em politica_conteudo.js
+  ;; const p = await ctx.newPage();
   const errs = []; p.on('pageerror', e => { errs.push(e.message); if (process.env.DEBUG) console.log('STACK', e.stack.split('\n').slice(0, 5).join(' / ')); }); p.on('dialog', d => { errs.push('ALERTA: ' + d.message()); d.dismiss(); });
   await ctx.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: CFG })); await ctx.route('**/cdn.jsdelivr.net/**', r => r.abort()); await ctx.route('**/fonts.g*/**', r => r.abort());
   await p.goto('http://localhost:8766/'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector('main');
