@@ -7787,8 +7787,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return c;
   }
   const celExec = (exec, total) => { const p = pct(exec, total); return `<span class="fin-exe"><span class="medidor fino" aria-hidden="true"><i class="${exec > 0 ? 'st-ok' : ''}" style="width:${lim(p)}%"></i></span><b class="num">${pctBR(p)}%</b></span>`; };
-  const vExec = v => `<span class="${v > 0 ? 'fin-exec' : 'fin-zero'}">${brl(v)}</span>`;
-  const vComp = v => `<span class="${v > 0 ? 'fin-comp' : 'fin-zero'}">${brl(v)}</span>`;
+  // zero aparece como travessão (com o valor por extenso para o leitor de tela): a tabela fica limpa enquanto não há gasto
+  const zero = '<span class="fin-zero" aria-hidden="true">—</span><span class="so-leitor">R$ 0,00</span>';
+  const vExec = v => v > 0 ? `<span class="fin-exec">${brl(v)}</span>` : zero;
+  const vComp = v => v > 0 ? `<span class="fin-comp">${brl(v)}</span>` : zero;
+  const rubAbertas = new Set();   // rubricas abertas na tabela (começam fechadas; ficam como a pessoa deixou enquanto a página está aberta)
   function alertas(n) {
     const a = [];
     if (!n.pl) a.push('Nenhuma planilha de gastos enviada ainda. Sem ela, o executado fica zerado: envie a planilha do mês.');
@@ -7831,10 +7834,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       </section>
       <div class="exec-grafs">${graficoRitmo(serie())}${graficoRubricas(n)}</div>
       ${al.length ? `<div class="aviso erro"><ul class="exec-alertas">${al.map(x => `<li>${x}</li>`).join('')}</ul></div>` : ''}
-      <section class="secao" aria-labelledby="t-exr"><div class="secao-cab"><h2 id="t-exr">Por rubrica</h2></div>
-        <p class="small muted">Toque no item para ver a composição do valor.</p>
+      <section class="secao" aria-labelledby="t-exr"><div class="secao-cab"><div><h2 id="t-exr">Por rubrica</h2><p>Toque na rubrica para ver os itens; toque no item para ver a composição do valor.</p></div>
+          <button type="button" class="btn peq" data-acao="exec-abrir-tudo">${rubAbertas.size ? 'Fechar todas' : 'Abrir todas'}</button></div>
         <div class="fin-wrap"><table class="fin exec-fin"><thead><tr><th scope="col">Rubrica</th><th scope="col">Previsto</th><th scope="col">Executado</th><th scope="col">Comprometido</th><th scope="col">Saldo</th><th scope="col">Execução</th></tr></thead>
-          ${n.rub.map(x => { const { r, previsto, exec, comp } = x; return `<tbody id="exr-${r.id}"><tr class="fin-grupo"><th scope="rowgroup">${E(r.nome)}</th><td class="num" data-rot="Previsto">${brl(previsto)}</td><td class="num" data-rot="Executado">${vExec(exec)}</td><td class="num" data-rot="Comprometido">${vComp(comp)}</td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(previsto - exec - comp)}</b></td><td data-rot="Execução">${celExec(exec, previsto)}</td></tr>
+          ${n.rub.map(x => { const { r, previsto, exec, comp } = x; const nIt = r.itens.length + (x.semItem ? 1 : 0); const ab = rubAbertas.has(r.id);
+            return `<tbody id="exr-${r.id}" class="fin-rubrica${ab ? ' aberta' : ''}"><tr class="fin-grupo"><th scope="rowgroup"><button type="button" class="fin-rub" data-acao="exec-abrir" data-id="${E(r.id)}" aria-expanded="${ab}"><span class="fin-rub-n">${E(r.nome)}</span><small>${nIt} ${nIt === 1 ? 'item' : 'itens'}</small></button></th><td class="num" data-rot="Previsto">${brl(previsto)}</td><td class="num" data-rot="Executado">${vExec(exec)}</td><td class="num" data-rot="Comprometido">${vComp(comp)}</td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(previsto - exec - comp)}</b></td><td data-rot="Execução">${celExec(exec, previsto)}</td></tr>
             ${r.itens.map(linhaItem).join('')}${semItem(x)}</tbody>`; }).join('')}
           ${n.naoClass ? `<tbody><tr class="fin-grupo"><th scope="rowgroup">Fora do orçamento (não classificado)</th><td class="num" data-rot="Previsto">—</td><td class="num" data-rot="Executado">${vExec(n.naoClass)}</td><td class="num" data-rot="Comprometido">—</td><td class="num" data-rot="Saldo">—</td><td></td></tr></tbody>` : ''}
           <tfoot><tr class="fin-tot"><th scope="row">Total do projeto</th><td class="num" data-rot="Previsto"><b>${brl(T)}</b></td><td class="num" data-rot="Executado">${vExec(n.exec)}</td><td class="num" data-rot="Comprometido">${vComp(n.comp)}</td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(n.livre)}</b></td><td data-rot="Execução">${celExec(n.exec, T)}</td></tr></tfoot>
@@ -7894,7 +7898,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (a === 'exec-enviar') { G.previa = null; U().abrirPainel({ tipo: 'exec-enviar' }); }
     else if (a === 'exec-baixar') { const url = await S().api.linkPlanilhaExec(el.dataset.path); if (url) window.open(url, '_blank', 'noopener'); else U().toast('O arquivo não está disponível neste aparelho.'); }
     else if (a === 'exec-comp') { const tr = document.getElementById('exc-' + el.dataset.id); if (tr) { tr.hidden = !tr.hidden; el.setAttribute('aria-expanded', String(!tr.hidden)); } }
-    else if (a === 'exec-rub') { const tb = document.getElementById('exr-' + el.dataset.id); if (tb) { tb.scrollIntoView({ behavior: 'smooth', block: 'start' }); tb.classList.remove('realce'); void tb.offsetWidth; tb.classList.add('realce'); } }
+    else if (a === 'exec-abrir') { const tb = document.getElementById('exr-' + el.dataset.id); if (tb) { const ab = !tb.classList.contains('aberta'); tb.classList.toggle('aberta', ab); el.setAttribute('aria-expanded', String(ab)); if (ab) rubAbertas.add(el.dataset.id); else rubAbertas.delete(el.dataset.id);
+      const bt = document.querySelector('[data-acao="exec-abrir-tudo"]'); if (bt) bt.textContent = rubAbertas.size ? 'Fechar todas' : 'Abrir todas'; } }
+    else if (a === 'exec-abrir-tudo') { const abrir = !rubAbertas.size; document.querySelectorAll('.exec-fin tbody.fin-rubrica').forEach(tb => { const id = tb.id.slice(4); tb.classList.toggle('aberta', abrir); const b = tb.querySelector('.fin-rub'); if (b) b.setAttribute('aria-expanded', String(abrir)); if (abrir) rubAbertas.add(id); else rubAbertas.delete(id); }); el.textContent = abrir ? 'Fechar todas' : 'Abrir todas'; }
+    else if (a === 'exec-rub') { const tb = document.getElementById('exr-' + el.dataset.id); if (tb) { tb.classList.add('aberta'); rubAbertas.add(el.dataset.id); const bb = tb.querySelector('.fin-rub'); if (bb) bb.setAttribute('aria-expanded', 'true'); tb.scrollIntoView({ behavior: 'smooth', block: 'start' }); tb.classList.remove('realce'); void tb.offsetWidth; tb.classList.add('realce'); } }
   }
   async function preparar(arquivo) {   // lê e interpreta; devolve a prévia (também usado nos testes)
     const tab = await MQ.planilha.ler(arquivo); const r = MQ.planilha.interpretar(tab); const resumo = MQ.planilha.resumo(r);
