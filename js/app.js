@@ -912,7 +912,7 @@
 
   function semCadastro() {
     return `<main class="wrap"><div class="login"><h1>Acesso não liberado</h1><p>Este e-mail não está ativo na equipe do projeto. Se você foi desligada ou trocou de e-mail, fale com quem fez o seu cadastro (coordenação técnica ou coordenação geral).</p>
-      <button class="btn" data-acao="sair">Sair</button></div></main>`;
+      <button class="btn" data-acao="sair">Sair desta conta</button></div></main>`;
   }
 
   /* ---------- painel lateral ---------- */
