@@ -291,8 +291,12 @@
   const selectMudou = i => { const ops = [...i.options]; const temPadrao = ops.some(o => o.defaultSelected); return ops.some((o, n) => o.selected !== (temPadrao ? o.defaultSelected : n === 0)); };
   /* há formulário em uso? Compara cada campo com o valor que ele tinha quando foi desenhado (nada é guardado à parte). */
   function formAlterado(f) {
+    // formulário guardado dentro de um <details> fechado (ex.: "Trocar minha senha"): a pessoa nem abriu, então não mexeu nele
+    const d = f.closest && f.closest('details'); if (d && !d.open) return false;
     for (const i of f.querySelectorAll('input,select,textarea')) {
       if (i.disabled || /^(hidden|submit|button|reset|image)$/.test(i.type) || (i.dataset && (i.dataset.procura != null || i.dataset.filtro != null))) continue;
+      // usuário e senha atual são preenchidos sozinhos pelo navegador (senha salva): isso não é a pessoa digitando
+      if (/^(username|current-password)$/.test(i.getAttribute('autocomplete') || '')) continue;
       if (i.type === 'file') { if (i.files && i.files.length) return true; continue; }
       if (i.type === 'checkbox' || i.type === 'radio') { if (i.checked !== i.defaultChecked) return true; continue; }
       if (i.tagName === 'SELECT') { if (selectMudou(i)) return true; continue; }
