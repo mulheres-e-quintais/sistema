@@ -9406,8 +9406,15 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       ${sit === 'enviado' ? `<div class="aviso ok" role="status"><b>Termo enviado: ${E(R.nomeArquivo(m.termo_path))}.</b> Falta ${quemConfere(m)} conferir. Se mandou o arquivo errado, anexe outro: ele substitui o anterior.</div>` : ''}
       <ol class="conv-passos termo-passos">
         <li><span><b>Gere o seu termo</b> (${E((R.modeloTermo(m) || { nome: 'termo de compromisso' }).nome)}): ele já sai com os dados do seu cadastro.</span></li>
-        <li><span><b>Confira, imprima e assine.</b> ${R.tipoTermo(m) === 'servidor' ? 'Complete o cargo, o regime de trabalho e o campus e colha o parecer da chefia imediata e da direção-geral do seu campus.' : 'Se algum dado estiver errado, peça a correção do cadastro antes de assinar. Sem impressora, peça uma cópia à coordenação técnica.'}</span></li>
-        <li><span><b>Anexe aqui</b> o termo preenchido e assinado, em PDF ou foto do papel inteiro.</span></li></ol>
+        <li><span><b>Confira e assine</b>, no papel ou pelo gov.br. ${R.tipoTermo(m) === 'servidor' ? 'Complete o cargo, o regime de trabalho e o campus e colha o parecer da chefia imediata e da direção-geral do seu campus.' : 'Se algum dado estiver errado, peça a correção do cadastro antes de assinar. Sem impressora, assine pelo gov.br ou peça uma cópia à coordenação técnica.'}</span></li>
+        <li><span><b>Anexe aqui</b> o termo preenchido e assinado: foto do papel inteiro, ou o PDF assinado pelo gov.br.</span></li></ol>
+      <details class="explica termo-gov"><summary>Como assinar pelo gov.br, sem imprimir</summary>
+        <ol class="conv-passos termo-passos">
+          <li><span>No termo gerado, toque em <b>Imprimir ou salvar em PDF</b> e escolha <b>Salvar como PDF</b>.</span></li>
+          <li><span>Abra <a class="link" href="https://assinador.iti.br" target="_blank" rel="noopener">assinador.iti.br</a> e entre com a sua conta gov.br (nível prata ou ouro).</span></li>
+          <li><span>Envie o PDF, marque onde fica a assinatura e confirme com o código que o gov.br manda.</span></li>
+          <li><span>Baixe o PDF assinado e anexe aqui. <b>Não imprima nem fotografe:</b> a assinatura só vale no próprio arquivo.</span></li></ol>
+        <p class="small muted">${R.tipoTermo(m) === 'servidor' ? 'A chefia imediata e a direção-geral assinam do mesmo jeito, uma depois da outra, sempre no último arquivo baixado.' : 'Conta gov.br de nível bronze não assina. Nesse caso, assine no papel.'}</p></details>
       <div class="campo" id="w-termo"><div class="rot-com-link"><label for="pt-arq">Termo preenchido e assinado (PDF ou foto)</label>${linkModelo(m)}</div>
         <input id="pt-arq" name="termo" type="file" accept="application/pdf,image/*" data-termo-arq required>
         <span class="dica">Até 10 MB. Em foto, pegue a folha inteira, com a assinatura legível.</span></div>
@@ -12168,7 +12175,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           ${termo === 'falta' ? `<div class="aviso" role="status"><b>${esc(nomeDe(m).split(' ')[0])} ainda não anexou o termo.</b> Cada pessoa baixa o modelo, preenche, assina e anexa no próprio cadastro (em Pendências ou em Meus dados). A data só é registrada depois, com o termo aberto e conferido.</div>`
             : `<div class="termo-arq"><span><b>${termo === 'conferido' ? 'Termo conferido' : 'Termo anexado: falta conferir'}</b><br><span class="small muted">${esc(R.nomeArquivo(m.termo_path))}</span></span>
                 <button type="button" class="btn peq${termo === 'enviado' ? ' pri' : ''}" data-acao="termo-abrir" data-path="${esc(m.termo_path)}">Abrir o termo</button></div><div id="termo-vista" aria-live="polite"></div>`}
-          ${dataPasso('h-ter', 'termo_assinado_em', 'Termo assinado em (a data que está no documento)', m, termo === 'falta' ? 'Fica em branco até o termo estar anexado: data sem anexo não é aceita.' : 'Abra o termo, confira os dados, as assinaturas e a data que está no documento, e preencha aqui.')}
+          ${dataPasso('h-ter', 'termo_assinado_em', 'Termo assinado em (a data que está no documento)', m, termo === 'falta' ? 'Fica em branco até o termo estar anexado: data sem anexo não é aceita.' : 'Abra o termo, confira os dados, as assinaturas e a data que está no documento, e preencha aqui. Se foi assinado pelo gov.br, baixe o arquivo e confira a assinatura em validar.iti.br.')}
           <details class="explica"><summary>${m.termo_path ? 'Trocar o arquivo do termo' : 'Recebeu o termo por fora (papel ou WhatsApp)? Anexe aqui'}</summary>
             <div class="campo"><div class="rot-com-link"><label for="h-arq">Termo preenchido e assinado (PDF ou foto)</label>${MQ.pendUI ? MQ.pendUI.linkModelo(m) : ''}</div>
               <input id="h-arq" name="termo" type="file" accept="application/pdf,image/*">

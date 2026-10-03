@@ -2875,3 +2875,8 @@ html, body, button, input, select, textarea, option, optgroup, label, legend, fi
 svg text, svg tspan { font-family: var(--sans); }
 ::placeholder { font-family: var(--sans); }
 .ent-marca b, .rodape-marca b { font-family: var(--marca); font-weight: 600; }
+
+/* termo: instruções da assinatura pelo gov.br */
+details.termo-gov { margin: 4px 0 14px; }
+details.termo-gov[open] > .termo-passos { margin-top: 10px; }
+details.termo-gov > p { margin: 10px 0 0; }
