@@ -86,6 +86,8 @@ describe('carga inicial: uma leitura que falha não derruba as outras', () => {
   test('falha só no histórico: o resto carrega, a tela avisa "Parte dos dados não carregou" e tentar de novo resolve', async () => {
     const T = await montar('coord_geral'); const { S, MQ } = T; const aud = S.api.auditoria; const fichas = S.fichas.length;
     S.api.auditoria = async () => { throw erro500(); };
+    await MQ.ui.carregar(); assert.equal(S.cargaParcial, null, 'fora da aba Histórico, o histórico nem é pedido');
+    S.aba = 'historico';   // o histórico só é lido com a aba dele aberta
     await assert.doesNotReject(() => MQ.ui.carregar());
     assert.deepEqual([...S.cargaParcial], ['histórico']); assert.equal(S.fichas.length, fichas); assert.ok(S.equipe.length > 1);
     MQ.ui.render(); assert.match(texto(T.html()), /Parte dos dados não carregou\. Toque para tentar de novo\./); assert.match(T.html(), /data-acao="carga-tentar"/);

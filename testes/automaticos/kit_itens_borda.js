@@ -108,6 +108,7 @@ const GIF = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
 
   // ---------- 7. cópia no aparelho para uso sem internet ----------
   await p.evaluate(async () => { await MQ.apiDemo.recomecar(); }); await p.reload(); await p.waitForSelector('.resumo'); await como('bolsista');
+  await p.waitForFunction(() => { const k = Object.keys(localStorage).find(x => /^mq-cache-/.test(x)); const c = k && JSON.parse(localStorage.getItem(k)); return c && (c.kitItens || []).length >= 9; }, null, { timeout: 4000 }).catch(() => {});   // a cópia é gravada no fim da carga
   const cache = await p.evaluate(() => { const k = Object.keys(localStorage).find(x => /^mq-cache-/.test(x)); const c = k && JSON.parse(localStorage.getItem(k)); return c && Array.isArray(c.kitItens) ? c.kitItens.length : -1; });
   ok('a lista de itens fica guardada no aparelho da bolsista', cache >= 9, cache);
   await p.evaluate(async () => { const S = MQ.ui.S; const semRede = () => { const e = new Error('sem internet'); e.semRede = true; throw e; }; S.api.listarEquipe = async () => semRede(); S.kitItens = null; await MQ.ui.carregar(); });

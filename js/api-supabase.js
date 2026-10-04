@@ -385,6 +385,7 @@
       if (!sb) sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, { auth: { persistSession: true } });
       const { data, error } = await sb.rpc('vitrine');
       if (error) throw erro(error);
+      if (!data) return { fotos: [] };   // resposta vazia do servidor: a página pública abre sem fotos, não quebra
       (data.fotos || []).forEach(f => { f.url = sb.storage.from('vitrine').getPublicUrl(f.path).data.publicUrl; });
       try { const r = await sb.rpc('vitrine_municipios'); if (!r.error) data.municipios = r.data; } catch (e) {}   // 40: sem o script, o mapa mostra só os municípios previstos
       return data;
@@ -561,7 +562,8 @@
 
     /* ---------- Curso FIC: turmas e matrículas (11_fic.sql) ---------- */
     async listarEquipeFic() {
-      const { data, error } = await sb.rpc('equipe_para_fic'); if (error) throw erro(error);
+      const { data: lido, error } = await sb.rpc('equipe_para_fic'); if (error) throw erro(error);
+      const data = lido || [];
       data.forEach(m => { const x = /^exemplo:(\d+)$/.exec(m.foto_path || ''); if (x) m.foto_url = 'assets/exemplo/pessoa-' + x[1] + '.svg'; });
       const com = data.filter(m => m.foto_path && !m.foto_url);
       if (com.length) { try { const { data: urls } = await sb.storage.from('equipe').createSignedUrls(com.map(m => m.foto_path), 3600);
