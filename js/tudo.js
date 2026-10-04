@@ -11373,7 +11373,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const cab = `<header class="ac2-cab"><span class="ac2-ic">${IC.acomp}</span><div class="ac2-cab-tx"><h3>Acompanhamento externo (MDA e MPA)</h3>
         <p>Quem acompanha o projeto de fora entra numa área própria, só de leitura e só com números: não vê nome, CPF, endereço, pagamento nem a equipe.</p>
         <p>O MDA vê o projeto inteiro em números, sem parte financeira; o MPA vê o andamento em cada estado. Só você cadastra e gera o código de primeiro acesso.</p></div>
-        <svg class="ac2-enfeite" viewBox="0 0 160 120" aria-hidden="true" focusable="false"><path class="e1" d="M92 8c26-10 58 6 62 34s-18 46-44 44-40-18-40-40 6-32 22-38z"/><path class="e2" d="M40 70c14-8 34-2 38 14s-10 28-26 26-26-10-26-22 6-14 14-18z"/><circle class="e3" cx="64" cy="30" r="9"/></svg></header>`;
+        <svg class="ac2-enfeite" viewBox="0 0 160 120" aria-hidden="true" focusable="false"><path class="e3" d="M6 104c22-13 126-13 148 0v6H6z"/><circle class="e1" cx="128" cy="26" r="15"/>
+          <g class="ec"><path d="M44 100V70"/><path d="M82 100V44"/><path d="M118 100V74"/></g>
+          <g class="e2"><path d="M44 80c-13 1-19-6-20-16 12-1 19 5 20 16z"/><path d="M44 72c11 0 17-6 17-15-11 0-17 6-17 15z"/><path d="M82 66c-17 1-25-8-26-22 16-1 25 7 26 22z"/><path d="M82 54c15 0 23-8 23-21-15 0-23 8-23 21z"/><path d="M82 38c-5-6-5-14 0-21 5 7 5 15 0 21z"/><path d="M118 84c-11 1-16-5-17-13 10-1 16 4 17 13z"/><path d="M118 78c10 0 15-5 15-13-10 0-15 5-15 13z"/></g></svg></header>`;
     if (s.obsSemBanco) return `<section class="bloco ac-coord ac2" id="ac-coord">${cab}<p class="nota">Para liberar o acesso de quem acompanha o projeto, rode o arquivo <b>52_acompanhamento.sql</b> no Supabase.</p></section>`;
     const obr = '<span class="ac2-obr" aria-hidden="true">*</span>';
     return `<section class="bloco ac-coord ac2" id="ac-coord">${cab}
