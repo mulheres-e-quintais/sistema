@@ -130,13 +130,13 @@ const GIF = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
   const linhas0 = await p.locator('#w-kit [data-linha=kit]').count();
   for (let i = 0; i < linhas0; i++) { const l = p.locator('#w-kit [data-linha=kit]').nth(i); const nome = await l.locator('[name=kit_item]').inputValue(); await l.locator('[name=kit_item]').fill(''); await l.locator('[name=kit_item]').fill(nome); }
   const vals = await p.evaluate(() => [...document.querySelectorAll('#w-kit [data-linha=kit]')].map(l => l.querySelector('[name=kit_item]').value + '=' + l.querySelector('[name=kit_valor]').value));
-  ok('redigitar o nome dos itens do plano antigo traz o preço dos que estão na lista', vals.some(v => /Caixa.*=502,84/.test(v)) && vals.some(v => /gotejamento=350,00/.test(v)), vals.join(' ; '));
+  ok('redigitar o nome dos itens do plano antigo traz o preço dos que estão na lista', vals.some(v => /Caixa.*=502,84/.test(v)) && vals.some(v => /gotejamento=114,00/.test(v)), vals.join(' ; '));
   ok('item fora da lista fica sem preço para a bolsista informar', vals.some(v => /Tela para canteiro=$/.test(v)), vals.join(' ; '));
   const lc = p.locator('#w-kit [data-linha=kit]').filter({ has: p.locator('[name=kit_item]') }).nth(linhas0 - 1);
   await lc.locator('[name=kit_valor]').fill('6,50');
   const proj = await txt('#kit-proj');
-  ok('a projeção soma: 502,84 + 350,00 + 20 m × 6,50 = R$ 982,84', /982,84/.test(proj), proj.slice(0, 120));
-  ok('a projeção mostra quanto sobra do valor por quintal', /sobram R\$\s?4\.017,16/.test(proj), proj.slice(0, 160));
+  ok('a projeção soma: 502,84 + 114,00 + 20 m × 6,50 = R$ 746,84', /746,84/.test(proj), proj.slice(0, 120));
+  ok('a projeção mostra quanto sobra do valor por quintal', /sobram R\$\s?4\.253,16/.test(proj), proj.slice(0, 160));
   await p.locator('#w-kit [data-linha=kit]').first().locator('[name=kit_qtd]').fill('10');
   ok('10 caixas d’água estouram o valor e a projeção avisa quanto passa', /Passa/.test(await txt('#kit-proj')) && await p.locator('#kit-proj .kit-proj.passou').count() === 1, (await txt('#kit-proj')).slice(0, 140));
   await p.locator('#w-kit [data-linha=kit]').first().locator('[name=kit_qtd]').fill('1');
@@ -151,7 +151,7 @@ const GIF = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
     if (!(await p.locator('#w-kit').count())) break;
   }
   const depois = await p.evaluate(f => { const d = MQ.ui.S.diagnosticos.find(d => d.ficha_id === f); const fila = (MQ.ui.S.fila || []).find(i => i.tipo === 'diagnostico'); const k = (fila ? (fila.dados.dados || fila.dados).kit : d.dados.kit) || []; return { total: MQ.regras.totalKit(k), kit: k.map(x => x.item.slice(0, 12) + ':' + typeof x.valor + ':' + x.valor), ok: k.length >= 3 && k.every(x => typeof x.valor === 'number' && x.valor > 0), erro: [...document.querySelectorAll('#painel .tem-erro')].map(e => e.textContent.trim().slice(0, 50)).join(' / ') }; }, fb);
-  ok('o diagnóstico é enviado com o preço de cada item gravado como número', depois.ok && Math.abs(depois.total - 982.84) < 0.01, JSON.stringify(depois).slice(0, 170));
+  ok('o diagnóstico é enviado com o preço de cada item gravado como número', depois.ok && Math.abs(depois.total - 746.84) < 0.01, JSON.stringify(depois).slice(0, 170));
 
   // ---------- 10. desempenho com lista grande ----------
   const perf = await p.evaluate(() => { const S = MQ.ui.S; S.kitItensSemBanco = false; S.kitItens = Array.from({ length: 500 }, (_, i) => ({ id: 'k' + i, item: 'Item de teste número ' + i, unidade: 'un', valor_ref: 1 + i, fonte: 'Fonte ' + i, preliminar: i % 2 === 0, ativo: true }));

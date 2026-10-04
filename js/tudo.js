@@ -210,14 +210,14 @@ MQ.KIT_QUINTAL = 5000;
    São ESTIMATIVAS PRELIMINARES pesquisadas em 03/10/2026, não cotação: a fonte de cada uma vai junto. */
 MQ.KIT_ITENS = [
   { item: "Caixa d'água 1.000 L", unidade: 'un', valor_ref: 502.84, fonte: 'SINAPI, insumo 34636, média nacional, jul/2026' },
-  { item: 'Kit de gotejamento', unidade: 'un', valor_ref: 350, fonte: 'Estimativa sem fonte verificada (kit pequeno, sem bomba)' },
-  { item: 'Regador e mangueira', unidade: 'un', valor_ref: 120, fonte: 'Estimativa sem fonte verificada' },
-  { item: 'Tela de sombreamento 50%', unidade: 'm²', valor_ref: 7, fonte: 'Estimativa: varejo on-line tem a tela de 80% a R$ 8,67/m²; a de 50% não foi cotada' },
-  { item: 'Tela para galinheiro', unidade: 'm', valor_ref: 7.4, fonte: 'Varejo on-line, rolo de 50 m × 1,5 m a R$ 369,36, out/2026' },
-  { item: 'Ferramentas manuais', unidade: 'kit', valor_ref: 250, fonte: 'Estimativa sem fonte verificada' },
+  { item: 'Kit de gotejamento', unidade: 'un', valor_ref: 114, fonte: 'Varejo on-line (Império Mangueiras), out/2026: kit de 100 m de fita gotejadora com registros e conexões, por gravidade. Kit familiar completo de 500 m² (Netafim): R$ 1.630,42' },
+  { item: 'Regador e mangueira', unidade: 'un', valor_ref: 153.53, fonte: 'Varejo on-line, out/2026: regador de 10 L a R$ 31,84 (Ferpam) + mangueira de jardim de 30 m a R$ 121,69 (Casa do Soldador)' },
+  { item: 'Tela de sombreamento 50%', unidade: 'm²', valor_ref: 2.47, fonte: 'Varejo on-line (Paperplast), out/2026: rolo de 3 m × 50 m a R$ 369,90' },
+  { item: 'Tela para galinheiro', unidade: 'm', valor_ref: 13.32, fonte: 'SINAPI, insumo 10931 (tela hexagonal galvanizada, altura de 1 m), média nacional, jul/2026' },
+  { item: 'Ferramentas manuais', unidade: 'kit', valor_ref: 209.6, fonte: 'Varejo no Nordeste (A Potiguar), out/2026: enxada R$ 84,90 + pá R$ 59,90 + ancinho R$ 41,90 + facão R$ 22,90' },
   { item: 'Mudas frutíferas', unidade: 'un', valor_ref: 20, fonte: 'Codevasf, pregão 90006/2026: de R$ 7 a R$ 39 conforme a espécie' },
-  { item: 'Sementes de hortaliças', unidade: 'pacote', valor_ref: 5, fonte: 'Estimativa sem fonte verificada' },
-  { item: 'Esterco curtido', unidade: 'saco', valor_ref: 15, fonte: 'Estimativa sem fonte verificada' }
+  { item: 'Sementes de hortaliças', unidade: 'pacote', valor_ref: 3.49, fonte: 'Varejo on-line (Tupan), out/2026: envelope da linha econômica Feltrin' },
+  { item: 'Esterco curtido', unidade: 'saco', valor_ref: 26, fonte: 'Varejo on-line (Sementes Nascimento), out/2026: saco de 20 kg de esterco bovino curtido' }
 ].map(x => Object.assign({ preliminar: true, ativo: true }, x));
 /* Busca rápida por um campo (em vez de varrer a lista inteira a cada procura, o que fica lento ao quadrado com milhares de quintais).
    Devolve um mapa valor → primeiro registro com aquele valor (igual ao .find). O mapa é refeito quando a lista é outra, mudou de tamanho

@@ -101,6 +101,7 @@ supabase/49_popular_fic.sql Popular o curso FIC com dados de teste (fictícios) 
 supabase/50_limite_professores.sql No máximo 2 professores do FIC ativos (decisão da coordenação geral em 03/10/2026)
 supabase/51_kit_itens.sql Itens do kit com preço de referência, editados pela coordenação (03/10/2026)
 supabase/52_acompanhamento.sql Perfis de acompanhamento do MDA e do MPA: só leitura, só números agregados (03/10/2026)
+supabase/53_kit_precos_pesquisados.sql Preços de referência do kit com fonte pesquisada, no lugar das estimativas sem fonte (04/10/2026)
 supabase/90_auditoria_dados.sql Auditoria da qualidade dos dados (só lê, não muda nada)
 supabase/perigo/99_zerar_tudo.sql Zerar todo o banco (02/10/2026)
 supabase/perigo/        scripts que APAGAM dados (14 e 99): separados de propósito; só rodam com a data de uma cópia de segurança

@@ -38,7 +38,7 @@ describe('projeção com preço de referência', () => {
     assert.equal(R.totalKit(kit), 0);                          // sem valor digitado, a conta de verdade continua zero
     const c = R.kitComRef(kit, MQ.kitItem);
     assert.ok(c.every(x => x.ref));
-    assert.equal(Math.round(R.totalKit(c) * 100) / 100, 1267.84);   // 210 + 185 + 502,84 + 250 + 120
+    assert.equal(Math.round(R.totalKit(c) * 100) / 100, 1273.07);   // 74,10 + 333,00 + 502,84 + 209,60 + 153,53
   });
   test('valor digitado manda: não é trocado pelo de referência', () => {
     const MQ = amb(); const R = MQ.regras;

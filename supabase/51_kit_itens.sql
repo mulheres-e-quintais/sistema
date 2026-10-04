@@ -83,15 +83,15 @@ create trigger kit_itens_auditoria after insert or update on public.kit_itens fo
 -- estimativas preliminares (03/10/2026): só entram os itens que ainda não existem
 insert into public.kit_itens (item, unidade, valor_ref, fonte)
 select v.item, v.unidade, v.valor, v.fonte from (values
-  ('Caixa d''água 1.000 L',      'un',     502.84, 'SINAPI, insumo 34636, média nacional, jul/2026'),
-  ('Kit de gotejamento',         'un',     350.00, 'Estimativa sem fonte verificada (kit pequeno, sem bomba)'),
-  ('Regador e mangueira',        'un',     120.00, 'Estimativa sem fonte verificada'),
-  ('Tela de sombreamento 50%',   'm²',       7.00, 'Estimativa: varejo on-line tem a tela de 80% a R$ 8,67/m²; a de 50% não foi cotada'),
-  ('Tela para galinheiro',       'm',        7.40, 'Varejo on-line, rolo de 50 m × 1,5 m a R$ 369,36, out/2026'),
-  ('Ferramentas manuais',        'kit',    250.00, 'Estimativa sem fonte verificada'),
-  ('Mudas frutíferas',           'un',      20.00, 'Codevasf, pregão 90006/2026: de R$ 7 a R$ 39 conforme a espécie'),
-  ('Sementes de hortaliças',     'pacote',   5.00, 'Estimativa sem fonte verificada'),
-  ('Esterco curtido',            'saco',    15.00, 'Estimativa sem fonte verificada')
+  ('Caixa d''água 1.000 L', 'un', 502.84, 'SINAPI, insumo 34636, média nacional, jul/2026'),
+  ('Kit de gotejamento', 'un', 114.00, 'Varejo on-line (Império Mangueiras), out/2026: kit de 100 m de fita gotejadora com registros e conexões, por gravidade. Kit familiar completo de 500 m² (Netafim): R$ 1.630,42'),
+  ('Regador e mangueira', 'un', 153.53, 'Varejo on-line, out/2026: regador de 10 L a R$ 31,84 (Ferpam) + mangueira de jardim de 30 m a R$ 121,69 (Casa do Soldador)'),
+  ('Tela de sombreamento 50%', 'm²', 2.47, 'Varejo on-line (Paperplast), out/2026: rolo de 3 m × 50 m a R$ 369,90'),
+  ('Tela para galinheiro', 'm', 13.32, 'SINAPI, insumo 10931 (tela hexagonal galvanizada, altura de 1 m), média nacional, jul/2026'),
+  ('Ferramentas manuais', 'kit', 209.60, 'Varejo no Nordeste (A Potiguar), out/2026: enxada R$ 84,90 + pá R$ 59,90 + ancinho R$ 41,90 + facão R$ 22,90'),
+  ('Mudas frutíferas', 'un', 20.00, 'Codevasf, pregão 90006/2026: de R$ 7 a R$ 39 conforme a espécie'),
+  ('Sementes de hortaliças', 'pacote', 3.49, 'Varejo on-line (Tupan), out/2026: envelope da linha econômica Feltrin'),
+  ('Esterco curtido', 'saco', 26.00, 'Varejo on-line (Sementes Nascimento), out/2026: saco de 20 kg de esterco bovino curtido')
 ) as v(item, unidade, valor, fonte)
 where not exists (select 1 from public.kit_itens k where lower(trim(k.item)) = lower(v.item));
 
