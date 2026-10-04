@@ -3017,3 +3017,9 @@ label.check.ac2-ativo { display: flex; align-items: center; gap: 12px; cursor: p
 .ac2-previa { display: grid; gap: 12px; padding-top: 14px; border-top: 1px solid var(--line); }
 .ac2-ver .btn-acao[aria-pressed="true"] { border-color: var(--ink); background: var(--surface-2); }
 @media (max-width: 720px) { .ac2-form .campos { grid-template-columns: minmax(0, 1fr); } .ac2-ver .btn-acao { flex: 1 1 100%; } }
+
+/* Equipe: cartão de bolsista do mesmo tamanho do cartão de agente de campo (270 px, foto de 44 px, uma linha de resumo) */
+.eq-quadro tbody td > .vagabtn.com-foto { max-width: 270px; min-height: 0; }
+.eq-quadro .vagabtn.com-foto .av { --av: 44px !important; }
+.eq-quadro .vagabtn.com-foto .sub, .ag-lista .vagabtn.com-foto .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 760px) { .eq-quadro tbody td > .vagabtn.com-foto { max-width: none; } }
