@@ -3082,3 +3082,14 @@ label.check.ac2-ativo:has(input:focus-visible) { outline: 2px solid var(--focus)
 .eq-cartoes .vagabtn.com-foto .av { --av: 44px !important; }
 .eq-cartoes .vagabtn.com-foto .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 860px) { .ag-tr { padding: 16px; } }
+
+/* Equipe: a mesma distância (24 px) entre cartões vizinhos, tanto entre agentes de campo quanto entre a bolsista de
+   articulação e a de apoio. Na tabela, as duas colunas de bolsista têm largura fixa (cartão de 270 px + 24 px) e a
+   coluna da seleção fica com o que sobra. */
+.ag-lista { gap: 14px 24px; }
+@media (min-width: 961px) {
+  .eq-quadro col:nth-child(2), .eq-quadro col:nth-child(3) { width: 294px; }
+  .eq-quadro col.c-plano { width: auto; }
+  .ag-th, .ag-tr { grid-template-columns: 146px minmax(0, 1fr) auto; }   /* primeiro cartão na mesma coluna do quadro de bolsistas */
+  .eq-quadro tbody td:nth-child(2), .eq-quadro tbody td:nth-child(3), .eq-quadro thead th:nth-child(2), .eq-quadro thead th:nth-child(3) { padding-left: 0; padding-right: 24px; }
+}
