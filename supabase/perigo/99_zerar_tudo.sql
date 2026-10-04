@@ -1,7 +1,8 @@
 -- =====================================================================
 -- Mulheres & Quintais — 99: ZERAR TODO O BANCO (02/10/2026)
 -- ATENÇÃO: APAGA DE VEZ. NÃO TEM COMO DESFAZER. Não há lixeira nem "voltar".
--- Antes de rodar, se houver qualquer coisa que possa fazer falta, faça uma cópia (Supabase > Database > Backups).
+-- Este arquivo fica na pasta supabase/perigo/, separado dos scripts de estrutura, para não ser rodado por engano.
+-- Antes de rodar: faça a cópia de segurança (ferramentas/backup/LEIA-ME.md). O script só apaga com a data dela.
 --
 -- Supabase > SQL Editor > New query > cole este arquivo inteiro.
 -- Para funcionar, troque  'NAO'  por  'ZERAR'  na linha "confirmar" aqui embaixo e clique em Run.
@@ -25,11 +26,16 @@ begin;
 do $$
 declare
   confirmar text := 'NAO';     -- <<< troque por 'ZERAR' para apagar
+  copia_feita_em text := 'SEM COPIA';   -- <<< a data da cópia de segurança que VOCÊ fez e testou, no formato AAAA-MM-DD (ferramentas/backup/LEIA-ME.md)
   eu uuid; meu_login uuid; n int; lista text;
   ficam text[] := array['equipe', 'equipe_privado', 'parametros'];
 begin
   if confirmar <> 'ZERAR' then
     raise exception 'Nada foi apagado. Para zerar, troque NAO por ZERAR na linha "confirmar" e rode de novo.';
+  end if;
+  -- segunda trava (auditoria de 04/10/2026): só apaga com uma cópia de segurança feita hoje ou ontem
+  if copia_feita_em !~ '^\d{4}-\d{2}-\d{2}$' or copia_feita_em::date > current_date or copia_feita_em::date < current_date - 1 then
+    raise exception 'Nada foi apagado. Faça antes a cópia de segurança (ferramentas/backup/LEIA-ME.md) e escreva a data dela, de hoje ou de ontem, na linha "copia_feita_em".';
   end if;
 
   select count(*) into n from public.equipe where papel = 'coord_geral' and status = 'ativa';

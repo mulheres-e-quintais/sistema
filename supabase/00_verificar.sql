@@ -178,7 +178,7 @@ chk as (
                    not exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ '(pg_advisory_xact_lock|trava_aviso)\('
                                 and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e') and not ('lock_timeout=5s' = any (coalesce(p.proconfig, '{}'))))
   -- regras que VOLTAM AO ANTIGO se um script velho for rodado de novo fora de ordem (se FALTA, rode de novo o número indicado)
-  union all select 'primeiro acesso só com código (se FALTA: rode o 18 e depois o 43)', exists (select 1 from pg_proc where proname = 'bloquear_conta_nao_cadastrada' and prosrc like '%codigo_hash%')
+  union all select 'primeiro acesso só com código (se FALTA: rode o 52 de novo; antes dele, o 18 e o 43)', exists (select 1 from pg_proc where proname = 'bloquear_conta_nao_cadastrada' and prosrc like '%codigo_hash%')
   union all select '200 dias de campo e avaliação (se FALTA: rode o 13 e depois o 15)', exists (select 1 from pg_proc where proname = 'visitas_antes' and prosrc like '%200 dias de campo%')
   union all select 'coordenação geral corrige fichas (se FALTA: rode o 15)', exists (select 1 from pg_proc where proname = 'fichas_antes' and prosrc like '%corrige os dados e também decide%')
   union all select 'coordenação geral corrige avaliações (se FALTA: rode o 15)', exists (select 1 from pg_proc where proname = 'avaliacoes_antes' and prosrc like '%''agente'',''coord_geral''%')

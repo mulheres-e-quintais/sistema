@@ -66,7 +66,7 @@ supabase/00_verificar.sql        só lê: mostra quais etapas já estão instala
 supabase/15_coord_geral_total.sql etapa 15: coordenação geral com todos os acessos (decisão de 28/09/2026)
 supabase/17_corrige_link_cadastro.sql correção: "Gerar link de cadastro" (erro gen_random_bytes)
 supabase/16_popular_teste.sql    depois do 14 e do 05: logins de teste por perfil e dados em todas as etapas (troque o e-mail)
-supabase/14_zerar_para_teste.sql apaga TUDO menos a coordenação geral (pede confirmação ZERAR; sem desfazer)
+supabase/perigo/14_zerar_para_teste.sql apaga TUDO menos a coordenação geral (pede confirmação ZERAR; sem desfazer)
 supabase/18_codigo_primeiro_acesso.sql Código de primeiro acesso (fecha a brecha do login)
 supabase/19_entregas_do_mes.sql Entregas do mês e ciência do guia
 supabase/20_organizar_texto.sql Organizar texto (controle de uso da IA)
@@ -102,7 +102,9 @@ supabase/50_limite_professores.sql No máximo 2 professores do FIC ativos (decis
 supabase/51_kit_itens.sql Itens do kit com preço de referência, editados pela coordenação (03/10/2026)
 supabase/52_acompanhamento.sql Perfis de acompanhamento do MDA e do MPA: só leitura, só números agregados (03/10/2026)
 supabase/90_auditoria_dados.sql Auditoria da qualidade dos dados (só lê, não muda nada)
-supabase/99_zerar_tudo.sql Zerar todo o banco (02/10/2026)
+supabase/perigo/99_zerar_tudo.sql Zerar todo o banco (02/10/2026)
+supabase/perigo/        scripts que APAGAM dados (14 e 99): separados de propósito; só rodam com a data de uma cópia de segurança
+ferramentas/backup/     cópia de segurança do banco para o computador da coordenação e teste de restauração
 supabase/tests/         testes das regras do banco
 ```
 
@@ -187,7 +189,7 @@ psql -d teste4 -f supabase/tests/test_vitrine.sql     # 14 casos da vitrine e do
 
 ## Próximos passos
 
-1. Backup semanal do banco (o plano gratuito do Supabase não guarda cópias) — antes do diagnóstico ir a campo.
+1. Backup semanal do banco (o plano gratuito do Supabase não guarda cópias): os scripts estão em `ferramentas/backup/` (ver o `LEIA-ME.md` de lá). Falta a coordenação rodar a primeira cópia, testar a restauração e marcar o dia fixo da semana — antes do diagnóstico ir a campo.
 2. Relatório de visita técnica (implantação e acompanhamentos; a visita final repete a pergunta de renda da linha de base).
 3. Termo de recebimento do kit (depende da lista do kit aprovada).
 4. Relatório mensal da bolsista gerado a partir dos registros do mês.

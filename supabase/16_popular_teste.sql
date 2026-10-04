@@ -2,7 +2,7 @@
 -- Mulheres & Quintais — Etapa 16: POPULAR o banco para testar TODAS as funções
 -- Só para teste. Nomes, CPFs e endereços são inventados.
 --
--- Ordem: 18_codigo_primeiro_acesso.sql (uma vez)  →  14_zerar_para_teste.sql (com ZERAR)  →  05_dados_exemplo.sql  →  este arquivo.
+-- Ordem: 18_codigo_primeiro_acesso.sql (uma vez)  →  perigo/14_zerar_para_teste.sql (com ZERAR)  →  05_dados_exemplo.sql  →  este arquivo.
 -- Antes de rodar, troque SEU_EMAIL@gmail.com pelo seu e-mail na linha "meu_email".
 --
 -- O que este script faz (em cima dos dados do 05):
@@ -17,7 +17,7 @@
 --   * Um cadastro enviado pelo link esperando aprovação.
 --   * Deixa pendências de propósito para testar os avisos: os logins de teste sem dados pessoais e conta,
 --     e o auxiliar sem o termo registrado.
--- Para limpar tudo depois: 14_zerar_para_teste.sql.
+-- Para limpar tudo depois: perigo/14_zerar_para_teste.sql.
 -- =====================================================================
 begin;
 
