@@ -149,7 +149,7 @@
   const K = Math.cos(9.5 * Math.PI / 180);                 // latitude média da área
   const px = ([lon, lat]) => [lon * K, -lat];
   function pontoDaFicha(f) {
-    const dg = (MQ.ui && MQ.ui.S.diagnosticos || []).find(x => x.ficha_id === f.id && x.latitude != null);
+    const dg = MQ.porCampo(MQ.ui && MQ.ui.S.diagnosticos, 'ficha_id', 'gps', x => x.latitude != null).get(f.id);
     if (dg) return { xy: px([+dg.longitude, +dg.latitude]), exato: true };   // GPS tirado no próprio quintal
     if (f.latitude != null && f.longitude != null) return { xy: px([+f.longitude, +f.latitude]), exato: true };
     const muns = (MQ.GEO.mun[f.uf]) || {};
@@ -296,11 +296,10 @@
     const diags = (S.diagnosticos || []).filter(x => x.renda_quintal != null || x.renda_familiar != null);
     const mediana = arr => { const a = arr.filter(v => v != null && !isNaN(v)).map(Number).sort((x, y) => x - y); if (!a.length) return null; const m = Math.floor(a.length / 2); return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; };
     const mq = mediana(diags.map(x => x.renda_quintal)), mf = mediana(diags.map(x => x.renda_familiar));
-    const semRenda = diags.filter(x => !(+x.renda_quintal > 0)).length;
     // linha de base (bloco 4b do diagnóstico) e, quando houver, a avaliação final
     // com avaliações, as duas colunas usam só os quintais medidos duas vezes (comparar grupos diferentes engana)
     const avs = S.avaliacoes || [];
-    const pares = avs.map(a => { const dg = (S.diagnosticos || []).find(x => x.ficha_id === a.ficha_id); const i0 = dg && dg.dados && dg.dados.impacto, i1 = a.dados && a.dados.impacto;
+    const pares = avs.map(a => { const dg = MQ.porCampo(S.diagnosticos, 'ficha_id').get(a.ficha_id); const i0 = dg && dg.dados && dg.dados.impacto, i1 = a.dados && a.dados.impacto;
       return i0 && i1 && i0.ebia_nivel && i1.ebia_nivel ? [i0, i1] : null; }).filter(Boolean);
     const temDepois = pares.length > 0;
     const imps = temDepois ? pares.map(x => x[0]) : (S.diagnosticos || []).map(x => x.dados && x.dados.impacto).filter(x => x && x.ebia_nivel);
@@ -308,9 +307,9 @@
     const nImp = imps.length, nAv = pares.length;
     const pc = (l, fn) => l.length ? Math.round(l.filter(fn).length / l.length * 100) + '%' : null;
     const md = (l, k) => { const v = l.map(x => x[k]).filter(x => x != null); return v.length ? (Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10).toLocaleString('pt-BR') : null; };
-    const avPar = avs.filter(a => (S.diagnosticos || []).some(x => x.ficha_id === a.ficha_id && x.renda_quintal != null) && a.dados && a.dados.renda_quintal != null);
+    const avPar = avs.filter(a => MQ.porCampo(S.diagnosticos, 'ficha_id', 'renda', x => x.renda_quintal != null).has(a.ficha_id) && a.dados && a.dados.renda_quintal != null);
     const mqD = avPar.length ? mediana(avPar.map(a => a.dados.renda_quintal)) : null;
-    const mqA = avPar.length ? mediana(avPar.map(a => (S.diagnosticos.find(x => x.ficha_id === a.ficha_id) || {}).renda_quintal)) : null;
+    const mqA = avPar.length ? mediana(avPar.map(a => (MQ.porCampo(S.diagnosticos, 'ficha_id').get(a.ficha_id) || {}).renda_quintal)) : null;
     const razoes = diags.filter(x => +x.renda_familiar > 0 && x.renda_quintal != null).map(x => x.renda_quintal / x.renda_familiar);
     const pesoQ = razoes.length ? Math.round(mediana(razoes) * 100) : null;
     const semAgua = (S.diagnosticos || []).length ? Math.round((S.diagnosticos || []).filter(x => x.sem_agua).length / S.diagnosticos.length * 100) + '%' : null;
@@ -340,7 +339,6 @@
 
   /* equipe de execução: quem são e de onde partem (perfil no campo do cadastro) */
   function equipeExec(S) {
-    const P = MQ.PAPEIS;
     const ativos = (S.equipe || []).filter(m => m.status === 'ativa' && m.papel !== 'coord_geral');
     const campo = ativos.filter(m => ['coord_tecnico', 'articulacao', 'apoio', 'agente'].includes(m.papel));
     const conta = p => ativos.filter(m => m.papel === p).length;

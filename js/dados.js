@@ -204,10 +204,34 @@ MQ.KIT_ITENS = [
   { item: 'Sementes de hortaliças', unidade: 'pacote', valor_ref: 5, fonte: 'Estimativa sem fonte verificada' },
   { item: 'Esterco curtido', unidade: 'saco', valor_ref: 15, fonte: 'Estimativa sem fonte verificada' }
 ].map(x => Object.assign({ preliminar: true, ativo: true }, x));
+/* Busca rápida por um campo (em vez de varrer a lista inteira a cada procura, o que fica lento ao quadrado com milhares de quintais).
+   Devolve um mapa valor → primeiro registro com aquele valor (igual ao .find). O mapa é refeito quando a lista é outra, mudou de tamanho
+   ou passou 1/5 de segundo: um desenho de tela inteiro usa o mesmo mapa, e uma alteração feita na lista nunca fica escondida.
+   rotulo + filtro: mapa só dos registros que passam no filtro (ex.: diagnósticos com GPS). */
+MQ.porCampo = (() => {
+  const guarda = new WeakMap(), VAZIO = new Map();
+  return (lista, campo, rotulo, filtro) => {
+    if (!lista || !lista.length) return VAZIO;
+    let g = guarda.get(lista); if (!g) { g = {}; guarda.set(lista, g); }
+    const chave = campo + '|' + (rotulo || ''), agora = Date.now(); let c = g[chave];
+    if (!c || c.n !== lista.length || agora - c.t > 200) {
+      const m = new Map(); for (const x of lista) { if (!x || (filtro && !filtro(x))) continue; const k = x[campo]; if (!m.has(k)) m.set(k, x); }
+      c = g[chave] = { n: lista.length, t: agora, m };
+    }
+    return c.m;
+  };
+})();
 MQ.chaveItem = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[’`´]/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
 /* lista em uso (só os ativos) e a busca de um item pelo nome, sem ligar para acento, maiúscula ou tipo de apóstrofo */
 MQ.kitItens = () => { const t = MQ.ui && MQ.ui.S && MQ.ui.S.kitItens; return (t && t.length ? t : MQ.KIT_ITENS).filter(x => x.ativo !== false); };
-MQ.kitItem = nome => { const k = MQ.chaveItem(nome); return k ? MQ.kitItens().find(x => MQ.chaveItem(x.item) === k) || null : null; };
+/* o nome de cada item da lista é normalizado uma vez só (e não a cada procura): o mapa vale enquanto a lista for a mesma, por até 1/5 de segundo */
+MQ.kitItem = (() => {
+  let de = null, n = -1, t = 0, mapa = null;
+  return nome => { const k = MQ.chaveItem(nome); if (!k) return null;
+    const tb = MQ.ui && MQ.ui.S && MQ.ui.S.kitItens, lista = tb && tb.length ? tb : MQ.KIT_ITENS, agora = Date.now();
+    if (de !== lista || n !== lista.length || agora - t > 200) { mapa = new Map(); for (const x of lista) { if (x.ativo === false) continue; const c = MQ.chaveItem(x.item); if (!mapa.has(c)) mapa.set(c, x); } de = lista; n = lista.length; t = agora; }
+    return mapa.get(k) || null; };
+})();
 
 /* localização negada: o navegador não pergunta de novo sozinho, então explicamos como liberar */
 MQ.dicaGPS = (err, fim) => {

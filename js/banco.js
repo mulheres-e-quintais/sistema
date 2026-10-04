@@ -4,7 +4,6 @@
 (function () {
   const U = () => MQ.ui; const S = () => MQ.ui.S; const E = s => MQ.ui.esc(s);
   const R = MQ.regras;
-  const $ = s => document.querySelector(s);
   const B = { meus: undefined, editando: false, situacao: null };
   const mascara = t => t ? '•••' + String(t).slice(-3) : '';
   const MAX_PIX = 140;   // tamanho máximo da chave Pix (o formulário é novalidate: quem confere é o JS)

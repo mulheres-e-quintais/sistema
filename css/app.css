@@ -2980,3 +2980,17 @@ small { font-size: max(12px, .85em); }
 .ac-tab { min-width: 0; }
 .ac-tab th { letter-spacing: .02em; padding-inline: 8px; }
 @media (max-width: 340px) { .demo-ver .seg { flex-wrap: wrap; max-width: 100%; } }   /* 9 perfis na demonstração: em tela muito estreita quebra a linha em vez de empurrar a página */
+/* telas de 320 a 360 px (v225): nada empurra a página para o lado */
+@media (max-width: 420px) {
+  .fin-nums { grid-template-columns: 1fr; }
+  .fin-nums > div, .fin-nums > div + div { padding-left: 0; padding-right: 0; border-left: 0; }
+  .dx-lado, .dx-lado > section.secao, .dx-duas > section.secao, .dx-atencao { min-width: 0; }
+  .dx-lado > section.secao { overflow-x: auto; }
+  .dx-prob > span { min-width: 0; overflow-wrap: anywhere; }
+  .dx-atencao .btn-acao.dx-ir { min-width: 0; }
+  .cab > div { min-width: 0; }
+  .cab h1, .cab p { overflow-wrap: anywhere; }
+  section.secao { grid-template-columns: minmax(0, 1fr); }
+  .agua-topo, .agua-sit, .agua-sit li, .secao-cab, .secao-cab > div { min-width: 0; }
+  .agua-sit li span, .secao-cab p { overflow-wrap: anywhere; }
+}

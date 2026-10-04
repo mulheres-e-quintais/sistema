@@ -130,7 +130,6 @@
   /* ---------- tela ---------- */
   const pct = (v, t) => t ? Math.round(v / t * 1000) / 10 : 0;
   const pctBR = x => x.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
-  const med = (exec, comp, total) => `<span class="medidor exec-med" title="executado e comprometido"><i style="width:${lim((exec + comp) / total * 100)}%;opacity:.35"></i><i style="width:${lim(exec / total * 100)}%"></i></span>`;
   /* composição do item em linguagem de gente (sem "1 × 14 × R$"): fica só no detalhe, não na tabela */
   const UNID = { diarias: ['diária', 'diárias'], locacao_veiculo: ['diária de veículo', 'diárias de veículo'], passagem_intercambio: ['passagem', 'passagens'], passagem_pedagogico: ['passagem', 'passagens'],
     eventos: ['evento', 'eventos'], quintais: ['quintal', 'quintais'], ajuda_apoio: ['ajuda de custo', 'ajudas de custo'], equipamento: ['unidade', 'unidades'] };

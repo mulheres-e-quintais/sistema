@@ -1,7 +1,7 @@
 /* Mulheres & Quintais — ajuda de cada tela: para que serve, como fazer e dúvidas comuns.
    Abre pelo botão "?" da barra (e pelo link "Precisa de ajuda?" na tela de entrada). */
 (function () {
-  const U = () => MQ.ui; const S = () => MQ.ui.S; const E = s => MQ.ui.esc(s);
+  const S = () => MQ.ui.S; const E = s => MQ.ui.esc(s);
 
   const A = {
     entrada: {
