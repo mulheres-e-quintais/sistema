@@ -17,7 +17,7 @@ const GIF = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
   const gravar = async (x) => p.evaluate(async x => { try { await MQ.ui.S.api.salvarKitItem(x); return ''; } catch (e) { return e.message; } }, x);
 
   // ---------- 1. texto malicioso no nome e na origem ----------
-  await como('coord_tecnico'); await campo();
+  await como('coord_geral'); await campo();
   const mal = '<img src=x onerror="window.__xss=1"><script>window.__xss=1</script>"\'';
   ok('nome e origem com código são aceitos como texto', await gravar({ item: 'Bomba ' + mal.slice(0, 60), unidade: 'un', valor_ref: 100, fonte: mal, preliminar: true, ativo: true }) === '');
   await p.evaluate(async () => { await MQ.ui.carregar(); MQ.ui.render(); }); await p.waitForTimeout(400);
@@ -108,8 +108,8 @@ const GIF = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
 
   // ---------- 7. cópia no aparelho para uso sem internet ----------
   await p.evaluate(async () => { await MQ.apiDemo.recomecar(); }); await p.reload(); await p.waitForSelector('.resumo'); await como('bolsista');
-  await p.waitForFunction(() => { const k = Object.keys(localStorage).find(x => /^mq-cache-/.test(x)); const c = k && JSON.parse(localStorage.getItem(k)); return c && (c.kitItens || []).length >= 9; }, null, { timeout: 4000 }).catch(() => {});   // a cópia é gravada no fim da carga
-  const cache = await p.evaluate(() => { const k = Object.keys(localStorage).find(x => /^mq-cache-/.test(x)); const c = k && JSON.parse(localStorage.getItem(k)); return c && Array.isArray(c.kitItens) ? c.kitItens.length : -1; });
+  await p.waitForFunction(() => { const k = 'mq-cache-' + MQ.ui.S.eu.id; const c = k && JSON.parse(localStorage.getItem(k)); return c && (c.kitItens || []).length >= 9; }, null, { timeout: 4000 }).catch(() => {});   // a cópia é gravada no fim da carga
+  const cache = await p.evaluate(() => { const k = 'mq-cache-' + MQ.ui.S.eu.id; const c = k && JSON.parse(localStorage.getItem(k)); return c && Array.isArray(c.kitItens) ? c.kitItens.length : -1; });
   ok('a lista de itens fica guardada no aparelho da bolsista', cache >= 9, cache);
   await p.evaluate(async () => { const S = MQ.ui.S; const semRede = () => { const e = new Error('sem internet'); e.semRede = true; throw e; }; S.api.listarEquipe = async () => semRede(); S.kitItens = null; await MQ.ui.carregar(); });
   ok('sem internet: a lista volta da cópia do aparelho', await p.evaluate(() => MQ.ui.S.semRede === true && (MQ.ui.S.kitItens || []).length >= 9));
@@ -129,29 +129,28 @@ const GIF = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
   await p.evaluate(f => MQ.campoUI.clique('campo-diag-novo', { dataset: { ficha: f } }), fb); await p.waitForSelector('#w-kit');
   const linhas0 = await p.locator('#w-kit [data-linha=kit]').count();
   for (let i = 0; i < linhas0; i++) { const l = p.locator('#w-kit [data-linha=kit]').nth(i); const nome = await l.locator('[name=kit_item]').inputValue(); await l.locator('[name=kit_item]').fill(''); await l.locator('[name=kit_item]').fill(nome); }
-  const vals = await p.evaluate(() => [...document.querySelectorAll('#w-kit [data-linha=kit]')].map(l => l.querySelector('[name=kit_item]').value + '=' + l.querySelector('[name=kit_valor]').value));
-  ok('redigitar o nome dos itens do plano antigo traz o preço dos que estão na lista', vals.some(v => /Caixa.*=502,84/.test(v)) && vals.some(v => /gotejamento=114,00/.test(v)), vals.join(' ; '));
-  ok('item fora da lista fica sem preço para a bolsista informar', vals.some(v => /Tela para canteiro=$/.test(v)), vals.join(' ; '));
-  const lc = p.locator('#w-kit [data-linha=kit]').filter({ has: p.locator('[name=kit_item]') }).nth(linhas0 - 1);
-  await lc.locator('[name=kit_valor]').fill('6,50');
-  const proj = await txt('#kit-proj');
-  ok('a projeção soma: 502,84 + 114,00 + 20 m × 6,50 = R$ 746,84', /746,84/.test(proj), proj.slice(0, 120));
-  ok('a projeção mostra quanto sobra do valor por quintal', /sobram R\$\s?4\.253,16/.test(proj), proj.slice(0, 160));
-  await p.locator('#w-kit [data-linha=kit]').first().locator('[name=kit_qtd]').fill('10');
-  ok('10 caixas d’água estouram o valor e a projeção avisa quanto passa', /Passa/.test(await txt('#kit-proj')) && await p.locator('#kit-proj .kit-proj.passou').count() === 1, (await txt('#kit-proj')).slice(0, 140));
-  await p.locator('#w-kit [data-linha=kit]').first().locator('[name=kit_qtd]').fill('1');
+  // 04/10/2026: a compra é feita por empresa contratada; a bolsista não vê nem informa preço
+  ok('a bolsista não tem campo de valor visível em nenhuma linha do kit', await p.locator('#w-kit input[name=kit_valor]:not([type=hidden])').count() === 0 && await p.locator('#w-kit input[type=hidden][name=kit_valor]').count() === linhas0);
+  ok('o formulário da bolsista não mostra projeção nem preço', await p.locator('#kit-proj').count() === 0 && !/R\$\s?\d/.test(await txt('#w-kit')));
+  ok('a lista de itens da bolsista não traz preço', await p.evaluate(() => [...document.querySelectorAll('#kit-lista option')].every(o => !/R\$/.test(o.label)) && !(MQ.ui.S.kitItens || []).some(k => 'valor_ref' in k)));
+  await p.locator('#w-kit [data-linha=kit]').first().locator('[name=kit_qtd]').fill('2');
   const antes = await p.evaluate(f => JSON.stringify(MQ.ui.S.diagnosticos.find(d => d.ficha_id === f).dados.kit), fb);
   for (let volta = 0; volta < 3; volta++) {
     await p.evaluate(() => { const fm = document.querySelector('#w-kit') && document.querySelector('#w-kit').closest('form'); if (!fm) return; const hoje = MQ.regras.hoje();
       fm.querySelectorAll('input[type=date]').forEach(i => { if (!i.value || i.value > hoje) { i.value = hoje; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); } });
       const grupos = {}; fm.querySelectorAll('input[type=radio]').forEach(r => { (grupos[r.name] = grupos[r.name] || []).push(r); });
       Object.values(grupos).forEach(g => { if (!g.some(r => r.checked)) { const r = g[g.length - 1]; r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); } });
-      fm.querySelectorAll('.tem-erro input:not([type=radio]):not([type=checkbox]):not([type=file]):not([type=date]), .tem-erro select').forEach(i => { if (!i.value) { i.value = i.tagName === 'SELECT' ? (i.options[1] || {}).value || '' : '1'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); } });
+      fm.querySelectorAll('.tem-erro input:not([type=radio]):not([type=checkbox]):not([type=file]):not([type=date]):not([type=hidden]), .tem-erro select').forEach(i => { if (!i.value) { i.value = i.tagName === 'SELECT' ? (i.options[1] || {}).value || '' : '1'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); } });
       [...fm.querySelectorAll('button[type=submit]')].pop().click(); }); await p.waitForTimeout(1500);
     if (!(await p.locator('#w-kit').count())) break;
   }
-  const depois = await p.evaluate(f => { const d = MQ.ui.S.diagnosticos.find(d => d.ficha_id === f); const fila = (MQ.ui.S.fila || []).find(i => i.tipo === 'diagnostico'); const k = (fila ? (fila.dados.dados || fila.dados).kit : d.dados.kit) || []; return { total: MQ.regras.totalKit(k), kit: k.map(x => x.item.slice(0, 12) + ':' + typeof x.valor + ':' + x.valor), ok: k.length >= 3 && k.every(x => typeof x.valor === 'number' && x.valor > 0), erro: [...document.querySelectorAll('#painel .tem-erro')].map(e => e.textContent.trim().slice(0, 50)).join(' / ') }; }, fb);
-  ok('o diagnóstico é enviado com o preço de cada item gravado como número', depois.ok && Math.abs(depois.total - 746.84) < 0.01, JSON.stringify(depois).slice(0, 170));
+  const depois = await p.evaluate(f => { const d = MQ.ui.S.diagnosticos.find(d => d.ficha_id === f); const fila = (MQ.ui.S.fila || []).find(i => i.tipo === 'diagnostico'); const k = (fila ? (fila.dados.dados || fila.dados).kit : d.dados.kit) || []; return { n: k.length, qtd: String((k[0] || {}).qtd), semValor: k.every(x => x.valor == null || x.valor === '') }; }, fb);
+  ok('o diagnóstico da bolsista é enviado com itens e quantidades, sem preço', depois.n >= 3 && /^2/.test(depois.qtd) && depois.semValor, JSON.stringify(depois));
+  await como('coord_geral'); await p.evaluate(f => MQ.ui.abrirPainel({ tipo: 'diag-ver', ficha: f }), fb); await p.waitForSelector('#painel .kit-proj');
+  const projG = await txt('#painel .kit-proj');
+  ok('a coordenação geral vê a projeção pelo preço de referência: 2 × 502,84 + 114,00 = R$ 1.119,68', /1\.119,68/.test(projG), projG.slice(0, 140));
+  ok('a projeção mostra quanto sobra do valor por quintal', /sobram R\$\s?3\.880,32/.test(projG), projG.slice(0, 160));
+  await p.evaluate(() => MQ.ui.fecharPainel());
 
   // ---------- 10. desempenho com lista grande ----------
   const perf = await p.evaluate(() => { const S = MQ.ui.S; S.kitItensSemBanco = false; S.kitItens = Array.from({ length: 500 }, (_, i) => ({ id: 'k' + i, item: 'Item de teste número ' + i, unidade: 'un', valor_ref: 1 + i, fonte: 'Fonte ' + i, preliminar: i % 2 === 0, ativo: true }));
@@ -164,7 +163,7 @@ const GIF = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
 
   // ---------- 11. celular ----------
   ({ ctx, p, errs, como, txt } = await novo({ width: 390, height: 780 }));
-  await como('coord_tecnico'); await p.evaluate(() => { MQ.ui.S.aba = 'campo'; MQ.ui.render(); }); await p.waitForSelector('.kit-itens');
+  await como('coord_geral'); await p.evaluate(() => { MQ.ui.S.aba = 'campo'; MQ.ui.render(); }); await p.waitForSelector('.kit-itens');
   const cel = await p.evaluate(() => { const de = document.documentElement; const b = [...document.querySelectorAll('.kit-itens button, .kit-itens input:not([type=hidden]):not([type=checkbox])')].filter(e => e.offsetParent);
     const semRotulo = [...document.querySelectorAll('.kit-item-form input:not([type=hidden])')].filter(i => !(i.labels && i.labels.length) && !i.getAttribute('aria-label')).length;
     const fonteMin = Math.min(...[...document.querySelectorAll('.kit-itens *')].filter(e => e.childNodes.length && [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) && e.offsetParent).map(e => parseFloat(getComputedStyle(e).fontSize)));

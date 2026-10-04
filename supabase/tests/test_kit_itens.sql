@@ -3,11 +3,21 @@
 \pset format unaligned
 \pset tuples_only on
 truncate res;
-select user_id as ct from public.equipe where papel in ('coord_tecnico', 'coord_geral') and status = 'ativa' and user_id is not null order by papel desc limit 1 \gset
+-- 04/10/2026: preço do kit é só da coordenação geral (lê e altera); os outros perfis recebem nome e unidade pela função kit_itens_nomes
+select user_id as ct from public.equipe where papel = 'coord_geral' and status = 'ativa' and user_id is not null limit 1 \gset
 select user_id as bo from public.equipe where papel in ('articulacao', 'apoio') and status = 'ativa' and user_id is not null limit 1 \gset
 \set CT '''' :ct ''''
 \set BO '''' :bo ''''
-select t('bolsista lê a lista de itens', :BO, $q$do $$ begin if (select count(*) from public.kit_itens) < 9 then raise exception 'lista vazia'; end if; end $$$q$, 'ok');
+select t('bolsista recebe nome e unidade dos itens', :BO, $q$do $$ begin if (select count(*) from public.kit_itens_nomes() where item is not null and unidade is not null) < 9 then raise exception 'lista vazia'; end if; end $$$q$, 'ok');
+select t('bolsista não vê nenhuma linha da tabela de preços', :BO, $q$do $$ begin if (select count(*) from public.kit_itens) > 0 then raise exception 'viu preço'; end if; end $$$q$, 'ok');
+-- (a equipe da suíte não tem coordenação técnica com login: a regra é conferida no próprio banco)
+select t('a regra de leitura dos preços cita só a coordenação geral', null, $q$do $$ begin perform set_config('role', 'none', true);
+  if (select pg_get_expr(polqual, polrelid) from pg_policy where polname = 'kit_itens_ler') !~ 'coord_geral' or (select pg_get_expr(polqual, polrelid) from pg_policy where polname = 'kit_itens_ler') ~ 'coord_tecnico|is not null' then raise exception 'regra aberta'; end if; end $$$q$, 'ok');
+select t('a função de alterar preço não aceita a coordenação técnica', null, $q$do $$ begin perform set_config('role', 'none', true);
+  if (select prosrc from pg_proc where proname = 'salvar_kit_item') ~ 'coord_tecnico' then raise exception 'aceita técnica'; end if; end $$$q$, 'ok');
+select t('a função de nomes não devolve preço nem fonte', null, $q$do $$ begin perform set_config('role', 'none', true);
+  if (select pg_get_function_result(p.oid) from pg_proc p where p.proname = 'kit_itens_nomes') ~* 'valor|fonte|preliminar' then raise exception 'devolve preço'; end if; end $$$q$, 'ok');
+select t('quem não entrou não recebe nem os nomes', null, $q$select count(*) from public.kit_itens_nomes()$q$, 'permission denied');
 select t('quem não entrou não lê a lista', null, $q$do $$ begin if (select count(*) from public.kit_itens) > 0 then raise exception 'vazou'; end if; end $$$q$, 'permission denied');
 select t('bolsista não altera preço pela função', :BO, $q$select public.salvar_kit_item(null, 'Arame liso', 'm', 2, null, true, true)$q$, 'coordenação');
 select t('bolsista não grava direto na tabela', :BO, $q$update public.kit_itens set valor_ref = 1$q$, 'permission denied');
@@ -53,11 +63,13 @@ select t('item pode sair da lista (inativo) e voltar, sem apagar', :CG, $q$do $$
   if not (select ativo from public.kit_itens where id = i) then raise exception 'não voltou'; end if; end $$$q$, 'ok');
 select t('cada inclusão fica no histórico com quem fez', :CG, $q$do $$ declare i uuid; begin i := public.salvar_kit_item(null, 'Item auditado', 'un', 5, null, true, true);
   if not exists (select 1 from public.auditoria a where a.tabela = 'kit_itens' and a.registro_id = i and a.acao = 'INSERT' and a.por = public.meu_id()) then raise exception 'sem histórico'; end if; end $$$q$, 'ok');
--- todos os papéis da equipe leem a lista; ninguém fora da coordenação altera
+-- todos os papéis recebem os nomes; só a coordenação geral vê a tabela com preço e altera
 do $$ declare r record; begin
   for r in select distinct on (papel) papel, user_id from public.equipe where status = 'ativa' and user_id is not null order by papel loop
-    perform t('papel ' || r.papel || ' lê a lista', r.user_id, 'do $x$ begin if (select count(*) from public.kit_itens) < 9 then raise exception ''não leu''; end if; end $x$', 'ok');
-    if r.papel not in ('coord_geral', 'coord_tecnico') then
+    perform t('papel ' || r.papel || ' recebe os nomes dos itens', r.user_id, 'do $x$ begin if (select count(*) from public.kit_itens_nomes()) < 9 then raise exception ''não recebeu''; end if; end $x$', 'ok');
+    perform t('papel ' || r.papel || case when r.papel = 'coord_geral' then ' vê os preços' else ' não vê preço' end, r.user_id,
+      'do $x$ begin if (select count(*) from public.kit_itens) ' || case when r.papel = 'coord_geral' then '< 9' else '> 0' end || ' then raise exception ''acesso errado''; end if; end $x$', 'ok');
+    if r.papel <> 'coord_geral' then
       perform t('papel ' || r.papel || ' não altera preço', r.user_id, 'select public.salvar_kit_item(null, ''Arame'', ''m'', 2, null, true, true)', 'coordenação');
     end if;
   end loop; end $$;

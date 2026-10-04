@@ -44,9 +44,10 @@ describe('kit do quintal', () => {
     const e = R.validarDiagnostico(dg({ kit: [{ item: 'Caixa', qtd: '2', valor: 4000 }, { item: 'Ajuste', qtd: '-1', valor: 4000 }] }));
     assert.match(e.kit, /quantidade de Ajuste não pode ser negativa/);
   });
-  test('valor negativo é recusado; item sem valor continua pedindo o valor', () => {
+  test('valor negativo é recusado; item sem valor passa (04/10/2026: quem faz o diagnóstico não informa preço)', () => {
     assert.match(R.validarDiagnostico(dg({ kit: [{ item: 'Desconto', qtd: '1', valor: -50 }] })).kit, /valor de Desconto não pode ser negativo/);
-    assert.match(R.validarDiagnostico(dg({ kit: [{ item: 'Mudas', qtd: '1', valor: null }] })).kit, /valor estimado/);
+    assert.equal(R.validarDiagnostico(dg({ kit: [{ item: 'Mudas', qtd: '1', valor: null }] })).kit, undefined);
+    assert.match(R.validarDiagnostico(dg({ kit: [{ item: 'Mudas', qtd: '', valor: null }] })).kit, /Informe a quantidade de Mudas/);
   });
   test('kit bom passa; teto conferido em centavos (5.000,00 passa; 5.000,01 não)', () => {
     assert.equal(R.validarDiagnostico(dg()).kit, undefined);

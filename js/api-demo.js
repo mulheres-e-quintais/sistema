@@ -312,10 +312,11 @@
       gravar(); return c.slice(0, 4) + '-' + c.slice(4);
     },
     /* itens do kit com preço de referência (mesmas regras do 51_kit_itens.sql) */
-    async listarKitItens() { const d = ler(); if (!d.kitItens) { d.kitItens = MQ.KIT_ITENS.map(x => Object.assign({ id: uid(), atualizado_em: '2026-10-03T12:00:00.000Z', atualizado_por: null }, x)); gravar(); } return copia(d.kitItens).sort((a, b) => a.item.localeCompare(b.item, 'pt-BR')); },
+    async listarKitItens() { const d = ler(); if (!d.kitItens) { d.kitItens = MQ.KIT_ITENS.map(x => Object.assign({ id: uid(), atualizado_em: '2026-10-03T12:00:00.000Z', atualizado_por: null }, x)); gravar(); } const l = copia(d.kitItens).sort((a, b) => a.item.localeCompare(b.item, 'pt-BR')); const eu = euMesmo();
+      return eu && eu.papel === 'coord_geral' ? l : l.map(k => ({ id: k.id, item: k.item, unidade: k.unidade, ativo: k.ativo })); },   // preço: só a coordenação geral (51_kit_itens.sql)
     async salvarKitItem(x) {
       const d = ler(); const eu = euMesmo(); if (!d.kitItens) await this.listarKitItens();
-      if (!eu || !['coord_geral', 'coord_tecnico'].includes(eu.papel)) throw falha('Quem altera a lista de itens do kit é a coordenação.');
+      if (!eu || eu.papel !== 'coord_geral') throw falha('Quem altera a lista de itens do kit é a coordenação geral.');
       const item = String(x.item || '').trim(), un = String(x.unidade || '').trim(), v = Number(x.valor_ref);
       if (item.length < 2 || item.length > 120) throw falha('Escreva o nome do item (de 2 a 120 letras).');
       if (!un || un.length > 20) throw falha('Informe a unidade (un, m, m², saco...).');

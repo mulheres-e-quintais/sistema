@@ -388,14 +388,15 @@
   R.kitComRef = (kit, achar) => (Array.isArray(kit) ? kit : []).map(x => {
     if (!x || (x.valor != null && x.valor !== '' && Number(x.valor) > 0)) return x;
     const r = achar && achar(x.item); return r && r.valor_ref > 0 ? Object.assign({}, x, { valor: Number(r.valor_ref), ref: true }) : x; });
-  /* confere o kit item por item (as mesmas travas do banco, 45): valor ≥ 0, quantidade > 0 em item com valor */
+  /* confere o kit item por item (as mesmas travas do banco, 45): valor ≥ 0 e quantidade > 0.
+     O valor NÃO é obrigatório (04/10/2026): quem faz o diagnóstico não vê nem informa preço; a compra é feita por empresa
+     contratada e a projeção da coordenação geral usa o preço de referência da lista de itens. */
   R.erroKit = kit => {
     for (const x of (kit || [])) {
       if (!x || !String(x.item || '').trim()) continue;
       const nome = String(x.item).trim().slice(0, 60), q = R.numBR(x.qtd), v = x.valor == null || x.valor === '' ? null : Number(x.valor);
       if (v != null && (isNaN(v) || v < 0)) return 'O valor de ' + nome + ' não pode ser negativo.';
       if (q != null && q < 0) return 'A quantidade de ' + nome + ' não pode ser negativa.';
-      if (!(v > 0)) return 'Informe o valor estimado de cada item (R$ por unidade): é a projeção do investimento no quintal.';
       if (!(q > 0)) return 'Informe a quantidade de ' + nome + ' (um número maior que zero).';
     }
     return null;

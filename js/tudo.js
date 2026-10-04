@@ -756,14 +756,15 @@ MQ.ORCAMENTO = {
   R.kitComRef = (kit, achar) => (Array.isArray(kit) ? kit : []).map(x => {
     if (!x || (x.valor != null && x.valor !== '' && Number(x.valor) > 0)) return x;
     const r = achar && achar(x.item); return r && r.valor_ref > 0 ? Object.assign({}, x, { valor: Number(r.valor_ref), ref: true }) : x; });
-  /* confere o kit item por item (as mesmas travas do banco, 45): valor ≥ 0, quantidade > 0 em item com valor */
+  /* confere o kit item por item (as mesmas travas do banco, 45): valor ≥ 0 e quantidade > 0.
+     O valor NÃO é obrigatório (04/10/2026): quem faz o diagnóstico não vê nem informa preço; a compra é feita por empresa
+     contratada e a projeção da coordenação geral usa o preço de referência da lista de itens. */
   R.erroKit = kit => {
     for (const x of (kit || [])) {
       if (!x || !String(x.item || '').trim()) continue;
       const nome = String(x.item).trim().slice(0, 60), q = R.numBR(x.qtd), v = x.valor == null || x.valor === '' ? null : Number(x.valor);
       if (v != null && (isNaN(v) || v < 0)) return 'O valor de ' + nome + ' não pode ser negativo.';
       if (q != null && q < 0) return 'A quantidade de ' + nome + ' não pode ser negativa.';
-      if (!(v > 0)) return 'Informe o valor estimado de cada item (R$ por unidade): é a projeção do investimento no quintal.';
       if (!(q > 0)) return 'Informe a quantidade de ' + nome + ' (um número maior que zero).';
     }
     return null;
@@ -1161,10 +1162,11 @@ MQ.ORCAMENTO = {
       gravar(); return c.slice(0, 4) + '-' + c.slice(4);
     },
     /* itens do kit com preço de referência (mesmas regras do 51_kit_itens.sql) */
-    async listarKitItens() { const d = ler(); if (!d.kitItens) { d.kitItens = MQ.KIT_ITENS.map(x => Object.assign({ id: uid(), atualizado_em: '2026-10-03T12:00:00.000Z', atualizado_por: null }, x)); gravar(); } return copia(d.kitItens).sort((a, b) => a.item.localeCompare(b.item, 'pt-BR')); },
+    async listarKitItens() { const d = ler(); if (!d.kitItens) { d.kitItens = MQ.KIT_ITENS.map(x => Object.assign({ id: uid(), atualizado_em: '2026-10-03T12:00:00.000Z', atualizado_por: null }, x)); gravar(); } const l = copia(d.kitItens).sort((a, b) => a.item.localeCompare(b.item, 'pt-BR')); const eu = euMesmo();
+      return eu && eu.papel === 'coord_geral' ? l : l.map(k => ({ id: k.id, item: k.item, unidade: k.unidade, ativo: k.ativo })); },   // preço: só a coordenação geral (51_kit_itens.sql)
     async salvarKitItem(x) {
       const d = ler(); const eu = euMesmo(); if (!d.kitItens) await this.listarKitItens();
-      if (!eu || !['coord_geral', 'coord_tecnico'].includes(eu.papel)) throw falha('Quem altera a lista de itens do kit é a coordenação.');
+      if (!eu || eu.papel !== 'coord_geral') throw falha('Quem altera a lista de itens do kit é a coordenação geral.');
       const item = String(x.item || '').trim(), un = String(x.unidade || '').trim(), v = Number(x.valor_ref);
       if (item.length < 2 || item.length > 120) throw falha('Escreva o nome do item (de 2 a 120 letras).');
       if (!un || un.length > 20) throw falha('Informe a unidade (un, m, m², saco...).');
@@ -2701,7 +2703,16 @@ MQ.ORCAMENTO = {
     async salvarObservador(x) { const { data, error } = await sb.rpc('salvar_observador', { p_id: x.id || null, p_nome: x.nome, p_email: x.email, p_orgao: x.orgao, p_cargo: x.cargo || null, p_ativo: x.ativo !== false }); if (error) throw erro(error); return data; },
     async gerarCodigoObservador(id) { const { data, error } = await sb.rpc('gerar_codigo_observador', { p_id: id }); if (error) throw erro(error); return data; },
     /* itens do kit com preço de referência (51_kit_itens.sql) */
-    async listarKitItens() { const { data, error } = await todas(() => sb.from('kit_itens').select('*', CT).order('item').order('id')); if (error) throw erro(error); return data; },
+    /* preços do kit: só a coordenação geral lê a tabela; os outros perfis recebem só nome e unidade (função kit_itens_nomes do 51) */
+    async listarKitItens() {
+      if (euCache && euCache.papel !== 'coord_geral') {
+        const r = await sb.rpc('kit_itens_nomes');
+        if (!r.error) return (r.data || []).map(k => ({ id: k.id, item: k.item, unidade: k.unidade, ativo: k.ativo }));
+        if (!/PGRST202|42883|Could not find the function|does not exist/i.test(String(r.error.code) + ' ' + String(r.error.message))) throw erro(r.error);
+      }   // banco ainda com o 51 antigo: lê a tabela e tira o preço antes de entregar à tela
+      const { data, error } = await todas(() => sb.from('kit_itens').select('*', CT).order('item').order('id')); if (error) throw erro(error);
+      return euCache && euCache.papel !== 'coord_geral' ? data.map(k => ({ id: k.id, item: k.item, unidade: k.unidade, ativo: k.ativo })) : data;
+    },
     async salvarKitItem(x) { const { data, error } = await sb.rpc('salvar_kit_item', { p_id: x.id || null, p_item: x.item, p_unidade: x.unidade, p_valor: x.valor_ref, p_fonte: x.fonte || null, p_preliminar: !!x.preliminar, p_ativo: x.ativo !== false }); if (error) throw erro(error); return data; },
     async listarAgua() { const { data, error } = await todas(() => sb.from('agua_situacoes').select('*', CT).order('registrado_em', { ascending: true }).order('id')); if (error) throw erro(error); return data; },
     async registrarSituacaoAgua(ficha_id, situacao, obs) { const { data, error } = await sb.rpc('registrar_situacao_agua', { p_ficha: ficha_id, p_situacao: situacao, p_obs: obs }); if (error) throw erro(error); return data; },
@@ -4572,20 +4583,29 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     <input name="fam_ocup" placeholder="Estuda / trabalha?" value="${E(x.ocupacao || '')}" aria-label="Estuda ou trabalha" maxlength="120">
     <label class="mini-chk"><input type="checkbox" name="fam_ajuda" ${x.ajuda ? 'checked' : ''}>Ajuda no quintal</label>
     <button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`;
-  const linhaKit = (x = {}) => `<div class="linha-din kit kit5" data-linha="kit">
+  /* Preços do kit (decisão de 04/10/2026): a compra é feita por empresa contratada; o valor é só referência e
+     aparece só para a coordenação geral. Os outros perfis escolhem item, quantidade e para quê. O valor que já
+     estava gravado num plano segue escondido no formulário, para não se perder quando outra pessoa edita. */
+  const vePreco = () => ((S().eu || {}).papel === 'coord_geral');
+  const linhaKit = (x = {}) => !vePreco() ? `<div class="linha-din kit" data-linha="kit">
+    <input name="kit_item" list="kit-lista" autocomplete="off" placeholder="Item (escolha na lista)" value="${E(x.item || '')}" aria-label="Item" maxlength="120"><input name="kit_qtd" placeholder="Qtd." inputmode="decimal" value="${E(x.qtd_txt || x.qtd || '')}" aria-label="Quantidade" maxlength="40">
+    <input type="hidden" name="kit_valor" value="${E(x.valor != null ? String(x.valor).replace('.', ',') : '')}">
+    <input name="kit_para" placeholder="Para quê" value="${E(x.para || '')}" aria-label="Para quê" maxlength="200"><button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`
+  : `<div class="linha-din kit kit5" data-linha="kit">
     <input name="kit_item" list="kit-lista" autocomplete="off" placeholder="Item (escolha na lista)" value="${E(x.item || '')}" aria-label="Item" maxlength="120"><input name="kit_qtd" placeholder="Qtd." inputmode="decimal" value="${E(x.qtd_txt || x.qtd || '')}" aria-label="Quantidade" maxlength="40">
     <input name="kit_valor" placeholder="R$ unid." inputmode="decimal" value="${E(x.valor != null ? String(x.valor).replace('.', ',') : '')}" aria-label="Valor estimado de cada unidade (R$)" maxlength="20">
     <input name="kit_para" placeholder="Para quê" value="${E(x.para || '')}" aria-label="Para quê" maxlength="200"><button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`;
   /* coordenação: valor do kit por quintal e o total projetado pelos planos */
   function blocoKitPar() {
-    const lim = +((S().kitPar || {}).valor_quintal) || 0;
+    const lim = +((S().kitPar || {}).valor_quintal) || 0; const nQ = MQ.VAGAS_UF * MQ.UFS.length;
+    const cab = `<div class="bloco kit-par"><div><h3>Investimento nos quintais (kits)</h3>
+        <p class="kit-valor"><span class="small muted">Valor do kit por quintal</span><b class="num">${brl(lim)}</b><span class="small muted">definido no plano de trabalho · ${brl(lim * nQ)} para os ${nQ} quintais</span></p>`;
+    if (!vePreco()) return cab + '<p class="small muted">A compra dos kits é feita por empresa contratada. Os preços de referência e a projeção de cada plano aparecem só para a coordenação geral.</p></div></div>';
     const planos = diagnosticos().filter(d => !d.sem_agua && d.situacao !== 'devolvido');
     const tots = planos.map(d => totalKit(comRef(d.dados && d.dados.kit))).filter(v => v > 0);
     const soma = tots.reduce((a, b) => a + b, 0); const acima = lim ? tots.filter(v => v > lim).length : 0;
-    return `<div class="bloco kit-par"><div><h3>Investimento nos quintais (kits)</h3>
-        <p class="kit-valor"><span class="small muted">Valor do kit por quintal</span><b class="num">${brl(lim)}</b><span class="small muted">definido no plano de trabalho · ${brl(lim * 200)} para os 200 quintais</span></p>
-        <p class="small muted">${tots.length ? `${tots.length} plano${tots.length > 1 ? 's' : ''} com valores: <b>${brl(soma)}</b> projetados · média ${brl(soma / tots.length)} por quintal${acima ? ` · <b style="color:var(--crit)">${acima} acima do valor por quintal</b>` : ''}.` : 'Nenhum plano com valores ainda.'}
-        Quem faz o diagnóstico vê a projeção do kit e o quanto falta ou passa deste valor.</p></div></div>`;
+    return cab + `<p class="small muted">${tots.length ? `${tots.length} plano${tots.length > 1 ? 's' : ''} com valores: <b>${brl(soma)}</b> projetados · média ${brl(soma / tots.length)} por quintal${acima ? ` · <b style="color:var(--crit)">${acima} acima do valor por quintal</b>` : ''}.` : 'Nenhum plano com valores ainda.'}
+        A compra é feita por empresa contratada: estes valores são só referência e aparecem só para a coordenação geral.</p></div></div>`;
   }
   /* projeção do investimento no quintal: soma de quantidade × valor estimado de cada item */
   const numBR = t => R.numBR(t);   // 1.250,50 → 1250.5 · 1.250 → 1250 · 12.50 → 12.5
@@ -4613,7 +4633,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
   /* plano do quintal para imprimir: identificação, objetivo, kit com valores, projeção, cronograma e croqui */
   function htmlPlano(f, dg, urlCroqui) {
-    const d = Object.assign({}, dg, dg.dados || {}); const kit = comRef(d.kit); const tot = totalKit(kit); const lim = +((S().kitPar || {}).valor_quintal) || 0;
+    const veP = vePreco(); const d = Object.assign({}, dg, dg.dados || {}); const kit = veP ? comRef(d.kit) : (d.kit || []); const tot = totalKit(kit); const lim = +((S().kitPar || {}).valor_quintal) || 0;
     const rot = (lista, k) => (lista.find(x => x[0] === k) || [0, k])[1];
     const refs = kit.filter(x => x.ref).length;
     const tb = (cab, ls) => ls.length ? `<table><thead><tr>${cab.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${ls.map(l => `<tr>${l.map(c => `<td>${E(c ?? '')}</td>`).join('')}</tr>`).join('')}</tbody></table>` : '<p>—</p>';
@@ -4627,9 +4647,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <dt>Área do quintal</dt><dd>${d.area_m2 != null ? E(d.area_m2) + ' m²' : '—'}</dd><dt>Situação do plano</dt><dd>${dg.situacao === 'aprovado' ? 'Aprovado' : dg.situacao === 'devolvido' ? 'Devolvido para correção' : 'Em análise'}</dd>
         <dt>Objetivo</dt><dd>${E((d.objetivos || []).map(k => rot(MQ.DIAG.objetivos, k)).join(', '))}</dd><dt>Em 12 meses</dt><dd>${E(d.frase_objetivo || '')}</dd>
         <dt>Lote e mês previsto</dt><dd>${d.lote ? 'Lote ' + E(d.lote) : '—'} · ${E(d.mes_implantacao || '')}</dd></dl>
-      <h2>Kit e projeção do investimento</h2>${tb(['Item', 'Qtd.', 'R$ unid.', 'Subtotal', 'Para quê'], kit.map(x => [x.item, x.qtd_txt || x.qtd, x.valor != null ? brl(x.valor) + (x.ref ? ' (ref.)' : '') : '—', x.valor != null ? brl(totalKit([x])) : '—', x.para]))}
+      ${!veP ? `<h2>Kit</h2>${tb(['Item', 'Qtd.', 'Para quê'], kit.map(x => [x.item, x.qtd_txt || x.qtd, x.para]))}` : `<h2>Kit e projeção do investimento</h2>${tb(['Item', 'Qtd.', 'R$ unid.', 'Subtotal', 'Para quê'], kit.map(x => [x.item, x.qtd_txt || x.qtd, x.valor != null ? brl(x.valor) + (x.ref ? ' (ref.)' : '') : '—', x.valor != null ? brl(totalKit([x])) : '—', x.para]))}
       <p class="tot"><b>Projeção do investimento no quintal: ${brl(tot)}</b>${lim ? ` · valor por quintal: ${brl(lim)}` : ''}</p>
-      <p class="obs">Valores estimados para planejamento; não são o preço da compra.${refs ? ' Os itens marcados com "ref." usam o preço de referência da lista de itens do kit.' : ''}</p>
+      <p class="obs">Valores de referência para planejamento; a compra é feita por empresa contratada e o preço da compra é outro.${refs ? ' Os itens marcados com "ref." usam o preço de referência da lista de itens do kit.' : ''}</p>`}
       <h2>Cronograma</h2>${tb(['O que', 'Início', 'Fim', 'Quem'], (d.cronograma || []).map(x => [x.oque, x.inicio, x.fim, x.quem]))}
       <h2>Croqui do quintal</h2>${urlCroqui ? `<img src="${E(urlCroqui)}" alt="Croqui do quintal">` : '<p>Sem foto do croqui neste diagnóstico.</p>'}
       <div class="ass"><div>Beneficiária</div><div>Quem fez a visita</div><div>Coordenação técnica</div></div></body></html>`;
@@ -4646,11 +4666,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
   /* coordenação: lista de itens do kit com preço de referência (51_kit_itens.sql) */
   function blocoKitItens() {
-    const s = S(); const pode = R.decideCampo(s.eu.papel); const semTabela = s.kitItensSemBanco || !(s.kitItens && s.kitItens.length);
+    if (!vePreco()) return '';   // lista com preços: só a coordenação geral
+    const s = S(); const pode = true; const semTabela = s.kitItensSemBanco || !(s.kitItens && s.kitItens.length);
     const lista = (semTabela ? MQ.KIT_ITENS : s.kitItens).slice().sort((a, b) => String(a.item).localeCompare(String(b.item), 'pt-BR'));
     const prelim = lista.filter(x => x.preliminar && x.ativo !== false).length;
     return `<div class="bloco kit-itens"><h3>Itens do kit e preços de referência</h3>
-      <p class="small muted">Quem faz o diagnóstico escolhe o item nesta lista e o preço entra sozinho na projeção do quintal. ${prelim ? `<b>${prelim} preço${prelim > 1 ? 's são' : ' é'} estimativa preliminar</b>, pesquisada na internet: troque pelo valor da cotação ou da ata de preços.` : 'Todos os preços foram confirmados pela coordenação.'}</p>
+      <p class="small muted">Quem faz o diagnóstico escolhe o item nesta lista, <b>sem ver o preço</b>. A compra é feita por empresa contratada: o preço aqui é só referência, entra na projeção de cada plano e aparece só para a coordenação geral. ${prelim ? `<b>${prelim} preço${prelim > 1 ? 's são' : ' é'} estimativa preliminar</b>, pesquisada na internet: troque pelo valor da cotação ou da ata de preços.` : 'Todos os preços foram confirmados pela coordenação.'}</p>
       <div class="quadro-scroll" style="display:block"><table class="quadro tab-kit-itens"><thead><tr><th>Item</th><th>Unidade</th><th class="num">Preço de referência</th><th>Situação</th><th>De onde veio</th>${pode && !semTabela ? '<th></th>' : ''}</tr></thead>
         <tbody>${lista.map(x => `<tr${x.ativo === false ? ' class="apagado"' : ''}><td data-rot="Item"><b>${E(x.item)}</b></td><td data-rot="Unidade">${E(x.unidade)}</td><td class="num" data-rot="Preço de referência">${brl(x.valor_ref)}</td>
           <td data-rot="Situação">${x.ativo === false ? '<span class="chip off">Fora da lista</span>' : x.preliminar ? '<span class="chip pend">Estimativa preliminar</span>' : '<span class="chip ok">Confirmado</span>'}</td><td data-rot="De onde veio" class="small">${E(x.fonte || '—')}</td>
@@ -4774,12 +4795,13 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         </fieldset>
         <fieldset><legend>10. Kit escolhido</legend>
           <p class="small muted" style="margin-top:-6px">Só itens da lista aprovada pela coordenação, sem passar do valor por quintal. Sem irrigação, comece pelos itens de água (caixa d’água, gotejamento) e pela cobertura do solo.</p>
-          <datalist id="kit-lista">${MQ.kitItens().map(k => `<option value="${E(k.item)}" label="${E(brl(k.valor_ref) + ' por ' + k.unidade)}"></option>`).join('')}</datalist>
-          <p class="dica kit-dica">Escolha o item na lista: o preço de referência entra sozinho e você pode ajustar ao preço do seu estado. É estimativa para planejar, não é o preço da compra. Item fora da lista também pode: digite o nome e o valor.</p>
-          <div class="kit-cab" aria-hidden="true"><span>Item</span><span>Qtd.</span><span>R$ unid.</span><span>Para quê</span></div>
+          <datalist id="kit-lista">${MQ.kitItens().map(k => `<option value="${E(k.item)}" label="${E(vePreco() ? brl(k.valor_ref) + ' por ' + k.unidade : 'por ' + k.unidade)}"></option>`).join('')}</datalist>
+          ${vePreco() ? `<p class="dica kit-dica">Escolha o item na lista: o preço de referência entra sozinho e pode ser ajustado. É só referência para planejar: a compra é feita por empresa contratada. Item fora da lista também pode: digite o nome e o valor.</p>
+          <div class="kit-cab" aria-hidden="true"><span>Item</span><span>Qtd.</span><span>R$ unid.</span><span>Para quê</span></div>`
+          : '<p class="dica kit-dica">Escolha o item na lista e informe a quantidade e para que serve. Item fora da lista também pode: digite o nome. Não é preciso informar preço: a compra é feita por empresa contratada.</p>'}
           <div id="w-kit" class="linhas">${(d.kit && d.kit.length ? d.kit : [{}]).map(linhaKit).join('')}</div>
           <button type="button" class="btn-add" data-acao="campo-linha-add" data-tipo="kit"><span aria-hidden="true">+</span> Item</button>
-          <div id="kit-proj">${projKit(d.kit)}</div></fieldset>
+          ${vePreco() ? `<div id="kit-proj">${projKit(d.kit)}</div>` : ''}</fieldset>
         <fieldset><legend>11. Cronograma</legend>
           <div class="linhas">${(d.cronograma && d.cronograma.length ? d.cronograma : [{}]).map(linhaCron).join('')}</div>
           <button type="button" class="btn-add" data-acao="campo-linha-add" data-tipo="cron"><span aria-hidden="true">+</span> Atividade</button>
@@ -4876,8 +4898,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           ${dl([['Práticas', (d.praticas || []).map(k => rot(MQ.DIAG.praticas, k)).join(', ')], ['Horas por dia', d.horas_dia], ['Participa de', (d.participa || []).map(k => rot(MQ.DIAG.participa, k)).join(', ')], ['Dificuldades', d.dificuldades], ['Quer', d.sonhos]])}</div>
         ${dg.sem_agua ? '<div class="aviso erro">Sem água que dure na seca: não há plano nem kit. Encaminhar para programa de cisternas.</div>' : `
         <div class="bloco"><h3>Plano do quintal</h3>${dl([['Objetivo', (d.objetivos || []).map(k => rot(MQ.DIAG.objetivos, k)).join(', ')], ['Em 12 meses', d.frase_objetivo], ['Lote', d.lote ? 'Lote ' + d.lote : null], ['Mês previsto', d.mes_implantacao]])}
-          <h3 style="margin-top:8px">Kit</h3>${tab(['Item', 'Qtd.', 'R$ unid.', 'Subtotal', 'Para quê'], comRef(d.kit).map(x => [x.item, x.qtd_txt || x.qtd, x.valor != null ? brl(x.valor) + (x.ref ? ' (ref.)' : '') : '—', x.valor != null ? brl(totalKit([x])) : '—', x.para]))}
-          ${projKit(comRef(d.kit))}
+          <h3 style="margin-top:8px">Kit</h3>${!vePreco() ? tab(['Item', 'Qtd.', 'Para quê'], (d.kit || []).map(x => [x.item, x.qtd_txt || x.qtd, x.para]))
+            : tab(['Item', 'Qtd.', 'R$ unid.', 'Subtotal', 'Para quê'], comRef(d.kit).map(x => [x.item, x.qtd_txt || x.qtd, x.valor != null ? brl(x.valor) + (x.ref ? ' (ref.)' : '') : '—', x.valor != null ? brl(totalKit([x])) : '—', x.para])) + projKit(comRef(d.kit))}
           ${blocoCroqui(dg)}
           <h3 style="margin-top:8px">Cronograma</h3>${tab(['O que', 'Início', 'Fim', 'Quem'], (d.cronograma || []).map(x => [x.oque, x.inicio, x.fim, x.quem]))}</div>`}
         <div class="bloco"><h3>Fotos</h3><div class="acoes">${(dg.fotos || []).map((x, i) => `<button class="btn peq" data-acao="ficha-foto" data-path="${E(x)}">${x === 'exemplo' ? 'Foto de exemplo' : 'Foto ' + (i + 1)}</button>`).join('') || '<span class="muted small">Sem fotos enviadas.</span>'}</div><div id="fi-foto-vista"></div></div>
@@ -5163,8 +5185,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   document.addEventListener('input', ev => {
     const t = ev.target; if (!t.matches || !t.matches('[name=kit_qtd],[name=kit_valor],[name=kit_item]')) return;
-    const f = t.form; const box = f && f.querySelector('#kit-proj'); if (!box) return;
+    const f = t.form; const box = f && f.querySelector('#kit-proj');
     const lin = t.closest('[data-linha="kit"]');
+    if (!box) {   // perfil que não vê preço: só mostra a unidade do item escolhido
+      if (lin && t.name === 'kit_item') { const ref = MQ.kitItem(t.value); lin.querySelector('[name=kit_qtd]').placeholder = ref ? 'Qtd. (' + ref.unidade + ')' : 'Qtd.'; }
+      return;
+    }
     if (lin && t.name === 'kit_valor') delete t.dataset.auto;   // a pessoa digitou o valor: não se mexe mais nele
     if (lin && t.name === 'kit_item') {
       const ref = MQ.kitItem(t.value), cv = lin.querySelector('[name=kit_valor]'), cq = lin.querySelector('[name=kit_qtd]');
@@ -10069,15 +10095,15 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       intro: 'As 5 visitas de cada quintal: diagnóstico e plano, implantação, 2 acompanhamentos e avaliação final. São até 200 dias de campo por estado.',
       tarefas: [
         ['Agendar uma visita', ['Quem agenda é a bolsista do estado: na tela dela, em <b>Visitas e diagnósticos</b>, toque em <b>+ Agendar visita</b>.', 'Escolha o quintal, a etapa, a data e quem vai (só aparece quem está habilitada).', 'Toque em <b>Agendar</b>. A coordenação muda a data ou a pessoa depois, pelo roteiro.']],
-        ['Aprovar o plano do quintal', ['Em <b>Planos para você aprovar</b>, abra o diagnóstico.', 'Confira fotos, croqui, kit (até R$ 5.000) e cronograma. Item sem valor aparece com o preço de referência, marcado (ref.).', 'Toque em <b>Aprovar</b>, ou escreva o motivo e toque em <b>Devolver para correção</b>.']],
+        ['Aprovar o plano do quintal', ['Em <b>Planos para você aprovar</b>, abra o diagnóstico.', 'Confira fotos, croqui, itens do kit e cronograma. Os preços de referência e a projeção do investimento aparecem só para a coordenação geral: a compra é feita por empresa contratada.', 'Toque em <b>Aprovar</b>, ou escreva o motivo e toque em <b>Devolver para correção</b>.']],
         ['Mudar ou cancelar uma visita', ['Abra a visita no roteiro.', 'Toque em <b>Mudar data ou pessoa</b>, ou em <b>Cancelar esta visita</b>.']]
       ],
       passos: [
         'A tabela mostra, por estado, os dias de campo feitos e previstos, diagnósticos, planos aprovados, casos sem água e agentes.',
         'As etapas seguem uma ordem: a <b>implantação</b> só é agendada ou registrada com o plano do quintal aprovado (e nunca em quintal sem água); o <b>acompanhamento</b>, só depois da implantação feita. A data de cada etapa não pode ser anterior à da etapa de antes. Quando a etapa ainda não pode, a tela mostra o motivo no lugar do botão.',
-        'Em <b>Planos para você aprovar</b>, abra o diagnóstico, confira as fotos, o croqui, o kit (itens da lista, com preço, até o valor por quintal) e o cronograma, e <b>aprove</b> ou <b>devolva</b>. <b>Imprimir o plano</b> gera a folha com o kit, a projeção, o cronograma e o croqui.',
-        '<b>Itens do kit e preços de referência</b> é a lista que quem faz o diagnóstico usa: ao escolher o item, o preço entra sozinho. Use <b>Alterar</b> para trocar a estimativa preliminar pelo preço da cotação e marque <b>Preço confirmado</b>, dizendo de onde ele veio. Item que sai da lista não é apagado: desmarque <b>Item na lista</b>.',
-        '<b>Investimento nos quintais</b> mostra o valor do kit por quintal (R$ 5.000,00, fixado no plano de trabalho) e a soma projetada pelos planos.',
+        'Em <b>Planos para você aprovar</b>, abra o diagnóstico, confira as fotos, o croqui, os itens do kit e o cronograma, e <b>aprove</b> ou <b>devolva</b>. <b>Imprimir o plano</b> gera a folha com o kit, o cronograma e o croqui (para a coordenação geral, também com os preços de referência e a projeção).',
+        '<b>Itens do kit e preços de referência</b> (só a coordenação geral vê): é a lista que quem faz o diagnóstico usa, sem ver o preço. A compra é feita por empresa contratada; o preço é só referência para a projeção de cada plano. Use <b>Alterar</b> para trocar a estimativa preliminar pelo preço da cotação e marque <b>Preço confirmado</b>, dizendo de onde ele veio. Item que sai da lista não é apagado: desmarque <b>Item na lista</b>.',
+        '<b>Investimento nos quintais</b> mostra o valor do kit por quintal (R$ 5.000,00, fixado no plano de trabalho) e, para a coordenação geral, a soma projetada pelos planos.',
         'O <b>roteiro</b> lista cada visita: data, quem vai e a situação, com o botão do que fazer. Visitas vencidas aparecem como atrasadas.',
         '<b>Impacto: antes × depois</b> compara o diagnóstico com a avaliação final de cada quintal.'
       ],
@@ -10248,7 +10274,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         'Na primeira vez, leia os pontos importantes do Guia e toque em <b>Li e entendi</b>.',
         'Se aparecer <b>pendências no seu cadastro</b>, resolva primeiro: sem elas a FUNCERN não paga.',
         'Os botões de <b>O que você quer fazer?</b>, no topo, levam direto a cada parte da tela.',
-        '<b>Diagnóstico:</b> 3 fotos (visão geral, água e plantio), localização e o kit com o preço de cada item, sem passar de R$ 5.000. Escolha o item na lista: o preço de referência entra sozinho e você pode ajustar ao preço do seu estado. A tela mostra a projeção do investimento no quintal.',
+        '<b>Diagnóstico:</b> 3 fotos (visão geral, água e plantio), localização e o kit: escolha cada item na lista e informe a quantidade e para que serve. Não é preciso informar preço: a compra é feita por empresa contratada.',
         '<b>Croqui:</b> desenhe o quintal no papel (casa, água, canteiros, árvores, animais, cerca e norte) e fotografe. A foto aparece dentro do plano e na folha de <b>Imprimir o plano</b>.',
         '<b>Localização do diagnóstico:</b> registre em pé, no quintal, durante a visita (o ponto da ficha não vale). Sem localização, escolha o motivo e explique com suas palavras: a coordenação só aprova depois de confirmar a visita de outro jeito.',
         'As <b>Entregas do mês</b> (fotos, lista de presença, relatório, fichas, AVA e metas) liberam a bolsa do mês.'
@@ -10334,7 +10360,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           'A coordenação técnica confere e dá o aval; o pagamento é lançado na FUNCERN.']],
         ['Em cada visita', [
           'Registre no sistema no mesmo dia: fotos, localização e um relato curto do que foi feito.',
-          'No diagnóstico: as 3 fotos (visão geral, água e plantio), a foto do croqui e o kit, sem passar do valor por quintal. Escolha cada item na lista: o preço de referência entra sozinho.',
+          'No diagnóstico: as 3 fotos (visão geral, água e plantio), a foto do croqui e o kit. Escolha cada item na lista e informe a quantidade; não é preciso informar preço.',
           'Sem internet, pode preencher: o registro fica guardado no aparelho e é enviado depois.']],
         ['Importante', [
           'A ajuda de custo não gera vínculo empregatício com o IFRN, a FUNCERN ou o MDA.',

@@ -129,7 +129,7 @@ describe('diagnóstico de campo', () => {
     assert.equal(R.validarDiagnostico(dg({ kit_total: 5000 })).kit, undefined);
     assert.match(R.validarDiagnostico(dg({ kit_total: 5000.01 })).kit, /passa do valor/);
   });
-  test('item do kit sem preço é recusado', () => assert.match(R.validarDiagnostico(dg({ kit: [{ item: 'Mudas', qtd: '1', valor: 0 }] })).kit, /valor estimado/));
+  test('item do kit sem preço é aceito: o preço não é informado por quem faz o diagnóstico', () => assert.equal(R.validarDiagnostico(dg({ kit: [{ item: 'Mudas', qtd: '1', valor: 0 }] })).kit, undefined));
   test('total calculado a partir de quantidade × valor (vírgula decimal)', () =>
     assert.match(R.validarDiagnostico(dg({ kit: [{ item: 'Tela', qtd: '1,5', valor: 3400 }] })).kit, /passa do valor/));
   test('sem água: não pede kit, objetivo, lote nem compromissos', () => {
