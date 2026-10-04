@@ -202,7 +202,10 @@
     ps.forEach(p => { p.movido = Math.hypot(p.x - p.x0, p.y - p.y0) > p.r * 0.6; });
     return ps;
   }
-  const tracoAoLugar = (p, esc) => p.movido ? `<path d="M${p.x0},${p.y0}L${p.x},${p.y}" class="q-fio" stroke-width="${esc * 0.18}"/><circle cx="${p.x0}" cy="${p.y0}" r="${esc * 0.45}" class="q-fio-pt"/>` : '';
+  // Fio até o lugar real: só quando o círculo foi afastado para longe (mais de 2,5 raios). Perto disso o fio e o ponto
+  // de origem se amontoam em volta dos círculos (Alagoas, Sergipe) e parecem uma sombra cinza.
+  const tracoAoLugar = (p, esc, r) => { if (!p.movido) return ''; const dx = p.x0 - p.x, dy = p.y0 - p.y, d = Math.hypot(dx, dy); if (!r || d <= r * 2.5) return '';
+    return `<path d="M${p.x + dx / d * r},${p.y + dy / d * r}L${p.x0},${p.y0}" class="q-fio" stroke-width="${esc * 0.14}"/><circle cx="${p.x0}" cy="${p.y0}" r="${esc * 0.3}" class="q-fio-pt"/>`; };
   /* valores "redondos" para a legenda de tamanho, conforme o maior círculo do mapa */
   const redondo = v => { const p = Math.pow(10, Math.floor(Math.log10(Math.max(1, v)))); const m = v / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; };
   const marcasTamanho = nMax => nMax <= 30 ? [5, 10, 20] : [...new Set([redondo(nMax / 10), redondo(nMax / 3), redondo(nMax)])];
@@ -260,7 +263,7 @@
               return `<path d="M${cx},${cy}L${p0[0]},${p0[1]}A${R},${R} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${p1[0]},${p1[1]}Z" fill="${CATS.find(k => k.id === id).cor}"/>`; }).join('');
         const txt = `${nome}/${g.uf} · ${n} mulher${n > 1 ? 'es' : ''} com ficha: ${por.map(([id, q]) => q + ' ' + CATS.find(k => k.id === id).nome.toLowerCase()).join(', ')} · clique para ver ${foco ? 'cada quintal' : 'o estado'}`;
         // área de toque invisível maior que o círculo: no celular o dedo acerta mesmo em município pequeno
-        return `<g class="q-pt q-grupo" data-acao="mapa-info" data-uf="${g.uf}" data-mun="${E(g.k)}" data-dica="${E(txt)}"><circle cx="${cx}" cy="${cy}" r="${Math.max(R, esc * (foco ? 4.5 : 3.8))}" fill="transparent" class="q-alvo"/>${tracoAoLugar(L, esc)}${fatias}<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#fff" stroke-width="${esc * 0.22}"/>
+        return `<g class="q-pt q-grupo" data-acao="mapa-info" data-uf="${g.uf}" data-mun="${E(g.k)}" data-dica="${E(txt)}"><circle cx="${cx}" cy="${cy}" r="${Math.max(R, esc * (foco ? 4.5 : 3.8))}" fill="transparent" class="q-alvo"/>${tracoAoLugar(L, esc, R)}${fatias}<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#fff" stroke-width="${esc * 0.22}"/>
           <text x="${cx}" y="${cy + R * 0.34}" text-anchor="middle" font-size="${Math.min(R * (n > 9 ? 0.95 : 1.1), esc * 3)}" class="q-num">${n}</text><title>${E(txt)}</title></g>`;
       }).join('');
     } else {
@@ -640,7 +643,7 @@
     const pontoMun = ({ uf, nome, xy }, k) => { const q = qMun(uf, nome); const n = q ? (q.n || 2) : 0; const L = lugarMun.get(uf + '|' + nome) || {}; const x = L.x != null ? L.x : xy[0], y = L.y != null ? L.y : xy[1];
       const r = raioMun(n); const txt = q ? (q.menos_de_3 ? 'menos de 3 mulheres cadastradas' : q.n + ' mulheres cadastradas') : 'previsto, ainda sem cadastro';
       return `<g class="mun-pt${q ? ' mun-q' : ' mun-prev'}" data-mun="${E(nome)}/${uf} · ${txt}" data-rota-de="${E(nome)}/${uf}" ${acess(nome + '/' + uf + ': ' + txt)} style="--i:${k}"><circle cx="${x}" cy="${y}" r="${Math.max(r, esc * 3.2)}" class="mun-alvo"/>`
-        + (q ? `${tracoAoLugar(L, esc)}<circle cx="${x}" cy="${y}" r="${r}" class="mun-dot" stroke-width="${esc * 0.35}"/>${q.n ? `<text x="${x}" y="${y + r * 0.36}" text-anchor="middle" font-size="${Math.min(r * 1.05, esc * 2.8)}" class="mun-n">${q.n}</text>` : ''}`
+        + (q ? `${tracoAoLugar(L, esc, r)}<circle cx="${x}" cy="${y}" r="${r}" class="mun-dot" stroke-width="${esc * 0.35}"/>${q.n ? `<text x="${x}" y="${y + r * 0.36}" text-anchor="middle" font-size="${Math.min(r * 1.05, esc * 2.8)}" class="mun-n">${q.n}</text>` : ''}`
           : `<circle cx="${x}" cy="${y}" r="${esc * 1}" class="mun-vazio" stroke-width="${esc * 0.35}"/>`) + `<title>${E(nome)}/${uf}: ${txt}</title></g>`; };
     const pontos = dadosMun ? muns.map(pontoMun).join('') : muns.map(({ uf, nome, xy: [x, y] }, k) =>
       `<g class="mun-pt" data-mun="${E(nome)}/${uf}" ${acess(nome + '/' + uf)} style="animation-delay:${((k * 0.37) % 2.4).toFixed(2)}s;--i:${k}"><circle cx="${x}" cy="${y}" r="${esc * 3.2}" class="mun-alvo"/><circle cx="${x}" cy="${y}" r="${esc * 2.2}" class="mun-onda"/><circle cx="${x}" cy="${y}" r="${esc * 1.4}" class="mun-dot" stroke-width="${esc * 0.35}"/><title>${E(nome)}/${uf}</title></g>`).join('');
