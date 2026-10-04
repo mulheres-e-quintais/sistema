@@ -2994,3 +2994,7 @@ small { font-size: max(12px, .85em); }
   .agua-topo, .agua-sit, .agua-sit li, .secao-cab, .secao-cab > div { min-width: 0; }
   .agua-sit li span, .secao-cab p { overflow-wrap: anywhere; }
 }
+
+/* mapa: município afastado do vizinho para não ficar por cima; o traço liga o círculo ao lugar verdadeiro */
+.q-fio { stroke: var(--ink-3, #7A5A44); fill: none; opacity: .75; pointer-events: none; }
+.q-fio-pt { fill: var(--ink-3, #7A5A44); opacity: .85; pointer-events: none; }
