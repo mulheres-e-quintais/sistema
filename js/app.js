@@ -453,7 +453,7 @@
   function faixaDemo() {
     const p = S.api.perfisDemo();
     const b = (id, t) => `<button type="button" data-acao="perfil" data-p="${id}" aria-pressed="${S.verEntrada ? id === 'entrada' : p === id}">${t}</button>`;
-    return `<div class="demo"><div class="demo-in"><span class="demo-selo"><span aria-hidden="true">⚠</span> <b>Ambiente de demonstração</b> · os dados exibidos são fictícios</span>
+    return `<div class="demo"><div class="demo-in"><span class="demo-selo"><span aria-hidden="true">⚠</span> <b>Ambiente de demonstração</b> · os dados exibidos são fictícios${MQ.cenario && MQ.cenario.ativo() ? ' · <b data-cenario>' + esc(MQ.cenario.rotulo) + '</b>' : ''}</span>
       <span class="demo-ver">Ver como: <span class="seg" role="group" aria-label="Perfil">${b('coord_geral', 'Coord. geral')}${b('coord_tecnico', 'Coord. técnica')}${b('bolsista', 'Bolsista')}${b('agente', 'Agente')}${b('professor', 'Professor FIC')}${b('auxiliar', 'Auxiliar adm.')}${b('obs_mda', 'MDA')}${b('obs_mpa', 'MPA')}${b('entrada', 'Tela de entrada')}</span></span>
       <details class="demo-mais"><summary>Ver detalhes</summary><p>Os dados ficam gravados só neste navegador e servem para testar. Nada aqui vai para o servidor nem para a vitrine pública.</p>
         <button class="link" data-acao="recomecar">Recomeçar demonstração</button></details></div></div>`;
@@ -534,7 +534,7 @@
         ${kpiEq(ct ? 1 : 0, 1, 'coordenação técnica cadastrada')}
         ${kpiEq(bols.length, 10, 'bolsistas cadastradas')}
         ${kpiEq(aptas, pagaveis.length || 0, 'habilitadas (FIC, FUNCERN e termo)')}
-        ${kpiEq((S.fichas || []).filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada').length, 200, 'mulheres selecionadas e aprovadas')}
+        ${kpiEq((S.fichas || []).filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada').length, MQ.VAGAS_UF * MQ.UFS.length, 'mulheres selecionadas e aprovadas')}
       </div>
       <section class="secao" aria-labelledby="t-ct">
         <div class="secao-cab"><div><h2 id="t-ct">Coordenação técnica</h2><p>Uma para os 5 estados · indicada pelo MPA · cadastrada pela coordenação geral</p></div></div>
@@ -543,7 +543,7 @@
       ${souGeral ? secaoAuxiliares(souGeral) : ''}
       ${souGeral && MQ.ficUI && !S.ficSemBanco ? MQ.ficUI.secaoEquipe() : ''}
       <section class="secao" aria-labelledby="t-b">
-        <div class="secao-cab"><div><h2 id="t-b">Bolsistas por estado</h2><p>1 de articulação e 1 de apoio por estado · cadastradas pela coordenação técnica · meta de 40 quintais por estado</p></div></div>
+        <div class="secao-cab"><div><h2 id="t-b">Bolsistas por estado</h2><p>1 de articulação e 1 de apoio por estado · cadastradas pela coordenação técnica · meta de ${MQ.VAGAS_UF} quintais por estado</p></div></div>
         ${quadroTabela()}${quadroCartoes()}
       </section>
       ${secaoAgentes()}`;

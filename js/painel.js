@@ -5,11 +5,19 @@
   const E = s => MQ.ui.esc(s);
   const U = { nomeUF: uf => MQ.ui.nomeUF(uf) };
 
+  /* calendário do projeto: 13 meses a partir do início da vigência (set/2026 no plano de trabalho) */
+  const inicioProjeto = () => { const [a, m] = String(MQ.PROJETO.vigencia.inicio).split('-').map(Number); return [a, m - 1]; };
   const mesDoProjeto = (d = new Date()) => {
-    const m = (d.getFullYear() - 2026) * 12 + (d.getMonth() - 8) + 1;
+    const [a, m0] = inicioProjeto(); const m = (d.getFullYear() - a) * 12 + (d.getMonth() - m0) + 1;
     return Math.max(1, Math.min(13, m));
   };
-  const MESES = ['set/26', 'out/26', 'nov/26', 'dez/26', 'jan/27', 'fev/27', 'mar/27', 'abr/27', 'mai/27', 'jun/27', 'jul/27', 'ago/27', 'set/27'];
+  const SIGLAS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const MESES = [];
+  const refazerMeses = () => { const [a, m0] = inicioProjeto(); MESES.length = 0;
+    for (let i = 0; i < 13; i++) { const x = new Date(a, m0 + i, 1); MESES.push(SIGLAS[x.getMonth()] + '/' + String(x.getFullYear()).slice(2)); } };
+  refazerMeses(); MQ.calendarioProjeto = refazerMeses;   // o cenário ampliado da demonstração muda o início e chama de novo
+  /* totais do projeto: saem das vagas por estado e da meta de acompanhamento (200 quintais e 400 visitas no plano de trabalho) */
+  const alvoQuintais = () => MQ.VAGAS_UF * MQ.UFS.length, alvoAcomp = () => (MQ.METAS.find(m => m.id === 'M4') || {}).alvo || 0;
   /* previsto até o fim do mês anterior (meses completos), distribuído igualmente na janela da meta */
   const previsto = (meta, mes) => {
     const completos = mes - 1;
@@ -384,7 +392,7 @@
     const mes = mesDoProjeto();
     const diasFim = R.diasAte(MQ.PROJETO.vigencia.fim);
     const ORD_N = { crit: 0, pend: 1, info: 2 }; const al = alertas(S, d).map((x, i) => [x, i]).sort((a, b) => ORD_N[a[0].nivel] - ORD_N[b[0].nivel] || a[1] - b[1]).map(x => x[0]);   // o mais grave primeiro
-    const feito = { equipe: () => d.pagaveis.length >= 11, diagnostico_inicio: () => (S.diagnosticos || []).length > 0, M2: () => (S.diagnosticos || []).length >= 200 };
+    const feito = { equipe: () => d.pagaveis.length >= 11, diagnostico_inicio: () => (S.diagnosticos || []).length > 0, M2: () => (S.diagnosticos || []).length >= alvoQuintais() };
     const marcos = MQ.MARCOS.filter(m => R.diasAte(m.d) >= -7 && !(m.feito && feito[m.feito] && feito[m.feito]())).slice(0, 4);   // marco já cumprido sai da lista
     const aguard = d.fichas.filter(f => f.situacao === 'aguardando').length;
     const NOME_ABA = { equipe: 'Equipe', selecao: 'Seleção', campo: 'Campo', custos: 'Custos', historico: 'Histórico', visao: 'Visão geral' };
@@ -412,10 +420,10 @@
       <section class="dx-topo" aria-label="Indicadores principais">
         ${ex.html}
         <div class="dx-kpis">
-          ${kpi(d.selAprov.length, 200, 'mulheres selecionadas e aprovadas', `${d.fichas.length} fichas lançadas${aguard ? ' · ' + aguard + ' aguardando' : ''}`, stK(d.selAprov.length, 200))}
-          ${kpi(dg.length, 200, 'diagnósticos', `${dg.filter(x => x.situacao === 'aprovado').length} com plano aprovado`, stK(dg.length, 200))}
-          ${kpi(impl, 200, 'quintais implantados', null, stK(impl, 200))}
-          ${kpi(acomp, 400, 'visitas de acompanhamento', null, stK(acomp, 400))}
+          ${kpi(d.selAprov.length, alvoQuintais(), 'mulheres selecionadas e aprovadas', `${d.fichas.length} fichas lançadas${aguard ? ' · ' + aguard + ' aguardando' : ''}`, stK(d.selAprov.length, alvoQuintais()))}
+          ${kpi(dg.length, alvoQuintais(), 'diagnósticos', `${dg.filter(x => x.situacao === 'aprovado').length} com plano aprovado`, stK(dg.length, alvoQuintais()))}
+          ${kpi(impl, alvoQuintais(), 'quintais implantados', null, stK(impl, alvoQuintais()))}
+          ${kpi(acomp, alvoAcomp(), 'visitas de acompanhamento', null, stK(acomp, alvoAcomp()))}
         </div>
       </section>
 
@@ -434,9 +442,9 @@
           <div class="secao-cab"><div><h2 id="t-metas">Metas do plano de trabalho</h2><p>Barra: realizado · traço: previsto até o mês passado · toque na meta para ver o detalhe</p></div></div>
           <div class="dx-metas">
             ${linhaMeta(MQ.METAS[0], S, d, mes)}
-            <details class="dx-meta"><summary><span class="meta-id">Sel.</span><span class="meta-nome">Seleção das beneficiárias</span>${chipStatus(d.selAprov.length >= 200 ? 'concluida' : d.fichas.length ? 'andamento' : 'nao')}
-              <span class="medidor" role="img" aria-label="${d.selAprov.length} de 200"><i class="${d.selAprov.length >= 200 ? 'st-ok' : 'st-and'}" style="width:${Math.min(100, d.selAprov.length / 2)}%"></i></span>
-              <span class="meta-num num"><b>${d.selAprov.length}</b> de 200 <span class="muted">selecionadas</span></span><span class="meta-ver" aria-hidden="true"></span></summary>
+            <details class="dx-meta"><summary><span class="meta-id">Sel.</span><span class="meta-nome">Seleção das beneficiárias</span>${chipStatus(d.selAprov.length >= alvoQuintais() ? 'concluida' : d.fichas.length ? 'andamento' : 'nao')}
+              <span class="medidor" role="img" aria-label="${d.selAprov.length} de ${alvoQuintais()}"><i class="${d.selAprov.length >= alvoQuintais() ? 'st-ok' : 'st-and'}" style="width:${Math.min(100, d.selAprov.length * 100 / alvoQuintais())}%"></i></span>
+              <span class="meta-num num"><b>${d.selAprov.length}</b> de ${alvoQuintais()} <span class="muted">selecionadas</span></span><span class="meta-ver" aria-hidden="true"></span></summary>
               <div class="dx-meta-mais"><p class="mm-nota">Antes da Meta 2. Registrada no sistema (ficha de indicação e termo de consentimento). ${aguard} aguardando aprovação.</p></div></details>
             ${MQ.METAS.filter(m => m.fonte && m.fonte !== 'equipe').map(m => linhaMeta(m, S, d, mes)).join('')}
             ${MQ.METAS.filter(m => !m.fonte).map(m => linhaMeta(m, S, d, mes)).join('')}
