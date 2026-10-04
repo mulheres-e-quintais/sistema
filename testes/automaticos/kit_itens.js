@@ -11,7 +11,7 @@ const R = []; const ok = (n, c, d = '') => { R.push(c); console.log((c ? 'PASSOU
   const txt = sel => p.evaluate(sel => (document.querySelector(sel) || { textContent: '' }).textContent.replace(/\s+/g, ' '), sel);
 
   // ---------- coordenação técnica: lista de itens na aba Campo ----------
-  await como('coord_tecnico'); await p.evaluate(() => { MQ.ui.S.aba = 'campo'; MQ.ui.render(); }); await p.waitForSelector('.kit-itens');
+  await como('coord_geral'); await p.evaluate(() => { MQ.ui.S.aba = 'campo'; MQ.ui.render(); }); await p.waitForSelector('.kit-itens');
   ok('a coordenação vê os 9 itens com preço de referência', await p.locator('.tab-kit-itens tbody tr').count() === 9);
   ok('os preços entram marcados como estimativa preliminar', /9 preços são estimativa preliminar/.test(await txt('.kit-itens')), (await txt('.kit-itens')).slice(0, 200));
   ok('cada item diz de onde veio o preço', /SINAPI, insumo 34636/.test(await txt('.tab-kit-itens')));
@@ -61,18 +61,15 @@ const R = []; const ok = (n, c, d = '') => { R.push(c); console.log((c ? 'PASSOU
   else {
     await p.evaluate(f => MQ.campoUI.clique('campo-diag-novo', { dataset: { ficha: f } }), fb); await p.waitForSelector('#w-kit');
     ok('o formulário oferece a lista de itens', await p.locator('#kit-lista option').count() >= 9);
-    ok('a bolsista vê o preço que a coordenação alterou', await p.evaluate(() => [...document.querySelectorAll('#kit-lista option')].some(o => o.value === 'Esterco curtido' && /12,50/.test(o.label))));
+    ok('a lista de itens não mostra preço à bolsista', await p.evaluate(() => [...document.querySelectorAll('#kit-lista option')].every(o => !/R\$|\d,\d\d/.test(o.label))));
     await p.click('[data-acao=campo-linha-add][data-tipo=kit]');
     const l = p.locator('#w-kit [data-linha=kit]').last();
     await l.locator('[name=kit_item]').fill('Tela para galinheiro');
-    ok('escolher o item preenche o preço de referência', await l.locator('[name=kit_valor]').inputValue() === '13,32');
+    ok('a bolsista não tem campo de valor para preencher', await l.locator('input[name=kit_valor]:not([type=hidden])').count() === 0);
     ok('a quantidade passa a pedir a unidade do item', /\(m\)/.test(await l.locator('[name=kit_qtd]').getAttribute('placeholder')));
     await l.locator('[name=kit_qtd]').fill('25');
-    ok('a projeção soma o item (25 m × R$ 13,32 = R$ 333,00)', /333,00|R\$/.test(await txt('#kit-proj')));
-    await l.locator('[name=kit_item]').fill('Esterco curtido');
-    ok('trocar o item troca o preço que o sistema tinha posto', await l.locator('[name=kit_valor]').inputValue() === '12,50');
-    await l.locator('[name=kit_valor]').fill('9,00'); await l.locator('[name=kit_item]').fill('Mudas frutíferas');
-    ok('preço digitado pela bolsista não é trocado', await l.locator('[name=kit_valor]').inputValue() === '9,00');
+    ok('o formulário da bolsista não mostra projeção nem preço', await p.locator('#kit-proj').count() === 0 && !/R\$\s?\d|Projeção do investimento/.test(await txt('#w-kit')) && !/preço de referência entra/.test(await txt('form[data-form=diag]')));
+    ok('a bolsista é avisada de que não precisa informar preço', /Não é preciso informar preço/.test(await txt('form[data-form=diag]')));
     ok('a bolsista não vê a lista de edição de preços', await p.locator('form[data-form="diag-kit-item"]').count() === 0);
   }
   ok('sem erro de página nem bloqueio da política de conteúdo', errs.length === 0, errs.join(' | '));

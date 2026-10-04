@@ -3,12 +3,13 @@
 -- Supabase > SQL Editor > New query > cole este arquivo inteiro > Run. Pode rodar de novo.
 -- Precisa do 01 (equipe, meu_papel, meu_id, auditar).
 --
--- Lista de itens que quem faz o diagnóstico escolhe ao montar o kit do quintal: o preço de referência
--- entra sozinho na projeção do investimento. Toda a equipe lê; só a coordenação (técnica ou geral) altera,
--- pela função salvar_kit_item. Nada se apaga: item que sai da lista fica "inativo".
+-- Lista de itens que quem faz o diagnóstico escolhe ao montar o kit do quintal. A compra é feita por empresa
+-- contratada: o preço é só referência para a projeção do investimento e aparece só para a coordenação geral
+-- (decisão de 04/10/2026). Os outros perfis recebem só nome e unidade (função kit_itens_nomes). Só a coordenação
+-- geral altera, pela função salvar_kit_item. Nada se apaga: item que sai da lista fica "inativo".
 --
 -- Os 9 itens abaixo entram com ESTIMATIVA PRELIMINAR pesquisada na internet em 03/10/2026 (a fonte está
--- em cada linha). Não são cotação: a coordenação técnica troca pelo valor da cotação ou da ata de preços
+-- em cada linha). Não são cotação: a coordenação geral troca pelo valor da cotação ou da ata de preços
 -- na aba Campo. Rodar de novo NÃO desfaz o que a coordenação já alterou.
 -- Este arquivo não mexe em nenhum diagnóstico: plano antigo sem valor aparece na tela com o preço de
 -- referência, marcado "(ref.)".
@@ -31,17 +32,27 @@ create unique index if not exists kit_itens_nome on public.kit_itens (lower(trim
 alter table public.kit_itens enable row level security;
 revoke all on public.kit_itens from anon, authenticated;
 grant select on public.kit_itens to authenticated;                 -- gravar só pela função abaixo
+-- Decisão de 04/10/2026: a compra do kit é feita por empresa contratada; o preço é só referência e aparece
+-- só para a coordenação geral. Os outros perfis recebem só o nome e a unidade dos itens (função kit_itens_nomes).
 drop policy if exists kit_itens_ler on public.kit_itens;
 create policy kit_itens_ler on public.kit_itens for select to authenticated
-  using ((select public.meu_papel()) is not null);
+  using ((select public.meu_papel()) = 'coord_geral');
+
+create or replace function public.kit_itens_nomes() returns table (id uuid, item text, unidade text, ativo boolean)
+language sql stable security definer set search_path = public, pg_temp as $$
+  select k.id, k.item::text, k.unidade::text, k.ativo from public.kit_itens k
+   where public.meu_papel() is not null order by k.item, k.id;
+$$;
+revoke all on function public.kit_itens_nomes() from public, anon;
+grant execute on function public.kit_itens_nomes() to authenticated;
 
 create or replace function public.salvar_kit_item(p_id uuid, p_item text, p_unidade text, p_valor numeric,
   p_fonte text, p_preliminar boolean, p_ativo boolean) returns uuid
 language plpgsql security definer set search_path = public, pg_temp as $$
 declare v_id uuid; v_item text := trim(coalesce(p_item, '')); v_un text := trim(coalesce(p_unidade, '')); v_fonte text := nullif(trim(coalesce(p_fonte, '')), '');
 begin
-  if coalesce(public.meu_papel(), '') not in ('coord_geral', 'coord_tecnico') then
-    raise exception 'Quem altera a lista de itens do kit é a coordenação.';
+  if coalesce(public.meu_papel(), '') <> 'coord_geral' then
+    raise exception 'Quem altera a lista de itens do kit é a coordenação geral.';
   end if;
   if length(v_item) < 2 or length(v_item) > 120 then raise exception 'Escreva o nome do item (de 2 a 120 letras).'; end if;
   if length(v_un) < 1 or length(v_un) > 20 then raise exception 'Informe a unidade (un, m, m², saco...).'; end if;

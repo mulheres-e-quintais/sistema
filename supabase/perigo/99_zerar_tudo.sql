@@ -9,7 +9,7 @@
 -- Sem essa troca, o script não apaga nada.
 --
 -- FICA:  a coordenação geral (o seu cadastro, os seus dados pessoais e o seu login); os parâmetros de custo
---        (valor da hora, refeição, combustível); e toda a ESTRUTURA do sistema (tabelas, regras, permissões:
+--        (valor da hora, refeição, combustível); a lista de itens do kit com os preços de referência; e toda a ESTRUTURA do sistema (tabelas, regras, permissões:
 --        não é preciso rodar de novo nenhum script do 01 ao 47).
 -- SAI:   TODO o resto, de todas as tabelas: equipe (coordenação técnica, auxiliar, professores, bolsistas, agentes)
 --        e os logins dela; convites e pré-cadastros; contas bancárias; fichas das mulheres; visitas; diagnósticos;
@@ -28,7 +28,7 @@ declare
   confirmar text := 'NAO';     -- <<< troque por 'ZERAR' para apagar
   copia_feita_em text := 'SEM COPIA';   -- <<< a data da cópia de segurança que VOCÊ fez e testou, no formato AAAA-MM-DD (ferramentas/backup/LEIA-ME.md)
   eu uuid; meu_login uuid; n int; lista text;
-  ficam text[] := array['equipe', 'equipe_privado', 'parametros'];
+  ficam text[] := array['equipe', 'equipe_privado', 'parametros', 'kit_itens'];   -- kit_itens: lista de itens e preços de referência (configuração, como os parâmetros)
 begin
   if confirmar <> 'ZERAR' then
     raise exception 'Nada foi apagado. Para zerar, troque NAO por ZERAR na linha "confirmar" e rode de novo.';
@@ -51,6 +51,11 @@ begin
 
   -- o que fica deixa de apontar para quem sai
   update public.parametros set atualizado_por = null where atualizado_por is distinct from eu;
+  if to_regclass('public.kit_itens') is not null then
+    alter table public.kit_itens disable trigger user;
+    update public.kit_itens set atualizado_por = null where atualizado_por is distinct from eu;
+    alter table public.kit_itens enable trigger user;
+  end if;
 
   -- equipe: fica só a coordenação geral (sem gatilhos, para não gerar histórico nem esbarrar em regra)
   alter table public.equipe disable trigger user;

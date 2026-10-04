@@ -51,8 +51,10 @@ describe('projeção com preço de referência', () => {
     assert.equal(R.kitComRef(null, MQ.kitItem).length, 0);
     assert.equal(R.kitComRef([{ item: 'x' }])[0].valor, undefined);
   });
-  test('a conferência do envio continua a exigir o valor de cada item', () => {
+  test('a conferência do envio não exige valor (quem faz o diagnóstico não informa preço), mas exige quantidade', () => {
     const R = amb().regras;
-    assert.match(R.erroKit([{ item: 'Esterco curtido', qtd: '20' }]), /valor estimado/);
+    assert.equal(R.erroKit([{ item: 'Esterco curtido', qtd: '20' }]), null);
+    assert.match(R.erroKit([{ item: 'Esterco curtido', qtd: '' }]), /Informe a quantidade de Esterco curtido/);
+    assert.match(R.erroKit([{ item: 'Esterco curtido', qtd: '2', valor: -1 }]), /não pode ser negativo/);
   });
 });

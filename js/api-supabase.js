@@ -491,7 +491,16 @@
     async salvarObservador(x) { const { data, error } = await sb.rpc('salvar_observador', { p_id: x.id || null, p_nome: x.nome, p_email: x.email, p_orgao: x.orgao, p_cargo: x.cargo || null, p_ativo: x.ativo !== false }); if (error) throw erro(error); return data; },
     async gerarCodigoObservador(id) { const { data, error } = await sb.rpc('gerar_codigo_observador', { p_id: id }); if (error) throw erro(error); return data; },
     /* itens do kit com preço de referência (51_kit_itens.sql) */
-    async listarKitItens() { const { data, error } = await todas(() => sb.from('kit_itens').select('*', CT).order('item').order('id')); if (error) throw erro(error); return data; },
+    /* preços do kit: só a coordenação geral lê a tabela; os outros perfis recebem só nome e unidade (função kit_itens_nomes do 51) */
+    async listarKitItens() {
+      if (euCache && euCache.papel !== 'coord_geral') {
+        const r = await sb.rpc('kit_itens_nomes');
+        if (!r.error) return (r.data || []).map(k => ({ id: k.id, item: k.item, unidade: k.unidade, ativo: k.ativo }));
+        if (!/PGRST202|42883|Could not find the function|does not exist/i.test(String(r.error.code) + ' ' + String(r.error.message))) throw erro(r.error);
+      }   // banco ainda com o 51 antigo: lê a tabela e tira o preço antes de entregar à tela
+      const { data, error } = await todas(() => sb.from('kit_itens').select('*', CT).order('item').order('id')); if (error) throw erro(error);
+      return euCache && euCache.papel !== 'coord_geral' ? data.map(k => ({ id: k.id, item: k.item, unidade: k.unidade, ativo: k.ativo })) : data;
+    },
     async salvarKitItem(x) { const { data, error } = await sb.rpc('salvar_kit_item', { p_id: x.id || null, p_item: x.item, p_unidade: x.unidade, p_valor: x.valor_ref, p_fonte: x.fonte || null, p_preliminar: !!x.preliminar, p_ativo: x.ativo !== false }); if (error) throw erro(error); return data; },
     async listarAgua() { const { data, error } = await todas(() => sb.from('agua_situacoes').select('*', CT).order('registrado_em', { ascending: true }).order('id')); if (error) throw erro(error); return data; },
     async registrarSituacaoAgua(ficha_id, situacao, obs) { const { data, error } = await sb.rpc('registrar_situacao_agua', { p_ficha: ficha_id, p_situacao: situacao, p_obs: obs }); if (error) throw erro(error); return data; },
