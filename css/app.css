@@ -3002,24 +3002,78 @@ small { font-size: max(12px, .85em); }
 /* ---------- Acompanhamento externo (aba Equipe, coordenação geral): cabeçalho, cadastro e prévia (04/10/2026) ----------
    Só apresentação: os mesmos campos, ações e regras. Usa as cores, os raios e a tipografia do resto do sistema. */
 .ac2 { position: relative; gap: 22px; padding: clamp(18px, 3vw, 30px); overflow: hidden; }
-.ac2-cx { display: grid; gap: 14px; }
-.ac2-sub h3 { margin: 0; font: 700 var(--t-base)/1.25 var(--sans); color: var(--ink); }
+.ac2-cab { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: start; padding-right: clamp(0px, 14vw, 170px); }
+.ac2-cab h3 { margin: 2px 0 8px; font: 700 var(--t-xl, 20px)/1.2 var(--sans); color: var(--ink); letter-spacing: -.005em; }
+.ac2-cab-tx p { margin: 0 0 6px; max-width: 62ch; color: var(--ink-2); font-size: var(--t-md); line-height: 1.6; }
+.ac2-ic { display: inline-grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 10%, var(--surface)); color: var(--accent); flex: none; }
+.ac2-ic svg { width: 26px; height: 26px; }
+.ac2-ic.peq { width: 36px; height: 36px; border-radius: 11px; background: var(--surface-2); color: var(--ink); }
+.ac2-ic.peq svg { width: 20px; height: 20px; }
+.ac2-enfeite { position: absolute; top: -26px; right: -22px; width: 190px; height: auto; pointer-events: none; }
+.ac2-enfeite .e1 { fill: color-mix(in srgb, var(--accent) 13%, transparent); }
+.ac2-enfeite .e2 { fill: color-mix(in srgb, var(--ok) 13%, transparent); }
+.ac2-enfeite .e3 { fill: color-mix(in srgb, var(--pend) 16%, transparent); }
+.ac2-status { display: flex; align-items: center; gap: 10px; margin: 0; padding: 12px 16px; border-radius: 12px; background: color-mix(in srgb, var(--ok-bg) 55%, var(--surface)); border: 1px solid color-mix(in srgb, var(--ok) 22%, var(--line)); color: var(--ink); font-size: var(--t-md); }
+.ac2-status svg { color: var(--ok); flex: none; }
+.ac2-sub { display: flex; gap: 12px; align-items: center; }
+.ac2-sub h4 { margin: 0; font: 700 var(--t-base)/1.25 var(--sans); color: var(--ink); }
 .ac2-sub p { margin: 2px 0 0; color: var(--muted); font-size: var(--t-sm); line-height: 1.45; }
-.ac2-form { gap: 14px; padding-top: 14px; }
-.ac2-form .campos { gap: 14px 12px; }
-.ac2-form .campos > .campo { grid-row: auto; grid-template-rows: none; row-gap: 4px; align-content: start; padding-bottom: 0; }
+.ac2-form { gap: 18px; padding-top: 22px; }
+.ac2-form .campos { gap: 16px 18px; }
+.ac2-form .campos > .campo { grid-row: auto; grid-template-rows: none; row-gap: 6px; align-content: start; padding-bottom: 0; }
+.ac2-form .campo label { font-weight: 600; color: var(--ink); }
 .ac2-obr { color: var(--accent); font-weight: 700; }
-label.check.ac2-ativo { display: flex; align-items: center; gap: 12px; cursor: pointer; }
-.ac2-ativo input { width: 20px; height: 20px; flex: none; accent-color: var(--ok); }
-.ac2-ativo span { display: grid; gap: 1px; }
+.ac2-form .campo input, .ac2-form .campo select { min-height: 46px; border-radius: 12px; }
+.ac2-form .campo input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
+.ac2-form .campo select { appearance: none; -webkit-appearance: none; padding-right: 40px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2375604F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-size: 18px; }
+.ac2-form .campo select:invalid, .ac2-form .campo select:has(option[value=""]:checked) { color: color-mix(in srgb, var(--muted) 85%, transparent); }
+label.check.ac2-ativo { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); transition: background .15s, border-color .15s; cursor: pointer; }
+label.check.ac2-ativo:has(input:checked) { background: color-mix(in srgb, var(--ok-bg) 60%, var(--surface)); border-color: color-mix(in srgb, var(--ok) 30%, var(--line)); }
+label.check.ac2-ativo:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ac2-ativo input { width: 22px; height: 22px; flex: none; accent-color: var(--ok); }
+.ac2-ativo span { display: grid; gap: 2px; }
+.ac2-ativo b { color: var(--ink); font-size: var(--t-md); }
 .ac2-ativo small { color: var(--muted); font-size: var(--t-sm); }
-.ac2-acoes .btn svg { width: 18px; height: 18px; }
-.ac2-previa { display: grid; gap: 12px; padding-top: 14px; border-top: 1px solid var(--line); }
-.ac2-ver .btn-acao[aria-pressed="true"] { border-color: var(--ink); background: var(--surface-2); }
-@media (max-width: 720px) { .ac2-form .campos { grid-template-columns: minmax(0, 1fr); } .ac2-ver .btn-acao { flex: 1 1 100%; } }
+.ac2-previa { display: grid; gap: 14px; padding-top: 22px; margin-top: 10px; border-top: 1px solid var(--line); }
+.ac2-acoes { gap: 12px; }
+.ac2-acoes .btn { min-height: 46px; min-width: 120px; border-radius: 12px; }
+.ac2-acoes .btn.pri { min-width: 170px; }
+.ac2-acoes .btn svg { width: 19px; height: 19px; }
+.ac2-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.ac2-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; text-align: left; padding: 16px 18px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s, background .15s; }
+.ac2-card:hover { transform: translateY(-1px); box-shadow: 0 8px 20px -12px color-mix(in srgb, var(--ink) 40%, transparent); border-color: var(--line-2); }
+.ac2-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ac2-card[disabled] { opacity: .55; cursor: progress; transform: none; box-shadow: none; }
+.ac2-card-ic { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; }
+.ac2-card-ic svg { width: 24px; height: 24px; }
+.ac2-card.mda .ac2-card-ic { background: color-mix(in srgb, var(--accent) 11%, var(--surface)); color: var(--accent); }
+.ac2-card.mpa .ac2-card-ic { background: color-mix(in srgb, var(--ok) 13%, var(--surface)); color: var(--ok); }
+.ac2-card-tx { display: grid; gap: 3px; }
+.ac2-card-tx b { font: 700 var(--t-md)/1.25 var(--sans); }
+.ac2-card-tx small { color: var(--muted); font-size: var(--t-sm); line-height: 1.4; }
+.ac2-card-seta { color: var(--muted); display: inline-grid; transition: transform .15s, color .15s; }
+.ac2-card:hover .ac2-card-seta { transform: translateX(3px); color: var(--ink); }
+.ac2-card[aria-pressed="true"] { border-color: var(--ink); background: var(--surface-2); }
+@media (max-width: 720px) {
+  .ac2-cab { padding-right: 0; }
+  .ac2-enfeite { width: 120px; opacity: .7; top: -30px; right: -34px; }
+  .ac2-cards { grid-template-columns: minmax(0, 1fr); }
+  .ac2-form .campos { grid-template-columns: minmax(0, 1fr); }
+  .ac2-acoes .btn, .ac2-acoes .btn.pri { flex: 1 1 0; min-width: 0; }
+}
+@media (max-width: 420px) { .ac2-cab { grid-template-columns: minmax(0, 1fr); } .ac2-ic:not(.peq) { width: 42px; height: 42px; } }
+@media (prefers-reduced-motion: reduce) { .ac2-card, .ac2-card-seta, label.check.ac2-ativo { transition: none; } .ac2-card:hover { transform: none; } }
+@media print { .ac2-enfeite { display: none; } }
+.ac2 { padding: clamp(18px, 3vw, 30px); box-shadow: 0 10px 30px -22px color-mix(in srgb, var(--ink) 45%, transparent); overflow: hidden; }
+.ac2-acoes .btn:hover { transform: translateY(-1px); }
 
 /* Equipe: cartão de bolsista do mesmo tamanho do cartão de agente de campo (270 px, foto de 44 px, uma linha de resumo) */
 .eq-quadro tbody td > .vagabtn.com-foto { max-width: 270px; min-height: 0; }
 .eq-quadro .vagabtn.com-foto .av { --av: 44px !important; }
 .eq-quadro .vagabtn.com-foto .sub, .ag-lista .vagabtn.com-foto .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 760px) { .eq-quadro tbody td > .vagabtn.com-foto { max-width: none; } }
+
+/* Painel largo (ficha da Seleção, "Todas as fichas"): a largura acompanha a tela do aparelho.
+   Até 900 px ocupa a tela inteira; acima disso, 72% da tela, até 1200 px. */
+.painel.largo { width: 100%; }
+@media (min-width: 901px) { .painel.largo { width: min(1200px, 72vw); } }
