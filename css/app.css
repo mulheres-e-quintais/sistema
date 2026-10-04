@@ -3077,3 +3077,8 @@ label.check.ac2-ativo:has(input:focus-visible) { outline: 2px solid var(--focus)
    Até 900 px ocupa a tela inteira; acima disso, 72% da tela, até 1200 px. */
 .painel.largo { width: 100%; }
 @media (min-width: 901px) { .painel.largo { width: min(1200px, 72vw); } }
+/* o mesmo no formato de cartões (telas estreitas) */
+.eq-cartoes .vagabtn.com-foto { padding: 10px 12px; min-height: 0; }
+.eq-cartoes .vagabtn.com-foto .av { --av: 44px !important; }
+.eq-cartoes .vagabtn.com-foto .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 860px) { .ag-tr { padding: 16px; } }
