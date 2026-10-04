@@ -124,6 +124,43 @@
     render();
   }
   const chaveCache = () => 'mq-cache-' + (S.eu && S.eu.id);
+  /* "a parte não está instalada no banco" (script não rodado) e leitura que pode faltar: devolve [ok, valor]; sem internet ou erro de verdade, sobe */
+  const semFic = e => /PGRST20[25]|42P01|42883|does not exist|Could not find|schema cache/i.test(String((e.original && (e.original.code + ' ' + e.original.message)) || e.message));
+  const talvez = async (fn, seErro) => { try { return [true, await fn()]; } catch (e) { if (e.semRede || !seErro(e)) throw e; return [false, null]; } };
+  /* ---------- dados que só UMA aba usa: buscados quando ela abre, não na entrada ----------
+     O histórico (200 registros com o antes e o depois de cada mudança) e a lista de documentos só aparecem
+     nas abas deles. Na entrada e nas atualizações de fundo eles só são lidos se a aba estiver na tela.
+     Cada parte diz em que aba aparece, como busca, o que vale enquanto não veio e onde guarda. */
+  const DA_ABA = {
+    aud:  { nome: 'histórico', abas: ['historico'], busca: () => S.api.auditoria(), antes: () => S.aud || [], poe: v => { S.aud = v; } },
+    docs: { nome: 'documentos', abas: ['documentos'], busca: () => (S.api.listarDocumentos ? talvez(() => S.api.listarDocumentos(), semFic) : [true, []]),   // 24_documentos.sql
+            antes: () => [!S.docSemBanco, S.documentos || []], poe: v => { S.docSemBanco = !v[0]; S.documentos = v[0] ? v[1] : []; } }
+  };
+  const veio = () => (S.veio && S.veio.de === S.eu.id ? S.veio : (S.veio = { de: S.eu.id }));   // o que já foi buscado, por pessoa
+  const daAbaNaTela = k => !!S.eu && S.eu.papel === 'coord_geral' && DA_ABA[k].abas.includes(abaAtual());
+  const semLinha = () => typeof navigator !== 'undefined' && navigator.onLine === false;
+  /* a aba abriu e a parte dela ainda não veio: mostra "Carregando…" no lugar de "nada registrado" */
+  const esperandoDaAba = k => daAbaNaTela(k) && !veio()[k] && !S.semRede && !semLinha();
+  /* quem desenha o "Carregando…" já dispara a busca: vale para qualquer caminho que leve à aba (clique, Voltar do navegador, atalho de outro módulo) */
+  let buscandoAba = false;
+  const carregandoAba = () => {
+    if (!buscandoAba) { buscandoAba = true; Promise.resolve().then(() => carregarDaAba()).catch(() => {}).then(() => { buscandoAba = false; }); }
+    return '<p class="muted" role="status" data-carregando-aba>Carregando…</p>';
+  };
+  async function carregarDaAba() {
+    if (!S.eu || S.verEntrada || S.eu.papel !== 'coord_geral' || S.semRede || semLinha()) return;
+    const id = S.eu.id, aba = abaAtual(), ks = Object.keys(DA_ABA).filter(daAbaNaTela); if (!ks.length) return;
+    await Promise.all(ks.map(async k => {
+      try { const v = await DA_ABA[k].busca(); if (!S.eu || S.eu.id !== id) return; DA_ABA[k].poe(v); }   // saiu no meio: nada da pessoa anterior entra na memória
+      catch (e) {   // não veio: entra no mesmo aviso "Parte dos dados não carregou. Toque para tentar de novo."
+        if (!S.eu || S.eu.id !== id) return;
+        try { console.warn('Leitura que falhou ao abrir a aba:', DA_ABA[k].nome, e); } catch (x) {}
+        S.cargaParcial = [...new Set((S.cargaParcial || []).concat([DA_ABA[k].nome]))];
+      }
+      veio()[k] = true;
+    }));
+    if (S.eu && S.eu.id === id && abaAtual() === aba && !S.painel && !digitando()) renderFundo();
+  }
   async function carregar() {
     // perfis de acompanhamento (MDA e MPA): só os números agregados; nada da equipe, das fichas ou dos pagamentos é pedido
     if (S.eu && S.eu.observador) { S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.fila = []; S.cargaParcial = null;
@@ -133,11 +170,9 @@
          6 a 12 segundos em internet fraca). Cada parte continua com o seu tratamento: "sem o script no
          banco" vira lista vazia; sem internet, o erro sobe e o sistema mostra a cópia do aparelho. */
       const papel = S.eu.papel, coord = /^coord/.test(papel);
-      const semFic = e => /PGRST20[25]|42P01|42883|does not exist|Could not find|schema cache/i.test(String((e.original && (e.original.code + ' ' + e.original.message)) || e.message));
       const semTabela = e => !e.semRede && /PGRST205|42P01|does not exist|Could not find the table|schema cache/i.test(String((e.original && (e.original.code + ' ' + e.original.message)) || e.message));
       const opcional = async fn => { try { return fn ? await fn.call(S.api) : []; } catch (e) { if (semTabela(e)) { S.campoSemBanco = true; return []; } throw e; } };
-      // parte que pode não estar instalada no banco: devolve [ok, valor]; sem internet ou erro de verdade, sobe
-      const talvez = async (fn, seErro) => { try { return [true, await fn()]; } catch (e) { if (e.semRede || !seErro(e)) throw e; return [false, null]; } };
+      const agora = { aud: daAbaNaTela('aud'), docs: daAbaNaTela('docs') };   // partes só de uma aba: lidas agora só se ela estiver na tela
       const qualquer = e => !e.semRede;   // para as partes em que qualquer erro que não seja de rede só desliga a parte
       S.kitPar = { valor_quintal: MQ.KIT_QUINTAL };   // R$ 5.000 por quintal, fixado no plano de trabalho
       const campoPapel = !['professor_fic', 'auxiliar_adm'].includes(papel);
@@ -147,7 +182,7 @@
       const NOMES = ['equipe', 'curso FIC', 'fichas', 'visitas', 'diagnósticos', 'avaliações', 'histórico', 'pagamentos', 'documentos', 'conferência', 'entregas', 'roteiro de testes', 'perfis', 'cadastros do link', 'dados de exemplo', 'pedidos de acesso', 'últimos acessos', 'execução', 'encontros', 'água', 'venda'];
       // o que fica no lugar da parte que falhou: o que já estava na tela (ou vazio, na primeira carga)
       const ANTES = [null, () => [!S.ficSemBanco, [S.turmas || [], S.matriculas || [], []]], () => S.fichas || [], () => S.visitas || [], () => S.diagnosticos || [],
-        () => [!S.avalSemBanco, S.avaliacoes || []], () => S.aud || [], () => [!S.pagSemBanco, { lista: S.solic || [], vinculos: S.solicVis || {} }], () => [!S.docSemBanco, S.documentos || []],
+        () => [!S.avalSemBanco, S.avaliacoes || []], DA_ABA.aud.antes, () => [!S.pagSemBanco, { lista: S.solic || [], vinculos: S.solicVis || {} }], DA_ABA.docs.antes,
         () => [true, S.quemConfere == null ? null : S.quemConfere], () => [!S.entregasSemBanco, [S.entregas || [], S.ciencias || []]], () => [!S.testesSemBanco, S.testes || []], () => [!S.perfisSemBanco, S.perfisEquipe || []],
         () => S.pre || [], () => S.exemplo || 0, () => [true, S.pedidosAcesso || []], () => [!S.acessosSemBanco, S.acessos || []], () => [!S.execSemBanco, S.execPlanilhas || []],
         () => [!S.encSemBanco, S.encontros || []], () => [!S.aguaSemBanco, S.agua || []], () => [!S.vendaSemBanco, [S.canaisVenda || [], S.orientacoesVenda || []]]];
@@ -166,9 +201,9 @@
         opcional(S.api.listarVisitas),        // sem o 03_campo.sql, o resto do sistema continua
         opcional(S.api.listarDiagnosticos),
         S.api.listarAvaliacoes && campoPapel ? talvez(() => S.api.listarAvaliacoes(), semFic) : [true, []],   // 13_avaliacao.sql
-        papel === 'coord_geral' ? S.api.auditoria() : [],   // o histórico é só da coordenação geral
+        agora.aud ? DA_ABA.aud.busca() : (papel === 'coord_geral' ? DA_ABA.aud.antes() : []),   // o histórico é só da coordenação geral, e só quando a aba dele está aberta
         S.api.listarSolicitacoes ? talvez(() => S.api.listarSolicitacoes(), semFic) : [false, null],          // 12_pagamentos.sql
-        papel === 'coord_geral' && S.api.listarDocumentos ? talvez(() => S.api.listarDocumentos(), semFic) : [true, []],   // 24_documentos.sql
+        agora.docs ? DA_ABA.docs.busca() : (papel === 'coord_geral' ? DA_ABA.docs.antes() : [true, []]),   // idem: só com a aba Documentos aberta
         S.api.quemConferePedidos && ['coord_geral', 'coord_tecnico', 'articulacao', 'auxiliar_adm'].includes(papel)
           ? talvez(() => S.api.quemConferePedidos(), qualquer) : [true, null],                                // 26_conferencia_auxiliar.sql
         S.api.listarEntregas && papel !== 'auxiliar_adm' ? talvez(() => Promise.all([S.api.listarEntregas(), S.api.listarCiencias()]), semFic) : [true, [[], []]],   // 19
@@ -188,9 +223,8 @@
       if (fic[0] && papel === 'professor_fic') { const ids = new Set(S.equipe.map(m => m.id)); S.equipe = S.equipe.concat(fic[1][2].filter(o => !ids.has(o.id))); }
       S.fichas = fichas; S.visitas = visitas; S.diagnosticos = diagnosticos;
       S.avalSemBanco = !aval[0]; S.avaliacoes = aval[0] ? aval[1] : [];
-      S.aud = aud;
+      DA_ABA.aud.poe(aud); DA_ABA.docs.poe(docs); Object.keys(agora).forEach(k => { if (agora[k]) veio()[k] = true; });
       S.pagSemBanco = !!S.api.listarSolicitacoes && !pag[0]; S.solic = pag[0] ? pag[1].lista : []; S.solicVis = pag[0] ? pag[1].vinculos : {};
-      S.docSemBanco = !docs[0]; S.documentos = docs[0] ? docs[1] : [];
       S.execSemBanco = !lancs[0]; S.execPlanilhas = lancs[0] ? lancs[1] : [];
       S.encSemBanco = !encs[0]; S.encontros = encs[0] ? encs[1] : [];
       S.aguaSemBanco = !agua[0]; S.agua = agua[0] ? agua[1] : [];
@@ -281,7 +315,7 @@
   MQ.ui = { vagaAberta, S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: o => render(o), renderFundo: () => renderFundo(), abrirPainel: p => abrirPainel(p), fecharPainel: o => fecharPainel(o), pedirFechar: () => pedirFechar(), painelAlterado: () => painelAlterado(),
     irParaAba: x => irParaAba(x), avisarVersaoNova: () => avisarVersaoNova(), declarados: (f, r) => declarados(f, r),
     vista: () => vistaDoPainel(), marcaAberta: (t, id) => marcaAberta(t, id), reabrirComConflito: m => reabrirComConflito(m),
-    mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), sincronizar: a => sincronizar(a),
+    mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), carregarDaAba: () => carregarDaAba(), sincronizar: a => sincronizar(a),
     recarregar: () => recarregar(), porId: id => porId(id), avatar: (m, t) => avatar(m, t), passos: m => passos(m), dadosDL: m => dadosDL(m), botaoFoto: m => botaoFoto(m), cartaoPessoa: m => cartaoPessoa(m),
     atualizar: f => atualizarEmSegundoPlano(f), aparelho: () => aparelho(), ipCurto: ip => ipCurto(ip), sair: a => sairDoSistema(a) };
 
@@ -435,6 +469,22 @@
     return `<span class="prazo ${d <= 3 ? 'crit' : ''}">Indicação do MPA até ${R.fmtData(MQ.PROJETO.prazoIndicacao)} · ${quando} · ${vagas}</span>`;
   }
 
+  /* ---------- tabela de rotas: prefixo da ação (data-acao) ou do formulário (data-form) → módulo que cuida dela ----------
+     Um módulo novo entra com UMA linha aqui. A ordem vale: a primeira linha que casa (e cujo módulo existe) atende o clique.
+     Terceira coluna = quem recebe o foco quando o painel fechar: true (o botão clicado), função (depende da ação),
+     null (ninguém: o módulo decide) ou nada (não mexe). */
+  const ROTAS_CLIQUE = [
+    [/^ficha/, 'fichasUI', true], [/^apl-/, 'sugestaoUI'], [/^banco-/, 'bancoUI'], [/^pend-/, 'pendUI', true], [/^conv-/, 'convitesUI'], [/^custo-/, 'custosUI'],
+    [/^fic-/, 'ficUI', true], [/^pag-/, 'pagUI', true], [/^enc-/, 'encUI', a => /^enc-(novo|editar)$/.test(a)], [/^exec-/, 'execUI', true], [/^agua-/, 'aguaUI', true],
+    [/^venda-/, 'vendaUI', true], [/^doc-/, 'docsUI', a => !/^doc-rel-/.test(a)], [/^viag-/, 'viagUI', a => !/pass$/.test(a)], [/^(aval|imp)-/, 'impactoUI', true],
+    [/^vit-/, 'vitrineUI'], [/^ent-/, 'entregasUI'], [/^rot-/, 'roteiroUI', null], [/^campo-/, 'campoUI', true], [/^acomp-/, 'acompUI']];
+  const rotaDoClique = a => ROTAS_CLIQUE.find(([re, ui]) => re.test(a) && MQ[ui]);
+  /* nos formulários, todas as linhas que casam são chamadas (como era antes) */
+  const ROTAS_FORM = [
+    [/^ficha/, 'fichasUI'], [/^pend-/, 'pendUI'], [/^(visita|diag)/, 'campoUI'], [/^acomp-/, 'acompUI'], [/^vit-/, 'vitrineUI'], [/^custo-/, 'custosUI'], [/^fic-/, 'ficUI'],
+    [/^pag-/, 'pagUI'], [/^viag-/, 'viagUI'], [/^doc-/, 'docsUI'], [/^exec-/, 'execUI'], [/^enc-/, 'encUI'], [/^agua-/, 'aguaUI'], [/^venda-/, 'vendaUI'], [/^rot-/, 'roteiroUI'],
+    [/^aval$/, 'impactoUI'], [/^conv-/, 'convitesUI'], [/^banco$/, 'bancoUI'], [/^apl$/, 'sugestaoUI']];
+  MQ.rotas = { clique: ROTAS_CLIQUE, form: ROTAS_FORM, doClique: rotaDoClique };   // para os testes
   const GRUPOS_ABAS = [['Gestão', ['visao', 'equipe', 'selecao']], ['Execução', ['campo', 'fic', 'execucao']], ['Financeiro', ['pagamentos', 'custos', 'viagens']], ['Documentação', ['documentos', 'historico']]];
   /* cada coordenação só vê os módulos do seu papel (o banco também limita o que cada uma lê e grava) */
   const ABAS_PAPEL = {
@@ -502,7 +552,7 @@
     else if (aba === 'fic') corpo = MQ.ficUI ? MQ.ficUI.aba() : '';
     else if (aba === 'pagamentos') corpo = MQ.pagUI ? MQ.pagUI.abaCoord() : '';
     else if (aba === 'viagens') corpo = MQ.viagUI ? MQ.viagUI.abaCoord() : '';
-    else if (aba === 'documentos') corpo = MQ.docsUI && souGeral ? MQ.docsUI.aba() : '';
+    else if (aba === 'documentos') corpo = MQ.docsUI && souGeral ? (esperandoDaAba('docs') ? '<div class="cab"><div><span class="eyebrow">Documentos</span><h1>Documentos</h1></div></div>' + carregandoAba() : MQ.docsUI.aba()) : '';
     else if (aba === 'execucao') corpo = MQ.execUI && souGeral ? MQ.execUI.aba() : '';
     else if (aba === 'campo') corpo = (MQ.campoUI ? MQ.campoUI.abaCoord() : '') + (MQ.vendaUI && !S.campoSemBanco ? MQ.vendaUI.secaoCanais('') : '') + (MQ.vitrineUI && !S.campoSemBanco ? MQ.vitrineUI.secaoCoord() : '');
     else corpo = `<div class="cab"><div><span class="eyebrow">Histórico</span><h1 id="t-h">Histórico de alterações</h1>
@@ -725,6 +775,7 @@
     return `<b>${esc(quem)}</b> atualizou o cadastro de <b>${esc(D.nome)}</b>.`;
   }
   function historico() {
+    if (esperandoDaAba('aud')) return carregandoAba();
     if (!S.aud.length) return `<div class="vazio-hist"><p><b>Nada registrado ainda.</b></p>
       <p class="small muted">Aqui aparece, com data, hora e autor, tudo o que muda na equipe: cadastros, códigos de acesso, habilitação (FIC, Arlo e termo), consultas à conta bancária, desligamentos e o primeiro acesso de cada pessoa.</p></div>`;
     const fmtH = t => new Date(t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -1739,7 +1790,7 @@
   const chaveAcao = el => { try { return el.dataset.acao + '|' + JSON.stringify(Object.assign({}, el.dataset, { ok: undefined, okEm: undefined })); } catch (e) { return String(el.dataset.acao); } };
   document.addEventListener('click', async ev => {
     const el = ev.target.closest('[data-acao]'); if (!el) return;
-    const a = el.dataset.acao;
+    const a = el.dataset.acao; let rota;
     const chave = chaveAcao(el); if (emAndamento.has(chave)) return;
     emAndamento.add(chave);
     const noPainel = !!(el.closest && el.closest('#painel'));
@@ -1816,27 +1867,11 @@
       }
       else if (a === 'sair') await sairDoSistema();
       else if (a === 'fechar') pedirFechar();
-      else if (a === 'aba') { irParaAba(el.dataset.aba); S.menuAberto = false; render(); window.scrollTo(0, 0); digitouEm = 0; atualizarEmSegundoPlano(); }
-      else if (/^ficha/.test(a) && MQ.fichasUI) { S.voltarFoco = el; await MQ.fichasUI.clique(a, el); }
-      else if (/^apl-/.test(a) && MQ.sugestaoUI) await MQ.sugestaoUI.clique(a, el);
-      else if (/^banco-/.test(a) && MQ.bancoUI) await MQ.bancoUI.clique(a, el);
-      else if (/^pend-/.test(a) && MQ.pendUI) { S.voltarFoco = el; await MQ.pendUI.clique(a, el); }
-      else if (/^conv-/.test(a) && MQ.convitesUI) await MQ.convitesUI.clique(a, el);
-      else if (/^custo-/.test(a) && MQ.custosUI) await MQ.custosUI.clique(a, el);
-      else if (/^fic-/.test(a) && MQ.ficUI) { S.voltarFoco = el; await MQ.ficUI.clique(a, el); }
-      else if (/^pag-/.test(a) && MQ.pagUI) { S.voltarFoco = el; await MQ.pagUI.clique(a, el); }
-      else if (/^enc-/.test(a) && MQ.encUI) { if (/^enc-(novo|editar)$/.test(a)) S.voltarFoco = el; await MQ.encUI.clique(a, el); }
-      else if (/^exec-/.test(a) && MQ.execUI) { S.voltarFoco = el; await MQ.execUI.clique(a, el); }
-      else if (/^agua-/.test(a) && MQ.aguaUI) { S.voltarFoco = el; await MQ.aguaUI.clique(a, el); }
-      else if (/^venda-/.test(a) && MQ.vendaUI) { S.voltarFoco = el; await MQ.vendaUI.clique(a, el); }
-      else if (/^doc-/.test(a) && MQ.docsUI) { if (!/^doc-rel-/.test(a)) S.voltarFoco = el; await MQ.docsUI.clique(a, el); }
-      else if (/^viag-/.test(a) && MQ.viagUI) { if (!/pass$/.test(a)) S.voltarFoco = el; await MQ.viagUI.clique(a, el); }
-      else if (/^(aval|imp)-/.test(a) && MQ.impactoUI) { S.voltarFoco = el; await MQ.impactoUI.clique(a, el); }
-      else if (/^vit-/.test(a) && MQ.vitrineUI) await MQ.vitrineUI.clique(a, el);
-      else if (/^ent-/.test(a) && MQ.entregasUI) await MQ.entregasUI.clique(a, el);
-      else if (/^rot-/.test(a) && MQ.roteiroUI) { S.voltarFoco = null; await MQ.roteiroUI.clique(a, el); }
-      else if (/^campo-/.test(a) && MQ.campoUI) { S.voltarFoco = el; await MQ.campoUI.clique(a, el); }
-      else if (/^acomp-/.test(a) && MQ.acompUI) await MQ.acompUI.clique(a, el);
+      else if (a === 'aba') { irParaAba(el.dataset.aba); S.menuAberto = false; render(); window.scrollTo(0, 0); digitouEm = 0; carregarDaAba(); atualizarEmSegundoPlano(); }
+      else if ((rota = rotaDoClique(a))) {   // ações dos módulos: tabela ROTAS_CLIQUE
+        if (rota[2] === null) S.voltarFoco = null; else if (rota[2] === true || (rota[2] && rota[2](a))) S.voltarFoco = el;
+        await MQ[rota[1]].clique(a, el);
+      }
       else if (a === 'ver') { S.voltarFoco = el; abrirPainel({ tipo: 'detalhe', id: el.dataset.id }); }
       else if (a === 'ir') { const t = document.querySelector(el.dataset.alvo); if (t) { const sec = t.closest('section, .bloco') || t; sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); t.setAttribute('tabindex', '-1'); t.focus({ preventScroll: true }); } }
       else if (a === 'novo') { S.voltarFoco = el; abrirPainel({ tipo: 'cadastro', papel: el.dataset.papel, uf: el.dataset.uf, subst: el.dataset.subst }); }
@@ -1931,8 +1966,8 @@
     const doLink = abaDoHash(); const x = (st && st.mq === 'aba' && st.aba) || doLink || null;
     if (doLink && x) { try { H.replaceState({ mq: 'aba', aba: x }, '', enderecoLimpo()); } catch (e) {} }   // link antigo: some do endereço
     if (!x || !abasDoPapel().includes(x)) return;
-    if (x === abaAtual()) { S.aba = x; render(); return; }   // voltou de #numeros ou de um convite: a tela mostrada não era a do sistema
-    S.aba = x; lembrarAba(); S.menuAberto = false; render(); window.scrollTo(0, 0);
+    if (x === abaAtual()) { S.aba = x; render(); carregarDaAba(); return; }   // voltou de #numeros ou de um convite: a tela mostrada não era a do sistema
+    S.aba = x; lembrarAba(); S.menuAberto = false; render(); window.scrollTo(0, 0); carregarDaAba();
   }
   window.addEventListener('popstate', ev => {
     if (voltasNossas.length) { voltasNossas.shift(); soltarFila(); return; }   // fomos nós, ao fechar o painel
@@ -2040,25 +2075,7 @@
           render();
         }, { texto: 'Entrando…' });
       }
-      if (/^ficha/.test(tipo) && MQ.fichasUI) await MQ.fichasUI.enviar(tipo, form, fd);
-      if (/^pend-/.test(tipo) && MQ.pendUI) await MQ.pendUI.enviar(tipo, form, fd);
-      if (/^(visita|diag)/.test(tipo) && MQ.campoUI) await MQ.campoUI.enviar(tipo, form, fd);
-      if (/^acomp-/.test(tipo) && MQ.acompUI) await MQ.acompUI.enviar(tipo, form, fd);
-      if (/^vit-/.test(tipo) && MQ.vitrineUI) await MQ.vitrineUI.enviar(tipo, form, fd);
-      if (/^custo-/.test(tipo) && MQ.custosUI) await MQ.custosUI.enviar(tipo, form, fd);
-      if (/^fic-/.test(tipo) && MQ.ficUI) await MQ.ficUI.enviar(tipo, form, fd);
-      if (/^pag-/.test(tipo) && MQ.pagUI) await MQ.pagUI.enviar(tipo, form, fd);
-      if (/^viag-/.test(tipo) && MQ.viagUI) await MQ.viagUI.enviar(tipo, form, fd);
-      if (/^doc-/.test(tipo) && MQ.docsUI) await MQ.docsUI.enviar(tipo, form, fd);
-      if (/^exec-/.test(tipo) && MQ.execUI) await MQ.execUI.enviar(tipo, form, fd);
-      if (/^enc-/.test(tipo) && MQ.encUI) await MQ.encUI.enviar(tipo, form, fd);
-      if (/^agua-/.test(tipo) && MQ.aguaUI) await MQ.aguaUI.enviar(tipo, form, fd);
-      if (/^venda-/.test(tipo) && MQ.vendaUI) await MQ.vendaUI.enviar(tipo, form, fd);
-      if (/^rot-/.test(tipo) && MQ.roteiroUI) await MQ.roteiroUI.enviar(tipo, form, fd);
-      if (tipo === 'aval' && MQ.impactoUI) await MQ.impactoUI.enviar(tipo, form, fd);
-      if (/^conv-/.test(tipo) && MQ.convitesUI) await MQ.convitesUI.enviar(tipo, form, fd);
-      if (tipo === 'banco' && MQ.bancoUI) await MQ.bancoUI.enviar(tipo, form, fd);
-      if (tipo === 'apl' && MQ.sugestaoUI) await MQ.sugestaoUI.enviar(tipo, form, fd);
+      for (const [re, ui] of ROTAS_FORM) if (re.test(tipo) && MQ[ui]) await MQ[ui].enviar(tipo, form, fd);   // formulários dos módulos
       if (tipo === 'cadastro') {
         const p = S.painel;
         const base = p.id ? porId(p.id) : { papel: p.papel, uf: p.uf || null, substitui_id: p.subst || null };

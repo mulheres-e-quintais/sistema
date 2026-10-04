@@ -121,7 +121,9 @@ describe('modo demonstração: só a coordenação geral', () => {
     assert.ok(!abasDe(h).includes('documentos')); assert.ok(!texto(h).includes('Documentos do projeto'));
   });
   test('coordenação geral: a aba mostra anexar e gerar relatório', async () => {
-    const t = await montar('coord_geral'); const h = t.aba('documentos');
+    const t = await montar('coord_geral'); const antes = t.aba('documentos');
+    assert.ok(antes.includes('data-carregando-aba'), 'os documentos só são buscados quando a aba abre');
+    await t.MQ.ui.carregarDaAba(); const h = t.aba('documentos');
     assert.ok(abasDe(h).includes('documentos'));
     assert.ok(h.includes('data-acao="doc-novo"')); assert.ok(h.includes('data-acao="doc-relatorio"'));
     const rel = t.painel({ tipo: 'doc-relatorio' });

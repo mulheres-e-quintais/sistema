@@ -98,7 +98,8 @@ describe('Histórico', () => {
   test('coordenação geral: vê o histórico com o que a equipe fez', async () => {
     const t = await montar('coord_tecnico');
     await t.api.criar({ papel: 'agente', uf: 'SE', nome: 'Agente Do Historico', cpf: '47602436075', email: 'hist@gmail.com', telefone: '(79) 99999-0000', data_inicio: diaMais(0), consentimento_lgpd: true });
-    await t.trocar('coord_geral'); const h = texto(t.aba('historico'));
+    await t.trocar('coord_geral'); t.aba('historico'); await t.MQ.ui.carregarDaAba();   // o histórico é buscado quando a aba abre
+    const h = texto(t.aba('historico'));
     assert.ok(h.includes('Histórico de alterações')); assert.ok(h.includes('cadastrou') && h.includes('Agente Do Historico'));
   });
   test('coordenação técnica e perfis pessoais não têm histórico', async () => {
@@ -112,7 +113,7 @@ describe('Histórico', () => {
 /* ================================================================== DOCUMENTOS */
 describe('Documentos', () => {
   test('coordenação geral: aba com anexar e gerar relatório', async () => {
-    const t = await montar('coord_geral'); const h = t.aba('documentos');
+    const t = await montar('coord_geral'); t.aba('documentos'); await t.MQ.ui.carregarDaAba(); const h = t.aba('documentos');
     assert.ok(texto(h).includes('Documentos do projeto'));
     assert.equal(botoes(h, 'doc-novo').length, 1); assert.equal(botoes(h, 'doc-relatorio').length, 1);
   });
