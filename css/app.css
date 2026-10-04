@@ -3093,3 +3093,4 @@ label.check.ac2-ativo:has(input:focus-visible) { outline: 2px solid var(--focus)
   .ag-th, .ag-tr { grid-template-columns: 146px minmax(0, 1fr) auto; }   /* primeiro cartão na mesma coluna do quadro de bolsistas */
   .eq-quadro tbody td:nth-child(2), .eq-quadro tbody td:nth-child(3), .eq-quadro thead th:nth-child(2), .eq-quadro thead th:nth-child(3) { padding-left: 0; padding-right: 24px; }
 }
+@media (min-width: 961px) and (max-width: 1100px) { .ag-th, .ag-tr { grid-template-columns: 106px minmax(0, 1fr) auto; } }
