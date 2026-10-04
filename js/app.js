@@ -607,7 +607,7 @@
       const s = R.situacao(m);
       const nFichas = (S.fichas || []).filter(f => f.bolsista_id === m.id).length;
       const nVis = (S.visitas || []).filter(v => v.executor_id === m.id && v.situacao === 'realizada').length;
-      const plano = nFichas || nVis ? `${nFichas} ficha${nFichas === 1 ? '' : 's'} lançada${nFichas === 1 ? '' : 's'} · ${nVis} visita${nVis === 1 ? '' : 's'} feita${nVis === 1 ? '' : 's'}` : 'Ainda sem fichas nem visitas';
+      const plano = nFichas || nVis ? `${nFichas} ficha${nFichas === 1 ? '' : 's'} · ${nVis} visita${nVis === 1 ? '' : 's'}` : 'Sem fichas nem visitas';
       return `<button class="vagabtn com-foto" data-acao="ver" data-id="${m.id}">${avatar(m, 56)}<span class="vb-t"><span class="nm">${esc(nomeDe(m))}</span>
         <span><span class="chip ${s.cod}">${esc(s.rot)}</span></span><span class="sub">${esc(plano)}</span></span></button>`;
     }
