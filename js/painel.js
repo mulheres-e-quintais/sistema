@@ -166,6 +166,46 @@
     return [x0 - m, y0 - m, x1 - x0 + 2 * m, y1 - y0 + 2 * m];
   }
   const ULTIMO = { grupos: {}, foco: '' };
+  /* Tamanho dos círculos do mapa. A área continua proporcional ao número de fichas, mas o conjunto encolhe por igual
+     quando o volume cresce: (1) o maior círculo nunca passa de um teto; (2) nenhum círculo cobre o vizinho.
+     Com poucas fichas (o plano de 200 quintais) nada muda: vale o coeficiente de sempre. Devolve n → raio.
+     pontos: [{x, y, n}] · base e coef: raio = esc × (base + coef × √n) · teto: raio máximo, em unidades de esc. */
+  function escalaRaios(pontos, esc, base, coef, teto) {
+    const ps = pontos.filter(p => p.n > 0); if (!ps.length) return n => esc * (base + coef * Math.sqrt(n));
+    let k = Math.min(coef, (teto - base) / Math.sqrt(Math.max(...ps.map(p => p.n))));
+    for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) {
+      const dist = Math.hypot(ps[i].x - ps[j].x, ps[i].y - ps[j].y) / esc, soma = Math.sqrt(ps[i].n) + Math.sqrt(ps[j].n);
+      if (2 * base + k * soma > dist * 0.96) k = Math.min(k, (dist * 0.96 - 2 * base) / soma);   // 4% de folga entre vizinhos
+    }
+    k = Math.max(k, Math.min(coef, 0.2));   // piso: abaixo disso o número não se lê; o que ainda encostar é afastado por espalhar()
+    return n => esc * (base + k * Math.sqrt(n));
+  }
+  /* Municípios vizinhos ficam mais perto um do outro do que o menor círculo legível: encolher não basta. Aqui os círculos
+     que ainda se tocam são afastados o mínimo necessário (cada um puxado de volta para o seu lugar), e quem saiu do lugar
+     ganha um traço fino até o ponto verdadeiro. pontos: [{x, y, n}] → [{x, y, r, x0, y0, movido}] na mesma ordem. */
+  function espalhar(pontos, raio, esc) {
+    const ps = pontos.map(p => ({ x: p.x, y: p.y, x0: p.x, y0: p.y, r: raio(p.n) })); const folga = esc * 0.35;
+    for (let volta = 0; volta < 120; volta++) { let mexeu = false;
+      for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) {
+        const a = ps[i], b = ps[j]; let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy); const quer = a.r + b.r + folga;
+        if (d >= quer) continue;
+        if (d < 1e-9) { const ang = (i * 2.399963) % (2 * Math.PI); dx = Math.cos(ang); dy = Math.sin(ang); d = 1; }   // mesmo ponto: separa num ângulo fixo
+        const emp = (quer - d) / 2 + 1e-9, ux = dx / d, uy = dy / d; a.x -= ux * emp; a.y -= uy * emp; b.x += ux * emp; b.y += uy * emp; mexeu = true;
+      }
+      ps.forEach(p => { p.x += (p.x0 - p.x) * 0.03; p.y += (p.y0 - p.y) * 0.03; });   // puxa de volta: fica o mais perto possível do lugar certo
+      if (!mexeu) break;
+    }
+    for (let volta = 0; volta < 40; volta++) { let mexeu = false;   // última passada só afastando: garante que nada fica por cima
+      for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) { const a = ps[i], b = ps[j]; const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1e-9, quer = a.r + b.r + folga * 0.5;
+        if (d >= quer) continue; const emp = (quer - d) / 2 + 1e-9; a.x -= dx / d * emp; a.y -= dy / d * emp; b.x += dx / d * emp; b.y += dy / d * emp; mexeu = true; }
+      if (!mexeu) break; }
+    ps.forEach(p => { p.movido = Math.hypot(p.x - p.x0, p.y - p.y0) > p.r * 0.6; });
+    return ps;
+  }
+  const tracoAoLugar = (p, esc) => p.movido ? `<path d="M${p.x0},${p.y0}L${p.x},${p.y}" class="q-fio" stroke-width="${esc * 0.18}"/><circle cx="${p.x0}" cy="${p.y0}" r="${esc * 0.45}" class="q-fio-pt"/>` : '';
+  /* valores "redondos" para a legenda de tamanho, conforme o maior círculo do mapa */
+  const redondo = v => { const p = Math.pow(10, Math.floor(Math.log10(Math.max(1, v)))); const m = v / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; };
+  const marcasTamanho = nMax => nMax <= 30 ? [5, 10, 20] : [...new Set([redondo(nMax / 10), redondo(nMax / 3), redondo(nMax)])];
   function mapa(S, d) {
     /* 3 níveis: 5 estados (um círculo por município) → estado (círculo por município) → município (cada quintal) */
     const foco = S.mapaUF || '';
@@ -200,13 +240,17 @@
     const baseDe = g => { const muns = MQ.GEO.mun[g.uf] || {}; const chave = Object.keys(muns).find(m => norm(m) === norm(g.mun));
       return { base: chave ? muns[chave] : (MQ.GEO.uf[g.uf] || {}).c, nome: chave || g.mun }; };
     const resumo = g => ordem.slice().reverse().map(id => [id, g.itens.filter(x => x.cat === id).length]).filter(([, q]) => q);
-    // tamanho proporcional às fichas (área ~ número), com mínimo bem visível para o município de 1 ficha
-    const raio = n => esc * ((foco ? 1.3 : 1.0) + (foco ? 0.55 : 0.5) * Math.sqrt(n));
+    // tamanho proporcional às fichas (área ~ número), com mínimo bem visível para o município de 1 ficha;
+    // com muitas fichas os círculos encolhem juntos para não ficar um por cima do outro (escalaRaios)
+    const centros = lista.map(g => { const b = baseDe(g).base; if (!b) return null; const [x, y] = px(b); return { x, y, n: g.itens.length, k: g.k }; }).filter(Boolean);
+    const raio = escalaRaios(centros, esc, foco ? 1.3 : 1.0, foco ? 0.55 : 0.5, foco ? 9 : 5.5);
+    const nMaior = Math.max(0, ...centros.map(c => c.n));
+    const lugar = {}; if (!focoMun) espalhar(centros, raio, esc).forEach((p, i) => { lugar[centros[i].k] = p; });
     let marcas;
     if (!focoMun) {
       marcas = lista.map(g => {
         const { base, nome } = baseDe(g); if (!base) return '';
-        const [cx, cy] = px(base); const n = g.itens.length; const R = raio(n);
+        const L = lugar[g.k] || {}; const [bx, by] = px(base); const cx = L.x != null ? L.x : bx, cy = L.y != null ? L.y : by; const n = g.itens.length; const R = raio(n);
         ULTIMO.geo[g.k] = { cx, cy, R };
         const por = resumo(g);
         let ang = -Math.PI / 2; const fatias = por.length === 1
@@ -216,7 +260,7 @@
               return `<path d="M${cx},${cy}L${p0[0]},${p0[1]}A${R},${R} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${p1[0]},${p1[1]}Z" fill="${CATS.find(k => k.id === id).cor}"/>`; }).join('');
         const txt = `${nome}/${g.uf} · ${n} mulher${n > 1 ? 'es' : ''} com ficha: ${por.map(([id, q]) => q + ' ' + CATS.find(k => k.id === id).nome.toLowerCase()).join(', ')} · clique para ver ${foco ? 'cada quintal' : 'o estado'}`;
         // área de toque invisível maior que o círculo: no celular o dedo acerta mesmo em município pequeno
-        return `<g class="q-pt q-grupo" data-acao="mapa-info" data-uf="${g.uf}" data-mun="${E(g.k)}" data-dica="${E(txt)}"><circle cx="${cx}" cy="${cy}" r="${Math.max(R, esc * (foco ? 4.5 : 3.8))}" fill="transparent" class="q-alvo"/>${fatias}<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#fff" stroke-width="${esc * 0.22}"/>
+        return `<g class="q-pt q-grupo" data-acao="mapa-info" data-uf="${g.uf}" data-mun="${E(g.k)}" data-dica="${E(txt)}"><circle cx="${cx}" cy="${cy}" r="${Math.max(R, esc * (foco ? 4.5 : 3.8))}" fill="transparent" class="q-alvo"/>${tracoAoLugar(L, esc)}${fatias}<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#fff" stroke-width="${esc * 0.22}"/>
           <text x="${cx}" y="${cy + R * 0.34}" text-anchor="middle" font-size="${Math.min(R * (n > 9 ? 0.95 : 1.1), esc * 3)}" class="q-num">${n}</text><title>${E(txt)}</title></g>`;
       }).join('');
     } else {
@@ -233,7 +277,7 @@
     const cont = {}; pts.forEach(x => { cont[x.cat] = (cont[x.cat] || 0) + 1; });
     // legenda de tamanho no próprio desenho (mesma escala dos círculos): 5, 10 e 20 fichas, no canto livre de baixo à esquerda
     const tamanhos = !foco && lista.length ? (() => { const Rn = raio; let x = vb[0] + esc * 5; const yb = vb[1] + vb[3] - esc * 7;
-      return `<g class="q-tam" aria-hidden="true">${[5, 10, 20].map(n => { const r = Rn(n); const cx = x + r; x += 2 * r + esc * 3.2;
+      return `<g class="q-tam" aria-hidden="true">${marcasTamanho(nMaior).map(n => { const r = Rn(n); const cx = x + r; x += 2 * r + esc * 3.2;
         return `<circle cx="${cx}" cy="${yb - r}" r="${r}" class="q-tam-c" stroke-width="${esc * 0.25}"/><text x="${cx}" y="${yb + esc * 3.6}" font-size="${esc * 2.6}" text-anchor="middle" class="q-tam-t">${n}</text>`; }).join('')}</g>`; })() : '';
     const nUF = new Set(todos.map(x => x.f.uf)).size;
     const naoAtende = d.fichas.filter(f => f.resultado === 'nao_atende' && (!foco || f.uf === foco) && (!focoMun || f.uf + '|' + norm(f.municipio) === focoMun)).length;
@@ -275,7 +319,7 @@
           ${naoAtende ? `<li class="muted">${naoAtende} que não atende${naoAtende > 1 ? 'm' : ''} aos critérios fica${naoAtende > 1 ? 'm' : ''} fora do mapa</li>` : ''}</ul>
         ${munLista}</div>
       </div>
-      ${tamanhos ? '<p class="mapa-tam-nota">Cada círculo representa um município. O tamanho indica o número de fichas/mulheres (exemplos no canto do mapa: 5, 10 e 20).</p>' : ''}
+      ${tamanhos ? '<p class="mapa-tam-nota">Cada círculo representa um município. O tamanho indica o número de fichas/mulheres (exemplos no canto do mapa: ' + marcasTamanho(nMaior).join(', ').replace(/, ([^,]*)$/, ' e $1') + '). Com muitas fichas, os círculos diminuem juntos; município vizinho de outro é afastado e ligado ao seu lugar por um traço.</p>' : ''}
       <p class="nota">O mapa mostra onde moram as mulheres: use só dentro do sistema. Em relatórios e divulgação, mostre números por município.</p>
     </section>`;
   }
@@ -590,10 +634,13 @@
        em vez de passar por ~30 pontos. op.tab força um dos dois. */
     const tab = op.tab != null ? op.tab : ((typeof location !== 'undefined' && location.hash === '#numeros') ? 0 : -1);
     const acess = rot => `role="img" aria-label="${E(rot)}" tabindex="${tab}"`;
-    const pontoMun = ({ uf, nome, xy: [x, y] }, k) => { const q = qMun(uf, nome); const n = q ? (q.n || 2) : 0;
-      const r = esc * (1.15 + 0.42 * Math.sqrt(n)); const txt = q ? (q.menos_de_3 ? 'menos de 3 mulheres cadastradas' : q.n + ' mulheres cadastradas') : 'previsto, ainda sem cadastro';
+    const raioMun = escalaRaios(muns.map(m => { const q = qMun(m.uf, m.nome); return { x: m.xy[0], y: m.xy[1], n: q ? (q.n || 2) : 0 }; }), esc, 1.15, 0.42, 5);   // sem sobrepor (ver escalaRaios)
+    const comDado = dadosMun ? muns.filter(m => qMun(m.uf, m.nome)) : [];
+    const lugarMun = new Map(); espalhar(comDado.map(m => { const q = qMun(m.uf, m.nome); return { x: m.xy[0], y: m.xy[1], n: q.n || 2 }; }), raioMun, esc).forEach((p, i) => lugarMun.set(comDado[i].uf + '|' + comDado[i].nome, p));
+    const pontoMun = ({ uf, nome, xy }, k) => { const q = qMun(uf, nome); const n = q ? (q.n || 2) : 0; const L = lugarMun.get(uf + '|' + nome) || {}; const x = L.x != null ? L.x : xy[0], y = L.y != null ? L.y : xy[1];
+      const r = raioMun(n); const txt = q ? (q.menos_de_3 ? 'menos de 3 mulheres cadastradas' : q.n + ' mulheres cadastradas') : 'previsto, ainda sem cadastro';
       return `<g class="mun-pt${q ? ' mun-q' : ' mun-prev'}" data-mun="${E(nome)}/${uf} · ${txt}" data-rota-de="${E(nome)}/${uf}" ${acess(nome + '/' + uf + ': ' + txt)} style="--i:${k}"><circle cx="${x}" cy="${y}" r="${Math.max(r, esc * 3.2)}" class="mun-alvo"/>`
-        + (q ? `<circle cx="${x}" cy="${y}" r="${r}" class="mun-dot" stroke-width="${esc * 0.35}"/>${q.n ? `<text x="${x}" y="${y + r * 0.36}" text-anchor="middle" font-size="${Math.min(r * 1.05, esc * 2.8)}" class="mun-n">${q.n}</text>` : ''}`
+        + (q ? `${tracoAoLugar(L, esc)}<circle cx="${x}" cy="${y}" r="${r}" class="mun-dot" stroke-width="${esc * 0.35}"/>${q.n ? `<text x="${x}" y="${y + r * 0.36}" text-anchor="middle" font-size="${Math.min(r * 1.05, esc * 2.8)}" class="mun-n">${q.n}</text>` : ''}`
           : `<circle cx="${x}" cy="${y}" r="${esc * 1}" class="mun-vazio" stroke-width="${esc * 0.35}"/>`) + `<title>${E(nome)}/${uf}: ${txt}</title></g>`; };
     const pontos = dadosMun ? muns.map(pontoMun).join('') : muns.map(({ uf, nome, xy: [x, y] }, k) =>
       `<g class="mun-pt" data-mun="${E(nome)}/${uf}" ${acess(nome + '/' + uf)} style="animation-delay:${((k * 0.37) % 2.4).toFixed(2)}s;--i:${k}"><circle cx="${x}" cy="${y}" r="${esc * 3.2}" class="mun-alvo"/><circle cx="${x}" cy="${y}" r="${esc * 2.2}" class="mun-onda"/><circle cx="${x}" cy="${y}" r="${esc * 1.4}" class="mun-dot" stroke-width="${esc * 0.35}"/><title>${E(nome)}/${uf}</title></g>`).join('');
@@ -626,5 +673,5 @@
     if (d.scrollIntoView) d.scrollIntoView({ block: 'center', behavior: (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) ? 'auto' : 'smooth' });
     const s = d.querySelector('summary'); if (s && s.focus) s.focus({ preventScroll: true });
   });
-  MQ.painelUI = { visaoGeral, mesDoProjeto, mapaUFs, infoMeta, execucaoGeral, chipStatus, STATUS };
+  MQ.painelUI = { visaoGeral, mesDoProjeto, mapaUFs, escalaRaios, espalhar, marcasTamanho, infoMeta, execucaoGeral, chipStatus, STATUS };
 })();
