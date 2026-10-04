@@ -17,7 +17,7 @@ const R = []; const ok = (n, c, d = '') => { R.push(c); console.log((c ? 'PASSOU
   ok('cada item diz de onde veio o preço', /SINAPI, insumo 34636/.test(await txt('.tab-kit-itens')));
   // altera um preço e confirma com a origem
   await p.locator('.tab-kit-itens tr', { hasText: 'Esterco curtido' }).locator('[data-acao=campo-kit-editar]').click();
-  ok('Alterar carrega o item no formulário', await p.inputValue('#ki-item') === 'Esterco curtido' && await p.inputValue('#ki-valor') === '15,00');
+  ok('Alterar carrega o item no formulário', await p.inputValue('#ki-item') === 'Esterco curtido' && await p.inputValue('#ki-valor') === '26,00');
   await p.fill('#ki-valor', '12,50'); await p.check('form[data-form="diag-kit-item"] [name=confirmado]'); await p.fill('#ki-fonte', '');
   await p.click('form[data-form="diag-kit-item"] button[type=submit]'); await p.waitForTimeout(400);
   ok('confirmar preço sem dizer a origem é recusado na tela', /de onde ele veio/.test(await txt('form[data-form="diag-kit-item"]')));
@@ -65,10 +65,10 @@ const R = []; const ok = (n, c, d = '') => { R.push(c); console.log((c ? 'PASSOU
     await p.click('[data-acao=campo-linha-add][data-tipo=kit]');
     const l = p.locator('#w-kit [data-linha=kit]').last();
     await l.locator('[name=kit_item]').fill('Tela para galinheiro');
-    ok('escolher o item preenche o preço de referência', await l.locator('[name=kit_valor]').inputValue() === '7,40');
+    ok('escolher o item preenche o preço de referência', await l.locator('[name=kit_valor]').inputValue() === '13,32');
     ok('a quantidade passa a pedir a unidade do item', /\(m\)/.test(await l.locator('[name=kit_qtd]').getAttribute('placeholder')));
     await l.locator('[name=kit_qtd]').fill('25');
-    ok('a projeção soma o item (25 m × R$ 7,40 = R$ 185,00)', /185,00|R\$/.test(await txt('#kit-proj')));
+    ok('a projeção soma o item (25 m × R$ 13,32 = R$ 333,00)', /333,00|R\$/.test(await txt('#kit-proj')));
     await l.locator('[name=kit_item]').fill('Esterco curtido');
     ok('trocar o item troca o preço que o sistema tinha posto', await l.locator('[name=kit_valor]').inputValue() === '12,50');
     await l.locator('[name=kit_valor]').fill('9,00'); await l.locator('[name=kit_item]').fill('Mudas frutíferas');
