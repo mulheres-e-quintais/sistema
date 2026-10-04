@@ -271,10 +271,10 @@
       return `<tr><td class="uf"><span class="sigla">${u.uf}</span><span class="nomeuf">${u.nome}</span></td>
         <td class="cu-dias" data-rot="Dias de campo"><div class="dias-cel"><span class="num"><b>${feitas}</b> feitos <span class="muted">de ${MQ.DIAS_CAMPO_UF}</span></span>
           <span class="medidor"><i style="width:${pct}%;opacity:.35"></i><i style="width:${pctF}%"></i></span><span class="small muted">${vs.length - feitas} previsto${vs.length - feitas === 1 ? '' : 's'} no roteiro</span></div></td>
-        <td class="num c" data-rot="Diagnósticos">${d.length} <span class="muted">de 40</span></td><td class="num c" data-rot="Planos aprovados">${d.filter(x => x.situacao === 'aprovado').length}</td><td class="num c" data-rot="Sem água na seca">${(n => n ? `<b style="color:var(--crit)">${n}</b>` : 0)(d.filter(x => x.sem_agua).length)}</td>
+        <td class="num c" data-rot="Diagnósticos">${d.length} <span class="muted">de ${MQ.META_UF.diagnosticos}</span></td><td class="num c" data-rot="Planos aprovados">${d.filter(x => x.situacao === 'aprovado').length}</td><td class="num c" data-rot="Sem água na seca">${(n => n ? `<b style="color:var(--crit)">${n}</b>` : 0)(d.filter(x => x.sem_agua).length)}</td>
         <td class="num c" data-rot="Agentes de campo">${pessoasCampo(u.uf).filter(p => p.papel === 'agente').length}</td></tr>`; };
     return `<div class="cab"><div><span class="eyebrow">Trabalho de campo</span><h1>Visitas, diagnósticos e planos</h1>
-        <p>${souTec ? 'Você aprova ou devolve o plano de cada quintal antes da compra do kit.' : 'A aprovação dos planos é da coordenação técnica.'} Dias de campo: ${MQ.DIAS_CAMPO_UF} por estado (40 quintais × 5 visitas: diagnóstico, implantação, 2 acompanhamentos e avaliação final).</p></div></div>
+        <p>${souTec ? 'Você aprova ou devolve o plano de cada quintal antes da compra do kit.' : 'A aprovação dos planos é da coordenação técnica.'} Dias de campo: ${MQ.DIAS_CAMPO_UF} por estado (${MQ.VAGAS_UF} quintais × 5 visitas: diagnóstico, implantação, 2 acompanhamentos e avaliação final).</p></div></div>
       <div class="quadro-scroll" style="display:block"><table class="quadro tab-campo-uf"><thead><tr><th>Estado</th><th>Dias de campo</th><th class="c">Diagnósticos</th><th class="c">Planos aprovados</th><th class="c">Sem água na seca</th><th class="c">Agentes de campo</th></tr></thead>
         <tbody>${MQ.UFS.map(linhaUF).join('')}</tbody></table></div>
       <p class="small muted" style="margin:6px 2px 0"><b>Sem água na seca:</b> diagnósticos em que a água não dura no período seco. Essa mulher não recebe o kit (é encaminhada a programa de cisternas) e a vaga dela precisa ser preenchida pela lista de espera. Acima de 30% no estado é sinal de alerta.</p><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p>
@@ -337,7 +337,7 @@
     const tots = planos.map(d => totalKit(comRef(d.dados && d.dados.kit))).filter(v => v > 0);
     const soma = tots.reduce((a, b) => a + b, 0); const acima = lim ? tots.filter(v => v > lim).length : 0;
     return `<div class="bloco kit-par"><div><h3>Investimento nos quintais (kits)</h3>
-        <p class="kit-valor"><span class="small muted">Valor do kit por quintal</span><b class="num">${brl(lim)}</b><span class="small muted">definido no plano de trabalho · ${brl(lim * 200)} para os 200 quintais</span></p>
+        <p class="kit-valor"><span class="small muted">Valor do kit por quintal</span><b class="num">${brl(lim)}</b><span class="small muted">definido no plano de trabalho · ${brl(lim * MQ.VAGAS_UF * MQ.UFS.length)} para os ${MQ.VAGAS_UF * MQ.UFS.length} quintais</span></p>
         <p class="small muted">${tots.length ? `${tots.length} plano${tots.length > 1 ? 's' : ''} com valores: <b>${brl(soma)}</b> projetados · média ${brl(soma / tots.length)} por quintal${acima ? ` · <b style="color:var(--crit)">${acima} acima do valor por quintal</b>` : ''}.` : 'Nenhum plano com valores ainda.'}
         Quem faz o diagnóstico vê a projeção do kit e o quanto falta ou passa deste valor.</p></div></div>`;
   }

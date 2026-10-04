@@ -117,7 +117,8 @@
 
   function ler() {
     if (mem) return mem;
-    try { const s = localStorage.getItem(CHAVE); if (s) mem = JSON.parse(s); } catch (e) { /* sem armazenamento */ }
+    const ampliado = !!(MQ.cenario && MQ.cenario.ativo());   // cenário "projeto ampliado" (js/cenario.js): gerado na hora, não lê nem grava no aparelho
+    if (!ampliado) { try { const s = localStorage.getItem(CHAVE); if (s) mem = JSON.parse(s); } catch (e) { /* sem armazenamento */ } }
     if (!mem) mem = semente();
     if (!mem.fotosEx) {   // ilustrações de pessoas para a equipe de exemplo (não são fotos de gente de verdade)
       const homens = /^(José|Antônio|Francisco|João|Raimundo|Pedro|Luiz|Manoel|Cícero|Sebastião|Geraldo)\b/;
@@ -162,6 +163,7 @@
       mem.vitrine = [a && { id: 'vit-1', path: 'exemplo-1.jpg', ficha_id: a.id, uf: a.uf, legenda: 'Canteiros de hortaliças no sertão do Piauí', sem_criancas: true, publicada_em: '2026-11-10T12:00:00Z' },
         b && { id: 'vit-2', path: 'exemplo-2.jpg', ficha_id: b.id, uf: b.uf, legenda: 'Preparo da área para o quintal, Paulistana (PI)', sem_criancas: true, publicada_em: '2026-11-05T12:00:00Z' }].filter(Boolean);
     }
+    if (ampliado && !mem.ampliado) MQ.cenario.ampliar(mem, { uid, gerarCPF });
     return mem;
   }
   /* Demonstração não tem fotos reais: desenha uma ilustração de canteiros (claramente não é foto de ninguém) */
@@ -178,7 +180,7 @@
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
   }
   const bancoMem = {};   // demonstração: dados bancários só na memória (somem ao recarregar), como exemplo de cuidado
-  function gravar() { try { localStorage.setItem(CHAVE, JSON.stringify(mem)); } catch (e) { /* segue só em memória */ } }
+  function gravar() { if (mem && mem.ampliado) return; try { localStorage.setItem(CHAVE, JSON.stringify(mem)); } catch (e) { /* segue só em memória */ } }
   const copia = o => JSON.parse(JSON.stringify(o));
   const falha = msg => { const e = new Error(msg); e.regra = true; return e; };
 
@@ -223,7 +225,7 @@
       return d.perfil;
     },
     async trocarPerfil(p) { const d = ler(); d.perfil = p; this.perfisDemo(); gravar(); return euMesmo(); },
-    async reler() { mem = null; ler(); return euMesmo(); },   // lê de novo o que está guardado no aparelho (outra aba mudou; testes)
+    async reler() { if (mem && mem.ampliado) return euMesmo(); mem = null; ler(); return euMesmo(); },   // lê de novo o que está guardado no aparelho (outra aba mudou; testes)
     async recomecar() { mem = null; try { localStorage.removeItem(CHAVE); } catch (e) {} ler(); gravar(); return euMesmo(); },
 
     /* ---------- Execução: planilha de gastos do mês (mesmas regras do 37_execucao_planilhas.sql): só a coordenação geral; nada se altera nem se apaga ---------- */

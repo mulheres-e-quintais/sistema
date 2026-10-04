@@ -10,7 +10,10 @@
     mda: { sigla: 'MDA', titulo: 'O projeto em números', sub: 'Acompanhamento da execução física pelo ministério', manual: 'mda' },
     mpa: { sigla: 'MPA', titulo: 'Andamento no território', sub: 'Acompanhamento da execução pelo movimento parceiro', manual: 'mpa' }
   };
-  const ALVO = { selecionadas: 200, diagnosticos: 200, implantados: 200, acompanhamentos: 400, avaliacoes: 200 };
+  /* alvos do plano de trabalho, tirados das vagas por estado e da meta de acompanhamento (200 quintais e 400 visitas) */
+  const quintais = () => MQ.VAGAS_UF * MQ.UFS.length;
+  const ALVO = { get selecionadas() { return quintais(); }, get diagnosticos() { return quintais(); }, get implantados() { return quintais(); }, get avaliacoes() { return quintais(); },
+    get acompanhamentos() { return (MQ.METAS.find(m => m.id === 'M4') || {}).alvo || 0; }, get visitas() { return MQ.DIAS_CAMPO_UF * MQ.UFS.length; } };
   const ALVO_UF = { selecionadas: 40, diagnosticos: 40, implantados: 40, acompanhamentos: 80, avaliacoes: 40 };
   const FMT = new Intl.NumberFormat('pt-BR');
   const n = v => FMT.format(Math.round(+v || 0));
@@ -168,9 +171,9 @@
 
   function corpo(a) {
     const kp = a.orgao === 'mda'
-      ? numeroGrande(n(total(a, 'selecionadas')), 'mulheres selecionadas', 'de 200 previstas') + numeroGrande(n(total(a, 'pessoas')), 'pessoas nas famílias') + numeroGrande(n(total(a, 'implantados')), 'quintais implantados', 'de 200 previstos')
-        + numeroGrande(n(total(a, 'municipios')), 'municípios') + numeroGrande(n(total(a, 'comunidades')), 'comunidades rurais') + numeroGrande(n(total(a, 'visitas_feitas')), 'visitas de campo feitas', 'de 1.000 previstas')
-      : numeroGrande(n(total(a, 'selecionadas')), 'mulheres selecionadas', 'de 200 previstas') + numeroGrande(n(total(a, 'comunidades')), 'comunidades', 'em ' + n(total(a, 'municipios')) + ' municípios') + numeroGrande(n(total(a, 'bolsistas') + total(a, 'agentes')), 'pessoas da equipe de campo')
+      ? numeroGrande(n(total(a, 'selecionadas')), 'mulheres selecionadas', 'de ' + n(ALVO.selecionadas) + ' previstas') + numeroGrande(n(total(a, 'pessoas')), 'pessoas nas famílias') + numeroGrande(n(total(a, 'implantados')), 'quintais implantados', 'de 200 previstos')
+        + numeroGrande(n(total(a, 'municipios')), 'municípios') + numeroGrande(n(total(a, 'comunidades')), 'comunidades rurais') + numeroGrande(n(total(a, 'visitas_feitas')), 'visitas de campo feitas', 'de ' + n(ALVO.visitas) + ' previstas')
+      : numeroGrande(n(total(a, 'selecionadas')), 'mulheres selecionadas', 'de ' + n(ALVO.selecionadas) + ' previstas') + numeroGrande(n(total(a, 'comunidades')), 'comunidades', 'em ' + n(total(a, 'municipios')) + ' municípios') + numeroGrande(n(total(a, 'bolsistas') + total(a, 'agentes')), 'pessoas da equipe de campo')
         + numeroGrande(n(total(a, 'visitas_feitas')), 'visitas feitas') + numeroGrande(n(total(a, 'agendadas')), 'visitas agendadas') + numeroGrande(n(total(a, 'atrasadas')), 'visitas atrasadas');
     const sec = (id, t, sub, h) => `<section class="ac-sec" id="ac-${id}" aria-labelledby="ac-${id}-t"><h2 id="ac-${id}-t">${t}</h2>${sub ? `<p class="ac-sub">${sub}</p>` : ''}${h}</section>`;
     const area = total(a, 'area_m2');
@@ -182,7 +185,7 @@
           + sec('evolucao', 'Evolução do trabalho de campo', 'Visitas feitas em cada mês.', evolucao(a))
           + sec('perfil', 'Quem são as mulheres', 'As prioridades de seleção do projeto, em números. Sem nome nem dado pessoal.', perfil(a))
           + sec('impacto', 'O que muda na vida das famílias', 'As mesmas perguntas são feitas antes da implantação e na avaliação final.', impacto(a))
-        : sec('estados', 'Estado por estado', 'Metas por estado: 40 mulheres, 40 diagnósticos, 40 quintais e 80 visitas de acompanhamento.', estados(a))
+        : sec('estados', 'Estado por estado', 'Metas por estado: ' + MQ.VAGAS_UF + ' mulheres, ' + MQ.META_UF.diagnosticos + ' diagnósticos, ' + MQ.META_UF.quintais + ' quintais e ' + MQ.META_UF.visitas + ' visitas de acompanhamento.', estados(a))
           + sec('parado', 'O que pede atenção', 'O que está atrasado ou esperando solução no território.', parados(a))
           + sec('formacao', 'Formação da equipe', 'Curso de formação das bolsistas e agentes de campo.', `<div class="ac-kpis ac-kpis-3">${numeroGrande(n((a.formacao || {}).turmas), 'turmas')}${numeroGrande(n((a.formacao || {}).matriculas), 'matrículas')}${numeroGrande(n((a.formacao || {}).encontros), 'encontros registrados')}</div>`)
           + sec('mapa', 'Onde o projeto está', `${n(total(a, 'comunidades'))} comunidades em ${n(total(a, 'municipios'))} municípios.`, mapa(a) + tabelaUF(a, true))

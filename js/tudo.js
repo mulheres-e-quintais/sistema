@@ -846,6 +846,109 @@ MQ.ORCAMENTO = {
   MQ.acaoComDica = (o, dica) => `<div class="acao-item">${MQ.botaoAcao(o)}${dica ? `<p class="acao-dica">${dica}</p>` : ''}</div>`;
 })();
 ;
+/* ===== cenario.js ===== */
+/* Mulheres & Quintais — CENÁRIO "PROJETO AMPLIADO" (só no modo demonstração)
+   Simula a ação 5 vezes maior e perto do fim: 1.000 quintais, 200 por estado, com as metas do plano também
+   multiplicadas por 5. Serve para mostrar o sistema cheio. Nunca vale em produção (exige supabaseUrl vazio).
+   Entra com ?cenario=ampliado no endereço; sai com ?cenario=normal. Vale enquanto a aba do navegador estiver aberta.
+   Os dados são gerados na hora, sempre iguais, e NÃO são guardados no aparelho: o que for mudado some ao recarregar. */
+(function () {
+  const R = MQ.regras, K = 5, CH = 'mq-cenario', MESES_ATRAS = 10;
+  function ativo() {
+    try {
+      if (MQ.CONFIG && MQ.CONFIG.supabaseUrl) return false;   // produção: nunca
+      const q = new URLSearchParams(location.search).get('cenario');
+      if (q === 'ampliado') sessionStorage.setItem(CH, 'ampliado'); else if (q) sessionStorage.removeItem(CH);
+      return sessionStorage.getItem(CH) === 'ampliado';
+    } catch (e) { return false; }
+  }
+  const recuar = (iso, meses) => { const [a, m, d] = String(iso).split('-').map(Number); const x = new Date(Date.UTC(a, m - 1 - meses, d || 1)); return x.toISOString().slice(0, d ? 10 : 7); };
+  /* metas, vagas, tetos e orçamento × 5; o calendário do projeto recua 10 meses (hoje cai perto do fim da vigência) */
+  let aplicado = false;
+  function aplicar() {
+    if (aplicado) return; aplicado = true;
+    Object.keys(MQ.META_UF).forEach(k => { MQ.META_UF[k] *= K; });
+    MQ.VAGAS_UF *= K; MQ.DIAS_CAMPO_UF *= K;
+    MQ.METAS.forEach(m => { if (['M2', 'M3', 'M4'].includes(m.id)) m.alvo *= K; if (m.valor) m.valor *= K; });
+    Object.keys(MQ.TETOS).forEach(k => { MQ.TETOS[k] *= K; });
+    const O = MQ.ORCAMENTO; O.total *= K; O.repasses.forEach(r => { r.valor *= K; r.mes = recuar(r.mes, MESES_ATRAS); });
+    O.cronograma.inicio = recuar(O.cronograma.inicio, MESES_ATRAS); O.cronograma.meses = O.cronograma.meses.map(v => v * K);
+    O.rubricas.forEach(r => (r.itens || []).forEach(i => { i.total *= K; if (i.unitario && typeof i.unitario.qtd === 'number') i.unitario.qtd *= K; }));
+    const P = MQ.PROJETO; P.vigencia.inicio = recuar(P.vigencia.inicio, MESES_ATRAS); P.vigencia.fim = recuar(P.vigencia.fim, MESES_ATRAS);
+    ['inicioBolsas', 'prazoIndicacao', 'inicioDiagnosticos'].forEach(k => { P[k] = recuar(P[k], MESES_ATRAS); });
+    MQ.MARCOS.forEach(m => { m.d = recuar(m.d, MESES_ATRAS); });
+    if (R.LIM) R.LIM.visitaMin = '2025-01-01';
+    if (MQ.calendarioProjeto) MQ.calendarioProjeto();
+  }
+  /* sorteio com semente fixa: o cenário sai sempre igual */
+  function sorteio(s) { return () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const NOMES = ['Maria', 'Francisca', 'Antônia', 'Josefa', 'Raimunda', 'Luzia', 'Cícera', 'Rita', 'Ana', 'Rosa', 'Edilene', 'Ivonete', 'Marlene', 'Socorro', 'Damiana', 'Severina', 'Joana', 'Tereza', 'Lúcia', 'Zefinha', 'Neide', 'Aparecida', 'Valdete', 'Cleide', 'Edna', 'Geralda', 'Irene', 'Jacira', 'Lindalva', 'Quitéria'];
+  const MEIO = ['Maria', 'das Graças', 'de Fátima', 'do Carmo', 'da Conceição', 'de Lourdes', 'Aparecida', 'do Socorro', 'de Jesus', 'das Dores', ''];
+  const SOBRE = ['Silva', 'Souza', 'Santos', 'Oliveira', 'Lima', 'Pereira', 'Ferreira', 'Alves', 'Ribeiro', 'Gomes', 'Barbosa', 'Rodrigues', 'Nunes', 'Reis', 'Araújo', 'Bezerra', 'Cavalcante', 'Moura', 'Nascimento', 'Batista'];
+  const COMUN = ['Lagoa do Mato', 'Barra', 'Caldeirão', 'Novo Horizonte', 'Sítio Baixio', 'Riacho Seco', 'Serra Branca', 'Umburana', 'Poço Dantas', 'Boa Vista', 'Malhada', 'Olho d’Água', 'Várzea Grande', 'Juazeiro', 'Angico'];
+  const DDD = { AL: '82', BA: '74', PE: '87', PI: '89', SE: '79' };
+
+  function ampliar(mem, util) {
+    aplicar();
+    const rnd = sorteio(20261004), pick = l => l[Math.floor(rnd() * l.length)], entre = (a, b) => a + Math.floor(rnd() * (b - a + 1));
+    const hoje = R.hoje(), dia = n => R.somaDias(hoje, -n), hora = (d, h) => d + 'T' + String(h).padStart(2, '0') + ':00:00.000Z';
+    const cg = mem.equipe.find(m => m.papel === 'coord_geral'), ct = mem.equipe.find(m => m.papel === 'coord_tecnico');
+    const modeloB = mem.equipe.find(m => m.id === mem.eu.bolsista), modeloA = mem.equipe.find(m => m.id === mem.eu.agente) || modeloB;
+    const fichaM = mem.fichas.find(f => f.resultado === 'selecionada' && f.situacao === 'aprovada'), visM = mem.visitas[0], diagM = mem.diagnosticos[0];
+    let cpfN = 300000000; const cpf = () => util.gerarCPF(cpfN += 7919);
+    const pessoa = (modelo, o) => Object.assign({}, modelo, { id: util.uid(), user_id: null, cpf: cpf(), foto_path: 'exemplo', foto_url: 'assets/exemplo/pessoa-' + pick([1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17]) + '.svg',
+      data_inicio: MQ.PROJETO.inicioBolsas, criado_em: hora(dia(305), 12), atualizado_em: hora(dia(300), 12), exemplo: true }, o);
+    const nomeDe = () => { const m = pick(MEIO); return pick(NOMES) + (m ? ' ' + m : '') + ' ' + pick(SOBRE) + (rnd() < .5 ? ' ' + pick(SOBRE) : ''); };
+    // datas da equipe que já existia recuam com o calendário
+    mem.equipe.forEach(m => { if (m.papel !== 'coord_geral') { m.data_inicio = MQ.PROJETO.inicioBolsas; ['matricula_fic_em', 'docs_funcern_em', 'termo_assinado_em'].forEach(k => { if (m[k]) m[k] = dia(295); }); } });
+    const fichas = [], visitas = [], diagnosticos = [], avaliacoes = [];
+    MQ.UFS.forEach((U, iu) => { const uf = U.uf || U[0] || U, munis = MQ.MUNICIPIOS[uf] || ['Sede'];
+      // equipe do estado: 2 bolsistas e 8 agentes de campo (aproveita quem já existe)
+      const daUF = p => mem.equipe.filter(m => m.uf === uf && m.status === 'ativa' && p(m));
+      const bols = daUF(m => R.ehBolsista(m.papel));
+      ['articulacao', 'apoio'].forEach(papel => { if (!bols.some(b => b.papel === papel)) { const n = nomeDe(); const b = pessoa(modeloB, { papel, uf, nome: n + ' (exemplo)', email: 'bolsista.' + uf.toLowerCase() + bols.length + '@exemplo.invalid', telefone: '(' + DDD[uf] + ') 99' + entre(100, 999) + '-' + entre(1000, 9999), municipio: munis[0],
+        meta_diagnosticos: 100, meta_quintais: 100, meta_visitas: 200, criado_por: ct.id }); mem.equipe.push(b); bols.push(b); } });
+      bols.forEach(b => { b.meta_diagnosticos = 100; b.meta_quintais = 100; b.meta_visitas = 200; });
+      const agentes = daUF(m => m.papel === 'agente');
+      while (agentes.length < 8) { const a = pessoa(modeloA, { papel: 'agente', uf, nome: nomeDe() + ' (exemplo)', email: 'agente.' + uf.toLowerCase() + agentes.length + '@exemplo.invalid', telefone: '(' + DDD[uf] + ') 98' + entre(100, 999) + '-' + entre(1000, 9999),
+        municipio: munis[agentes.length % munis.length], meta_diagnosticos: null, meta_quintais: null, meta_visitas: null, criado_por: bols[0].id }); mem.equipe.push(a); agentes.push(a); }
+      const campo = bols.concat(agentes);
+      const ficha = (i, o) => { const mun = munis[i % munis.length], com = COMUN[(i * 7 + iu) % COMUN.length], dF = dia(entre(235, 298));
+        const f = Object.assign({}, fichaM, { id: 'fa' + uf + String(i).padStart(4, '0'), uf, municipio: mun, comunidade: (/^Sítio/.test(com) ? '' : 'Comunidade ') + com, nome: nomeDe() + ' (exemplo)', cpf: cpf(),
+          data_nascimento: entre(1960, 2002) + '-' + String(entre(1, 12)).padStart(2, '0') + '-' + String(entre(1, 28)).padStart(2, '0'), celular: '(' + DDD[uf] + ') 99' + entre(100, 999) + '-' + entre(1000, 9999),
+          endereco: 'Sítio ' + com + ', casa ' + (i + 1) + ', ' + mun, pessoas_familia: entre(2, 7), indicada_por: pick(['Associação de Mulheres', 'MPA', 'Sindicato dos Trabalhadores Rurais', 'Agente de saúde']) + ' de ' + mun,
+          p_sustento: rnd() < .45, p_cadunico: rnd() < .8, p_sem_ater: rnd() < .7, p_raca_povo: rnd() < .35, p_jovem: rnd() < .15, p_grupo: rnd() < .6, p_caf: rnd() < .3,
+          latitude: null, longitude: null, bolsista_id: bols[i % bols.length].id, data_ficha: dF, criado_em: hora(dF, 13), aprovada_por: ct.id, aprovada_em: hora(R.somaDias(dF, 2), 14), atualizado_em: hora(R.somaDias(dF, 2), 14),
+          resultado: 'selecionada', situacao: 'aprovada', posicao_espera: null, obs_coordenacao: null, exemplo: true }, o);
+        f.pontos = R.pontosFicha(f); return f; };
+      const visita = (f, etapa, quem, prev, feita, n) => ({ ...visM, id: 'va' + f.id.slice(2) + etapa.slice(0, 2) + (n || ''), ficha_id: f.id, uf, etapa, executor_id: quem.id, data_prevista: prev, data_realizada: feita ? prev : null,
+        situacao: feita ? 'realizada' : 'prevista', obs: null, relato: feita && etapa !== 'diagnostico' ? 'Visita feita com a família; quintal conferido e orientações registradas.' : null, criado_por: bols[0].id, criado_em: hora(R.somaDias(prev, -6), 15), atualizado_em: hora(prev, 20) });
+      for (let i = 0; i < 200; i++) { const f = ficha(i); fichas.push(f); const quem = campo[i % campo.length];
+        const dD = R.somaDias(f.data_ficha, entre(15, 35)); const vD = visita(f, 'diagnostico', quem, dD, true); visitas.push(vD);
+        diagnosticos.push(Object.assign({}, diagM, { id: 'da' + f.id.slice(2), ficha_id: f.id, visita_id: vD.id, uf, executor_id: quem.id, data_visita: dD, codigo_quintal: uf + '-' + String(i + 1).padStart(4, '0'),
+          latitude: null, longitude: null, sem_gps_motivo: 'Sem sinal de GPS no local', area_m2: entre(12, 60) * 10, renda_familiar: entre(6, 22) * 100, renda_quintal: entre(0, 6) * 50, agua_seca: pick(['sim', 'sim', 'as_vezes', 'nao']), sem_agua: false,
+          lote: 1 + (i % 5), situacao: 'aprovado', aprovado_por: ct.id, aprovado_em: hora(R.somaDias(dD, 4), 14), obs_coordenacao: null, criado_em: hora(dD, 20), atualizado_em: hora(R.somaDias(dD, 4), 14), exemplo: true }));
+        const implantou = rnd() < .97, dI = dia(entre(140, 200)); visitas.push(visita(f, 'implantacao', quem, implantou ? dI : R.somaDias(hoje, entre(3, 20)), implantou));
+        if (!implantou) continue;
+        const a1 = rnd() < .96, d1 = R.somaDias(dI, entre(40, 60)); visitas.push(visita(f, 'acompanhamento', quem, a1 ? d1 : R.somaDias(hoje, entre(2, 15)), a1, 1));
+        const a2 = a1 && rnd() < .9, d2 = R.somaDias(d1, entre(35, 50)); if (a1) visitas.push(visita(f, 'acompanhamento', quem, a2 ? d2 : R.somaDias(hoje, entre(2, 25)), a2, 2));
+        if (!a2) continue;
+        const av = rnd() < .55, dA = dia(entre(1, 30)); const vA = visita(f, 'avaliacao', quem, av ? dA : R.somaDias(hoje, entre(3, 40)), av); visitas.push(vA);
+        if (av) { const antes = diagnosticos[diagnosticos.length - 1].renda_quintal, depois = antes + entre(2, 9) * 50; const ebia = pick([0, 0, 0, 1, 2, 3]);
+          avaliacoes.push({ id: 'aa' + f.id.slice(2), ficha_id: f.id, visita_id: vA.id, uf, executor_id: quem.id, data_visita: dA, latitude: null, longitude: null, sem_gps_motivo: 'Sem sinal de GPS no local', quintal_produz: pick(['sim', 'sim', 'sim', 'sim', 'em_parte', 'nao']),
+            ebia_pontos: ebia, ebia_nivel: ebia === 0 ? 'seguranca' : ebia <= 3 ? 'leve' : 'moderada', fotos: ['exemplo'], criado_em: hora(dA, 20), atualizado_em: hora(dA, 20), exemplo: true,
+            dados: { motivo: null, renda_quintal: depois, horas_dia: entre(2, 5), agua: pick(['sim', 'sim', 'sim', 'as_vezes']), alimentacao: pick(['melhorou', 'melhorou', 'melhorou', 'igual']), encaminhamentos: '', fala: pick(['Hoje tem verdura na mesa todo dia.', 'Já vendo na feira toda semana.', 'O quintal mudou a vida aqui de casa.', 'Aprendi a guardar a água para a seca.']),
+              impacto: { ebia_pontos: ebia, ebia_nivel: ebia === 0 ? 'seguranca' : 'leve', renda_antes: antes, renda_depois: depois } } }); }
+      }
+      for (let i = 0; i < 12; i++) fichas.push(ficha(200 + i, { resultado: 'lista_espera', posicao_espera: i + 1 }));
+      for (let i = 0; i < 2; i++) { const dF = dia(entre(1, 6)); fichas.push(ficha(212 + i, { situacao: 'aguardando', aprovada_por: null, aprovada_em: null, data_ficha: dF, criado_em: hora(dF, 12), atualizado_em: hora(dF, 12), resultado: 'lista_espera', posicao_espera: 13 + i })); }
+    });
+    mem.fichas = fichas; mem.visitas = visitas; mem.diagnosticos = diagnosticos; mem.avaliacoes = avaliacoes; mem.ampliado = true;
+    return mem;
+  }
+  MQ.cenario = { ativo, aplicar, ampliar, K, rotulo: 'Cenário ampliado: 1.000 quintais, 200 por estado (5 vezes o plano de trabalho)' };
+})();
+;
 /* ===== api-demo.js ===== */
 /* Modo demonstração: roda sem servidor, guarda no próprio navegador e aplica
    as mesmas regras do banco. Os dados são de exemplo. */
@@ -966,7 +1069,8 @@ MQ.ORCAMENTO = {
 
   function ler() {
     if (mem) return mem;
-    try { const s = localStorage.getItem(CHAVE); if (s) mem = JSON.parse(s); } catch (e) { /* sem armazenamento */ }
+    const ampliado = !!(MQ.cenario && MQ.cenario.ativo());   // cenário "projeto ampliado" (js/cenario.js): gerado na hora, não lê nem grava no aparelho
+    if (!ampliado) { try { const s = localStorage.getItem(CHAVE); if (s) mem = JSON.parse(s); } catch (e) { /* sem armazenamento */ } }
     if (!mem) mem = semente();
     if (!mem.fotosEx) {   // ilustrações de pessoas para a equipe de exemplo (não são fotos de gente de verdade)
       const homens = /^(José|Antônio|Francisco|João|Raimundo|Pedro|Luiz|Manoel|Cícero|Sebastião|Geraldo)\b/;
@@ -1011,6 +1115,7 @@ MQ.ORCAMENTO = {
       mem.vitrine = [a && { id: 'vit-1', path: 'exemplo-1.jpg', ficha_id: a.id, uf: a.uf, legenda: 'Canteiros de hortaliças no sertão do Piauí', sem_criancas: true, publicada_em: '2026-11-10T12:00:00Z' },
         b && { id: 'vit-2', path: 'exemplo-2.jpg', ficha_id: b.id, uf: b.uf, legenda: 'Preparo da área para o quintal, Paulistana (PI)', sem_criancas: true, publicada_em: '2026-11-05T12:00:00Z' }].filter(Boolean);
     }
+    if (ampliado && !mem.ampliado) MQ.cenario.ampliar(mem, { uid, gerarCPF });
     return mem;
   }
   /* Demonstração não tem fotos reais: desenha uma ilustração de canteiros (claramente não é foto de ninguém) */
@@ -1027,7 +1132,7 @@ MQ.ORCAMENTO = {
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
   }
   const bancoMem = {};   // demonstração: dados bancários só na memória (somem ao recarregar), como exemplo de cuidado
-  function gravar() { try { localStorage.setItem(CHAVE, JSON.stringify(mem)); } catch (e) { /* segue só em memória */ } }
+  function gravar() { if (mem && mem.ampliado) return; try { localStorage.setItem(CHAVE, JSON.stringify(mem)); } catch (e) { /* segue só em memória */ } }
   const copia = o => JSON.parse(JSON.stringify(o));
   const falha = msg => { const e = new Error(msg); e.regra = true; return e; };
 
@@ -1072,7 +1177,7 @@ MQ.ORCAMENTO = {
       return d.perfil;
     },
     async trocarPerfil(p) { const d = ler(); d.perfil = p; this.perfisDemo(); gravar(); return euMesmo(); },
-    async reler() { mem = null; ler(); return euMesmo(); },   // lê de novo o que está guardado no aparelho (outra aba mudou; testes)
+    async reler() { if (mem && mem.ampliado) return euMesmo(); mem = null; ler(); return euMesmo(); },   // lê de novo o que está guardado no aparelho (outra aba mudou; testes)
     async recomecar() { mem = null; try { localStorage.removeItem(CHAVE); } catch (e) {} ler(); gravar(); return euMesmo(); },
 
     /* ---------- Execução: planilha de gastos do mês (mesmas regras do 37_execucao_planilhas.sql): só a coordenação geral; nada se altera nem se apaga ---------- */
@@ -3619,11 +3724,19 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const E = s => MQ.ui.esc(s);
   const U = { nomeUF: uf => MQ.ui.nomeUF(uf) };
 
+  /* calendário do projeto: 13 meses a partir do início da vigência (set/2026 no plano de trabalho) */
+  const inicioProjeto = () => { const [a, m] = String(MQ.PROJETO.vigencia.inicio).split('-').map(Number); return [a, m - 1]; };
   const mesDoProjeto = (d = new Date()) => {
-    const m = (d.getFullYear() - 2026) * 12 + (d.getMonth() - 8) + 1;
+    const [a, m0] = inicioProjeto(); const m = (d.getFullYear() - a) * 12 + (d.getMonth() - m0) + 1;
     return Math.max(1, Math.min(13, m));
   };
-  const MESES = ['set/26', 'out/26', 'nov/26', 'dez/26', 'jan/27', 'fev/27', 'mar/27', 'abr/27', 'mai/27', 'jun/27', 'jul/27', 'ago/27', 'set/27'];
+  const SIGLAS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const MESES = [];
+  const refazerMeses = () => { const [a, m0] = inicioProjeto(); MESES.length = 0;
+    for (let i = 0; i < 13; i++) { const x = new Date(a, m0 + i, 1); MESES.push(SIGLAS[x.getMonth()] + '/' + String(x.getFullYear()).slice(2)); } };
+  refazerMeses(); MQ.calendarioProjeto = refazerMeses;   // o cenário ampliado da demonstração muda o início e chama de novo
+  /* totais do projeto: saem das vagas por estado e da meta de acompanhamento (200 quintais e 400 visitas no plano de trabalho) */
+  const alvoQuintais = () => MQ.VAGAS_UF * MQ.UFS.length, alvoAcomp = () => (MQ.METAS.find(m => m.id === 'M4') || {}).alvo || 0;
   /* previsto até o fim do mês anterior (meses completos), distribuído igualmente na janela da meta */
   const previsto = (meta, mes) => {
     const completos = mes - 1;
@@ -3998,7 +4111,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const mes = mesDoProjeto();
     const diasFim = R.diasAte(MQ.PROJETO.vigencia.fim);
     const ORD_N = { crit: 0, pend: 1, info: 2 }; const al = alertas(S, d).map((x, i) => [x, i]).sort((a, b) => ORD_N[a[0].nivel] - ORD_N[b[0].nivel] || a[1] - b[1]).map(x => x[0]);   // o mais grave primeiro
-    const feito = { equipe: () => d.pagaveis.length >= 11, diagnostico_inicio: () => (S.diagnosticos || []).length > 0, M2: () => (S.diagnosticos || []).length >= 200 };
+    const feito = { equipe: () => d.pagaveis.length >= 11, diagnostico_inicio: () => (S.diagnosticos || []).length > 0, M2: () => (S.diagnosticos || []).length >= alvoQuintais() };
     const marcos = MQ.MARCOS.filter(m => R.diasAte(m.d) >= -7 && !(m.feito && feito[m.feito] && feito[m.feito]())).slice(0, 4);   // marco já cumprido sai da lista
     const aguard = d.fichas.filter(f => f.situacao === 'aguardando').length;
     const NOME_ABA = { equipe: 'Equipe', selecao: 'Seleção', campo: 'Campo', custos: 'Custos', historico: 'Histórico', visao: 'Visão geral' };
@@ -4026,10 +4139,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <section class="dx-topo" aria-label="Indicadores principais">
         ${ex.html}
         <div class="dx-kpis">
-          ${kpi(d.selAprov.length, 200, 'mulheres selecionadas e aprovadas', `${d.fichas.length} fichas lançadas${aguard ? ' · ' + aguard + ' aguardando' : ''}`, stK(d.selAprov.length, 200))}
-          ${kpi(dg.length, 200, 'diagnósticos', `${dg.filter(x => x.situacao === 'aprovado').length} com plano aprovado`, stK(dg.length, 200))}
-          ${kpi(impl, 200, 'quintais implantados', null, stK(impl, 200))}
-          ${kpi(acomp, 400, 'visitas de acompanhamento', null, stK(acomp, 400))}
+          ${kpi(d.selAprov.length, alvoQuintais(), 'mulheres selecionadas e aprovadas', `${d.fichas.length} fichas lançadas${aguard ? ' · ' + aguard + ' aguardando' : ''}`, stK(d.selAprov.length, alvoQuintais()))}
+          ${kpi(dg.length, alvoQuintais(), 'diagnósticos', `${dg.filter(x => x.situacao === 'aprovado').length} com plano aprovado`, stK(dg.length, alvoQuintais()))}
+          ${kpi(impl, alvoQuintais(), 'quintais implantados', null, stK(impl, alvoQuintais()))}
+          ${kpi(acomp, alvoAcomp(), 'visitas de acompanhamento', null, stK(acomp, alvoAcomp()))}
         </div>
       </section>
 
@@ -4048,9 +4161,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <div class="secao-cab"><div><h2 id="t-metas">Metas do plano de trabalho</h2><p>Barra: realizado · traço: previsto até o mês passado · toque na meta para ver o detalhe</p></div></div>
           <div class="dx-metas">
             ${linhaMeta(MQ.METAS[0], S, d, mes)}
-            <details class="dx-meta"><summary><span class="meta-id">Sel.</span><span class="meta-nome">Seleção das beneficiárias</span>${chipStatus(d.selAprov.length >= 200 ? 'concluida' : d.fichas.length ? 'andamento' : 'nao')}
-              <span class="medidor" role="img" aria-label="${d.selAprov.length} de 200"><i class="${d.selAprov.length >= 200 ? 'st-ok' : 'st-and'}" style="width:${Math.min(100, d.selAprov.length / 2)}%"></i></span>
-              <span class="meta-num num"><b>${d.selAprov.length}</b> de 200 <span class="muted">selecionadas</span></span><span class="meta-ver" aria-hidden="true"></span></summary>
+            <details class="dx-meta"><summary><span class="meta-id">Sel.</span><span class="meta-nome">Seleção das beneficiárias</span>${chipStatus(d.selAprov.length >= alvoQuintais() ? 'concluida' : d.fichas.length ? 'andamento' : 'nao')}
+              <span class="medidor" role="img" aria-label="${d.selAprov.length} de ${alvoQuintais()}"><i class="${d.selAprov.length >= alvoQuintais() ? 'st-ok' : 'st-and'}" style="width:${Math.min(100, d.selAprov.length * 100 / alvoQuintais())}%"></i></span>
+              <span class="meta-num num"><b>${d.selAprov.length}</b> de ${alvoQuintais()} <span class="muted">selecionadas</span></span><span class="meta-ver" aria-hidden="true"></span></summary>
               <div class="dx-meta-mais"><p class="mm-nota">Antes da Meta 2. Registrada no sistema (ficha de indicação e termo de consentimento). ${aguard} aguardando aprovação.</p></div></details>
             ${MQ.METAS.filter(m => m.fonte && m.fonte !== 'equipe').map(m => linhaMeta(m, S, d, mes)).join('')}
             ${MQ.METAS.filter(m => !m.fonte).map(m => linhaMeta(m, S, d, mes)).join('')}
@@ -4517,10 +4630,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       return `<tr><td class="uf"><span class="sigla">${u.uf}</span><span class="nomeuf">${u.nome}</span></td>
         <td class="cu-dias" data-rot="Dias de campo"><div class="dias-cel"><span class="num"><b>${feitas}</b> feitos <span class="muted">de ${MQ.DIAS_CAMPO_UF}</span></span>
           <span class="medidor"><i style="width:${pct}%;opacity:.35"></i><i style="width:${pctF}%"></i></span><span class="small muted">${vs.length - feitas} previsto${vs.length - feitas === 1 ? '' : 's'} no roteiro</span></div></td>
-        <td class="num c" data-rot="Diagnósticos">${d.length} <span class="muted">de 40</span></td><td class="num c" data-rot="Planos aprovados">${d.filter(x => x.situacao === 'aprovado').length}</td><td class="num c" data-rot="Sem água na seca">${(n => n ? `<b style="color:var(--crit)">${n}</b>` : 0)(d.filter(x => x.sem_agua).length)}</td>
+        <td class="num c" data-rot="Diagnósticos">${d.length} <span class="muted">de ${MQ.META_UF.diagnosticos}</span></td><td class="num c" data-rot="Planos aprovados">${d.filter(x => x.situacao === 'aprovado').length}</td><td class="num c" data-rot="Sem água na seca">${(n => n ? `<b style="color:var(--crit)">${n}</b>` : 0)(d.filter(x => x.sem_agua).length)}</td>
         <td class="num c" data-rot="Agentes de campo">${pessoasCampo(u.uf).filter(p => p.papel === 'agente').length}</td></tr>`; };
     return `<div class="cab"><div><span class="eyebrow">Trabalho de campo</span><h1>Visitas, diagnósticos e planos</h1>
-        <p>${souTec ? 'Você aprova ou devolve o plano de cada quintal antes da compra do kit.' : 'A aprovação dos planos é da coordenação técnica.'} Dias de campo: ${MQ.DIAS_CAMPO_UF} por estado (40 quintais × 5 visitas: diagnóstico, implantação, 2 acompanhamentos e avaliação final).</p></div></div>
+        <p>${souTec ? 'Você aprova ou devolve o plano de cada quintal antes da compra do kit.' : 'A aprovação dos planos é da coordenação técnica.'} Dias de campo: ${MQ.DIAS_CAMPO_UF} por estado (${MQ.VAGAS_UF} quintais × 5 visitas: diagnóstico, implantação, 2 acompanhamentos e avaliação final).</p></div></div>
       <div class="quadro-scroll" style="display:block"><table class="quadro tab-campo-uf"><thead><tr><th>Estado</th><th>Dias de campo</th><th class="c">Diagnósticos</th><th class="c">Planos aprovados</th><th class="c">Sem água na seca</th><th class="c">Agentes de campo</th></tr></thead>
         <tbody>${MQ.UFS.map(linhaUF).join('')}</tbody></table></div>
       <p class="small muted" style="margin:6px 2px 0"><b>Sem água na seca:</b> diagnósticos em que a água não dura no período seco. Essa mulher não recebe o kit (é encaminhada a programa de cisternas) e a vaga dela precisa ser preenchida pela lista de espera. Acima de 30% no estado é sinal de alerta.</p><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p>
@@ -4583,7 +4696,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const tots = planos.map(d => totalKit(comRef(d.dados && d.dados.kit))).filter(v => v > 0);
     const soma = tots.reduce((a, b) => a + b, 0); const acima = lim ? tots.filter(v => v > lim).length : 0;
     return `<div class="bloco kit-par"><div><h3>Investimento nos quintais (kits)</h3>
-        <p class="kit-valor"><span class="small muted">Valor do kit por quintal</span><b class="num">${brl(lim)}</b><span class="small muted">definido no plano de trabalho · ${brl(lim * 200)} para os 200 quintais</span></p>
+        <p class="kit-valor"><span class="small muted">Valor do kit por quintal</span><b class="num">${brl(lim)}</b><span class="small muted">definido no plano de trabalho · ${brl(lim * MQ.VAGAS_UF * MQ.UFS.length)} para os ${MQ.VAGAS_UF * MQ.UFS.length} quintais</span></p>
         <p class="small muted">${tots.length ? `${tots.length} plano${tots.length > 1 ? 's' : ''} com valores: <b>${brl(soma)}</b> projetados · média ${brl(soma / tots.length)} por quintal${acima ? ` · <b style="color:var(--crit)">${acima} acima do valor por quintal</b>` : ''}.` : 'Nenhum plano com valores ainda.'}
         Quem faz o diagnóstico vê a projeção do kit e o quanto falta ou passa deste valor.</p></div></div>`;
   }
@@ -11061,7 +11174,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     mda: { sigla: 'MDA', titulo: 'O projeto em números', sub: 'Acompanhamento da execução física pelo ministério', manual: 'mda' },
     mpa: { sigla: 'MPA', titulo: 'Andamento no território', sub: 'Acompanhamento da execução pelo movimento parceiro', manual: 'mpa' }
   };
-  const ALVO = { selecionadas: 200, diagnosticos: 200, implantados: 200, acompanhamentos: 400, avaliacoes: 200 };
+  /* alvos do plano de trabalho, tirados das vagas por estado e da meta de acompanhamento (200 quintais e 400 visitas) */
+  const quintais = () => MQ.VAGAS_UF * MQ.UFS.length;
+  const ALVO = { get selecionadas() { return quintais(); }, get diagnosticos() { return quintais(); }, get implantados() { return quintais(); }, get avaliacoes() { return quintais(); },
+    get acompanhamentos() { return (MQ.METAS.find(m => m.id === 'M4') || {}).alvo || 0; }, get visitas() { return MQ.DIAS_CAMPO_UF * MQ.UFS.length; } };
   const ALVO_UF = { selecionadas: 40, diagnosticos: 40, implantados: 40, acompanhamentos: 80, avaliacoes: 40 };
   const FMT = new Intl.NumberFormat('pt-BR');
   const n = v => FMT.format(Math.round(+v || 0));
@@ -11219,9 +11335,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   function corpo(a) {
     const kp = a.orgao === 'mda'
-      ? numeroGrande(n(total(a, 'selecionadas')), 'mulheres selecionadas', 'de 200 previstas') + numeroGrande(n(total(a, 'pessoas')), 'pessoas nas famílias') + numeroGrande(n(total(a, 'implantados')), 'quintais implantados', 'de 200 previstos')
-        + numeroGrande(n(total(a, 'municipios')), 'municípios') + numeroGrande(n(total(a, 'comunidades')), 'comunidades rurais') + numeroGrande(n(total(a, 'visitas_feitas')), 'visitas de campo feitas', 'de 1.000 previstas')
-      : numeroGrande(n(total(a, 'selecionadas')), 'mulheres selecionadas', 'de 200 previstas') + numeroGrande(n(total(a, 'comunidades')), 'comunidades', 'em ' + n(total(a, 'municipios')) + ' municípios') + numeroGrande(n(total(a, 'bolsistas') + total(a, 'agentes')), 'pessoas da equipe de campo')
+      ? numeroGrande(n(total(a, 'selecionadas')), 'mulheres selecionadas', 'de ' + n(ALVO.selecionadas) + ' previstas') + numeroGrande(n(total(a, 'pessoas')), 'pessoas nas famílias') + numeroGrande(n(total(a, 'implantados')), 'quintais implantados', 'de 200 previstos')
+        + numeroGrande(n(total(a, 'municipios')), 'municípios') + numeroGrande(n(total(a, 'comunidades')), 'comunidades rurais') + numeroGrande(n(total(a, 'visitas_feitas')), 'visitas de campo feitas', 'de ' + n(ALVO.visitas) + ' previstas')
+      : numeroGrande(n(total(a, 'selecionadas')), 'mulheres selecionadas', 'de ' + n(ALVO.selecionadas) + ' previstas') + numeroGrande(n(total(a, 'comunidades')), 'comunidades', 'em ' + n(total(a, 'municipios')) + ' municípios') + numeroGrande(n(total(a, 'bolsistas') + total(a, 'agentes')), 'pessoas da equipe de campo')
         + numeroGrande(n(total(a, 'visitas_feitas')), 'visitas feitas') + numeroGrande(n(total(a, 'agendadas')), 'visitas agendadas') + numeroGrande(n(total(a, 'atrasadas')), 'visitas atrasadas');
     const sec = (id, t, sub, h) => `<section class="ac-sec" id="ac-${id}" aria-labelledby="ac-${id}-t"><h2 id="ac-${id}-t">${t}</h2>${sub ? `<p class="ac-sub">${sub}</p>` : ''}${h}</section>`;
     const area = total(a, 'area_m2');
@@ -11233,7 +11349,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           + sec('evolucao', 'Evolução do trabalho de campo', 'Visitas feitas em cada mês.', evolucao(a))
           + sec('perfil', 'Quem são as mulheres', 'As prioridades de seleção do projeto, em números. Sem nome nem dado pessoal.', perfil(a))
           + sec('impacto', 'O que muda na vida das famílias', 'As mesmas perguntas são feitas antes da implantação e na avaliação final.', impacto(a))
-        : sec('estados', 'Estado por estado', 'Metas por estado: 40 mulheres, 40 diagnósticos, 40 quintais e 80 visitas de acompanhamento.', estados(a))
+        : sec('estados', 'Estado por estado', 'Metas por estado: ' + MQ.VAGAS_UF + ' mulheres, ' + MQ.META_UF.diagnosticos + ' diagnósticos, ' + MQ.META_UF.quintais + ' quintais e ' + MQ.META_UF.visitas + ' visitas de acompanhamento.', estados(a))
           + sec('parado', 'O que pede atenção', 'O que está atrasado ou esperando solução no território.', parados(a))
           + sec('formacao', 'Formação da equipe', 'Curso de formação das bolsistas e agentes de campo.', `<div class="ac-kpis ac-kpis-3">${numeroGrande(n((a.formacao || {}).turmas), 'turmas')}${numeroGrande(n((a.formacao || {}).matriculas), 'matrículas')}${numeroGrande(n((a.formacao || {}).encontros), 'encontros registrados')}</div>`)
           + sec('mapa', 'Onde o projeto está', `${n(total(a, 'comunidades'))} comunidades em ${n(total(a, 'municipios'))} municípios.`, mapa(a) + tabelaUF(a, true))
@@ -11793,7 +11909,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function faixaDemo() {
     const p = S.api.perfisDemo();
     const b = (id, t) => `<button type="button" data-acao="perfil" data-p="${id}" aria-pressed="${S.verEntrada ? id === 'entrada' : p === id}">${t}</button>`;
-    return `<div class="demo"><div class="demo-in"><span class="demo-selo"><span aria-hidden="true">⚠</span> <b>Ambiente de demonstração</b> · os dados exibidos são fictícios</span>
+    return `<div class="demo"><div class="demo-in"><span class="demo-selo"><span aria-hidden="true">⚠</span> <b>Ambiente de demonstração</b> · os dados exibidos são fictícios${MQ.cenario && MQ.cenario.ativo() ? ' · <b data-cenario>' + esc(MQ.cenario.rotulo) + '</b>' : ''}</span>
       <span class="demo-ver">Ver como: <span class="seg" role="group" aria-label="Perfil">${b('coord_geral', 'Coord. geral')}${b('coord_tecnico', 'Coord. técnica')}${b('bolsista', 'Bolsista')}${b('agente', 'Agente')}${b('professor', 'Professor FIC')}${b('auxiliar', 'Auxiliar adm.')}${b('obs_mda', 'MDA')}${b('obs_mpa', 'MPA')}${b('entrada', 'Tela de entrada')}</span></span>
       <details class="demo-mais"><summary>Ver detalhes</summary><p>Os dados ficam gravados só neste navegador e servem para testar. Nada aqui vai para o servidor nem para a vitrine pública.</p>
         <button class="link" data-acao="recomecar">Recomeçar demonstração</button></details></div></div>`;
@@ -11874,7 +11990,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         ${kpiEq(ct ? 1 : 0, 1, 'coordenação técnica cadastrada')}
         ${kpiEq(bols.length, 10, 'bolsistas cadastradas')}
         ${kpiEq(aptas, pagaveis.length || 0, 'habilitadas (FIC, FUNCERN e termo)')}
-        ${kpiEq((S.fichas || []).filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada').length, 200, 'mulheres selecionadas e aprovadas')}
+        ${kpiEq((S.fichas || []).filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada').length, MQ.VAGAS_UF * MQ.UFS.length, 'mulheres selecionadas e aprovadas')}
       </div>
       <section class="secao" aria-labelledby="t-ct">
         <div class="secao-cab"><div><h2 id="t-ct">Coordenação técnica</h2><p>Uma para os 5 estados · indicada pelo MPA · cadastrada pela coordenação geral</p></div></div>
@@ -11883,7 +11999,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       ${souGeral ? secaoAuxiliares(souGeral) : ''}
       ${souGeral && MQ.ficUI && !S.ficSemBanco ? MQ.ficUI.secaoEquipe() : ''}
       <section class="secao" aria-labelledby="t-b">
-        <div class="secao-cab"><div><h2 id="t-b">Bolsistas por estado</h2><p>1 de articulação e 1 de apoio por estado · cadastradas pela coordenação técnica · meta de 40 quintais por estado</p></div></div>
+        <div class="secao-cab"><div><h2 id="t-b">Bolsistas por estado</h2><p>1 de articulação e 1 de apoio por estado · cadastradas pela coordenação técnica · meta de ${MQ.VAGAS_UF} quintais por estado</p></div></div>
         ${quadroTabela()}${quadroCartoes()}
       </section>
       ${secaoAgentes()}`;
