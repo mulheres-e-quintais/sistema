@@ -178,6 +178,14 @@ create policy exemplo_ler on public.exemplo for select to authenticated
 grant select on public.exemplo to authenticated;
 
 -- ninguém cria login com e-mail de pessoa de exemplo
+-- Rodar este arquivo de novo NÃO pode tirar a exigência do código de primeiro acesso (18, 43 e 52):
+-- se a versão instalada já exige código, ela fica como está (auditoria de 04/10/2026).
+do $guarda$ begin
+  if exists (select 1 from pg_proc p where p.proname = 'bloquear_conta_nao_cadastrada'
+               and p.pronamespace = 'public'::regnamespace and p.prosrc like '%codigo_hash%') then
+    raise notice 'bloquear_conta_nao_cadastrada: mantida a versão que exige código de acesso.';
+  else
+    execute $f$
 create or replace function public.bloquear_conta_nao_cadastrada() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
@@ -186,7 +194,10 @@ begin
     raise exception 'E-mail não cadastrado no projeto.';
   end if;
   return new;
-end $$;
+end $$
+    $f$;
+  end if;
+end $guarda$;
 
 -- ---------------------------------------------------------------------
 -- Números públicos: só totais. Uma função, sem acesso às tabelas. Dados de exemplo não entram.
