@@ -141,7 +141,7 @@
   /* ---------- antes × depois ---------- */
   function pares(uf) {
     return avaliacoes().filter(a => !uf || a.uf === uf).map(a => {
-      const dg = (S().diagnosticos || []).find(x => x.ficha_id === a.ficha_id);
+      const dg = MQ.porCampo(S().diagnosticos, 'ficha_id').get(a.ficha_id);
       const antes = dg && dg.dados && dg.dados.impacto; const depois = a.dados && a.dados.impacto;
       return antes && depois && antes.ebia_nivel && depois.ebia_nivel ? { a, dg, antes, depois } : null;
     }).filter(Boolean);

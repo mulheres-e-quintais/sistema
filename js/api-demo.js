@@ -1350,8 +1350,7 @@
       auditar('UPDATE', antes, d.equipe[i]); gravar();
       return arquivo.name;
     },
-    async linkTermo() { return null; },   // no demo o arquivo não é guardado
-    async linkTermo(path) { return null; },
+    async linkTermo(path) { return null; },   // no demo o arquivo não é guardado
     async entrar() { throw falha('No modo demonstração não há login: use o seletor de perfil.'); },
     async entrarSenha() { throw falha('Na demonstração não há login: escolha um perfil acima.'); },
     async criarSenha() { throw falha('Na demonstração não há primeiro acesso nem senha: escolha um perfil acima para conhecer o sistema.'); },   // 46: "Primeiro acesso" mostrava "Não deu certo…"   // a tela chama S.api.entrarSenha: sem isto aparecia "is not a function"

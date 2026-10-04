@@ -4,7 +4,6 @@
 (function () {
   const R = MQ.regras, P = MQ.PAPEIS;
   const U = () => MQ.ui; const S = () => MQ.ui.S; const E = s => MQ.ui.esc(s);
-  const F = { ufFiltro: '' };
 
   const pessoa = id => (S().equipe || []).find(m => m.id === id);
   const nomeDe = m => (m && (m.nome_social || m.nome)) || '—';

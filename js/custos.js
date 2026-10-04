@@ -52,9 +52,9 @@
     return memoMun[chave] ? Object.assign({}, memoMun[chave]) : null;
   }
   function destino(v) {
-    const dg = (S().diagnosticos || []).find(x => x.ficha_id === v.ficha_id && x.latitude != null);
+    const dg = MQ.porCampo(S().diagnosticos, 'ficha_id', 'gps', x => x.latitude != null).get(v.ficha_id);
     if (dg) return { lat: +dg.latitude, lon: +dg.longitude, como: 'GPS do quintal' };
-    const f = (S().fichas || []).find(x => x.id === v.ficha_id);
+    const f = MQ.porCampo(S().fichas, 'id').get(v.ficha_id);
     if (!f) return null;
     if (f.latitude != null) return { lat: +f.latitude, lon: +f.longitude, como: 'GPS da ficha' };
     return coordMun(f.uf, f.municipio);
@@ -161,7 +161,7 @@
       <dt class="tot">Total</dt><dd class="num tot"><b>${brl(c.total)}</b></dd></dl>`;
   }
   function linha({ v, k, c, p }) {
-    const f = (S().fichas || []).find(x => x.id === v.ficha_id) || {};
+    const f = MQ.porCampo(S().fichas, 'id').get(v.ficha_id) || {};
     const feita = v.situacao === 'realizada';
     return `<div class="custo-l${feita ? '' : ' prev'}">
       <div class="cl-q"><b>${E(p.nome || '—')}</b> <span class="pil ${feita ? 'feito' : 'prev'}">${E(MQ.ETAPAS_CUSTO[v.etapa] || v.etapa)} · ${R.fmtData(v.data_realizada || v.data_prevista)}${feita ? '' : ' (prevista)'}</span>
@@ -176,7 +176,7 @@
     const q = celCSV;
     const n = x => x == null ? '' : String(Math.round(x * 100) / 100).replace('.', ',');
     const cab = ['Data', 'Pessoa', 'CPF', 'Papel', 'UF', 'Etapa', 'Município de partida', 'Município do quintal', 'Km ida', 'Origem do km', 'Horas', 'Trabalho (R$)', 'Combustível (R$)', 'Refeição (R$)', 'Total (R$)'];
-    const linhas = vs.map(v => { const p = U().porId(v.executor_id) || {}; const f = (S().fichas || []).find(x => x.id === v.ficha_id) || {}; const k = kmIda(v); const c = calcular(v.etapa, k.km);
+    const linhas = vs.map(v => { const p = U().porId(v.executor_id) || {}; const f = MQ.porCampo(S().fichas, 'id').get(v.ficha_id) || {}; const k = kmIda(v); const c = calcular(v.etapa, k.km);
       return [R.fmtData(v.data_realizada), p.nome, R.fmtCPF(p.cpf || ''), (MQ.PAPEIS[p.papel] || {}).nome, v.uf, MQ.ETAPAS_CUSTO[v.etapa], p.municipio, f.municipio, k.km, k.fonte, c.horas, n(c.trabalho), n(c.combustivel), n(c.refeicao), n(c.total)].map(q).join(';'); });
     const blob = new Blob(['﻿' + [cab.map(q).join(';')].concat(linhas).join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'ajuda-de-custo-' + C.mes + '.csv'; a.click();

@@ -287,7 +287,6 @@
       const msg = { usado: 'Este link já foi usado.', vencido: 'Este link venceu (vale 7 dias).', cancelado: 'Este link foi cancelado.', inexistente: 'Link não encontrado. Confira se copiou inteiro.' }[c.motivo] || ('Não foi possível abrir o link. ' + (c.erro || ''));
       return `<div class="login ent-card"><span class="eyebrow">Cadastro na equipe</span><h2 class="serif">Link sem validade</h2><p>${E(msg)} Peça um novo à coordenação do projeto.</p></div>`;
     }
-    const munis = c.uf ? (MQ.MUNICIPIOS[c.uf] || []) : [];
     return `<div class="conv-boas"><h1 class="ent-t serif">Boas-vindas <em>à equipe</em>.</h1>
         <p class="ent-s">Você foi indicad${c.papel === 'professor_fic' ? 'o(a)' : 'a'} para <b>${E(funcao(c.papel, c.uf))}</b>. Preencha seus dados uma vez só; a coordenação confere e libera o seu acesso.</p>
         <ol class="conv-etapas"><li class="on"><b>1</b> Seus dados</li><li><b>2</b> Coordenação confere</li><li><b>3</b> Você cria a senha</li></ol></div>

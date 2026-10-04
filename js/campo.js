@@ -99,7 +99,7 @@
   const memoIdx = new WeakMap();
   const indice = (arr, chave) => { let m = memoIdx.get(arr); if (!m) { m = {}; memoIdx.set(arr, m); }
     if (!m[chave]) { const x = new Map(); arr.forEach(o => { const k = o[chave]; if (!x.has(k)) x.set(k, []); x.get(k).push(o); }); m[chave] = x; } return m[chave]; };
-  const ficha = id => (S().fichas || []).find(f => f.id === id);
+  const ficha = id => MQ.porCampo(S().fichas, 'id').get(id);   // índice: a tela procura a ficha de cada visita e de cada diagnóstico
   const pessoa = id => (S().equipe || []).find(p => p.id === id);
   const primeiroNome = n => String(n || '').split(' ')[0];
   const pessoasCampo = uf => (S().equipe || []).filter(p => p.status === 'ativa' && R.ehCampo(p.papel) && p.uf === uf)

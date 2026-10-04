@@ -219,10 +219,34 @@ MQ.KIT_ITENS = [
   { item: 'Sementes de hortaliças', unidade: 'pacote', valor_ref: 5, fonte: 'Estimativa sem fonte verificada' },
   { item: 'Esterco curtido', unidade: 'saco', valor_ref: 15, fonte: 'Estimativa sem fonte verificada' }
 ].map(x => Object.assign({ preliminar: true, ativo: true }, x));
+/* Busca rápida por um campo (em vez de varrer a lista inteira a cada procura, o que fica lento ao quadrado com milhares de quintais).
+   Devolve um mapa valor → primeiro registro com aquele valor (igual ao .find). O mapa é refeito quando a lista é outra, mudou de tamanho
+   ou passou 1/5 de segundo: um desenho de tela inteiro usa o mesmo mapa, e uma alteração feita na lista nunca fica escondida.
+   rotulo + filtro: mapa só dos registros que passam no filtro (ex.: diagnósticos com GPS). */
+MQ.porCampo = (() => {
+  const guarda = new WeakMap(), VAZIO = new Map();
+  return (lista, campo, rotulo, filtro) => {
+    if (!lista || !lista.length) return VAZIO;
+    let g = guarda.get(lista); if (!g) { g = {}; guarda.set(lista, g); }
+    const chave = campo + '|' + (rotulo || ''), agora = Date.now(); let c = g[chave];
+    if (!c || c.n !== lista.length || agora - c.t > 200) {
+      const m = new Map(); for (const x of lista) { if (!x || (filtro && !filtro(x))) continue; const k = x[campo]; if (!m.has(k)) m.set(k, x); }
+      c = g[chave] = { n: lista.length, t: agora, m };
+    }
+    return c.m;
+  };
+})();
 MQ.chaveItem = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[’`´]/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
 /* lista em uso (só os ativos) e a busca de um item pelo nome, sem ligar para acento, maiúscula ou tipo de apóstrofo */
 MQ.kitItens = () => { const t = MQ.ui && MQ.ui.S && MQ.ui.S.kitItens; return (t && t.length ? t : MQ.KIT_ITENS).filter(x => x.ativo !== false); };
-MQ.kitItem = nome => { const k = MQ.chaveItem(nome); return k ? MQ.kitItens().find(x => MQ.chaveItem(x.item) === k) || null : null; };
+/* o nome de cada item da lista é normalizado uma vez só (e não a cada procura): o mapa vale enquanto a lista for a mesma, por até 1/5 de segundo */
+MQ.kitItem = (() => {
+  let de = null, n = -1, t = 0, mapa = null;
+  return nome => { const k = MQ.chaveItem(nome); if (!k) return null;
+    const tb = MQ.ui && MQ.ui.S && MQ.ui.S.kitItens, lista = tb && tb.length ? tb : MQ.KIT_ITENS, agora = Date.now();
+    if (de !== lista || n !== lista.length || agora - t > 200) { mapa = new Map(); for (const x of lista) { if (x.ativo === false) continue; const c = MQ.chaveItem(x.item); if (!mapa.has(c)) mapa.set(c, x); } de = lista; n = lista.length; t = agora; }
+    return mapa.get(k) || null; };
+})();
 
 /* localização negada: o navegador não pergunta de novo sozinho, então explicamos como liberar */
 MQ.dicaGPS = (err, fim) => {
@@ -2175,8 +2199,7 @@ MQ.ORCAMENTO = {
       auditar('UPDATE', antes, d.equipe[i]); gravar();
       return arquivo.name;
     },
-    async linkTermo() { return null; },   // no demo o arquivo não é guardado
-    async linkTermo(path) { return null; },
+    async linkTermo(path) { return null; },   // no demo o arquivo não é guardado
     async entrar() { throw falha('No modo demonstração não há login: use o seletor de perfil.'); },
     async entrarSenha() { throw falha('Na demonstração não há login: escolha um perfil acima.'); },
     async criarSenha() { throw falha('Na demonstração não há primeiro acesso nem senha: escolha um perfil acima para conhecer o sistema.'); },   // 46: "Primeiro acesso" mostrava "Não deu certo…"   // a tela chama S.api.entrarSenha: sem isto aparecia "is not a function"
@@ -3738,7 +3761,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const K = Math.cos(9.5 * Math.PI / 180);                 // latitude média da área
   const px = ([lon, lat]) => [lon * K, -lat];
   function pontoDaFicha(f) {
-    const dg = (MQ.ui && MQ.ui.S.diagnosticos || []).find(x => x.ficha_id === f.id && x.latitude != null);
+    const dg = MQ.porCampo(MQ.ui && MQ.ui.S.diagnosticos, 'ficha_id', 'gps', x => x.latitude != null).get(f.id);
     if (dg) return { xy: px([+dg.longitude, +dg.latitude]), exato: true };   // GPS tirado no próprio quintal
     if (f.latitude != null && f.longitude != null) return { xy: px([+f.longitude, +f.latitude]), exato: true };
     const muns = (MQ.GEO.mun[f.uf]) || {};
@@ -3885,11 +3908,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const diags = (S.diagnosticos || []).filter(x => x.renda_quintal != null || x.renda_familiar != null);
     const mediana = arr => { const a = arr.filter(v => v != null && !isNaN(v)).map(Number).sort((x, y) => x - y); if (!a.length) return null; const m = Math.floor(a.length / 2); return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; };
     const mq = mediana(diags.map(x => x.renda_quintal)), mf = mediana(diags.map(x => x.renda_familiar));
-    const semRenda = diags.filter(x => !(+x.renda_quintal > 0)).length;
     // linha de base (bloco 4b do diagnóstico) e, quando houver, a avaliação final
     // com avaliações, as duas colunas usam só os quintais medidos duas vezes (comparar grupos diferentes engana)
     const avs = S.avaliacoes || [];
-    const pares = avs.map(a => { const dg = (S.diagnosticos || []).find(x => x.ficha_id === a.ficha_id); const i0 = dg && dg.dados && dg.dados.impacto, i1 = a.dados && a.dados.impacto;
+    const pares = avs.map(a => { const dg = MQ.porCampo(S.diagnosticos, 'ficha_id').get(a.ficha_id); const i0 = dg && dg.dados && dg.dados.impacto, i1 = a.dados && a.dados.impacto;
       return i0 && i1 && i0.ebia_nivel && i1.ebia_nivel ? [i0, i1] : null; }).filter(Boolean);
     const temDepois = pares.length > 0;
     const imps = temDepois ? pares.map(x => x[0]) : (S.diagnosticos || []).map(x => x.dados && x.dados.impacto).filter(x => x && x.ebia_nivel);
@@ -3897,9 +3919,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const nImp = imps.length, nAv = pares.length;
     const pc = (l, fn) => l.length ? Math.round(l.filter(fn).length / l.length * 100) + '%' : null;
     const md = (l, k) => { const v = l.map(x => x[k]).filter(x => x != null); return v.length ? (Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10).toLocaleString('pt-BR') : null; };
-    const avPar = avs.filter(a => (S.diagnosticos || []).some(x => x.ficha_id === a.ficha_id && x.renda_quintal != null) && a.dados && a.dados.renda_quintal != null);
+    const avPar = avs.filter(a => MQ.porCampo(S.diagnosticos, 'ficha_id', 'renda', x => x.renda_quintal != null).has(a.ficha_id) && a.dados && a.dados.renda_quintal != null);
     const mqD = avPar.length ? mediana(avPar.map(a => a.dados.renda_quintal)) : null;
-    const mqA = avPar.length ? mediana(avPar.map(a => (S.diagnosticos.find(x => x.ficha_id === a.ficha_id) || {}).renda_quintal)) : null;
+    const mqA = avPar.length ? mediana(avPar.map(a => (MQ.porCampo(S.diagnosticos, 'ficha_id').get(a.ficha_id) || {}).renda_quintal)) : null;
     const razoes = diags.filter(x => +x.renda_familiar > 0 && x.renda_quintal != null).map(x => x.renda_quintal / x.renda_familiar);
     const pesoQ = razoes.length ? Math.round(mediana(razoes) * 100) : null;
     const semAgua = (S.diagnosticos || []).length ? Math.round((S.diagnosticos || []).filter(x => x.sem_agua).length / S.diagnosticos.length * 100) + '%' : null;
@@ -3929,7 +3951,6 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   /* equipe de execução: quem são e de onde partem (perfil no campo do cadastro) */
   function equipeExec(S) {
-    const P = MQ.PAPEIS;
     const ativos = (S.equipe || []).filter(m => m.status === 'ativa' && m.papel !== 'coord_geral');
     const campo = ativos.filter(m => ['coord_tecnico', 'articulacao', 'apoio', 'agente'].includes(m.papel));
     const conta = p => ativos.filter(m => m.papel === p).length;
@@ -4322,7 +4343,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const memoIdx = new WeakMap();
   const indice = (arr, chave) => { let m = memoIdx.get(arr); if (!m) { m = {}; memoIdx.set(arr, m); }
     if (!m[chave]) { const x = new Map(); arr.forEach(o => { const k = o[chave]; if (!x.has(k)) x.set(k, []); x.get(k).push(o); }); m[chave] = x; } return m[chave]; };
-  const ficha = id => (S().fichas || []).find(f => f.id === id);
+  const ficha = id => MQ.porCampo(S().fichas, 'id').get(id);   // índice: a tela procura a ficha de cada visita e de cada diagnóstico
   const pessoa = id => (S().equipe || []).find(p => p.id === id);
   const primeiroNome = n => String(n || '').split(' ')[0];
   const pessoasCampo = uf => (S().equipe || []).filter(p => p.status === 'ativa' && R.ehCampo(p.papel) && p.uf === uf)
@@ -5496,9 +5517,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return memoMun[chave] ? Object.assign({}, memoMun[chave]) : null;
   }
   function destino(v) {
-    const dg = (S().diagnosticos || []).find(x => x.ficha_id === v.ficha_id && x.latitude != null);
+    const dg = MQ.porCampo(S().diagnosticos, 'ficha_id', 'gps', x => x.latitude != null).get(v.ficha_id);
     if (dg) return { lat: +dg.latitude, lon: +dg.longitude, como: 'GPS do quintal' };
-    const f = (S().fichas || []).find(x => x.id === v.ficha_id);
+    const f = MQ.porCampo(S().fichas, 'id').get(v.ficha_id);
     if (!f) return null;
     if (f.latitude != null) return { lat: +f.latitude, lon: +f.longitude, como: 'GPS da ficha' };
     return coordMun(f.uf, f.municipio);
@@ -5605,7 +5626,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <dt class="tot">Total</dt><dd class="num tot"><b>${brl(c.total)}</b></dd></dl>`;
   }
   function linha({ v, k, c, p }) {
-    const f = (S().fichas || []).find(x => x.id === v.ficha_id) || {};
+    const f = MQ.porCampo(S().fichas, 'id').get(v.ficha_id) || {};
     const feita = v.situacao === 'realizada';
     return `<div class="custo-l${feita ? '' : ' prev'}">
       <div class="cl-q"><b>${E(p.nome || '—')}</b> <span class="pil ${feita ? 'feito' : 'prev'}">${E(MQ.ETAPAS_CUSTO[v.etapa] || v.etapa)} · ${R.fmtData(v.data_realizada || v.data_prevista)}${feita ? '' : ' (prevista)'}</span>
@@ -5620,7 +5641,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const q = celCSV;
     const n = x => x == null ? '' : String(Math.round(x * 100) / 100).replace('.', ',');
     const cab = ['Data', 'Pessoa', 'CPF', 'Papel', 'UF', 'Etapa', 'Município de partida', 'Município do quintal', 'Km ida', 'Origem do km', 'Horas', 'Trabalho (R$)', 'Combustível (R$)', 'Refeição (R$)', 'Total (R$)'];
-    const linhas = vs.map(v => { const p = U().porId(v.executor_id) || {}; const f = (S().fichas || []).find(x => x.id === v.ficha_id) || {}; const k = kmIda(v); const c = calcular(v.etapa, k.km);
+    const linhas = vs.map(v => { const p = U().porId(v.executor_id) || {}; const f = MQ.porCampo(S().fichas, 'id').get(v.ficha_id) || {}; const k = kmIda(v); const c = calcular(v.etapa, k.km);
       return [R.fmtData(v.data_realizada), p.nome, R.fmtCPF(p.cpf || ''), (MQ.PAPEIS[p.papel] || {}).nome, v.uf, MQ.ETAPAS_CUSTO[v.etapa], p.municipio, f.municipio, k.km, k.fonte, c.horas, n(c.trabalho), n(c.combustivel), n(c.refeicao), n(c.total)].map(q).join(';'); });
     const blob = new Blob(['﻿' + [cab.map(q).join(';')].concat(linhas).join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'ajuda-de-custo-' + C.mes + '.csv'; a.click();
@@ -5878,7 +5899,6 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 (function () {
   const R = MQ.regras, P = MQ.PAPEIS;
   const U = () => MQ.ui; const S = () => MQ.ui.S; const E = s => MQ.ui.esc(s);
-  const F = { ufFiltro: '' };
 
   const pessoa = id => (S().equipe || []).find(m => m.id === id);
   const nomeDe = m => (m && (m.nome_social || m.nome)) || '—';
@@ -6325,7 +6345,6 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
    Quem precisa de solução: ficha "sem água: encaminhada" e diagnóstico que achou o quintal sem água na seca.
    A coordenação registra cada mudança de situação com uma observação; nada se altera nem se apaga. */
 (function () {
-  const R = MQ.regras;
   const U = () => MQ.ui; const S = () => MQ.ui.S; const E = s => MQ.ui.esc(s);
   const SIT = [
     { id: 'sem_solucao', t: 'Sem água', d: 'identificada, ainda sem encaminhamento', cls: 'st-atr' },
@@ -7423,8 +7442,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     </section>`;
   }
 
-  MQ.viagUI = { validar, lerForm, passBloco, valorBR, contaDevolvidos: () => lista().filter(p => p.solicitante_id === S().eu.id && p.situacao === 'devolvido').length, secaoBolsista, secaoConferente, souConferente, abaCoord, painel, clique, enviar, podeVer, contaMinha: () => lista().filter(minhaVez).length, textoFuncern,
-    validar, lerForm };   // validar e lerForm expostos para os testes unitários (testes/unit)
+  MQ.viagUI = { validar, lerForm, passBloco, valorBR, contaDevolvidos: () => lista().filter(p => p.solicitante_id === S().eu.id && p.situacao === 'devolvido').length, secaoBolsista, secaoConferente, souConferente, abaCoord, painel, clique, enviar, podeVer, contaMinha: () => lista().filter(minhaVez).length, textoFuncern };   // validar e lerForm (no começo da lista) também são usados pelos testes unitários (testes/unit)
 })();
 ;
 /* ===== documentos.js ===== */
@@ -8093,7 +8111,6 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   /* ---------- tela ---------- */
   const pct = (v, t) => t ? Math.round(v / t * 1000) / 10 : 0;
   const pctBR = x => x.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
-  const med = (exec, comp, total) => `<span class="medidor exec-med" title="executado e comprometido"><i style="width:${lim((exec + comp) / total * 100)}%;opacity:.35"></i><i style="width:${lim(exec / total * 100)}%"></i></span>`;
   /* composição do item em linguagem de gente (sem "1 × 14 × R$"): fica só no detalhe, não na tabela */
   const UNID = { diarias: ['diária', 'diárias'], locacao_veiculo: ['diária de veículo', 'diárias de veículo'], passagem_intercambio: ['passagem', 'passagens'], passagem_pedagogico: ['passagem', 'passagens'],
     eventos: ['evento', 'eventos'], quintais: ['quintal', 'quintais'], ajuda_apoio: ['ajuda de custo', 'ajudas de custo'], equipamento: ['unidade', 'unidades'] };
@@ -8790,7 +8807,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   /* ---------- antes × depois ---------- */
   function pares(uf) {
     return avaliacoes().filter(a => !uf || a.uf === uf).map(a => {
-      const dg = (S().diagnosticos || []).find(x => x.ficha_id === a.ficha_id);
+      const dg = MQ.porCampo(S().diagnosticos, 'ficha_id').get(a.ficha_id);
       const antes = dg && dg.dados && dg.dados.impacto; const depois = a.dados && a.dados.impacto;
       return antes && depois && antes.ebia_nivel && depois.ebia_nivel ? { a, dg, antes, depois } : null;
     }).filter(Boolean);
@@ -9217,7 +9234,6 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const msg = { usado: 'Este link já foi usado.', vencido: 'Este link venceu (vale 7 dias).', cancelado: 'Este link foi cancelado.', inexistente: 'Link não encontrado. Confira se copiou inteiro.' }[c.motivo] || ('Não foi possível abrir o link. ' + (c.erro || ''));
       return `<div class="login ent-card"><span class="eyebrow">Cadastro na equipe</span><h2 class="serif">Link sem validade</h2><p>${E(msg)} Peça um novo à coordenação do projeto.</p></div>`;
     }
-    const munis = c.uf ? (MQ.MUNICIPIOS[c.uf] || []) : [];
     return `<div class="conv-boas"><h1 class="ent-t serif">Boas-vindas <em>à equipe</em>.</h1>
         <p class="ent-s">Você foi indicad${c.papel === 'professor_fic' ? 'o(a)' : 'a'} para <b>${E(funcao(c.papel, c.uf))}</b>. Preencha seus dados uma vez só; a coordenação confere e libera o seu acesso.</p>
         <ol class="conv-etapas"><li class="on"><b>1</b> Seus dados</li><li><b>2</b> Coordenação confere</li><li><b>3</b> Você cria a senha</li></ol></div>
@@ -9287,7 +9303,6 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 (function () {
   const U = () => MQ.ui; const S = () => MQ.ui.S; const E = s => MQ.ui.esc(s);
   const R = MQ.regras;
-  const $ = s => document.querySelector(s);
   const B = { meus: undefined, editando: false, situacao: null };
   const mascara = t => t ? '•••' + String(t).slice(-3) : '';
   const MAX_PIX = 140;   // tamanho máximo da chave Pix (o formulário é novalidate: quem confere é o JS)
@@ -9931,7 +9946,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 /* Mulheres & Quintais — ajuda de cada tela: para que serve, como fazer e dúvidas comuns.
    Abre pelo botão "?" da barra (e pelo link "Precisa de ajuda?" na tela de entrada). */
 (function () {
-  const U = () => MQ.ui; const S = () => MQ.ui.S; const E = s => MQ.ui.esc(s);
+  const S = () => MQ.ui.S; const E = s => MQ.ui.esc(s);
 
   const A = {
     entrada: {
@@ -11201,7 +11216,6 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
 
   function corpo(a) {
-    const o = ORG[a.orgao] || ORG.mda;
     const kp = a.orgao === 'mda'
       ? numeroGrande(n(total(a, 'selecionadas')), 'mulheres selecionadas', 'de 200 previstas') + numeroGrande(n(total(a, 'pessoas')), 'pessoas nas famílias') + numeroGrande(n(total(a, 'implantados')), 'quintais implantados', 'de 200 previstos')
         + numeroGrande(n(total(a, 'municipios')), 'municípios') + numeroGrande(n(total(a, 'comunidades')), 'comunidades rurais') + numeroGrande(n(total(a, 'visitas_feitas')), 'visitas de campo feitas', 'de 1.000 previstas')

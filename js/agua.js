@@ -2,7 +2,6 @@
    Quem precisa de solução: ficha "sem água: encaminhada" e diagnóstico que achou o quintal sem água na seca.
    A coordenação registra cada mudança de situação com uma observação; nada se altera nem se apaga. */
 (function () {
-  const R = MQ.regras;
   const U = () => MQ.ui; const S = () => MQ.ui.S; const E = s => MQ.ui.esc(s);
   const SIT = [
     { id: 'sem_solucao', t: 'Sem água', d: 'identificada, ainda sem encaminhamento', cls: 'st-atr' },
