@@ -222,30 +222,52 @@
   }
 
   /* ---------- coordenação geral: quem acompanha, código de acesso e prévia das duas telas ---------- */
+  /* ícones lineares do bloco da coordenação (mesmo traço dos ícones do sistema: MQ.ICONES) */
+  const ic = d => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
+  const IC = {
+    acomp: ic('<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5 1 0 1.9.2 2.7.7"/><path d="M12.5 17.5s1.8-3 4.5-3 4.5 3 4.5 3-1.8 3-4.5 3-4.5-3-4.5-3z"/><circle cx="17" cy="17.5" r="1.2"/>'),
+    info: ic('<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 7.8v.2"/>'),
+    novo: ic('<circle cx="10" cy="8" r="3.4"/><path d="M3.5 20c.7-3.6 3.2-5.6 6.5-5.6 1.5 0 2.8.4 3.9 1.1"/><path d="M18.5 14v6M15.5 17h6"/>'),
+    salvar: ic('<path d="M5 4h11l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"/><path d="M8 4v5h7V4"/><rect x="8" y="13" width="8" height="7" rx="1"/>'),
+    ver: ic('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>'),
+    grafico: ic('<path d="M4 20V4"/><path d="M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/>'),
+    mapa: ic('<path d="M12 21s-6-5.6-6-10.2A6 6 0 0 1 12 4.8a6 6 0 0 1 6 6C18 15.4 12 21 12 21z"/><circle cx="12" cy="10.8" r="2.2"/>'),
+    seta: ic('<path d="M5 12h13"/><path d="m13 6.5 5.5 5.5-5.5 5.5"/>')
+  };
   function blocoCoord() {
     const s = S(); if (s.eu.papel !== 'coord_geral') return '';
     const l = s.observadores || []; const pv = s.acompPrevia;
-    const previa = `<div class="acoes"><button class="btn" data-acao="acomp-previa" data-o="mda" aria-pressed="${pv && pv.orgao === 'mda'}">Ver como o MDA vê</button><button class="btn" data-acao="acomp-previa" data-o="mpa" aria-pressed="${pv && pv.orgao === 'mpa'}">Ver como o MPA vê</button>${pv ? '<button class="btn" data-acao="acomp-previa-fechar">Fechar a prévia</button>' : ''}</div>
-      ${pv ? `<div class="ac ac-previa" aria-label="Prévia da tela de acompanhamento"><p class="nota">Prévia: é isto que ${ORG[pv.orgao].sigla === 'MDA' ? 'o MDA' : 'o MPA'} vê, com os números de agora. Dados de exemplo não entram na conta de quem acompanha.</p>${corpo(pv.dados)}</div>` : ''}`;
-    if (s.obsSemBanco) return `<div class="bloco ac-coord" id="ac-coord"><h3>Acompanhamento externo (MDA e MPA)</h3><p class="nota">Para liberar o acesso de quem acompanha o projeto, rode o arquivo <b>52_acompanhamento.sql</b> no Supabase.</p></div>`;
-    return `<div class="bloco ac-coord" id="ac-coord"><h3>Acompanhamento externo (MDA e MPA)</h3>
-      <p class="small muted">Quem acompanha o projeto de fora entra numa área própria, só de leitura e só com números: não vê nome, CPF, endereço, pagamento nem a equipe. O MDA vê o projeto inteiro em números, sem parte financeira; o MPA vê o andamento em cada estado. Só você cadastra e gera o código de primeiro acesso.</p>
+    const cartao = (o, cls, icone, titulo, dica) => `<button type="button" class="ac2-card ${cls}" data-acao="acomp-previa" data-o="${o}" aria-pressed="${!!(pv && pv.orgao === o)}"><span class="ac2-card-ic">${icone}</span><span class="ac2-card-tx"><b>${titulo}</b><small>${dica}</small></span><span class="ac2-card-seta">${IC.seta}</span></button>`;
+    const sub = (icone, titulo, dica) => `<div class="ac2-sub"><span class="ac2-ic peq">${icone}</span><div><h4>${titulo}</h4><p>${dica}</p></div></div>`;
+    const previa = `<div class="ac2-previa">${sub(IC.ver, 'Como eles veem o projeto', 'Visualize como cada órgão acompanha as informações.')}
+      <div class="ac2-cards">${cartao('mda', 'mda', IC.grafico, 'Ver como o MDA vê', 'Projeto completo em números, sem parte financeira.')}${cartao('mpa', 'mpa', IC.mapa, 'Ver como o MPA vê', 'Acompanhamento do andamento em cada estado.')}</div>
+      ${pv ? '<div class="acoes"><button class="btn" data-acao="acomp-previa-fechar">Fechar a prévia</button></div>' : ''}
+      ${pv ? `<div class="ac ac-previa" aria-label="Prévia da tela de acompanhamento"><p class="nota">Prévia: é isto que ${ORG[pv.orgao].sigla === 'MDA' ? 'o MDA' : 'o MPA'} vê, com os números de agora. Dados de exemplo não entram na conta de quem acompanha.</p>${corpo(pv.dados)}</div>` : ''}</div>`;
+    const cab = `<header class="ac2-cab"><span class="ac2-ic">${IC.acomp}</span><div class="ac2-cab-tx"><h3>Acompanhamento externo (MDA e MPA)</h3>
+        <p>Quem acompanha o projeto de fora entra numa área própria, só de leitura e só com números: não vê nome, CPF, endereço, pagamento nem a equipe.</p>
+        <p>O MDA vê o projeto inteiro em números, sem parte financeira; o MPA vê o andamento em cada estado. Só você cadastra e gera o código de primeiro acesso.</p></div>
+        <svg class="ac2-enfeite" viewBox="0 0 160 120" aria-hidden="true" focusable="false"><path class="e1" d="M92 8c26-10 58 6 62 34s-18 46-44 44-40-18-40-40 6-32 22-38z"/><path class="e2" d="M40 70c14-8 34-2 38 14s-10 28-26 26-26-10-26-22 6-14 14-18z"/><circle class="e3" cx="64" cy="30" r="9"/></svg></header>`;
+    if (s.obsSemBanco) return `<section class="bloco ac-coord ac2" id="ac-coord">${cab}<p class="nota">Para liberar o acesso de quem acompanha o projeto, rode o arquivo <b>52_acompanhamento.sql</b> no Supabase.</p></section>`;
+    const obr = '<span class="ac2-obr" aria-hidden="true">*</span>';
+    return `<section class="bloco ac-coord ac2" id="ac-coord">${cab}
       ${l.length ? `<div class="quadro-scroll" style="display:block"><table class="quadro ac-tab"><thead><tr><th>Nome</th><th>E-mail</th><th>Órgão</th><th>Situação</th><th></th></tr></thead><tbody>${l.map(x => `<tr${x.status !== 'ativo' ? ' class="apagado"' : ''}>
         <td data-rot="Nome"><b>${E(x.nome)}</b>${x.cargo ? `<br><span class="small muted">${E(x.cargo)}</span>` : ''}</td><td data-rot="E-mail">${E(x.email)}</td><td data-rot="Órgão">${E((ORG[x.orgao] || {}).sigla || x.orgao)}</td>
         <td data-rot="Situação">${x.status !== 'ativo' ? '<span class="chip off">Desativado</span>' : x.tem_senha ? '<span class="chip ok">Já entrou</span>' : x.codigo_vale_ate ? '<span class="chip pend">Código gerado</span>' : '<span class="chip pend">Sem código</span>'}</td>
-        <td><span class="acoes"><button class="btn peq" data-acao="acomp-editar" data-id="${E(x.id)}">Alterar</button>${x.status === 'ativo' ? `<button class="btn peq" data-acao="acomp-codigo" data-id="${E(x.id)}">${x.tem_senha ? 'Novo primeiro acesso' : 'Gerar código'}</button>` : ''}</span></td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">Ninguém cadastrado ainda.</p>'}
+        <td><span class="acoes"><button class="btn peq" data-acao="acomp-editar" data-id="${E(x.id)}">Alterar</button>${x.status === 'ativo' ? `<button class="btn peq" data-acao="acomp-codigo" data-id="${E(x.id)}">${x.tem_senha ? 'Novo primeiro acesso' : 'Gerar código'}</button>` : ''}</span></td></tr>`).join('')}</tbody></table></div>`
+        : `<p class="ac2-status" role="status">${IC.info}<span>Ninguém cadastrado ainda.</span></p>`}
       ${s.acompConfirma && l.some(x => x.id === s.acompConfirma) ? `<div class="aviso" role="alert"><b>Liberar um novo primeiro acesso para ${E(l.find(x => x.id === s.acompConfirma).nome)}?</b> Esta pessoa já tem senha. Ao gerar um novo código, a senha atual deixa de valer e ela cria outra.
         <span class="acoes"><button class="btn peq pri" data-acao="acomp-codigo" data-id="${E(s.acompConfirma)}" data-confirmado="1">Gerar novo código</button><button class="btn peq" data-acao="acomp-codigo-nao">Cancelar</button></span></div>` : ''}
       ${s.acompCodigo ? `<div class="aviso" role="status"><b>Código de primeiro acesso de ${E(s.acompCodigo.nome)}: <span class="num ac-cod">${E(s.acompCodigo.codigo)}</span></b><br>Vale 7 dias e uma vez só. Passe à pessoa junto com o e-mail cadastrado: na tela de entrada, ela toca em <b>Primeiro acesso</b>, informa o e-mail, o código e cria a senha. Este código não aparece de novo.</div>` : ''}
-      <form class="ac-form" data-form="acomp-pessoa" novalidate><input type="hidden" name="id" value="">
-        <div class="campos"><div class="campo"><label for="ac-nome">Nome completo</label><input id="ac-nome" name="nome" maxlength="120" autocomplete="off" required></div>
-          <div class="campo"><label for="ac-email">E-mail</label><input id="ac-email" name="email" type="email" maxlength="160" autocomplete="off" required></div>
-          <div class="campo"><label for="ac-orgao">Órgão</label><select id="ac-orgao" name="orgao" required><option value="">Escolha</option><option value="mda">MDA (ministério)</option><option value="mpa">MPA (movimento parceiro)</option></select></div>
-          <div class="campo"><label for="ac-cargo">Cargo ou função (opcional)</label><input id="ac-cargo" name="cargo" maxlength="120" autocomplete="off"></div></div>
-        <label class="check"><input type="checkbox" name="ativo" checked><span>Acesso ativo (desmarque para tirar o acesso desta pessoa)</span></label>
+      <form class="ac-form ac2-form" data-form="acomp-pessoa" novalidate><input type="hidden" name="id" value="">
+        ${sub(IC.novo, 'Cadastrar novo acesso', 'Informe os dados da pessoa que irá acompanhar o projeto.')}
+        <div class="campos"><div class="campo"><label for="ac-nome">Nome completo ${obr}</label><input id="ac-nome" name="nome" maxlength="120" autocomplete="off" placeholder="Digite o nome completo" required></div>
+          <div class="campo"><label for="ac-email">E-mail ${obr}</label><input id="ac-email" name="email" type="email" maxlength="160" autocomplete="off" placeholder="Digite o e-mail institucional" required></div>
+          <div class="campo"><label for="ac-orgao">Órgão ${obr}</label><select id="ac-orgao" name="orgao" required><option value="">Selecione o órgão</option><option value="mda">MDA (ministério)</option><option value="mpa">MPA (movimento parceiro)</option></select></div>
+          <div class="campo"><label for="ac-cargo">Cargo ou função (opcional)</label><input id="ac-cargo" name="cargo" maxlength="120" autocomplete="off" placeholder="Ex.: Analista, Técnico, Gestor..."></div></div>
+        <label class="check ac2-ativo"><input type="checkbox" name="ativo" checked><span><b>Acesso ativo</b><small>Desmarque para tirar o acesso desta pessoa.</small></span></label>
         <div class="aviso erro" data-erro hidden></div>
-        <div class="acoes"><button class="btn pri" type="submit">Gravar</button><button class="btn" type="reset" data-acao="acomp-limpar">Limpar</button></div></form>
-      <h3 style="margin-top:6px">Como eles veem o projeto</h3>${previa}</div>`;
+        <div class="acoes ac2-acoes"><button class="btn pri" type="submit">${IC.salvar}<span>Gravar</span></button><button class="btn" type="reset" data-acao="acomp-limpar">Limpar</button></div></form>
+      ${previa}</section>`;
   }
   async function clique(acao, el) {
     const s = S();
