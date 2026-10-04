@@ -3827,7 +3827,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     ps.forEach(p => { p.movido = Math.hypot(p.x - p.x0, p.y - p.y0) > p.r * 0.6; });
     return ps;
   }
-  const tracoAoLugar = (p, esc) => p.movido ? `<path d="M${p.x0},${p.y0}L${p.x},${p.y}" class="q-fio" stroke-width="${esc * 0.18}"/><circle cx="${p.x0}" cy="${p.y0}" r="${esc * 0.45}" class="q-fio-pt"/>` : '';
+  // Fio até o lugar real: só quando o círculo foi afastado para longe (mais de 2,5 raios). Perto disso o fio e o ponto
+  // de origem se amontoam em volta dos círculos (Alagoas, Sergipe) e parecem uma sombra cinza.
+  const tracoAoLugar = (p, esc, r) => { if (!p.movido) return ''; const dx = p.x0 - p.x, dy = p.y0 - p.y, d = Math.hypot(dx, dy); if (!r || d <= r * 2.5) return '';
+    return `<path d="M${p.x + dx / d * r},${p.y + dy / d * r}L${p.x0},${p.y0}" class="q-fio" stroke-width="${esc * 0.14}"/><circle cx="${p.x0}" cy="${p.y0}" r="${esc * 0.3}" class="q-fio-pt"/>`; };
   /* valores "redondos" para a legenda de tamanho, conforme o maior círculo do mapa */
   const redondo = v => { const p = Math.pow(10, Math.floor(Math.log10(Math.max(1, v)))); const m = v / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; };
   const marcasTamanho = nMax => nMax <= 30 ? [5, 10, 20] : [...new Set([redondo(nMax / 10), redondo(nMax / 3), redondo(nMax)])];
@@ -3885,7 +3888,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
               return `<path d="M${cx},${cy}L${p0[0]},${p0[1]}A${R},${R} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${p1[0]},${p1[1]}Z" fill="${CATS.find(k => k.id === id).cor}"/>`; }).join('');
         const txt = `${nome}/${g.uf} · ${n} mulher${n > 1 ? 'es' : ''} com ficha: ${por.map(([id, q]) => q + ' ' + CATS.find(k => k.id === id).nome.toLowerCase()).join(', ')} · clique para ver ${foco ? 'cada quintal' : 'o estado'}`;
         // área de toque invisível maior que o círculo: no celular o dedo acerta mesmo em município pequeno
-        return `<g class="q-pt q-grupo" data-acao="mapa-info" data-uf="${g.uf}" data-mun="${E(g.k)}" data-dica="${E(txt)}"><circle cx="${cx}" cy="${cy}" r="${Math.max(R, esc * (foco ? 4.5 : 3.8))}" fill="transparent" class="q-alvo"/>${tracoAoLugar(L, esc)}${fatias}<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#fff" stroke-width="${esc * 0.22}"/>
+        return `<g class="q-pt q-grupo" data-acao="mapa-info" data-uf="${g.uf}" data-mun="${E(g.k)}" data-dica="${E(txt)}"><circle cx="${cx}" cy="${cy}" r="${Math.max(R, esc * (foco ? 4.5 : 3.8))}" fill="transparent" class="q-alvo"/>${tracoAoLugar(L, esc, R)}${fatias}<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#fff" stroke-width="${esc * 0.22}"/>
           <text x="${cx}" y="${cy + R * 0.34}" text-anchor="middle" font-size="${Math.min(R * (n > 9 ? 0.95 : 1.1), esc * 3)}" class="q-num">${n}</text><title>${E(txt)}</title></g>`;
       }).join('');
     } else {
@@ -4265,7 +4268,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const pontoMun = ({ uf, nome, xy }, k) => { const q = qMun(uf, nome); const n = q ? (q.n || 2) : 0; const L = lugarMun.get(uf + '|' + nome) || {}; const x = L.x != null ? L.x : xy[0], y = L.y != null ? L.y : xy[1];
       const r = raioMun(n); const txt = q ? (q.menos_de_3 ? 'menos de 3 mulheres cadastradas' : q.n + ' mulheres cadastradas') : 'previsto, ainda sem cadastro';
       return `<g class="mun-pt${q ? ' mun-q' : ' mun-prev'}" data-mun="${E(nome)}/${uf} · ${txt}" data-rota-de="${E(nome)}/${uf}" ${acess(nome + '/' + uf + ': ' + txt)} style="--i:${k}"><circle cx="${x}" cy="${y}" r="${Math.max(r, esc * 3.2)}" class="mun-alvo"/>`
-        + (q ? `${tracoAoLugar(L, esc)}<circle cx="${x}" cy="${y}" r="${r}" class="mun-dot" stroke-width="${esc * 0.35}"/>${q.n ? `<text x="${x}" y="${y + r * 0.36}" text-anchor="middle" font-size="${Math.min(r * 1.05, esc * 2.8)}" class="mun-n">${q.n}</text>` : ''}`
+        + (q ? `${tracoAoLugar(L, esc, r)}<circle cx="${x}" cy="${y}" r="${r}" class="mun-dot" stroke-width="${esc * 0.35}"/>${q.n ? `<text x="${x}" y="${y + r * 0.36}" text-anchor="middle" font-size="${Math.min(r * 1.05, esc * 2.8)}" class="mun-n">${q.n}</text>` : ''}`
           : `<circle cx="${x}" cy="${y}" r="${esc * 1}" class="mun-vazio" stroke-width="${esc * 0.35}"/>`) + `<title>${E(nome)}/${uf}: ${txt}</title></g>`; };
     const pontos = dadosMun ? muns.map(pontoMun).join('') : muns.map(({ uf, nome, xy: [x, y] }, k) =>
       `<g class="mun-pt" data-mun="${E(nome)}/${uf}" ${acess(nome + '/' + uf)} style="animation-delay:${((k * 0.37) % 2.4).toFixed(2)}s;--i:${k}"><circle cx="${x}" cy="${y}" r="${esc * 3.2}" class="mun-alvo"/><circle cx="${x}" cy="${y}" r="${esc * 2.2}" class="mun-onda"/><circle cx="${x}" cy="${y}" r="${esc * 1.4}" class="mun-dot" stroke-width="${esc * 0.35}"/><title>${E(nome)}/${uf}</title></g>`).join('');
@@ -11361,29 +11364,27 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function blocoCoord() {
     const s = S(); if (s.eu.papel !== 'coord_geral') return '';
     const l = s.observadores || []; const pv = s.acompPrevia;
-    const cartao = (o, cls, icone, titulo, dica) => `<button type="button" class="ac2-card ${cls}" data-acao="acomp-previa" data-o="${o}" aria-pressed="${!!(pv && pv.orgao === o)}"><span class="ac2-card-ic">${icone}</span><span class="ac2-card-tx"><b>${titulo}</b><small>${dica}</small></span><span class="ac2-card-seta">${IC.seta}</span></button>`;
-    const sub = (icone, titulo, dica) => `<div class="ac2-sub"><span class="ac2-ic peq">${icone}</span><div><h4>${titulo}</h4><p>${dica}</p></div></div>`;
-    const previa = `<div class="ac2-previa">${sub(IC.ver, 'Como eles veem o projeto', 'Visualize como cada órgão acompanha as informações.')}
-      <div class="ac2-cards">${cartao('mda', 'mda', IC.grafico, 'Ver como o MDA vê', 'Projeto completo em números, sem parte financeira.')}${cartao('mpa', 'mpa', IC.mapa, 'Ver como o MPA vê', 'Acompanhamento do andamento em cada estado.')}</div>
+    const cartao = (o, icone, titulo) => `<button type="button" class="btn-acao sec" data-acao="acomp-previa" data-o="${o}" aria-pressed="${!!(pv && pv.orgao === o)}"><span class="ba-ic">${icone}</span><span class="ba-tx">${titulo}</span><span class="ba-seta">${IC.seta}</span></button>`;
+    const sub = (titulo, dica) => `<div class="ac2-sub"><h3>${titulo}</h3><p>${dica}</p></div>`;
+    const previa = `<div class="ac2-previa">${sub('Como eles veem o projeto', 'Visualize como cada órgão acompanha as informações.')}
+      <div class="acoes ac2-ver">${cartao('mda', IC.grafico, 'Ver como o MDA vê')}${cartao('mpa', IC.mapa, 'Ver como o MPA vê')}</div>
       ${pv ? '<div class="acoes"><button class="btn" data-acao="acomp-previa-fechar">Fechar a prévia</button></div>' : ''}
       ${pv ? `<div class="ac ac-previa" aria-label="Prévia da tela de acompanhamento"><p class="nota">Prévia: é isto que ${ORG[pv.orgao].sigla === 'MDA' ? 'o MDA' : 'o MPA'} vê, com os números de agora. Dados de exemplo não entram na conta de quem acompanha.</p>${corpo(pv.dados)}</div>` : ''}</div>`;
-    const cab = `<header class="ac2-cab"><span class="ac2-ic">${IC.acomp}</span><div class="ac2-cab-tx"><h3>Acompanhamento externo (MDA e MPA)</h3>
-        <p>Quem acompanha o projeto de fora entra numa área própria, só de leitura e só com números: não vê nome, CPF, endereço, pagamento nem a equipe.</p>
-        <p>O MDA vê o projeto inteiro em números, sem parte financeira; o MPA vê o andamento em cada estado. Só você cadastra e gera o código de primeiro acesso.</p></div>
-        <svg class="ac2-enfeite" viewBox="0 0 160 120" aria-hidden="true" focusable="false"><path class="e1" d="M92 8c26-10 58 6 62 34s-18 46-44 44-40-18-40-40 6-32 22-38z"/><path class="e2" d="M40 70c14-8 34-2 38 14s-10 28-26 26-26-10-26-22 6-14 14-18z"/><circle class="e3" cx="64" cy="30" r="9"/></svg></header>`;
-    if (s.obsSemBanco) return `<section class="bloco ac-coord ac2" id="ac-coord">${cab}<p class="nota">Para liberar o acesso de quem acompanha o projeto, rode o arquivo <b>52_acompanhamento.sql</b> no Supabase.</p></section>`;
+    const abre = `<section class="secao ac-coord ac2" id="ac-coord" aria-labelledby="t-ac"><div class="secao-cab"><div><h2 id="t-ac">Acompanhamento externo (MDA e MPA)</h2>
+        <p>Quem acompanha o projeto de fora entra numa área própria, só de leitura e só com números: não vê nome, CPF, endereço, pagamento nem a equipe. O MDA vê o projeto inteiro em números, sem parte financeira; o MPA vê o andamento em cada estado. Só você cadastra e gera o código de primeiro acesso.</p></div></div><div class="bloco ac2-cx">`;
+    if (s.obsSemBanco) return `${abre}<p class="nota">Para liberar o acesso de quem acompanha o projeto, rode o arquivo <b>52_acompanhamento.sql</b> no Supabase.</p></div></section>`;
     const obr = '<span class="ac2-obr" aria-hidden="true">*</span>';
-    return `<section class="bloco ac-coord ac2" id="ac-coord">${cab}
+    return `${abre}
       ${l.length ? `<div class="quadro-scroll" style="display:block"><table class="quadro ac-tab"><thead><tr><th>Nome</th><th>E-mail</th><th>Órgão</th><th>Situação</th><th></th></tr></thead><tbody>${l.map(x => `<tr${x.status !== 'ativo' ? ' class="apagado"' : ''}>
         <td data-rot="Nome"><b>${E(x.nome)}</b>${x.cargo ? `<br><span class="small muted">${E(x.cargo)}</span>` : ''}</td><td data-rot="E-mail">${E(x.email)}</td><td data-rot="Órgão">${E((ORG[x.orgao] || {}).sigla || x.orgao)}</td>
         <td data-rot="Situação">${x.status !== 'ativo' ? '<span class="chip off">Desativado</span>' : x.tem_senha ? '<span class="chip ok">Já entrou</span>' : x.codigo_vale_ate ? '<span class="chip pend">Código gerado</span>' : '<span class="chip pend">Sem código</span>'}</td>
         <td><span class="acoes"><button class="btn peq" data-acao="acomp-editar" data-id="${E(x.id)}">Alterar</button>${x.status === 'ativo' ? `<button class="btn peq" data-acao="acomp-codigo" data-id="${E(x.id)}">${x.tem_senha ? 'Novo primeiro acesso' : 'Gerar código'}</button>` : ''}</span></td></tr>`).join('')}</tbody></table></div>`
-        : `<p class="ac2-status" role="status">${IC.info}<span>Ninguém cadastrado ainda.</span></p>`}
+        : `<p class="nota" role="status">Ninguém cadastrado ainda.</p>`}
       ${s.acompConfirma && l.some(x => x.id === s.acompConfirma) ? `<div class="aviso" role="alert"><b>Liberar um novo primeiro acesso para ${E(l.find(x => x.id === s.acompConfirma).nome)}?</b> Esta pessoa já tem senha. Ao gerar um novo código, a senha atual deixa de valer e ela cria outra.
         <span class="acoes"><button class="btn peq pri" data-acao="acomp-codigo" data-id="${E(s.acompConfirma)}" data-confirmado="1">Gerar novo código</button><button class="btn peq" data-acao="acomp-codigo-nao">Cancelar</button></span></div>` : ''}
       ${s.acompCodigo ? `<div class="aviso" role="status"><b>Código de primeiro acesso de ${E(s.acompCodigo.nome)}: <span class="num ac-cod">${E(s.acompCodigo.codigo)}</span></b><br>Vale 7 dias e uma vez só. Passe à pessoa junto com o e-mail cadastrado: na tela de entrada, ela toca em <b>Primeiro acesso</b>, informa o e-mail, o código e cria a senha. Este código não aparece de novo.</div>` : ''}
       <form class="ac-form ac2-form" data-form="acomp-pessoa" novalidate><input type="hidden" name="id" value="">
-        ${sub(IC.novo, 'Cadastrar novo acesso', 'Informe os dados da pessoa que irá acompanhar o projeto.')}
+        ${sub('Cadastrar novo acesso', 'Informe os dados da pessoa que irá acompanhar o projeto.')}
         <div class="campos"><div class="campo"><label for="ac-nome">Nome completo ${obr}</label><input id="ac-nome" name="nome" maxlength="120" autocomplete="off" placeholder="Digite o nome completo" required></div>
           <div class="campo"><label for="ac-email">E-mail ${obr}</label><input id="ac-email" name="email" type="email" maxlength="160" autocomplete="off" placeholder="Digite o e-mail institucional" required></div>
           <div class="campo"><label for="ac-orgao">Órgão ${obr}</label><select id="ac-orgao" name="orgao" required><option value="">Selecione o órgão</option><option value="mda">MDA (ministério)</option><option value="mpa">MPA (movimento parceiro)</option></select></div>
@@ -11391,7 +11392,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <label class="check ac2-ativo"><input type="checkbox" name="ativo" checked><span><b>Acesso ativo</b><small>Desmarque para tirar o acesso desta pessoa.</small></span></label>
         <div class="aviso erro" data-erro hidden></div>
         <div class="acoes ac2-acoes"><button class="btn pri" type="submit">${IC.salvar}<span>Gravar</span></button><button class="btn" type="reset" data-acao="acomp-limpar">Limpar</button></div></form>
-      ${previa}</section>`;
+      ${previa}</div></section>`;
   }
   async function clique(acao, el) {
     const s = S();
