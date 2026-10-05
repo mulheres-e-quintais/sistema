@@ -11,7 +11,7 @@ const R = []; const ok = (n, c, d = '') => { R.push(c); console.log((c ? 'PASSOU
   const txt = sel => p.evaluate(sel => (document.querySelector(sel) || { textContent: '' }).textContent.replace(/\s+/g, ' '), sel);
 
   // ---------- coordenação técnica: lista de itens na aba Campo ----------
-  await como('coord_geral'); await p.evaluate(() => { MQ.ui.S.aba = 'campo'; MQ.ui.render(); }); await p.waitForSelector('.kit-itens');
+  await como('coord_geral'); await p.evaluate(() => { MQ.ui.S.verKitItens = true; MQ.ui.S.aba = 'campo'; MQ.ui.render(); }); await p.waitForSelector('.kit-itens');
   ok('a coordenação vê os 9 itens com preço de referência', await p.locator('.tab-kit-itens tbody tr').count() === 9);
   ok('os preços entram marcados como estimativa preliminar', /9 preços são estimativa preliminar/.test(await txt('.kit-itens')), (await txt('.kit-itens')).slice(0, 200));
   ok('cada item diz de onde veio o preço', /SINAPI, insumo 34636/.test(await txt('.tab-kit-itens')));

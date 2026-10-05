@@ -4586,7 +4586,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <tbody>${MQ.UFS.map(linhaUF).join('')}</tbody></table></div>
       <p class="small muted" style="margin:6px 2px 0"><b>Sem água na seca:</b> diagnósticos em que a água não dura no período seco. Essa mulher não recebe o kit (é encaminhada a programa de cisternas) e a vaga dela precisa ser preenchida pela lista de espera. Acima de 30% no estado é sinal de alerta.</p><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p>
       ${blocoKitPar()}
-      ${blocoKitItens()}
+      ${S().verKitItens ? blocoKitItens() : ''}
       ${MQ.impactoUI ? MQ.impactoUI.secaoCoord() : ''}
       ${aguard.length ? `<div class="bloco${MQ.sit(souTec ? 1 : 0)}"><h3>${souTec ? 'Planos para você aprovar' : 'Planos aguardando a coordenação técnica'} (${aguard.length})</h3><div class="lista-fichas">
         ${aguard.map(d => { const f = ficha(d.ficha_id) || {}; return `<button class="vagabtn ficha-linha" data-acao="campo-diag-ver" data-ficha="${E(d.ficha_id)}"><span class="nm">${E(f.nome || '—')}</span>
@@ -10152,7 +10152,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         'A tabela mostra, por estado, os dias de campo feitos e previstos, diagnósticos, planos aprovados, casos sem água e agentes.',
         'As etapas seguem uma ordem: a <b>implantação</b> só é agendada ou registrada com o plano do quintal aprovado (e nunca em quintal sem água); o <b>acompanhamento</b>, só depois da implantação feita. A data de cada etapa não pode ser anterior à da etapa de antes. Quando a etapa ainda não pode, a tela mostra o motivo no lugar do botão.',
         'Em <b>Planos para você aprovar</b>, abra o diagnóstico, confira as fotos, o croqui, os itens do kit e o cronograma, e <b>aprove</b> ou <b>devolva</b>. <b>Imprimir o plano</b> gera a folha com o kit, o cronograma e o croqui (para a coordenação geral, também com os preços de referência e a projeção).',
-        '<b>Itens do kit e preços de referência</b> (só a coordenação geral vê): é a lista que quem faz o diagnóstico usa, sem ver o preço. A compra é feita por empresa contratada; o preço é só referência para a projeção de cada plano. Use <b>Alterar</b> para trocar a estimativa preliminar pelo preço da cotação e marque <b>Preço confirmado</b>, dizendo de onde ele veio. Item que sai da lista não é apagado: desmarque <b>Item na lista</b>.',
+        'O diagnóstico usa uma lista fixa de itens do kit. Quem preenche informa só a quantidade; o preço de referência de cada item aparece apenas para a coordenação geral, na projeção do plano. A compra é feita por empresa contratada.',
         '<b>Investimento nos quintais</b> mostra o valor do kit por quintal (R$ 5.000,00, fixado no plano de trabalho) e, para a coordenação geral, a soma projetada pelos planos.',
         'O <b>roteiro</b> lista cada visita: data, quem vai e a situação, com o botão do que fazer. Visitas vencidas aparecem como atrasadas.',
         '<b>Impacto: antes × depois</b> compara o diagnóstico com a avaliação final de cada quintal.'
