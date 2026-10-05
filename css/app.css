@@ -3136,3 +3136,16 @@ small { font-size: max(12px, .85em); }
 .dx-kpi-n small, .eq-kpi .eq-n small { white-space: nowrap; }
 .dx-anel, .dx-anel svg { width: 46px; height: 46px; }
 .dx-kpi .medidor.fino { width: 100%; box-sizing: border-box; }
+/* anel sempre ao lado do número: anel, número e total medem a largura do próprio indicador (cqw) e encolhem juntos,
+   então "200 / 200" e "400 / 400" cabem numa linha só em qualquer largura de coluna */
+@supports (width: 1cqw) {
+  .dx-kpi, .eq-kpi { container-type: inline-size; }
+  .dx-kpi-topo { flex-wrap: nowrap; gap: clamp(6px, 5cqw, 12px); }
+  .dx-kpi-n, .eq-kpi .eq-n { flex-wrap: nowrap; white-space: nowrap; column-gap: clamp(2px, 2cqw, 5px); }
+  .dx-anel, .dx-anel svg { width: clamp(36px, 28cqw, 52px); height: clamp(36px, 28cqw, 52px); }
+  .dx-anel b { font-size: clamp(9px, 6.2cqw, 11px); }
+  .dx-kpi-n b, .eq-kpi .eq-n b { font-size: clamp(20px, 17cqw, 40px); }
+  .dx-kpi-n small, .eq-kpi .eq-n small { font-size: clamp(10.5px, 7.4cqw, 15px); }
+  .eq-kpi.sem-total .eq-n b { font-size: clamp(24px, 20cqw, 46px); }
+  .fin-topo .dx-kpi-topo { flex-wrap: nowrap; }
+}
