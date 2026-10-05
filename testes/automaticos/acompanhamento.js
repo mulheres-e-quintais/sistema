@@ -76,35 +76,41 @@ const R = []; const ok = (n, c, d = '') => { R.push(!!c); console.log((c ? 'PASS
   // ---------- coordenação geral: cadastro, código e prévia ----------
   await como('coord_geral'); await p.evaluate(() => { MQ.ui.fecharPainel(); MQ.ui.S.aba = 'equipe'; MQ.ui.render(); }); await p.waitForSelector('#ac-coord');
   const fm = 'form[data-form="acomp-pessoa"]';
-  const grava = async (nome, email, orgao, cargo) => { await p.fill('#ac-nome', nome); await p.fill('#ac-email', email); await p.selectOption('#ac-orgao', orgao); await p.fill('#ac-cargo', cargo || ''); await p.click(fm + ' button[type=submit]'); await p.waitForTimeout(800); return txt('#ac-coord'); };
+  const tudo = async () => (await txt('#ac-coord')) + ' ' + (await p.locator('#painel').count() ? await txt('#painel') : '');
+  const cartoes = () => p.locator('#ac-coord .vagabtn[data-acao=acomp-editar]');
+  const abre = async nome => { await p.evaluate(() => MQ.ui.fecharPainel()); await cartoes().filter({ hasText: nome }).click(); await p.waitForSelector('#painel ' + fm); };
+  const grava = async (nome, email, orgao, cargo) => { if (!await p.locator('#painel ' + fm).count()) { await p.click('#ac-coord [data-acao=acomp-novo][data-o=mda]'); await p.waitForSelector('#painel ' + fm); }
+    await p.fill('#ac-nome', nome); await p.fill('#ac-email', email); await p.selectOption('#ac-orgao', orgao); await p.fill('#ac-cargo', cargo || ''); await p.click(fm + ' button[type=submit]'); await p.waitForTimeout(800); return tudo(); };
+  ok('coordenação: o cadastro abre no painel lateral, como os demais da aba Equipe', await p.locator('#painel').count() === 0 && await p.locator('#ac-coord form').count() === 0 && await p.locator('#ac-coord .ag-quadro .ag-tr').count() === 2);
   ok('coordenação: e-mail inválido é recusado', /Confira o e-mail/.test(await grava('Fulana de Tal', 'sem-arroba', 'mda')));
   ok('coordenação: sem órgão é recusado', /Escolha o órgão/.test(await grava('Fulana de Tal', 'fulana@mda.exemplo', '')));
   const emailEq = await p.evaluate(() => MQ.ui.S.equipe.find(m => m.email).email);
   ok('coordenação: e-mail de alguém da equipe é recusado', /já é de uma pessoa da equipe/.test(await grava('Pessoa da Equipe', emailEq.toUpperCase(), 'mda')));
-  ok('coordenação: nada foi gravado nas recusas', await p.locator('#ac-coord tbody tr').count() === 0);
+  ok('coordenação: nada foi gravado nas recusas', await cartoes().count() === 0);
   await grava('Marta Observadora', 'Marta@MDA.exemplo', 'mda', '<b>Analista</b>');
+  ok('coordenação: ao gravar, o painel fecha', await p.locator('#painel').count() === 0);
   await grava('Paulo Parceiro Silva', 'paulo@mpa.exemplo', 'mpa');
-  ok('coordenação: as duas pessoas entram na lista, com o órgão e "Sem código"', await p.locator('#ac-coord tbody tr').count() === 2 && /marta@mda\.exemplo/.test(await txt('#ac-coord')) && /Sem código/.test(await txt('#ac-coord')));
-  ok('coordenação: código embutido no cargo aparece como texto', await p.evaluate(() => !document.querySelector('#ac-coord td b b') && /<b>Analista<\/b>/.test(document.querySelector('#ac-coord tbody').textContent)));
+  ok('coordenação: as duas pessoas entram na lista, cada uma no seu órgão, com "Sem código"', await cartoes().count() === 2 && await p.locator('#ac-coord .ag-tr').nth(0).locator('.vagabtn').count() === 1 && /Paulo Parceiro/.test(await p.locator('#ac-coord .ag-tr').nth(1).textContent()) && /Sem código/.test(await txt('#ac-coord')));
+  ok('coordenação: código embutido no cargo aparece como texto', await p.evaluate(() => !document.querySelector('#ac-coord .vagabtn b') && /<b>Analista<\/b>/.test(document.querySelector('#ac-coord .ag-lista').textContent)));
   ok('coordenação: e-mail repetido é recusado', /já está cadastrado/.test(await grava('Outra Marta', 'marta@mda.exemplo', 'mpa')));
-  await p.locator('#ac-coord tr', { hasText: 'Marta Observadora' }).locator('[data-acao=acomp-codigo]').click(); await p.waitForTimeout(700);
-  const cod = await txt('.ac-cod');
-  ok('coordenação: gera o código de primeiro acesso no formato XXXX-XXXX e explica o que fazer', /^[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(cod.trim()) && /Primeiro acesso/.test(await txt('#ac-coord')) && /Código gerado/.test(await txt('#ac-coord')), cod);
+  await abre('Marta Observadora'); await p.click('#painel [data-acao=acomp-codigo]'); await p.waitForTimeout(700);
+  const cod = await txt('#ac-coord .ac-cod');
+  ok('coordenação: gera o código de primeiro acesso no formato XXXX-XXXX e explica o que fazer', /^[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(cod.trim()) && /Primeiro acesso/.test(await txt('#ac-coord')) && await p.locator('#painel').count() === 0 && /Código gerado/.test(await txt('#ac-coord')), cod);
   ok('coordenação: o código não fica guardado nos dados (só a validade)', await p.evaluate(c => !localStorage.getItem('mq-demo-v4').includes(c.replace('-', '')) && !localStorage.getItem('mq-demo-v4').includes(c), cod.trim()));
   // quem já tem senha: pede confirmação antes de liberar novo acesso
   await p.evaluate(async () => { const d = JSON.parse(localStorage.getItem('mq-demo-v4')); d.observadores.find(o => /paulo/.test(o.email)).tem_senha = true; localStorage.setItem('mq-demo-v4', JSON.stringify(d)); await MQ.ui.S.api.reler(); await MQ.ui.carregar(); MQ.ui.render(); }); await p.waitForTimeout(400);
-  await p.locator('#ac-coord tr', { hasText: 'Paulo Parceiro' }).locator('[data-acao=acomp-codigo]').click(); await p.waitForTimeout(400);
+  await abre('Paulo Parceiro'); await p.click('#painel form [data-acao=acomp-codigo]'); await p.waitForTimeout(400);
   ok('coordenação: novo acesso de quem já tem senha pede confirmação antes', /Liberar um novo primeiro acesso para Paulo Parceiro Silva/.test(await txt('#ac-coord')) && await p.evaluate(() => JSON.parse(localStorage.getItem('mq-demo-v4')).observadores.find(o => /paulo/.test(o.email)).tem_senha === true));
   await p.click('[data-acao=acomp-codigo-nao]'); await p.waitForTimeout(300);
-  ok('coordenação: Cancelar não gera código', !/Liberar um novo primeiro acesso para/.test(await txt('#ac-coord')) && await p.locator('.ac-cod').count() === 0);
-  await p.locator('#ac-coord tr', { hasText: 'Paulo Parceiro' }).locator('[data-acao=acomp-codigo]').click(); await p.waitForTimeout(300); await p.click('[data-acao=acomp-codigo][data-confirmado="1"]'); await p.waitForTimeout(700);
-  ok('coordenação: confirmando, a senha antiga deixa de valer e sai um código novo', await p.locator('.ac-cod').count() === 1 && await p.evaluate(() => JSON.parse(localStorage.getItem('mq-demo-v4')).observadores.find(o => /paulo/.test(o.email)).tem_senha === false));
+  ok('coordenação: Cancelar não gera código', !/Liberar um novo primeiro acesso para/.test(await tudo()) && await p.locator('.ac-cod').count() === 0);
+  await abre('Paulo Parceiro'); await p.click('#painel form [data-acao=acomp-codigo]'); await p.waitForTimeout(300); await p.click('[data-acao=acomp-codigo][data-confirmado="1"]'); await p.waitForTimeout(700);
+  ok('coordenação: confirmando, a senha antiga deixa de valer e sai um código novo', await p.locator('#ac-coord .ac-cod').count() === 1 && await p.evaluate(() => JSON.parse(localStorage.getItem('mq-demo-v4')).observadores.find(o => /paulo/.test(o.email)).tem_senha === false));
   // desativar
-  await p.locator('#ac-coord tr', { hasText: 'Marta Observadora' }).locator('[data-acao=acomp-editar]').click();
-  ok('coordenação: Alterar carrega a pessoa no formulário', await p.inputValue('#ac-email') === 'marta@mda.exemplo' && await p.inputValue('#ac-orgao') === 'mda');
+  await abre('Marta Observadora');
+  ok('coordenação: tocar na pessoa carrega os dados dela no formulário', await p.inputValue('#ac-email') === 'marta@mda.exemplo' && await p.inputValue('#ac-orgao') === 'mda');
   await p.uncheck(fm + ' [name=ativo]'); await p.click(fm + ' button[type=submit]'); await p.waitForTimeout(800);
-  const lm = await p.locator('#ac-coord tr', { hasText: 'Marta Observadora' }).textContent();
-  ok('coordenação: desativar tira o botão de código e marca a pessoa', /Desativado/.test(lm) && !/Gerar código/.test(lm));
+  const lm = await cartoes().filter({ hasText: 'Marta Observadora' }).textContent(); await abre('Marta Observadora'); const semCod = await p.locator('#painel form [data-acao=acomp-codigo]').count() === 0; await p.evaluate(() => MQ.ui.fecharPainel());
+  ok('coordenação: desativar tira o botão de código e marca a pessoa', /Desativado/.test(lm) && semCod);
   ok('coordenação: cadastro, alteração e código ficam no histórico, sem o código', await p.evaluate(() => { const a = JSON.parse(localStorage.getItem('mq-demo-v4')).auditoria.filter(x => x.tabela === 'observadores'); return ['INSERT', 'UPDATE', 'CODIGO', 'NOVO_ACESSO'].every(k => a.some(x => x.acao === k)) && !JSON.stringify(a).match(/[A-Z2-9]{4}-[A-Z2-9]{4}/); }));
   // prévia
   await p.click('[data-acao=acomp-previa][data-o=mda]'); await p.waitForSelector('.ac-previa');
