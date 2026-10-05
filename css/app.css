@@ -3005,12 +3005,15 @@ small { font-size: max(12px, .85em); }
 .ac-coord .ac-sigla { width: auto; min-width: 44px; padding: 0 8px; font-size: var(--t-sm); letter-spacing: .02em; }
 .ac-coord .vagabtn.apagado { opacity: .6; }
 .ac-coord > .aviso, .ac-coord > .ac-ver, .ac-coord > .ac-previa { margin-top: 14px; }
-.ac-ver .btn-acao { flex: none; width: fit-content; min-height: 44px; justify-content: center; padding-right: 18px; }
-.ac-ver .btn-acao .ba-tx { flex: none; width: auto; overflow: visible; }
-.ac-ver .btn-acao .ba-seta { display: none; }
-.ac-ver .btn-acao[aria-pressed="true"] { border-color: var(--ink); background: var(--surface-2); }
+.ac-acao { flex-direction: column; align-items: stretch; gap: 8px; }
+.ac-acao .btn-acao { width: 100%; justify-content: flex-start; }
+.ac-acao .btn-acao .ba-seta { display: none; }
+/* prévia de quem acompanha: janela no meio da tela (usa o mesmo painel, com foco preso, Esc e Voltar) */
+.painel.centro { top: 4vh; bottom: 4vh; left: 50%; right: auto; width: min(1120px, 94vw); transform: translateX(-50%); border-radius: 18px; overflow: hidden; animation: none; }
+.painel.centro .painel-corpo { padding-top: 16px; }
+@media (max-width: 700px) { .painel.centro { top: 0; bottom: 0; width: 100%; border-radius: 0; } }
 .ac-obr { color: var(--accent); font-weight: 700; }
-@media (max-width: 860px) { .ac-ver .btn-acao { flex: 1 1 100%; width: 100%; } }
+
 
 /* Equipe: cartão de bolsista do mesmo tamanho do cartão de agente de campo (270 px, foto de 44 px, uma linha de resumo) */
 .eq-quadro tbody td > .vagabtn.com-foto { max-width: 270px; min-height: 0; }
