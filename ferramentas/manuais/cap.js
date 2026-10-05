@@ -30,7 +30,7 @@ const TELAS = [
   { id: 'auxiliar', perfil: 'auxiliar', clip: 'main', m: [['t:Cadastrar no Arlo', 1], ['t:Lançar pagamentos no Arlo', 2], ['#t-arlo', 3], ['t:No Arlo, falta registrar o termo', 4]] },
   { id: 'acomp_mda', perfil: 'obs_mda', clip: 'de:main h1:#ac-metas', m: [['t:Atualizar agora', 1], ['.ac-kpis', 2], ['#ac-caminho', 3], ['#ac-metas', 4]] },
   { id: 'acomp_mpa', perfil: 'obs_mpa', clip: 'de:main h1:#ac-parado', m: [['t:Atualizar agora', 1], ['.ac-kpis', 2], ['#ac-estados', 3], ['#ac-parado', 4]] },
-  { id: 'acomp_coord', perfil: 'coord_geral', aba: 'equipe', clip: 'el:#ac-coord', m: [['#ac-nome', 1], ['#ac-orgao', 2], ['t:Ver como o MDA vê', 3]] },
+  { id: 'acomp_coord', perfil: 'coord_geral', aba: 'equipe', clip: 'el:#ac-coord', m: [['t:Adicionar pessoa', 1], ['#ac-coord .ag-uf', 2], ['t:Ver como o MDA vê', 3]] },
   { id: 'meus_dados', perfil: 'bolsista', clique: '.btn-meus', clip: 'el:aside.painel', m: [['p:Trocar foto', 1], ['aside.painel dl', 2], ['p:Termo de compromisso', 3], ['p:Gerar o termo preenchido', 4]] },
   { id: 'ficha_nova', perfil: 'bolsista', clique: '[data-acao=ficha-nova]', clip: 'el:aside.painel', m: [['p:Imprimir em branco', 1], ['aside.painel input', 2], ['p:Salvar', 3]] },
 ];

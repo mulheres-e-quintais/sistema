@@ -10101,7 +10101,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         ['Mandar o acesso para a pessoa', ['Abra a ficha da pessoa.', 'Toque em <b>Gerar código de acesso</b>.', 'Toque em <b>Mandar por WhatsApp</b>: a mensagem já leva endereço, e-mail e código.']],
         ['Registrar a habilitação', ['Abra a ficha da pessoa.', 'Toque em <b>Registrar passos da habilitação</b>.', 'Em cada passo feito, toque em <b>Hoje</b> (ou escolha a data).', 'Toque em <b>Salvar</b>.']],
         ['Desligar e pôr substituta', ['Abra a ficha da pessoa → <b>Desligar</b>.', 'Escolha o motivo e explique em uma frase.', 'Toque em <b>Confirmar desligamento</b> (não tem volta).', 'Na vaga que abriu, toque em <b>Cadastrar substituta</b>.']],
-        ['Liberar o acompanhamento do MDA ou do MPA (só a coordenação geral)', ['No fim da aba <b>Equipe</b>, vá até <b>Acompanhamento externo (MDA e MPA)</b>.', 'Preencha nome, e-mail e órgão e toque em <b>Gravar</b>.', 'Na linha da pessoa, toque em <b>Gerar código</b> e passe o código a ela.', 'Para conferir o que ela enxerga, toque em <b>Ver como o MDA vê</b> ou <b>Ver como o MPA vê</b>.']]
+        ['Liberar o acompanhamento do MDA ou do MPA (só a coordenação geral)', ['No fim da aba <b>Equipe</b>, vá até <b>Acompanhamento externo (MDA e MPA)</b>.', 'Na linha do órgão, toque em <b>Adicionar pessoa</b>, preencha nome e e-mail e toque em <b>Gravar</b>.', 'Toque no cartão da pessoa e depois em <b>Gerar código</b>; passe o código a ela.', 'Para conferir o que ela enxerga, toque em <b>Ver como o MDA vê</b> ou <b>Ver como o MPA vê</b>.']]
       ],
       passos: [
         'Toque na vaga ou em <b>Cadastrar</b> e escolha: <b>Gerar link de cadastro</b> (a pessoa preenche pelo celular e você confere e aprova) ou <b>Digitar os dados agora</b> (você mesmo preenche). O link é o recomendado: menos digitação e a própria pessoa aceita o termo de dados.',
@@ -11349,55 +11349,55 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
 
   /* ---------- coordenação geral: quem acompanha, código de acesso e prévia das duas telas ---------- */
-  /* ícones lineares do bloco da coordenação (mesmo traço dos ícones do sistema: MQ.ICONES) */
-  const ic = d => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
-  const IC = {
-    acomp: ic('<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5 1 0 1.9.2 2.7.7"/><path d="M12.5 17.5s1.8-3 4.5-3 4.5 3 4.5 3-1.8 3-4.5 3-4.5-3-4.5-3z"/><circle cx="17" cy="17.5" r="1.2"/>'),
-    info: ic('<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 7.8v.2"/>'),
-    novo: ic('<circle cx="10" cy="8" r="3.4"/><path d="M3.5 20c.7-3.6 3.2-5.6 6.5-5.6 1.5 0 2.8.4 3.9 1.1"/><path d="M18.5 14v6M15.5 17h6"/>'),
-    limpar: '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 4.5V9h4.5"/></svg>', salvar: ic('<path d="M5 4h11l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"/><path d="M8 4v5h7V4"/><rect x="8" y="13" width="8" height="7" rx="1"/>'),
-    ver: ic('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>'),
-    grafico: ic('<path d="M4 20V4"/><path d="M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/>'),
-    mapa: ic('<path d="M12 21s-6-5.6-6-10.2A6 6 0 0 1 12 4.8a6 6 0 0 1 6 6C18 15.4 12 21 12 21z"/><circle cx="12" cy="10.8" r="2.2"/>'),
-    seta: ic('<path d="M5 12h13"/><path d="m13 6.5 5.5 5.5-5.5 5.5"/>')
-  };
+  /* Bloco da coordenação geral na aba Equipe, no mesmo modelo de "Agentes de campo": título da seção, um quadro com uma
+     linha por órgão, as pessoas em cartões e o botão que abre o cadastro no painel lateral (04/10/2026). */
+  const CORES = ['#3F6B66', '#6B7A3F', '#5C4A7A', '#7A5A44', '#8A4B3A', '#3F5F7A'];
+  function avatarDe(x) {
+    const p = String(x.nome || '?').trim().split(/\s+/).filter(k => k && !/^(d[aeo]s?|e)$/i.test(k));
+    const ini = ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
+    let h = 0; for (const c of String(x.id || x.nome)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    return `<span class="av" style="--av:44px;--avc:${CORES[h % CORES.length]}" aria-hidden="true">${E(ini)}</span>`;
+  }
+  const situacaoDe = x => x.status !== 'ativo' ? ['off', 'Desativado'] : x.tem_senha ? ['ok', 'Já entrou'] : x.codigo_vale_ate ? ['pend', 'Código gerado'] : ['pend', 'Sem código'];
+  const avisosCodigo = () => { const s = S(), l = s.observadores || [];
+    return `${s.acompConfirma && l.some(x => x.id === s.acompConfirma) ? `<div class="aviso" role="alert"><b>Liberar um novo primeiro acesso para ${E(l.find(x => x.id === s.acompConfirma).nome)}?</b> Esta pessoa já tem senha. Ao gerar um novo código, a senha atual deixa de valer e ela cria outra.
+        <span class="acoes"><button class="btn peq pri" data-acao="acomp-codigo" data-id="${E(s.acompConfirma)}" data-confirmado="1">Gerar novo código</button><button class="btn peq" data-acao="acomp-codigo-nao">Cancelar</button></span></div>` : ''}
+      ${s.acompCodigo ? `<div class="aviso" role="status"><b>Código de primeiro acesso de ${E(s.acompCodigo.nome)}: <span class="num ac-cod">${E(s.acompCodigo.codigo)}</span></b><br>Vale 7 dias e uma vez só. Passe à pessoa junto com o e-mail cadastrado: na tela de entrada, ela toca em <b>Primeiro acesso</b>, informa o e-mail, o código e cria a senha. Este código não aparece de novo.</div>` : ''}`; };
+  const painelAberto = () => { const p = S().painel; return !!(p && p.tipo === 'acomp-form'); };
   function blocoCoord() {
     const s = S(); if (s.eu.papel !== 'coord_geral') return '';
     const l = s.observadores || []; const pv = s.acompPrevia;
-    const cartao = (o, cls, icone, titulo, dica) => `<button type="button" class="ac2-card ${cls}" data-acao="acomp-previa" data-o="${o}" aria-pressed="${!!(pv && pv.orgao === o)}"><span class="ac2-card-ic">${icone}</span><span class="ac2-card-tx"><b>${titulo}</b><small>${dica}</small></span><span class="ac2-card-seta">${IC.seta}</span></button>`;
-    const sub = (icone, titulo, dica) => `<div class="ac2-sub"><span class="ac2-ic peq">${icone}</span><div><h4>${titulo}</h4><p>${dica}</p></div></div>`;
-    const previa = `<div class="ac2-previa">${sub(IC.ver, 'Como eles veem o projeto', 'Visualize como cada órgão acompanha as informações.')}
-      <div class="ac2-cards">${cartao('mda', 'mda', IC.grafico, 'Ver como o MDA vê', 'Projeto completo em números, sem parte financeira.')}${cartao('mpa', 'mpa', IC.mapa, 'Ver como o MPA vê', 'Acompanhamento do andamento em cada estado.')}</div>
-      ${pv ? '<div class="acoes"><button class="btn" data-acao="acomp-previa-fechar">Fechar a prévia</button></div>' : ''}
-      ${pv ? `<div class="ac ac-previa" aria-label="Prévia da tela de acompanhamento"><p class="nota">Prévia: é isto que ${ORG[pv.orgao].sigla === 'MDA' ? 'o MDA' : 'o MPA'} vê, com os números de agora. Dados de exemplo não entram na conta de quem acompanha.</p>${corpo(pv.dados)}</div>` : ''}</div>`;
-    const cab = `<header class="ac2-cab"><span class="ac2-ic">${IC.acomp}</span><div class="ac2-cab-tx"><h3>Acompanhamento externo (MDA e MPA)</h3>
-        <p>Quem acompanha o projeto de fora entra numa área própria, só de leitura e só com números: não vê nome, CPF, endereço, pagamento nem a equipe.</p>
-        <p>O MDA vê o projeto inteiro em números, sem parte financeira; o MPA vê o andamento em cada estado. Só você cadastra e gera o código de primeiro acesso.</p></div>
-        <svg class="ac2-enfeite" viewBox="0 0 160 120" aria-hidden="true" focusable="false"><path class="e3" d="M6 104c22-13 126-13 148 0v6H6z"/><circle class="e1" cx="128" cy="26" r="15"/>
-          <g class="ec"><path d="M44 100V70"/><path d="M82 100V44"/><path d="M118 100V74"/></g>
-          <g class="e2"><path d="M44 80c-13 1-19-6-20-16 12-1 19 5 20 16z"/><path d="M44 72c11 0 17-6 17-15-11 0-17 6-17 15z"/><path d="M82 66c-17 1-25-8-26-22 16-1 25 7 26 22z"/><path d="M82 54c15 0 23-8 23-21-15 0-23 8-23 21z"/><path d="M82 38c-5-6-5-14 0-21 5 7 5 15 0 21z"/><path d="M118 84c-11 1-16-5-17-13 10-1 16 4 17 13z"/><path d="M118 78c10 0 15-5 15-13-10 0-15 5-15 13z"/></g></svg></header>`;
-    if (s.obsSemBanco) return `<section class="bloco ac-coord ac2" id="ac-coord">${cab}<p class="nota">Para liberar o acesso de quem acompanha o projeto, rode o arquivo <b>52_acompanhamento.sql</b> no Supabase.</p></section>`;
-    const obr = '<span class="ac2-obr" aria-hidden="true">*</span>';
-    return `<section class="bloco ac-coord ac2" id="ac-coord">${cab}
-      ${l.length ? `<div class="quadro-scroll" style="display:block"><table class="quadro ac-tab"><thead><tr><th>Nome</th><th>E-mail</th><th>Órgão</th><th>Situação</th><th></th></tr></thead><tbody>${l.map(x => `<tr${x.status !== 'ativo' ? ' class="apagado"' : ''}>
-        <td data-rot="Nome"><b>${E(x.nome)}</b>${x.cargo ? `<br><span class="small muted">${E(x.cargo)}</span>` : ''}</td><td data-rot="E-mail">${E(x.email)}</td><td data-rot="Órgão">${E((ORG[x.orgao] || {}).sigla || x.orgao)}</td>
-        <td data-rot="Situação">${x.status !== 'ativo' ? '<span class="chip off">Desativado</span>' : x.tem_senha ? '<span class="chip ok">Já entrou</span>' : x.codigo_vale_ate ? '<span class="chip pend">Código gerado</span>' : '<span class="chip pend">Sem código</span>'}</td>
-        <td><span class="acoes"><button class="btn peq" data-acao="acomp-editar" data-id="${E(x.id)}">Alterar</button>${x.status === 'ativo' ? `<button class="btn peq" data-acao="acomp-codigo" data-id="${E(x.id)}">${x.tem_senha ? 'Novo primeiro acesso' : 'Gerar código'}</button>` : ''}</span></td></tr>`).join('')}</tbody></table></div>`
-        : `<p class="ac2-status" role="status">${IC.info}<span>Ninguém cadastrado ainda.</span></p>`}
-      ${s.acompConfirma && l.some(x => x.id === s.acompConfirma) ? `<div class="aviso" role="alert"><b>Liberar um novo primeiro acesso para ${E(l.find(x => x.id === s.acompConfirma).nome)}?</b> Esta pessoa já tem senha. Ao gerar um novo código, a senha atual deixa de valer e ela cria outra.
-        <span class="acoes"><button class="btn peq pri" data-acao="acomp-codigo" data-id="${E(s.acompConfirma)}" data-confirmado="1">Gerar novo código</button><button class="btn peq" data-acao="acomp-codigo-nao">Cancelar</button></span></div>` : ''}
-      ${s.acompCodigo ? `<div class="aviso" role="status"><b>Código de primeiro acesso de ${E(s.acompCodigo.nome)}: <span class="num ac-cod">${E(s.acompCodigo.codigo)}</span></b><br>Vale 7 dias e uma vez só. Passe à pessoa junto com o e-mail cadastrado: na tela de entrada, ela toca em <b>Primeiro acesso</b>, informa o e-mail, o código e cria a senha. Este código não aparece de novo.</div>` : ''}
-      <form class="ac-form ac2-form" data-form="acomp-pessoa" novalidate><input type="hidden" name="id" value="">
-        ${sub(IC.novo, 'Cadastrar novo acesso', 'Informe os dados da pessoa que irá acompanhar o projeto.')}
-        <div class="campos"><div class="campo"><label for="ac-nome">Nome completo ${obr}</label><input id="ac-nome" name="nome" maxlength="120" autocomplete="off" placeholder="Digite o nome completo" required></div>
-          <div class="campo"><label for="ac-email">E-mail ${obr}</label><input id="ac-email" name="email" type="email" maxlength="160" autocomplete="off" placeholder="Digite o e-mail institucional" required></div>
-          <div class="campo"><label for="ac-orgao">Órgão ${obr}</label><select id="ac-orgao" name="orgao" required><option value="">Selecione o órgão</option><option value="mda">MDA (ministério)</option><option value="mpa">MPA (movimento parceiro)</option></select></div>
-          <div class="campo"><label for="ac-cargo">Cargo ou função (opcional)</label><input id="ac-cargo" name="cargo" maxlength="120" autocomplete="off" placeholder="Ex.: Analista, Técnico, Gestor..."></div></div>
-        <label class="check ac2-ativo"><input type="checkbox" name="ativo" checked><span><b>Acesso ativo</b><small>Desmarque para tirar o acesso desta pessoa.</small></span></label>
-        <div class="aviso erro" data-erro hidden></div>
-        <div class="acoes ac2-acoes"><button class="btn pri" type="submit">${IC.salvar}<span>Gravar</span></button><button class="btn" type="reset" data-acao="acomp-limpar">${IC.limpar}<span>Limpar</span></button></div></form>
-      ${previa}</section>`;
+    const abre = `<section class="secao ac-coord" id="ac-coord" aria-labelledby="t-ac"><div class="secao-cab"><div><h2 id="t-ac">Acompanhamento externo (MDA e MPA)</h2>
+      <p>Área própria, só de leitura e só com números · não vê nome, CPF, endereço, pagamento nem a equipe · o MDA vê o projeto inteiro, sem parte financeira · o MPA vê o andamento em cada estado · só você cadastra e gera o código</p></div></div>`;
+    if (s.obsSemBanco) return `${abre}<div class="bloco"><p class="nota">Para liberar o acesso de quem acompanha o projeto, rode o arquivo <b>52_acompanhamento.sql</b> no Supabase.</p></div></section>`;
+    const linha = o => { const g = l.filter(x => x.orgao === o), n = g.filter(x => x.status === 'ativo').length;
+      return `<div class="ag-tr" role="group" aria-label="${ORG[o].sigla}: ${n} ${n === 1 ? 'pessoa' : 'pessoas'}"><div class="ag-uf"><span class="sigla ac-sigla">${ORG[o].sigla}</span><span class="ag-nome"><b>${o === 'mda' ? 'Ministério' : 'Movimento parceiro'}</b>${g.length ? `<small>${n} ${n === 1 ? 'pessoa' : 'pessoas'}</small>` : ''}</span></div>
+        <div class="ag-lista">${g.map(x => { const st = situacaoDe(x); return `<button class="vagabtn com-foto${x.status !== 'ativo' ? ' apagado' : ''}" data-acao="acomp-editar" data-id="${E(x.id)}">${avatarDe(x)}<span class="vb-t"><span class="nm">${E(x.nome)}</span><span><span class="chip ${st[0]}">${st[1]}</span></span><span class="sub">${E(x.cargo || x.email)}</span></span></button>`; }).join('') || `<p class="ag-vazio">Ninguém cadastrado ainda.</p>`}</div>
+        <div class="ag-acao">${MQ.botaoAcao({ acao: 'acomp-novo', icone: 'pessoa_mais', texto: 'Adicionar pessoa', rotulo: 'Adicionar pessoa do ' + ORG[o].sigla, sec: true, peq: true, attrs: `data-o="${o}"` })}</div></div>`; };
+    const ver = (o, icone) => MQ.botaoAcao({ acao: 'acomp-previa', icone, texto: 'Ver como o ' + ORG[o].sigla + ' vê', sec: true, peq: true, attrs: `data-o="${o}" aria-pressed="${!!(pv && pv.orgao === o)}"` });
+    return `${abre}<div class="ag-quadro"><div class="ag-th" aria-hidden="true"><span>Órgão</span><span>Quem acompanha</span><span></span></div>${linha('mda')}${linha('mpa')}</div>
+      ${avisosCodigo()}
+      <div class="acoes ac-ver">${ver('mda', 'ver')}${ver('mpa', 'ver')}${pv ? '<button class="btn" data-acao="acomp-previa-fechar">Fechar a prévia</button>' : ''}</div>
+      ${pv ? `<div class="ac ac-previa" aria-label="Prévia da tela de acompanhamento"><p class="nota">Prévia: é isto que ${ORG[pv.orgao].sigla === 'MDA' ? 'o MDA' : 'o MPA'} vê, com os números de agora. Dados de exemplo não entram na conta de quem acompanha.</p>${corpo(pv.dados)}</div>` : ''}</section>`;
   }
+  /* Cadastro e alteração no painel lateral, como os demais cadastros da aba Equipe */
+  function painel(p) {
+    const x = p.id ? (S().observadores || []).find(k => k.id === p.id) : null; const o = x ? x.orgao : (p.orgao || '');
+    const obr = '<span class="ac-obr" aria-hidden="true">*</span>'; const st = x ? situacaoDe(x) : null;
+    return `<div class="painel-cab"><div class="t"><span class="eyebrow">${x ? 'Alterar cadastro' : 'Novo cadastro'}</span><h2 id="painel-t">Acompanhamento externo${ORG[o] ? ' · ' + ORG[o].sigla : ''}</h2>${st ? `<span><span class="chip ${st[0]}">${st[1]}</span></span>` : ''}</div>
+        <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
+      <div class="painel-corpo"><form class="f" data-form="acomp-pessoa" novalidate><input type="hidden" name="id" value="${x ? E(x.id) : ''}">
+        <div class="fixo"><span class="small muted">Acesso</span><b>Só leitura, só números</b><span class="small">Entra numa área própria: não vê nome, CPF, endereço, pagamento nem a equipe.</span></div>
+        <div class="campos"><div class="campo inteiro"><label for="ac-nome">Nome completo ${obr}</label><input id="ac-nome" name="nome" maxlength="120" autocomplete="off" value="${x ? E(x.nome) : ''}" required${x ? '' : ' autofocus'}></div>
+          <div class="campo inteiro"><label for="ac-email">E-mail ${obr}</label><input id="ac-email" name="email" type="email" maxlength="160" autocomplete="off" value="${x ? E(x.email) : ''}" required></div>
+          <div class="campo"><label for="ac-orgao">Órgão ${obr}</label><select id="ac-orgao" name="orgao" required><option value="">Escolha…</option><option value="mda"${o === 'mda' ? ' selected' : ''}>MDA (ministério)</option><option value="mpa"${o === 'mpa' ? ' selected' : ''}>MPA (movimento parceiro)</option></select></div>
+          <div class="campo"><label for="ac-cargo">Cargo ou função (opcional)</label><input id="ac-cargo" name="cargo" maxlength="120" autocomplete="off" value="${x ? E(x.cargo || '') : ''}"></div></div>
+        <label class="check"><input type="checkbox" name="ativo"${!x || x.status === 'ativo' ? ' checked' : ''}> Acesso ativo (desmarque para tirar o acesso desta pessoa)</label>
+        <div class="aviso erro" data-erro hidden></div>
+        <div class="acoes"><button class="btn pri" type="submit">Gravar</button><button class="btn" type="button" data-acao="fechar">Cancelar</button>${x && x.status === 'ativo' ? `<button class="btn" type="button" data-acao="acomp-codigo" data-id="${E(x.id)}">${x.tem_senha ? 'Novo primeiro acesso' : 'Gerar código'}</button>` : ''}</div></form></div>`;
+  }
+  // o aviso de confirmação e o código saem no bloco da aba (o painel fecha): o código fica à vista até a pessoa sair da tela
+  const redesenhar = () => { if (painelAberto()) U().fecharPainel(); U().render(); const a = document.querySelector('#ac-coord > .aviso'); if (a && a.scrollIntoView) a.scrollIntoView({ block: 'center' }); };
   async function clique(acao, el) {
     const s = S();
     const msg = e => U().toast((MQ.regras.mensagemErro ? MQ.regras.mensagemErro(e) : '') || (e && e.message) || 'Não deu certo. Tente de novo.');
@@ -11405,20 +11405,16 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     else if (acao === 'acomp-imprimir') { window.print(); }
     else if (acao === 'acomp-previa') { el.disabled = true; try { s.acompPrevia = { orgao: el.dataset.o, dados: await s.api.dadosAcompanhamento(el.dataset.o) }; } catch (e) { msg(e); } U().render(); }
     else if (acao === 'acomp-previa-fechar') { s.acompPrevia = null; U().render(); }
-    else if (acao === 'acomp-editar') {
-      const x = (s.observadores || []).find(k => k.id === el.dataset.id), fm = document.querySelector('form[data-form="acomp-pessoa"]'); if (!x || !fm) return;
-      const c = nome => fm.elements.namedItem(nome); c('id').value = x.id; c('nome').value = x.nome; c('email').value = x.email; c('orgao').value = x.orgao; c('cargo').value = x.cargo || ''; c('ativo').checked = x.status === 'ativo';
-      c('nome').focus(); fm.scrollIntoView({ block: 'nearest' });
-    }
-    else if (acao === 'acomp-codigo-nao') { s.acompConfirma = null; U().render(); }
-    else if (acao === 'acomp-limpar') { const fm = el.form; if (fm) setTimeout(() => { fm.elements.namedItem('id').value = ''; }, 0); }
+    else if (acao === 'acomp-novo') { s.acompCodigo = null; s.acompConfirma = null; U().abrirPainel({ tipo: 'acomp-form', orgao: el.dataset.o }); }
+    else if (acao === 'acomp-editar') { if (!(s.observadores || []).some(k => k.id === el.dataset.id)) return; s.acompCodigo = null; s.acompConfirma = null; U().abrirPainel({ tipo: 'acomp-form', id: el.dataset.id }); }
+    else if (acao === 'acomp-codigo-nao') { s.acompConfirma = null; redesenhar(); }
     else if (acao === 'acomp-codigo') {
       const x = (s.observadores || []).find(k => k.id === el.dataset.id); if (!x) return;
       // quem já tem senha: o primeiro toque só avisa; o segundo (no aviso) gera o código e a senha antiga deixa de valer
-      if (x.tem_senha && el.dataset.confirmado !== '1') { s.acompConfirma = x.id; s.acompCodigo = null; U().render(); return; }
+      if (x.tem_senha && el.dataset.confirmado !== '1') { s.acompConfirma = x.id; s.acompCodigo = null; redesenhar(); return; }
       el.disabled = true;
       try { const codigo = await s.api.gerarCodigoObservador(x.id); s.observadores = await s.api.listarObservadores(); s.acompCodigo = { nome: x.nome, codigo }; s.acompConfirma = null; } catch (e) { msg(e); }
-      U().render();
+      redesenhar();
     }
   }
   async function enviar(tipo, form, fd) {
@@ -11430,11 +11426,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     else if ((S().equipe || []).some(m => String(m.email || '').toLowerCase() === x.email)) e.email = 'Este e-mail já é de uma pessoa da equipe.';
     if (!ORG[x.orgao]) e.orgao = 'Escolha o órgão.';
     if (Object.keys(e).length) return U().mostrarErros(form, e);
-    await U().ocupado(form, async () => { await S().api.salvarObservador(x); S().observadores = await S().api.listarObservadores(); S().acompCodigo = null; U().render(); U().toast('Cadastro de acompanhamento gravado.'); });
+    await U().ocupado(form, async () => { await S().api.salvarObservador(x); S().observadores = await S().api.listarObservadores(); S().acompCodigo = null; U().fecharPainel(); U().render(); U().toast('Cadastro de acompanhamento gravado.'); });
   }
 
   MQ.acomp = { calcular, pequeno, ORG };
-  MQ.acompUI = { pagina, corpo, carregar, vigiar, blocoCoord, clique, enviar };
+  MQ.acompUI = { pagina, corpo, carregar, vigiar, blocoCoord, painel, clique, enviar };
 })();
 ;
 /* ===== app.js ===== */
@@ -12818,7 +12814,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     let el = $('#painel');
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
     const p = S.painel;
-    const corpo = p.tipo === 'roteiro' && MQ.roteiroUI ? MQ.roteiroUI.painel(p) : p.tipo === 'ajuda' ? MQ.ajudaUI.painel(p) : p.tipo === 'meus-dados' ? painelMeusDados() : /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^viag-/.test(p.tipo) && MQ.viagUI ? MQ.viagUI.painel(p) : /^doc-/.test(p.tipo) && MQ.docsUI ? MQ.docsUI.painel(p) : /^exec-/.test(p.tipo) && MQ.execUI ? MQ.execUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : /^enc-/.test(p.tipo) && MQ.encUI ? MQ.encUI.painel(p) : /^agua-/.test(p.tipo) && MQ.aguaUI ? MQ.aguaUI.painel(p) : /^venda-/.test(p.tipo) && MQ.vendaUI ? MQ.vendaUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
+    const corpo = p.tipo === 'acomp-form' && MQ.acompUI ? MQ.acompUI.painel(p) : p.tipo === 'roteiro' && MQ.roteiroUI ? MQ.roteiroUI.painel(p) : p.tipo === 'ajuda' ? MQ.ajudaUI.painel(p) : p.tipo === 'meus-dados' ? painelMeusDados() : /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^viag-/.test(p.tipo) && MQ.viagUI ? MQ.viagUI.painel(p) : /^doc-/.test(p.tipo) && MQ.docsUI ? MQ.docsUI.painel(p) : /^exec-/.test(p.tipo) && MQ.execUI ? MQ.execUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : /^enc-/.test(p.tipo) && MQ.encUI ? MQ.encUI.painel(p) : /^agua-/.test(p.tipo) && MQ.aguaUI ? MQ.aguaUI.painel(p) : /^venda-/.test(p.tipo) && MQ.vendaUI ? MQ.vendaUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
     el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel${/^(ficha|diag|aval)-(form|ver)$/.test(p.tipo) ? ' largo' : ''}" role="dialog" aria-modal="true" aria-labelledby="painel-t">${GUARDA}${corpo}${GUARDA}</aside>`;   // formulários longos do campo: painel mais largo
     restaurarRascunhoPainel(el);
     // questionário de campo: opção de imprimir em branco para aplicar no papel (só para quem preenche)
