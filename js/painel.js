@@ -440,8 +440,12 @@
     const dg = S.diagnosticos || [];
     const impl = (S.visitas || []).filter(v => v.etapa === 'implantacao' && v.situacao === 'realizada').length;
     const acomp = (S.visitas || []).filter(v => v.etapa === 'acompanhamento' && v.situacao === 'realizada').length;
-    const kpi = (n, de, rot, sub, st) => `<div class="dx-kpi"><span class="dx-kpi-n num"><b>${n}</b><small> / ${de}</small></span><span class="dx-kpi-r">${rot}</span>
-        <span class="medidor fino" aria-hidden="true"><i class="${STATUS[st].cls}" style="width:${Math.min(100, n / de * 100)}%"></i></span>${sub ? `<span class="dx-kpi-s">${sub}</span>` : ''}</div>`;
+    /* indicador do painel de execução física: anel com o percentual, número sobre o previsto, barra, "% concluído" e complemento.
+       A cor (k1 a k4) só diferencia os indicadores; o anel e a barra são decorativos para o leitor de tela, que lê o texto. */
+    const kpi = (k, n, de, rot, sub) => { const pc = Math.max(0, Math.min(100, n / de * 100)), pr = Math.round(pc), C = 2 * Math.PI * 18;
+      return `<div class="dx-kpi k${k}"><div class="dx-kpi-topo"><span class="dx-anel" aria-hidden="true"><svg viewBox="0 0 44 44" width="52" height="52" focusable="false"><circle cx="22" cy="22" r="18" class="tr"/><circle cx="22" cy="22" r="18" class="pg${pc > 0 ? '' : ' vazio'}" stroke-dasharray="${(C * pc / 100).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 22 22)"/></svg><b class="num">${pr}%</b></span>
+          <span class="dx-kpi-n num"><b>${n}</b><small> / ${de}</small></span></div><span class="dx-kpi-r">${rot}</span>
+        <span class="medidor fino" aria-hidden="true"><i style="width:${pc}%"></i></span><span class="dx-kpi-p"><b class="num">${pr}%</b> concluído</span>${sub ? `<span class="dx-kpi-s">${sub}</span>` : ''}</div>`; };
     const stK = (n, de, ini) => n >= de ? 'concluida' : n > 0 ? 'andamento' : 'nao';
     const prazoTxt = x => !x.prazo ? '—' : x.prazo === 'imediato' ? 'Imediato' : `${R.fmtData(x.prazo)}<small>${R.diasAte(x.prazo) < 0 ? 'venceu há ' + (-R.diasAte(x.prazo)) + ' dia' + (R.diasAte(x.prazo) === -1 ? '' : 's') : R.diasAte(x.prazo) === 0 ? 'hoje' : 'em ' + R.diasAte(x.prazo) + ' dia' + (R.diasAte(x.prazo) === 1 ? '' : 's')}</small>`;
     const MES3 = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -459,10 +463,10 @@
       <section class="dx-topo" aria-label="Indicadores principais">
         ${ex.html}
         <div class="dx-kpis">
-          ${kpi(d.selAprov.length, 200, 'mulheres selecionadas e aprovadas', `${d.fichas.length} fichas lançadas${aguard ? ' · ' + aguard + ' aguardando' : ''}`, stK(d.selAprov.length, 200))}
-          ${kpi(dg.length, 200, 'diagnósticos', `${dg.filter(x => x.situacao === 'aprovado').length} com plano aprovado`, stK(dg.length, 200))}
-          ${kpi(impl, 200, 'quintais implantados', null, stK(impl, 200))}
-          ${kpi(acomp, 400, 'visitas de acompanhamento', null, stK(acomp, 400))}
+          ${kpi(1, d.selAprov.length, 200, 'mulheres selecionadas e aprovadas', `${d.fichas.length} ficha${d.fichas.length === 1 ? ' lançada' : 's lançadas'}${aguard ? ' · ' + aguard + ' aguardando' : ''}`)}
+          ${kpi(2, dg.length, 200, 'diagnósticos', `${dg.filter(x => x.situacao === 'aprovado').length} com plano aprovado`)}
+          ${kpi(3, impl, 200, 'quintais implantados', `${impl} ${impl === 1 ? 'quintal implantado' : 'quintais implantados'}`)}
+          ${kpi(4, acomp, 400, 'visitas de acompanhamento', `${acomp} ${acomp === 1 ? 'visita realizada' : 'visitas realizadas'}`)}
         </div>
       </section>
 
