@@ -122,7 +122,9 @@
      "raise exception" no banco, código P0001, ou das regras da tela). Texto técnico do Postgres/Supabase,
      erro de programação e objeto sem mensagem viram um aviso simples. Nunca "[object Object]". */
   R.MSG_GENERICA = 'Não deu certo. Tente de novo; se continuar, avise a coordenação.';
-  R.MSG_SEM_REDE = 'Sem internet agora. O que você preencheu continua na tela: tente de novo quando o sinal melhorar.';
+  // na tela de entrada: sem internet não dá para conferir a senha; o texto diz o que fazer (e como trabalhar no campo sem sinal)
+  R.MSG_ENTRAR_SEM_REDE = 'Sem internet: para entrar no sistema é preciso estar conectada. Procure um lugar com sinal e tente de novo. Para trabalhar no campo sem internet, entre antes de sair e não toque em Sair.';
+  R.MSG_SEM_REDE = 'Sem internet agora: isto só pode ser feito com conexão. Nada foi alterado e o que você preencheu continua na tela. Tente de novo quando o sinal voltar.';
   R.MSG_SESSAO = 'Sua sessão venceu. Entre de novo.';
   const str = v => (typeof v === 'string' ? v : '');
   /* texto do erro (mensagem + detalhes), sem nunca transformar objeto em "[object Object]" */

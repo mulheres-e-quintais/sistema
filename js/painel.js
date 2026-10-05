@@ -484,11 +484,12 @@
         <section class="secao" aria-labelledby="t-metas">
           <div class="secao-cab"><div><h2 id="t-metas">Metas do plano de trabalho</h2><p>Barra: realizado · traço: previsto até o mês passado · toque na meta para ver o detalhe</p></div></div>
           <div class="dx-metas">
-            ${linhaMeta(MQ.METAS[0], S, d, mes)}
-            <details class="dx-meta"><summary><span class="meta-id">Sel.</span><span class="meta-nome">Seleção das beneficiárias</span>${chipStatus(d.selAprov.length >= 200 ? 'concluida' : d.fichas.length ? 'andamento' : 'nao')}
+            <!-- a seleção vem antes das metas e não é uma delas: fica no alto, com moldura diferente -->
+            <details class="dx-meta dx-etapa"><summary><span class="meta-id">Sel.</span><span class="meta-nome">Seleção das beneficiárias <small class="meta-sub">etapa preparatória · não é meta do plano</small></span>${chipStatus(d.selAprov.length >= 200 ? 'concluida' : d.fichas.length ? 'andamento' : 'nao')}
               <span class="medidor" role="img" aria-label="${d.selAprov.length} de 200"><i class="${d.selAprov.length >= 200 ? 'st-ok' : 'st-and'}" style="width:${Math.min(100, d.selAprov.length / 2)}%"></i></span>
               <span class="meta-num num"><b>${d.selAprov.length}</b> de 200 <span class="muted">selecionadas</span></span><span class="meta-ver" aria-hidden="true"></span></summary>
-              <div class="dx-meta-mais"><p class="mm-nota">Antes da Meta 2. Registrada no sistema (ficha de indicação e termo de consentimento). ${aguard} aguardando aprovação.</p></div></details>
+              <div class="dx-meta-mais"><p class="mm-nota">A seleção não é uma das 8 metas do plano de trabalho: é a etapa que vem antes da Meta 2 e libera os diagnósticos, por isso aparece aqui, separada. Registrada no sistema (ficha de indicação e termo de consentimento). ${aguard} aguardando aprovação.</p></div></details>
+            ${linhaMeta(MQ.METAS[0], S, d, mes)}
             ${MQ.METAS.filter(m => m.fonte && m.fonte !== 'equipe').map(m => linhaMeta(m, S, d, mes)).join('')}
             ${MQ.METAS.filter(m => !m.fonte).map(m => linhaMeta(m, S, d, mes)).join('')}
           </div>
