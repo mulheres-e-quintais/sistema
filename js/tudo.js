@@ -13019,9 +13019,14 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         ${prof && S.eu.papel === 'coord_geral' ? `<div class="acoes"><button class="btn" data-acao="ver" data-id="${esc(prof.id)}" aria-label="Ver detalhes de ${esc(nomeDe(prof))}">Ver detalhes</button></div>` : ''}</div>`;
     }
     // cadastro novo: primeiro escolhe como (link para a pessoa preencher ou à mão)
+    /* requisitos mínimos da bolsista: no alto do painel, antes de qualquer escolha (link, digitar ou aprovar o que ela enviou) */
+    const reqBols = bols && !edit && MQ.PERFIL_BOLSISTA ? `<div class="perfil-bols req-min" role="note"><b class="req-t">Requisitos mínimos · ${esc(P[m.papel].nome)}</b>
+          <p class="small muted">Antes de ${pre ? 'aprovar' : 'cadastrar'}, confira se a indicada atende (Guia das bolsistas, item 3).</p>
+          <p class="perfil-esp">${esc(MQ.PERFIL_BOLSISTA[m.papel] || '')}</p>
+          <ul class="perfil-lista">${MQ.PERFIL_BOLSISTA.todas.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : '';
     if (!edit && !pre && MQ.convitesUI && p.modo !== 'manual') {
-      if (p.modo === 'link') return cabP + `<div class="painel-corpo"><button type="button" class="cad-modo cad-modo-2 cad-modo-topo" data-acao="cad-modo" data-m="manual"><b>Prefere digitar os dados você mesmo?</b><span>Abra o formulário e preencha agora, sem mandar link.</span></button>${MQ.convitesUI.blocoLink(p)}</div>`;
-      return cabP + `<div class="painel-corpo"><p class="muted">Como você quer fazer este cadastro?</p>
+      if (p.modo === 'link') return cabP + `<div class="painel-corpo">${reqBols}<button type="button" class="cad-modo cad-modo-2 cad-modo-topo" data-acao="cad-modo" data-m="manual"><b>Prefere digitar os dados você mesmo?</b><span>Abra o formulário e preencha agora, sem mandar link.</span></button>${MQ.convitesUI.blocoLink(p)}</div>`;
+      return cabP + `<div class="painel-corpo">${reqBols}<p class="muted">Como você quer fazer este cadastro?</p>
         <div class="cad-modos">
           <button class="cad-modo" data-acao="cad-modo" data-m="link" autofocus><b>Gerar link de cadastro</b>
             <span>A pessoa preenche os próprios dados pelo celular e aceita o termo de uso dos dados. Você confere e aprova. Menos digitação e menos erro.</span><em>Recomendado</em></button>
@@ -13032,7 +13037,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">${titulo}</span>
         <h2 id="painel-t">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(nomeUF(m.uf)) : ''}</h2></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
-      <div class="painel-corpo"><form class="f" data-form="cadastro" novalidate>
+      <div class="painel-corpo">${reqBols}<form class="f" data-form="cadastro" novalidate>
         ${!edit && !pre && MQ.convitesUI ? `<button type="button" class="cad-modo cad-modo-2 cad-modo-topo" data-acao="cad-modo" data-m="link"><b>Prefere que a pessoa preencha?</b><span>Gere um link e mande pelo WhatsApp.</span></button>` : ''}
         <div class="fixo">${m.papel === 'agente' ? '<span class="small muted">Pagamento</span><b>Ajuda de custo por visita</b>' : `<span class="small muted">Função</span><b>${esc(P[m.papel].nome)}</b>`}
           <span class="small">${P[m.papel].faz ? esc(P[m.papel].faz) : 'Planeja, coordena e acompanha a execução técnica nos 5 estados.'}</span>
@@ -13064,10 +13069,6 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
             <div class="campo"><label for="c-mq">Quintais</label><input id="c-mq" name="meta_quintais" type="number" min="0" inputmode="numeric" value="${v('meta_quintais')}"></div>
             <div class="campo"><label for="c-mv">Visitas</label><input id="c-mv" name="meta_visitas" type="number" min="0" inputmode="numeric" value="${v('meta_visitas')}"></div>
           </div></fieldset>` : ''}
-        ${bols && !edit && MQ.PERFIL_BOLSISTA ? `<fieldset class="perfil-bols"><legend>Perfil da bolsista</legend>
-          <p class="small muted">Antes de ${pre ? 'aprovar' : 'cadastrar'}, confira se a indicada tem este perfil (Guia das bolsistas, item 3).</p>
-          <p class="perfil-esp"><b>${esc(P[m.papel].nome)}:</b> ${esc(MQ.PERFIL_BOLSISTA[m.papel] || '')}</p>
-          <ul class="perfil-lista">${MQ.PERFIL_BOLSISTA.todas.map(t => `<li>${esc(t)}</li>`).join('')}</ul></fieldset>` : ''}
         <fieldset><legend>Proteção de dados</legend>
           <label class="check" id="w-lgpd"><input type="checkbox" id="c-lgpd" name="consentimento_lgpd" ${m.consentimento_lgpd ? 'checked' : ''}>
             <span>A pessoa foi informada e concorda que estes dados sejam usados só para a gestão do projeto e o pagamento da bolsa (Lei nº 13.709/2018).</span></label>

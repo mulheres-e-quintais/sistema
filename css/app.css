@@ -3084,3 +3084,10 @@ small { font-size: max(12px, .85em); }
 .eq-kpi .eq-l { min-height: 2.6em; font: 600 var(--t-md)/1.3 var(--sans); color: var(--ink); }
 @media (max-width: 760px) { .eq-kpi.dx-kpi, .eq-kpi.dx-kpi:first-child, .eq-kpi.dx-kpi:nth-child(even) { padding: 18px 16px; } .eq-kpi .eq-l { min-height: 0; } }
 @media print { .eq-kpis { box-shadow: none; } }
+
+/* requisitos mínimos da bolsista, no alto do painel de cadastro */
+.req-min { display: grid; gap: 6px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--pend) 30%, var(--line)); border-left: 4px solid var(--pend); border-radius: 12px; background: var(--pend-bg); }
+.req-min .req-t { font: 700 var(--t-md)/1.3 var(--sans); color: var(--ink); }
+.req-min p { margin: 0; } .req-min .small.muted { color: var(--ink-2); }
+.req-min .perfil-esp { background: color-mix(in srgb, var(--surface) 70%, transparent); font-weight: 600; color: var(--ink); }
+.req-min .perfil-lista li { color: var(--ink); }
