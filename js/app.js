@@ -446,7 +446,7 @@
     return `<footer class="rodape"><div class="rodape-in">
       <div class="rodape-marca"><img src="assets/isotipo.svg" alt="" width="26" height="37"><span><b>Mulheres &amp; Quintais</b><small>Quintais Produtivos para Mulheres Rurais</small></span></div>
       <p class="rodape-org">IFRN Campus Apodi · MPA · FUNCERN${S.eu ? `<br><span>Processo ${esc(MQ.PROJETO.processo)}</span>` : ''}</p>
-      <div class="rodape-lgpd">${semAjuda ? '' : '<button type="button" class="rodape-ajuda" data-acao="ajuda"><span class="rodape-ajuda-ic" aria-hidden="true">?</span>Ajuda desta página</button>'}
+      <div class="rodape-lgpd">${semAjuda ? '' : '<button type="button" class="rodape-ajuda" data-acao="ajuda"><span class="rodape-ajuda-ic" aria-hidden="true">?</span>Ajuda desta página</button>'}${!semAjuda && S.eu && !S.eu.observador && !S.verEntrada && MQ.relatosUI ? '<button type="button" class="rodape-ajuda rodape-relato" data-acao="relato-abrir"><span class="rodape-ajuda-ic" aria-hidden="true">!</span>Relatar problema</button>' : ''}
         <p>Dados protegidos pela LGPD (Lei nº 13.709/2018), usados só para o projeto.</p></div>
     </div></footer>`;
   }
@@ -486,13 +486,13 @@
     [/^ficha/, 'fichasUI', true], [/^apl-/, 'sugestaoUI'], [/^banco-/, 'bancoUI'], [/^pend-/, 'pendUI', true], [/^conv-/, 'convitesUI'], [/^custo-/, 'custosUI'],
     [/^fic-/, 'ficUI', true], [/^pag-/, 'pagUI', true], [/^enc-/, 'encUI', a => /^enc-(novo|editar)$/.test(a)], [/^exec-/, 'execUI', true], [/^agua-/, 'aguaUI', true],
     [/^venda-/, 'vendaUI', true], [/^doc-/, 'docsUI', a => !/^doc-rel-/.test(a)], [/^viag-/, 'viagUI', a => !/pass$/.test(a)], [/^(aval|imp)-/, 'impactoUI', true],
-    [/^vit-/, 'vitrineUI'], [/^ent-/, 'entregasUI'], [/^rot-/, 'roteiroUI', null], [/^campo-/, 'campoUI', true], [/^acomp-/, 'acompUI']];
+    [/^vit-/, 'vitrineUI'], [/^ent-/, 'entregasUI'], [/^rot-/, 'roteiroUI', null], [/^campo-/, 'campoUI', true], [/^acomp-/, 'acompUI'], [/^relato-/, 'relatosUI']];
   const rotaDoClique = a => ROTAS_CLIQUE.find(([re, ui]) => re.test(a) && MQ[ui]);
   /* nos formulários, todas as linhas que casam são chamadas (como era antes) */
   const ROTAS_FORM = [
     [/^ficha/, 'fichasUI'], [/^pend-/, 'pendUI'], [/^(visita|diag)/, 'campoUI'], [/^acomp-/, 'acompUI'], [/^vit-/, 'vitrineUI'], [/^custo-/, 'custosUI'], [/^fic-/, 'ficUI'],
     [/^pag-/, 'pagUI'], [/^viag-/, 'viagUI'], [/^doc-/, 'docsUI'], [/^exec-/, 'execUI'], [/^enc-/, 'encUI'], [/^agua-/, 'aguaUI'], [/^venda-/, 'vendaUI'], [/^rot-/, 'roteiroUI'],
-    [/^aval$/, 'impactoUI'], [/^conv-/, 'convitesUI'], [/^banco$/, 'bancoUI'], [/^apl$/, 'sugestaoUI']];
+    [/^aval$/, 'impactoUI'], [/^conv-/, 'convitesUI'], [/^banco$/, 'bancoUI'], [/^apl$/, 'sugestaoUI'], [/^relato-/, 'relatosUI']];
   MQ.rotas = { clique: ROTAS_CLIQUE, form: ROTAS_FORM, doClique: rotaDoClique };   // para os testes
   const GRUPOS_ABAS = [['Gestão', ['visao', 'equipe', 'selecao']], ['Execução', ['campo', 'fic', 'execucao']], ['Financeiro', ['pagamentos', 'custos', 'viagens']], ['Documentação', ['documentos', 'historico']]];
   /* cada coordenação só vê os módulos do seu papel (o banco também limita o que cada uma lê e grava) */
@@ -566,6 +566,7 @@
     else if (aba === 'campo') corpo = (MQ.campoUI ? MQ.campoUI.abaCoord() : '') + (MQ.vendaUI && !S.campoSemBanco ? MQ.vendaUI.secaoCanais('') : '') + (MQ.vitrineUI && !S.campoSemBanco ? MQ.vitrineUI.secaoCoord() : '');
     else corpo = `<div class="cab"><div><span class="eyebrow">Histórico</span><h1 id="t-h">Histórico de alterações</h1>
         <p>Quem fez o quê, e quando: cadastros, aprovações, pagamentos, códigos de acesso e consultas a dados bancários. Serve para a prestação de contas.</p></div></div>
+      ${MQ.relatosUI ? MQ.relatosUI.blocoCoord() : ''}
       ${secaoAcessos()}
       <section class="secao" aria-label="Registros"><div class="secao-cab"><div><h2 id="t-reg">Alterações</h2></div></div>${historico()}</section>`;
     const avisoEx = S.exemplo ? `<details class="aviso-ex" role="status"><summary><span aria-hidden="true">⚠</span> <b>Dados de exemplo no servidor</b> · ${S.exemplo} registros inventados <span class="link">Ver detalhes</span></summary>
@@ -1395,7 +1396,7 @@
     let el = $('#painel');
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
     const p = S.painel;
-    const corpo = /^acomp-(form|previa)$/.test(p.tipo) && MQ.acompUI ? MQ.acompUI.painel(p) : p.tipo === 'roteiro' && MQ.roteiroUI ? MQ.roteiroUI.painel(p) : p.tipo === 'ajuda' ? MQ.ajudaUI.painel(p) : p.tipo === 'meus-dados' ? painelMeusDados() : /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^viag-/.test(p.tipo) && MQ.viagUI ? MQ.viagUI.painel(p) : /^doc-/.test(p.tipo) && MQ.docsUI ? MQ.docsUI.painel(p) : /^exec-/.test(p.tipo) && MQ.execUI ? MQ.execUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : /^enc-/.test(p.tipo) && MQ.encUI ? MQ.encUI.painel(p) : /^agua-/.test(p.tipo) && MQ.aguaUI ? MQ.aguaUI.painel(p) : /^venda-/.test(p.tipo) && MQ.vendaUI ? MQ.vendaUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
+    const corpo = p.tipo === 'relato-form' && MQ.relatosUI ? MQ.relatosUI.painel(p) : /^acomp-(form|previa)$/.test(p.tipo) && MQ.acompUI ? MQ.acompUI.painel(p) : p.tipo === 'roteiro' && MQ.roteiroUI ? MQ.roteiroUI.painel(p) : p.tipo === 'ajuda' ? MQ.ajudaUI.painel(p) : p.tipo === 'meus-dados' ? painelMeusDados() : /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^viag-/.test(p.tipo) && MQ.viagUI ? MQ.viagUI.painel(p) : /^doc-/.test(p.tipo) && MQ.docsUI ? MQ.docsUI.painel(p) : /^exec-/.test(p.tipo) && MQ.execUI ? MQ.execUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : /^enc-/.test(p.tipo) && MQ.encUI ? MQ.encUI.painel(p) : /^agua-/.test(p.tipo) && MQ.aguaUI ? MQ.aguaUI.painel(p) : /^venda-/.test(p.tipo) && MQ.vendaUI ? MQ.vendaUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
     el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel${/^(ficha|diag|aval)-(form|ver)$/.test(p.tipo) ? ' largo' : ''}${p.tipo === 'acomp-previa' ? ' centro' : ''}" role="dialog" aria-modal="true" aria-labelledby="painel-t">${GUARDA}${corpo}${GUARDA}</aside>`;   // formulários longos do campo: painel mais largo
     restaurarRascunhoPainel(el);
     // questionário de campo: opção de imprimir em branco para aplicar no papel (só para quem preenche)
@@ -2002,7 +2003,7 @@
     if (/^#aba=/.test(location.hash)) { abaDoHistorico(H && H.state); return; }   // link direto ou endereço digitado
     if (/^#(numeros|convite=|)$|^#convite=/.test(location.hash) || location.hash === '') { render(); window.scrollTo(0, 0); } });
   /* o sinal voltou ou caiu: só o fundo e o aviso de conexão mudam; o formulário aberto fica como está */
-  window.addEventListener('online', () => { if (S.eu) { renderFundo(); sincronizar(); } });
+  window.addEventListener('online', () => { if (S.eu) { renderFundo(); sincronizar(); if (MQ.relatosUI) MQ.relatosUI.enviarPendentes().then(n => { if (n) toast(n === 1 ? 'O relato guardado foi enviado.' : 'Os relatos guardados foram enviados.'); }).catch(() => {}); } });
   window.addEventListener('offline', () => { if (S.eu) renderFundo(); });
 
   /* ---------- versão nova do sistema (service worker trocado com a página aberta) ---------- */
@@ -2091,7 +2092,7 @@
             limparRascunhosVencidos();
             telaCarregando('Carregando os seus dados…');   // a senha foi aceita: agora é a espera dos dados (o desenho da abertura)
             try { await carregar(); } catch (e) { render(); toast(avisarErro(e)); return; }   // a tela de entrada já saiu: o aviso vai no pé da tela
-            setTimeout(() => sincronizar(false), 500); }
+            setTimeout(() => sincronizar(false), 500); if (MQ.relatosUI) setTimeout(() => MQ.relatosUI.enviarPendentes().catch(() => {}), 1500); }
           render();
         }, { texto: 'Entrando…' });
       }

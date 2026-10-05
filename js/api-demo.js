@@ -282,6 +282,29 @@
       if (!org) { if (eu && ['coord_geral', 'coord_tecnico'].includes(eu.papel) && ['mda', 'mpa'].includes(orgao)) org = orgao; else throw falha('Acesso restrito ao acompanhamento do projeto.'); }
       return copia(MQ.acomp.calcular({ fichas: d.fichas, visitas: d.visitas, diagnosticos: d.diagnosticos, avaliacoes: d.avaliacoes, equipe: d.equipe, turmas: d.turmas, matriculas: d.matriculas, encontros: d.ficEncontros || d.encontros }, org, R.hoje()));
     },
+    /* relatar problema (55): quem relata é a equipe; a coordenação geral lê tudo e resolve; cada pessoa lê os seus */
+    async relatarProblema(x) {
+      const d = ler(); const eu = euMesmo(); d.relatos = d.relatos || [];
+      if (!eu || eu.observador || !eu.papel) throw falha('Entre no sistema para relatar um problema.');
+      const t = String((x && x.texto) || '').replace(/\s+/g, ' ').trim();
+      if (t.length < 10) throw falha('Conte o que aconteceu com um pouco mais de detalhe (pelo menos 10 letras).');
+      if (t.length > 1000) throw falha('O relato pode ter até 1000 letras.');
+      const dia = Date.now() - 864e5; if (d.relatos.filter(r => r.autor_id === eu.id && new Date(r.criado_em).getTime() > dia).length >= 20) throw falha('Você já enviou 20 relatos hoje. Fale com a coordenação geral.');
+      const corta = (v, n) => String(v == null ? '' : v).trim().slice(0, n) || null;
+      const r = { id: uid(), autor_id: eu.id, papel: eu.papel, tela: corta(x.tela, 60), versao: corta(x.versao, 20), aparelho: corta(x.aparelho, 200), texto: t, status: 'aberto', nota: null, resolvido_por: null, resolvido_em: null, criado_em: new Date().toISOString() };
+      d.relatos.push(r); gravar(); return r.id;
+    },
+    async listarRelatos() {
+      const d = ler(); const eu = euMesmo(); if (!eu || eu.observador) throw falha('Entre no sistema para ver os relatos.');
+      return copia((d.relatos || []).filter(r => eu.papel === 'coord_geral' || r.autor_id === eu.id)).map(r => ({ id: r.id, autor: ((d.equipe || []).find(m => m.id === r.autor_id) || {}).nome || '', papel: r.papel, tela: r.tela, versao: r.versao, aparelho: r.aparelho, texto: r.texto, status: r.status, nota: r.nota, resolvido_em: r.resolvido_em, criado_em: r.criado_em, meu: r.autor_id === eu.id }))
+        .sort((a, b) => (b.status === 'aberto') - (a.status === 'aberto') || String(b.criado_em).localeCompare(String(a.criado_em)));
+    },
+    async resolverRelato(id, nota, reabrir) {
+      const d = ler(); const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral marca um relato como resolvido.');
+      if (String(nota || '').length > 400) throw falha('A anotação pode ter até 400 letras.');
+      const r = (d.relatos || []).find(k => k.id === id); if (!r) throw falha('Relato não encontrado.');
+      r.status = reabrir ? 'aberto' : 'resolvido'; r.nota = String(nota || '').trim() || null; r.resolvido_por = reabrir ? null : eu.id; r.resolvido_em = reabrir ? null : new Date().toISOString(); gravar();
+    },
     async listarObservadores() {
       const d = ler(); const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral vê quem acompanha o projeto.');
       return copia(d.observadores || []).map(o => ({ id: o.id, nome: o.nome, email: o.email, orgao: o.orgao, cargo: o.cargo, status: o.status, tem_senha: !!o.tem_senha, codigo_vale_ate: o.tem_senha ? null : o.codigo_vale_ate || null, criado_em: o.criado_em }))

@@ -37,6 +37,10 @@
           'Diga "vírgula", "ponto final" ou "nova linha" para pontuar.',
           'Precisa de internet. Sem sinal, use o microfone do teclado do celular.',
           'Evite dizer nomes e CPF: o sistema já sabe de quem é a visita.']],
+        ['Quando algo não funcionar', [
+          'No fim de toda tela há <b>Relatar problema</b> (também aparece nesta ajuda). Conte o que você fez e o que apareceu.',
+          'O sistema envia junto a tela, a versão e o tipo de aparelho. Não vai foto da tela; não escreva nome, CPF nem telefone de beneficiária.',
+          'Sem internet, o relato fica guardado no aparelho e sobe quando o sinal voltar. A coordenação geral recebe e marca quando resolver.']],
         ['Sem internet', [
           'Fichas, diagnósticos, visitas feitas e avaliações podem ser preenchidos sem sinal. Ficam guardados no celular, com as fotos, e sobem sozinhos quando a internet voltar (ou em <b>Enviar agora</b>).',
           'Antes de ir a campo, abra o sistema com internet para atualizar a lista de visitas.',
@@ -469,6 +473,7 @@
         ${guiaDe(k) ? `<button type="button" class="cad-modo cad-modo-2" data-acao="ajuda" data-k="${guiaDe(k)}"><b>${E(A[guiaDe(k)].t)}</b><span>Pagamento, entregas do mês, o que é importante e com quem falar.</span></button>` : ''}
         ${a.duvidas && a.duvidas.length ? `<h3>Dúvidas comuns</h3><div class="ajuda-duvidas">${a.duvidas.map(([q, r]) => `<details><summary>${E(q)}</summary><p>${E(r)}</p></details>`).join('')}</div>` : ''}
         ${k !== 'entrada' && s.eu && MQ.roteiroUI && MQ.roteiroUI.grupoDe(s.eu.papel) ? `<button type="button" class="cad-modo cad-modo-2" data-acao="rot-abrir"><b>${s.eu.papel === 'coord_geral' ? 'Teste do sistema' : 'Ajudar a testar o sistema'}</b><span>${s.eu.papel === 'coord_geral' ? 'Seu roteiro, convites para a equipe e resultados de todos.' : 'Tarefas curtas do seu perfil, uma de cada vez: você diz se deu certo.'}</span></button>` : ''}
+        ${k !== 'entrada' && s.eu && !s.eu.observador && MQ.relatosUI ? `<button type="button" class="cad-modo cad-modo-2 rl-botao" data-acao="relato-abrir"><b>Relatar problema</b><span>Algo não funcionou? Conte aqui o que aconteceu. A coordenação geral recebe.</span></button>` : ''}
         ${k !== 'geral' && k !== 'entrada' ? `<button type="button" class="cad-modo cad-modo-2" data-acao="ajuda" data-k="geral"><b>Dicas para usar o sistema</b><span>Falar em vez de digitar, uso sem internet, Meus dados e proteção dos dados.</span></button>` : ''}
         ${k !== 'entrada' && s.eu && manualDe(s.eu.papel) ? `<h3>Manual do seu perfil</h3>
         <div class="ajuda-manuais"><a class="btn peq pri" href="manuais/guia-${manualDe(s.eu.papel)}.pdf" target="_blank" rel="noopener">Guia rápido (1 página)</a><a class="btn peq" href="manuais/manual-${manualDe(s.eu.papel)}.pdf" target="_blank" rel="noopener">Manual completo (PDF)</a></div>

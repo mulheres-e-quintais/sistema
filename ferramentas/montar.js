@@ -8,7 +8,7 @@ const raiz = path.join(__dirname, '..');
 const ORDEM = ['vendor/supabase-2.117.2.js', 'dados.js', 'regras.js', 'api-demo.js', 'api-supabase.js', 'fila.js', 'fichas.js', 'geo.js', 'painel.js', 'campo.js',
   'vitrine.js', 'custos.js', 'fic.js', 'encontros.js', 'agua.js', 'venda.js', 'pagamentos.js', 'viagens.js', 'documentos.js', 'planilha.js', 'execucao.js', 'entregas.js',
   'roteiro.js', 'impacto.js', 'convites.js', 'banco.js', 'termo.js', 'pendencias.js', 'lembretes.js', 'ajuda.js', 'mascaras.js', 'voz.js', 'sugestao.js', 'sessao.js',
-  'imprimir.js', 'acompanhamento.js', 'app.js'];
+  'imprimir.js', 'acompanhamento.js', 'relatos.js', 'app.js'];
 function montar() {
   return '/* GERADO por ferramentas/montar.js — não edite aqui: edite os arquivos de js/ e rode a montagem de novo. */\n'
     + ORDEM.map(f => `/* ===== ${f} ===== */\n` + fs.readFileSync(path.join(raiz, 'js', f), 'utf8').replace(/\s*$/, '') + '\n;\n').join('');

@@ -3150,11 +3150,18 @@ small { font-size: max(12px, .85em); }
   .fin-topo .dx-kpi-topo { flex-wrap: nowrap; }
 }
 
-/* Visão geral: a Seleção aparece junto das metas, mas não é meta do plano de trabalho (é a etapa que vem antes) */
-.dx-metas .dx-meta.dx-etapa { border: 1px dashed var(--line-2); outline: 0; box-shadow: none; background: color-mix(in srgb, var(--surface-2) 35%, var(--surface)); }
-.meta-sub { display: block; margin-top: 2px; font: 500 var(--t-xs)/1.3 var(--sans); letter-spacing: .02em; color: var(--muted); }
 
 /* acompanhamento (MDA e MPA): o mapa da Visão geral, sem clique e só com totais */
 .mapa-caixa.mapa-resumo { grid-template-columns: minmax(0, 1fr); }
 .ac-mapa .mapa-resumo svg.mapa { width: 100%; height: auto; max-height: 460px; }
 .ac-mapa .mapa-tam-nota { margin: 6px 0 0; }
+
+/* relatar problema: lista da coordenação geral no Histórico */
+.rl-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.rl-item { display: grid; gap: 6px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.rl-item.feito { background: color-mix(in srgb, var(--surface-2) 35%, var(--surface)); }
+.rl-cab { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.rl-texto { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
+.rl-item p { margin: 0; }
+.rl-res { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
+.rl-res input { flex: 1 1 240px; min-height: 40px; padding: 8px 11px; border: 1px solid var(--campo-borda); border-radius: 8px; background: var(--surface); color: var(--ink); font: var(--t-md) var(--sans); }

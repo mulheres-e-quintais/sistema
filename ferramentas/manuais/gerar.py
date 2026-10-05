@@ -96,6 +96,7 @@ A(caixa('atencao', 'Não imprima nem fotografe o termo assinado pelo gov.br: a a
 A(caixa('dica', 'Para fechar Meus dados, toque em <b>Voltar ao sistema</b> ou no × do alto. O botão <b>Sair do sistema</b> encerra a sua sessão: depois dele é preciso entrar de novo com e-mail e senha.'))
 A(passos('trocar a senha', ['Abra <b class="bt">Meus dados</b> e depois <b class="bt">Trocar minha senha</b>.', 'Digite a senha atual e a nova duas vezes.', 'Toque em <b class="bt">Trocar senha</b>.'], 'A senha nova passa a valer na próxima entrada.'))
 A(caixa('importante', 'Nome, CPF e e-mail são de quem cadastrou você. Se estiverem errados, avise a coordenação.'))
+A(passos('relatar um problema', ['No fim de qualquer tela, toque em <b class="bt">Relatar problema</b> (ou abra a ajuda, no <b>?</b>).', 'Escreva o que você fez e o que apareceu. Não escreva nome, CPF nem telefone de beneficiária.', 'Toque em <b class="bt">Enviar relato</b>.'], 'O sistema envia junto a tela, a versão e o tipo de aparelho, sem foto. Sem internet, o relato fica guardado e sobe depois. A coordenação geral vê os relatos na aba Histórico e marca como resolvido.'))
 A(sec('Usar no celular e sem internet'))
 A(serve('No campo nem sempre há sinal. O sistema guarda o que você preenche e envia quando a conexão volta.'))
 A(passos('instalar como aplicativo', ['Com o sistema aberto, toque no menu do navegador.', 'Toque em <b class="bt">Adicionar à tela inicial</b>.', 'Abra pelo ícone que apareceu.'], 'O sistema abre como aplicativo e funciona também sem internet.'))

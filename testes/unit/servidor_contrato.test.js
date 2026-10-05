@@ -7,7 +7,7 @@ const { montarApi } = require('./servidor_simulado');
 
 const LEITURAS = ['listarPerfisEquipe', 'listarTestes', 'listarEntregas', 'listarCiencias', 'listarPedidosAcesso', 'listarAcessos', 'listarFichas', 'listarVisitas', 'listarDiagnosticos',
   'listarAvaliacoes', 'lerPrivado', 'meusDadosBancarios', 'situacaoBancaria', 'listarAPL', 'listarPreCadastros', 'contarExemplo', 'lerParametros', 'listarCustos', 'vitrine', 'listarVitrine',
-  'listarEquipe', 'listarSolicitacoes', 'listarCanaisVenda', 'listarOrientacoesVenda', 'listarObservadores', 'listarKitItens', 'listarAgua', 'listarPlanilhasExec', 'listarDocumentos',
+  'listarEquipe', 'listarSolicitacoes', 'listarCanaisVenda', 'listarOrientacoesVenda', 'listarObservadores', 'listarRelatos', 'listarKitItens', 'listarAgua', 'listarPlanilhasExec', 'listarDocumentos',
   'quemConferePedidos', 'listarPedidos', 'saldoPedidos', 'listarEquipeFic', 'listarEncontrosFic', 'listarTurmas', 'listarMatriculas', 'auditoria'];
 const arq = () => ({ name: 'a.pdf', size: 10, type: 'application/pdf', arrayBuffer: async () => new ArrayBuffer(1) });
 const pessoa = () => ({ nome: 'Ana', cpf: '476.024.360-75', email: ' Ana@X.br ', papel: 'apoio', uf: 'RN' });
@@ -23,6 +23,7 @@ const GRAVACOES = {
   enviarPlanilhaExec: [{ mes: '2026-10' }, arq()], enviarDocumento: [{ titulo: 'Ata', tipo: 'ata', data_documento: '2026-10-01' }, arq()], arquivarDocumento: ['d1', 'Versão errada'],
   salvarPedido: [{ tipo: 'passagem' }], definirValorPedido: ['p1', 10], moverPedido: ['p1', 'aprovar', null, null], salvarEncontroFic: [{ turma_id: 't1' }], cancelarEncontroFic: ['e1', 'm'],
   confirmarPresencaFic: ['e1', 'x1', true], salvarTurma: [{ nome: 'T' }], matricular: ['t1', 'e2'], cancelarMatricula: ['m1', 'm'], criar: [pessoa()], atualizar: ['e2', { nome: 'Ana B' }], desligar: ['e2', 'motivo', '2026-10-01'],
+  relatarProblema: [{ texto: 'O botão de salvar não respondeu', tela: 'Campo', versao: 'mq-v250', aparelho: 'celular' }], resolverRelato: ['r1', 'Corrigido', false],
   enviarTermo: ['e2', arq()], enviarMeuTermo: ['e2', arq()], enviarFotoEquipe: ['e2', arq()]
 };
 /* de propósito não derrubam a tela se falharem: são registros de apoio */
