@@ -4065,8 +4065,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const dg = S.diagnosticos || [];
     const impl = (S.visitas || []).filter(v => v.etapa === 'implantacao' && v.situacao === 'realizada').length;
     const acomp = (S.visitas || []).filter(v => v.etapa === 'acompanhamento' && v.situacao === 'realizada').length;
-    const kpi = (n, de, rot, sub, st) => `<div class="dx-kpi"><span class="dx-kpi-n num"><b>${n}</b><small> / ${de}</small></span><span class="dx-kpi-r">${rot}</span>
-        <span class="medidor fino" aria-hidden="true"><i class="${STATUS[st].cls}" style="width:${Math.min(100, n / de * 100)}%"></i></span>${sub ? `<span class="dx-kpi-s">${sub}</span>` : ''}</div>`;
+    /* indicador do painel de execução física: anel com o percentual, número sobre o previsto, barra, "% concluído" e complemento.
+       A cor (k1 a k4) só diferencia os indicadores; o anel e a barra são decorativos para o leitor de tela, que lê o texto. */
+    const kpi = (k, n, de, rot, sub) => { const pc = Math.max(0, Math.min(100, n / de * 100)), pr = Math.round(pc), C = 2 * Math.PI * 18;
+      return `<div class="dx-kpi k${k}"><div class="dx-kpi-topo"><span class="dx-anel" aria-hidden="true"><svg viewBox="0 0 44 44" width="52" height="52" focusable="false"><circle cx="22" cy="22" r="18" class="tr"/><circle cx="22" cy="22" r="18" class="pg${pc > 0 ? '' : ' vazio'}" stroke-dasharray="${(C * pc / 100).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 22 22)"/></svg><b class="num">${pr}%</b></span>
+          <span class="dx-kpi-n num"><b>${n}</b><small> / ${de}</small></span></div><span class="dx-kpi-r">${rot}</span>
+        <span class="medidor fino" aria-hidden="true"><i style="width:${pc}%"></i></span><span class="dx-kpi-p"><b class="num">${pr}%</b> concluído</span>${sub ? `<span class="dx-kpi-s">${sub}</span>` : ''}</div>`; };
     const stK = (n, de, ini) => n >= de ? 'concluida' : n > 0 ? 'andamento' : 'nao';
     const prazoTxt = x => !x.prazo ? '—' : x.prazo === 'imediato' ? 'Imediato' : `${R.fmtData(x.prazo)}<small>${R.diasAte(x.prazo) < 0 ? 'venceu há ' + (-R.diasAte(x.prazo)) + ' dia' + (R.diasAte(x.prazo) === -1 ? '' : 's') : R.diasAte(x.prazo) === 0 ? 'hoje' : 'em ' + R.diasAte(x.prazo) + ' dia' + (R.diasAte(x.prazo) === 1 ? '' : 's')}</small>`;
     const MES3 = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -4084,10 +4088,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <section class="dx-topo" aria-label="Indicadores principais">
         ${ex.html}
         <div class="dx-kpis">
-          ${kpi(d.selAprov.length, 200, 'mulheres selecionadas e aprovadas', `${d.fichas.length} fichas lançadas${aguard ? ' · ' + aguard + ' aguardando' : ''}`, stK(d.selAprov.length, 200))}
-          ${kpi(dg.length, 200, 'diagnósticos', `${dg.filter(x => x.situacao === 'aprovado').length} com plano aprovado`, stK(dg.length, 200))}
-          ${kpi(impl, 200, 'quintais implantados', null, stK(impl, 200))}
-          ${kpi(acomp, 400, 'visitas de acompanhamento', null, stK(acomp, 400))}
+          ${kpi(1, d.selAprov.length, 200, 'mulheres selecionadas e aprovadas', `${d.fichas.length} ficha${d.fichas.length === 1 ? ' lançada' : 's lançadas'}${aguard ? ' · ' + aguard + ' aguardando' : ''}`)}
+          ${kpi(2, dg.length, 200, 'diagnósticos', `${dg.filter(x => x.situacao === 'aprovado').length} com plano aprovado`)}
+          ${kpi(3, impl, 200, 'quintais implantados', `${impl} ${impl === 1 ? 'quintal implantado' : 'quintais implantados'}`)}
+          ${kpi(4, acomp, 400, 'visitas de acompanhamento', `${acomp} ${acomp === 1 ? 'visita realizada' : 'visitas realizadas'}`)}
         </div>
       </section>
 
@@ -11374,7 +11378,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       return `<div class="ag-tr" role="group" aria-label="${ORG[o].sigla}: ${n} ${n === 1 ? 'pessoa' : 'pessoas'}"><div class="ag-uf"><span class="sigla ac-sigla">${ORG[o].sigla}</span><span class="ag-nome"><b>${o === 'mda' ? 'Ministério' : 'Movimento parceiro'}</b>${g.length ? `<small>${n} ${n === 1 ? 'pessoa' : 'pessoas'}</small>` : ''}</span></div>
         <div class="ag-lista">${g.map(x => { const st = situacaoDe(x); return `<button class="vagabtn com-foto${x.status !== 'ativo' ? ' apagado' : ''}" data-acao="acomp-editar" data-id="${E(x.id)}">${avatarDe(x)}<span class="vb-t"><span class="nm">${E(x.nome)}</span><span><span class="chip ${st[0]}">${st[1]}</span></span><span class="sub">${E(x.cargo || x.email)}</span></span></button>`; }).join('') || `<p class="ag-vazio">Ninguém cadastrado ainda.</p>`}</div>
         <div class="ag-acao">${MQ.botaoAcao({ acao: 'acomp-novo', icone: 'pessoa_mais', texto: 'Adicionar pessoa', rotulo: 'Adicionar pessoa do ' + ORG[o].sigla, sec: true, peq: true, attrs: `data-o="${o}"` })}</div></div>`; };
-    const ver = (o, icone) => MQ.botaoAcao({ acao: 'acomp-previa', icone, texto: 'Ver como o ' + ORG[o].sigla + ' vê', sec: true, peq: true, attrs: `data-o="${o}" aria-pressed="${!!(pv && pv.orgao === o)}"` });
+    const ver = (o, icone) => MQ.botaoAcao({ acao: 'acomp-previa', icone, texto: o === 'mda' ? 'Ver como o MDA vê' : 'Ver como o MPA vê', sec: true, peq: true, attrs: `data-o="${o}" aria-pressed="${!!(pv && pv.orgao === o)}"` });
     return `${abre}<div class="ag-quadro"><div class="ag-th" aria-hidden="true"><span>Órgão</span><span>Quem acompanha</span><span></span></div>${linha('mda')}${linha('mpa')}</div>
       ${avisosCodigo()}
       <div class="acoes ac-ver">${ver('mda', 'ver')}${ver('mpa', 'ver')}${pv ? '<button class="btn" data-acao="acomp-previa-fechar">Fechar a prévia</button>' : ''}</div>
@@ -11967,10 +11971,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     else if (aba === 'equipe') corpo = (!R.temProfessorHabilitado(S.equipe) ? `<div class="aviso erro" role="status"><b>${souGeral ? 'Cadastre e habilite primeiro um professor do FIC.' : 'Ainda não há professor do FIC habilitado.'}</b> Sem professor com cadastro no Arlo e termo assinado, o sistema não cadastra coordenação técnica, bolsistas nem agentes de campo (a matrícula no curso depende dele).${souGeral ? '' : ' Quem cadastra e habilita o professor é a coordenação geral.'}</div>` : '') + secaoPedidosAcesso() + (MQ.convitesUI ? MQ.convitesUI.secaoPendentes() : '') + `
       <div class="cab eq-cab"><div><span class="eyebrow">Equipe do projeto</span><h1>Coordenação e bolsistas</h1><p class="eq-intro">${intro}</p>${prazoChip()}</div></div>
       <div class="eq-kpis" aria-label="Resumo da equipe">
-        ${kpiEq(ct ? 1 : 0, 1, 'coordenação técnica cadastrada')}
-        ${kpiEq(bols.length, 10, 'bolsistas cadastradas')}
-        ${kpiEq(aptas, pagaveis.length || 0, 'habilitadas (FIC, FUNCERN e termo)')}
-        ${kpiEq((S.fichas || []).filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada').length, 200, 'mulheres selecionadas e aprovadas')}
+        ${kpiEq(ct ? 1 : 0, 1, 'coordenação técnica cadastrada', 1)}
+        ${kpiEq(bols.length, 10, 'bolsistas cadastradas', 2)}
+        ${kpiEq(aptas, pagaveis.length || 0, 'habilitadas (FIC, FUNCERN e termo)', 3)}
+        ${kpiEq((S.fichas || []).filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada').length, 200, 'mulheres selecionadas e aprovadas', 4)}
       </div>
       <section class="secao" aria-labelledby="t-ct">
         <div class="secao-cab"><div><h2 id="t-ct">Coordenação técnica</h2><p>Uma para os 5 estados · indicada pelo MPA · cadastrada pela coordenação geral</p></div></div>
@@ -12027,8 +12031,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `<div class="vaga-aberta"><div><span class="st-chip ${rotulo && rotulo !== 'Vaga aberta' ? 'st-nao' : 'st-aten'}">${rotulo || 'Vaga aberta'}</span><p>${texto}</p>${pode ? '' : '<p class="small muted">Só a coordenação geral pode fazer este cadastro.</p>'}</div>${pode ? botao : ''}</div>`;
   }
   /* indicador da equipe: número grande, denominador menor, descrição; "completo" em verde quando chega lá */
-  function kpiEq(n, de, rot) {
-    return `<div class="eq-kpi"><span class="eq-n num"><b>${n}</b><small> de ${de}</small></span><span class="eq-l">${rot}</span>${de && n >= de ? '<span class="eq-ok">completo</span>' : ''}</div>`;
+  function kpiEq(n, de, rot, k) {
+    const pc = de ? Math.max(0, Math.min(100, n / de * 100)) : 0, pr = Math.round(pc), C = 2 * Math.PI * 18;   // mesmo desenho dos indicadores da Visão geral (anel, barra e "% concluído")
+    return `<div class="eq-kpi dx-kpi k${k || 1}"><div class="dx-kpi-topo"><span class="dx-anel" aria-hidden="true"><svg viewBox="0 0 44 44" width="52" height="52" focusable="false"><circle cx="22" cy="22" r="18" class="tr"/><circle cx="22" cy="22" r="18" class="pg${pc > 0 ? '' : ' vazio'}" stroke-dasharray="${(C * pc / 100).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 22 22)"/></svg><b class="num">${pr}%</b></span>
+        <span class="eq-n num"><b>${n}</b><small> de ${de}</small></span></div><span class="eq-l">${rot}</span>
+      <span class="medidor fino" aria-hidden="true"><i style="width:${pc}%"></i></span><span class="dx-kpi-p"><b class="num">${pr}%</b> concluído</span>${de && n >= de ? '<span class="eq-ok">completo</span>' : ''}</div>`;
   }
 
   function vagaCoordTecnica(souGeral) {

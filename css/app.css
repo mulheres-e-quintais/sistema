@@ -3039,3 +3039,45 @@ small { font-size: max(12px, .85em); }
   .eq-quadro tbody td:nth-child(2), .eq-quadro tbody td:nth-child(3), .eq-quadro thead th:nth-child(2), .eq-quadro thead th:nth-child(3) { padding-left: 0; padding-right: 24px; }
 }
 @media (min-width: 961px) and (max-width: 1100px) { .ag-th, .ag-tr { grid-template-columns: 106px minmax(0, 1fr) auto; } }
+
+/* Visão geral, "Execução física do projeto" (04/10/2026): um painel só, em 5 áreas. A primeira (o percentual geral) é
+   maior e tem fundo próprio; as outras quatro explicam esse número, cada uma com anel, número, barra e complemento. */
+.dx-topo { grid-template-columns: minmax(280px, 1.35fr) minmax(0, 4fr); border: 1px solid var(--line); border-radius: 18px; background: var(--surface); overflow: hidden; box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 10px 26px rgba(69, 43, 26, .07); }
+.dx-exec { gap: 12px; padding: 26px 28px; background: color-mix(in srgb, var(--surface-2) 55%, var(--surface)); border-right: 1px solid var(--line); }
+.dx-exec .dx-rot { color: var(--ink); }
+.dx-exec-num { gap: 10px 14px; }
+.dx-exec-num b { font-size: clamp(60px, 6.4vw, 84px); font-weight: 700; letter-spacing: -.035em; }
+.dx-exec .medidor.grosso { height: 12px; border-radius: 6px; background: color-mix(in srgb, var(--ink) 9%, var(--surface)); }
+.dx-exec-sub { flex-wrap: wrap; gap: 4px 12px; }
+.dx-exec-sub span::first-letter { text-transform: uppercase; }
+.dx-exec-sub span { display: inline-block; }
+.dx-kpi { gap: 8px; padding: 26px 22px; --kc: var(--accent); }
+.dx-kpi.k2 { --kc: #2E7D43; }
+.dx-kpi.k3 { --kc: #C08A1E; }
+.dx-kpi.k4 { --kc: color-mix(in srgb, var(--accent) 62%, var(--surface)); }
+.dx-kpi-topo { display: flex; align-items: center; gap: 14px; }
+.dx-anel { position: relative; display: inline-grid; place-items: center; flex: none; width: 52px; height: 52px; }
+.dx-anel svg { display: block; }
+.dx-anel circle { fill: none; stroke-width: 4; }
+.dx-anel .tr { stroke: color-mix(in srgb, var(--kc) 16%, var(--surface-2)); }
+.dx-anel .pg { stroke: var(--kc); stroke-linecap: round; } .dx-anel .pg.vazio { display: none; }
+.dx-anel b { position: absolute; inset: 0; display: grid; place-items: center; font: 700 10.5px/1 var(--sans); letter-spacing: -.02em; color: var(--ink); }
+.dx-kpi-n { white-space: nowrap; }
+.dx-kpi-n b { font-size: clamp(30px, 2.9vw, 42px); font-weight: 700; }
+.dx-kpi-n small { font-size: var(--t-md); }
+.dx-kpi-r { min-height: 3.9em; font-size: var(--t-md); }
+.dx-kpi .medidor.fino { flex: none; height: 6px; background: color-mix(in srgb, var(--kc) 14%, var(--surface-2)); }
+.dx-kpi .medidor.fino i { background: var(--kc); border-radius: 3px; }
+.dx-kpi-p { font-size: var(--t-sm); color: var(--ink-2); } .dx-kpi-p b { color: var(--ink); font-weight: 700; }
+@media (max-width: 1180px) { .dx-topo { grid-template-columns: 1fr; } .dx-exec { border-right: 0; border-bottom: 1px solid var(--line); } }
+@media (max-width: 640px) { .dx-exec { padding: 20px 18px; } .dx-kpi, .dx-kpi:nth-child(even) { padding: 18px 16px; } .dx-kpi-topo { gap: 10px; } .dx-anel, .dx-anel svg { width: 44px; height: 44px; } .dx-kpi-r { min-height: 0; } }
+@media print { .dx-topo { box-shadow: none; } }
+@media (max-width: 1180px) { .dx-kpi-r { min-height: 2.6em; } } @media (max-width: 640px) { .dx-kpi-r { min-height: 0; } }
+
+/* Equipe: o resumo no mesmo padrão do painel de execução física da Visão geral */
+.eq-kpis { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); overflow: hidden; box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 10px 26px rgba(69, 43, 26, .07); }
+.eq-kpi.dx-kpi, .eq-kpi.dx-kpi:first-child { padding: 24px 22px; gap: 8px; }
+.eq-kpi .eq-n { white-space: nowrap; } .eq-kpi .eq-n b { font-size: clamp(30px, 2.9vw, 42px); font-weight: 700; }
+.eq-kpi .eq-l { min-height: 2.6em; font: 600 var(--t-md)/1.3 var(--sans); color: var(--ink); }
+@media (max-width: 760px) { .eq-kpi.dx-kpi, .eq-kpi.dx-kpi:first-child, .eq-kpi.dx-kpi:nth-child(even) { padding: 18px 16px; } .eq-kpi .eq-l { min-height: 0; } }
+@media print { .eq-kpis { box-shadow: none; } }
