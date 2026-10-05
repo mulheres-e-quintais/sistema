@@ -424,6 +424,15 @@
 
   /* tabela ou quadro que rola para o lado (celular): quem usa teclado precisa conseguir parar nele e rolar com as setas */
   function rolagensNoTeclado(raiz) {
+    // 05/10/2026: os indicadores dos painéis de resumo são paradas do teclado (Tab), sem serem link nem botão: cada um é lido inteiro
+    todosDe(raiz, '.dx-exec, .dx-kpi, .eq-kpi, .resumo > div').forEach(c => {
+      if (c.hasAttribute('tabindex')) return;
+      c.setAttribute('tabindex', '0'); c.setAttribute('role', 'group');
+      const r = c.querySelector('.dx-rot'), txt = e => (e ? e.textContent : '').replace(/\s+/g, ' ').trim();
+      const partes = r ? [txt(r), txt(c.querySelector('.dx-exec-num')), txt(c.querySelector('.fin-sub, .dx-exec-sub'))]
+        : [txt(c.querySelector('.eq-n, .dx-kpi-n, .v')), txt(c.querySelector('.eq-l, .dx-kpi-r, .l')), txt(c.querySelector('.dx-kpi-p')), txt(c.querySelector('.dx-kpi-s, .eq-ok'))];
+      const rot = partes.filter(Boolean).join(', '); if (rot) c.setAttribute('aria-label', rot);
+    });
     todosDe(raiz, '.quadro-scroll, .rel-previa, .eg-caixa').forEach(c => {
       if (c.hasAttribute('tabindex') || !(c.scrollWidth > c.clientWidth + 1 || c.scrollHeight > c.clientHeight + 1)) return;
       if (c.querySelector('a[href],button:not([disabled]),input,select,textarea,[tabindex]')) return;   // já tem onde parar

@@ -3122,3 +3122,7 @@ small { font-size: max(12px, .85em); }
 .fin-topo .fin-nums > div, .fin-topo .fin-nums > div + div { padding: 24px 16px; }
 @media (max-width: 1180px) { .fin-topo .fin-v, .fin-topo .eq-n .fin-v b { font-size: 20px; } }
 @media (max-width: 760px) { .fin-topo .eq-kpi.sem-total .dx-kpi-topo { padding-top: 0; } .resumo:not(.bloco .resumo):not(.painel .resumo) > div:last-child:nth-child(odd) { grid-column: 1 / -1; } }
+
+/* indicadores dos resumos: param no Tab e mostram o foco, mas não são link (sem mãozinha, sem sublinhado, sem ação) */
+.dx-exec[tabindex], .dx-kpi[tabindex], .eq-kpi[tabindex], .resumo > div[tabindex] { cursor: default; outline: none; }
+.dx-exec[tabindex]:focus-visible, .dx-kpi[tabindex]:focus-visible, .eq-kpi[tabindex]:focus-visible, .resumo > div[tabindex]:focus-visible { outline: 2px solid var(--focus); outline-offset: -3px; border-radius: 12px; background-color: color-mix(in srgb, var(--surface-2) 45%, var(--surface)); }
