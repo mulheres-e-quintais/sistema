@@ -519,7 +519,7 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 
 .pessoa.com-foto { grid-template-columns: auto minmax(0, 1fr) auto; }
 @media (max-width: 600px) { .pessoa.com-foto { grid-template-columns: auto minmax(0, 1fr); } .pessoa.com-foto .acts { grid-column: 1 / -1; } }
-.q-num { fill: #fff; font-family: var(--sans); font-weight: 700; pointer-events: none; paint-order: stroke; stroke: rgba(0, 0, 0, .25); stroke-width: .15px; }
+.q-num { fill: #fff; font-family: var(--sans); font-weight: 700; pointer-events: none; paint-order: stroke; stroke: rgba(0, 0, 0, .25); stroke-linejoin: round; }   /* a espessura do contorno vem do desenho, proporcional ao número: fixa em .15, virava um borrão cinza em volta dos círculos quando o mapa aproximava */
 .q-grupo { cursor: zoom-in; }
 .q-grupo:hover { filter: brightness(1.1); }
 .mun-lista { display: grid; gap: 4px; font-size: var(--t-sm); }
@@ -3126,3 +3126,13 @@ small { font-size: max(12px, .85em); }
 /* indicadores dos resumos: param no Tab e mostram o foco, mas não são link (sem mãozinha, sem sublinhado, sem ação) */
 .dx-exec[tabindex], .dx-kpi[tabindex], .eq-kpi[tabindex], .resumo > div[tabindex] { cursor: default; outline: none; }
 .dx-exec[tabindex]:focus-visible, .dx-kpi[tabindex]:focus-visible, .eq-kpi[tabindex]:focus-visible, .resumo > div[tabindex]:focus-visible { outline: 2px solid var(--focus); outline-offset: -3px; border-radius: 12px; background-color: color-mix(in srgb, var(--surface-2) 45%, var(--surface)); }
+/* números de 3 dígitos ("200 / 200", "400 / 400") não podem sair da área do indicador: a coluna encolhe o conteúdo,
+   o número é menor e, se ainda assim não couber, o total desce para a linha de baixo */
+.dx-kpi, .eq-kpi { min-width: 0; overflow: hidden; }
+.dx-kpi > *, .eq-kpi > * { min-width: 0; max-width: 100%; }
+.dx-kpi-topo { flex-wrap: wrap; gap: 8px 12px; }
+.dx-kpi-n, .eq-kpi .eq-n { display: inline-flex; flex-wrap: wrap; align-items: baseline; column-gap: 5px; white-space: normal; min-width: 0; }
+.dx-kpi-n b, .eq-kpi .eq-n b { font-size: clamp(26px, 2.3vw, 36px); }
+.dx-kpi-n small, .eq-kpi .eq-n small { white-space: nowrap; }
+.dx-anel, .dx-anel svg { width: 46px; height: 46px; }
+.dx-kpi .medidor.fino { width: 100%; box-sizing: border-box; }

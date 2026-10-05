@@ -3889,7 +3889,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         const txt = `${nome}/${g.uf} · ${n} mulher${n > 1 ? 'es' : ''} com ficha: ${por.map(([id, q]) => q + ' ' + CATS.find(k => k.id === id).nome.toLowerCase()).join(', ')} · clique para ver ${foco ? 'cada quintal' : 'o estado'}`;
         // área de toque invisível maior que o círculo: no celular o dedo acerta mesmo em município pequeno
         return `<g class="q-pt q-grupo" data-acao="mapa-info" data-uf="${g.uf}" data-mun="${E(g.k)}" data-dica="${E(txt)}"><circle cx="${cx}" cy="${cy}" r="${Math.max(R, esc * (foco ? 4.5 : 3.8))}" fill="transparent" class="q-alvo"/>${tracoAoLugar(L, esc, R)}${fatias}<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#fff" stroke-width="${esc * 0.22}"/>
-          <text x="${cx}" y="${cy + R * 0.34}" text-anchor="middle" font-size="${Math.min(R * (n > 9 ? 0.95 : 1.1), esc * 3)}" class="q-num">${n}</text><title>${E(txt)}</title></g>`;
+          <text x="${cx}" y="${cy + R * 0.34}" text-anchor="middle" font-size="${Math.min(R * (n > 9 ? 0.95 : 1.1), esc * 3)}" stroke-width="${(Math.min(R * (n > 9 ? 0.95 : 1.1), esc * 3)) * 0.07}" class="q-num">${n}</text><title>${E(txt)}</title></g>`;
       }).join('');
     } else {
       const r = esc * 1.4;
