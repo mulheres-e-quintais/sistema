@@ -490,7 +490,9 @@ MQ.ORCAMENTO = {
      "raise exception" no banco, código P0001, ou das regras da tela). Texto técnico do Postgres/Supabase,
      erro de programação e objeto sem mensagem viram um aviso simples. Nunca "[object Object]". */
   R.MSG_GENERICA = 'Não deu certo. Tente de novo; se continuar, avise a coordenação.';
-  R.MSG_SEM_REDE = 'Sem internet agora. O que você preencheu continua na tela: tente de novo quando o sinal melhorar.';
+  // na tela de entrada: sem internet não dá para conferir a senha; o texto diz o que fazer (e como trabalhar no campo sem sinal)
+  R.MSG_ENTRAR_SEM_REDE = 'Sem internet: para entrar no sistema é preciso estar conectada. Procure um lugar com sinal e tente de novo. Para trabalhar no campo sem internet, entre antes de sair e não toque em Sair.';
+  R.MSG_SEM_REDE = 'Sem internet agora: isto só pode ser feito com conexão. Nada foi alterado e o que você preencheu continua na tela. Tente de novo quando o sinal voltar.';
   R.MSG_SESSAO = 'Sua sessão venceu. Entre de novo.';
   const str = v => (typeof v === 'string' ? v : '');
   /* texto do erro (mensagem + detalhes), sem nunca transformar objeto em "[object Object]" */
@@ -4109,11 +4111,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <section class="secao" aria-labelledby="t-metas">
           <div class="secao-cab"><div><h2 id="t-metas">Metas do plano de trabalho</h2><p>Barra: realizado · traço: previsto até o mês passado · toque na meta para ver o detalhe</p></div></div>
           <div class="dx-metas">
-            ${linhaMeta(MQ.METAS[0], S, d, mes)}
-            <details class="dx-meta"><summary><span class="meta-id">Sel.</span><span class="meta-nome">Seleção das beneficiárias</span>${chipStatus(d.selAprov.length >= 200 ? 'concluida' : d.fichas.length ? 'andamento' : 'nao')}
+            <!-- a seleção vem antes das metas e não é uma delas: fica no alto, com moldura diferente -->
+            <details class="dx-meta dx-etapa"><summary><span class="meta-id">Sel.</span><span class="meta-nome">Seleção das beneficiárias <small class="meta-sub">etapa preparatória · não é meta do plano</small></span>${chipStatus(d.selAprov.length >= 200 ? 'concluida' : d.fichas.length ? 'andamento' : 'nao')}
               <span class="medidor" role="img" aria-label="${d.selAprov.length} de 200"><i class="${d.selAprov.length >= 200 ? 'st-ok' : 'st-and'}" style="width:${Math.min(100, d.selAprov.length / 2)}%"></i></span>
               <span class="meta-num num"><b>${d.selAprov.length}</b> de 200 <span class="muted">selecionadas</span></span><span class="meta-ver" aria-hidden="true"></span></summary>
-              <div class="dx-meta-mais"><p class="mm-nota">Antes da Meta 2. Registrada no sistema (ficha de indicação e termo de consentimento). ${aguard} aguardando aprovação.</p></div></details>
+              <div class="dx-meta-mais"><p class="mm-nota">A seleção não é uma das 8 metas do plano de trabalho: é a etapa que vem antes da Meta 2 e libera os diagnósticos, por isso aparece aqui, separada. Registrada no sistema (ficha de indicação e termo de consentimento). ${aguard} aguardando aprovação.</p></div></details>
+            ${linhaMeta(MQ.METAS[0], S, d, mes)}
             ${MQ.METAS.filter(m => m.fonte && m.fonte !== 'equipe').map(m => linhaMeta(m, S, d, mes)).join('')}
             ${MQ.METAS.filter(m => !m.fonte).map(m => linhaMeta(m, S, d, mes)).join('')}
           </div>
@@ -13527,8 +13530,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         if (Object.keys(erros).length) return mostrarErros(form, erros);
         // demonstração: não há senha; entra-se pelos botões de perfil, na faixa do alto
         if (modoDemoAtivo() && S.modoLogin !== 'primeiro') return mostrarErros(form, {}, 'Esta é a demonstração: aqui não se entra com senha. Escolha um perfil nos botões "Ver como", no alto da tela.');
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return mostrarErros(form, {}, R.MSG_ENTRAR_SEM_REDE);
         await ocupado(form, async () => {
-          S.eu = S.modoLogin === 'primeiro' ? await S.api.criarSenha(email, senha, codigo) : await S.api.entrarSenha(email, senha);
+          try { S.eu = S.modoLogin === 'primeiro' ? await S.api.criarSenha(email, senha, codigo) : await S.api.entrarSenha(email, senha); }
+          catch (e) { if (R.erroDeRede(e) || (e && e.message === R.MSG_SEM_REDE)) { const er = new Error(R.MSG_ENTRAR_SEM_REDE); er.regra = true; throw er; } throw e; }
           if (S.eu) { S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); marcarAbriu(); registrarAcesso(S.modoLogin === 'primeiro' ? 'primeiro_acesso' : 'entrada');
             limparRascunhosVencidos();
             telaCarregando('Carregando os seus dados…');   // a senha foi aceita: agora é a espera dos dados (o desenho da abertura)

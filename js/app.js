@@ -2083,8 +2083,10 @@
         if (Object.keys(erros).length) return mostrarErros(form, erros);
         // demonstração: não há senha; entra-se pelos botões de perfil, na faixa do alto
         if (modoDemoAtivo() && S.modoLogin !== 'primeiro') return mostrarErros(form, {}, 'Esta é a demonstração: aqui não se entra com senha. Escolha um perfil nos botões "Ver como", no alto da tela.');
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return mostrarErros(form, {}, R.MSG_ENTRAR_SEM_REDE);
         await ocupado(form, async () => {
-          S.eu = S.modoLogin === 'primeiro' ? await S.api.criarSenha(email, senha, codigo) : await S.api.entrarSenha(email, senha);
+          try { S.eu = S.modoLogin === 'primeiro' ? await S.api.criarSenha(email, senha, codigo) : await S.api.entrarSenha(email, senha); }
+          catch (e) { if (R.erroDeRede(e) || (e && e.message === R.MSG_SEM_REDE)) { const er = new Error(R.MSG_ENTRAR_SEM_REDE); er.regra = true; throw er; } throw e; }
           if (S.eu) { S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); marcarAbriu(); registrarAcesso(S.modoLogin === 'primeiro' ? 'primeiro_acesso' : 'entrada');
             limparRascunhosVencidos();
             telaCarregando('Carregando os seus dados…');   // a senha foi aceita: agora é a espera dos dados (o desenho da abertura)
