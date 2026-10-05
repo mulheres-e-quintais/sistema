@@ -209,7 +209,8 @@
   /* valores "redondos" para a legenda de tamanho, conforme o maior círculo do mapa */
   const redondo = v => { const p = Math.pow(10, Math.floor(Math.log10(Math.max(1, v)))); const m = v / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; };
   const marcasTamanho = nMax => nMax <= 30 ? [5, 10, 20] : [...new Set([redondo(nMax / 10), redondo(nMax / 3), redondo(nMax)])];
-  function mapa(S, d) {
+  function mapa(S, d, op) {
+    const RES = !!(op && op.resumo);   // resumo: o mesmo desenho, só com totais por município e sem clique (tela de quem acompanha de fora)
     /* 3 níveis: 5 estados (um círculo por município) → estado (círculo por município) → município (cada quintal) */
     const foco = S.mapaUF || '';
     const focoMun = foco && S.mapaMun && S.mapaMun.startsWith(foco + '|') ? S.mapaMun : '';
@@ -230,7 +231,7 @@
     const path = anel => 'M' + anel.map(p => px(p).map(v => v.toFixed(4)).join(',')).join('L') + 'Z';
     const estados = Object.entries(MQ.GEO.uf).filter(([uf]) => ufsProj.includes(uf)).map(([uf, g]) => {
       const destaque = foco ? uf === foco : true;
-      return `<path d="${g.r.map(path).join('')}" class="${destaque ? 'uf-proj' : 'uf-viz'} uf-clic" data-acao="mapa-uf" data-uf="${uf}" stroke-width="${esc * 0.25}"><title>${U.nomeUF(uf)}</title></path>`;
+      return `<path d="${g.r.map(path).join('')}" class="${destaque ? 'uf-proj' : 'uf-viz'}${RES ? '' : ' uf-clic'}"${RES ? '' : ` data-acao="mapa-uf" data-uf="${uf}"`} stroke-width="${esc * 0.25}"><title>${U.nomeUF(uf)}</title></path>`;
     }).join('');
     const rotulos = foco ? '' : Object.entries(MQ.GEO.uf).filter(([uf]) => ufsProj.includes(uf)).map(([uf, g]) => {
       const [x, y] = px(g.c); return `<text x="${x}" y="${y}" class="uf-rot" font-size="${esc * 3.2}" text-anchor="middle">${uf}</text>`;
@@ -239,7 +240,7 @@
     const grupos = {};
     todos.forEach(x => { const k = x.f.uf + '|' + norm(x.f.municipio); (grupos[k] = grupos[k] || { k, uf: x.f.uf, mun: x.f.municipio, itens: [] }).itens.push(x); });
     const lista = Object.values(grupos).sort((a, b) => b.itens.length - a.itens.length);
-    ULTIMO.grupos = grupos; ULTIMO.foco = foco; ULTIMO.geo = {};
+    if (!RES) { ULTIMO.grupos = grupos; ULTIMO.foco = foco; ULTIMO.geo = {}; }
     const baseDe = g => { const muns = MQ.GEO.mun[g.uf] || {}; const chave = Object.keys(muns).find(m => norm(m) === norm(g.mun));
       return { base: chave ? muns[chave] : (MQ.GEO.uf[g.uf] || {}).c, nome: chave || g.mun }; };
     const resumo = g => ordem.slice().reverse().map(id => [id, g.itens.filter(x => x.cat === id).length]).filter(([, q]) => q);
@@ -254,7 +255,7 @@
       marcas = lista.map(g => {
         const { base, nome } = baseDe(g); if (!base) return '';
         const L = lugar[g.k] || {}; const [bx, by] = px(base); const cx = L.x != null ? L.x : bx, cy = L.y != null ? L.y : by; const n = g.itens.length; const R = raio(n);
-        ULTIMO.geo[g.k] = { cx, cy, R };
+        if (!RES) ULTIMO.geo[g.k] = { cx, cy, R };
         const por = resumo(g);
         let ang = -Math.PI / 2; const fatias = por.length === 1
           ? `<circle cx="${cx}" cy="${cy}" r="${R}" fill="${CATS.find(k => k.id === por[0][0]).cor}"/>`
@@ -263,6 +264,8 @@
               return `<path d="M${cx},${cy}L${p0[0]},${p0[1]}A${R},${R} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${p1[0]},${p1[1]}Z" fill="${CATS.find(k => k.id === id).cor}"/>`; }).join('');
         const txt = `${nome}/${g.uf} · ${n} mulher${n > 1 ? 'es' : ''} com ficha: ${por.map(([id, q]) => q + ' ' + CATS.find(k => k.id === id).nome.toLowerCase()).join(', ')} · clique para ver ${foco ? 'cada quintal' : 'o estado'}`;
         // área de toque invisível maior que o círculo: no celular o dedo acerta mesmo em município pequeno
+        if (RES) { const t2 = `${nome}/${g.uf}: ${n} mulher${n > 1 ? 'es' : ''} selecionada${n > 1 ? 's' : ''}`;
+          return `<g class="q-fixo">${fatias}<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#fff" stroke-width="${esc * 0.22}"/><text x="${cx}" y="${cy + R * 0.34}" text-anchor="middle" font-size="${Math.min(R * (n > 9 ? 0.95 : 1.1), esc * 3)}" stroke-width="${Math.min(R * (n > 9 ? 0.95 : 1.1), esc * 3) * 0.07}" class="q-num">${n}</text><title>${E(t2)}</title></g>`; }
         return `<g class="q-pt q-grupo" data-acao="mapa-info" data-uf="${g.uf}" data-mun="${E(g.k)}" data-dica="${E(txt)}"><circle cx="${cx}" cy="${cy}" r="${Math.max(R, esc * (foco ? 4.5 : 3.8))}" fill="transparent" class="q-alvo"/>${tracoAoLugar(L, esc, R)}${fatias}<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#fff" stroke-width="${esc * 0.22}"/>
           <text x="${cx}" y="${cy + R * 0.34}" text-anchor="middle" font-size="${Math.min(R * (n > 9 ? 0.95 : 1.1), esc * 3)}" stroke-width="${(Math.min(R * (n > 9 ? 0.95 : 1.1), esc * 3)) * 0.07}" class="q-num">${n}</text><title>${E(txt)}</title></g>`;
       }).join('');
@@ -298,6 +301,7 @@
     const onde = focoMun ? E(nomeMun) + '/' + foco : foco ? E(U.nomeUF(foco)) : 'nos 5 estados';
     const munLista = !focoMun && lista.length ? `<div class="mun-lista"><h3 class="mapa-h3">${foco ? 'Municípios' : 'Municípios com mais fichas'}</h3>
         ${lista.slice(0, foco ? 20 : 8).map(g => `<button type="button" class="link" data-acao="mapa-mun" data-uf="${g.uf}" data-mun="${E(g.k)}"><span>${E(baseDe(g).nome)}${foco ? '' : '/' + g.uf}</span><i class="pontilhado" aria-hidden="true"></i><b class="num">${g.itens.length}</b></button>`).join('')}</div>` : '';
+    if (RES) return `<div class="mapa-caixa mapa-resumo"><svg class="mapa" viewBox="${vb.join(' ')}" role="img" aria-label="Mapa com ${pts.length} mulheres selecionadas em ${lista.length} municípios de ${nUF} estados" preserveAspectRatio="xMidYMid meet">${estados}${rotulos}${marcas}${tamanhos}</svg></div>${tamanhos ? '<p class="mapa-tam-nota">Cada círculo é um município; o número e o tamanho mostram quantas mulheres foram selecionadas ali.</p>' : ''}`;
     return `<section class="secao dx-mapa" aria-labelledby="t-mapa">
       <div class="secao-cab"><div><h2 id="t-mapa">Onde estão os quintais produtivos</h2>
         <p>${pts.length ? (foco ? `${pts.length} mulher${pts.length > 1 ? 'es' : ''} com ficha ${onde}${focoMun ? ` · ${exatos} com localização do GPS, ${pts.length - exatos} aproximada${pts.length - exatos === 1 ? '' : 's'}` : ''}`
@@ -684,5 +688,10 @@
     if (d.scrollIntoView) d.scrollIntoView({ block: 'center', behavior: (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) ? 'auto' : 'smooth' });
     const s = d.querySelector('summary'); if (s && s.focus) s.focus({ preventScroll: true });
   });
-  MQ.painelUI = { visaoGeral, mesDoProjeto, mapaUFs, escalaRaios, espalhar, marcasTamanho, infoMeta, execucaoGeral, chipStatus, STATUS };
+  /* o mapa da Visão geral para quem acompanha de fora: recebe só totais por município ([{uf, municipio, n}]), nunca fichas */
+  function mapaResumo(municipios) {
+    const fichas = []; (municipios || []).forEach(m => { for (let i = 0; i < (m.n || 0); i++) fichas.push({ id: '', uf: m.uf, municipio: m.municipio, resultado: 'selecionada', situacao: 'aprovada' }); });
+    return mapa({ mapaUF: '', mapaMun: '' }, { fichas }, { resumo: true });
+  }
+  MQ.painelUI = { mapaResumo, visaoGeral, mesDoProjeto, mapaUFs, escalaRaios, espalhar, marcasTamanho, infoMeta, execucaoGeral, chipStatus, STATUS };
 })();

@@ -100,9 +100,10 @@
   }
   function mapa(a) {
     const mun = (a.municipios || []).map(m => ({ uf: m.uf, municipio: m.municipio, n: m.n }));
-    const svg = MQ.painelUI && MQ.painelUI.mapaUFs ? MQ.painelUI.mapaUFs({ entrada: true, municipios: mun }) : '';
+    // o mesmo mapa da aba Visão geral (círculo por município, tamanho pelo número), alimentado só com totais
+    const svg = MQ.painelUI && MQ.painelUI.mapaResumo ? MQ.painelUI.mapaResumo(mun) : '';
     const top = (a.municipios || []).slice().sort((x, y) => y.n - x.n).slice(0, 8);
-    return `<div class="ac-duo"><div class="ac-mapa vit-mapa vit-info" aria-hidden="true">${svg}</div>
+    return `<div class="ac-duo"><div class="ac-mapa">${svg}</div>
       <div><h3>Municípios com mais quintais</h3>${top.length ? `<div class="quadro-scroll" style="display:block"><table class="quadro ac-tab"><thead><tr><th>Município</th><th class="num">Selecionadas</th><th class="num">Implantados</th></tr></thead>
         <tbody>${top.map(m => `<tr><td data-rot="Município">${E(m.municipio)}/${E(m.uf)}</td><td class="num" data-rot="Selecionadas">${n(m.n)}</td><td class="num" data-rot="Implantados">${n(m.implantados)}</td></tr>`).join('')}</tbody></table></div>
         ${(a.municipios || []).length > top.length ? `<p class="small muted">E mais ${(a.municipios || []).length - top.length} municípios.</p>` : ''}` : '<p class="muted">Os municípios aparecem aqui quando as primeiras mulheres forem selecionadas.</p>'}</div></div>`;
