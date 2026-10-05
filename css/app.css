@@ -3091,3 +3091,34 @@ small { font-size: max(12px, .85em); }
 .req-min p { margin: 0; } .req-min .small.muted { color: var(--ink-2); }
 .req-min .perfil-esp { background: color-mix(in srgb, var(--surface) 70%, transparent); font-weight: 600; color: var(--ink); }
 .req-min .perfil-lista li { color: var(--ink); }
+
+/* O mesmo padrão nos demais resumos (05/10/2026): cartão com borda fina, cantos arredondados e sombra suave */
+.resumo:not(.bloco .resumo):not(.painel .resumo) { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 10px 26px rgba(69, 43, 26, .07); overflow: hidden; }
+.resumo:not(.bloco .resumo):not(.painel .resumo) > div, .resumo:not(.bloco .resumo):not(.painel .resumo) > div + div { padding: 22px; }
+.eq-kpi.sem-total .eq-n b { font-size: clamp(34px, 3.2vw, 46px); }
+.eq-kpi.sem-total .dx-kpi-topo { min-height: 52px; }
+/* execução financeira: percentual em uso em destaque, quatro valores ao lado e a nota do repasse no rodapé do cartão */
+.fin-topo { display: grid; padding: 0; gap: 0; border-top: 1px solid var(--line); }
+.fin-topo .dx-exec .fin-sub { font-size: var(--t-sm); }
+.fin-topo .eq-kpis.fin-nums { border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+.fin-topo .fin-nums > div, .fin-topo .fin-nums > div + div { padding: 24px 20px; }
+.fin-topo .dx-kpi-topo { flex-wrap: wrap; gap: 8px 12px; }
+.fin-topo .fin-v { font-size: clamp(17px, 1.45vw, 23px); white-space: nowrap; }
+.fin-topo .eq-n { white-space: normal; }
+.fin-rodape { grid-column: 1 / -1; margin: 0; padding: 14px 24px; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--surface-2) 30%, var(--surface)); }
+@media (max-width: 760px) { .fin-topo .fin-nums > div, .fin-topo .fin-nums > div + div, .fin-topo .fin-nums > div:nth-child(3) { padding: 18px 16px; } .fin-rodape { padding: 12px 16px; } }
+/* resumos sem total previsto (Pagamentos, Custos, Viagens...): mesmo cartão e mesma hierarquia, com um traço de cor no lugar do anel */
+.resumo:not(.bloco .resumo):not(.painel .resumo) > div { display: grid; gap: 6px; align-content: start; }
+.resumo:not(.bloco .resumo):not(.painel .resumo) > div::before { content: ""; width: 30px; height: 4px; border-radius: 2px; background: var(--accent); margin-bottom: 6px; }
+.resumo:not(.bloco .resumo):not(.painel .resumo) > div:nth-child(4n+2)::before { background: #2E7D43; }
+.resumo:not(.bloco .resumo):not(.painel .resumo) > div:nth-child(4n+3)::before { background: #C08A1E; }
+.resumo:not(.bloco .resumo):not(.painel .resumo) > div:nth-child(4n+4)::before { background: color-mix(in srgb, var(--accent) 62%, var(--surface)); }
+.resumo:not(.bloco .resumo):not(.painel .resumo) .v { font-weight: 700; letter-spacing: -.02em; }
+.resumo:not(.bloco .resumo):not(.painel .resumo) .l { font-weight: 600; color: var(--ink); }
+@media (min-width: 761px) { .resumo:has(> div:nth-child(3):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); } .resumo:has(> div:nth-child(2):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.fin-topo .dx-kpi-topo { flex-direction: column; align-items: flex-start; flex-wrap: nowrap; gap: 10px; }
+.fin-topo .eq-kpi.sem-total .dx-kpi-topo { min-height: 0; padding-top: 62px; }
+.fin-topo .fin-v, .fin-topo .eq-n .fin-v b { font-size: clamp(15px, 1.25vw, 18px); font-weight: 700; letter-spacing: -.01em; }
+.fin-topo .fin-nums > div, .fin-topo .fin-nums > div + div { padding: 24px 16px; }
+@media (max-width: 1180px) { .fin-topo .fin-v, .fin-topo .eq-n .fin-v b { font-size: 20px; } }
+@media (max-width: 760px) { .fin-topo .eq-kpi.sem-total .dx-kpi-topo { padding-top: 0; } .resumo:not(.bloco .resumo):not(.painel .resumo) > div:last-child:nth-child(odd) { grid-column: 1 / -1; } }

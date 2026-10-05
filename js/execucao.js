@@ -176,17 +176,19 @@
         <p class="small muted">Base do previsto: ${E(O().fonte)}, com o remanejamento aprovado pelo MDA.</p></div></div>
       <div class="acoes-pag">${MQ.acaoComDica({ acao: 'exec-enviar', icone: 'enviar', texto: 'Enviar planilha de gastos', curto: 'Enviar planilha' }, 'Pelo menos uma vez por mês. Retrato completo desde o início: a mais nova substitui as anteriores.')}</div>
       <p class="small ${n.pl ? 'muted' : ''}">${n.pl ? `Planilha vigente: <b>${E(n.pl.arquivo_nome)}</b>, gastos até ${R.fmtData(n.pl.posicao_em)} (enviada em ${R.fmtData(n.pl.enviado_em)}).` : '<b>Nenhuma planilha enviada ainda.</b>'}</p>
-      <section class="fin-resumo" aria-label="Execução financeira">
-        <span class="dx-rot">Execução financeira</span>
-        <div class="fin-nums">
-          <div><span class="fin-v num">${brl(T)}</span><span class="fin-l">total previsto</span></div>
-          <div><span class="fin-v num fin-exec">${brl(n.exec)}</span><span class="fin-l">executado · ${pctBR(pct(n.exec, T))}%</span></div>
-          <div><span class="fin-v num fin-comp">${brl(n.comp)}</span><span class="fin-l">comprometido · ${pctBR(pct(n.comp, T))}%</span></div>
-          <div><span class="fin-v num"><b>${brl(n.livre)}</b></span><span class="fin-l">saldo livre para executar</span></div>
-        </div>
+      <section class="fin-resumo dx-topo fin-topo" aria-label="Execução financeira">
+        <div class="dx-exec"><span class="dx-rot">Execução financeira</span>
+          <div class="dx-exec-num"><b class="num">${pctBR(usoPct)}%</b></div>
         <div class="fin-barra" role="img" aria-label="Executado ${pctBR(pct(n.exec, T))}%, comprometido ${pctBR(pct(n.comp, T))}%"><i class="e" style="width:${lim(pct(n.exec, T))}%"></i><i class="c" style="width:${Math.min(100 - lim(pct(n.exec, T)), lim(pct(n.comp, T)))}%"></i></div>
         <p class="fin-sub"><span><b>${pctBR(usoPct)}%</b> do orçamento em uso (executado + comprometido) · tempo de vigência decorrido: ${pctBR(tempoPct)}%: ${ritmo}</span></p>
-        <p class="fin-sub muted">Recebido do MDA: <b>${brl(n.recebido)}</b> de ${brl(T)}${prox ? ` · próximo repasse: ${brl(prox.valor)}, previsto para ${prox.mes.slice(5)}/${prox.mes.slice(0, 4)}${prox.mes < R.hoje().slice(0, 7) ? ' (atrasado ou ainda fora da planilha)' : ''}` : ''} · em caixa na FUNCERN (recebido − executado): <b>${brl(n.caixa)}</b>. Comprometido = aval, Arlo ou autorização ${n.pl ? 'depois de ' + R.fmtData(n.pl.posicao_em) : 'ainda sem planilha'}.</p>
+        </div>
+        <div class="eq-kpis fin-nums">
+          ${MQ.ui.kpi(0, 0, 'total previsto', 1, { sem: true, valor: `<span class="fin-v num">${brl(T)}</span>` })}
+          ${MQ.ui.kpi(0, 0, `executado · ${pctBR(pct(n.exec, T))}%`, 2, { pct: pct(n.exec, T), fim: 'do previsto', valor: `<span class="fin-v num fin-exec">${brl(n.exec)}</span>` })}
+          ${MQ.ui.kpi(0, 0, `comprometido · ${pctBR(pct(n.comp, T))}%`, 3, { pct: pct(n.comp, T), fim: 'do previsto', valor: `<span class="fin-v num fin-comp">${brl(n.comp)}</span>` })}
+          ${MQ.ui.kpi(0, 0, 'saldo livre para executar', 4, { pct: pct(n.livre, T), fim: 'do previsto', valor: `<span class="fin-v num"><b>${brl(n.livre)}</b></span>` })}
+        </div>
+        <p class="fin-sub muted fin-rodape">Recebido do MDA: <b>${brl(n.recebido)}</b> de ${brl(T)}${prox ? ` · próximo repasse: ${brl(prox.valor)}, previsto para ${prox.mes.slice(5)}/${prox.mes.slice(0, 4)}${prox.mes < R.hoje().slice(0, 7) ? ' (atrasado ou ainda fora da planilha)' : ''}` : ''} · em caixa na FUNCERN (recebido − executado): <b>${brl(n.caixa)}</b>. Comprometido = aval, Arlo ou autorização ${n.pl ? 'depois de ' + R.fmtData(n.pl.posicao_em) : 'ainda sem planilha'}.</p>
       </section>
       <div class="exec-grafs">${graficoRitmo(serie())}${graficoRubricas(n)}</div>
       ${al.length ? `<div class="aviso erro"><ul class="exec-alertas">${al.map(x => `<li>${x}</li>`).join('')}</ul></div>` : ''}

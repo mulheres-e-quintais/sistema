@@ -35,11 +35,11 @@
     return `<div class="cab${souProf() ? ' cab-sub' : ''}"><div><span class="eyebrow">Curso FIC · IFRN</span><${h}>Turmas e matrículas</${h}>
         <p>${souProf() ? 'Crie a sua turma e matricule a coordenação técnica, as bolsistas e as agentes de campo. Você também pode matricular nas turmas do outro professor.' : (S().eu.papel === 'coord_geral' ? 'Os professores do FIC criam as turmas e matriculam; a coordenação geral também pode fazer isso aqui.' : 'Só os professores do FIC criam turmas e matriculam a coordenação técnica, as bolsistas e as agentes de campo; aqui a coordenação acompanha.')} A matrícula registrada aqui conta como o passo <b>matrícula no FIC</b> da habilitação: sem ela, a pessoa não recebe bolsa nem faz visita paga.</p></div>
         ${podeCriarTurma() ? '<button class="btn pri" data-acao="fic-turma-nova">+ Nova turma</button>' : ''}</div>
-      <div class="resumo">
-        <div><span class="v num">${turmas().length}</span><span class="l">turma${turmas().length === 1 ? '' : 's'}</span></div>
-        <div><span class="v num">${comMat.length}<small> de ${pessoas.length}</small></span><span class="l">matriculadas (coordenação técnica, bolsistas e agentes)</span></div>
-        <div><span class="v num" ${sem.length ? 'style="color:var(--crit)"' : ''}>${sem.length}</span><span class="l">ainda sem matrícula</span></div>
-        <div><span class="v num">${professores().length}</span><span class="l">professor${professores().length === 1 ? '' : 'es'} do FIC</span></div>
+      <div class="eq-kpis" aria-label="Resumo do curso FIC">
+        ${U().kpi(turmas().length, null, 'turma' + (turmas().length === 1 ? '' : 's'), 1, { sem: true })}
+        ${U().kpi(comMat.length, pessoas.length, 'matriculadas (coordenação técnica, bolsistas e agentes)', 2)}
+        ${U().kpi(sem.length, null, 'ainda sem matrícula', 3, { sem: true, crit: sem.length > 0 })}
+        ${U().kpi(professores().length, MQ.regras.MAX_PROFESSORES, 'professor' + (professores().length === 1 ? '' : 'es') + ' do FIC', 4)}
       </div>
       ${sem.length ? blocoSem(sem) : pessoas.length ? '<div class="aviso ok-aviso">Todas as pessoas que fazem o curso (coordenação técnica, bolsistas e agentes) estão matriculadas no FIC.</div>' : ''}
       <section class="secao"><div class="secao-cab"><h2 id="t-turmas">${souProf() ? 'Suas turmas' : 'Turmas'}</h2></div>

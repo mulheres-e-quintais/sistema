@@ -6012,11 +6012,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `<div class="cab${souProf() ? ' cab-sub' : ''}"><div><span class="eyebrow">Curso FIC · IFRN</span><${h}>Turmas e matrículas</${h}>
         <p>${souProf() ? 'Crie a sua turma e matricule a coordenação técnica, as bolsistas e as agentes de campo. Você também pode matricular nas turmas do outro professor.' : (S().eu.papel === 'coord_geral' ? 'Os professores do FIC criam as turmas e matriculam; a coordenação geral também pode fazer isso aqui.' : 'Só os professores do FIC criam turmas e matriculam a coordenação técnica, as bolsistas e as agentes de campo; aqui a coordenação acompanha.')} A matrícula registrada aqui conta como o passo <b>matrícula no FIC</b> da habilitação: sem ela, a pessoa não recebe bolsa nem faz visita paga.</p></div>
         ${podeCriarTurma() ? '<button class="btn pri" data-acao="fic-turma-nova">+ Nova turma</button>' : ''}</div>
-      <div class="resumo">
-        <div><span class="v num">${turmas().length}</span><span class="l">turma${turmas().length === 1 ? '' : 's'}</span></div>
-        <div><span class="v num">${comMat.length}<small> de ${pessoas.length}</small></span><span class="l">matriculadas (coordenação técnica, bolsistas e agentes)</span></div>
-        <div><span class="v num" ${sem.length ? 'style="color:var(--crit)"' : ''}>${sem.length}</span><span class="l">ainda sem matrícula</span></div>
-        <div><span class="v num">${professores().length}</span><span class="l">professor${professores().length === 1 ? '' : 'es'} do FIC</span></div>
+      <div class="eq-kpis" aria-label="Resumo do curso FIC">
+        ${U().kpi(turmas().length, null, 'turma' + (turmas().length === 1 ? '' : 's'), 1, { sem: true })}
+        ${U().kpi(comMat.length, pessoas.length, 'matriculadas (coordenação técnica, bolsistas e agentes)', 2)}
+        ${U().kpi(sem.length, null, 'ainda sem matrícula', 3, { sem: true, crit: sem.length > 0 })}
+        ${U().kpi(professores().length, MQ.regras.MAX_PROFESSORES, 'professor' + (professores().length === 1 ? '' : 'es') + ' do FIC', 4)}
       </div>
       ${sem.length ? blocoSem(sem) : pessoas.length ? '<div class="aviso ok-aviso">Todas as pessoas que fazem o curso (coordenação técnica, bolsistas e agentes) estão matriculadas no FIC.</div>' : ''}
       <section class="secao"><div class="secao-cab"><h2 id="t-turmas">${souProf() ? 'Suas turmas' : 'Turmas'}</h2></div>
@@ -8239,17 +8239,19 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <p class="small muted">Base do previsto: ${E(O().fonte)}, com o remanejamento aprovado pelo MDA.</p></div></div>
       <div class="acoes-pag">${MQ.acaoComDica({ acao: 'exec-enviar', icone: 'enviar', texto: 'Enviar planilha de gastos', curto: 'Enviar planilha' }, 'Pelo menos uma vez por mês. Retrato completo desde o início: a mais nova substitui as anteriores.')}</div>
       <p class="small ${n.pl ? 'muted' : ''}">${n.pl ? `Planilha vigente: <b>${E(n.pl.arquivo_nome)}</b>, gastos até ${R.fmtData(n.pl.posicao_em)} (enviada em ${R.fmtData(n.pl.enviado_em)}).` : '<b>Nenhuma planilha enviada ainda.</b>'}</p>
-      <section class="fin-resumo" aria-label="Execução financeira">
-        <span class="dx-rot">Execução financeira</span>
-        <div class="fin-nums">
-          <div><span class="fin-v num">${brl(T)}</span><span class="fin-l">total previsto</span></div>
-          <div><span class="fin-v num fin-exec">${brl(n.exec)}</span><span class="fin-l">executado · ${pctBR(pct(n.exec, T))}%</span></div>
-          <div><span class="fin-v num fin-comp">${brl(n.comp)}</span><span class="fin-l">comprometido · ${pctBR(pct(n.comp, T))}%</span></div>
-          <div><span class="fin-v num"><b>${brl(n.livre)}</b></span><span class="fin-l">saldo livre para executar</span></div>
-        </div>
+      <section class="fin-resumo dx-topo fin-topo" aria-label="Execução financeira">
+        <div class="dx-exec"><span class="dx-rot">Execução financeira</span>
+          <div class="dx-exec-num"><b class="num">${pctBR(usoPct)}%</b></div>
         <div class="fin-barra" role="img" aria-label="Executado ${pctBR(pct(n.exec, T))}%, comprometido ${pctBR(pct(n.comp, T))}%"><i class="e" style="width:${lim(pct(n.exec, T))}%"></i><i class="c" style="width:${Math.min(100 - lim(pct(n.exec, T)), lim(pct(n.comp, T)))}%"></i></div>
         <p class="fin-sub"><span><b>${pctBR(usoPct)}%</b> do orçamento em uso (executado + comprometido) · tempo de vigência decorrido: ${pctBR(tempoPct)}%: ${ritmo}</span></p>
-        <p class="fin-sub muted">Recebido do MDA: <b>${brl(n.recebido)}</b> de ${brl(T)}${prox ? ` · próximo repasse: ${brl(prox.valor)}, previsto para ${prox.mes.slice(5)}/${prox.mes.slice(0, 4)}${prox.mes < R.hoje().slice(0, 7) ? ' (atrasado ou ainda fora da planilha)' : ''}` : ''} · em caixa na FUNCERN (recebido − executado): <b>${brl(n.caixa)}</b>. Comprometido = aval, Arlo ou autorização ${n.pl ? 'depois de ' + R.fmtData(n.pl.posicao_em) : 'ainda sem planilha'}.</p>
+        </div>
+        <div class="eq-kpis fin-nums">
+          ${MQ.ui.kpi(0, 0, 'total previsto', 1, { sem: true, valor: `<span class="fin-v num">${brl(T)}</span>` })}
+          ${MQ.ui.kpi(0, 0, `executado · ${pctBR(pct(n.exec, T))}%`, 2, { pct: pct(n.exec, T), fim: 'do previsto', valor: `<span class="fin-v num fin-exec">${brl(n.exec)}</span>` })}
+          ${MQ.ui.kpi(0, 0, `comprometido · ${pctBR(pct(n.comp, T))}%`, 3, { pct: pct(n.comp, T), fim: 'do previsto', valor: `<span class="fin-v num fin-comp">${brl(n.comp)}</span>` })}
+          ${MQ.ui.kpi(0, 0, 'saldo livre para executar', 4, { pct: pct(n.livre, T), fim: 'do previsto', valor: `<span class="fin-v num"><b>${brl(n.livre)}</b></span>` })}
+        </div>
+        <p class="fin-sub muted fin-rodape">Recebido do MDA: <b>${brl(n.recebido)}</b> de ${brl(T)}${prox ? ` · próximo repasse: ${brl(prox.valor)}, previsto para ${prox.mes.slice(5)}/${prox.mes.slice(0, 4)}${prox.mes < R.hoje().slice(0, 7) ? ' (atrasado ou ainda fora da planilha)' : ''}` : ''} · em caixa na FUNCERN (recebido − executado): <b>${brl(n.caixa)}</b>. Comprometido = aval, Arlo ou autorização ${n.pl ? 'depois de ' + R.fmtData(n.pl.posicao_em) : 'ainda sem planilha'}.</p>
       </section>
       <div class="exec-grafs">${graficoRitmo(serie())}${graficoRubricas(n)}</div>
       ${al.length ? `<div class="aviso erro"><ul class="exec-alertas">${al.map(x => `<li>${x}</li>`).join('')}</ul></div>` : ''}
@@ -11751,7 +11753,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   /* sem coordenação técnica ativa (vaga aberta, desligada): a coordenação geral assume a vez dela
      nos contadores e listas, para nenhum pedido ficar parado sem aviso. Só vale para quem vê a equipe toda. */
   const semTecnica = () => !!(S.eu && S.eu.papel === 'coord_geral') && !(S.equipe || []).some(m => m.papel === 'coord_tecnico' && m.status === 'ativa');
-  MQ.ui = { vagaAberta, S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: o => render(o), renderFundo: () => renderFundo(), abrirPainel: p => abrirPainel(p), fecharPainel: o => fecharPainel(o), pedirFechar: () => pedirFechar(), painelAlterado: () => painelAlterado(),
+  MQ.ui = { kpi: (n, de, rot, k, op) => kpiEq(n, de, rot, k, op), vagaAberta, S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: o => render(o), renderFundo: () => renderFundo(), abrirPainel: p => abrirPainel(p), fecharPainel: o => fecharPainel(o), pedirFechar: () => pedirFechar(), painelAlterado: () => painelAlterado(),
     irParaAba: x => irParaAba(x), avisarVersaoNova: () => avisarVersaoNova(), declarados: (f, r) => declarados(f, r),
     vista: () => vistaDoPainel(), marcaAberta: (t, id) => marcaAberta(t, id), reabrirComConflito: m => reabrirComConflito(m),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), carregarDaAba: () => carregarDaAba(), sincronizar: a => sincronizar(a),
@@ -12030,11 +12032,16 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `<div class="vaga-aberta"><div><span class="st-chip ${rotulo && rotulo !== 'Vaga aberta' ? 'st-nao' : 'st-aten'}">${rotulo || 'Vaga aberta'}</span><p>${texto}</p>${pode ? '' : '<p class="small muted">Só a coordenação geral pode fazer este cadastro.</p>'}</div>${pode ? botao : ''}</div>`;
   }
   /* indicador da equipe: número grande, denominador menor, descrição; "completo" em verde quando chega lá */
-  function kpiEq(n, de, rot, k) {
-    const pc = de ? Math.max(0, Math.min(100, n / de * 100)) : 0, pr = Math.round(pc), C = 2 * Math.PI * 18;   // mesmo desenho dos indicadores da Visão geral (anel, barra e "% concluído")
-    return `<div class="eq-kpi dx-kpi k${k || 1}"><div class="dx-kpi-topo"><span class="dx-anel" aria-hidden="true"><svg viewBox="0 0 44 44" width="52" height="52" focusable="false"><circle cx="22" cy="22" r="18" class="tr"/><circle cx="22" cy="22" r="18" class="pg${pc > 0 ? '' : ' vazio'}" stroke-dasharray="${(C * pc / 100).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 22 22)"/></svg><b class="num">${pr}%</b></span>
-        <span class="eq-n num"><b>${n}</b><small> de ${de}</small></span></div><span class="eq-l">${rot}</span>
-      <span class="medidor fino" aria-hidden="true"><i style="width:${pc}%"></i></span><span class="dx-kpi-p"><b class="num">${pr}%</b> concluído</span>${de && n >= de ? '<span class="eq-ok">completo</span>' : ''}</div>`;
+  /* Indicador no padrão do painel de execução física: anel, número, descrição, barra e "% concluído".
+     op: { pct } percentual já calculado; { valor } o que aparece no lugar de "n de N" (ex.: dinheiro); { sem: true } número sem
+     total (sem anel nem barra); { fim } texto depois do percentual; { crit } número em vermelho; { cls } classe a mais. */
+  function kpiEq(n, de, rot, k, op) {
+    op = op || {};
+    const pc = op.pct != null ? Math.max(0, Math.min(100, op.pct)) : de ? Math.max(0, Math.min(100, n / de * 100)) : 0, pr = Math.round(pc), C = 2 * Math.PI * 18;
+    const num = op.valor != null ? op.valor : `<b${op.crit ? ' style="color:var(--crit)"' : ''}>${n}</b>${op.sem ? '' : `<small> de ${de}</small>`}`;
+    const anel = op.sem ? '' : `<span class="dx-anel" aria-hidden="true"><svg viewBox="0 0 44 44" width="52" height="52" focusable="false"><circle cx="22" cy="22" r="18" class="tr"/><circle cx="22" cy="22" r="18" class="pg${pc > 0 ? '' : ' vazio'}" stroke-dasharray="${(C * pc / 100).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 22 22)"/></svg><b class="num">${pr}%</b></span>`;
+    return `<div class="eq-kpi dx-kpi k${k || 1}${op.sem ? ' sem-total' : ''}${op.cls ? ' ' + op.cls : ''}"><div class="dx-kpi-topo">${anel}<span class="eq-n num">${num}</span></div><span class="eq-l">${rot}</span>
+      ${op.sem ? '' : `<span class="medidor fino" aria-hidden="true"><i style="width:${pc}%"></i></span><span class="dx-kpi-p"><b class="num">${pr}%</b> ${op.fim || 'concluído'}</span>`}${!op.sem && op.valor == null && de && n >= de ? '<span class="eq-ok">completo</span>' : ''}</div>`;
   }
 
   function vagaCoordTecnica(souGeral) {
