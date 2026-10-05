@@ -44,7 +44,7 @@ let seq = 100000000; const cpf = () => { const b = String(seq++).padStart(9, '0'
   await p.click('[data-m=manual]'); await p.waitForTimeout(250);
   ok('"Digitar os dados agora" abre o formulário', !!(await p.$('form[data-form=cadastro]')));
   await semRolagem('Formulário de cadastro');
-  ok('Mostra o Perfil da bolsista antes do botão Cadastrar', !!(await p.$('.perfil-bols')));
+  ok('Mostra os requisitos mínimos da bolsista no alto do cadastro, antes do formulário', await p.evaluate(() => { const r = document.querySelector('#painel .req-min'), f = document.querySelector('#painel form'); return !!r && /Requisitos mínimos/.test(r.textContent) && r.querySelectorAll('li').length === 7 && (!f || !!(r.compareDocumentPosition(f) & 4)); }));
   ok('Data de início vem com a data de hoje (dentro da vigência)', !!(await p.inputValue('#c-ini')));
   // vazio
   await salvar();
