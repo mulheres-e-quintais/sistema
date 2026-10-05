@@ -11367,7 +11367,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `${s.acompConfirma && l.some(x => x.id === s.acompConfirma) ? `<div class="aviso" role="alert"><b>Liberar um novo primeiro acesso para ${E(l.find(x => x.id === s.acompConfirma).nome)}?</b> Esta pessoa já tem senha. Ao gerar um novo código, a senha atual deixa de valer e ela cria outra.
         <span class="acoes"><button class="btn peq pri" data-acao="acomp-codigo" data-id="${E(s.acompConfirma)}" data-confirmado="1">Gerar novo código</button><button class="btn peq" data-acao="acomp-codigo-nao">Cancelar</button></span></div>` : ''}
       ${s.acompCodigo ? `<div class="aviso" role="status"><b>Código de primeiro acesso de ${E(s.acompCodigo.nome)}: <span class="num ac-cod">${E(s.acompCodigo.codigo)}</span></b><br>Vale 7 dias e uma vez só. Passe à pessoa junto com o e-mail cadastrado: na tela de entrada, ela toca em <b>Primeiro acesso</b>, informa o e-mail, o código e cria a senha. Este código não aparece de novo.</div>` : ''}`; };
-  const painelAberto = () => { const p = S().painel; return !!(p && p.tipo === 'acomp-form'); };
+  const painelAberto = () => { const p = S().painel; return !!(p && /^acomp-/.test(p.tipo)); };
   function blocoCoord() {
     const s = S(); if (s.eu.papel !== 'coord_geral') return '';
     const l = s.observadores || []; const pv = s.acompPrevia;
@@ -11377,15 +11377,15 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const linha = o => { const g = l.filter(x => x.orgao === o), n = g.filter(x => x.status === 'ativo').length;
       return `<div class="ag-tr" role="group" aria-label="${ORG[o].sigla}: ${n} ${n === 1 ? 'pessoa' : 'pessoas'}"><div class="ag-uf"><span class="sigla ac-sigla">${ORG[o].sigla}</span><span class="ag-nome"><b>${o === 'mda' ? 'Ministério' : 'Movimento parceiro'}</b>${g.length ? `<small>${n} ${n === 1 ? 'pessoa' : 'pessoas'}</small>` : ''}</span></div>
         <div class="ag-lista">${g.map(x => { const st = situacaoDe(x); return `<button class="vagabtn com-foto${x.status !== 'ativo' ? ' apagado' : ''}" data-acao="acomp-editar" data-id="${E(x.id)}">${avatarDe(x)}<span class="vb-t"><span class="nm">${E(x.nome)}</span><span><span class="chip ${st[0]}">${st[1]}</span></span><span class="sub">${E(x.cargo || x.email)}</span></span></button>`; }).join('') || `<p class="ag-vazio">Ninguém cadastrado ainda.</p>`}</div>
-        <div class="ag-acao">${MQ.botaoAcao({ acao: 'acomp-novo', icone: 'pessoa_mais', texto: 'Adicionar pessoa', rotulo: 'Adicionar pessoa do ' + ORG[o].sigla, sec: true, peq: true, attrs: `data-o="${o}"` })}</div></div>`; };
-    const ver = (o, icone) => MQ.botaoAcao({ acao: 'acomp-previa', icone, texto: o === 'mda' ? 'Ver como o MDA vê' : 'Ver como o MPA vê', sec: true, peq: true, attrs: `data-o="${o}" aria-pressed="${!!(pv && pv.orgao === o)}"` });
+        <div class="ag-acao ac-acao">${MQ.botaoAcao({ acao: 'acomp-novo', icone: 'pessoa_mais', texto: 'Adicionar pessoa', rotulo: 'Adicionar pessoa do ' + ORG[o].sigla, sec: true, peq: true, attrs: `data-o="${o}"` })}${MQ.botaoAcao({ acao: 'acomp-previa', icone: 'ver', texto: o === 'mda' ? 'Ver como o MDA vê' : 'Ver como o MPA vê', sec: true, peq: true, attrs: `data-o="${o}"` })}</div></div>`; };
     return `${abre}<div class="ag-quadro"><div class="ag-th" aria-hidden="true"><span>Órgão</span><span>Quem acompanha</span><span></span></div>${linha('mda')}${linha('mpa')}</div>
-      ${avisosCodigo()}
-      <div class="acoes ac-ver">${ver('mda', 'ver')}${ver('mpa', 'ver')}${pv ? '<button class="btn" data-acao="acomp-previa-fechar">Fechar a prévia</button>' : ''}</div>
-      ${pv ? `<div class="ac ac-previa" aria-label="Prévia da tela de acompanhamento"><p class="nota">Prévia: é isto que ${ORG[pv.orgao].sigla === 'MDA' ? 'o MDA' : 'o MPA'} vê, com os números de agora. Dados de exemplo não entram na conta de quem acompanha.</p>${corpo(pv.dados)}</div>` : ''}</section>`;
+      ${avisosCodigo()}</section>`;
   }
   /* Cadastro e alteração no painel lateral, como os demais cadastros da aba Equipe */
   function painel(p) {
+    if (p.tipo === 'acomp-previa') { const pv = S().acompPrevia || {}, sg = (ORG[pv.orgao] || {}).sigla || '';
+      return `<div class="painel-cab"><div class="t"><span class="eyebrow">Prévia · só você vê esta janela</span><h2 id="painel-t">Como o ${sg} vê o projeto</h2></div><button class="fechar" data-acao="fechar" aria-label="Fechar" autofocus>×</button></div>
+        <div class="painel-corpo"><div class="ac ac-previa"><p class="nota">É isto que o ${sg} vê, com os números de agora. Dados de exemplo não entram na conta de quem acompanha.</p>${pv.dados ? corpo(pv.dados) : ''}</div></div>`; }
     const x = p.id ? (S().observadores || []).find(k => k.id === p.id) : null; const o = x ? x.orgao : (p.orgao || '');
     const obr = '<span class="ac-obr" aria-hidden="true">*</span>'; const st = x ? situacaoDe(x) : null;
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">${x ? 'Alterar cadastro' : 'Novo cadastro'}</span><h2 id="painel-t">Acompanhamento externo${ORG[o] ? ' · ' + ORG[o].sigla : ''}</h2>${st ? `<span><span class="chip ${st[0]}">${st[1]}</span></span>` : ''}</div>
@@ -11407,8 +11407,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const msg = e => U().toast((MQ.regras.mensagemErro ? MQ.regras.mensagemErro(e) : '') || (e && e.message) || 'Não deu certo. Tente de novo.');
     if (acao === 'acomp-atualizar') { el.disabled = true; await carregar(); U().render(); if (!s.acompErro) U().toast('Números atualizados.'); }
     else if (acao === 'acomp-imprimir') { window.print(); }
-    else if (acao === 'acomp-previa') { el.disabled = true; try { s.acompPrevia = { orgao: el.dataset.o, dados: await s.api.dadosAcompanhamento(el.dataset.o) }; } catch (e) { msg(e); } U().render(); }
-    else if (acao === 'acomp-previa-fechar') { s.acompPrevia = null; U().render(); }
+    else if (acao === 'acomp-previa') { el.disabled = true; try { s.acompPrevia = { orgao: el.dataset.o, dados: await s.api.dadosAcompanhamento(el.dataset.o) }; U().abrirPainel({ tipo: 'acomp-previa', orgao: el.dataset.o }); } catch (e) { msg(e); } el.disabled = false; }
     else if (acao === 'acomp-novo') { s.acompCodigo = null; s.acompConfirma = null; U().abrirPainel({ tipo: 'acomp-form', orgao: el.dataset.o }); }
     else if (acao === 'acomp-editar') { if (!(s.observadores || []).some(k => k.id === el.dataset.id)) return; s.acompCodigo = null; s.acompConfirma = null; U().abrirPainel({ tipo: 'acomp-form', id: el.dataset.id }); }
     else if (acao === 'acomp-codigo-nao') { s.acompConfirma = null; redesenhar(); }
@@ -12821,8 +12820,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     let el = $('#painel');
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
     const p = S.painel;
-    const corpo = p.tipo === 'acomp-form' && MQ.acompUI ? MQ.acompUI.painel(p) : p.tipo === 'roteiro' && MQ.roteiroUI ? MQ.roteiroUI.painel(p) : p.tipo === 'ajuda' ? MQ.ajudaUI.painel(p) : p.tipo === 'meus-dados' ? painelMeusDados() : /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^viag-/.test(p.tipo) && MQ.viagUI ? MQ.viagUI.painel(p) : /^doc-/.test(p.tipo) && MQ.docsUI ? MQ.docsUI.painel(p) : /^exec-/.test(p.tipo) && MQ.execUI ? MQ.execUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : /^enc-/.test(p.tipo) && MQ.encUI ? MQ.encUI.painel(p) : /^agua-/.test(p.tipo) && MQ.aguaUI ? MQ.aguaUI.painel(p) : /^venda-/.test(p.tipo) && MQ.vendaUI ? MQ.vendaUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
-    el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel${/^(ficha|diag|aval)-(form|ver)$/.test(p.tipo) ? ' largo' : ''}" role="dialog" aria-modal="true" aria-labelledby="painel-t">${GUARDA}${corpo}${GUARDA}</aside>`;   // formulários longos do campo: painel mais largo
+    const corpo = /^acomp-(form|previa)$/.test(p.tipo) && MQ.acompUI ? MQ.acompUI.painel(p) : p.tipo === 'roteiro' && MQ.roteiroUI ? MQ.roteiroUI.painel(p) : p.tipo === 'ajuda' ? MQ.ajudaUI.painel(p) : p.tipo === 'meus-dados' ? painelMeusDados() : /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^viag-/.test(p.tipo) && MQ.viagUI ? MQ.viagUI.painel(p) : /^doc-/.test(p.tipo) && MQ.docsUI ? MQ.docsUI.painel(p) : /^exec-/.test(p.tipo) && MQ.execUI ? MQ.execUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : /^enc-/.test(p.tipo) && MQ.encUI ? MQ.encUI.painel(p) : /^agua-/.test(p.tipo) && MQ.aguaUI ? MQ.aguaUI.painel(p) : /^venda-/.test(p.tipo) && MQ.vendaUI ? MQ.vendaUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
+    el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel${/^(ficha|diag|aval)-(form|ver)$/.test(p.tipo) ? ' largo' : ''}${p.tipo === 'acomp-previa' ? ' centro' : ''}" role="dialog" aria-modal="true" aria-labelledby="painel-t">${GUARDA}${corpo}${GUARDA}</aside>`;   // formulários longos do campo: painel mais largo
     restaurarRascunhoPainel(el);
     // questionário de campo: opção de imprimir em branco para aplicar no papel (só para quem preenche)
     if (MQ.imprimirUI) { const fm = el.querySelector('.painel-corpo > form[data-form]'); const b = fm && MQ.imprimirUI.barra(fm); if (b) fm.insertAdjacentHTML('beforebegin', b); }
