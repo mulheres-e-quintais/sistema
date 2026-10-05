@@ -312,7 +312,7 @@
   /* sem coordenação técnica ativa (vaga aberta, desligada): a coordenação geral assume a vez dela
      nos contadores e listas, para nenhum pedido ficar parado sem aviso. Só vale para quem vê a equipe toda. */
   const semTecnica = () => !!(S.eu && S.eu.papel === 'coord_geral') && !(S.equipe || []).some(m => m.papel === 'coord_tecnico' && m.status === 'ativa');
-  MQ.ui = { vagaAberta, S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: o => render(o), renderFundo: () => renderFundo(), abrirPainel: p => abrirPainel(p), fecharPainel: o => fecharPainel(o), pedirFechar: () => pedirFechar(), painelAlterado: () => painelAlterado(),
+  MQ.ui = { kpi: (n, de, rot, k, op) => kpiEq(n, de, rot, k, op), vagaAberta, S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: o => render(o), renderFundo: () => renderFundo(), abrirPainel: p => abrirPainel(p), fecharPainel: o => fecharPainel(o), pedirFechar: () => pedirFechar(), painelAlterado: () => painelAlterado(),
     irParaAba: x => irParaAba(x), avisarVersaoNova: () => avisarVersaoNova(), declarados: (f, r) => declarados(f, r),
     vista: () => vistaDoPainel(), marcaAberta: (t, id) => marcaAberta(t, id), reabrirComConflito: m => reabrirComConflito(m),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), carregarDaAba: () => carregarDaAba(), sincronizar: a => sincronizar(a),
@@ -591,11 +591,16 @@
     return `<div class="vaga-aberta"><div><span class="st-chip ${rotulo && rotulo !== 'Vaga aberta' ? 'st-nao' : 'st-aten'}">${rotulo || 'Vaga aberta'}</span><p>${texto}</p>${pode ? '' : '<p class="small muted">Só a coordenação geral pode fazer este cadastro.</p>'}</div>${pode ? botao : ''}</div>`;
   }
   /* indicador da equipe: número grande, denominador menor, descrição; "completo" em verde quando chega lá */
-  function kpiEq(n, de, rot, k) {
-    const pc = de ? Math.max(0, Math.min(100, n / de * 100)) : 0, pr = Math.round(pc), C = 2 * Math.PI * 18;   // mesmo desenho dos indicadores da Visão geral (anel, barra e "% concluído")
-    return `<div class="eq-kpi dx-kpi k${k || 1}"><div class="dx-kpi-topo"><span class="dx-anel" aria-hidden="true"><svg viewBox="0 0 44 44" width="52" height="52" focusable="false"><circle cx="22" cy="22" r="18" class="tr"/><circle cx="22" cy="22" r="18" class="pg${pc > 0 ? '' : ' vazio'}" stroke-dasharray="${(C * pc / 100).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 22 22)"/></svg><b class="num">${pr}%</b></span>
-        <span class="eq-n num"><b>${n}</b><small> de ${de}</small></span></div><span class="eq-l">${rot}</span>
-      <span class="medidor fino" aria-hidden="true"><i style="width:${pc}%"></i></span><span class="dx-kpi-p"><b class="num">${pr}%</b> concluído</span>${de && n >= de ? '<span class="eq-ok">completo</span>' : ''}</div>`;
+  /* Indicador no padrão do painel de execução física: anel, número, descrição, barra e "% concluído".
+     op: { pct } percentual já calculado; { valor } o que aparece no lugar de "n de N" (ex.: dinheiro); { sem: true } número sem
+     total (sem anel nem barra); { fim } texto depois do percentual; { crit } número em vermelho; { cls } classe a mais. */
+  function kpiEq(n, de, rot, k, op) {
+    op = op || {};
+    const pc = op.pct != null ? Math.max(0, Math.min(100, op.pct)) : de ? Math.max(0, Math.min(100, n / de * 100)) : 0, pr = Math.round(pc), C = 2 * Math.PI * 18;
+    const num = op.valor != null ? op.valor : `<b${op.crit ? ' style="color:var(--crit)"' : ''}>${n}</b>${op.sem ? '' : `<small> de ${de}</small>`}`;
+    const anel = op.sem ? '' : `<span class="dx-anel" aria-hidden="true"><svg viewBox="0 0 44 44" width="52" height="52" focusable="false"><circle cx="22" cy="22" r="18" class="tr"/><circle cx="22" cy="22" r="18" class="pg${pc > 0 ? '' : ' vazio'}" stroke-dasharray="${(C * pc / 100).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 22 22)"/></svg><b class="num">${pr}%</b></span>`;
+    return `<div class="eq-kpi dx-kpi k${k || 1}${op.sem ? ' sem-total' : ''}${op.cls ? ' ' + op.cls : ''}"><div class="dx-kpi-topo">${anel}<span class="eq-n num">${num}</span></div><span class="eq-l">${rot}</span>
+      ${op.sem ? '' : `<span class="medidor fino" aria-hidden="true"><i style="width:${pc}%"></i></span><span class="dx-kpi-p"><b class="num">${pr}%</b> ${op.fim || 'concluído'}</span>`}${!op.sem && op.valor == null && de && n >= de ? '<span class="eq-ok">completo</span>' : ''}</div>`;
   }
 
   function vagaCoordTecnica(souGeral) {
