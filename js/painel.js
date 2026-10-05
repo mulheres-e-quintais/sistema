@@ -110,7 +110,7 @@
       <summary><span class="meta-id">${meta.id}</span><span class="meta-nome">${E(meta.nome)}</span>${chipStatus(x.st, x.st === 'nao' && mes - 1 < meta.ini ? 'Começa em ' + MESES[meta.ini - 1] : null)}
         <span class="medidor" role="img" aria-label="${x.atual == null ? 'sem registro' : x.atual + ' de ' + x.alvo}${x.pctPrev != null && x.prev > 0 ? ', previsto até agora ' + x.prev : ''}"><i class="${STATUS[x.st].cls}" style="width:${x.pct}%"></i>${x.pctPrev != null && x.prev > 0 ? `<b class="previsto" style="left:${x.pctPrev}%"></b>` : ''}</span>
         <span class="meta-num num"><b>${x.atual == null ? '—' : x.atual}</b> de ${x.alvo} <span class="muted">${E(x.un)}</span></span><span class="meta-ver" aria-hidden="true"></span></summary>
-      <div class="dx-meta-mais"><p class="mm-nota">${E(x.nota)}</p>
+      <div class="dx-meta-mais"><p class="mm-nota">${E(x.nota)}</p>${meta.id === 'M1' && d.selAprov ? `<p class="mm-nota">Seleção das beneficiárias (trabalho da equipe, antes da Meta 2): <b class="num">${d.selAprov.length}</b> de 200 selecionadas e aprovadas · ${d.fichas.length} ficha${d.fichas.length === 1 ? '' : 's'} lançada${d.fichas.length === 1 ? '' : 's'}.</p>` : ''}
         <dl class="mm-dados"><div><dt>Período</dt><dd>${MESES[meta.ini - 1]} a ${MESES[meta.fim - 1]}</dd></div>${x.pctPrev != null && mes - 1 >= meta.ini ? `<div><dt>Previsto até ${MESES[Math.max(0, mes - 2)]}</dt><dd class="num">${x.prev}</dd></div>` : ''}${meta.valor ? `<div><dt>Valor no plano</dt><dd class="num">${R.fmtBRL(meta.valor).replace(',00', '')}</dd></div>` : ''}</dl>${marcosDaMeta}</div>
     </details>`;
   }
@@ -488,11 +488,6 @@
         <section class="secao" aria-labelledby="t-metas">
           <div class="secao-cab"><div><h2 id="t-metas">Metas do plano de trabalho</h2><p>Barra: realizado · traço: previsto até o mês passado · toque na meta para ver o detalhe</p></div></div>
           <div class="dx-metas">
-            <!-- a seleção vem antes das metas e não é uma delas: fica no alto, com moldura diferente -->
-            <details class="dx-meta dx-etapa"><summary><span class="meta-id">Sel.</span><span class="meta-nome">Seleção das beneficiárias <small class="meta-sub">etapa preparatória · não é meta do plano</small></span>${chipStatus(d.selAprov.length >= 200 ? 'concluida' : d.fichas.length ? 'andamento' : 'nao')}
-              <span class="medidor" role="img" aria-label="${d.selAprov.length} de 200"><i class="${d.selAprov.length >= 200 ? 'st-ok' : 'st-and'}" style="width:${Math.min(100, d.selAprov.length / 2)}%"></i></span>
-              <span class="meta-num num"><b>${d.selAprov.length}</b> de 200 <span class="muted">selecionadas</span></span><span class="meta-ver" aria-hidden="true"></span></summary>
-              <div class="dx-meta-mais"><p class="mm-nota">A seleção não é uma das 8 metas do plano de trabalho: é a etapa que vem antes da Meta 2 e libera os diagnósticos, por isso aparece aqui, separada. Registrada no sistema (ficha de indicação e termo de consentimento). ${aguard} aguardando aprovação.</p></div></details>
             ${linhaMeta(MQ.METAS[0], S, d, mes)}
             ${MQ.METAS.filter(m => m.fonte && m.fonte !== 'equipe').map(m => linhaMeta(m, S, d, mes)).join('')}
             ${MQ.METAS.filter(m => !m.fonte).map(m => linhaMeta(m, S, d, mes)).join('')}

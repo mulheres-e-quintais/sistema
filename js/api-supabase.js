@@ -487,6 +487,9 @@
     async registrarOrientacaoVenda(ficha_id, dados) { const { data, error } = await sb.rpc('registrar_orientacao_venda', { p_ficha: ficha_id, p_dados: dados }); if (error) throw erro(error); return data; },
     /* perfis de acompanhamento, MDA e MPA (52_acompanhamento.sql): só contagens */
     async dadosAcompanhamento(orgao) { const { data, error } = await sb.rpc('acompanhamento_dados', { p_orgao: orgao || null }); if (error) throw erro(error); return data; },
+    async relatarProblema(x) { const { data, error } = await sb.rpc('relatar_problema', { p_texto: x.texto, p_tela: x.tela || null, p_versao: x.versao || null, p_aparelho: x.aparelho || null }); if (error) throw erro(error); return data; },
+    async listarRelatos() { const { data, error } = await sb.rpc('listar_relatos'); if (error) throw erro(error); return data || []; },
+    async resolverRelato(id, nota, reabrir) { const { error } = await sb.rpc('resolver_relato', { p_id: id, p_nota: nota || null, p_reabrir: !!reabrir }); if (error) throw erro(error); },
     async listarObservadores() { const { data, error } = await sb.rpc('listar_observadores'); if (error) throw erro(error); return data || []; },
     async salvarObservador(x) { const { data, error } = await sb.rpc('salvar_observador', { p_id: x.id || null, p_nome: x.nome, p_email: x.email, p_orgao: x.orgao, p_cargo: x.cargo || null, p_ativo: x.ativo !== false }); if (error) throw erro(error); return data; },
     async gerarCodigoObservador(id) { const { data, error } = await sb.rpc('gerar_codigo_observador', { p_id: id }); if (error) throw erro(error); return data; },
