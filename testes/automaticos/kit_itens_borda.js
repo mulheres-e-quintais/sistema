@@ -13,7 +13,7 @@ const GIF = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
     return { ctx, p, errs, como, txt: sel => p.evaluate(sel => (document.querySelector(sel) || { textContent: '' }).textContent.replace(/\s+/g, ' '), sel) }; };
 
   let { ctx, p, errs, como, txt } = await novo({ width: 1280, height: 900 });
-  const campo = async () => { await p.evaluate(() => { MQ.ui.S.aba = 'campo'; MQ.ui.render(); }); await p.waitForSelector('.kit-itens'); };
+  const campo = async () => { await p.evaluate(() => { MQ.ui.S.verKitItens = true; MQ.ui.S.aba = 'campo'; MQ.ui.render(); }); await p.waitForSelector('.kit-itens'); };
   const gravar = async (x) => p.evaluate(async x => { try { await MQ.ui.S.api.salvarKitItem(x); return ''; } catch (e) { return e.message; } }, x);
 
   // ---------- 1. texto malicioso no nome e na origem ----------
@@ -98,7 +98,7 @@ const GIF = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
 
   // ---------- 6. sem a tabela no banco ----------
   await p.waitForTimeout(2200);
-  await p.evaluate(async () => { const S = MQ.ui.S; MQ.ui.fecharPainel(); S.api.listarKitItens = async () => { const e = new Error('Could not find the table public.kit_itens in the schema cache'); e.original = { code: 'PGRST205', message: e.message }; throw e; }; await MQ.ui.carregar(); S.aba = 'campo'; MQ.ui.render(); }); await p.waitForSelector('.kit-itens');
+  await p.evaluate(async () => { const S = MQ.ui.S; S.verKitItens = true; MQ.ui.fecharPainel(); S.api.listarKitItens = async () => { const e = new Error('Could not find the table public.kit_itens in the schema cache'); e.original = { code: 'PGRST205', message: e.message }; throw e; }; await MQ.ui.carregar(); S.aba = 'campo'; MQ.ui.render(); }); await p.waitForSelector('.kit-itens');
   ok('sem a tabela: a tela abre e mostra os 9 itens do sistema', await p.locator('.tab-kit-itens tbody tr').count() === 9);
   ok('sem a tabela: a edição some e a tela diz qual arquivo rodar', await p.locator('form[data-form="diag-kit-item"]').count() === 0 && /51_kit_itens\.sql/.test(await txt('.kit-itens')));
   ok('sem a tabela: não aparece o aviso de carga parcial', await p.evaluate(() => !MQ.ui.S.cargaParcial));
@@ -163,7 +163,7 @@ const GIF = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
 
   // ---------- 11. celular ----------
   ({ ctx, p, errs, como, txt } = await novo({ width: 390, height: 780 }));
-  await como('coord_geral'); await p.evaluate(() => { MQ.ui.S.aba = 'campo'; MQ.ui.render(); }); await p.waitForSelector('.kit-itens');
+  await como('coord_geral'); await p.evaluate(() => { MQ.ui.S.verKitItens = true; MQ.ui.S.aba = 'campo'; MQ.ui.render(); }); await p.waitForSelector('.kit-itens');
   const cel = await p.evaluate(() => { const de = document.documentElement; const b = [...document.querySelectorAll('.kit-itens button, .kit-itens input:not([type=hidden]):not([type=checkbox])')].filter(e => e.offsetParent);
     const semRotulo = [...document.querySelectorAll('.kit-item-form input:not([type=hidden])')].filter(i => !(i.labels && i.labels.length) && !i.getAttribute('aria-label')).length;
     const fonteMin = Math.min(...[...document.querySelectorAll('.kit-itens *')].filter(e => e.childNodes.length && [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) && e.offsetParent).map(e => parseFloat(getComputedStyle(e).fontSize)));

@@ -28,7 +28,7 @@ describe('quem vê preço e projeção do kit', () => {
   });
   test('aba Campo: a lista de itens com preços só existe para a coordenação geral', async () => {
     const G = await montar('coord_geral'); const g = G.aba('campo');
-    assert.match(texto(g), /Itens do kit e preços de referência/); assert.match(texto(g), /só referência/); assert.match(g, /data-acao="campo-kit-editar"/);
+    assert.doesNotMatch(texto(g), /Itens do kit e preços de referência/); assert.doesNotMatch(g, /campo-kit-editar/);   // 04/10/2026: o quadro de itens e preços saiu da tela (o código fica, desligado: S.verKitItens)
     const T = await montar('coord_tecnico'); const t = T.aba('campo');
     assert.doesNotMatch(texto(t), /Itens do kit e preços de referência|planos? com valores|projetados/); assert.doesNotMatch(t, /campo-kit-editar|data-form="diag-kit-item"/);
     assert.match(texto(t), /aparecem só para a coordenação geral/);
