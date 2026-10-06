@@ -10,10 +10,13 @@ assistentes de IA, e não fica gravada em arquivo.
 ## Uma vez só: preparar o computador (Mac)
 
 ```bash
-brew install libpq postgresql@17
-brew link --force libpq
+brew install postgresql@17
+brew link --force postgresql@17
 brew services start postgresql@17
 ```
+
+O `postgresql@17` já traz o `pg_dump`; não é preciso instalar o `libpq` à parte (os dois juntos dão erro no `brew link`).
+Se o Terminal disser que não conhece `brew`, instale o Homebrew antes (brew.sh) e rode as linhas do "Next steps" que ele mostra.
 
 O `pg_dump` precisa ser da mesma versão do banco ou mais novo. Veja a versão em Supabase > Project Settings >
 Infrastructure. Se o banco for 17 e o seu `pg_dump --version` for menor, atualize.
@@ -80,13 +83,14 @@ institucional). Uma cópia só, no mesmo computador, não protege de roubo ou de
 ## Se precisar restaurar de verdade
 
 Não restaure por cima do projeto em uso sem conversar antes: a restauração troca os dados atuais pelos da cópia.
-O caminho seguro é criar um projeto novo no Supabase, rodar os scripts `01` a `52` e restaurar só os dados
+O caminho seguro é criar um projeto novo no Supabase, rodar os scripts de estrutura do `01` ao `55` (a ordem está no cabeçalho do `00_verificar.sql`) e restaurar só os dados
 (`pg_restore --data-only --schema=public`), conferindo com o `00_verificar.sql` antes de apontar o sistema para ele.
 
 ## Limites conhecidos
 
-- Testado num PostgreSQL 16 local com dados de exemplo (cópia, senha errada, restauração e contagem). **Ainda
-  não foi rodado contra o Supabase do projeto**: a primeira execução é o teste de verdade.
+- Testado num PostgreSQL 16 local com dados de exemplo (cópia, senha errada, restauração e contagem). Rodado contra o
+  Supabase do projeto em 06/10/2026: cópia de 840 KB e restauração conferida (279 fichas, 800 visitas, 200
+  diagnósticos, 25 pessoas na equipe).
 - No teste de restauração, os logins (`auth.users`) podem aparecer como "não conferido": eles dependem de
   peças internas do Supabase que o seu computador não tem. Os dados do sistema (`public`) são conferidos.
 - Planos pagos do Supabase têm cópia diária automática. Isso não foi verificado para este projeto.
