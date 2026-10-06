@@ -72,7 +72,7 @@ A(serve('É a porta de entrada. Só entra quem foi cadastrado pela coordenação
 A(acesso(['Navegador (Chrome ou Safari)', 'mulheres-e-quintais.github.io/sistema'], 'todos os perfis.'))
 A(tela('entrada', 'Tela de entrada do sistema', [
     (1, 'Tipo de acesso', 'Escolha <b>Já tenho senha</b> ou <b>Primeiro acesso</b>.'), (2, 'E-mail', 'O e-mail do seu cadastro, exatamente como foi registrado.'),
-    (3, 'Senha', 'A senha que você criou no primeiro acesso.'), (4, 'Entrar', 'Confirma e abre a sua tela.'),
+    (3, 'Senha', 'A senha que você criou no primeiro acesso. O botão do olho, dentro do campo, mostra ou esconde o que você digitou.'), (4, 'Entrar', 'Confirma e abre a sua tela.'),
     (5, 'Esqueci a senha', 'Pede um novo acesso à coordenação geral.'), (6, 'Precisa de ajuda para entrar?', 'Abre a ajuda, com o WhatsApp da coordenação.')]))
 A(passos('entrar pela primeira vez', ['Abra o endereço que veio no WhatsApp.', 'Toque em <b class="bt">Primeiro acesso</b>.', 'Digite o e-mail cadastrado e o código de acesso da mensagem (8 letras e números).', 'Crie uma senha com pelo menos 8 caracteres, com letras e números, e repita.', 'Toque em <b class="bt">Criar senha e entrar</b>.'], 'O sistema abre a sua tela. Das próximas vezes, use <b>Já tenho senha</b>.'))
 A(passos('quando esquecer a senha', ['Toque em <b class="bt">Esqueci a senha</b>.', 'Digite o seu e-mail e toque em <b class="bt">Pedir novo acesso</b>.', 'Aguarde o código novo, que a coordenação geral manda pelo WhatsApp do seu cadastro.', 'Entre em <b class="bt">Primeiro acesso</b> com o código e crie outra senha.'], 'Você volta a entrar com a senha nova. Seus dados não se perdem.'))
