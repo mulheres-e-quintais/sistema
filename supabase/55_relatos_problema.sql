@@ -35,7 +35,7 @@ drop trigger if exists relatos_problema_nao_apaga on public.relatos_problema;
 create trigger relatos_problema_nao_apaga before delete on public.relatos_problema for each row execute function public.relatos_nao_apaga();
 
 create or replace function public.relatar_problema(p_texto text, p_tela text, p_versao text, p_aparelho text)
-returns uuid language plpgsql security definer set search_path = public as $$
+returns uuid language plpgsql security definer set search_path = public, pg_temp as $$
 declare eu uuid := public.meu_id(); papel text := coalesce(public.meu_papel(), ''); v uuid; t text := trim(regexp_replace(coalesce(p_texto, ''), '\s+', ' ', 'g'));
 begin
   if eu is null or papel = '' then raise exception 'Entre no sistema para relatar um problema.'; end if;
@@ -52,7 +52,7 @@ end $$;
 
 create or replace function public.listar_relatos()
 returns table (id uuid, autor text, papel text, tela text, versao text, aparelho text, texto text, status text, nota text, resolvido_em timestamptz, criado_em timestamptz, meu boolean)
-language sql stable security definer set search_path = public as $$
+language sql stable security definer set search_path = public, pg_temp as $$
   select r.id, e.nome, r.papel, r.tela, r.versao, r.aparelho, r.texto, r.status, r.nota, r.resolvido_em, r.criado_em, r.autor_id = public.meu_id()
     from public.relatos_problema r join public.equipe e on e.id = r.autor_id
    where public.meu_id() is not null and (coalesce(public.meu_papel(), '') = 'coord_geral' or r.autor_id = public.meu_id())
@@ -61,7 +61,7 @@ language sql stable security definer set search_path = public as $$
 $$;
 
 create or replace function public.resolver_relato(p_id uuid, p_nota text, p_reabrir boolean default false)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, pg_temp as $$
 declare eu uuid := public.meu_id();
 begin
   if coalesce(public.meu_papel(), '') <> 'coord_geral' then raise exception 'Só a coordenação geral marca um relato como resolvido.'; end if;
