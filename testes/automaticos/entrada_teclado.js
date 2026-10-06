@@ -1,0 +1,27 @@
+/* Tela de entrada só pelo teclado (06/10/2026): ordem do Tab, anel de foco, seletor, mostrar/ocultar senha e erro ligado ao campo.
+   Aplicativo real com um servidor que não responde (a tela de entrada aparece sem login). Uso: node entrada_teclado.js <caminho do playwright> */
+const { chromium } = require(process.argv[2]);
+const R = []; const ok = (n, c, d = '') => { R.push(!!c); console.log((c ? 'PASSOU' : 'FALHOU') + ' | ' + n + (d !== '' ? ' | ' + String(d).slice(0, 200) : '')); };
+(async () => { const b = await chromium.launch();
+  for (const [w, h] of [[1440, 900], [390, 844]]) { const ctx = await b.newContext({ viewport: { width: w, height: h } }); const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
+    await ctx.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: "window.MQ=window.MQ||{};MQ.CONFIG={supabaseUrl:'https://naoexiste.supabase.co',supabaseAnonKey:'x',semServiceWorker:true};" }));
+    await ctx.route('**naoexiste.supabase.co/**', r => r.abort('internetdisconnected')); await ctx.route('**/fonts.g*/**', r => r.abort());
+    await p.goto('http://localhost:8766/'); await p.waitForSelector('form[data-form=login]'); await p.waitForTimeout(1000); const T = w + ' px: ';
+    const quem = () => p.evaluate(() => { const e = document.activeElement, cs = getComputedStyle(e); return { id: e.id || (e.dataset.acao ? e.dataset.acao + (e.dataset.m ? ':' + e.dataset.m : '') : e.type === 'submit' ? 'entrar' : e.tagName), anel: cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) >= 2 && parseFloat(cs.outlineOffset) >= 2 }; });
+    await p.evaluate(() => document.querySelector('.ent-seg button').focus()); await p.keyboard.press('Shift+Tab'); const ordem = []; for (let i = 0; i < 8; i++) { await p.keyboard.press('Tab'); ordem.push(await quem()); }
+    ok(T + 'ordem do Tab: seletor, e-mail, senha, mostrar senha, Entrar, Esqueci a senha, ajuda', ordem.map(x => x.id).join(' > ') === 'modo-login:entrar > modo-login:primeiro > l-email > l-senha > ver-senha > entrar > modo-login:esqueci > ajuda', ordem.map(x => x.id).join(' > '));
+    ok(T + 'todo elemento mostra anel de foco de 2 px ou mais, afastado', ordem.every(x => x.anel), ordem.filter(x => !x.anel).map(x => x.id).join(','));
+    ok(T + 'o cartão diz "Área de acesso" e mantém os demais textos', await p.evaluate(() => { const t = document.querySelector('.ent-card').textContent; return /Área de acesso/.test(t) && /Que bom ver você/.test(t) && /Entre com o e-mail cadastrado pela coordenação\./.test(t) && /Esqueci a senha/.test(t) && /Precisa de ajuda para entrar\?/.test(t); }));
+    await p.fill('#l-senha', 'segredo123'); await p.focus('.ent-olho'); await p.keyboard.press('Space');
+    ok(T + 'Espaço no olho mostra a senha, sem apagar o que foi digitado, e o foco fica no botão', await p.evaluate(() => { const c = document.querySelector('#l-senha'), o = document.querySelector('.ent-olho'); return c.type === 'text' && c.value === 'segredo123' && o.getAttribute('aria-pressed') === 'true' && o.getAttribute('aria-label') === 'Ocultar a senha' && document.activeElement === o; }));
+    await p.keyboard.press('Enter'); ok(T + 'Enter no olho volta a ocultar', await p.evaluate(() => document.querySelector('#l-senha').type === 'password' && document.querySelector('.ent-olho').getAttribute('aria-pressed') === 'false' && document.querySelector('.ent-olho').getAttribute('aria-label') === 'Mostrar a senha'));
+    await p.focus('.ent-seg button[data-m=primeiro]'); await p.keyboard.press('Enter'); await p.waitForTimeout(300);
+    ok(T + 'o seletor troca pelo teclado e diz qual opção está escolhida', await p.evaluate(() => document.querySelector('.ent-seg button[data-m=primeiro]').getAttribute('aria-pressed') === 'true' && document.querySelector('.ent-seg button[data-m=entrar]').getAttribute('aria-pressed') === 'false' && !!document.querySelector('#l-cod') && document.querySelectorAll('.ent-olho').length === 2));
+    await p.focus('.ent-seg button[data-m=entrar]'); await p.keyboard.press('Space'); await p.waitForTimeout(300);
+    await p.focus('#l-email'); await p.keyboard.press('Enter'); await p.waitForTimeout(500);
+    ok(T + 'erro: mensagem em texto, ligada ao campo, com o foco no primeiro campo errado', await p.evaluate(() => { const e = document.querySelector('#l-email'), d = (e.getAttribute('aria-describedby') || '').split(' ')[0], m = d && document.getElementById(d); return e.getAttribute('aria-invalid') === 'true' && !!m && /e-mail válido/.test(m.textContent) && document.activeElement === e; }));
+    const med = await p.evaluate(() => { const a = s => Math.round(document.querySelector(s).getBoundingClientRect().height); return { seg: a('.ent-seg'), email: a('#l-email'), senha: a('#l-senha'), btn: a('.ent-btn'), olho: a('.ent-olho'), rol: document.documentElement.scrollWidth - document.documentElement.clientWidth }; });
+    ok(T + 'medidas: seletor 48 px, campos e botão 56 px, olho com 44 px ou mais, sem rolagem lateral', med.seg === 48 && med.email === 56 && med.senha === 56 && med.btn === 56 && med.olho >= 44 && med.rol <= 0, JSON.stringify(med));
+    ok(T + 'nenhum erro de página', errs.length === 0, errs.join(' | ')); await ctx.close(); }
+  console.log('\n' + R.filter(Boolean).length + ' passou, ' + R.filter(x => !x).length + ' falhou'); await b.close(); process.exit(R.every(Boolean) ? 0 : 1);
+})().catch(e => { console.log('FALHOU | erro no teste | ' + e.message.slice(0, 300)); process.exit(1); });

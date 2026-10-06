@@ -932,6 +932,8 @@
   function login() {
     const primeiro = S.modoLogin === 'primeiro';
     const aba = (id, t) => `<button type="button" data-acao="modo-login" data-m="${id}" aria-pressed="${(S.modoLogin || 'entrar') === id}">${t}</button>`;
+    // mostrar/ocultar senha: botão logo depois do campo (ordem do Tab: senha → olho → Entrar); o estado vai em aria-pressed
+    const olho = alvo => `<button type="button" class="ent-olho" data-acao="ver-senha" data-alvo="${alvo}" aria-pressed="false" aria-label="Mostrar a senha" title="Mostrar a senha"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/><path class="risco" d="M4 4l16 16"/></svg></button>`;
     const ufs = MQ.UFS.map((u, i) => `<li style="--i:${i}" title="${esc(u.nome)}"><b aria-hidden="true">${u.uf}</b><span>${esc(u.nome)}</span></li>`).join('');
     // broto desenhado (decorativo): o caule cresce e as folhas abrem
     const broto = `<svg class="ent-broto" viewBox="0 -8 220 268" aria-hidden="true" focusable="false">
@@ -957,16 +959,16 @@
       <section class="ent-acesso">
         ${S.modoLogin === 'esqueci' ? formEsqueci() : `<form class="login ent-card" data-form="login" novalidate>
           ${S.avisoLogin ? `<div class="aviso sessao-saiu" role="status">${esc(S.avisoLogin)}</div>` : ''}
-          <div><span class="eyebrow">Sistema do projeto</span><h2 class="serif">${primeiro ? 'Primeiro acesso' : 'Que bom ver você'}</h2>
+          <div class="ent-cab"><span class="eyebrow">Área de acesso</span><h2 class="serif">${primeiro ? 'Primeiro acesso' : 'Que bom ver você'}</h2>
             <p class="muted">${primeiro ? 'Crie a sua senha com o e-mail que a coordenação cadastrou.' : 'Entre com o e-mail cadastrado pela coordenação.'}</p></div>
           <span class="seg ent-seg" role="group" aria-label="Tipo de acesso">${aba('entrar', 'Já tenho senha')}${aba('primeiro', 'Primeiro acesso')}</span>
           <div class="campo"><label for="l-email">E-mail</label><input id="l-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="seu@email.com" value="${esc(S.emailDigitado || '')}" maxlength="254" required></div>
           ${primeiro ? '<div class="campo"><label for="l-cod">Código de acesso</label><input id="l-cod" name="codigo" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="ABCD-2345" required><span class="dica">Vem na mensagem que a coordenação mandou. Vale 7 dias.</span></div>' : ''}
-          <div class="campo"><label for="l-senha">${primeiro ? 'Crie uma senha' : 'Senha'}</label><input id="l-senha" name="senha" type="password" autocomplete="${primeiro ? 'new-password' : 'current-password'}" minlength="8" required>
+          <div class="campo"><label for="l-senha">${primeiro ? 'Crie uma senha' : 'Senha'}</label><span class="ent-senha"><input id="l-senha" name="senha" type="password" autocomplete="${primeiro ? 'new-password' : 'current-password'}" minlength="8" required>${olho('l-senha')}</span>
             ${primeiro ? '<span class="dica">Pelo menos 8 caracteres, com letras e números.</span>' : ''}</div>
-          ${primeiro ? '<div class="campo"><label for="l-senha2">Repita a senha</label><input id="l-senha2" name="senha2" type="password" autocomplete="new-password" required></div>' : ''}
+          ${primeiro ? '<div class="campo"><label for="l-senha2">Repita a senha</label><span class="ent-senha"><input id="l-senha2" name="senha2" type="password" autocomplete="new-password" required>' + olho('l-senha2') + '</span></div>' : ''}
           <div class="aviso erro" data-erro hidden></div>
-          <button class="btn pri ent-btn" type="submit">${primeiro ? 'Criar senha e entrar' : 'Entrar'}</button>
+          <button class="btn pri ent-btn" type="submit">${primeiro ? 'Criar senha e entrar' : 'Entrar'}<span aria-hidden="true">→</span></button>
           ${primeiro ? '' : '<button type="button" class="link ent-esqueci" data-acao="modo-login" data-m="esqueci">Esqueci a senha</button>'}
           <button type="button" class="link ent-ajuda" data-acao="ajuda" data-k="entrada">Precisa de ajuda para entrar?</button>
         </form>`}
@@ -1875,6 +1877,9 @@
       else if (a === 'ajuda') { if (S.menuAberto) { S.menuAberto = false; render(); } S.voltarFoco = el; abrirPainel({ tipo: 'ajuda', k: el.dataset.k }); }
       else if (a === 'meus-dados') { if (S.menuAberto) { S.menuAberto = false; render(); } S.voltarFoco = el; abrirPainel({ tipo: 'meus-dados' }); }
       else if (a === 'copiar-texto') { const t = el.closest('.bloco').querySelector('textarea'); try { await navigator.clipboard.writeText(t.value); toast('Mensagem copiada.'); } catch (e) { t.select(); toast('Selecione e copie a mensagem.'); } }
+      else if (a === 'ver-senha') {   // troca só o tipo do campo: o que foi digitado continua lá, e o foco fica no botão
+        const c = document.getElementById(el.dataset.alvo); if (!c) return; const ver = c.type === 'password'; c.type = ver ? 'text' : 'password';
+        el.setAttribute('aria-pressed', String(ver)); const r = ver ? 'Ocultar a senha' : 'Mostrar a senha'; el.setAttribute('aria-label', r); el.setAttribute('title', r); }
       else if (a === 'modo-login') {
         const em = $('#l-email') || $('#e-email'); if (em) S.emailDigitado = String(em.value || '').trim();   // leva o e-mail já digitado (para Primeiro acesso, Esqueci a senha e de volta)
         S.modoLogin = el.dataset.m; S.esqueciEnviado = false; render(); const f = $('#l-email') || $('#e-email'); if (f) f.focus(); }

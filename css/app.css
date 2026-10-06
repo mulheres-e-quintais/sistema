@@ -3165,3 +3165,56 @@ small { font-size: max(12px, .85em); }
 .rl-item p { margin: 0; }
 .rl-res { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
 .rl-res input { flex: 1 1 240px; min-height: 40px; padding: 8px 11px; border: 1px solid var(--campo-borda); border-radius: 8px; background: var(--surface); color: var(--ink); font: var(--t-md) var(--sans); }
+
+/* ===== Tela de entrada: refinamento (06/10/2026). Mesma identidade, mesma paleta, mesmos textos (só o sobretítulo do
+   cartão virou "Área de acesso") e uma função nova (mostrar/ocultar senha). Medidas em múltiplos de 8 px. ===== */
+.ent-fundo i { opacity: .38; }
+.ent-hero { gap: 24px; }
+.ent-t { font-size: clamp(2.2rem, 4.6vw, 3.9rem); font-weight: 600; line-height: 1.06; letter-spacing: -.025em; }
+.ent-t em::after { left: 0; right: 0; bottom: -.04em; height: 2px; opacity: .45; }
+.ent-s1 { font-weight: 500; font-size: clamp(1.15rem, 1.7vw, 1.4rem); letter-spacing: -.005em; }
+.ent-s2 { display: block; margin-top: 8px; max-width: 46ch; line-height: 1.6; }
+.ent-ufs { gap: 8px; }
+.ent-ufs li { padding: 4px 12px 4px 4px; border: 1px solid color-mix(in srgb, var(--line-2) 70%, transparent); background: color-mix(in srgb, var(--surface) 78%, transparent); font-size: var(--t-md); color: var(--ink-2); box-shadow: none; }
+@media (min-width: 901px) { .ent-ufs b { width: 22px; height: 22px; font-size: 12px; } .ent-ufs li { padding: 4px 12px 4px 4px; font-size: var(--t-md); } }
+.ent-card.login { border-radius: 20px; border: 1px solid color-mix(in srgb, var(--line) 75%, transparent); padding: clamp(24px, 3vw, 40px); gap: 16px; box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 24px 56px -28px rgba(69, 43, 26, .28); }
+.ent-cab { display: grid; gap: 8px; margin-bottom: 8px; }
+.ent-card h2 { margin: 0; font-size: clamp(24px, 2.4vw, 30px); font-weight: 600; letter-spacing: -.02em; }
+.ent-card .ent-cab .muted { font-size: var(--t-md); color: var(--muted); }
+/* seletor: trilho claro com a opção ativa em destaque (não parece dois botões) */
+.ent-seg.seg { height: 48px; padding: 4px; gap: 4px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); overflow: visible; }
+.ent-seg.seg button { height: 100%; padding: 0 12px; border-radius: 8px; border: 0; font: 600 var(--t-md)/1 var(--sans); color: var(--ink-2); transition: background-color .18s ease, color .18s ease, box-shadow .18s ease; }
+.ent-seg.seg button + button { border-left: 0; }
+.ent-seg.seg button:hover:not([aria-pressed="true"]) { background: color-mix(in srgb, var(--surface) 70%, transparent); color: var(--ink); }
+.ent-seg.seg button[aria-pressed="true"] { background: var(--sel-bg); color: var(--sel-ink); box-shadow: 0 2px 6px -2px rgba(69, 43, 26, .45); }
+/* campos */
+.ent-card .campo { gap: 8px; }
+.ent-card .campo > label { font: 600 var(--t-sm)/1.2 var(--sans); color: var(--ink); }
+.ent-card.login .campo input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]), .ent-card.login .campo select { height: 56px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--campo-borda); font-size: var(--t-lg); background: var(--surface); transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease; }
+.ent-card input:not([type=checkbox]):not([type=radio]):hover:not(:focus):not(:disabled) { border-color: var(--ink-2); }
+.ent-card input:not([type=checkbox]):not([type=radio]):disabled { background: var(--surface-2); color: var(--muted); cursor: not-allowed; }
+.ent-card input[aria-invalid="true"] { border-color: var(--crit); border-width: 2px; }
+.ent-senha { position: relative; display: block; }
+.ent-senha input { width: 100%; padding-right: 56px !important; }
+.ent-olho { position: absolute; top: 4px; right: 4px; width: 48px; height: 48px; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); cursor: pointer; transition: background-color .15s ease, color .15s ease; }
+.ent-olho:hover { background: var(--surface-2); color: var(--ink); }
+.ent-olho .risco { opacity: 0; transition: opacity .15s ease; }
+.ent-olho[aria-pressed="true"] { color: var(--accent); } .ent-olho[aria-pressed="true"] .risco { opacity: 1; }
+/* botão principal */
+.ent-btn { height: 56px; border-radius: 12px; font: 600 var(--t-lg)/1 var(--sans); gap: 10px; margin-top: 8px; transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease; }
+.ent-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 24px -14px color-mix(in srgb, var(--accent) 80%, transparent); }
+.ent-btn:active { transform: none; box-shadow: none; }
+.ent-btn span { display: inline-block; }
+/* links: sem sublinhado permanente; "Esqueci a senha" mais forte, ajuda mais discreta */
+.ent-card .link { text-decoration: none; border-radius: 6px; padding: 4px 8px; transition: color .15s ease, background-color .15s ease; }
+.ent-card .link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.ent-esqueci { justify-self: center; font: 600 var(--t-md)/1.3 var(--sans); color: var(--accent); }
+.ent-ajuda { justify-self: center; font: 500 var(--t-sm)/1.3 var(--sans); color: var(--muted) !important; }
+.ent-ajuda:hover { color: var(--ink) !important; }
+/* foco pelo teclado: anel de 3 px afastado 3 px, diferente do hover, sem mexer no layout */
+.ent-card :focus-visible, .ent-olho:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+.ent-card input:not([type=checkbox]):not([type=radio]):focus { border-color: var(--focus); box-shadow: none; outline: 3px solid var(--focus); outline-offset: 3px; }
+.ent-seg.seg button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; box-shadow: none; z-index: 1; }
+.ent-seg.seg button[aria-pressed="true"]:focus-visible { outline-color: var(--focus); box-shadow: 0 0 0 2px var(--surface) inset; }
+@media (max-width: 900px) { .ent-ufs li { border: 0; background: none; padding: 0; } .ent-seg.seg button { font-size: var(--t-sm); padding: 0 6px; } .ent-card.login { padding: 24px; } .ent-t { font-size: clamp(2rem, 8.4vw, 2.7rem); } .ent { gap: 16px; } .ent-acesso { margin-top: 8px; } }
+@media (prefers-reduced-motion: reduce) { .ent-seg.seg button, .ent-btn, .ent-olho, .ent-olho .risco, .ent-card .link, .ent-card input { transition: none !important; } .ent-btn:hover { transform: none; } }

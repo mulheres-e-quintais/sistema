@@ -17,6 +17,7 @@
         ['Aparece "confira o e-mail e o código de acesso".', 'O e-mail tem de ser exatamente o do cadastro (confira pontos e o final @gmail.com, @ifrn.edu.br…). O código vale 7 dias e uma vez só. Se venceu ou se perdeu, peça um novo à coordenação pelo WhatsApp (84) 9 9992-7943.'],
         ['Aparece "Este e-mail já tem senha".', 'Você já fez o primeiro acesso. Use "Já tenho senha".'],
         ['Quero trocar a minha senha.', 'Toque na sua foto ou nas suas iniciais, no alto, para abrir <b>Meus dados</b>. Abra <b>Trocar minha senha</b>, digite a senha atual, a nova duas vezes e toque em <b>Trocar senha</b>.'],
+        ['Quero ver a senha que estou digitando.', 'Toque no <b>olho</b>, dentro do campo da senha: ele mostra o que você digitou. Toque de novo para esconder. Use quando ninguém estiver olhando a sua tela.'],
         ['Esqueci a senha.', 'Na tela de entrada, toque em <b>Esqueci a senha</b>, digite o seu e-mail e toque em <b>Pedir novo acesso</b>. A coordenação geral recebe o pedido e manda um código novo para o WhatsApp do seu cadastro. Com o código, entre em <b>Primeiro acesso</b> e crie outra senha. Seus dados não se perdem.'],
         ['Não recebi e-mail do sistema.', 'É normal: o sistema não manda e-mail. Quem cadastrou você manda o aviso de acesso, com o código, pelo WhatsApp.'],
         ['Por que esse código?', 'Ele garante que só você crie a senha da sua conta. Sem ele, qualquer pessoa que soubesse o seu e-mail poderia entrar no seu lugar.']
