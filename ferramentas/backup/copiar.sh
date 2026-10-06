@@ -59,4 +59,4 @@ mkdir -p "$DESTINO/antigas"
 ls -1t "$DESTINO"/mq_*.dump.enc 2>/dev/null | tail -n +13 | while read -r velho; do mv "$velho" "$velho.sha256" "$DESTINO/antigas/" 2>/dev/null || true; done
 
 echo "Cópia guardada: $ARQ ($(du -h "$ARQ" | cut -f1)), com $N tabelas de dados."
-echo "Agora teste se ela abre:  bash ferramentas/backup/testar.sh \"$ARQ\""
+echo "Agora teste se ela abre:  bash \"$(dirname "$0")/testar.sh\" \"$ARQ\""
