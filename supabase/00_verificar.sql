@@ -2,7 +2,8 @@
 -- Mulheres & Quintais — VERIFICAR o banco (só lê, não muda nada)
 -- Supabase > SQL Editor > New query > cole este arquivo inteiro > Run.
 -- Mostra, etapa por etapa, o que já está instalado. Onde aparecer "FALTA", rode aquele script
--- (na ordem 01, 02, 03, 04, 07, 08, 09, 10, 11, 12, 13, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47). Todos podem rodar de novo sem estragar nada.
+-- (na ordem 01, 02, 03, 04, 07, 08, 09, 10, 11, 12, 13, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 50, 51, 52, 53, 55).
+-- Num banco que já está em uso, rode só o que aparecer como FALTA: reexecutar um script antigo pode trocar uma função já corrigida pela versão velha.
 -- =====================================================================
 with col as (select table_name, column_name from information_schema.columns where table_schema = 'public'),
 fn as (select proname from pg_proc where pronamespace = 'public'::regnamespace),
@@ -127,6 +128,7 @@ chk as (
                    and exists (select 1 from pg_proc where proname = 'vitrine_municipios' and prosrc like '%sem_acento%')
   union all select '52_acompanhamento (perfis de acompanhamento do MDA e do MPA)', to_regclass('public.observadores') is not null and exists (select 1 from pg_proc where proname = 'acompanhamento_dados') and exists (select 1 from pg_proc where proname = 'bloquear_conta_nao_cadastrada' and prosrc like '%observadores%')
   union all select '51_kit_itens (itens do kit com preço de referência)', to_regclass('public.kit_itens') is not null and exists (select 1 from pg_proc where proname = 'salvar_kit_item')
+  union all select '55_relatos_problema (relatar problema no sistema)', to_regclass('public.relatos_problema') is not null and exists (select 1 from pg_proc where proname = 'relatar_problema') and exists (select 1 from pg_proc where proname = 'listar_relatos') and exists (select 1 from pg_proc where proname = 'resolver_relato')
   union all select '50_limite_professores (no máximo 2 professores do FIC ativos)', exists (select 1 from pg_trigger where not tgisinternal and tgname = 'equipe_limite_professores') and exists (select 1 from pg_trigger where not tgisinternal and tgname = 'convites_limite_professores')
   union all select '47_auditoria_bd (correções da auditoria do banco de dados)',
                    (select count(*) from fn where proname in ('aprovar_pre_cadastro', 'minhas_fichas', 'trava_aviso', 'cpf_valido', 'limites_texto', 'chave_fixa', 'equipe_solta_login')) = 7
