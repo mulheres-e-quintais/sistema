@@ -53,7 +53,7 @@ function carregar(arquivos, opcoes = {}) {
     navigator: { onLine: true, userAgent: 'node-teste' }, location: { origin: 'https://exemplo.test', pathname: '/sistema/', hash: '', host: 'exemplo.test' },
     document: documento, FormData: FormDataFalso, crypto: globalThis.crypto, fetch: async () => { throw new Error('Failed to fetch'); },
     addEventListener(tipo, fn) { (ouvintesJanela[tipo] = ouvintesJanela[tipo] || []).push(fn); }, removeEventListener() {}, matchMedia: () => ({ matches: false, addEventListener() {} }),
-    Event: class { constructor(t) { this.type = t; } }, indexedDB: undefined,
+    Event: class { constructor(t) { this.type = t; } }, indexedDB: undefined, AbortController, TypeError,
     MutationObserver: class { observe() {} disconnect() {} }, TextDecoder, Blob, Response, DecompressionStream, requestAnimationFrame: fn => setTimeout(fn, 0), scrollTo() {}, scrollY: 0, innerWidth: 390
   };
   janela.window = janela; janela.self = janela; janela.globalThis = janela;

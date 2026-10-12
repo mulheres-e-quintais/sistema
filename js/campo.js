@@ -88,6 +88,8 @@
     S().fila.filter(i => i.tipo === 'visita').forEach(i => m.set(i.id, Object.assign(MQ.juntarFila(m.get(i.id), i), { _fila: true, _erro: i.erro })));
     // diagnóstico ainda na fila marca a visita como feita (para quem está sem internet)
     S().fila.filter(i => i.tipo === 'diagnostico').forEach(i => { const v = m.get(i.dados.visita_id); if (v) { v.situacao = 'realizada'; v.data_realizada = i.dados.data_visita; } });
+    // 16: a avaliação ainda na fila também (antes a visita aparecia como não feita e a pessoa registrava de novo)
+    S().fila.filter(i => i.tipo === 'avaliacao' && !i.conflito).forEach(i => { const v = m.get(i.dados && i.dados.visita_id); if (v) { v.situacao = 'realizada'; v.data_realizada = i.dados.data_visita; } });
     return [...m.values()];
   }
   function diagnosticosCalc() {

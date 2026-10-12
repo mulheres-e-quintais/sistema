@@ -90,6 +90,10 @@
 
   /* ---------- visita de avaliação ---------- */
   const avaliacoes = () => S().avaliacoes || [];
+  /* 16: a do servidor com a que ainda está só neste aparelho por cima (para ver e corrigir sem internet) */
+  const avaliacoesComFila = () => { const m = new Map(avaliacoes().map(a => [a.id, a]));
+    (S().fila || []).filter(i => i.tipo === 'avaliacao' && i.dados).forEach(i => m.set(i.id, Object.assign(MQ.juntarFila(m.get(i.id), i), { _fila: true, _erro: i.erro })));
+    return [...m.values()]; };
   const fotosAv = {};
   function painelForm(p) {
     const f = (S().fichas || []).find(x => x.id === p.ficha); if (!f) return '<div class="painel-corpo"><p>Ficha não encontrada.</p></div>';
@@ -101,7 +105,7 @@
     const base = dg && dg.dados && dg.dados.impacto;
     const a = atual ? Object.assign({}, atual, atual.dados || {}) : { id: MQ.novoId(), data_visita: R.hoje(), latitude: dg ? dg.latitude : null, longitude: dg ? dg.longitude : null };
     const v = k => E(a[k] == null ? '' : a[k]);
-    const foto = (k, t) => `<div class="campo"><label for="av-f-${k}">${t}${k === 'geral' ? ' *' : ''}</label><input id="av-f-${k}" type="file" accept="image/*" capture="environment" data-foto-av="${k}"><span class="dica" id="av-f-${k}-dica">${(a.fotos || []).some(x => new RegExp('aval_' + k).test(x)) ? 'Já tem foto. Envie outra só para trocar.' : k === 'geral' ? 'Obrigatória.' : ''}</span></div>`;
+    const foto = (k, t) => `<div class="campo"><label for="av-f-${k}">${t}${k === 'geral' ? ' *' : ''}</label><input id="av-f-${k}" type="file" accept="image/*" capture="environment" data-foto-av="${k}"><span class="dica" id="av-f-${k}-dica">${fotosAv[k] ? 'Foto pronta (guardada neste aparelho).' : (a.fotos || []).some(x => new RegExp('aval_' + k).test(x)) ? 'Já tem foto. Envie outra só para trocar.' : k === 'geral' ? 'Obrigatória.' : ''}</span></div>`;
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">Avaliação final · ${E(f.uf)}</span><h2 id="painel-t">${E(f.nome)}</h2><span class="small">${E(f.municipio)} · ${E(f.comunidade || '')}</span></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo"><form class="f" data-form="aval" data-id="${E(a.id)}" data-ficha="${E(f.id)}" data-visita="${E(p.visita || a.visita_id || '')}" novalidate>
@@ -187,15 +191,16 @@
   const G = { uf: '' };
 
   function painelVer(p) {
-    const a = avaliacoes().find(x => x.ficha_id === p.ficha); const f = (S().fichas || []).find(x => x.id === p.ficha);
+    const a = avaliacoesComFila().find(x => x.ficha_id === p.ficha); const f = (S().fichas || []).find(x => x.id === p.ficha);
     if (!a || !f) return '<div class="painel-corpo"><p>Avaliação não encontrada.</p></div>';
     const d = a.dados || {}; const dg = (S().diagnosticos || []).find(x => x.ficha_id === f.id); const b = dg && dg.dados && dg.dados.impacto; const im = d.impacto || {};
     const lin = (t, x, y) => `<tr><td>${E(t)}</td><td>${E(x ?? '—')}</td><td><b>${E(y ?? '—')}</b></td></tr>`;
-    const eu = S().eu; const pode = (R.ehBolsista(eu.papel) && eu.uf === a.uf) || a.executor_id === eu.id;
+    const eu = S().eu; const pode = (R.ehBolsista(eu.papel) && eu.uf === a.uf) || a.executor_id === eu.id || !!a._fila;   // 16: a que está na fila deste aparelho foi ela quem fez
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">Avaliação final · ${E(f.uf)}</span><h2 id="painel-t">${E(f.nome)}</h2>
         <span class="small">${R.fmtData(a.data_visita)} · quintal ${({ sim: 'produzindo', em_parte: 'produzindo em parte', nao: 'sem produzir' })[a.quintal_produz]}</span></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo">
+        ${a._fila ? `<p class="aviso${a._erro ? ' erro' : ''}" role="status">${a._erro ? '<b>Não foi aceita:</b> ' + E(a._erro) + ' Toque em Corrigir, ajuste e salve de novo.' : 'Guardada neste aparelho: é enviada quando houver internet.'}</p>` : ''}
         ${pode ? `<div class="acoes"><button class="btn" data-acao="aval-novo" data-ficha="${E(f.id)}">Corrigir</button></div>` : ''}
         <div class="bloco"><h3>Antes × depois</h3><table class="tab-uf"><thead><tr><th>Medida</th><th>Diagnóstico</th><th>Avaliação</th></tr></thead><tbody>
           ${lin('Alimentação (EBIA)', b && NIVEL[b.ebia_nivel], NIVEL[im.ebia_nivel])}
@@ -219,7 +224,12 @@
 
   async function clique(a, el) {
     if (a === 'imp-uf') { G.uf = el.dataset.uf; U().render(); return; }
-    if (a === 'aval-novo') { Object.keys(fotosAv).forEach(k => delete fotosAv[k]); if (MQ.fotoDia) MQ.fotoDia.marcarDias('avaliacao', { ficha_id: el.dataset.ficha }, null); U().abrirPainel({ tipo: 'aval-form', ficha: el.dataset.ficha, visita: el.dataset.visita }); return; }
+    if (a === 'aval-novo') { Object.keys(fotosAv).forEach(k => delete fotosAv[k]);
+      // 16: avaliação ainda não enviada: a correção mantém as fotos que estão na fila (antes elas sumiam e podiam ser trocadas)
+      const naFila = (S().fila || []).find(i => i.tipo === 'avaliacao' && i.dados && i.dados.ficha_id === el.dataset.ficha);
+      if (naFila && naFila.fotos) Object.assign(fotosAv, naFila.fotos);
+      if (MQ.fotoDia) MQ.fotoDia.marcarDias('avaliacao', { ficha_id: el.dataset.ficha }, naFila ? naFila.fotosDias : null);
+      U().abrirPainel({ tipo: 'aval-form', ficha: el.dataset.ficha, visita: el.dataset.visita }); return; }
     if (a === 'aval-ver') { U().abrirPainel({ tipo: 'aval-ver', ficha: el.dataset.ficha }); return; }
     if (a === 'aval-gps') {
       const dica = document.getElementById('av-gps-dica'); const fm = document.querySelector('form[data-form=aval]');

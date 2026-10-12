@@ -2342,12 +2342,29 @@ MQ.ORCAMENTO = {
     });
   }
 
+  /* 17 (auditoria de 12/10/2026): com sinal que engana (rede "conectada" que não responde), a chamada esperava para
+     sempre e o botão ficava em "Salvando…". Agora cada chamada tem prazo: 30 s para dados, 120 s para enviar arquivo
+     (foto, termo). Passou do prazo, conta como falta de internet: o registro fica na fila e é enviado depois. */
+  MQ.prazoRede = { dados: 30000, arquivo: 120000 };
+  function fetchComPrazo(url, op) {
+    const ehArquivo = /\/storage\/v1\/object/.test(String(url && url.url || url)) && op && op.method && op.method !== 'GET';
+    const prazo = ehArquivo ? MQ.prazoRede.arquivo : MQ.prazoRede.dados;
+    if (typeof AbortController === 'undefined') return fetch(url, op);
+    const ctl = new AbortController(); let esgotou = false;
+    const t = setTimeout(() => { esgotou = true; ctl.abort(); }, prazo);
+    // quem chamou também pode cancelar (o sinal de quem chamou continua valendo)
+    if (op && op.signal) { if (op.signal.aborted) ctl.abort(); else op.signal.addEventListener('abort', () => ctl.abort(), { once: true }); }
+    return fetch(url, Object.assign({}, op, { signal: ctl.signal }))
+      .catch(e => { if (esgotou) throw new TypeError('Failed to fetch: o servidor não respondeu em ' + Math.round(prazo / 1000) + ' segundos'); throw e; })
+      .finally(() => clearTimeout(t));
+  }
+  MQ.fetchComPrazo = fetchComPrazo;
+  const opcoesCliente = extra => ({ global: { fetch: fetchComPrazo }, auth: Object.assign({ persistSession: true }, extra || {}) });
+
   MQ.apiSupabase = {
     modo: 'supabase',
     async iniciar() {
-      sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, {
-        auth: { persistSession: true, detectSessionInUrl: true }
-      });
+      sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, opcoesCliente({ detectSessionInUrl: true }));
       let sessao = null;
       try { sessao = (await sb.auth.getSession()).data.session; } catch (e) { /* sem rede */ }
       const guardado = lerEuGuardado();
@@ -2452,7 +2469,7 @@ MQ.ORCAMENTO = {
     },
     /* ---------- "Esqueci a senha" (28_pedido_novo_acesso.sql) ---------- */
     async pedirNovoAcesso(email) {   // sem login; a resposta é sempre a mesma
-      if (!sb) sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, { auth: { persistSession: true } });
+      if (!sb) sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, opcoesCliente());
       const { error } = await sb.rpc('pedir_novo_acesso', { p_email: email });
       if (error) throw erro(/pedir_novo_acesso|PGRST202/.test(error.message) ? 'O pedido de novo acesso ainda não está instalado. Fale direto com a coordenação geral.' : error);
     },
@@ -2579,7 +2596,7 @@ MQ.ORCAMENTO = {
       return data;
     },
     async verConvite(token) {
-      if (!sb) sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, { auth: { persistSession: true } });
+      if (!sb) sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, opcoesCliente());
       const { data, error } = await sb.rpc('ver_convite', { p_token: token });
       if (error) throw erro(error); return data;
     },
@@ -2673,7 +2690,7 @@ MQ.ORCAMENTO = {
       l.forEach(f => { try { f.url = sb.storage.from('vitrine').getPublicUrl(f.path).data.publicUrl || ''; } catch (e) { f.url = ''; } });
     },
     async vitrine() {
-      if (!sb) sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, { auth: { persistSession: true } });
+      if (!sb) sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, opcoesCliente());
       const { data, error } = await sb.rpc('vitrine');
       if (error) throw erro(error);
       if (!data) return { fotos: [] };   // resposta vazia do servidor: a página pública abre sem fotos, não quebra
@@ -4776,6 +4793,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     S().fila.filter(i => i.tipo === 'visita').forEach(i => m.set(i.id, Object.assign(MQ.juntarFila(m.get(i.id), i), { _fila: true, _erro: i.erro })));
     // diagnóstico ainda na fila marca a visita como feita (para quem está sem internet)
     S().fila.filter(i => i.tipo === 'diagnostico').forEach(i => { const v = m.get(i.dados.visita_id); if (v) { v.situacao = 'realizada'; v.data_realizada = i.dados.data_visita; } });
+    // 16: a avaliação ainda na fila também (antes a visita aparecia como não feita e a pessoa registrava de novo)
+    S().fila.filter(i => i.tipo === 'avaliacao' && !i.conflito).forEach(i => { const v = m.get(i.dados && i.dados.visita_id); if (v) { v.situacao = 'realizada'; v.data_realizada = i.dados.data_visita; } });
     return [...m.values()];
   }
   function diagnosticosCalc() {
@@ -9313,6 +9332,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   /* ---------- visita de avaliação ---------- */
   const avaliacoes = () => S().avaliacoes || [];
+  /* 16: a do servidor com a que ainda está só neste aparelho por cima (para ver e corrigir sem internet) */
+  const avaliacoesComFila = () => { const m = new Map(avaliacoes().map(a => [a.id, a]));
+    (S().fila || []).filter(i => i.tipo === 'avaliacao' && i.dados).forEach(i => m.set(i.id, Object.assign(MQ.juntarFila(m.get(i.id), i), { _fila: true, _erro: i.erro })));
+    return [...m.values()]; };
   const fotosAv = {};
   function painelForm(p) {
     const f = (S().fichas || []).find(x => x.id === p.ficha); if (!f) return '<div class="painel-corpo"><p>Ficha não encontrada.</p></div>';
@@ -9324,7 +9347,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const base = dg && dg.dados && dg.dados.impacto;
     const a = atual ? Object.assign({}, atual, atual.dados || {}) : { id: MQ.novoId(), data_visita: R.hoje(), latitude: dg ? dg.latitude : null, longitude: dg ? dg.longitude : null };
     const v = k => E(a[k] == null ? '' : a[k]);
-    const foto = (k, t) => `<div class="campo"><label for="av-f-${k}">${t}${k === 'geral' ? ' *' : ''}</label><input id="av-f-${k}" type="file" accept="image/*" capture="environment" data-foto-av="${k}"><span class="dica" id="av-f-${k}-dica">${(a.fotos || []).some(x => new RegExp('aval_' + k).test(x)) ? 'Já tem foto. Envie outra só para trocar.' : k === 'geral' ? 'Obrigatória.' : ''}</span></div>`;
+    const foto = (k, t) => `<div class="campo"><label for="av-f-${k}">${t}${k === 'geral' ? ' *' : ''}</label><input id="av-f-${k}" type="file" accept="image/*" capture="environment" data-foto-av="${k}"><span class="dica" id="av-f-${k}-dica">${fotosAv[k] ? 'Foto pronta (guardada neste aparelho).' : (a.fotos || []).some(x => new RegExp('aval_' + k).test(x)) ? 'Já tem foto. Envie outra só para trocar.' : k === 'geral' ? 'Obrigatória.' : ''}</span></div>`;
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">Avaliação final · ${E(f.uf)}</span><h2 id="painel-t">${E(f.nome)}</h2><span class="small">${E(f.municipio)} · ${E(f.comunidade || '')}</span></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo"><form class="f" data-form="aval" data-id="${E(a.id)}" data-ficha="${E(f.id)}" data-visita="${E(p.visita || a.visita_id || '')}" novalidate>
@@ -9410,15 +9433,16 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const G = { uf: '' };
 
   function painelVer(p) {
-    const a = avaliacoes().find(x => x.ficha_id === p.ficha); const f = (S().fichas || []).find(x => x.id === p.ficha);
+    const a = avaliacoesComFila().find(x => x.ficha_id === p.ficha); const f = (S().fichas || []).find(x => x.id === p.ficha);
     if (!a || !f) return '<div class="painel-corpo"><p>Avaliação não encontrada.</p></div>';
     const d = a.dados || {}; const dg = (S().diagnosticos || []).find(x => x.ficha_id === f.id); const b = dg && dg.dados && dg.dados.impacto; const im = d.impacto || {};
     const lin = (t, x, y) => `<tr><td>${E(t)}</td><td>${E(x ?? '—')}</td><td><b>${E(y ?? '—')}</b></td></tr>`;
-    const eu = S().eu; const pode = (R.ehBolsista(eu.papel) && eu.uf === a.uf) || a.executor_id === eu.id;
+    const eu = S().eu; const pode = (R.ehBolsista(eu.papel) && eu.uf === a.uf) || a.executor_id === eu.id || !!a._fila;   // 16: a que está na fila deste aparelho foi ela quem fez
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">Avaliação final · ${E(f.uf)}</span><h2 id="painel-t">${E(f.nome)}</h2>
         <span class="small">${R.fmtData(a.data_visita)} · quintal ${({ sim: 'produzindo', em_parte: 'produzindo em parte', nao: 'sem produzir' })[a.quintal_produz]}</span></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo">
+        ${a._fila ? `<p class="aviso${a._erro ? ' erro' : ''}" role="status">${a._erro ? '<b>Não foi aceita:</b> ' + E(a._erro) + ' Toque em Corrigir, ajuste e salve de novo.' : 'Guardada neste aparelho: é enviada quando houver internet.'}</p>` : ''}
         ${pode ? `<div class="acoes"><button class="btn" data-acao="aval-novo" data-ficha="${E(f.id)}">Corrigir</button></div>` : ''}
         <div class="bloco"><h3>Antes × depois</h3><table class="tab-uf"><thead><tr><th>Medida</th><th>Diagnóstico</th><th>Avaliação</th></tr></thead><tbody>
           ${lin('Alimentação (EBIA)', b && NIVEL[b.ebia_nivel], NIVEL[im.ebia_nivel])}
@@ -9442,7 +9466,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   async function clique(a, el) {
     if (a === 'imp-uf') { G.uf = el.dataset.uf; U().render(); return; }
-    if (a === 'aval-novo') { Object.keys(fotosAv).forEach(k => delete fotosAv[k]); if (MQ.fotoDia) MQ.fotoDia.marcarDias('avaliacao', { ficha_id: el.dataset.ficha }, null); U().abrirPainel({ tipo: 'aval-form', ficha: el.dataset.ficha, visita: el.dataset.visita }); return; }
+    if (a === 'aval-novo') { Object.keys(fotosAv).forEach(k => delete fotosAv[k]);
+      // 16: avaliação ainda não enviada: a correção mantém as fotos que estão na fila (antes elas sumiam e podiam ser trocadas)
+      const naFila = (S().fila || []).find(i => i.tipo === 'avaliacao' && i.dados && i.dados.ficha_id === el.dataset.ficha);
+      if (naFila && naFila.fotos) Object.assign(fotosAv, naFila.fotos);
+      if (MQ.fotoDia) MQ.fotoDia.marcarDias('avaliacao', { ficha_id: el.dataset.ficha }, naFila ? naFila.fotosDias : null);
+      U().abrirPainel({ tipo: 'aval-form', ficha: el.dataset.ficha, visita: el.dataset.visita }); return; }
     if (a === 'aval-ver') { U().abrirPainel({ tipo: 'aval-ver', ficha: el.dataset.ficha }); return; }
     if (a === 'aval-gps') {
       const dica = document.getElementById('av-gps-dica'); const fm = document.querySelector('form[data-form=aval]');

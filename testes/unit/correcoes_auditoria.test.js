@@ -142,3 +142,37 @@ describe('Itens 10, 12, 13 e 14 (script 57)', () => {
     assert.match(h, /só a coordenação geral desliga assim mesmo/);
   });
 });
+
+describe('Itens 16 e 17', () => {
+  test('17. chamada ao servidor sem resposta: desiste no prazo e conta como falta de internet (vai para a fila)', async () => {
+    const t = await montar('bolsista'); const M = t.MQ;
+    M.prazoRede.dados = 50; M.prazoRede.arquivo = 200;
+    let sinal = null;
+    t.janela.fetch = (url, op) => new Promise((res, rej) => { sinal = op.signal; op.signal.addEventListener('abort', () => rej(new Error('The operation was aborted.'))); });
+    const ini = Date.now();
+    await assert.rejects(M.fetchComPrazo('https://x.supabase.co/rest/v1/visitas', { method: 'POST' }), e => /Failed to fetch/.test(e.message) && /30|0 segundos|segundos/.test(e.message));
+    assert.ok(Date.now() - ini < 1000, 'desistiu no prazo'); assert.equal(sinal.aborted, true);
+    // envio de arquivo tem prazo maior
+    const ini2 = Date.now();
+    await assert.rejects(M.fetchComPrazo('https://x.supabase.co/storage/v1/object/campo/a.jpg', { method: 'POST' }), /Failed to fetch/);
+    assert.ok(Date.now() - ini2 >= 150, 'arquivo espera mais');
+    assert.equal(M.falhaPassageira(new Error('Failed to fetch: o servidor não respondeu em 30 segundos')), true, 'tenta de novo sozinho');
+    // resposta que chega a tempo passa normal
+    t.janela.fetch = async () => ({ ok: true, status: 200 });
+    assert.equal((await M.fetchComPrazo('https://x.supabase.co/rest/v1/visitas', {})).status, 200);
+  });
+  test('16. avaliação na fila: a visita aparece feita, "Ver avaliação" abre com o aviso e a correção mantém as fotos', async () => {
+    const t = await montar('bolsista'); const S = t.S;
+    const v = (S.visitas || []).find(x => x.etapa === 'avaliacao' && x.situacao === 'prevista' && x.uf === S.eu.uf) || (S.visitas || []).find(x => x.situacao === 'prevista' && x.uf === S.eu.uf);
+    assert.ok(v, 'há visita prevista no exemplo');
+    S.visitas = S.visitas.map(x => x.id === v.id ? Object.assign({}, x, { etapa: 'avaliacao' }) : x);
+    const foto = { size: 1234, type: 'image/jpeg' };
+    S.fila = [{ id: 'av-fila', tipo: 'avaliacao', dados: { id: 'av-fila', ficha_id: v.ficha_id, visita_id: v.id, uf: v.uf, data_visita: t.MQ.regras.hoje(), quintal_produz: 'sim', dados: {} }, fotos: { geral: foto }, erro: null }];
+    assert.equal(t.MQ.campoUI.visitas().find(x => x.id === v.id).situacao, 'realizada', 'visita aparece feita');
+    const h = texto(t.painel({ tipo: 'aval-ver', ficha: v.ficha_id }));
+    assert.match(h, /Guardada neste aparelho/); assert.match(h, /Corrigir/);
+    await t.MQ.impactoUI.clique('aval-novo', { dataset: { ficha: v.ficha_id } });
+    const hf = texto(t.painel({ tipo: 'aval-form', ficha: v.ficha_id, visita: v.id }));
+    assert.match(hf, /Foto pronta \(guardada neste aparelho\)/, 'a foto da fila voltou para a correção');
+  });
+});

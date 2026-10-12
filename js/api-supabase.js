@@ -67,12 +67,29 @@
     });
   }
 
+  /* 17 (auditoria de 12/10/2026): com sinal que engana (rede "conectada" que não responde), a chamada esperava para
+     sempre e o botão ficava em "Salvando…". Agora cada chamada tem prazo: 30 s para dados, 120 s para enviar arquivo
+     (foto, termo). Passou do prazo, conta como falta de internet: o registro fica na fila e é enviado depois. */
+  MQ.prazoRede = { dados: 30000, arquivo: 120000 };
+  function fetchComPrazo(url, op) {
+    const ehArquivo = /\/storage\/v1\/object/.test(String(url && url.url || url)) && op && op.method && op.method !== 'GET';
+    const prazo = ehArquivo ? MQ.prazoRede.arquivo : MQ.prazoRede.dados;
+    if (typeof AbortController === 'undefined') return fetch(url, op);
+    const ctl = new AbortController(); let esgotou = false;
+    const t = setTimeout(() => { esgotou = true; ctl.abort(); }, prazo);
+    // quem chamou também pode cancelar (o sinal de quem chamou continua valendo)
+    if (op && op.signal) { if (op.signal.aborted) ctl.abort(); else op.signal.addEventListener('abort', () => ctl.abort(), { once: true }); }
+    return fetch(url, Object.assign({}, op, { signal: ctl.signal }))
+      .catch(e => { if (esgotou) throw new TypeError('Failed to fetch: o servidor não respondeu em ' + Math.round(prazo / 1000) + ' segundos'); throw e; })
+      .finally(() => clearTimeout(t));
+  }
+  MQ.fetchComPrazo = fetchComPrazo;
+  const opcoesCliente = extra => ({ global: { fetch: fetchComPrazo }, auth: Object.assign({ persistSession: true }, extra || {}) });
+
   MQ.apiSupabase = {
     modo: 'supabase',
     async iniciar() {
-      sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, {
-        auth: { persistSession: true, detectSessionInUrl: true }
-      });
+      sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, opcoesCliente({ detectSessionInUrl: true }));
       let sessao = null;
       try { sessao = (await sb.auth.getSession()).data.session; } catch (e) { /* sem rede */ }
       const guardado = lerEuGuardado();
@@ -177,7 +194,7 @@
     },
     /* ---------- "Esqueci a senha" (28_pedido_novo_acesso.sql) ---------- */
     async pedirNovoAcesso(email) {   // sem login; a resposta é sempre a mesma
-      if (!sb) sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, { auth: { persistSession: true } });
+      if (!sb) sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, opcoesCliente());
       const { error } = await sb.rpc('pedir_novo_acesso', { p_email: email });
       if (error) throw erro(/pedir_novo_acesso|PGRST202/.test(error.message) ? 'O pedido de novo acesso ainda não está instalado. Fale direto com a coordenação geral.' : error);
     },
@@ -304,7 +321,7 @@
       return data;
     },
     async verConvite(token) {
-      if (!sb) sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, { auth: { persistSession: true } });
+      if (!sb) sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, opcoesCliente());
       const { data, error } = await sb.rpc('ver_convite', { p_token: token });
       if (error) throw erro(error); return data;
     },
@@ -398,7 +415,7 @@
       l.forEach(f => { try { f.url = sb.storage.from('vitrine').getPublicUrl(f.path).data.publicUrl || ''; } catch (e) { f.url = ''; } });
     },
     async vitrine() {
-      if (!sb) sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, { auth: { persistSession: true } });
+      if (!sb) sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, opcoesCliente());
       const { data, error } = await sb.rpc('vitrine');
       if (error) throw erro(error);
       if (!data) return { fotos: [] };   // resposta vazia do servidor: a página pública abre sem fotos, não quebra
