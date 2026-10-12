@@ -21,7 +21,8 @@ const R = []; const ok = (n, c, d = '') => { R.push(!!c); console.log((c ? 'PASS
     await p.focus('#l-email'); await p.keyboard.press('Enter'); await p.waitForTimeout(500);
     ok(T + 'erro: mensagem em texto, ligada ao campo, com o foco no primeiro campo errado', await p.evaluate(() => { const e = document.querySelector('#l-email'), d = (e.getAttribute('aria-describedby') || '').split(' ')[0], m = d && document.getElementById(d); return e.getAttribute('aria-invalid') === 'true' && !!m && /e-mail válido/.test(m.textContent) && document.activeElement === e; }));
     const med = await p.evaluate(() => { const a = s => Math.round(document.querySelector(s).getBoundingClientRect().height); return { seg: a('.ent-seg'), email: a('#l-email'), senha: a('#l-senha'), btn: a('.ent-btn'), olho: a('.ent-olho'), rol: document.documentElement.scrollWidth - document.documentElement.clientWidth }; });
-    ok(T + 'medidas: seletor 48 px, campos e botão 56 px, olho com 44 px ou mais, sem rolagem lateral', med.seg === 48 && med.email === 56 && med.senha === 56 && med.btn === 56 && med.olho >= 44 && med.rol <= 0, JSON.stringify(med));
+    // seletor: 48 px no computador; no celular os botões têm 44 px de toque e a caixa cresce para 54 px (margem igual em cima e embaixo)
+    ok(T + 'medidas: seletor 48 px (54 no celular), campos e botão 56 px, olho com 44 px ou mais, sem rolagem lateral', med.seg === (w <= 900 ? 54 : 48) && med.email === 56 && med.senha === 56 && med.btn === 56 && med.olho >= 44 && med.rol <= 0, JSON.stringify(med));
     ok(T + 'nenhum erro de página', errs.length === 0, errs.join(' | ')); await ctx.close(); }
   console.log('\n' + R.filter(Boolean).length + ' passou, ' + R.filter(x => !x).length + ' falhou'); await b.close(); process.exit(R.every(Boolean) ? 0 : 1);
 })().catch(e => { console.log('FALHOU | erro no teste | ' + e.message.slice(0, 300)); process.exit(1); });

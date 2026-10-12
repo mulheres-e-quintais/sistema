@@ -3184,9 +3184,11 @@ small { font-size: max(12px, .85em); }
 .ent-card h2 { margin: 0; font-size: clamp(24px, 2.4vw, 30px); font-weight: 600; letter-spacing: -.02em; }
 .ent-card .ent-cab .muted { font-size: var(--t-md); color: var(--muted); }
 /* seletor: trilho claro com a opção ativa em destaque (não parece dois botões) */
-.ent-seg.seg { height: 48px; padding: 4px; gap: 4px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); overflow: visible; }
-.ent-seg.seg button { height: 100%; padding: 0 12px; border-radius: 8px; border: 0; font: 600 var(--t-md)/1 var(--sans); color: var(--ink-2); transition: background-color .18s ease, color .18s ease, box-shadow .18s ease; }
+/* altura pela do botão (no celular os botões têm no mínimo 44 px de toque): antes a caixa tinha 48 px fixos e o botão marrom passava da borda de baixo */
+.ent-seg.seg { height: auto; min-height: 48px; padding: 4px; gap: 4px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); overflow: visible; }
+.ent-seg.seg button { height: auto; min-height: 38px; padding: 0 12px; border-radius: 8px; border: 0; font: 600 var(--t-md)/1 var(--sans); color: var(--ink-2); transition: background-color .18s ease, color .18s ease, box-shadow .18s ease; }
 .ent-seg.seg button + button { border-left: 0; }
+@media (max-width: 900px) { .ent-seg.seg button { min-height: 44px; } }   /* toque de 44 px no celular; a caixa cresce junto e a margem fica igual em cima e embaixo */
 .ent-seg.seg button:hover:not([aria-pressed="true"]) { background: color-mix(in srgb, var(--surface) 70%, transparent); color: var(--ink); }
 .ent-seg.seg button[aria-pressed="true"] { background: var(--sel-bg); color: var(--sel-ink); box-shadow: 0 2px 6px -2px rgba(69, 43, 26, .45); }
 /* campos */
