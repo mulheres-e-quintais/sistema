@@ -75,6 +75,17 @@
   R.modeloTermo = x => { const m = (MQ.MODELOS_TERMO || {})[R.tipoTermo(x)]; return m && m.arquivo ? m : null; };
   /* 56: valor da bolsa da função, em reais com centavos (o banco usa o mesmo: public.valor_bolsa) */
   R.valorBolsa = papel => { const b = (MQ.PAPEIS[papel] || {}).bolsa; return papel !== 'coord_geral' && b ? Math.round(b * 100) / 100 : null; };
+  /* 57: bolsa só nos 12 meses do plano de trabalho (outubro de 2026 a setembro de 2027), como no banco */
+  R.MSG_MES_BOLSA = 'A bolsa vai de outubro de 2026 a setembro de 2027 (os 12 meses do plano de trabalho). Escolha um mês dentro desse período.';
+  /* 57: o que a pessoa ainda tem a pedir (como public.pendencias_pagamento no banco): visitas feitas que não estão
+     em pedido nenhum (ou só em pedido devolvido) e pedidos devolvidos para corrigir. Com isso, não se desliga. */
+  R.pendenciasPagamento = (id, visitas, vinculos, solicitacoes) => {
+    const sit = sid => ((solicitacoes || []).find(s => s.id === sid) || {}).situacao;
+    const vs = (visitas || []).filter(v => v.executor_id === id && v.situacao === 'realizada' && !['solicitada', 'avalizada', 'lancada'].includes(sit((vinculos || {})[v.id])));
+    const dev = (solicitacoes || []).filter(s => s.equipe_id === id && s.situacao === 'devolvida');
+    return { visitas: vs.length, devolvidos: dev.length, total: vs.length + dev.length };
+  };
+  R.mesBolsaOk = m => { const x = String(m || '').slice(0, 7); return x >= R.LIM.bolsaMesMin && x <= R.LIM.bolsaMesMax; };
   R.MSG_TERMO_SEM_ARQUIVO = 'Sem o termo anexado não há o que conferir: a data só é registrada depois que o termo preenchido e assinado estiver anexado.';
   R.MSG_TERMO_SEM_DATA = 'Você anexou o termo: confira no documento a data da assinatura e preencha aqui.';
   R.TERMO_EXT = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
@@ -203,25 +214,27 @@
 
   R.hoje = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
   /* Limites de data e de número: os MESMOS do banco (supabase/45_auditoria_qa.sql). A tela avisa antes; o banco garante. */
-  R.LIM = { visitaMin: '2026-01-01', visitaMax: '2027-12-31', equipeMin: '2025-01-01', inicioFuturoDias: 365,
+  // 57: visita só dentro da vigência do TED (14/09/2026 a 30/09/2027); antes valia de 01/01/2026 a 31/12/2027
+  const VIG = (MQ.PROJETO && MQ.PROJETO.vigencia) || { inicio: '2026-09-14', fim: '2027-09-30' };
+  R.LIM = { visitaMin: VIG.inicio, visitaMax: VIG.fim, bolsaMesMin: '2026-10', bolsaMesMax: '2027-09', equipeMin: '2025-01-01', inicioFuturoDias: 365,
     rendaMax: 100000, areaMax: 100000, idadeMax: 120, familiaMax: 30, esperaMax: 999, nome: 120, texto: 2000 };
   const dataOk = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) && !isNaN(new Date(d + 'T12:00:00'));
   R.dataValida = dataOk;
-  /* data prevista de uma visita (agendar ou remarcar): de hoje até 31/12/2027. "antiga" = a data que já estava gravada (não mudou: não trava). */
+  /* data prevista de uma visita (agendar ou remarcar): de hoje até o fim da vigência (30/09/2027). "antiga" = a data que já estava gravada (não mudou: não trava). */
   R.erroDataPrevista = (d, antiga) => {
     if (!d) return 'Informe a data.';
     if (!dataOk(d)) return 'Data inválida.';
     if (antiga && d === antiga) return null;
     if (d < R.hoje()) return 'Esta data já passou. Escolha de hoje em diante.';
-    if (d > R.LIM.visitaMax) return 'A data vai só até 31/12/2027.';
+    if (d > R.LIM.visitaMax) return 'A data vai só até ' + R.fmtData(R.LIM.visitaMax) + ', fim da vigência do projeto.';
     return null;
   };
-  /* dia em que a visita (ou o diagnóstico, a avaliação) foi feita: de 01/01/2026 até hoje */
+  /* dia em que a visita (ou o diagnóstico, a avaliação) foi feita: do início da vigência (14/09/2026) até hoje */
   R.erroDataFeita = d => {
     if (!d) return 'Informe o dia.';
     if (!dataOk(d)) return 'Data inválida.';
     if (d > R.hoje()) return 'Não pode ser no futuro.';
-    if (d < R.LIM.visitaMin) return 'Não pode ser antes de 01/01/2026 (o projeto ainda não tinha começado).';
+    if (d < R.LIM.visitaMin) return 'Não pode ser antes de ' + R.fmtData(R.LIM.visitaMin) + ', início da vigência do projeto.';
     return null;
   };
   /* datas da equipe: início (de 01/01/2025 até um ano à frente) e passos da habilitação (de 01/01/2025 até hoje) */
@@ -408,7 +421,7 @@
   R.validarDiagnostico = function (d) {
     const e = {}, L = R.LIM, fora = R.foraDaFaixa;
     if (!d.data_visita) e.data_visita = 'Informe a data da visita.'; else if (d.data_visita > R.hoje()) e.data_visita = 'Data no futuro.';
-    else if (R.dataValida(d.data_visita) && d.data_visita < L.visitaMin) e.data_visita = 'A data não pode ser antes de 01/01/2026.';
+    else if (R.dataValida(d.data_visita) && d.data_visita < L.visitaMin) e.data_visita = 'A data não pode ser antes de ' + R.fmtData(L.visitaMin) + ', início da vigência do projeto.';
     if (d.latitude == null) {   // sem GPS: motivo escolhido e explicação com as próprias palavras (31_validacao_diagnostico.sql)
       const det = String(d.sem_gps_detalhe != null ? d.sem_gps_detalhe : d.sem_gps_motivo || '').trim();
       if (d.sem_gps_detalhe != null && !String(d.sem_gps_tipo || '').trim()) e.sem_gps_motivo = 'Registre a localização no quintal ou escolha por que não foi possível.';

@@ -443,6 +443,17 @@ MQ.ORCAMENTO = {
   R.modeloTermo = x => { const m = (MQ.MODELOS_TERMO || {})[R.tipoTermo(x)]; return m && m.arquivo ? m : null; };
   /* 56: valor da bolsa da função, em reais com centavos (o banco usa o mesmo: public.valor_bolsa) */
   R.valorBolsa = papel => { const b = (MQ.PAPEIS[papel] || {}).bolsa; return papel !== 'coord_geral' && b ? Math.round(b * 100) / 100 : null; };
+  /* 57: bolsa só nos 12 meses do plano de trabalho (outubro de 2026 a setembro de 2027), como no banco */
+  R.MSG_MES_BOLSA = 'A bolsa vai de outubro de 2026 a setembro de 2027 (os 12 meses do plano de trabalho). Escolha um mês dentro desse período.';
+  /* 57: o que a pessoa ainda tem a pedir (como public.pendencias_pagamento no banco): visitas feitas que não estão
+     em pedido nenhum (ou só em pedido devolvido) e pedidos devolvidos para corrigir. Com isso, não se desliga. */
+  R.pendenciasPagamento = (id, visitas, vinculos, solicitacoes) => {
+    const sit = sid => ((solicitacoes || []).find(s => s.id === sid) || {}).situacao;
+    const vs = (visitas || []).filter(v => v.executor_id === id && v.situacao === 'realizada' && !['solicitada', 'avalizada', 'lancada'].includes(sit((vinculos || {})[v.id])));
+    const dev = (solicitacoes || []).filter(s => s.equipe_id === id && s.situacao === 'devolvida');
+    return { visitas: vs.length, devolvidos: dev.length, total: vs.length + dev.length };
+  };
+  R.mesBolsaOk = m => { const x = String(m || '').slice(0, 7); return x >= R.LIM.bolsaMesMin && x <= R.LIM.bolsaMesMax; };
   R.MSG_TERMO_SEM_ARQUIVO = 'Sem o termo anexado não há o que conferir: a data só é registrada depois que o termo preenchido e assinado estiver anexado.';
   R.MSG_TERMO_SEM_DATA = 'Você anexou o termo: confira no documento a data da assinatura e preencha aqui.';
   R.TERMO_EXT = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
@@ -571,25 +582,27 @@ MQ.ORCAMENTO = {
 
   R.hoje = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
   /* Limites de data e de número: os MESMOS do banco (supabase/45_auditoria_qa.sql). A tela avisa antes; o banco garante. */
-  R.LIM = { visitaMin: '2026-01-01', visitaMax: '2027-12-31', equipeMin: '2025-01-01', inicioFuturoDias: 365,
+  // 57: visita só dentro da vigência do TED (14/09/2026 a 30/09/2027); antes valia de 01/01/2026 a 31/12/2027
+  const VIG = (MQ.PROJETO && MQ.PROJETO.vigencia) || { inicio: '2026-09-14', fim: '2027-09-30' };
+  R.LIM = { visitaMin: VIG.inicio, visitaMax: VIG.fim, bolsaMesMin: '2026-10', bolsaMesMax: '2027-09', equipeMin: '2025-01-01', inicioFuturoDias: 365,
     rendaMax: 100000, areaMax: 100000, idadeMax: 120, familiaMax: 30, esperaMax: 999, nome: 120, texto: 2000 };
   const dataOk = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d || '')) && !isNaN(new Date(d + 'T12:00:00'));
   R.dataValida = dataOk;
-  /* data prevista de uma visita (agendar ou remarcar): de hoje até 31/12/2027. "antiga" = a data que já estava gravada (não mudou: não trava). */
+  /* data prevista de uma visita (agendar ou remarcar): de hoje até o fim da vigência (30/09/2027). "antiga" = a data que já estava gravada (não mudou: não trava). */
   R.erroDataPrevista = (d, antiga) => {
     if (!d) return 'Informe a data.';
     if (!dataOk(d)) return 'Data inválida.';
     if (antiga && d === antiga) return null;
     if (d < R.hoje()) return 'Esta data já passou. Escolha de hoje em diante.';
-    if (d > R.LIM.visitaMax) return 'A data vai só até 31/12/2027.';
+    if (d > R.LIM.visitaMax) return 'A data vai só até ' + R.fmtData(R.LIM.visitaMax) + ', fim da vigência do projeto.';
     return null;
   };
-  /* dia em que a visita (ou o diagnóstico, a avaliação) foi feita: de 01/01/2026 até hoje */
+  /* dia em que a visita (ou o diagnóstico, a avaliação) foi feita: do início da vigência (14/09/2026) até hoje */
   R.erroDataFeita = d => {
     if (!d) return 'Informe o dia.';
     if (!dataOk(d)) return 'Data inválida.';
     if (d > R.hoje()) return 'Não pode ser no futuro.';
-    if (d < R.LIM.visitaMin) return 'Não pode ser antes de 01/01/2026 (o projeto ainda não tinha começado).';
+    if (d < R.LIM.visitaMin) return 'Não pode ser antes de ' + R.fmtData(R.LIM.visitaMin) + ', início da vigência do projeto.';
     return null;
   };
   /* datas da equipe: início (de 01/01/2025 até um ano à frente) e passos da habilitação (de 01/01/2025 até hoje) */
@@ -776,7 +789,7 @@ MQ.ORCAMENTO = {
   R.validarDiagnostico = function (d) {
     const e = {}, L = R.LIM, fora = R.foraDaFaixa;
     if (!d.data_visita) e.data_visita = 'Informe a data da visita.'; else if (d.data_visita > R.hoje()) e.data_visita = 'Data no futuro.';
-    else if (R.dataValida(d.data_visita) && d.data_visita < L.visitaMin) e.data_visita = 'A data não pode ser antes de 01/01/2026.';
+    else if (R.dataValida(d.data_visita) && d.data_visita < L.visitaMin) e.data_visita = 'A data não pode ser antes de ' + R.fmtData(L.visitaMin) + ', início da vigência do projeto.';
     if (d.latitude == null) {   // sem GPS: motivo escolhido e explicação com as próprias palavras (31_validacao_diagnostico.sql)
       const det = String(d.sem_gps_detalhe != null ? d.sem_gps_detalhe : d.sem_gps_motivo || '').trim();
       if (d.sem_gps_detalhe != null && !String(d.sem_gps_tipo || '').trim()) e.sem_gps_motivo = 'Registre a localização no quintal ou escolha por que não foi possível.';
@@ -1045,6 +1058,7 @@ MQ.ORCAMENTO = {
   const dataExiste = t => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(t || '')); if (!m) return false; const x = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return x.getUTCFullYear() === +m[1] && x.getUTCMonth() === +m[2] - 1 && x.getUTCDate() === +m[3]; };
   const ehPedagogico = p => p.tipo === 'passagem' && ((p.dados || {}).finalidade) === 'pedagogico';
   const usadoPassagem = (d, pedag, semId) => (d.pedidos || []).filter(y => y.id !== semId && y.situacao === 'autorizado' && y.tipo === 'passagem' && ehPedagogico(y) === pedag).reduce((t, y) => t + (+y.valor_autorizado || 0), 0);
+  const MSG_VIGENCIA = 'A visita tem de ficar dentro da vigência do projeto: de 14/09/2026 a 30/09/2027.';   // 57, como no banco
   const visitaPaga = (d, vid) => { const sid = (d.solic_visitas || {})[vid]; return !!sid && ((d.solicitacoes || []).find(x => x.id === sid) || {}).situacao === 'lancada'; };
   const MSG_ALTERADO = 'Este registro foi alterado enquanto você lia. Abra de novo e confira.';
   /* 47: versão do registro, como no banco: a tela manda a marca (atualizado_em que leu); se o registro mudou depois, recusa. Sem marca, grava como antes. */
@@ -1441,6 +1455,7 @@ MQ.ORCAMENTO = {
       // 56: a bolsa é exatamente o valor da função (plano de trabalho), como no banco (o gatilho do banco confere na gravação, depois das outras regras)
       if (tipo === 'bolsa') { const vf = R.valorBolsa(eu.papel); if (vf == null) throw falha('Esta função não recebe bolsa pelo projeto.');
         if (Math.round((+valor || 0) * 100) !== Math.round(vf * 100)) throw falha('A bolsa de ' + MQ.PAPEIS[eu.papel].nome.toLowerCase() + ' é de ' + R.fmtBRL(vf) + ' por mês (plano de trabalho). Atualize a página e peça de novo.'); }
+      if (tipo === 'bolsa' && !R.mesBolsaOk(m)) throw falha(R.MSG_MES_BOLSA);   // 57: os 12 meses do plano (no banco, gatilho que roda por último)
       const agora = new Date().toISOString(); let alvo = s;
       if (tipo === 'bolsa' && eu.papel === 'professor_fic') {   // 38: relatório com os encontros do mês e a presença, gravado pelo sistema
         const enc = (d.ficEncontros || []).filter(e => e.professor_id === eu.id && !e.cancelado_em && String(e.data).slice(0, 7) === m.slice(0, 7)).sort((a, b) => String(a.data).localeCompare(String(b.data)));
@@ -1888,6 +1903,10 @@ MQ.ORCAMENTO = {
       if (!eu || !(R.decideCampo(eu.papel) || (R.ehBolsista(eu.papel) && f.uf === eu.uf) || (antes && antes.executor_id === eu.id))) throw falha('Seu perfil não tem permissão para esta ação.');
       if (eu.papel === 'agente' && antes && (v.executor_id !== antes.executor_id || v.data_prevista !== antes.data_prevista || v.situacao === 'cancelada')) throw falha('O agente de campo não reagenda nem cancela visitas. Fale com a bolsista do estado.');
       if (!(f.resultado === 'selecionada' && f.situacao === 'aprovada')) throw falha('Só há visita para mulher selecionada e aprovada pela coordenação técnica.');
+      // 57: dentro da vigência do TED (só ao criar ou quando a data muda: registro antigo não trava)
+      { const fora = x => x && (String(x).slice(0, 10) < R.LIM.visitaMin || String(x).slice(0, 10) > R.LIM.visitaMax);
+        if ((!antes || v.data_prevista !== antes.data_prevista) && fora(v.data_prevista)) throw falha(MSG_VIGENCIA);
+        if ((!antes || (v.data_realizada || null) !== (antes.data_realizada || null)) && fora(v.data_realizada)) throw falha(MSG_VIGENCIA); }
       const ex = d.equipe.find(x => x.id === v.executor_id);
       if (!ex || ex.status !== 'ativa' || !R.ehCampo(ex.papel)) throw falha('Quem faz a visita precisa ser bolsista ou agente de campo ativa.');
       if (ex.uf !== f.uf) throw falha('Quem faz a visita precisa ser do mesmo estado do quintal.');
@@ -1939,6 +1958,7 @@ MQ.ORCAMENTO = {
         if (!ja || ja.data_visita !== dados.data_visita) {
           const fx = (d.fichas || []).find(x => x.id === dados.ficha_id) || {};
           if (dados.data_visita < '2026-01-01') throw falha('A data da visita não pode ser anterior a 01/01/2026 (o projeto ainda não tinha começado).');
+          if (dados.data_visita < R.LIM.visitaMin || dados.data_visita > R.LIM.visitaMax) throw falha(MSG_VIGENCIA);   // 57
           if (fx.data_ficha && dados.data_visita < fx.data_ficha) throw falha('A data da visita (' + R.fmtData(dados.data_visita) + ') não pode ser anterior à data da ficha desta mulher (' + R.fmtData(fx.data_ficha) + ').');
           const mot = MQ.etapaMotivo('avaliacao', dados.ficha_id, d, { visitaId: v.id, data: dados.data_visita }); if (mot) throw falha(mot);
         }
@@ -1970,6 +1990,7 @@ MQ.ORCAMENTO = {
       if (dados.data_visita && (!antes || dados.data_visita !== antes.data_visita)) {   // 46: a partir de 01/01/2026 e nunca antes da ficha
         const fx = (d.fichas || []).find(x => x.id === dados.ficha_id) || {};
         if (dados.data_visita < '2026-01-01') throw falha('A data da visita não pode ser anterior a 01/01/2026 (o projeto ainda não tinha começado).');
+          if (dados.data_visita < R.LIM.visitaMin || dados.data_visita > R.LIM.visitaMax) throw falha(MSG_VIGENCIA);   // 57
         if (fx.data_ficha && dados.data_visita < fx.data_ficha) throw falha('A data da visita (' + R.fmtData(dados.data_visita) + ') não pode ser anterior à data da ficha desta mulher (' + R.fmtData(fx.data_ficha) + ').');
       }
       const kit = (dados.dados && dados.dados.kit) || dados.kit;   // o plano fica em dados.dados (como na produção)
@@ -2191,8 +2212,19 @@ MQ.ORCAMENTO = {
       d.vitrine = (d.vitrine || []).filter(v => v.id !== id); gravar();
     },
 
-    async desligar(id, data_fim, motivo) {
+    async desligar(id, data_fim, motivo, semPedido) {
       const d = ler(); const m = d.equipe.find(x => x.id === id);
+      { // 57: com pagamento a pedir não se desliga; só a coordenação geral desliga assim mesmo, justificando (fica no histórico)
+        const pe = m ? R.pendenciasPagamento(id, d.visitas, d.solic_visitas, d.solicitacoes) : { total: 0 };
+        if (pe.total) {
+          const eu = euMesmo();
+          if (semPedido == null) throw falha('Não dá para desligar ainda: ' + pe.visitas + ' visita(s) feita(s) sem pedido de ajuda de custo e ' + pe.devolvidos + ' pedido(s) devolvido(s) para corrigir. Peça que ela faça o pedido antes: depois de desligada, ela não entra mais no sistema. Se ela não responder, a coordenação geral pode desligar assim mesmo, justificando.');
+          if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral desliga quem ainda tem pagamento a pedir.');
+          if (String(semPedido).trim().length < 20) throw falha('Explique por que ela não fez o pedido (pelo menos 20 letras).');
+          d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'equipe', registro_id: id, acao: 'DESLIGAR_COM_PENDENCIA', por: eu.id, em: new Date().toISOString(), antes: null,
+            depois: { visitas_sem_pedido: pe.visitas, pedidos_devolvidos: pe.devolvidos, justificativa: String(semPedido).trim() } }); gravar();
+        }
+      }
       if (m && ['agente', 'articulacao', 'apoio'].includes(m.papel)) {
         const vp = (d.visitas || []).filter(v => v.executor_id === id && v.situacao === 'prevista').length;
         const dv = (d.diagnosticos || []).filter(x => x.executor_id === id && x.situacao === 'devolvido').length;
@@ -2455,7 +2487,8 @@ MQ.ORCAMENTO = {
         const ext = /pdf/.test(blob.type) ? 'pdf' : 'jpg';
         const path = f.uf + '/' + f.id + '/' + campo + '.' + ext;
         const { error } = await sb.storage.from('fichas').upload(path, blob, { upsert: true, contentType: blob.type || 'image/jpeg' });
-        if (error) throw erro(error);
+        // 57: ficha aprovada não troca arquivo (o banco recusa): a mensagem diz o que fazer
+        if (error) throw erro(/row-level security|policy|unauthorized|not authorized/i.test(error.message || '') ? 'Ficha já aprovada pela coordenação técnica: a foto e o termo não se trocam mais. Para corrigir, peça que ela devolva a ficha.' : error);
         f['foto_' + campo + '_path'] = path;
       }
       ['tem_foto_ficha', 'tem_foto_termo', 'pontos', 'situacao', 'aprovada_por', 'aprovada_em', 'obs_coordenacao', 'bolsista_id', 'criado_em', 'atualizado_em']
@@ -2879,7 +2912,9 @@ MQ.ORCAMENTO = {
       if (error) throw erro(error);
       return data;
     },
-    async desligar(id, data_fim, motivo) {
+    async desligar(id, data_fim, motivo, semPedido) {
+      // 57: com pagamento a pedir, só a coordenação geral desliga, justificando (desligar_sem_pedido grava no histórico)
+      if (semPedido != null) { const { error } = await sb.rpc('desligar_sem_pedido', { p_equipe: id, p_data: data_fim, p_motivo: motivo, p_justificativa: semPedido }); if (error) throw erro(error); return; }
       return this.atualizar(id, { status: 'desligada', data_fim, motivo_desligamento: motivo });
     },
     async enviarTermo(id, arquivo) {
@@ -5499,7 +5534,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const e = {};
       if (!v.ficha_id) e.ficha_id = 'Escolha a mulher.';
       if (!v.executor_id) e.executor_id = 'Escolha quem faz a visita.';
-      // de hoje até 31/12/2027 (o banco recusa 2019 ou 2099); a data que já estava gravada e não mudou não trava
+      // de hoje até 30/09/2027, fim da vigência (o banco recusa 2019 ou 2099); a data que já estava gravada e não mudou não trava
       { const ed = R.erroDataPrevista(v.data_prevista, v0 && v0.data_prevista); if (ed) e.data_prevista = ed; }
       if (v.obs && v.obs.length > 300) e.obs = 'Texto muito longo (máximo 300 caracteres).';
       if (!v0 && v.ficha_id) {
@@ -5555,7 +5590,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const v0 = visitas().find(x => x.id === form.dataset.id);
       const data = String(fd.get('data_realizada') || ''), relato = String(fd.get('relato') || '').trim();
       const e = {};
-      { const ed = R.erroDataFeita(data); if (ed) e.data_realizada = ed; }   // de 01/01/2026 até hoje
+      { const ed = R.erroDataFeita(data); if (ed) e.data_realizada = ed; }   // do início da vigência (14/09/2026) até hoje
       if (relato.length < 20) e.relato = 'Conte em poucas linhas o que foi feito (pelo menos 20 letras).';
       else if (relato.length > 2000) e.relato = 'Texto muito longo (máximo 2.000 caracteres).';
       if (!fotosVis[1]) e.foto = 'Faça pelo menos 1 foto do que foi feito.';
@@ -7227,6 +7262,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   function cartaoBolsa(eu, m, s, hab) {
     const valor = P[eu.papel].bolsa;
+    // 57: bolsa só nos 12 meses do plano (outubro de 2026 a setembro de 2027); pedido já feito continua aparecendo
+    if (!s && !R.mesBolsaOk(m)) return `<div class="bloco pag-c"><h3>Bolsa · ${nomeMes(m)}</h3><p class="small muted">${E(R.MSG_MES_BOLSA.split(' Escolha')[0])}</p></div>`;
     if (s && s.situacao !== 'devolvida') return `<div class="bloco pag-c"><h3>Bolsa · ${nomeMes(m)}</h3>
       <p class="num valor-destaque">${valor ? brl(s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado) : 'Conforme o termo'}</p>${situacaoTxt(s)}</div>`;
     return `<form class="bloco pag-c" data-form="pag-bolsa" data-mes="${m}" novalidate><h3>Bolsa · ${nomeMes(m)}</h3>
@@ -9426,7 +9463,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       motivo: txt('motivo'), renda_quintal: num('renda_quintal'), horas_dia: num('horas_dia'), agua: txt('agua'), alimentacao: txt('alimentacao'), encaminhamentos: fd.getAll('encaminhamentos'), fala: txt('fala') };
     const e = validar(im);
     if (!d.data_visita) e.data_visita = 'Informe a data.'; else if (d.data_visita > R.hoje()) e.data_visita = 'Data no futuro.';
-    else if (R.erroDataFeita(d.data_visita)) e.data_visita = R.erroDataFeita(d.data_visita);   // não antes de 01/01/2026
+    else if (R.erroDataFeita(d.data_visita)) e.data_visita = R.erroDataFeita(d.data_visita);   // não antes do início da vigência (14/09/2026)
     if (d.latitude == null && String(d.sem_gps_motivo || '').length < 5) e.sem_gps_motivo = 'Registre a localização ou explique por que não foi possível.';
     if (!d.quintal_produz) e.quintal_produz = 'Responda se o quintal está produzindo.';
     if (d.quintal_produz && d.quintal_produz !== 'sim' && !d.motivo) e.motivo = 'Explique por que não está produzindo.';
@@ -10562,7 +10599,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         ['Cadastrar digitando', ['Toque na vaga ou em <b>Cadastrar</b> → <b>Digitar os dados agora</b>.', 'Preencha nome, CPF, celular e e-mail.', 'Responda se a pessoa já tem cadastro no Arlo e, para quem vai a campo, o perfil no campo.', 'Marque a ciência sobre o uso dos dados.', 'Toque em <b>Cadastrar</b>.']],
         ['Mandar o acesso para a pessoa', ['Abra a ficha da pessoa.', 'Toque em <b>Gerar código de acesso</b>.', 'Toque em <b>Mandar por WhatsApp</b>: a mensagem já leva endereço, e-mail e código.']],
         ['Registrar a habilitação', ['Abra a ficha da pessoa.', 'Toque em <b>Registrar passos da habilitação</b>.', 'Em cada passo feito, toque em <b>Hoje</b> (ou escolha a data).', 'Toque em <b>Salvar</b>.']],
-        ['Desligar e pôr substituta', ['Abra a ficha da pessoa → <b>Desligar</b>.', 'Escolha o motivo e explique em uma frase.', 'Toque em <b>Confirmar desligamento</b> (não tem volta).', 'Na vaga que abriu, toque em <b>Cadastrar substituta</b>.']],
+        ['Desligar e pôr substituta', ['Abra a ficha da pessoa → <b>Desligar</b>.', 'Se ela tiver visita feita sem pedido de ajuda de custo ou pedido devolvido, peça que ela faça o pedido antes: depois de desligada, ela não entra mais. Se ela não responder, só a coordenação geral desliga assim mesmo, explicando o porquê.', 'Escolha o motivo e explique em uma frase.', 'Toque em <b>Confirmar desligamento</b> (não tem volta).', 'Na vaga que abriu, toque em <b>Cadastrar substituta</b>.']],
         ['Liberar o acompanhamento do MDA ou do MPA (só a coordenação geral)', ['No fim da aba <b>Equipe</b>, vá até <b>Acompanhamento externo (MDA e MPA)</b>.', 'Na linha do órgão, toque em <b>Adicionar pessoa</b>, preencha nome e e-mail e toque em <b>Gravar</b>.', 'Toque no cartão da pessoa e depois em <b>Gerar código</b>; passe o código a ela.', 'Para conferir o que ela enxerga, toque em <b>Ver como o MDA vê</b> ou <b>Ver como o MPA vê</b>.']]
       ],
       passos: [
@@ -13473,6 +13510,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
               return (ts.length ? `<div class="aviso erro"><b>Ainda não dá para desligar.</b> É professor(a) da turma em andamento ${esc(ts.map(t => t.nome).join(', '))}. Passe a turma para outro(a) professor(a) na aba Curso FIC (Editar) e desligue depois.</div>` : '')
                 + (pg.length ? `<div class="aviso"><b>${pg.length} pagamento${pg.length > 1 ? 's' : ''} em aberto</b> (${pg.map(x => (x.tipo === 'bolsa' ? 'bolsa' : 'ajuda de custo') + ' de ' + String(x.mes || '').slice(5, 7) + '/' + String(x.mes || '').slice(0, 4)).join(', ')}). O desligamento não cancela: ela tem direito a receber pelo que fez. O pedido continua até o lançamento no Arlo.</div>` : '')
                 + (pd.length ? `<div class="aviso"><b>${pd.length} pedido${pd.length > 1 ? 's' : ''} de passagem ou evento ainda não autorizado${pd.length > 1 ? 's' : ''}</b> ser${pd.length > 1 ? 'ão' : 'á'} cancelado${pd.length > 1 ? 's' : ''} ao desligar, com o motivo registrado.</div>` : ''); })()}
+          ${(() => {   // 57: visita feita sem pedido ou pedido devolvido: ela perderia o pagamento ao ser desligada (perde o acesso)
+              const pe = R.pendenciasPagamento(m.id, S.visitas, S.solicVis, S.solic); if (!pe.total) return '';
+              const o = [pe.visitas ? pe.visitas + ' visita' + (pe.visitas > 1 ? 's feitas' : ' feita') + ' sem pedido de ajuda de custo' : '', pe.devolvidos ? pe.devolvidos + ' pedido' + (pe.devolvidos > 1 ? 's devolvidos' : ' devolvido') + ' para corrigir' : ''].filter(Boolean).join(' e ');
+              return `<div class="aviso erro" data-pendencia-pag><b>Ainda não dá para desligar: ${o}.</b> Peça que ela faça o pedido antes: depois de desligada, ela não entra mais no sistema e perde o que não pediu.
+                ${S.eu.papel === 'coord_geral' ? `<label class="check" style="margin-top:8px"><input type="checkbox" name="sem_pedido" value="1"> Ela não respondeu: desligar assim mesmo. Explique abaixo, em pelo menos 20 letras; fica no histórico.</label>` : ' Se ela não responder, só a coordenação geral desliga assim mesmo, justificando.'}</div>`; })()}
           <p class="small muted">O cadastro não é apagado. A vaga fica livre para a substituta e o histórico guarda quem desligou, quando e por quê. Não dá para desfazer: se ela voltar, faça um novo cadastro.</p>
           <div class="campos"><div class="campo"><label for="d-data">Último dia na bolsa</label><input id="d-data" name="data_fim" type="date" min="${esc(m.data_inicio)}" max="${R.hoje() > m.data_inicio ? R.hoje() : esc(m.data_inicio)}" value="${hoje}" required></div>
             <div class="campo"><label for="d-motivo">Motivo</label><select id="d-motivo" name="motivo" required><option value="">Escolha o motivo…</option>${MQ.MOTIVOS.map(x => `<option>${esc(x)}</option>`).join('')}</select></div>
@@ -14198,9 +14240,13 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         if (det.length > 2000) erros.detalhe = 'Texto muito longo (máximo 2.000 caracteres).';
         if (!fd.get('motivo')) erros.motivo = 'Escolha o motivo.';
         if (fd.get('motivo') === 'Outro motivo' && det.length < 5) erros.detalhe = 'Explique o motivo.';
+        const pend = R.pendenciasPagamento(id, S.visitas, S.solicVis, S.solic).total;   // 57
+        const semPedido = pend && fd.get('sem_pedido') ? det : null;
+        if (pend && !fd.get('sem_pedido')) return mostrarErros(form, {}, S.eu.papel === 'coord_geral' ? 'Ela ainda tem pagamento a pedir. Peça que ela faça o pedido antes, ou marque "desligar assim mesmo" e explique.' : 'Ela ainda tem pagamento a pedir. Peça que ela faça o pedido antes; se ela não responder, só a coordenação geral desliga assim mesmo.');
+        if (semPedido != null && det.length < 20) erros.detalhe = 'Explique por que ela não fez o pedido (pelo menos 20 letras).';
         if (Object.keys(erros).length) return mostrarErros(form, erros);
         await ocupado(form, async () => {
-          await S.api.desligar(id, data, fd.get('motivo') + (det ? ': ' + det : ''));
+          await S.api.desligar(id, data, fd.get('motivo') + (det ? ': ' + det : ''), semPedido);
           await recarregar(); fecharPainel(); toast(m.nome.split(' ')[0] + ' desligada. A vaga está aberta para a substituta.');
         });
       }

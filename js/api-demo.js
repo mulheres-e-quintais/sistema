@@ -191,6 +191,7 @@
   const dataExiste = t => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(t || '')); if (!m) return false; const x = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return x.getUTCFullYear() === +m[1] && x.getUTCMonth() === +m[2] - 1 && x.getUTCDate() === +m[3]; };
   const ehPedagogico = p => p.tipo === 'passagem' && ((p.dados || {}).finalidade) === 'pedagogico';
   const usadoPassagem = (d, pedag, semId) => (d.pedidos || []).filter(y => y.id !== semId && y.situacao === 'autorizado' && y.tipo === 'passagem' && ehPedagogico(y) === pedag).reduce((t, y) => t + (+y.valor_autorizado || 0), 0);
+  const MSG_VIGENCIA = 'A visita tem de ficar dentro da vigência do projeto: de 14/09/2026 a 30/09/2027.';   // 57, como no banco
   const visitaPaga = (d, vid) => { const sid = (d.solic_visitas || {})[vid]; return !!sid && ((d.solicitacoes || []).find(x => x.id === sid) || {}).situacao === 'lancada'; };
   const MSG_ALTERADO = 'Este registro foi alterado enquanto você lia. Abra de novo e confira.';
   /* 47: versão do registro, como no banco: a tela manda a marca (atualizado_em que leu); se o registro mudou depois, recusa. Sem marca, grava como antes. */
@@ -587,6 +588,7 @@
       // 56: a bolsa é exatamente o valor da função (plano de trabalho), como no banco (o gatilho do banco confere na gravação, depois das outras regras)
       if (tipo === 'bolsa') { const vf = R.valorBolsa(eu.papel); if (vf == null) throw falha('Esta função não recebe bolsa pelo projeto.');
         if (Math.round((+valor || 0) * 100) !== Math.round(vf * 100)) throw falha('A bolsa de ' + MQ.PAPEIS[eu.papel].nome.toLowerCase() + ' é de ' + R.fmtBRL(vf) + ' por mês (plano de trabalho). Atualize a página e peça de novo.'); }
+      if (tipo === 'bolsa' && !R.mesBolsaOk(m)) throw falha(R.MSG_MES_BOLSA);   // 57: os 12 meses do plano (no banco, gatilho que roda por último)
       const agora = new Date().toISOString(); let alvo = s;
       if (tipo === 'bolsa' && eu.papel === 'professor_fic') {   // 38: relatório com os encontros do mês e a presença, gravado pelo sistema
         const enc = (d.ficEncontros || []).filter(e => e.professor_id === eu.id && !e.cancelado_em && String(e.data).slice(0, 7) === m.slice(0, 7)).sort((a, b) => String(a.data).localeCompare(String(b.data)));
@@ -1034,6 +1036,10 @@
       if (!eu || !(R.decideCampo(eu.papel) || (R.ehBolsista(eu.papel) && f.uf === eu.uf) || (antes && antes.executor_id === eu.id))) throw falha('Seu perfil não tem permissão para esta ação.');
       if (eu.papel === 'agente' && antes && (v.executor_id !== antes.executor_id || v.data_prevista !== antes.data_prevista || v.situacao === 'cancelada')) throw falha('O agente de campo não reagenda nem cancela visitas. Fale com a bolsista do estado.');
       if (!(f.resultado === 'selecionada' && f.situacao === 'aprovada')) throw falha('Só há visita para mulher selecionada e aprovada pela coordenação técnica.');
+      // 57: dentro da vigência do TED (só ao criar ou quando a data muda: registro antigo não trava)
+      { const fora = x => x && (String(x).slice(0, 10) < R.LIM.visitaMin || String(x).slice(0, 10) > R.LIM.visitaMax);
+        if ((!antes || v.data_prevista !== antes.data_prevista) && fora(v.data_prevista)) throw falha(MSG_VIGENCIA);
+        if ((!antes || (v.data_realizada || null) !== (antes.data_realizada || null)) && fora(v.data_realizada)) throw falha(MSG_VIGENCIA); }
       const ex = d.equipe.find(x => x.id === v.executor_id);
       if (!ex || ex.status !== 'ativa' || !R.ehCampo(ex.papel)) throw falha('Quem faz a visita precisa ser bolsista ou agente de campo ativa.');
       if (ex.uf !== f.uf) throw falha('Quem faz a visita precisa ser do mesmo estado do quintal.');
@@ -1085,6 +1091,7 @@
         if (!ja || ja.data_visita !== dados.data_visita) {
           const fx = (d.fichas || []).find(x => x.id === dados.ficha_id) || {};
           if (dados.data_visita < '2026-01-01') throw falha('A data da visita não pode ser anterior a 01/01/2026 (o projeto ainda não tinha começado).');
+          if (dados.data_visita < R.LIM.visitaMin || dados.data_visita > R.LIM.visitaMax) throw falha(MSG_VIGENCIA);   // 57
           if (fx.data_ficha && dados.data_visita < fx.data_ficha) throw falha('A data da visita (' + R.fmtData(dados.data_visita) + ') não pode ser anterior à data da ficha desta mulher (' + R.fmtData(fx.data_ficha) + ').');
           const mot = MQ.etapaMotivo('avaliacao', dados.ficha_id, d, { visitaId: v.id, data: dados.data_visita }); if (mot) throw falha(mot);
         }
@@ -1116,6 +1123,7 @@
       if (dados.data_visita && (!antes || dados.data_visita !== antes.data_visita)) {   // 46: a partir de 01/01/2026 e nunca antes da ficha
         const fx = (d.fichas || []).find(x => x.id === dados.ficha_id) || {};
         if (dados.data_visita < '2026-01-01') throw falha('A data da visita não pode ser anterior a 01/01/2026 (o projeto ainda não tinha começado).');
+          if (dados.data_visita < R.LIM.visitaMin || dados.data_visita > R.LIM.visitaMax) throw falha(MSG_VIGENCIA);   // 57
         if (fx.data_ficha && dados.data_visita < fx.data_ficha) throw falha('A data da visita (' + R.fmtData(dados.data_visita) + ') não pode ser anterior à data da ficha desta mulher (' + R.fmtData(fx.data_ficha) + ').');
       }
       const kit = (dados.dados && dados.dados.kit) || dados.kit;   // o plano fica em dados.dados (como na produção)
@@ -1337,8 +1345,19 @@
       d.vitrine = (d.vitrine || []).filter(v => v.id !== id); gravar();
     },
 
-    async desligar(id, data_fim, motivo) {
+    async desligar(id, data_fim, motivo, semPedido) {
       const d = ler(); const m = d.equipe.find(x => x.id === id);
+      { // 57: com pagamento a pedir não se desliga; só a coordenação geral desliga assim mesmo, justificando (fica no histórico)
+        const pe = m ? R.pendenciasPagamento(id, d.visitas, d.solic_visitas, d.solicitacoes) : { total: 0 };
+        if (pe.total) {
+          const eu = euMesmo();
+          if (semPedido == null) throw falha('Não dá para desligar ainda: ' + pe.visitas + ' visita(s) feita(s) sem pedido de ajuda de custo e ' + pe.devolvidos + ' pedido(s) devolvido(s) para corrigir. Peça que ela faça o pedido antes: depois de desligada, ela não entra mais no sistema. Se ela não responder, a coordenação geral pode desligar assim mesmo, justificando.');
+          if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral desliga quem ainda tem pagamento a pedir.');
+          if (String(semPedido).trim().length < 20) throw falha('Explique por que ela não fez o pedido (pelo menos 20 letras).');
+          d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'equipe', registro_id: id, acao: 'DESLIGAR_COM_PENDENCIA', por: eu.id, em: new Date().toISOString(), antes: null,
+            depois: { visitas_sem_pedido: pe.visitas, pedidos_devolvidos: pe.devolvidos, justificativa: String(semPedido).trim() } }); gravar();
+        }
+      }
       if (m && ['agente', 'articulacao', 'apoio'].includes(m.papel)) {
         const vp = (d.visitas || []).filter(v => v.executor_id === id && v.situacao === 'prevista').length;
         const dv = (d.diagnosticos || []).filter(x => x.executor_id === id && x.situacao === 'devolvido').length;

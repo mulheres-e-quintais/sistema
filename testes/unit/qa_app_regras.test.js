@@ -67,9 +67,10 @@ describe('kit do quintal', () => {
     ruim({ horas_dia: 25 }, 'horas_dia'); ruim({ horas_dia: -1 }, 'horas_dia'); bom({ horas_dia: 24 }, 'horas_dia'); bom({ horas_dia: 7.5 }, 'horas_dia');
     ruim({ renda_familiar: NaN }, 'renda_familiar'); ruim({ meses_seca: Infinity }, 'meses_seca');
   });
-  test('diagnóstico: data anterior a 01/01/2026 é recusada (o projeto não tinha começado)', () => {
-    assert.match(R.validarDiagnostico(dg({ data_visita: '2019-05-10' })).data_visita, /01\/01\/2026/);
-    assert.equal(R.validarDiagnostico(dg({ data_visita: '2026-01-01' })).data_visita, undefined);
+  test('diagnóstico: data antes da vigência do TED (14/09/2026) é recusada (57)', () => {
+    assert.match(R.validarDiagnostico(dg({ data_visita: '2019-05-10' })).data_visita, /14\/09\/2026/);
+    assert.match(R.validarDiagnostico(dg({ data_visita: '2026-09-13' })).data_visita, /vigência/);
+    assert.equal(R.validarDiagnostico(dg({ data_visita: '2026-09-14' })).data_visita, undefined);
   });
 });
 
@@ -111,17 +112,17 @@ describe('avaliação final e linha de base (impacto.js): números inteiros e de
 
 describe('datas com os mesmos limites do banco (45_auditoria_qa.sql)', () => {
   const { R } = novo();
-  test('agendar ou remarcar visita: de hoje até 31/12/2027; a data antiga que não mudou não trava', () => {
-    assert.equal(R.erroDataPrevista(diaMais(0)), null); assert.equal(R.erroDataPrevista('2027-12-31'), null);
+  test('agendar ou remarcar visita: de hoje até 30/09/2027 (fim da vigência, 57); a data antiga que não mudou não trava', () => {
+    assert.equal(R.erroDataPrevista(diaMais(0)), null); assert.equal(R.erroDataPrevista('2027-09-30'), null); assert.match(R.erroDataPrevista('2027-10-01'), /30\/09\/2027/);
     assert.match(R.erroDataPrevista(diaMais(-1)), /já passou/); assert.match(R.erroDataPrevista('2019-03-01'), /já passou/);
-    assert.match(R.erroDataPrevista('2028-01-01'), /31\/12\/2027/); assert.match(R.erroDataPrevista('2099-01-01'), /31\/12\/2027/);
+    assert.match(R.erroDataPrevista('2028-01-01'), /30\/09\/2027/); assert.match(R.erroDataPrevista('2099-01-01'), /30\/09\/2027/);
     assert.match(R.erroDataPrevista(''), /Informe/); assert.match(R.erroDataPrevista('31/12/2026'), /inválida/);
     assert.equal(R.erroDataPrevista('2026-09-20', '2026-09-20'), null);   // remarcar só a pessoa: a data atrasada continua
     assert.match(R.erroDataPrevista('2026-09-19', '2026-09-20'), /já passou/);
   });
-  test('visita feita: de 01/01/2026 até hoje', () => {
-    assert.equal(R.erroDataFeita(diaMais(0)), null); assert.equal(R.erroDataFeita('2026-01-01'), null);
-    assert.match(R.erroDataFeita(diaMais(1)), /futuro/); assert.match(R.erroDataFeita('2025-12-31'), /01\/01\/2026/); assert.match(R.erroDataFeita(''), /Informe/);
+  test('visita feita: do início da vigência (14/09/2026, 57) até hoje', () => {
+    assert.equal(R.erroDataFeita(diaMais(0)), null); assert.equal(R.erroDataFeita('2026-09-14'), null);
+    assert.match(R.erroDataFeita(diaMais(1)), /futuro/); assert.match(R.erroDataFeita('2026-09-13'), /14\/09\/2026/); assert.match(R.erroDataFeita(''), /Informe/);
   });
   test('início da bolsa: de 01/01/2025 até um ano à frente', () => {
     assert.equal(R.erroDataInicio('2025-01-01'), null); assert.equal(R.erroDataInicio(diaMais(365)), null);

@@ -212,7 +212,8 @@
         const ext = /pdf/.test(blob.type) ? 'pdf' : 'jpg';
         const path = f.uf + '/' + f.id + '/' + campo + '.' + ext;
         const { error } = await sb.storage.from('fichas').upload(path, blob, { upsert: true, contentType: blob.type || 'image/jpeg' });
-        if (error) throw erro(error);
+        // 57: ficha aprovada não troca arquivo (o banco recusa): a mensagem diz o que fazer
+        if (error) throw erro(/row-level security|policy|unauthorized|not authorized/i.test(error.message || '') ? 'Ficha já aprovada pela coordenação técnica: a foto e o termo não se trocam mais. Para corrigir, peça que ela devolva a ficha.' : error);
         f['foto_' + campo + '_path'] = path;
       }
       ['tem_foto_ficha', 'tem_foto_termo', 'pontos', 'situacao', 'aprovada_por', 'aprovada_em', 'obs_coordenacao', 'bolsista_id', 'criado_em', 'atualizado_em']
@@ -636,7 +637,9 @@
       if (error) throw erro(error);
       return data;
     },
-    async desligar(id, data_fim, motivo) {
+    async desligar(id, data_fim, motivo, semPedido) {
+      // 57: com pagamento a pedir, só a coordenação geral desliga, justificando (desligar_sem_pedido grava no histórico)
+      if (semPedido != null) { const { error } = await sb.rpc('desligar_sem_pedido', { p_equipe: id, p_data: data_fim, p_motivo: motivo, p_justificativa: semPedido }); if (error) throw erro(error); return; }
       return this.atualizar(id, { status: 'desligada', data_fim, motivo_desligamento: motivo });
     },
     async enviarTermo(id, arquivo) {

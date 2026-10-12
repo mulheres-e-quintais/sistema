@@ -1473,6 +1473,11 @@
               return (ts.length ? `<div class="aviso erro"><b>Ainda não dá para desligar.</b> É professor(a) da turma em andamento ${esc(ts.map(t => t.nome).join(', '))}. Passe a turma para outro(a) professor(a) na aba Curso FIC (Editar) e desligue depois.</div>` : '')
                 + (pg.length ? `<div class="aviso"><b>${pg.length} pagamento${pg.length > 1 ? 's' : ''} em aberto</b> (${pg.map(x => (x.tipo === 'bolsa' ? 'bolsa' : 'ajuda de custo') + ' de ' + String(x.mes || '').slice(5, 7) + '/' + String(x.mes || '').slice(0, 4)).join(', ')}). O desligamento não cancela: ela tem direito a receber pelo que fez. O pedido continua até o lançamento no Arlo.</div>` : '')
                 + (pd.length ? `<div class="aviso"><b>${pd.length} pedido${pd.length > 1 ? 's' : ''} de passagem ou evento ainda não autorizado${pd.length > 1 ? 's' : ''}</b> ser${pd.length > 1 ? 'ão' : 'á'} cancelado${pd.length > 1 ? 's' : ''} ao desligar, com o motivo registrado.</div>` : ''); })()}
+          ${(() => {   // 57: visita feita sem pedido ou pedido devolvido: ela perderia o pagamento ao ser desligada (perde o acesso)
+              const pe = R.pendenciasPagamento(m.id, S.visitas, S.solicVis, S.solic); if (!pe.total) return '';
+              const o = [pe.visitas ? pe.visitas + ' visita' + (pe.visitas > 1 ? 's feitas' : ' feita') + ' sem pedido de ajuda de custo' : '', pe.devolvidos ? pe.devolvidos + ' pedido' + (pe.devolvidos > 1 ? 's devolvidos' : ' devolvido') + ' para corrigir' : ''].filter(Boolean).join(' e ');
+              return `<div class="aviso erro" data-pendencia-pag><b>Ainda não dá para desligar: ${o}.</b> Peça que ela faça o pedido antes: depois de desligada, ela não entra mais no sistema e perde o que não pediu.
+                ${S.eu.papel === 'coord_geral' ? `<label class="check" style="margin-top:8px"><input type="checkbox" name="sem_pedido" value="1"> Ela não respondeu: desligar assim mesmo. Explique abaixo, em pelo menos 20 letras; fica no histórico.</label>` : ' Se ela não responder, só a coordenação geral desliga assim mesmo, justificando.'}</div>`; })()}
           <p class="small muted">O cadastro não é apagado. A vaga fica livre para a substituta e o histórico guarda quem desligou, quando e por quê. Não dá para desfazer: se ela voltar, faça um novo cadastro.</p>
           <div class="campos"><div class="campo"><label for="d-data">Último dia na bolsa</label><input id="d-data" name="data_fim" type="date" min="${esc(m.data_inicio)}" max="${R.hoje() > m.data_inicio ? R.hoje() : esc(m.data_inicio)}" value="${hoje}" required></div>
             <div class="campo"><label for="d-motivo">Motivo</label><select id="d-motivo" name="motivo" required><option value="">Escolha o motivo…</option>${MQ.MOTIVOS.map(x => `<option>${esc(x)}</option>`).join('')}</select></div>
@@ -2198,9 +2203,13 @@
         if (det.length > 2000) erros.detalhe = 'Texto muito longo (máximo 2.000 caracteres).';
         if (!fd.get('motivo')) erros.motivo = 'Escolha o motivo.';
         if (fd.get('motivo') === 'Outro motivo' && det.length < 5) erros.detalhe = 'Explique o motivo.';
+        const pend = R.pendenciasPagamento(id, S.visitas, S.solicVis, S.solic).total;   // 57
+        const semPedido = pend && fd.get('sem_pedido') ? det : null;
+        if (pend && !fd.get('sem_pedido')) return mostrarErros(form, {}, S.eu.papel === 'coord_geral' ? 'Ela ainda tem pagamento a pedir. Peça que ela faça o pedido antes, ou marque "desligar assim mesmo" e explique.' : 'Ela ainda tem pagamento a pedir. Peça que ela faça o pedido antes; se ela não responder, só a coordenação geral desliga assim mesmo.');
+        if (semPedido != null && det.length < 20) erros.detalhe = 'Explique por que ela não fez o pedido (pelo menos 20 letras).';
         if (Object.keys(erros).length) return mostrarErros(form, erros);
         await ocupado(form, async () => {
-          await S.api.desligar(id, data, fd.get('motivo') + (det ? ': ' + det : ''));
+          await S.api.desligar(id, data, fd.get('motivo') + (det ? ': ' + det : ''), semPedido);
           await recarregar(); fecharPainel(); toast(m.nome.split(' ')[0] + ' desligada. A vaga está aberta para a substituta.');
         });
       }

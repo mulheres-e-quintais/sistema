@@ -607,7 +607,8 @@ create or replace function r46_dg(p_data text, p_lat text default '-9.41', p_lon
   select format($q$insert into public.diagnosticos (id, ficha_id, visita_id, uf, data_visita, agua_seca, lote, latitude, longitude, area_m2, renda_familiar, renda_quintal)
     values ('f6300000-0000-0000-0000-000000000008', 'f6100000-0000-0000-0000-000000000008', 'f6200000-0000-0000-0000-000000000081', 'BA', %s, 'sim', %s, %s, %s, %s, %s, 50)$q$, p_data, p_lote, p_lat, p_lon, p_area, p_renda) $$;
 select t('11. diagnóstico com tudo certo é aceito', :RG, r46_dg('public.fic_hoje()'), 'ok');
-select t('11. diagnóstico na mesma data da ficha é aceito', :RG, r46_dg(format('%L::date - 60', :'mes')), 'ok');
+-- 57: visita só dentro da vigência (14/09/2026 a 30/09/2027): a data da ficha deste cenário (60 dias antes do mês) cai antes dela
+select t('11. diagnóstico na mesma data da ficha, mas antes da vigência do TED, é recusado (57)', :RG, r46_dg(format('%L::date - 60', :'mes')), 'vigência do projeto');
 select t('11. diagnóstico com data anterior à da ficha é recusado', :RG, r46_dg(format('%L::date - 61', :'mes')), 'não pode ser anterior à data da ficha desta mulher');
 select t('11. diagnóstico com data anterior a 01/01/2026 é recusado', :RG, r46_dg($q$'2025-12-31'$q$), 'não pode ser anterior a 01/01/2026');
 select t('11. diagnóstico com data em 1900 é recusado', :RG, r46_dg($q$'1900-01-01'$q$), 'não pode ser anterior a 01/01/2026');
@@ -626,11 +627,12 @@ select t('22. segundo diagnóstico do mesmo quintal: mensagem clara', :RG, $q$in
   values (gen_random_uuid(), 'f6100000-0000-0000-0000-000000000001', 'f6200000-0000-0000-0000-000000000011', 'BA', public.fic_hoje(), 'sim', 1, -9.41, -40.5)$q$, 'Este quintal já tem diagnóstico registrado.');
 select t('22. lote 3: mensagem clara', :RG, r46_dg('public.fic_hoje()', '-9.41', '-40.5', '300', '900', '3'), 'O lote de implantação precisa ser 1 ou 2');
 \set D10 ' where id = ''f6300000-0000-0000-0000-000000000010'''
-select t('11. diagnóstico ANTIGO (data anterior à ficha, área negativa, GPS 0,0) continua podendo ser aprovado', :T, $q$do $x$ declare n int; begin update public.diagnosticos set situacao = 'aprovado' where id = 'f6300000-0000-0000-0000-000000000010';
-  get diagnostics n = row_count; if n <> 1 or (select situacao from public.diagnosticos where id = 'f6300000-0000-0000-0000-000000000010') <> 'aprovado' then raise exception 'não aprovou'; end if; end $x$$q$, 'ok');
-select t('11. ... devolvido', :T, $q$update public.diagnosticos set situacao = 'devolvido', obs_coordenacao = 'Refazer a medida da área'$q$ || :'D10', 'ok');
-select t('11. ... e corrigido em outro campo por quem fez a visita', :RG, $q$do $x$ declare n int; begin update public.diagnosticos set renda_quintal = 10, mes_implantacao = 'nov/26' where id = 'f6300000-0000-0000-0000-000000000010';
-  get diagnostics n = row_count; if n <> 1 then raise exception 'não gravou'; end if; end $x$$q$, 'ok');
+-- 57: o diagnóstico ANTIGO deste cenário é de 90 dias atrás, antes da vigência: aprovar, devolver ou corrigir marca a visita com essa data e o banco recusa
+select t('11. diagnóstico ANTIGO de antes da vigência do TED não é aprovado (57)', :T, $q$do $x$ declare n int; begin update public.diagnosticos set situacao = 'aprovado' where id = 'f6300000-0000-0000-0000-000000000010';
+  get diagnostics n = row_count; if n <> 1 or (select situacao from public.diagnosticos where id = 'f6300000-0000-0000-0000-000000000010') <> 'aprovado' then raise exception 'não aprovou'; end if; end $x$$q$, 'vigência do projeto');
+select t('11. ... nem devolvido (57)', :T, $q$update public.diagnosticos set situacao = 'devolvido', obs_coordenacao = 'Refazer a medida da área'$q$ || :'D10', 'vigência do projeto');
+select t('11. ... nem corrigido em outro campo (57)', :RG, $q$do $x$ declare n int; begin update public.diagnosticos set renda_quintal = 10, mes_implantacao = 'nov/26' where id = 'f6300000-0000-0000-0000-000000000010';
+  get diagnostics n = row_count; if n <> 1 then raise exception 'não gravou'; end if; end $x$$q$, 'vigência do projeto');
 select t('11. ... mas mudar a área dele para outro valor impossível é recusado', :G, $q$update public.diagnosticos set area_m2 = -3$q$ || :'D10', 'A área do quintal precisa ser maior que zero');
 select t('11. ... mudar a data dele para outra anterior à ficha é recusado', :RG, $q$update public.diagnosticos set data_visita = data_visita - 1$q$ || :'D10', 'não pode ser anterior à data da ficha');
 select t('11. ... e corrigir a área, o GPS e a data para valores certos é aceito', :RG, format($q$update public.diagnosticos set area_m2 = 250, latitude = -9.4, longitude = -40.5, data_visita = %L::date - 20$q$, :'mes') || :'D10', 'ok');

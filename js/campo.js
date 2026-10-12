@@ -846,7 +846,7 @@
       const e = {};
       if (!v.ficha_id) e.ficha_id = 'Escolha a mulher.';
       if (!v.executor_id) e.executor_id = 'Escolha quem faz a visita.';
-      // de hoje até 31/12/2027 (o banco recusa 2019 ou 2099); a data que já estava gravada e não mudou não trava
+      // de hoje até 30/09/2027, fim da vigência (o banco recusa 2019 ou 2099); a data que já estava gravada e não mudou não trava
       { const ed = R.erroDataPrevista(v.data_prevista, v0 && v0.data_prevista); if (ed) e.data_prevista = ed; }
       if (v.obs && v.obs.length > 300) e.obs = 'Texto muito longo (máximo 300 caracteres).';
       if (!v0 && v.ficha_id) {
@@ -902,7 +902,7 @@
       const v0 = visitas().find(x => x.id === form.dataset.id);
       const data = String(fd.get('data_realizada') || ''), relato = String(fd.get('relato') || '').trim();
       const e = {};
-      { const ed = R.erroDataFeita(data); if (ed) e.data_realizada = ed; }   // de 01/01/2026 até hoje
+      { const ed = R.erroDataFeita(data); if (ed) e.data_realizada = ed; }   // do início da vigência (14/09/2026) até hoje
       if (relato.length < 20) e.relato = 'Conte em poucas linhas o que foi feito (pelo menos 20 letras).';
       else if (relato.length > 2000) e.relato = 'Texto muito longo (máximo 2.000 caracteres).';
       if (!fotosVis[1]) e.foto = 'Faça pelo menos 1 foto do que foi feito.';

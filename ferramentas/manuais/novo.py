@@ -130,6 +130,10 @@ def mensagens():
         ['A visita é agendada primeiro e marcada como feita depois', 'Agende a visita e marque como feita pelo formulário (diagnóstico, avaliação) ou pelo registro da visita'],
         ['A bolsa desta função é de R$ ... por mês', 'O valor é o do plano de trabalho, já preenchido. Atualize a página e peça de novo'],
         ['Esta pessoa já entrou no sistema antes. Só a coordenação geral libera um novo primeiro acesso', 'Peça à coordenação geral o novo código de acesso'],
+        ['Ficha já aprovada: a foto e o termo não se trocam mais', 'Peça à coordenação técnica que devolva a ficha, corrija e envie de novo'],
+        ['A bolsa vai de outubro de 2026 a setembro de 2027', 'São os 12 meses do plano de trabalho: escolha um mês dentro desse período'],
+        ['A visita tem de ficar dentro da vigência do projeto (14/09/2026 a 30/09/2027)', 'Confira a data da visita'],
+        ['Ainda não dá para desligar: visita feita sem pedido ou pedido devolvido', 'Peça que ela faça o pedido antes: depois de desligada, ela não entra mais. Se ela não responder, a coordenação geral desliga assim mesmo, justificando'],
     ], 'msg')
     return h
 

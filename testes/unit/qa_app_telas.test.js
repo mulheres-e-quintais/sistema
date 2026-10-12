@@ -242,8 +242,8 @@ describe('o que os campos declaram (required, maxlength, min, max) é conferido 
     T.MQ.ui.abrirPainel({ tipo: 'detalhe', id: m.id }); h = T.painelHTML();
     assert.match(h, /id="h-obs"[^>]*maxlength="2000"/); assert.match(h, /id="d-det"[^>]*maxlength="2000"/); assert.match(h, new RegExp('id="d-data"[^>]*max="' + diaMais(0) + '"'));
     const v = T.S.visitas.find(x => x.situacao === 'prevista');
-    if (v) { T.MQ.ui.abrirPainel({ tipo: 'visita-feita', id: v.id }); h = T.painelHTML(); assert.match(h, /id="vf-rel"[^>]*maxlength="2000"/); assert.match(h, /id="vf-data"[^>]*min="2026-01-01"/);
-      T.MQ.ui.abrirPainel({ tipo: 'visita-form', id: v.id }); h = T.painelHTML(); assert.match(h, new RegExp('id="vi-d"[^>]*min="' + diaMais(0) + '" max="2027-12-31"')); }
+    if (v) { T.MQ.ui.abrirPainel({ tipo: 'visita-feita', id: v.id }); h = T.painelHTML(); assert.match(h, /id="vf-rel"[^>]*maxlength="2000"/); assert.match(h, /id="vf-data"[^>]*min="2026-09-14"/);
+      T.MQ.ui.abrirPainel({ tipo: 'visita-form', id: v.id }); h = T.painelHTML(); assert.match(h, new RegExp('id="vi-d"[^>]*min="' + diaMais(0) + '" max="2027-09-30"')); }   // 57: fim da vigência
   });
 });
 

@@ -95,3 +95,50 @@ describe('Rascunho do convite sem dados pessoais (item 11)', () => {
     assert.match(src, /r\.v !== 2 \|\| !\(Date\.now\(\) - \(r\.em \|\| 0\) < RASC_CONV_VALIDADE\)\) localStorage\.removeItem/, 'rascunho antigo (com CPF) ou vencido sai do aparelho');
   });
 });
+
+describe('Itens 10, 12, 13 e 14 (script 57)', () => {
+  test('12. bolsa só de outubro de 2026 a setembro de 2027', async () => {
+    const t = await montar('bolsista'); const R = t.MQ.regras;
+    assert.equal(R.mesBolsaOk('2026-10-01'), true); assert.equal(R.mesBolsaOk('2027-09'), true);
+    assert.equal(R.mesBolsaOk('2026-09-01'), false); assert.equal(R.mesBolsaOk('2027-10'), false);
+  });
+  test('14. visita só dentro da vigência do TED (14/09/2026 a 30/09/2027)', async () => {
+    const t = await montar('bolsista'); const R = t.MQ.regras;
+    assert.equal(R.LIM.visitaMin, '2026-09-14'); assert.equal(R.LIM.visitaMax, '2027-09-30');
+    assert.match(R.erroDataFeita('2026-09-13'), /vigência/); assert.match(R.erroDataPrevista('2027-10-01'), /30\/09\/2027/);
+  });
+  test('13. pendências de pagamento: visita feita sem pedido (ou só em pedido devolvido) e pedido devolvido', async () => {
+    const t = await montar('bolsista'); const R = t.MQ.regras;
+    const vs = [{ id: 'v1', executor_id: 'a', situacao: 'realizada' }, { id: 'v2', executor_id: 'a', situacao: 'realizada' }, { id: 'v3', executor_id: 'a', situacao: 'realizada' }, { id: 'v4', executor_id: 'a', situacao: 'prevista' }];
+    const sol = [{ id: 's1', equipe_id: 'a', situacao: 'lancada' }, { id: 's2', equipe_id: 'a', situacao: 'devolvida' }];
+    igual(R.pendenciasPagamento('a', vs, { v1: 's1', v2: 's2' }, sol), { visitas: 2, devolvidos: 1, total: 3 });
+    igual(R.pendenciasPagamento('b', vs, {}, sol), { visitas: 0, devolvidos: 0, total: 0 });
+  });
+  test('13. com visita sem pedido não se desliga; só a coordenação geral desliga assim mesmo, justificando', async () => {
+    const t = await montar('coord_geral');
+    const d = JSON.parse(t.janela.localStorage.getItem('mq-demo-v4'));
+    const ag = d.equipe.find(m => m.papel === 'agente' && m.status === 'ativa');
+    const f = d.fichas.find(x => x.uf === ag.uf) || d.fichas[0];
+    d.visitas.forEach(v => { if (v.executor_id === ag.id && v.situacao === 'prevista') v.situacao = 'cancelada'; });
+    d.diagnosticos.forEach(x => { if (x.executor_id === ag.id && x.situacao === 'devolvido') x.situacao = 'aprovado'; });
+    d.visitas.push({ id: 'v-sem-pedido', ficha_id: f.id, uf: ag.uf, etapa: 'acompanhamento', executor_id: ag.id, data_prevista: t.MQ.regras.hoje(), data_realizada: t.MQ.regras.hoje(), situacao: 'realizada', relato: 'Visita feita no quintal.' });
+    t.janela.localStorage.setItem('mq-demo-v4', JSON.stringify(d)); await t.api.reler(); await t.MQ.ui.carregar();
+    await assert.rejects(t.api.desligar(ag.id, t.MQ.regras.hoje(), 'Pediu para sair'), /Não dá para desligar ainda: \d+ visita\(s\) feita\(s\) sem pedido/);
+    const h = texto(t.painel({ tipo: 'ver', id: ag.id }));
+    assert.match(h, /Ainda não dá para desligar: \d+ visitas? feitas? sem pedido de ajuda de custo/);
+    assert.match(h, /desligar assim mesmo/);
+    await assert.rejects(t.api.desligar(ag.id, t.MQ.regras.hoje(), 'Abandono', 'sumiu'), /pelo menos 20 letras/);
+    await t.api.desligar(ag.id, t.MQ.regras.hoje(), 'Abandono', 'Não responde há 30 dias, mensagens e ligações sem retorno.');
+    const d2 = JSON.parse(t.janela.localStorage.getItem('mq-demo-v4'));
+    assert.equal(d2.equipe.find(m => m.id === ag.id).status, 'desligada');
+    assert.ok(d2.auditoria.some(a => a.acao === 'DESLIGAR_COM_PENDENCIA' && a.registro_id === ag.id));
+  });
+  test('13. a coordenação técnica vê o bloqueio, sem o "desligar assim mesmo"', async () => {
+    const t = await montar('coord_tecnico');
+    const ag = t.S.equipe.find(m => m.papel === 'agente' && m.status === 'ativa');
+    t.S.visitas = (t.S.visitas || []).concat([{ id: 'v-x', executor_id: ag.id, situacao: 'realizada', ficha_id: 'f', uf: ag.uf, etapa: 'acompanhamento' }]);
+    const h = texto(t.painel({ tipo: 'ver', id: ag.id }));
+    assert.match(h, /Ainda não dá para desligar/); assert.doesNotMatch(h, /desligar assim mesmo\. Explique/);
+    assert.match(h, /só a coordenação geral desliga assim mesmo/);
+  });
+});

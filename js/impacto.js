@@ -240,7 +240,7 @@
       motivo: txt('motivo'), renda_quintal: num('renda_quintal'), horas_dia: num('horas_dia'), agua: txt('agua'), alimentacao: txt('alimentacao'), encaminhamentos: fd.getAll('encaminhamentos'), fala: txt('fala') };
     const e = validar(im);
     if (!d.data_visita) e.data_visita = 'Informe a data.'; else if (d.data_visita > R.hoje()) e.data_visita = 'Data no futuro.';
-    else if (R.erroDataFeita(d.data_visita)) e.data_visita = R.erroDataFeita(d.data_visita);   // não antes de 01/01/2026
+    else if (R.erroDataFeita(d.data_visita)) e.data_visita = R.erroDataFeita(d.data_visita);   // não antes do início da vigência (14/09/2026)
     if (d.latitude == null && String(d.sem_gps_motivo || '').length < 5) e.sem_gps_motivo = 'Registre a localização ou explique por que não foi possível.';
     if (!d.quintal_produz) e.quintal_produz = 'Responda se o quintal está produzindo.';
     if (d.quintal_produz && d.quintal_produz !== 'sim' && !d.motivo) e.motivo = 'Explique por que não está produzindo.';

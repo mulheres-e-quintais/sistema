@@ -20,6 +20,9 @@ test('desligar a bolsista cancela os pedidos de passagem e evento ainda não aut
   const vis = (t.S.visitas || []).filter(v => v.executor_id === eu.id && v.situacao === 'prevista');
   const d = JSON.parse(t.janela.localStorage.getItem('mq-demo-v4')); d.visitas.forEach(v => { if (v.executor_id === eu.id && v.situacao === 'prevista') v.situacao = 'cancelada'; });
   d.diagnosticos.forEach(x => { if (x.executor_id === eu.id && x.situacao === 'devolvido') x.situacao = 'aprovado'; });
+  // 57: visitas feitas dela já pagas (sem pagamento a pedir, o desligamento segue)
+  d.solicitacoes = d.solicitacoes || []; d.solic_visitas = d.solic_visitas || {}; d.solicitacoes.push({ id: 'pago-x', tipo: 'ajuda_custo', equipe_id: eu.id, mes: t.MQ.regras.hoje().slice(0, 7) + '-01', situacao: 'lancada' });
+  d.visitas.forEach(v => { if (v.executor_id === eu.id && v.situacao === 'realizada') d.solic_visitas[v.id] = 'pago-x'; });
   t.janela.localStorage.setItem('mq-demo-v4', JSON.stringify(d)); await t.api.reler();
   await t.api.desligar(eu.id, t.MQ.regras.hoje(), 'Pediu para sair');
   const p = JSON.parse(t.janela.localStorage.getItem('mq-demo-v4')).pedidos.find(x => x.id === id);

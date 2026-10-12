@@ -128,6 +128,8 @@
 
   function cartaoBolsa(eu, m, s, hab) {
     const valor = P[eu.papel].bolsa;
+    // 57: bolsa só nos 12 meses do plano (outubro de 2026 a setembro de 2027); pedido já feito continua aparecendo
+    if (!s && !R.mesBolsaOk(m)) return `<div class="bloco pag-c"><h3>Bolsa · ${nomeMes(m)}</h3><p class="small muted">${E(R.MSG_MES_BOLSA.split(' Escolha')[0])}</p></div>`;
     if (s && s.situacao !== 'devolvida') return `<div class="bloco pag-c"><h3>Bolsa · ${nomeMes(m)}</h3>
       <p class="num valor-destaque">${valor ? brl(s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado) : 'Conforme o termo'}</p>${situacaoTxt(s)}</div>`;
     return `<form class="bloco pag-c" data-form="pag-bolsa" data-mes="${m}" novalidate><h3>Bolsa · ${nomeMes(m)}</h3>

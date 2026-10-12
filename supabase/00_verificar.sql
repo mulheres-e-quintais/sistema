@@ -128,6 +128,12 @@ chk as (
                    and exists (select 1 from pg_proc where proname = 'vitrine_municipios' and prosrc like '%sem_acento%')
   union all select '52_acompanhamento (perfis de acompanhamento do MDA e do MPA)', to_regclass('public.observadores') is not null and exists (select 1 from pg_proc where proname = 'acompanhamento_dados') and exists (select 1 from pg_proc where proname = 'bloquear_conta_nao_cadastrada' and prosrc like '%observadores%')
   union all select '51_kit_itens (itens do kit com preço de referência)', to_regclass('public.kit_itens') is not null and exists (select 1 from pg_proc where proname = 'salvar_kit_item')
+  union all select '57_correcoes_auditoria_2 (ficha aprovada não troca arquivo, bolsa nos 12 meses, desligamento com pendência, vigência)',
+                   exists (select 1 from pg_proc where proname = 'ficha_arquivo_livre')
+                   and exists (select 1 from pg_trigger where not tgisinternal and tgname = 'z_mes_bolsa')
+                   and exists (select 1 from pg_trigger where not tgisinternal and tgname = 'z_vigencia')
+                   and exists (select 1 from pg_trigger where not tgisinternal and tgname = 'a1_desligar_pendencias')
+                   and exists (select 1 from pg_proc where proname = 'desligar_sem_pedido')
   union all select '56_correcoes_auditoria (visita não nasce feita, bolsa no valor da função, novo acesso, vitrine privada)',
                    exists (select 1 from pg_trigger where not tgisinternal and tgname = 'a0_nasce_prevista')
                    and exists (select 1 from pg_trigger where not tgisinternal and tgname = 'a0_valor_bolsa')
@@ -150,11 +156,11 @@ chk as (
   union all select 'edição ao mesmo tempo é avisada: ficha, diagnóstico, visita e avaliação (se FALTA: rode o 47)',
                    exists (select 1 from pg_proc where proname = 'versao_conferir' and prosrc like '%alterado por outra pessoa enquanto você editava%')
                    and (select count(*) from pg_trigger t join pg_proc p on p.oid = t.tgfoid where not t.tgisinternal and p.proname = 'versao_conferir') = 4
-  union all select 'privilégios: quem não entrou só executa as cinco funções públicas e não tem acesso a tabela (se FALTA: rode o 47)',
+  union all select 'privilégios: quem não entrou só executa as seis funções públicas e não tem acesso a tabela (se FALTA: rode o 47 e o 56)',
                    not exists (select 1 from information_schema.role_table_grants where table_schema = 'public' and grantee = 'anon')
                    and not exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prorettype <> 'trigger'::regtype and (p.proacl is not null or p.prosecdef)
                                     and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e') and has_function_privilege('anon', p.oid, 'EXECUTE')
-                                    and p.proname not in ('ver_convite', 'enviar_pre_cadastro', 'pedir_novo_acesso', 'vitrine', 'vitrine_municipios'))
+                                    and p.proname not in ('ver_convite', 'enviar_pre_cadastro', 'pedir_novo_acesso', 'vitrine', 'vitrine_municipios', 'vitrine_foto_publica'))   -- 56: link da foto da vitrine
                    and not exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosecdef and not ('search_path=public, pg_temp' = any (coalesce(p.proconfig, '{}'))))
   union all select 'tamanho de texto conferido no banco, com mensagem que diz o campo (se FALTA: rode o 47)',
                    exists (select 1 from pg_proc where proname = 'enviar_pre_cadastro' and prosrc like '%Texto muito longo em nome%')
