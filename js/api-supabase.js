@@ -22,6 +22,8 @@
   const erro = e => {
     const x = new Error(R.mensagemErro(e)); x.original = e;
     x.semRede = !navigator.onLine || /Failed to fetch|NetworkError|Load failed|network/i.test(String((e && e.message) || e));
+    // auditoria 2 (12/10/2026): prazo estourado não é "sem internet": é falha daquele envio (a fila passa para o próximo)
+    x.prazoEsgotado = /o servidor não respondeu em/.test(String((e && e.message) || e));
     return x;
   };
   const lerEuGuardado = () => { try { return JSON.parse(localStorage.getItem('mq-eu') || 'null'); } catch (e) { return null; } };
@@ -73,7 +75,9 @@
   MQ.prazoRede = { dados: 30000, arquivo: 120000 };
   function fetchComPrazo(url, op) {
     const ehArquivo = /\/storage\/v1\/object/.test(String(url && url.url || url)) && op && op.method && op.method !== 'GET';
-    const prazo = ehArquivo ? MQ.prazoRede.arquivo : MQ.prazoRede.dados;
+    // arquivo: no mínimo 2 minutos, e mais tempo quanto maior ele for (calculado para ~20 KB por segundo, internet fraca)
+    const tam = ehArquivo && op && op.body && typeof op.body.size === 'number' ? op.body.size : 0;
+    const prazo = ehArquivo ? Math.max(MQ.prazoRede.arquivo, Math.ceil(tam / 20000) * 1000) : MQ.prazoRede.dados;
     if (typeof AbortController === 'undefined') return fetch(url, op);
     const ctl = new AbortController(); let esgotou = false;
     const t = setTimeout(() => { esgotou = true; ctl.abort(); }, prazo);

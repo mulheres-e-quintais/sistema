@@ -702,7 +702,9 @@
     const n = inp.dataset.fotoVis; const dica = document.getElementById('vf-f' + n + '-dica');
     if (inp.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; inp.value = ''; manteveFoto(dica, fotosVis[n]); return; }
     dica.textContent = 'Preparando foto…';
+    const quem = MQ.fotoDia ? MQ.fotoDia.chaveDoInput(inp) : null;   // qual visita pediu a foto
     const foto = await prepararFoto(inp, dica); if (!foto) { manteveFoto(dica, fotosVis[n]); return; }   // a foto boa que já estava continua
+    if (MQ.fotoDia && !MQ.fotoDia.aindaAberto(quem)) return;   // trocou de visita enquanto preparava: a foto fica guardada para a visita certa
     fotosVis[n] = foto; dica.textContent = 'Foto pronta (' + Math.round(fotosVis[n].size / 1024) + ' KB).';
   });
   /* Só aceita foto de verdade (imagem, com tamanho e que o aparelho consiga abrir). Arquivo que não é foto
@@ -830,6 +832,8 @@
     if (resta && resta.erro) {
       const e = new Error(resta.erro);
       // outra pessoa alterou o registro: o formulário reabre com o dado novo e o que ela tinha digitado volta por cima (nada se perde)
+      // auditoria 2: antes de sair da fila, as fotos dele vão para a cópia do aparelho (voltam quando o formulário abrir de novo)
+      if (resta.conflito && MQ.fotoDia && resta.fotos) { try { await MQ.fotoDia.guardarCopia(tipo, limpo, resta.fotos, resta.fotosDias); } catch (x) { /* segue */ } }
       if (resta.conflito && U().reabrirComConflito) { await MQ.fila.remover(resta.id); s.fila = await MQ.fila.listar(s.eu.id); if (U().reabrirComConflito(resta.erro)) e.jaAvisado = true; }
       throw e;
     }
@@ -953,7 +957,9 @@
       const k = ev.target.dataset.foto; const dica = form.querySelector('#dg-f-' + k + '-dica');
       if (ev.target.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; ev.target.value = ''; manteveFoto(dica, fotosTemp[k]); return; }
       dica.textContent = 'Preparando foto…';
+      const quem = MQ.fotoDia ? MQ.fotoDia.chaveDoInput(ev.target) : null;   // qual quintal pediu a foto
       const foto = await prepararFoto(ev.target, dica); if (!foto) { manteveFoto(dica, fotosTemp[k]); atualizarDiag(form); return; }   // a foto boa que já estava continua
+      if (MQ.fotoDia && !MQ.fotoDia.aindaAberto(quem)) return;   // trocou de quintal enquanto preparava: a foto fica guardada para o quintal certo
       fotosTemp[k] = foto;
       dica.textContent = 'Foto pronta (' + Math.round(fotosTemp[k].size / 1024) + ' KB).';
       const w = form.querySelector('#w-fotos'); if (w) w.classList.remove('tem-erro');

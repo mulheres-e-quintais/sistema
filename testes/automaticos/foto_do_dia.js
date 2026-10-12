@@ -70,6 +70,25 @@ const R = []; const ok = (n, c, d = '') => R.push([c ? 'PASSOU' : 'FALHOU', n, d
   const erro = await p.textContent('#painel form[data-form=diag] [data-erro]').catch(() => '');
   ok('data da visita diferente da foto barra o envio', /Há foto de .* mas a visita está com a data de/.test(erro), erro);
 
+  // auditoria 2: foto que fica pronta DEPOIS de trocar de quintal não entra no quintal novo; fica guardada para o certo
+  await p.evaluate(() => { const S = MQ.ui.S; window.fichaB = S.fichas.find(x => x.resultado === 'selecionada' && x.id !== window.fichaTeste && !S.diagnosticos.some(d => d.ficha_id === x.id)).id;
+    window._comp = MQ.comprimirFoto; MQ.comprimirFoto = (...a) => new Promise(r => setTimeout(() => r(window._comp(...a)), 1500)); });
+  await p.fill('#painel input[name=data_visita]', hoje);
+  await p.evaluate(e => escolher('#dg-f-agua', e), exHoje); await p.waitForTimeout(200);
+  await p.evaluate(() => { document.body.insertAdjacentHTML('beforeend', `<button id="abre-b" data-acao="campo-diag-novo" data-ficha="${window.fichaB}"></button>`); document.getElementById('abre-b').click(); document.getElementById('abre-b').remove(); });
+  await p.waitForTimeout(2200);
+  const dicaB = await p.textContent('#dg-f-agua-dica').catch(() => '');
+  const fotosB = await p.evaluate(() => MQ.fotoDia.fotosDoForm('diag'));
+  ok('foto atrasada NÃO entra no diagnóstico de outra mulher', !fotosB.includes('agua') && !/Foto pronta|recuperada/.test(dicaB) && await p.evaluate(() => document.querySelector('form[data-form=diag]').dataset.ficha === window.fichaB), JSON.stringify(fotosB) + ' ' + dicaB);
+  await p.evaluate(() => { MQ.comprimirFoto = window._comp; });
+  await abrirDiag(); await p.waitForTimeout(500);
+  const dicaA = await p.textContent('#dg-f-agua-dica').catch(() => '');
+  ok('a foto atrasada fica guardada e volta no diagnóstico certo', /Foto recuperada deste aparelho/.test(dicaA), dicaA);
+  // auditoria 2: registro em conflito guarda as fotos antes de sair da fila
+  await p.evaluate(async () => { const c = document.createElement('canvas'); c.width = 4; c.height = 4; const b = await new Promise(r => c.toBlob(r, 'image/jpeg'));
+    await MQ.fotoDia.guardarCopia('visita', { id: 'vis-conflito' }, { 1: b }, { 1: { dia: MQ.regras.hoje(), hora: 9 } }); });
+  ok('cópia das fotos do registro em conflito fica no aparelho', (await p.evaluate(() => contarGuardadas())) >= 2);
+
   // sair pelo botão: as fotos saem do aparelho (LGPD)
   await p.evaluate(() => MQ.ui.sair()); await p.waitForTimeout(600);
   ok('sair pelo botão apaga as fotos do aparelho', (await p.evaluate(() => contarGuardadas())) === 0);

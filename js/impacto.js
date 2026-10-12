@@ -138,7 +138,9 @@
     const k = inp.dataset.fotoAv; const dica = document.getElementById('av-f-' + k + '-dica');
     if (inp.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; inp.value = ''; MQ.campoUI.manteveFoto(dica, fotosAv[k]); return; }
     dica.textContent = 'Preparando foto…';
-    const foto = await MQ.campoUI.prepararFoto(inp, dica); if (!foto) { MQ.campoUI.manteveFoto(dica, fotosAv[k]); return; }   // foto recusada: a boa que já estava continua
+    const quem = MQ.fotoDia ? MQ.fotoDia.chaveDoInput(inp) : null;   // qual avaliação pediu a foto
+    const foto = await MQ.campoUI.prepararFoto(inp, dica); if (!foto) { MQ.campoUI.manteveFoto(dica, fotosAv[k]); return; }
+    if (MQ.fotoDia && !MQ.fotoDia.aindaAberto(quem)) return;   // trocou de avaliação enquanto preparava: a foto fica guardada para a certa   // foto recusada: a boa que já estava continua
     fotosAv[k] = foto; dica.textContent = 'Foto pronta (' + Math.round(fotosAv[k].size / 1024) + ' KB).';
   });
 

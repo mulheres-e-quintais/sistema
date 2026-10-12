@@ -176,3 +176,33 @@ describe('Itens 16 e 17', () => {
     assert.match(hf, /Foto pronta \(guardada neste aparelho\)/, 'a foto da fila voltou para a correção');
   });
 });
+
+describe('Auditoria 2 (12/10/2026): fila e fotos', () => {
+  test('arquivo que estoura o prazo não trava a fila: conta a tentativa dele e o próximo sobe', async () => {
+    const t = await montar('agente'); const F = t.MQ.fila; const dono = t.S.eu.id;
+    for (const id of ['a1', 'b1']) await F.salvar({ id, dono, tipo: 'visita', dados: { id }, fotos: null, erro: null });
+    const api = { async salvarVisita(d) { if (d.id === 'a1') { const e = new Error('Sem internet agora.'); e.semRede = true; e.prazoEsgotado = true; throw e; } } };
+    for (let i = 0; i < 3; i++) await F.sincronizar(api, dono);
+    const l = await F.listar(dono);
+    igual(l.map(x => x.id), ['a1'], 'b1 subiu mesmo com a1 estourando o prazo');
+    assert.equal(l[0].tentativas, 3); assert.equal(l[0].erro, null, 'continua tentando sozinho');
+    // sem internet de verdade: para e não conta tentativa
+    await F.salvar({ id: 'c1', dono, tipo: 'visita', dados: { id: 'c1' }, fotos: null, erro: null });
+    const semRede = { async salvarVisita() { const e = new Error('Sem internet agora.'); e.semRede = true; throw e; } };
+    await F.sincronizar(semRede, dono);
+    assert.equal((await F.listar(dono)).find(x => x.id === 'a1').tentativas, 3);
+  });
+  test('prazo de envio de arquivo cresce com o tamanho (internet fraca)', async () => {
+    const t = await montar('agente'); const M = t.MQ; M.prazoRede.arquivo = 30;
+    let sinal = null; t.janela.fetch = (u, op) => new Promise((res, rej) => { sinal = op.signal; op.signal.addEventListener('abort', () => rej(new Error('aborted'))); });
+    const ini = Date.now();
+    const p = M.fetchComPrazo('https://x.supabase.co/storage/v1/object/fichas/a.pdf', { method: 'POST', body: { size: 60000 } });   // 60 KB → 3 s
+    await new Promise(r => setTimeout(r, 200)); assert.equal(sinal.aborted, false, 'arquivo de 60 KB não é cortado em 30 ms');
+    await assert.rejects(p, /não respondeu em 3 segundos/); assert.ok(Date.now() - ini >= 2900);
+  });
+  test('foto que fica pronta depois de trocar de formulário não entra no formulário novo', async () => {
+    const t = await montar('agente'); const F = t.MQ.fotoDia;
+    assert.equal(typeof F.aindaAberto, 'function'); assert.equal(typeof F.chaveDoInput, 'function');
+    assert.equal(F.aindaAberto(null), true, 'sem formulário de quintal: segue');
+  });
+});

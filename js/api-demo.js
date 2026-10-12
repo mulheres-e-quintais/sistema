@@ -1360,14 +1360,15 @@
       const d = ler(); const m = d.equipe.find(x => x.id === id);
       { // 57: com pagamento a pedir não se desliga; só a coordenação geral desliga assim mesmo, justificando (fica no histórico)
         const pe = m ? R.pendenciasPagamento(id, d.visitas, d.solic_visitas, d.solicitacoes) : { total: 0 };
-        if (pe.total) {
+        var registroPend = null;   // grava no histórico só DEPOIS de desligar (antes ficava registro de desligamento recusado)
+        if (semPedido != null) {   // 59: "desligar assim mesmo" só da geral, só com pendência, nunca a coordenação geral
           const eu = euMesmo();
-          if (semPedido == null) throw falha('Não dá para desligar ainda: ' + pe.visitas + ' visita(s) feita(s) sem pedido de ajuda de custo e ' + pe.devolvidos + ' pedido(s) devolvido(s) para corrigir. Peça que ela faça o pedido antes: depois de desligada, ela não entra mais no sistema. Se ela não responder, a coordenação geral pode desligar assim mesmo, justificando.');
           if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral desliga quem ainda tem pagamento a pedir.');
+          if (m && m.papel === 'coord_geral') throw falha('A coordenação geral não é desligada por aqui.');
           if (String(semPedido).trim().length < 20) throw falha('Explique por que ela não fez o pedido (pelo menos 20 letras).');
-          d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'equipe', registro_id: id, acao: 'DESLIGAR_COM_PENDENCIA', por: eu.id, em: new Date().toISOString(), antes: null,
-            depois: { visitas_sem_pedido: pe.visitas, pedidos_devolvidos: pe.devolvidos, justificativa: String(semPedido).trim() } }); gravar();
-        }
+          if (!pe.total) throw falha('Ela não tem pagamento a pedir: use o desligamento normal.');
+          registroPend = { por: eu.id, depois: { visitas_sem_pedido: pe.visitas, pedidos_devolvidos: pe.devolvidos, justificativa: String(semPedido).trim() } };
+        } else if (pe.total) throw falha('Não dá para desligar ainda: ' + pe.visitas + ' visita(s) feita(s) sem pedido de ajuda de custo e ' + pe.devolvidos + ' pedido(s) devolvido(s) para corrigir. Peça que ela faça o pedido antes: depois de desligada, ela não entra mais no sistema. Se ela não responder, a coordenação geral pode desligar assim mesmo, justificando.');
       }
       if (m && ['agente', 'articulacao', 'apoio'].includes(m.papel)) {
         const vp = (d.visitas || []).filter(v => v.executor_id === id && v.situacao === 'prevista').length;
@@ -1379,6 +1380,7 @@
         if (ts.length) throw falha(`Não dá para desligar ainda: é professor(a) da turma em andamento ${ts.join(', ')}. Passe a turma para outro(a) professor(a) (aba Curso FIC > Editar) e desligue depois.`);
       }
       const r = await this.atualizar(id, { status: 'desligada', data_fim, motivo_desligamento: motivo });
+      if (registroPend) { const dd = ler(); dd.auditoria.push({ id: dd.auditoria.length + 1, tabela: 'equipe', registro_id: id, acao: 'DESLIGAR_COM_PENDENCIA', por: registroPend.por, em: new Date().toISOString(), antes: null, depois: registroPend.depois }); gravar(); }
       // 41: pedidos de passagem e evento ainda não autorizados são cancelados, com o motivo registrado
       const d2 = ler(); const quando = String(data_fim || R.hoje()).split('-').reverse().join('/');
       (d2.pedidos || []).filter(p => p.solicitante_id === id && ['enviado', 'devolvido', 'conferido'].includes(p.situacao)).forEach(p => {

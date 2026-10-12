@@ -235,5 +235,21 @@
     limparAparelho(false);
   }
 
-  MQ.fotoDia = { lerDataExif, lerMomentoExif, conferir, checar, abrirCamera, MSG_SEM_DATA, registrarMapa, aceitar, diasDe, marcarDias, limparRegistro, limparAparelho, fotoForaDoDia, chaveDe, recuperar };
+  /* auditoria 2 (12/10/2026): a foto leva 1 a 2 s para ficar pronta. Se nesse meio-tempo a pessoa fechou o formulário
+     e abriu o de outra mulher, a foto NÃO pode cair no formulário novo. aindaAberto(chave) diz se o formulário que
+     pediu a foto continua na tela (a foto fica guardada como cópia dele e volta quando ele for aberto de novo). */
+  function chaveDoInput(inp) { const f = formDoQuintal(inp); return f ? chaveDe(f) : null; }
+  function aindaAberto(chave) {
+    if (!chave || typeof document === 'undefined') return true;
+    const nome = chave.split(':')[0];
+    return [...document.querySelectorAll('form[data-form="' + nome + '"]')].some(f => chaveDe(f) === chave);
+  }
+  /* registro que volta da fila em conflito: as fotos dele vão para a cópia do aparelho antes de ele sair da fila */
+  async function guardarCopia(tipo, dados, fotos, fd) {
+    const k = chaveDoRegistro(tipo, dados || {}); const d = dono(); if (!k || !d || !fotos) return;
+    for (const campo of Object.keys(fotos)) { const blob = fotos[campo]; if (!blob) continue; const info = (fd || {})[campo] || {};
+      await op('readwrite', os => os.put({ id: d + '|' + k + '|' + campo, dono: d, chave: d + '|' + k, campo, blob, dia: info.dia || null, hora: info.hora == null ? null : info.hora, em: Date.now() })); }
+  }
+  const fotosDoForm = nome => Object.keys((mapas[nome] || {}).mapa || {}).filter(k => mapas[nome].mapa[k]);   // quais campos do formulário aberto têm foto (para conferência e testes)
+  MQ.fotoDia = { fotosDoForm, chaveDoInput, aindaAberto, guardarCopia, lerDataExif, lerMomentoExif, conferir, checar, abrirCamera, MSG_SEM_DATA, registrarMapa, aceitar, diasDe, marcarDias, limparRegistro, limparAparelho, fotoForaDoDia, chaveDe, recuperar };
 })();

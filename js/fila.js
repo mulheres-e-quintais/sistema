@@ -124,7 +124,9 @@
             // subiu: sai da fila, a não ser que a pessoa tenha salvo uma correção enquanto subia (aí a correção fica e sobe na próxima)
             if (await F.removerSeIgual(it)) enviados++;
           } catch (e) {
-            if (e.semRede) break;
+            if (e.semRede && !e.prazoEsgotado) break;   // sem internet: para e tenta tudo depois
+            // auditoria 2: prazo estourado (arquivo grande em internet fraca) conta como tentativa DESTE item e a fila segue:
+            // antes ele travava a fila inteira, porque ia sempre primeiro e estourava de novo
             const msg = (MQ.regras && MQ.regras.mensagemErro ? MQ.regras.mensagemErro(e) : e.message) || 'Não foi possível enviar. Tente de novo.';   // mensagem já traduzida, não o texto cru do servidor
             if (MQ.falhaPassageira(e)) {
               // 12/10/2026 (auditoria, item 3): falha passageira não trava o item: fica para a próxima tentativa, com o aviso na tela

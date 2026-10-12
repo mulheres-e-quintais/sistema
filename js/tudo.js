@@ -2227,14 +2227,15 @@ MQ.ORCAMENTO = {
       const d = ler(); const m = d.equipe.find(x => x.id === id);
       { // 57: com pagamento a pedir não se desliga; só a coordenação geral desliga assim mesmo, justificando (fica no histórico)
         const pe = m ? R.pendenciasPagamento(id, d.visitas, d.solic_visitas, d.solicitacoes) : { total: 0 };
-        if (pe.total) {
+        var registroPend = null;   // grava no histórico só DEPOIS de desligar (antes ficava registro de desligamento recusado)
+        if (semPedido != null) {   // 59: "desligar assim mesmo" só da geral, só com pendência, nunca a coordenação geral
           const eu = euMesmo();
-          if (semPedido == null) throw falha('Não dá para desligar ainda: ' + pe.visitas + ' visita(s) feita(s) sem pedido de ajuda de custo e ' + pe.devolvidos + ' pedido(s) devolvido(s) para corrigir. Peça que ela faça o pedido antes: depois de desligada, ela não entra mais no sistema. Se ela não responder, a coordenação geral pode desligar assim mesmo, justificando.');
           if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral desliga quem ainda tem pagamento a pedir.');
+          if (m && m.papel === 'coord_geral') throw falha('A coordenação geral não é desligada por aqui.');
           if (String(semPedido).trim().length < 20) throw falha('Explique por que ela não fez o pedido (pelo menos 20 letras).');
-          d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'equipe', registro_id: id, acao: 'DESLIGAR_COM_PENDENCIA', por: eu.id, em: new Date().toISOString(), antes: null,
-            depois: { visitas_sem_pedido: pe.visitas, pedidos_devolvidos: pe.devolvidos, justificativa: String(semPedido).trim() } }); gravar();
-        }
+          if (!pe.total) throw falha('Ela não tem pagamento a pedir: use o desligamento normal.');
+          registroPend = { por: eu.id, depois: { visitas_sem_pedido: pe.visitas, pedidos_devolvidos: pe.devolvidos, justificativa: String(semPedido).trim() } };
+        } else if (pe.total) throw falha('Não dá para desligar ainda: ' + pe.visitas + ' visita(s) feita(s) sem pedido de ajuda de custo e ' + pe.devolvidos + ' pedido(s) devolvido(s) para corrigir. Peça que ela faça o pedido antes: depois de desligada, ela não entra mais no sistema. Se ela não responder, a coordenação geral pode desligar assim mesmo, justificando.');
       }
       if (m && ['agente', 'articulacao', 'apoio'].includes(m.papel)) {
         const vp = (d.visitas || []).filter(v => v.executor_id === id && v.situacao === 'prevista').length;
@@ -2246,6 +2247,7 @@ MQ.ORCAMENTO = {
         if (ts.length) throw falha(`Não dá para desligar ainda: é professor(a) da turma em andamento ${ts.join(', ')}. Passe a turma para outro(a) professor(a) (aba Curso FIC > Editar) e desligue depois.`);
       }
       const r = await this.atualizar(id, { status: 'desligada', data_fim, motivo_desligamento: motivo });
+      if (registroPend) { const dd = ler(); dd.auditoria.push({ id: dd.auditoria.length + 1, tabela: 'equipe', registro_id: id, acao: 'DESLIGAR_COM_PENDENCIA', por: registroPend.por, em: new Date().toISOString(), antes: null, depois: registroPend.depois }); gravar(); }
       // 41: pedidos de passagem e evento ainda não autorizados são cancelados, com o motivo registrado
       const d2 = ler(); const quando = String(data_fim || R.hoje()).split('-').reverse().join('/');
       (d2.pedidos || []).filter(p => p.solicitante_id === id && ['enviado', 'devolvido', 'conferido'].includes(p.situacao)).forEach(p => {
@@ -2308,6 +2310,8 @@ MQ.ORCAMENTO = {
   const erro = e => {
     const x = new Error(R.mensagemErro(e)); x.original = e;
     x.semRede = !navigator.onLine || /Failed to fetch|NetworkError|Load failed|network/i.test(String((e && e.message) || e));
+    // auditoria 2 (12/10/2026): prazo estourado não é "sem internet": é falha daquele envio (a fila passa para o próximo)
+    x.prazoEsgotado = /o servidor não respondeu em/.test(String((e && e.message) || e));
     return x;
   };
   const lerEuGuardado = () => { try { return JSON.parse(localStorage.getItem('mq-eu') || 'null'); } catch (e) { return null; } };
@@ -2359,7 +2363,9 @@ MQ.ORCAMENTO = {
   MQ.prazoRede = { dados: 30000, arquivo: 120000 };
   function fetchComPrazo(url, op) {
     const ehArquivo = /\/storage\/v1\/object/.test(String(url && url.url || url)) && op && op.method && op.method !== 'GET';
-    const prazo = ehArquivo ? MQ.prazoRede.arquivo : MQ.prazoRede.dados;
+    // arquivo: no mínimo 2 minutos, e mais tempo quanto maior ele for (calculado para ~20 KB por segundo, internet fraca)
+    const tam = ehArquivo && op && op.body && typeof op.body.size === 'number' ? op.body.size : 0;
+    const prazo = ehArquivo ? Math.max(MQ.prazoRede.arquivo, Math.ceil(tam / 20000) * 1000) : MQ.prazoRede.dados;
     if (typeof AbortController === 'undefined') return fetch(url, op);
     const ctl = new AbortController(); let esgotou = false;
     const t = setTimeout(() => { esgotou = true; ctl.abort(); }, prazo);
@@ -3103,7 +3109,9 @@ MQ.ORCAMENTO = {
             // subiu: sai da fila, a não ser que a pessoa tenha salvo uma correção enquanto subia (aí a correção fica e sobe na próxima)
             if (await F.removerSeIgual(it)) enviados++;
           } catch (e) {
-            if (e.semRede) break;
+            if (e.semRede && !e.prazoEsgotado) break;   // sem internet: para e tenta tudo depois
+            // auditoria 2: prazo estourado (arquivo grande em internet fraca) conta como tentativa DESTE item e a fila segue:
+            // antes ele travava a fila inteira, porque ia sempre primeiro e estourava de novo
             const msg = (MQ.regras && MQ.regras.mensagemErro ? MQ.regras.mensagemErro(e) : e.message) || 'Não foi possível enviar. Tente de novo.';   // mensagem já traduzida, não o texto cru do servidor
             if (MQ.falhaPassageira(e)) {
               // 12/10/2026 (auditoria, item 3): falha passageira não trava o item: fica para a próxima tentativa, com o aviso na tela
@@ -4717,7 +4725,23 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     limparAparelho(false);
   }
 
-  MQ.fotoDia = { lerDataExif, lerMomentoExif, conferir, checar, abrirCamera, MSG_SEM_DATA, registrarMapa, aceitar, diasDe, marcarDias, limparRegistro, limparAparelho, fotoForaDoDia, chaveDe, recuperar };
+  /* auditoria 2 (12/10/2026): a foto leva 1 a 2 s para ficar pronta. Se nesse meio-tempo a pessoa fechou o formulário
+     e abriu o de outra mulher, a foto NÃO pode cair no formulário novo. aindaAberto(chave) diz se o formulário que
+     pediu a foto continua na tela (a foto fica guardada como cópia dele e volta quando ele for aberto de novo). */
+  function chaveDoInput(inp) { const f = formDoQuintal(inp); return f ? chaveDe(f) : null; }
+  function aindaAberto(chave) {
+    if (!chave || typeof document === 'undefined') return true;
+    const nome = chave.split(':')[0];
+    return [...document.querySelectorAll('form[data-form="' + nome + '"]')].some(f => chaveDe(f) === chave);
+  }
+  /* registro que volta da fila em conflito: as fotos dele vão para a cópia do aparelho antes de ele sair da fila */
+  async function guardarCopia(tipo, dados, fotos, fd) {
+    const k = chaveDoRegistro(tipo, dados || {}); const d = dono(); if (!k || !d || !fotos) return;
+    for (const campo of Object.keys(fotos)) { const blob = fotos[campo]; if (!blob) continue; const info = (fd || {})[campo] || {};
+      await op('readwrite', os => os.put({ id: d + '|' + k + '|' + campo, dono: d, chave: d + '|' + k, campo, blob, dia: info.dia || null, hora: info.hora == null ? null : info.hora, em: Date.now() })); }
+  }
+  const fotosDoForm = nome => Object.keys((mapas[nome] || {}).mapa || {}).filter(k => mapas[nome].mapa[k]);   // quais campos do formulário aberto têm foto (para conferência e testes)
+  MQ.fotoDia = { fotosDoForm, chaveDoInput, aindaAberto, guardarCopia, lerDataExif, lerMomentoExif, conferir, checar, abrirCamera, MSG_SEM_DATA, registrarMapa, aceitar, diasDe, marcarDias, limparRegistro, limparAparelho, fotoForaDoDia, chaveDe, recuperar };
 })();
 ;
 /* ===== campo.js ===== */
@@ -5425,7 +5449,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const n = inp.dataset.fotoVis; const dica = document.getElementById('vf-f' + n + '-dica');
     if (inp.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; inp.value = ''; manteveFoto(dica, fotosVis[n]); return; }
     dica.textContent = 'Preparando foto…';
+    const quem = MQ.fotoDia ? MQ.fotoDia.chaveDoInput(inp) : null;   // qual visita pediu a foto
     const foto = await prepararFoto(inp, dica); if (!foto) { manteveFoto(dica, fotosVis[n]); return; }   // a foto boa que já estava continua
+    if (MQ.fotoDia && !MQ.fotoDia.aindaAberto(quem)) return;   // trocou de visita enquanto preparava: a foto fica guardada para a visita certa
     fotosVis[n] = foto; dica.textContent = 'Foto pronta (' + Math.round(fotosVis[n].size / 1024) + ' KB).';
   });
   /* Só aceita foto de verdade (imagem, com tamanho e que o aparelho consiga abrir). Arquivo que não é foto
@@ -5553,6 +5579,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (resta && resta.erro) {
       const e = new Error(resta.erro);
       // outra pessoa alterou o registro: o formulário reabre com o dado novo e o que ela tinha digitado volta por cima (nada se perde)
+      // auditoria 2: antes de sair da fila, as fotos dele vão para a cópia do aparelho (voltam quando o formulário abrir de novo)
+      if (resta.conflito && MQ.fotoDia && resta.fotos) { try { await MQ.fotoDia.guardarCopia(tipo, limpo, resta.fotos, resta.fotosDias); } catch (x) { /* segue */ } }
       if (resta.conflito && U().reabrirComConflito) { await MQ.fila.remover(resta.id); s.fila = await MQ.fila.listar(s.eu.id); if (U().reabrirComConflito(resta.erro)) e.jaAvisado = true; }
       throw e;
     }
@@ -5676,7 +5704,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const k = ev.target.dataset.foto; const dica = form.querySelector('#dg-f-' + k + '-dica');
       if (ev.target.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; ev.target.value = ''; manteveFoto(dica, fotosTemp[k]); return; }
       dica.textContent = 'Preparando foto…';
+      const quem = MQ.fotoDia ? MQ.fotoDia.chaveDoInput(ev.target) : null;   // qual quintal pediu a foto
       const foto = await prepararFoto(ev.target, dica); if (!foto) { manteveFoto(dica, fotosTemp[k]); atualizarDiag(form); return; }   // a foto boa que já estava continua
+      if (MQ.fotoDia && !MQ.fotoDia.aindaAberto(quem)) return;   // trocou de quintal enquanto preparava: a foto fica guardada para o quintal certo
       fotosTemp[k] = foto;
       dica.textContent = 'Foto pronta (' + Math.round(fotosTemp[k].size / 1024) + ' KB).';
       const w = form.querySelector('#w-fotos'); if (w) w.classList.remove('tem-erro');
@@ -9401,7 +9431,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const k = inp.dataset.fotoAv; const dica = document.getElementById('av-f-' + k + '-dica');
     if (inp.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; inp.value = ''; MQ.campoUI.manteveFoto(dica, fotosAv[k]); return; }
     dica.textContent = 'Preparando foto…';
-    const foto = await MQ.campoUI.prepararFoto(inp, dica); if (!foto) { MQ.campoUI.manteveFoto(dica, fotosAv[k]); return; }   // foto recusada: a boa que já estava continua
+    const quem = MQ.fotoDia ? MQ.fotoDia.chaveDoInput(inp) : null;   // qual avaliação pediu a foto
+    const foto = await MQ.campoUI.prepararFoto(inp, dica); if (!foto) { MQ.campoUI.manteveFoto(dica, fotosAv[k]); return; }
+    if (MQ.fotoDia && !MQ.fotoDia.aindaAberto(quem)) return;   // trocou de avaliação enquanto preparava: a foto fica guardada para a certa   // foto recusada: a boa que já estava continua
     fotosAv[k] = foto; dica.textContent = 'Foto pronta (' + Math.round(fotosAv[k].size / 1024) + ' KB).';
   });
 
