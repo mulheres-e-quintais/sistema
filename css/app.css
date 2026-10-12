@@ -3228,3 +3228,27 @@ small { font-size: max(12px, .85em); }
 .rel .rel-texto { border-top: 1px solid var(--line); padding: 8px 0 10px; }
 .rel .rel-texto-cab { margin: 0 0 4px; font-size: var(--t-sm); color: var(--ink-2); }
 .rel .rel-texto-corpo { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* prontidão para o campo e registros parados nos celulares (prontidao.js, 12/10/2026) */
+.prontidao .tab-pront th { white-space: nowrap; }
+.prontidao .quadro-scroll { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.prontidao .tab-pront td.uf { white-space: nowrap; } .prontidao .tab-pront .sigla { font-weight: 700; margin-right: 8px; }
+.prontidao .pront-coord { margin: 8px 2px 0; }
+/* celular e tablet: um cartão por estado, como a tabela do Campo (nada cortado nem rolando para o lado) */
+@media (max-width: 900px) {
+  .prontidao .quadro-scroll { border: 0; background: transparent; overflow: visible; }
+  table.quadro.tab-pront, table.quadro.tab-pront tbody { display: block; width: 100%; min-width: 0 !important; }
+  table.quadro.tab-pront thead { display: none; }
+  table.quadro.tab-pront tbody { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  table.quadro.tab-pront tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 8px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+  table.quadro.tab-pront td { display: block; padding: 0 !important; border: 0 !important; background: transparent !important; white-space: normal; text-align: left; }
+  table.quadro.tab-pront td.uf { grid-column: 1 / -1; }
+  table.quadro.tab-pront td.pr-eq { grid-column: 1 / -1; }
+  table.quadro.tab-pront td.c { padding: 8px !important; border-radius: 10px; background: var(--bg) !important; text-align: center; }
+  table.quadro.tab-pront td[data-rot]::before { content: attr(data-rot); display: block; font: 700 12px/1.25 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+}
+.fila-cel { margin-top: 12px; }
+.fila-cel-lista { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.fila-cel-lista li { padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.fila-cel-lista li.fila-alerta { border-color: var(--crit); background: color-mix(in srgb, var(--crit) 6%, var(--surface)); }
+.fila-alerta-n { color: var(--crit); }

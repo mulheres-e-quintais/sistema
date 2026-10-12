@@ -1162,6 +1162,17 @@ MQ.ORCAMENTO = {
       const r = { id: uid(), autor_id: eu.id, papel: eu.papel, tela: corta(x.tela, 60), versao: corta(x.versao, 20), aparelho: corta(x.aparelho, 200), texto: t, status: 'aberto', nota: null, resolvido_por: null, resolvido_em: null, criado_em: new Date().toISOString() };
       d.relatos.push(r); gravar(); return r.id;
     },
+    /* 58: o celular avisa só a contagem do que guarda sem enviar; a coordenação vê (geral: todos; técnica: campo) */
+    async informarFila(r) {
+      try { const d = ler(); const eu = euMesmo(); if (!eu || !r || !(r.qtd >= 0)) return;
+        d.filaCelular = d.filaCelular || {}; d.filaCelular[eu.id] = { equipe_id: eu.id, qtd: r.qtd, recusados: r.recusados || 0, mais_antigo: r.qtd ? r.mais_antigo : null, visto_em: new Date().toISOString() };
+        gravar(); } catch (e) { /* nunca atrapalha */ }
+    },
+    async listarFilaCelular() {
+      const d = ler(); const eu = euMesmo(); if (!eu || !/^coord/.test(eu.papel)) return [];
+      return copia(Object.values(d.filaCelular || {}).filter(f => { const m = (d.equipe || []).find(x => x.id === f.equipe_id);
+        return m && m.status === 'ativa' && (eu.papel === 'coord_geral' || ['articulacao', 'apoio', 'agente'].includes(m.papel)); }));
+    },
     async listarRelatos() {
       const d = ler(); const eu = euMesmo(); if (!eu || eu.observador) throw falha('Entre no sistema para ver os relatos.');
       return copia((d.relatos || []).filter(r => eu.papel === 'coord_geral' || r.autor_id === eu.id)).map(r => ({ id: r.id, autor: ((d.equipe || []).find(m => m.id === r.autor_id) || {}).nome || '', papel: r.papel, tela: r.tela, versao: r.versao, aparelho: r.aparelho, texto: r.texto, status: r.status, nota: r.nota, resolvido_em: r.resolvido_em, criado_em: r.criado_em, meu: r.autor_id === eu.id }))
@@ -2797,6 +2808,12 @@ MQ.ORCAMENTO = {
     async dadosAcompanhamento(orgao) { const { data, error } = await sb.rpc('acompanhamento_dados', { p_orgao: orgao || null }); if (error) throw erro(error); return data; },
     async relatarProblema(x) { const { data, error } = await sb.rpc('relatar_problema', { p_texto: x.texto, p_tela: x.tela || null, p_versao: x.versao || null, p_aparelho: x.aparelho || null }); if (error) throw erro(error); return data; },
     async listarRelatos() { const { data, error } = await sb.rpc('listar_relatos'); if (error) throw erro(error); return data || []; },
+    /* 58: só a contagem do que este celular guarda sem enviar (nunca atrapalha: sem o script, só não informa) */
+    async informarFila(r) {
+      if (!sb || !r || !(r.qtd >= 0)) return;
+      try { await sb.rpc('informar_fila', { p_qtd: r.qtd, p_recusados: r.recusados || 0, p_mais_antigo: r.mais_antigo || null }); } catch (e) { /* nada */ }
+    },
+    async listarFilaCelular() { const { data, error } = await sb.rpc('listar_fila_celular'); if (error) throw erro(error); return data || []; },
     async resolverRelato(id, nota, reabrir) { const { error } = await sb.rpc('resolver_relato', { p_id: id, p_nota: nota || null, p_reabrir: !!reabrir }); if (error) throw erro(error); },
     async listarObservadores() { const { data, error } = await sb.rpc('listar_observadores'); if (error) throw erro(error); return data || []; },
     async salvarObservador(x) { const { data, error } = await sb.rpc('salvar_observador', { p_id: x.id || null, p_nome: x.nome, p_email: x.email, p_orgao: x.orgao, p_cargo: x.cargo || null, p_ativo: x.ativo !== false }); if (error) throw erro(error); return data; },
@@ -4243,6 +4260,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           ${kpi(4, acomp, 400, 'visitas de acompanhamento', `${acomp} ${acomp === 1 ? 'visita realizada' : 'visitas realizadas'}`)}
         </div>
       </section>
+      ${MQ.prontidaoUI ? MQ.prontidaoUI.secao() : ''}
 
       <section class="secao dx-atencao dx-topo-${al.some(x => x.nivel === 'crit') ? 'crit' : al.some(x => x.nivel === 'pend') ? 'pend' : 'ok'}" aria-labelledby="t-alertas">
         <div class="secao-cab"><div><h2 id="t-alertas">O que pede atenção</h2></div>${al.length ? `<span class="dx-conta">${[['crit', n => n === 1 ? 'requer ação' : 'requerem ação'], ['pend', () => 'atenção'], ['info', n => n === 1 ? 'aviso' : 'avisos']].map(([k, r]) => { const n = al.filter(x => x.nivel === k).length; return n ? `<span class="dx-ct dx-ct-${k}"><b class="num">${n}</b> ${r(n)}</span>` : ''; }).filter(Boolean).join('<span class="so-leitor"> · </span>')}</span>` : ''}</div>
@@ -4998,6 +5016,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <td class="num c" data-rot="Agentes de campo">${pessoasCampo(u.uf).filter(p => p.papel === 'agente').length}</td></tr>`; };
     return `<div class="cab"><div><span class="eyebrow">Trabalho de campo</span><h1>Visitas, diagnósticos e planos</h1>
         <p>${souTec ? 'Você aprova ou devolve o plano de cada quintal antes da compra do kit.' : 'A aprovação dos planos é da coordenação técnica.'} Dias de campo: ${MQ.DIAS_CAMPO_UF} por estado (40 quintais × 5 visitas: diagnóstico, implantação, 2 acompanhamentos e avaliação final).</p></div></div>
+      ${S().eu.papel === 'coord_tecnico' && MQ.prontidaoUI ? MQ.prontidaoUI.secao() : ''}
       <div class="quadro-scroll" style="display:block"><table class="quadro tab-campo-uf"><thead><tr><th>Estado</th><th>Dias de campo</th><th class="c">Diagnósticos</th><th class="c">Planos aprovados</th><th class="c">Sem água na seca</th><th class="c">Agentes de campo</th></tr></thead>
         <tbody>${MQ.UFS.map(linhaUF).join('')}</tbody></table></div>
       <p class="small muted" style="margin:6px 2px 0"><b>Sem água na seca:</b> diagnósticos em que a água não dura no período seco. Essa mulher não recebe o kit (é encaminhada a programa de cisternas) e a vaga dela precisa ser preenchida pela lista de espera. Acima de 30% no estado é sinal de alerta.</p><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p>
@@ -8218,7 +8237,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `<div class="cab"><div><span class="eyebrow">Documentos</span><h1>Documentos do projeto</h1>
         <p>Atas, ofícios, relatórios e outros documentos da ação, guardados numa pasta que só a coordenação geral acessa. E o relatório da ação do projeto, gerado com os dados do sistema.</p></div></div>
       <div class="acoes-pag">${MQ.acaoComDica({ acao: 'doc-novo', icone: 'anexo', texto: 'Anexar documento' }, 'PDF, Word, planilha ou foto, até 20 MB. Ata, ofício, lista de presença…')}
-        ${MQ.acaoComDica({ acao: 'doc-relatorio', icone: 'relatorio', texto: 'Gerar relatório da ação', curto: 'Gerar relatório', sec: true }, 'Equipe, seleção, campo, FIC, pagamentos, viagens e documentos, por período e estado.')}</div>
+        ${MQ.acaoComDica({ acao: 'doc-relatorio', icone: 'relatorio', texto: 'Gerar relatório da ação', curto: 'Gerar relatório', sec: true }, 'Equipe, seleção, campo, FIC, pagamentos, viagens e documentos, por período e estado.')}
+        ${S().eu.papel === 'coord_geral' && MQ.prontidaoUI ? MQ.acaoComDica({ acao: 'doc-copia', icone: 'pasta', texto: 'Baixar cópia dos dados', curto: 'Cópia dos dados', sec: true }, 'Planilha com fichas, visitas, diagnósticos, avaliações, pagamentos, equipe e FIC, sem conta bancária. Baixe toda semana e guarde num lugar seguro: ela tem CPF e endereço.') : ''}</div>
       <div class="resumo">
         <div><span class="v num">${ativos.length}</span><span class="l">documentos anexados</span></div>
         ${porTipo.slice(0, 3).map(([k, n]) => `<div><span class="v num">${n}</span><span class="l">${E(TIPOS[k].toLowerCase())}${n > 1 && !/s$/.test(TIPOS[k]) ? 's' : ''}</span></div>`).join('')}
@@ -8291,6 +8311,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (a === 'doc-novo') U().abrirPainel({ tipo: 'doc-novo' });
     else if (a === 'doc-ver') U().abrirPainel({ tipo: 'doc-ver', id: el.dataset.id });
     else if (a === 'doc-relatorio') { G.rel = null; U().abrirPainel({ tipo: 'doc-relatorio' }); }
+    else if (a === 'doc-copia' && MQ.prontidaoUI) await MQ.prontidaoUI.baixarCopia();   // cópia dos dados (prontidao.js)
     else if (a === 'doc-abrir') { const d = lista().find(x => x.id === el.dataset.id); const url = await S().api.linkDocumento(d.arquivo_path); if (url) window.open(url, '_blank', 'noopener'); else U().toast('No modo demonstração o arquivo não fica guardado.'); }
     else if (a === 'doc-rel-word') baixar('relatorio_mulheres_e_quintais_' + R.hoje() + '.doc', '﻿' + documentoCompleto(relatorioAtual()), 'application/msword');
     else if (a === 'doc-imprimir') {
@@ -10879,6 +10900,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       ],
       duvidas: [
         ['O sistema recusou a minha foto do quintal.', 'Só vale foto tirada <b>no dia da visita</b>. Foto antiga da galeria, foto encaminhada pelo WhatsApp ou captura de tela é recusada. Tire a foto na hora; se o celular não abrir a câmera, toque em <b>Tirar foto agora</b> embaixo do campo. Se a data da visita estiver errada, corrija a data. A foto boa que já estava no campo continua valendo, e em visita que passou da meia-noite vale foto até as 4h do dia seguinte.'],
+        ['O que é "Registros parados nos celulares"?', 'Na Visão geral (coordenação geral) e na aba Campo (coordenação técnica). O que é salvo sem internet fica só no celular até ele conectar. Sempre que o celular tem internet, ele avisa quantos registros guarda (só a contagem, nunca o conteúdo). Se aparecer alguém com registro parado há dias, peça que ela abra o sistema com internet e toque em <b>Enviar agora</b>.'],
+        ['Como guardo uma cópia dos dados?', 'Coordenação geral: em <b>Documentos</b>, toque em <b>Baixar cópia dos dados</b>. Sai uma planilha com fichas, visitas, diagnósticos, avaliações, pagamentos, equipe e FIC, sem conta bancária. Baixe toda semana e guarde num lugar seguro: ela tem CPF e endereço.'],
         ['O sistema saiu sozinho e eu tinha tirado fotos.', 'As fotos ficam guardadas no celular até você salvar. Abra o mesmo formulário de novo: elas voltam com o aviso <b>Foto recuperada deste aparelho</b>. Se você sair pelo botão <b>Sair</b>, elas são apagadas do celular.'],
         ['Não aparece nenhuma visita.', 'Você só vê os quintais atribuídos a você, e só depois de habilitada (FIC, Arlo e termo).'],
         ['Posso mudar a data da visita?', 'Não. Fale com a bolsista do estado para reagendar.'],
@@ -12063,6 +12086,168 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   MQ.relatosUI = { painel, clique, enviar: enviarForm, blocoCoord, enviarPendentes, contexto, pendentes: pend };
 })();
 ;
+/* ===== prontidao.js ===== */
+/* Mulheres & Quintais — prontidão para o campo, registros parados nos celulares e cópia dos dados (12/10/2026).
+   1. Registros parados: o que é salvo sem internet fica só no celular. Quando o celular tem internet, ele avisa ao
+      servidor só a CONTAGEM do que guarda (quantos, desde quando, quantos recusados), nunca o conteúdo
+      (58_fila_nos_celulares.sql). A coordenação vê quem tem registro esperando e desde quando.
+   2. Prontidão: por estado, quem da equipe de campo está cadastrada, já entrou e está habilitada; fichas aprovadas;
+      diagnósticos; visitas dos próximos 7 dias; registros parados.
+   3. Cópia dos dados: a coordenação geral baixa uma planilha (.xlsx) com o que o sistema tem, sem conta bancária,
+      para guardar como cópia de segurança e para a prestação de contas. Feita no próprio navegador. */
+(function () {
+  const R = MQ.regras;
+  const S = () => MQ.ui.S;
+  const E = s => MQ.ui.esc(s);
+  const CAMPO = ['articulacao', 'apoio', 'agente'];
+  const DIAS_ALERTA = 2;   // registro guardado há mais de 2 dias no celular: aviso em destaque
+
+  /* ---------- 1. registros parados nos celulares ---------- */
+  /* resumo da fila deste aparelho para o servidor (só números) */
+  function resumoFila(fila) {
+    const l = (fila || []).filter(i => i && i.tipo);
+    const datas = l.map(i => +i.criado || 0).filter(Boolean);
+    return { qtd: l.length, recusados: l.filter(i => i.erro).length, mais_antigo: datas.length ? new Date(Math.min(...datas)).toISOString() : null };
+  }
+  const nomeDe = m => (m && (m.nome_social || m.nome)) || 'Pessoa';
+  const papelDe = m => ((MQ.PAPEIS[m && m.papel] || {}).curto || (MQ.PAPEIS[m && m.papel] || {}).nome || '');
+  const diasDesde = iso => iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 864e5) : 0;
+  const quando = iso => { if (!iso) return ''; const d = new Date(iso); return R.fmtData(iso) + ' ' + String(d.getHours()).padStart(2, '0') + 'h' + String(d.getMinutes()).padStart(2, '0'); };
+  function parados() {
+    const eq = new Map((S().equipe || []).map(m => [m.id, m]));
+    return (S().filaCelular || []).filter(f => f.qtd > 0 && eq.has(f.equipe_id) && eq.get(f.equipe_id).status === 'ativa')
+      .map(f => Object.assign({ pessoa: eq.get(f.equipe_id) }, f))
+      .sort((a, b) => String(a.mais_antigo || '').localeCompare(String(b.mais_antigo || '')));
+  }
+  function blocoFila() {
+    const cab = '<h3>Registros parados nos celulares</h3>';
+    if (S().filaCelularSemBanco) return `<div class="bloco">${cab}<p class="small muted">Para ver quem tem visita, diagnóstico ou avaliação guardada no celular sem enviar, rode no Supabase o arquivo 58_fila_nos_celulares.sql.</p></div>`;
+    const l = parados();
+    const linha = f => { const dd = diasDesde(f.mais_antigo), alerta = dd >= DIAS_ALERTA || f.recusados;
+      return `<li class="${alerta ? 'fila-alerta' : ''}"><b>${E(nomeDe(f.pessoa))}</b> <span class="muted">(${E(papelDe(f.pessoa))}${f.pessoa.uf ? ' · ' + E(f.pessoa.uf) : ''})</span>:
+        ${f.qtd} registro${f.qtd > 1 ? 's' : ''} guardado${f.qtd > 1 ? 's' : ''} no celular desde ${R.fmtData(f.mais_antigo)}${dd ? ' (' + dd + ' dia' + (dd > 1 ? 's' : '') + ')' : ''}${f.recusados ? ` · <b>${f.recusados} recusado${f.recusados > 1 ? 's' : ''} pelo servidor</b>` : ''}
+        <br><span class="small muted">Último contato com internet: ${E(quando(f.visto_em))}</span></li>`; };
+    return `<div class="bloco fila-cel">${cab}
+      <p class="small muted">O que é salvo sem internet só chega ao servidor quando o celular conecta. Cada celular avisa quantos registros guarda sempre que tem internet (só a contagem, nunca o conteúdo).${l.length ? ' Se o registro está parado há dias, fale com a pessoa: ela precisa abrir o sistema com internet e tocar em "Enviar agora".' : ''}</p>
+      ${l.length ? `<ul class="fila-cel-lista">${l.map(linha).join('')}</ul>` : '<p>Nenhum registro parado nos celulares da equipe.</p>'}</div>`;
+  }
+
+  /* ---------- 2. prontidão para o campo ---------- */
+  function porUF(uf) {
+    const eq = (S().equipe || []).filter(m => m.status === 'ativa' && m.uf === uf && CAMPO.includes(m.papel));
+    const demo = !S().api || S().api.modo !== 'supabase';
+    const entraram = demo ? eq.length : eq.filter(m => m.user_id).length;
+    const hab = eq.filter(m => R.habilitado(m)).length;
+    const fichas = (S().fichas || []).filter(f => f.uf === uf && f.resultado === 'selecionada' && f.situacao === 'aprovada').length;
+    const dgs = (S().diagnosticos || []).filter(d => d.uf === uf).length;
+    const hoje = R.hoje(), fim = new Date(Date.now() + 7 * 864e5 - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+    const prox = (S().visitas || []).filter(v => v.uf === uf && v.situacao === 'prevista' && v.data_prevista >= hoje && v.data_prevista <= fim).length;
+    const ids = new Set(eq.map(m => m.id));
+    const fila = (S().filaCelular || []).filter(f => ids.has(f.equipe_id)).reduce((t, f) => t + (+f.qtd || 0), 0);
+    return { eq: eq.length, entraram, hab, fichas, dgs, prox, fila };
+  }
+  function coordenacao() {   // quem não é de um estado: só para a coordenação geral
+    const eq = (S().equipe || []).filter(m => m.status === 'ativa');
+    const demo = !S().api || S().api.modo !== 'supabase';
+    const st = m => !m ? 'vaga aberta' : !R.habilitado(m) ? 'falta habilitar' : (demo || m.user_id) ? 'pronta' : 'ainda não entrou';
+    const tec = eq.find(m => m.papel === 'coord_tecnico'), aux = eq.find(m => m.papel === 'auxiliar_adm');
+    const profs = eq.filter(m => m.papel === 'professor_fic'), profsHab = profs.filter(m => R.habilitado(m)).length;
+    return `<p class="small pront-coord"><b>Coordenação técnica:</b> ${st(tec)} · <b>Auxiliar:</b> ${st(aux)} · <b>Professores do FIC:</b> ${profs.length ? profsHab + ' de ' + profs.length + ' habilitado' + (profs.length > 1 ? 's' : '') : 'nenhum cadastrado (sem professor habilitado, ninguém da equipe de campo pode ser cadastrado)'}</p>`;
+  }
+  function secao() {
+    const eu = S().eu || {}; if (!/^coord/.test(eu.papel)) return '';
+    const n = (x, de) => `<span class="num"><b>${x}</b>${de != null ? ` <span class="muted">de ${de}</span>` : ''}</span>`;
+    const linha = u => { const d = porUF(u.uf);
+      const eqTxt = d.eq ? `${n(d.hab, d.eq)} <span class="small muted">habilitada${d.hab === 1 ? '' : 's'} · ${d.entraram} já entr${d.entraram === 1 ? 'ou' : 'aram'}</span>` : '<span class="muted">ninguém cadastrado</span>';
+      return `<tr><td class="uf"><span class="sigla">${u.uf}</span><span class="nomeuf">${u.nome}</span></td>
+        <td class="pr-eq" data-rot="Equipe de campo">${eqTxt}</td>
+        <td class="num c" data-rot="Fichas aprovadas">${n(d.fichas, MQ.VAGAS_UF)}</td>
+        <td class="num c" data-rot="Diagnósticos">${n(d.dgs, MQ.META_UF.diagnosticos)}</td>
+        <td class="num c" data-rot="Visitas nos próximos 7 dias">${d.prox}</td>
+        <td class="num c" data-rot="Registros parados nos celulares">${d.fila ? `<b class="fila-alerta-n">${d.fila}</b>` : '0'}</td></tr>`; };
+    return `<section class="secao prontidao" aria-labelledby="t-pront">
+      <div class="secao-cab"><div><h2 id="t-pront">Prontidão para o campo</h2><p>Por estado: quem da equipe de campo está habilitada e já entrou no sistema, o que está aprovado e o que está agendado para a semana.</p></div></div>
+      <div class="quadro-scroll" style="display:block"><table class="quadro tab-pront"><thead><tr><th>Estado</th><th>Equipe de campo</th><th class="c">Fichas aprovadas</th><th class="c">Diagnósticos</th><th class="c">Visitas em 7 dias</th><th class="c">Parados no celular</th></tr></thead>
+        <tbody>${MQ.UFS.map(linha).join('')}</tbody></table></div>
+      ${eu.papel === 'coord_geral' ? coordenacao() : ''}
+      ${blocoFila()}
+    </section>`;
+  }
+
+  /* ---------- 3. cópia dos dados (.xlsx feito aqui mesmo, sem biblioteca) ---------- */
+  const FORA = /^(_|banco|agencia|agência|conta|pix|digito|tipo_conta|senha|token|codigo|código|marca$)/i;   // nada de conta bancária nem segredo
+  const LIM_CELULA = 32000;   // o Excel aceita até 32.767 caracteres por célula
+  function tabela(lista) {
+    const l = (lista || []).filter(x => x && typeof x === 'object');
+    const cols = []; l.forEach(o => Object.keys(o).forEach(k => { if (!FORA.test(k) && !cols.includes(k)) cols.push(k); }));
+    const PRIMEIRO = ['nome', 'nome_social', 'papel', 'tipo', 'etapa', 'uf', 'municipio', 'comunidade', 'situacao', 'status', 'mes', 'data_prevista', 'data_realizada', 'data_visita'];
+    cols.sort((a, b) => { const ia = PRIMEIRO.indexOf(a), ib = PRIMEIRO.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); });   // o que se lê primeiro, à esquerda; o resto na ordem em que veio
+    const cel = v => v == null ? '' : typeof v === 'number' || typeof v === 'boolean' ? v : typeof v === 'object' ? JSON.stringify(v) : String(v);
+    return [cols].concat(l.map(o => cols.map(k => cel(o[k]))));
+  }
+  function abasDaCopia() {
+    const s = S();
+    return [['Equipe', s.equipe], ['Fichas', s.fichas], ['Visitas', s.visitas], ['Diagnosticos', s.diagnosticos], ['Avaliacoes', s.avaliacoes],
+      ['Pagamentos', s.solic], ['Turmas FIC', s.turmas], ['Matriculas FIC', s.matriculas], ['Encontros FIC', s.encontros], ['Entregas', s.entregas],
+      ['Pedidos viagem', s.pedidos], ['Documentos', s.documentos]].map(([nome, l]) => [nome, tabela(l)]);
+  }
+  const xml = s => String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const colunaLetra = n => { let s = ''; n++; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
+  function folhaXml(linhas) {
+    const rows = linhas.map((r, i) => `<row r="${i + 1}">${r.map((v, j) => { const ref = colunaLetra(j) + (i + 1);
+      if (typeof v === 'number' && isFinite(v)) return `<c r="${ref}"><v>${v}</v></c>`;
+      if (typeof v === 'boolean') return `<c r="${ref}" t="b"><v>${v ? 1 : 0}</v></c>`;
+      const t = String(v); if (!t) return '';
+      return `<c r="${ref}" t="inlineStr"${i === 0 ? ' s="1"' : ''}><is><t xml:space="preserve">${xml(t.length > LIM_CELULA ? t.slice(0, LIM_CELULA) + '…' : t)}</t></is></c>`; }).join('')}</row>`).join('');
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetData>${rows}</sheetData></worksheet>`;
+  }
+  /* zip sem compressão (método "store"): basta para a planilha abrir no Excel, LibreOffice e Google Planilhas */
+  const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  const crc32 = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  function zip(arquivos) {   // [[nome, texto]]
+    const enc = new TextEncoder(), partes = [], centrais = []; let pos = 0;
+    const u16 = n => [n & 255, (n >>> 8) & 255], u32 = n => [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255];
+    arquivos.forEach(([nome, texto]) => {
+      const dados = enc.encode(texto), nm = enc.encode(nome), c = crc32(dados);
+      const cab = new Uint8Array([...u32(0x04034b50), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(c), ...u32(dados.length), ...u32(dados.length), ...u16(nm.length), ...u16(0)]);
+      partes.push(cab, nm, dados);
+      centrais.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(c), ...u32(dados.length), ...u32(dados.length), ...u16(nm.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(pos)]), nm);
+      pos += cab.length + nm.length + dados.length;
+    });
+    const tamCentral = centrais.reduce((t, p) => t + p.length, 0);
+    const fim = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(arquivos.length), ...u16(arquivos.length), ...u32(tamCentral), ...u32(pos), ...u16(0)]);
+    const tudo = new Uint8Array(pos + tamCentral + fim.length); let o = 0;
+    partes.concat(centrais, [fim]).forEach(p => { tudo.set(p, o); o += p.length; });
+    return tudo;
+  }
+  function montarXlsx(abas) {   // [[nome, linhas]]
+    const nomes = abas.map(([n], i) => xml(String(n).replace(/[\\/?*[\]:]/g, ' ').slice(0, 31) || 'Aba ' + (i + 1)));
+    return zip([
+      ['[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+        + abas.map((a, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('') + '</Types>'],
+      ['_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+      ['xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'
+        + nomes.map((n, i) => `<sheet name="${n}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('') + '</sheets></workbook>'],
+      ['xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        + abas.map((a, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('')
+        + `<Relationship Id="rId${abas.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+      ['xl/styles.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>']
+    ].concat(abas.map(([, linhas], i) => [`xl/worksheets/sheet${i + 1}.xml`, folhaXml(linhas)])));
+  }
+  async function baixarCopia() {
+    if ((S().eu || {}).papel !== 'coord_geral') return;
+    if (MQ.ui.carregar) { try { await MQ.ui.carregar(); } catch (e) { /* sem internet: copia o que está na tela */ } }
+    const abas = abasDaCopia();
+    const bytes = montarXlsx(abas);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    a.download = 'copia_mulheres_e_quintais_' + R.hoje() + '.xlsx'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    const total = abas.reduce((t, [, l]) => t + Math.max(0, l.length - 1), 0);
+    if (MQ.ui.toast) MQ.ui.toast('Cópia baixada: ' + total + ' registros em ' + abas.length + ' abas. Ela tem CPF e endereço: guarde num lugar seguro.');
+  }
+
+  MQ.prontidaoUI = { resumoFila, blocoFila, secao, porUF, parados, tabela, montarXlsx, zip, crc32, baixarCopia, abasDaCopia };
+})();
+;
 /* ===== app.js ===== */
 /* Mulheres & Quintais — telas do sistema (cadastro da equipe) */
 (function () {
@@ -12185,7 +12370,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     try { await S.api.sair(); } catch (e) { /* sem internet: a sessão já foi apagada do aparelho */ }
     S.eu = null; S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.documentos = []; S.acessos = []; S.execPlanilhas = []; S.encontros = []; S.agua = [];
     S.acomp = null; S.acompErro = null; S.acompPrevia = null; S.acompCodigo = null; S.acompConfirma = null; S.observadores = []; S.kitItens = [];   // números do acompanhamento, código de acesso recém-gerado e listas da coordenação não ficam na memória depois de sair
-    S.solic = []; S.pedidos = []; S.pre = []; S.pedidosAcesso = []; S.entregas = []; S.matriculas = []; S.turmas = []; S.avaliacoes = []; S.codigos = {}; S.confirmaAcesso = null; S.painel = null; S.solicVis = {}; S.canaisVenda = []; S.orientacoesVenda = []; S.vendaFolha = null; S.ciencias = []; S.testes = []; S.saldoPed = null; S.quemConfere = null;   // nada da pessoa anterior fica na memória
+    S.solic = []; S.pedidos = []; S.pre = []; S.pedidosAcesso = []; S.entregas = []; S.matriculas = []; S.turmas = []; S.avaliacoes = []; S.codigos = {}; S.confirmaAcesso = null; S.painel = null; S.solicVis = {}; S.canaisVenda = []; S.orientacoesVenda = []; S.vendaFolha = null; S.ciencias = []; S.testes = []; S.saldoPed = null; S.quemConfere = null; S.filaCelular = []; S.filaCelularSemBanco = false;   // nada da pessoa anterior fica na memória
     if (MQ.convitesUI && MQ.convitesUI.limparCache) MQ.convitesUI.limparCache();
     render();
   }
@@ -12301,6 +12486,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       S.perfisSemBanco = !perfis[0]; S.perfisEquipe = perfis[0] ? perfis[1] : [];
       S.pre = pre; S.exemplo = exemplo; S.pedidosAcesso = pedAcesso[0] ? pedAcesso[1] : [];
       S.acessosSemBanco = !acessos[0]; S.acessos = acessos[0] ? acessos[1] : [];
+      // 58: registros parados nos celulares (só a coordenação; sem o script, a tela pede para rodar)
+      if (coord && S.api.listarFilaCelular) { try { S.filaCelular = await S.api.listarFilaCelular(); S.filaCelularSemBanco = false; }
+        catch (e) { if (e && e.semRede) throw e; S.filaCelularSemBanco = true; S.filaCelular = S.filaCelular || []; } }   // sem o script (ou erro do banco): a tela diz o que fazer, nunca "nenhum registro parado" sem saber
       // segunda leva: os pedidos de viagem dependem de saber quem confere (22 e 26)
       const pedAntes = S.pedidos || []; S.pedSemBanco = false; S.pedidos = [];
       if (S.api.listarPedidos && MQ.viagUI && (MQ.viagUI.podeVer(papel) || MQ.viagUI.souConferente())) {
@@ -12335,10 +12523,22 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     }
     S.fila = await MQ.fila.listar(S.eu.id);
   }
+  /* 58: com internet, o celular avisa à coordenação só a CONTAGEM do que guarda sem enviar (quantos, desde quando,
+     quantos recusados). Avisa quando muda ou, no máximo, a cada 30 minutos (o "último contato" fica em dia). */
+  let filaInformada = '', filaInformadaEm = 0;
+  async function informarFila() {
+    if (!S.eu || !R.ehCampo(S.eu.papel) || !navigator.onLine || !S.api.informarFila || !MQ.prontidaoUI) return;
+    try {
+      const r = MQ.prontidaoUI.resumoFila(await MQ.fila.listar(S.eu.id)); const ch = JSON.stringify(r);
+      if (ch === filaInformada && Date.now() - filaInformadaEm < 30 * 60000) return;
+      await S.api.informarFila(r); filaInformada = ch; filaInformadaEm = Date.now();
+    } catch (e) { /* nunca atrapalha */ }
+  }
   async function sincronizar(avisar) {
     if (!S.eu || !R.ehCampo(S.eu.papel) || !navigator.onLine) return;
-    const antes = (await MQ.fila.listar(S.eu.id)).length; if (!antes) return;
+    const antes = (await MQ.fila.listar(S.eu.id)).length; if (!antes) { informarFila(); return; }
     const r = await MQ.fila.sincronizar(S.api, S.eu.id);
+    informarFila();
     try { await carregar(); } catch (e) {}
     renderFundo();   // nunca recria o painel aberto: a sincronização acontece com a pessoa no meio de um formulário
     if (r.enviados && avisar !== false) toast(r.enviados + (r.enviados > 1 ? ' registros enviados.' : ' registro enviado.'));
@@ -12363,7 +12563,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       // dados pessoais e conta do próprio cadastro também podem ter sido resolvidos por outra pessoa (pendências)
       if (!digitando() && !S.painel) { if (MQ.convitesUI) MQ.convitesUI.esquecerPrivado(S.eu.id); if (MQ.bancoUI) MQ.bancoUI.limpar(); }
       if (S.api.reler) await S.api.reler();   // demonstração: outra aba pode ter mudado os dados guardados
-      await carregar(); atualizadoEm = Date.now();
+      await carregar(); atualizadoEm = Date.now(); informarFila();
       const depois = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.solic, S.pedidos, S.pre, S.pedidosAcesso, S.entregas, S.matriculas, S.turmas, S.documentos, S.avaliacoes, S.execPlanilhas, S.encontros, S.agua, S.canaisVenda, S.orientacoesVenda]);
       if (antes !== depois && !digitando()) renderFundo();
     } catch (e) { /* sem internet ou servidor fora: fica com o que já está na tela */ }

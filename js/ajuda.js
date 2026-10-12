@@ -333,6 +333,8 @@
       ],
       duvidas: [
         ['O sistema recusou a minha foto do quintal.', 'Só vale foto tirada <b>no dia da visita</b>. Foto antiga da galeria, foto encaminhada pelo WhatsApp ou captura de tela é recusada. Tire a foto na hora; se o celular não abrir a câmera, toque em <b>Tirar foto agora</b> embaixo do campo. Se a data da visita estiver errada, corrija a data. A foto boa que já estava no campo continua valendo, e em visita que passou da meia-noite vale foto até as 4h do dia seguinte.'],
+        ['O que é "Registros parados nos celulares"?', 'Na Visão geral (coordenação geral) e na aba Campo (coordenação técnica). O que é salvo sem internet fica só no celular até ele conectar. Sempre que o celular tem internet, ele avisa quantos registros guarda (só a contagem, nunca o conteúdo). Se aparecer alguém com registro parado há dias, peça que ela abra o sistema com internet e toque em <b>Enviar agora</b>.'],
+        ['Como guardo uma cópia dos dados?', 'Coordenação geral: em <b>Documentos</b>, toque em <b>Baixar cópia dos dados</b>. Sai uma planilha com fichas, visitas, diagnósticos, avaliações, pagamentos, equipe e FIC, sem conta bancária. Baixe toda semana e guarde num lugar seguro: ela tem CPF e endereço.'],
         ['O sistema saiu sozinho e eu tinha tirado fotos.', 'As fotos ficam guardadas no celular até você salvar. Abra o mesmo formulário de novo: elas voltam com o aviso <b>Foto recuperada deste aparelho</b>. Se você sair pelo botão <b>Sair</b>, elas são apagadas do celular.'],
         ['Não aparece nenhuma visita.', 'Você só vê os quintais atribuídos a você, e só depois de habilitada (FIC, Arlo e termo).'],
         ['Posso mudar a data da visita?', 'Não. Fale com a bolsista do estado para reagendar.'],

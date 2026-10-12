@@ -8,7 +8,7 @@ const { montarApi } = require('./servidor_simulado');
 const LEITURAS = ['listarPerfisEquipe', 'listarTestes', 'listarEntregas', 'listarCiencias', 'listarPedidosAcesso', 'listarAcessos', 'listarFichas', 'listarVisitas', 'listarDiagnosticos',
   'listarAvaliacoes', 'lerPrivado', 'meusDadosBancarios', 'situacaoBancaria', 'listarAPL', 'listarPreCadastros', 'contarExemplo', 'lerParametros', 'listarCustos', 'vitrine', 'listarVitrine',
   'listarEquipe', 'listarSolicitacoes', 'listarCanaisVenda', 'listarOrientacoesVenda', 'listarObservadores', 'listarRelatos', 'listarKitItens', 'listarAgua', 'listarPlanilhasExec', 'listarDocumentos',
-  'quemConferePedidos', 'listarPedidos', 'saldoPedidos', 'listarEquipeFic', 'listarEncontrosFic', 'listarTurmas', 'listarMatriculas', 'auditoria'];
+  'quemConferePedidos', 'listarPedidos', 'saldoPedidos', 'listarEquipeFic', 'listarEncontrosFic', 'listarTurmas', 'listarMatriculas', 'auditoria', 'listarFilaCelular'];
 const arq = () => ({ name: 'a.pdf', size: 10, type: 'application/pdf', arrayBuffer: async () => new ArrayBuffer(1) });
 const pessoa = () => ({ nome: 'Ana', cpf: '476.024.360-75', email: ' Ana@X.br ', papel: 'apoio', uf: 'RN' });
 /* gravações: nome → argumentos de um pedido bem formado */
@@ -27,7 +27,7 @@ const GRAVACOES = {
   enviarTermo: ['e2', arq()], enviarMeuTermo: ['e2', arq()], enviarFotoEquipe: ['e2', arq()]
 };
 /* de propósito não derrubam a tela se falharem: são registros de apoio */
-const MELHOR_ESFORCO = ['registrarAcesso', 'limparVitrinePendente'];
+const MELHOR_ESFORCO = ['registrarAcesso', 'limparVitrinePendente', 'informarFila'];   // 58: contagem da fila do celular
 const TECNICO = /permission denied|42501|PGRST|Failed to fetch|TypeError|undefined|\[object/;
 
 describe('leituras: resposta vazia, recusa do banco e falta de internet', () => {

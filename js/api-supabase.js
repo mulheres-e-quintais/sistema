@@ -522,6 +522,12 @@
     async dadosAcompanhamento(orgao) { const { data, error } = await sb.rpc('acompanhamento_dados', { p_orgao: orgao || null }); if (error) throw erro(error); return data; },
     async relatarProblema(x) { const { data, error } = await sb.rpc('relatar_problema', { p_texto: x.texto, p_tela: x.tela || null, p_versao: x.versao || null, p_aparelho: x.aparelho || null }); if (error) throw erro(error); return data; },
     async listarRelatos() { const { data, error } = await sb.rpc('listar_relatos'); if (error) throw erro(error); return data || []; },
+    /* 58: só a contagem do que este celular guarda sem enviar (nunca atrapalha: sem o script, só não informa) */
+    async informarFila(r) {
+      if (!sb || !r || !(r.qtd >= 0)) return;
+      try { await sb.rpc('informar_fila', { p_qtd: r.qtd, p_recusados: r.recusados || 0, p_mais_antigo: r.mais_antigo || null }); } catch (e) { /* nada */ }
+    },
+    async listarFilaCelular() { const { data, error } = await sb.rpc('listar_fila_celular'); if (error) throw erro(error); return data || []; },
     async resolverRelato(id, nota, reabrir) { const { error } = await sb.rpc('resolver_relato', { p_id: id, p_nota: nota || null, p_reabrir: !!reabrir }); if (error) throw erro(error); },
     async listarObservadores() { const { data, error } = await sb.rpc('listar_observadores'); if (error) throw erro(error); return data || []; },
     async salvarObservador(x) { const { data, error } = await sb.rpc('salvar_observador', { p_id: x.id || null, p_nome: x.nome, p_email: x.email, p_orgao: x.orgao, p_cargo: x.cargo || null, p_ativo: x.ativo !== false }); if (error) throw erro(error); return data; },

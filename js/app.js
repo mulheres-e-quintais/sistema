@@ -119,7 +119,7 @@
     try { await S.api.sair(); } catch (e) { /* sem internet: a sessão já foi apagada do aparelho */ }
     S.eu = null; S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.documentos = []; S.acessos = []; S.execPlanilhas = []; S.encontros = []; S.agua = [];
     S.acomp = null; S.acompErro = null; S.acompPrevia = null; S.acompCodigo = null; S.acompConfirma = null; S.observadores = []; S.kitItens = [];   // números do acompanhamento, código de acesso recém-gerado e listas da coordenação não ficam na memória depois de sair
-    S.solic = []; S.pedidos = []; S.pre = []; S.pedidosAcesso = []; S.entregas = []; S.matriculas = []; S.turmas = []; S.avaliacoes = []; S.codigos = {}; S.confirmaAcesso = null; S.painel = null; S.solicVis = {}; S.canaisVenda = []; S.orientacoesVenda = []; S.vendaFolha = null; S.ciencias = []; S.testes = []; S.saldoPed = null; S.quemConfere = null;   // nada da pessoa anterior fica na memória
+    S.solic = []; S.pedidos = []; S.pre = []; S.pedidosAcesso = []; S.entregas = []; S.matriculas = []; S.turmas = []; S.avaliacoes = []; S.codigos = {}; S.confirmaAcesso = null; S.painel = null; S.solicVis = {}; S.canaisVenda = []; S.orientacoesVenda = []; S.vendaFolha = null; S.ciencias = []; S.testes = []; S.saldoPed = null; S.quemConfere = null; S.filaCelular = []; S.filaCelularSemBanco = false;   // nada da pessoa anterior fica na memória
     if (MQ.convitesUI && MQ.convitesUI.limparCache) MQ.convitesUI.limparCache();
     render();
   }
@@ -235,6 +235,9 @@
       S.perfisSemBanco = !perfis[0]; S.perfisEquipe = perfis[0] ? perfis[1] : [];
       S.pre = pre; S.exemplo = exemplo; S.pedidosAcesso = pedAcesso[0] ? pedAcesso[1] : [];
       S.acessosSemBanco = !acessos[0]; S.acessos = acessos[0] ? acessos[1] : [];
+      // 58: registros parados nos celulares (só a coordenação; sem o script, a tela pede para rodar)
+      if (coord && S.api.listarFilaCelular) { try { S.filaCelular = await S.api.listarFilaCelular(); S.filaCelularSemBanco = false; }
+        catch (e) { if (e && e.semRede) throw e; S.filaCelularSemBanco = true; S.filaCelular = S.filaCelular || []; } }   // sem o script (ou erro do banco): a tela diz o que fazer, nunca "nenhum registro parado" sem saber
       // segunda leva: os pedidos de viagem dependem de saber quem confere (22 e 26)
       const pedAntes = S.pedidos || []; S.pedSemBanco = false; S.pedidos = [];
       if (S.api.listarPedidos && MQ.viagUI && (MQ.viagUI.podeVer(papel) || MQ.viagUI.souConferente())) {
@@ -269,10 +272,22 @@
     }
     S.fila = await MQ.fila.listar(S.eu.id);
   }
+  /* 58: com internet, o celular avisa à coordenação só a CONTAGEM do que guarda sem enviar (quantos, desde quando,
+     quantos recusados). Avisa quando muda ou, no máximo, a cada 30 minutos (o "último contato" fica em dia). */
+  let filaInformada = '', filaInformadaEm = 0;
+  async function informarFila() {
+    if (!S.eu || !R.ehCampo(S.eu.papel) || !navigator.onLine || !S.api.informarFila || !MQ.prontidaoUI) return;
+    try {
+      const r = MQ.prontidaoUI.resumoFila(await MQ.fila.listar(S.eu.id)); const ch = JSON.stringify(r);
+      if (ch === filaInformada && Date.now() - filaInformadaEm < 30 * 60000) return;
+      await S.api.informarFila(r); filaInformada = ch; filaInformadaEm = Date.now();
+    } catch (e) { /* nunca atrapalha */ }
+  }
   async function sincronizar(avisar) {
     if (!S.eu || !R.ehCampo(S.eu.papel) || !navigator.onLine) return;
-    const antes = (await MQ.fila.listar(S.eu.id)).length; if (!antes) return;
+    const antes = (await MQ.fila.listar(S.eu.id)).length; if (!antes) { informarFila(); return; }
     const r = await MQ.fila.sincronizar(S.api, S.eu.id);
+    informarFila();
     try { await carregar(); } catch (e) {}
     renderFundo();   // nunca recria o painel aberto: a sincronização acontece com a pessoa no meio de um formulário
     if (r.enviados && avisar !== false) toast(r.enviados + (r.enviados > 1 ? ' registros enviados.' : ' registro enviado.'));
@@ -297,7 +312,7 @@
       // dados pessoais e conta do próprio cadastro também podem ter sido resolvidos por outra pessoa (pendências)
       if (!digitando() && !S.painel) { if (MQ.convitesUI) MQ.convitesUI.esquecerPrivado(S.eu.id); if (MQ.bancoUI) MQ.bancoUI.limpar(); }
       if (S.api.reler) await S.api.reler();   // demonstração: outra aba pode ter mudado os dados guardados
-      await carregar(); atualizadoEm = Date.now();
+      await carregar(); atualizadoEm = Date.now(); informarFila();
       const depois = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.solic, S.pedidos, S.pre, S.pedidosAcesso, S.entregas, S.matriculas, S.turmas, S.documentos, S.avaliacoes, S.execPlanilhas, S.encontros, S.agua, S.canaisVenda, S.orientacoesVenda]);
       if (antes !== depois && !digitando()) renderFundo();
     } catch (e) { /* sem internet ou servidor fora: fica com o que já está na tela */ }

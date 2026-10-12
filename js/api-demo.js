@@ -295,6 +295,17 @@
       const r = { id: uid(), autor_id: eu.id, papel: eu.papel, tela: corta(x.tela, 60), versao: corta(x.versao, 20), aparelho: corta(x.aparelho, 200), texto: t, status: 'aberto', nota: null, resolvido_por: null, resolvido_em: null, criado_em: new Date().toISOString() };
       d.relatos.push(r); gravar(); return r.id;
     },
+    /* 58: o celular avisa só a contagem do que guarda sem enviar; a coordenação vê (geral: todos; técnica: campo) */
+    async informarFila(r) {
+      try { const d = ler(); const eu = euMesmo(); if (!eu || !r || !(r.qtd >= 0)) return;
+        d.filaCelular = d.filaCelular || {}; d.filaCelular[eu.id] = { equipe_id: eu.id, qtd: r.qtd, recusados: r.recusados || 0, mais_antigo: r.qtd ? r.mais_antigo : null, visto_em: new Date().toISOString() };
+        gravar(); } catch (e) { /* nunca atrapalha */ }
+    },
+    async listarFilaCelular() {
+      const d = ler(); const eu = euMesmo(); if (!eu || !/^coord/.test(eu.papel)) return [];
+      return copia(Object.values(d.filaCelular || {}).filter(f => { const m = (d.equipe || []).find(x => x.id === f.equipe_id);
+        return m && m.status === 'ativa' && (eu.papel === 'coord_geral' || ['articulacao', 'apoio', 'agente'].includes(m.papel)); }));
+    },
     async listarRelatos() {
       const d = ler(); const eu = euMesmo(); if (!eu || eu.observador) throw falha('Entre no sistema para ver os relatos.');
       return copia((d.relatos || []).filter(r => eu.papel === 'coord_geral' || r.autor_id === eu.id)).map(r => ({ id: r.id, autor: ((d.equipe || []).find(m => m.id === r.autor_id) || {}).nome || '', papel: r.papel, tela: r.tela, versao: r.versao, aparelho: r.aparelho, texto: r.texto, status: r.status, nota: r.nota, resolvido_em: r.resolvido_em, criado_em: r.criado_em, meu: r.autor_id === eu.id }))

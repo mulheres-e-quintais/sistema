@@ -249,7 +249,8 @@
     return `<div class="cab"><div><span class="eyebrow">Documentos</span><h1>Documentos do projeto</h1>
         <p>Atas, ofícios, relatórios e outros documentos da ação, guardados numa pasta que só a coordenação geral acessa. E o relatório da ação do projeto, gerado com os dados do sistema.</p></div></div>
       <div class="acoes-pag">${MQ.acaoComDica({ acao: 'doc-novo', icone: 'anexo', texto: 'Anexar documento' }, 'PDF, Word, planilha ou foto, até 20 MB. Ata, ofício, lista de presença…')}
-        ${MQ.acaoComDica({ acao: 'doc-relatorio', icone: 'relatorio', texto: 'Gerar relatório da ação', curto: 'Gerar relatório', sec: true }, 'Equipe, seleção, campo, FIC, pagamentos, viagens e documentos, por período e estado.')}</div>
+        ${MQ.acaoComDica({ acao: 'doc-relatorio', icone: 'relatorio', texto: 'Gerar relatório da ação', curto: 'Gerar relatório', sec: true }, 'Equipe, seleção, campo, FIC, pagamentos, viagens e documentos, por período e estado.')}
+        ${S().eu.papel === 'coord_geral' && MQ.prontidaoUI ? MQ.acaoComDica({ acao: 'doc-copia', icone: 'pasta', texto: 'Baixar cópia dos dados', curto: 'Cópia dos dados', sec: true }, 'Planilha com fichas, visitas, diagnósticos, avaliações, pagamentos, equipe e FIC, sem conta bancária. Baixe toda semana e guarde num lugar seguro: ela tem CPF e endereço.') : ''}</div>
       <div class="resumo">
         <div><span class="v num">${ativos.length}</span><span class="l">documentos anexados</span></div>
         ${porTipo.slice(0, 3).map(([k, n]) => `<div><span class="v num">${n}</span><span class="l">${E(TIPOS[k].toLowerCase())}${n > 1 && !/s$/.test(TIPOS[k]) ? 's' : ''}</span></div>`).join('')}
@@ -322,6 +323,7 @@
     if (a === 'doc-novo') U().abrirPainel({ tipo: 'doc-novo' });
     else if (a === 'doc-ver') U().abrirPainel({ tipo: 'doc-ver', id: el.dataset.id });
     else if (a === 'doc-relatorio') { G.rel = null; U().abrirPainel({ tipo: 'doc-relatorio' }); }
+    else if (a === 'doc-copia' && MQ.prontidaoUI) await MQ.prontidaoUI.baixarCopia();   // cópia dos dados (prontidao.js)
     else if (a === 'doc-abrir') { const d = lista().find(x => x.id === el.dataset.id); const url = await S().api.linkDocumento(d.arquivo_path); if (url) window.open(url, '_blank', 'noopener'); else U().toast('No modo demonstração o arquivo não fica guardado.'); }
     else if (a === 'doc-rel-word') baixar('relatorio_mulheres_e_quintais_' + R.hoje() + '.doc', '﻿' + documentoCompleto(relatorioAtual()), 'application/msword');
     else if (a === 'doc-imprimir') {

@@ -128,6 +128,8 @@ chk as (
                    and exists (select 1 from pg_proc where proname = 'vitrine_municipios' and prosrc like '%sem_acento%')
   union all select '52_acompanhamento (perfis de acompanhamento do MDA e do MPA)', to_regclass('public.observadores') is not null and exists (select 1 from pg_proc where proname = 'acompanhamento_dados') and exists (select 1 from pg_proc where proname = 'bloquear_conta_nao_cadastrada' and prosrc like '%observadores%')
   union all select '51_kit_itens (itens do kit com preço de referência)', to_regclass('public.kit_itens') is not null and exists (select 1 from pg_proc where proname = 'salvar_kit_item')
+  union all select '58_fila_nos_celulares (registros parados nos celulares)',
+                   to_regclass('public.fila_celular') is not null and exists (select 1 from pg_proc where proname = 'informar_fila') and exists (select 1 from pg_proc where proname = 'listar_fila_celular')
   union all select '57_correcoes_auditoria_2 (ficha aprovada não troca arquivo, bolsa nos 12 meses, desligamento com pendência, vigência)',
                    exists (select 1 from pg_proc where proname = 'ficha_arquivo_livre')
                    and exists (select 1 from pg_trigger where not tgisinternal and tgname = 'z_mes_bolsa')
