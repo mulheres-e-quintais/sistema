@@ -695,6 +695,16 @@
     const recusar = () => { inp.value = ''; if (dica) { dica.textContent = MSG_NAO_FOTO + ' Tire a foto de novo ou escolha outra imagem.'; dica.classList.add('erro-foto'); } return null; };
     if (!arq || !/^image\//.test(String(arq.type || '')) || !(arq.size > 0)) return recusar();
     if (dica) dica.classList.remove('erro-foto');
+    // foto do quintal: só vale se foi tirada no dia da visita (data de dentro do arquivo ou câmera do sistema) — fotodia.js
+    if (MQ.fotoDia) {
+      const c = await MQ.fotoDia.checar(inp);
+      if (!c.ok) {
+        inp.value = '';
+        if (dica) { dica.classList.add('erro-foto');
+          dica.innerHTML = E(c.msg) + (inp.id ? ` <button type="button" class="btn peq pri foto-agora" data-acao="foto-agora" data-alvo="${E(inp.id)}">Tirar foto agora</button>` : ''); }
+        return null;
+      }
+    }
     try { const b = await MQ.comprimirFoto(arq, undefined, undefined, { semAviso: true }); return b && b.size > 0 ? b : recusar(); }
     catch (e) { return recusar(); }
   }
