@@ -3218,3 +3218,9 @@ small { font-size: max(12px, .85em); }
 .ent-seg.seg button[aria-pressed="true"]:focus-visible { outline-color: var(--focus); box-shadow: 0 0 0 2px var(--surface) inset; }
 @media (max-width: 900px) { .ent-ufs li { border: 0; background: none; padding: 0; } .ent-seg.seg button { font-size: var(--t-sm); padding: 0 6px; } .ent-card.login { padding: 24px; } .ent-t { font-size: clamp(2rem, 8.4vw, 2.7rem); } .ent { gap: 16px; } .ent-acesso { margin-top: 8px; } }
 @media (prefers-reduced-motion: reduce) { .ent-seg.seg button, .ent-btn, .ent-olho, .ent-olho .risco, .ent-card .link, .ent-card input { transition: none !important; } .ent-btn:hover { transform: none; } }
+
+/* --- Relatório da ação: relatórios mensais da equipe (12/10/2026) --- */
+.rel .rel-larga { overflow-x: auto; max-width: 100%; }
+.rel .rel-texto { border-top: 1px solid var(--line); padding: 8px 0 10px; }
+.rel .rel-texto-cab { margin: 0 0 4px; font-size: var(--t-sm); color: var(--ink-2); }
+.rel .rel-texto-corpo { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }

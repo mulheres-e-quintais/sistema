@@ -7641,8 +7641,56 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       viagens: { pedidos: ped.length, autorizados: ped.filter(p => p.situacao === 'autorizado').length,
         passagens: ped.filter(p => p.tipo === 'passagem' && p.situacao === 'autorizado').reduce((t, p) => t + (((p.dados || {}).passageiros) || []).length, 0),
         eventos: ped.filter(p => p.tipo === 'evento' && p.situacao === 'autorizado').length },
-      documentos: docs.map(d => ({ tipo: TIPOS[d.tipo] || d.tipo, titulo: d.titulo, data: d.data_documento, uf: d.uf }))
+      documentos: docs.map(d => ({ tipo: TIPOS[d.tipo] || d.tipo, titulo: d.titulo, data: d.data_documento, uf: d.uf })),
+      relatorios: relatoriosMensais(s, de, ate, uf, !!f.textos)
     };
+  }
+
+  /* Relatórios mensais da equipe (12/10/2026): o texto que cada bolsista, a coordenação técnica, os professores do FIC e o auxiliar
+     escrevem ao pedir a bolsa do mês. Quadro de entregas (pessoa × mês) sempre; os textos só quando pedidos e SÓ os que tiveram aval.
+     Agentes de campo ficam de fora: não fazem relatório mensal (o relato delas é por visita e fala de uma mulher). */
+  const PAPEIS_REL = ['coord_tecnico', 'articulacao', 'apoio', 'professor_fic', 'auxiliar_adm'];
+  const MES_CURTO = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const rotMes = ym => MES_CURTO[+ym.slice(5, 7) - 1] + '/' + ym.slice(2, 4);
+  const mesesEntre = (de, ate) => { const l = []; let [a, m] = de.slice(0, 7).split('-').map(Number); const [a2, m2] = ate.slice(0, 7).split('-').map(Number);
+    while (a < a2 || (a === a2 && m <= m2)) { l.push(a + '-' + String(m).padStart(2, '0')); if (++m > 12) { m = 1; a++; } } return l; };
+  const SIT_REL = { avalizada: 'aval', lancada: 'aval', solicitada: 'analise', devolvida: 'devolvido' };
+  function relatoriosMensais(s, de, ate, uf, comTextos) {
+    // as bolsas começam em MQ.PROJETO.inicioBolsas: meses antes disso não contam como relatório esperado
+    const ini = MQ.PROJETO.inicioBolsas && MQ.PROJETO.inicioBolsas > de ? MQ.PROJETO.inicioBolsas : de;
+    const meses = ini.slice(0, 7) <= ate.slice(0, 7) ? mesesEntre(ini, ate) : [];
+    const bolsas = (s.solic || []).filter(x => x.tipo === 'bolsa' && x.mes && meses.includes(String(x.mes).slice(0, 7)));
+    const ordem = m => [PAPEIS_REL.indexOf(m.papel), m.uf || '', nomeDe(m)];
+    const pessoas = (s.equipe || []).filter(m => PAPEIS_REL.includes(m.papel) && (!uf || !m.uf || m.uf === uf) && (m.status === 'ativa' || bolsas.some(b => b.equipe_id === m.id)))
+      .sort((a, b) => { const x = ordem(a), y = ordem(b); return x[0] - y[0] || x[1].localeCompare(y[1]) || x[2].localeCompare(y[2], 'pt-BR'); })
+      .map(m => { const sit = {}; const de1 = String(m.data_inicio || '').slice(0, 7), ate1 = m.status === 'desligada' ? String(m.data_fim || '').slice(0, 7) : '';
+        meses.forEach(ym => { const b = bolsas.find(x => x.equipe_id === m.id && String(x.mes).slice(0, 7) === ym);
+          // mês fora da participação da pessoa (antes do início ou depois do desligamento) não é cobrado
+          sit[ym] = b ? (SIT_REL[b.situacao] || 'analise') : ((de1 && ym < de1) || (ate1 && ym > ate1)) ? 'fora' : null; });
+        return { id: m.id, nome: nomeDe(m), papel: m.papel, uf: m.uf || null, sit }; });
+    const comAval = bolsas.filter(b => SIT_REL[b.situacao] === 'aval' && String(b.relatorio || '').trim() && pessoas.some(p => p.id === b.equipe_id));
+    const textos = !comTextos ? [] : comAval.map(b => { const p = pessoas.find(x => x.id === b.equipe_id);
+      return { nome: p.nome, papel: p.papel, uf: p.uf, mes: String(b.mes).slice(0, 7), aval_em: b.aval_em || null, texto: String(b.relatorio).trim() }; })
+      .sort((a, b) => String(a.uf || '').localeCompare(String(b.uf || '')) || a.nome.localeCompare(b.nome, 'pt-BR') || a.mes.localeCompare(b.mes));
+    const total = pessoas.reduce((t, p) => t + Object.values(p.sit).filter(v => v !== 'fora').length, 0);
+    const entregues = pessoas.reduce((t, p) => t + Object.values(p.sit).filter(v => v && v !== 'fora').length, 0);
+    return { meses, pessoas, comTextos, textos, comAval: comAval.length, entregues, total };
+  }
+  function htmlRelatoriosMensais(rm, n) {
+    const ROT = { aval: 'Com aval', analise: 'Em análise', devolvido: 'Devolvido', fora: '' };
+    if (!rm.meses.length) return `<h2>${n}. Relatórios mensais da equipe</h2><p>As bolsas começam em ${R.fmtData(MQ.PROJETO.inicioBolsas)}: não há relatório mensal antes disso.</p>`;
+    if (!rm.pessoas.length) return `<h2>${n}. Relatórios mensais da equipe</h2><p>Ninguém da equipe com relatório mensal no período.</p>`;
+    const linhas = rm.pessoas.map(p => `<tr><td>${E(p.nome)}</td><td>${E((P[p.papel] || {}).curto || p.papel)}</td><td>${p.uf || 'Todos'}</td>${rm.meses.map(ym => `<td>${p.sit[ym] ? ROT[p.sit[ym]] : 'Não enviado'}</td>`).join('')}</tr>`).join('');
+    let h = `<h2>${n}. Relatórios mensais da equipe</h2>
+      <p>${rm.entregues} de ${rm.total} relatórios mensais esperados no período foram enviados; ${rm.comAval} com aval. Mês em branco: fora do período da pessoa no projeto. Cada relatório vai junto com o pedido da bolsa do mês e é conferido por quem dá o aval.</p>
+      <div class="rel-larga"><table><thead><tr><th>Pessoa</th><th>Função</th><th>Estado</th>${rm.meses.map(ym => `<th>${rotMes(ym)}</th>`).join('')}</tr></thead><tbody>${linhas}</tbody></table></div>`;
+    if (rm.comTextos) {
+      const grupos = {}; rm.textos.forEach(t => { const k = t.uf || 'Projeto todo'; (grupos[k] = grupos[k] || []).push(t); });
+      h += `<h2>Anexo: textos dos relatórios mensais com aval</h2>` + (rm.textos.length ? Object.keys(grupos).map(k => `<h3>${E(k === 'Projeto todo' ? k : U().nomeUF(k))}</h3>`
+        + grupos[k].map(t => `<div class="rel-texto"><p class="rel-texto-cab"><b>${E(t.nome)}</b> · ${E((P[t.papel] || {}).nome || t.papel)} · ${rotMes(t.mes)}${t.aval_em ? ' · aval em ' + R.fmtData(String(t.aval_em).slice(0, 10)) : ''}</p><p class="rel-texto-corpo">${E(t.texto)}</p></div>`).join('')).join('')
+        : '<p>Nenhum relatório com aval no período.</p>');
+    }
+    return h;
   }
 
   /* HTML do relatório (serve para a tela, para imprimir/PDF e para o arquivo do Word) */
@@ -7671,10 +7719,14 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <p>${r.viagens.pedidos} pedido${r.viagens.pedidos === 1 ? '' : 's'} no período; ${r.viagens.autorizados} autorizado${r.viagens.autorizados === 1 ? '' : 's'} (${r.viagens.passagens} passage${r.viagens.passagens === 1 ? 'm' : 'ns'} por pessoa e ${r.viagens.eventos} evento${r.viagens.eventos === 1 ? '' : 's'}).</p>
       <h2>7. Documentos do período</h2>
       ${r.documentos.length ? t(['Data', 'Tipo', 'Título', 'Estado'], r.documentos.map(d => [f(d.data), E(d.tipo), E(d.titulo), d.uf || 'Todos'])) : '<p>Nenhum documento anexado no período.</p>'}
-      <p class="rel-nota">Números a partir dos registros do sistema Mulheres &amp; Quintais. Não contém nome, CPF ou endereço das beneficiárias (LGPD).</p>
+      ${r.relatorios ? htmlRelatoriosMensais(r.relatorios, 8) : ''}
+      <p class="rel-nota">${r.relatorios && r.relatorios.comTextos
+        ? 'Números a partir dos registros do sistema Mulheres &amp; Quintais. <b>Os textos do anexo foram escritos pela equipe e podem citar beneficiárias: revise antes de enviar para fora do projeto (LGPD).</b>'
+        : 'Números a partir dos registros do sistema Mulheres &amp; Quintais. Não contém nome, CPF ou endereço das beneficiárias (LGPD).'}</p>
     </article>`;
   }
   const CSS_REL = `body{font-family:Manrope,system-ui,Arial,Helvetica,sans-serif;color:#222;margin:32px;font-size:12pt}h1{font-size:18pt;margin:4px 0 8px}h2{font-size:13pt;margin:20px 0 6px}
+    .rel-larga{overflow-x:auto;max-width:100%}.rel-texto{border-top:1px solid #ccc;padding:6px 0 8px;break-inside:avoid}.rel-texto-cab{margin:0 0 4px;font-size:10.5pt}.rel-texto-corpo{margin:0;white-space:pre-wrap;font-size:11pt}h3{font-size:12pt;margin:14px 0 4px}
     table{border-collapse:collapse;width:100%;margin:6px 0 10px}th,td{border:1px solid #999;padding:4px 8px;text-align:left;font-size:10.5pt}th{background:#eee}
     table.fc th{width:34%;background:#f4f4f4}.fc-quem{font-size:12pt;font-weight:600;margin:0}.ficha-cad{break-after:page;page-break-after:always}.ficha-cad:last-child{break-after:auto;page-break-after:auto}@media print{body{margin:0}@page{margin:16mm}}.rel-sobre{font-size:9.5pt;color:#555;margin:0}.rel-nota{font-size:9pt;color:#555;margin-top:18px}`;
   const documentoCompleto = corpo => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório da ação do projeto</title>${MQ.FONTES_LINK || ''}<style>${CSS_REL}</style></head><body>${corpo}</body></html>`;
@@ -7801,6 +7853,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <div class="campo"><label for="rl-de">De</label><input id="rl-de" name="de" type="date" min="${MQ.PROJETO.vigencia.inicio}" max="${R.hoje()}" value="${E(f.de)}"></div>
           <div class="campo"><label for="rl-ate">Até</label><input id="rl-ate" name="ate" type="date" min="${MQ.PROJETO.vigencia.inicio}" max="${R.hoje()}" value="${E(f.ate)}"></div>
           <div class="campo"><label for="rl-uf">Estado</label><select id="rl-uf" name="uf"><option value="">Todos</option>${MQ.UFS.map(u => `<option value="${u.uf}" ${f.uf === u.uf ? 'selected' : ''}>${u.nome}</option>`).join('')}</select></div>
+          <label class="check inteiro" for="rl-textos"><input id="rl-textos" name="textos" type="checkbox" ${f.textos ? 'checked' : ''}><span><b>Incluir os textos dos relatórios mensais</b> (só os que tiveram aval), em anexo no fim. Eles podem citar beneficiárias: revise antes de enviar para fora do projeto.</span></label>
         </div><div class="aviso erro" data-erro hidden></div><div class="acoes"><button class="btn" type="submit">Atualizar o relatório</button></div></form>
         <div class="acoes"><button class="btn pri" type="button" data-acao="doc-rel-imprimir">Imprimir</button><button class="btn" type="button" data-acao="doc-rel-word">Baixar para o Word</button></div>
         <div class="bloco rel-previa">${htmlRelatorio(r, nomeDe(U().porId(S().eu.id)))}</div></div>`;
@@ -7863,7 +7916,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       await U().ocupado(form, async () => { await S().api.arquivarDocumento(form.dataset.id, m); await U().carregar(); U().fecharPainel(); U().render(); U().toast('Documento arquivado.'); });
     }
     if (tipo === 'doc-rel-filtro') {
-      const f = { de: String(fd.get('de') || ''), ate: String(fd.get('ate') || ''), uf: String(fd.get('uf') || '') };
+      const f = { de: String(fd.get('de') || ''), ate: String(fd.get('ate') || ''), uf: String(fd.get('uf') || ''), textos: fd.get('textos') === 'on' };
       if (!f.de || !f.ate) return U().mostrarErros(form, Object.assign({}, f.de ? {} : { de: 'Informe o início.' }, f.ate ? {} : { ate: 'Informe o fim.' }));
       if (f.ate < f.de) return U().mostrarErros(form, { ate: 'O fim é antes do início.' });
       G.rel = f; U().abrirPainel({ tipo: 'doc-relatorio' });
