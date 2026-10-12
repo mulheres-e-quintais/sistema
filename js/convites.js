@@ -242,17 +242,31 @@
   }
   function desenhar() { const el = $('#convite'); if (el) { el.innerHTML = corpo(); rascunho.restaurar(PUB.token); } }
   /* rascunho no próprio celular: se a página recarregar (trocou de aplicativo, a tela apagou), nada do que foi digitado se perde */
+  /* 12/10/2026 (auditoria, item 11): o link costuma ser aberto em celular ou computador emprestado. O rascunho NÃO guarda
+     CPF, NIS, data de nascimento, endereço nem o questionário socioeconômico (raça/cor, renda, escolaridade, pessoas da casa):
+     esses a pessoa digita de novo se a página recarregar. E o rascunho vence em 24 horas (antes ficava para sempre). */
+  const RASC_CONV = 'mq-rascunho-conv-', RASC_CONV_VALIDADE = 24 * 3600 * 1000;
+  const NAO_GUARDA = ['cpf', 'nis', 'data_nascimento', 'cep', 'logradouro', 'numero', 'complemento', 'bairro', 'raca_etnia', 'renda_familiar', 'escolaridade', 'pessoas_casa', 'tem_socio', 'siape'];
+  function limparRascunhosConvite() {
+    try { Object.keys(localStorage).filter(k => k.indexOf(RASC_CONV) === 0).forEach(k => {
+      let r = null; try { r = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) {}
+      if (!r || r.v !== 2 || !(Date.now() - (r.em || 0) < RASC_CONV_VALIDADE)) localStorage.removeItem(k);   // formato antigo (com CPF) ou vencido: sai
+    }); } catch (e) {}
+  }
+  limparRascunhosConvite();
   const rascunho = {
-    chave: t => 'mq-rascunho-conv-' + t,
+    chave: t => RASC_CONV + t,
     salvar(form) {
       if (!PUB.token || PUB.enviado) return; const o = {};
-      new FormData(form).forEach((v, k) => { if (typeof v === 'string' && v !== '') o[k] = v; });
-      try { localStorage.setItem(this.chave(PUB.token), JSON.stringify(o)); } catch (e) {}
+      new FormData(form).forEach((v, k) => { if (typeof v === 'string' && v !== '' && !NAO_GUARDA.includes(k)) o[k] = v; });
+      try { localStorage.setItem(this.chave(PUB.token), JSON.stringify({ v: 2, em: Date.now(), campos: o })); } catch (e) {}
     },
     apagar(t) { try { localStorage.removeItem(this.chave(t)); } catch (e) {} },
     restaurar(t) {
       const f = document.querySelector('form[data-form=conv-enviar]'); if (!f || !t) return;
-      let o = null; try { o = JSON.parse(localStorage.getItem(this.chave(t)) || 'null'); } catch (e) {}
+      limparRascunhosConvite();
+      let r = null; try { r = JSON.parse(localStorage.getItem(this.chave(t)) || 'null'); } catch (e) {}
+      const o = r && r.v === 2 ? r.campos : null;
       if (!o || !Object.keys(o).length) return;
       Object.entries(o).forEach(([k, v]) => {
         f.querySelectorAll(`[name="${k}"]`).forEach(el => {
@@ -261,7 +275,7 @@
           else el.value = v;
         });
       });
-      f.insertAdjacentHTML('afterbegin', '<div class="aviso ok conv-rasc">Recuperamos o que você já tinha preenchido neste celular. Confira e continue.</div>');
+      f.insertAdjacentHTML('afterbegin', '<div class="aviso ok conv-rasc">Recuperamos parte do que você já tinha preenchido neste aparelho. Por segurança, CPF, NIS, nascimento, endereço e o questionário não ficam guardados: preencha de novo. Confira e continue.</div>');
     }
   };
   document.addEventListener('input', ev => { const f = ev.target.closest && ev.target.closest('form[data-form=conv-enviar]'); if (f) rascunho.salvar(f); });

@@ -305,13 +305,14 @@ select t('bolsa negativa é recusada', :BB, qa_bo('-1400'), 'maior que zero');
 select t('bolsa de R$ 99.999.999,99 é recusada', :BB, qa_bo('99999999.99'), 'Valor acima do esperado para a bolsa do mês (R$ 99.999.999,99');
 select t('bolsa de R$ 10.000,01 é recusada', :BB, qa_bo('10000.01'), 'Valor acima do esperado para a bolsa');
 select t('bolsa de 1e12: mensagem clara', :BB, qa_bo('1e12'), 'Valor acima do esperado para a bolsa');
-select t('bolsa de R$ 10.000,00 (limite) é aceita', :BB, qa_bo('10000'), 'ok');
-select f(:BB, qa_bo('1400'));
+select t('bolsa de R$ 10.000,00 é recusada: a bolsa é o valor da função (56)', :BB, qa_bo('10000'), 'A bolsa de articulação estadual é de R$ 2.200,00');
+select t('bolsa no valor da função (R$ 2.200,00) é aceita', :BB, qa_bo('2200'), 'ok');
+select f(:BB, qa_bo('2200'));
 select s.id as sbo from public.solicitacoes_pagamento s join public.equipe e on e.id = s.equipe_id where e.email = 'art.ba@t.com' and s.tipo = 'bolsa' \gset
 \set SBO '''' :sbo '''::uuid'
 select t('aval de bolsa de 1e12: mensagem clara', :T, 'select public.avalizar_pagamento(' || :'SBO' || ', true, null, 1e12)', 'Valor acima do esperado para a bolsa');
-select t('aval de bolsa acima do pedido continua recusado (regra do 42)', :T, 'select public.avalizar_pagamento(' || :'SBO' || ', true, null, 1401)', 'passa do valor pedido');
-select t('aval de bolsa no valor pedido é aceito', :T, 'select public.avalizar_pagamento(' || :'SBO' || ', true, null, 1400)', 'ok');
+select t('aval de bolsa acima do pedido continua recusado (regra do 42)', :T, 'select public.avalizar_pagamento(' || :'SBO' || ', true, null, 2201)', 'passa');   -- (56: o aval de bolsa também não passa do valor da função)
+select t('aval de bolsa no valor pedido é aceito', :T, 'select public.avalizar_pagamento(' || :'SBO' || ', true, null, 2200)', 'ok');
 
 -- ===== 9. mensagens de valor =====
 select t('valor em reais no padrão brasileiro, também os grandes', :G, $q$do $x$ begin   -- (47: quem não entrou não executa mais as funções de apoio)

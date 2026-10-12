@@ -584,6 +584,9 @@
         if (total != null && Math.round(+valor * 100) > Math.round(total * 100) + 1) throw falha('O valor pedido (' + R.fmtBRL(+valor) + ') passa do total das visitas detalhadas (' + R.fmtBRL(total) + '). Confira o pedido.');
         detalhe = Object.assign({}, det); delete detalhe.complementar; if (complementar) detalhe.complementar = true;   // quem diz se é complementar é o sistema
       } else if (String(relatorio || '').trim().length < 50) throw falha('Escreva o relatório de atividades do mês (pelo menos algumas linhas).');
+      // 56: a bolsa é exatamente o valor da função (plano de trabalho), como no banco (o gatilho do banco confere na gravação, depois das outras regras)
+      if (tipo === 'bolsa') { const vf = R.valorBolsa(eu.papel); if (vf == null) throw falha('Esta função não recebe bolsa pelo projeto.');
+        if (Math.round((+valor || 0) * 100) !== Math.round(vf * 100)) throw falha('A bolsa de ' + MQ.PAPEIS[eu.papel].nome.toLowerCase() + ' é de ' + R.fmtBRL(vf) + ' por mês (plano de trabalho). Atualize a página e peça de novo.'); }
       const agora = new Date().toISOString(); let alvo = s;
       if (tipo === 'bolsa' && eu.papel === 'professor_fic') {   // 38: relatório com os encontros do mês e a presença, gravado pelo sistema
         const enc = (d.ficEncontros || []).filter(e => e.professor_id === eu.id && !e.cancelado_em && String(e.data).slice(0, 7) === m.slice(0, 7)).sort((a, b) => String(a.data).localeCompare(String(b.data)));
@@ -617,6 +620,7 @@
         if (vAval > teto) throw falha('Valor muito acima do pedido (' + R.fmtBRL(+s.valor_solicitado || 0) + '). Confira o valor: o aval da ajuda de custo vai até R$ 2.000,00 por visita.');
       }
       if (ok && s.tipo === 'bolsa' && s.valor_solicitado != null && vAval > s.valor_solicitado) throw falha('O aval passa do valor pedido. Para pagar mais, devolva para a pessoa corrigir o valor.');
+      if (ok && s.tipo === 'bolsa' && R.valorBolsa(pe.papel) != null && vAval > R.valorBolsa(pe.papel)) throw falha('O aval da bolsa não pode passar do valor da função (' + R.fmtBRL(R.valorBolsa(pe.papel)) + ').');   // 56
       if (ok) Object.assign(s, { situacao: 'avalizada', valor_avalizado: vAval, aval_por: eu.id, aval_em: agora, obs_aval: obs || null });
       else {
         if (String(obs || '').trim().length < 5) throw falha('Para devolver, escreva o que precisa ser corrigido.');

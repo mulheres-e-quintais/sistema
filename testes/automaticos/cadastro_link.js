@@ -94,6 +94,9 @@ const R = []; const ok = (n, c, d='') => R.push([c ? 'PASSOU' : 'FALHOU', n, d])
   await p.reload(); await p.waitForSelector('form[data-form=conv-enviar]'); await p.waitForTimeout(300);
   const nomeDepois = await p.inputValue('#cv-nome');
   ok('Recarregar a página no meio NÃO apaga o que já digitou', /Luzia/.test(nomeDepois), 'nome após recarregar: "' + nomeDepois + '"');
+  // 56 (auditoria, item 11): CPF, NIS, nascimento, endereço e socioeconômico NÃO ficam no aparelho; ela digita de novo
+  ok('Recarregar NÃO traz de volta CPF, nascimento nem endereço (ficam fora do rascunho)', (await p.inputValue('#cv-cpf')) === '' && (await p.inputValue('#dp-nasc')) === '' && (await p.inputValue('#dp-log')) === '');
+  await p.fill('#cv-cpf', '476.024.360-75'); await p.fill('#dp-nasc', '1985-03-10'); await p.fill('#dp-log', 'Sítio Baixa Verde');
   if (!/Luzia/.test(nomeDepois)) {   // refaz para seguir
     await p.fill('#cv-nome', 'Luzia Rural Silva'); await p.fill('#cv-cpf', '476.024.360-75'); await p.fill('#cv-tel', '(89) 99911-2233'); await p.fill('#cv-email', 'luzia@gmail.com');
     await p.click('#w-cadastro_arlo label:has-text("Não")');

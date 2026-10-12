@@ -107,7 +107,7 @@
     if (S.eu && !S.verEntrada) await registrarAcesso(aviso ? 'saida_inatividade' : 'saida');   // antes de encerrar a sessão no servidor
     try { sessionStorage.removeItem(CHAVE_ABRIU); } catch (e) {}
     fecharPainel({ semFoco: true, manterRascunho: !!aviso });
-    if (!aviso) { try { localStorage.removeItem(chaveRasc()); } catch (e) {} }   // saiu da conta por vontade própria: os rascunhos dela não ficam no aparelho (LGPD)
+    if (!aviso) { try { localStorage.removeItem(chaveRasc()); } catch (e) {} if (MQ.fotoDia) MQ.fotoDia.limparAparelho(true); }   // saiu da conta por vontade própria: os rascunhos dela não ficam no aparelho (LGPD)
     S.menuAberto = false; S.aba = null; lembrarAba(); limparHashAba(); if (MQ.bancoUI) MQ.bancoUI.limpar();
     try { Object.keys(sessionStorage).filter(k => /^mq-pend-visto-/.test(k)).forEach(k => sessionStorage.removeItem(k)); } catch (e) {}
     S.pendVisto = false; S.avisoLogin = aviso || null;
@@ -1278,7 +1278,9 @@
     const f = formsDoPainel(el)[0]; if (!f) return;
     todosDe(el, '.rascunho-volta').forEach(x => x.remove());
     const nota = document.createElement('p'); nota.className = 'aviso rascunho-volta'; nota.setAttribute('role', 'status');
-    nota.textContent = texto + (!semArquivo && el.querySelector('form[data-form] input[type=file]') ? ' Fotos e arquivos não ficam guardados: se já tinha escolhido, tire a foto ou escolha o arquivo de novo.' : '')
+    // fotos do quintal (diagnóstico, visita feita, avaliação) ficam guardadas e voltam sozinhas (fotodia.js); outros arquivos não
+    const outros = el.querySelector('form[data-form] input[type=file]:not([data-foto]):not([data-foto-vis]):not([data-foto-av])');
+    nota.textContent = texto + (!semArquivo && outros ? ' Arquivos não ficam guardados: se já tinha escolhido, escolha o arquivo de novo.' : '')
       + (faltou ? ' Alguma linha que você tinha acrescentado pode não ter voltado: confira.' : '');
     f.prepend(nota);
   }

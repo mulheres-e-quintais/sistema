@@ -10,22 +10,45 @@
       try {
         const req = indexedDB.open(BANCO, 1);
         req.onupgradeneeded = () => req.result.createObjectStore(LOJA, { keyPath: 'id' });
-        req.onsuccess = () => res(req.result);
+        req.onsuccess = () => { res(req.result); pedirPermanente(); };
         req.onerror = () => res(null);
       } catch (e) { res(null); }
     });
     return dbp;
   }
+  /* 12/10/2026 (auditoria, item 4): pede ao navegador para NÃO apagar a fila quando falta espaço (sem isso, o navegador
+     pode limpar os dados do site num celular cheio). Pedido uma vez; navegador que não tem o recurso segue como antes. */
+  let pediuPermanente = false;
+  function pedirPermanente() {
+    if (pediuPermanente) return; pediuPermanente = true;
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) { /* sem o recurso */ }
+  }
+  /* memória do celular cheia: a gravação é CANCELADA pelo navegador (abort), não dá "erro". Antes ninguém tratava esse caso
+     e o botão ficava em "Salvando…" para sempre, sem guardar nada. Agora a promessa falha com mensagem clara. */
+  MQ.MSG_MEMORIA_CHEIA = 'A memória do celular está cheia: o registro NÃO foi guardado. Apague fotos ou vídeos antigos (WhatsApp ocupa muito) e toque em salvar de novo. O que você digitou continua na tela.';
+  const falhaGravar = erro => { const cheia = /quota/i.test(String((erro && (erro.name || erro.message)) || ''));
+    const e = new Error(cheia || !erro ? MQ.MSG_MEMORIA_CHEIA : 'Não foi possível guardar no aparelho: ' + (erro.message || erro.name || 'erro desconhecido') + '. Tente de novo.');
+    e.memoriaCheia = cheia || !erro; e.original = erro; return e; };
   async function tx(modo, fn) {
     const db = await abrir();
     if (!db) { const r = fn(null); return r && typeof r === 'object' && 'result' in r ? r.result : r; }
     return new Promise((res, rej) => {
-      const t = db.transaction(LOJA, modo); const loja = t.objectStore(LOJA);
-      const r = fn(loja);
+      let t, r;
+      try { t = db.transaction(LOJA, modo); r = fn(t.objectStore(LOJA)); } catch (e) { rej(falhaGravar(e)); return; }
       t.oncomplete = () => res(r && r.result !== undefined ? r.result : r);
-      t.onerror = () => rej(t.error);
+      t.onerror = () => rej(falhaGravar(t.error));
+      t.onabort = () => rej(falhaGravar(t.error));
     });
   }
+  /* falha passageira (servidor fora do ar, instabilidade, sessão vencida, banco ocupado): o item NÃO vira erro definitivo,
+     fica para a próxima tentativa sozinho. Recusa por regra (dado errado, conflito) continua marcada para a pessoa corrigir. */
+  MQ.falhaPassageira = e => {
+    if (!e) return false; if (e.semRede || e.transitorio) return true;
+    const o = e.original || {}; const st = +(o.status || o.statusCode || e.status || 0);
+    if (st === 408 || st === 429 || st >= 500) return true;
+    const txt = [e.message, o.message, o.code, o.error, o.details].filter(Boolean).join(' ');
+    return /\b(50[0-9]|408|429)\b|time-?out|timed out|JWT|jwt expired|not authenticated|Auth session missing|refresh token|Entre no sistema|Failed to fetch|Load failed|NetworkError|network|ocupado com outra grava|could not obtain lock|lock timeout|canceling statement|Service Unavailable|Bad Gateway|Gateway Time/i.test(txt);
+  };
 
   /* 47: o que a pessoa MUDOU em relação ao registro que ela leu (lista de campos). Num conflito, a tela mostra o registro
      como está no servidor e, por cima, só estes campos: dado velho não volta por cima de dado novo. */
@@ -63,11 +86,24 @@
     },
     async salvar(item) {
       // regravar (corrigir um item que já estava na fila) mantém a data original: a ordem de envio não muda
-      if (!item.criado) { const antes = await tx('readonly', l => l ? l.get(item.id) : { result: memoria.get(item.id) }); item.criado = (antes && antes.criado) || Date.now(); }
+      if (!item.criado) { const antes = await F.ler(item.id); item.criado = (antes && antes.criado) || Date.now(); }
+      // 12/10/2026 (auditoria, item 1): cada gravação feita pela pessoa ganha uma VERSÃO nova. O envio só apaga (ou marca com
+      // erro) o item se ele ainda for a versão que saiu; uma correção salva no meio do envio fica na fila e sobe em seguida.
+      item.ver = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
       await tx('readwrite', l => { if (l) l.put(item); else memoria.set(item.id, item); });
       return item;
     },
+    async ler(id) { return tx('readonly', l => l ? l.get(id) : { result: memoria.get(id) }); },
     async remover(id) { await tx('readwrite', l => { if (l) l.delete(id); else memoria.delete(id); }); },
+    /* só a fila mexe aqui: marca o resultado do envio SEM criar versão nova, e só se o item ainda for a versão enviada */
+    async marcarSeIgual(item) {
+      const agora = await F.ler(item.id); if (!agora || agora.ver !== item.ver) return false;
+      await tx('readwrite', l => { if (l) l.put(item); else memoria.set(item.id, item); }); return true;
+    },
+    async removerSeIgual(item) {
+      const agora = await F.ler(item.id); if (agora && agora.ver !== item.ver) return false;
+      await F.remover(item.id); return true;
+    },
 
     /* Envia o que estiver pendente. Erros de regra ficam marcados no item para a bolsista corrigir;
        falta de rede só deixa para depois. */
@@ -85,13 +121,21 @@
             else if (it.tipo === 'diagnostico') await api.salvarDiagnostico(it.dados, it.fotos || {}, op);
             else if (it.tipo === 'avaliacao') await api.salvarAvaliacao(it.dados, it.fotos || {}, op);
             else await api.salvarFicha(it.dados, it.fotos || {}, op);
-            await F.remover(it.id); enviados++;
+            // subiu: sai da fila, a não ser que a pessoa tenha salvo uma correção enquanto subia (aí a correção fica e sobe na próxima)
+            if (await F.removerSeIgual(it)) enviados++;
           } catch (e) {
             if (e.semRede) break;
-            it.erro = (MQ.regras && MQ.regras.mensagemErro ? MQ.regras.mensagemErro(e) : e.message) || 'Não foi possível enviar. Tente de novo.'; it.reenviar = false;   // mensagem já traduzida, não o texto cru do servidor
+            const msg = (MQ.regras && MQ.regras.mensagemErro ? MQ.regras.mensagemErro(e) : e.message) || 'Não foi possível enviar. Tente de novo.';   // mensagem já traduzida, não o texto cru do servidor
+            if (MQ.falhaPassageira(e)) {
+              // 12/10/2026 (auditoria, item 3): falha passageira não trava o item: fica para a próxima tentativa, com o aviso na tela
+              it.erro = null; it.reenviar = false; it.tentativas = (it.tentativas || 0) + 1; it.ultimaFalha = msg; it.falhaEm = Date.now();
+              await F.marcarSeIgual(it);
+              continue;
+            }
+            it.erro = msg; it.reenviar = false;
             // recusado porque outra pessoa alterou: o item NÃO é descartado (o que foi digitado fica); a tela reabre com o dado novo e só o que ela mudou
             it.conflito = !!(MQ.regras && MQ.regras.ehConflito && (MQ.regras.ehConflito(e) || MQ.regras.ehConflito(it.erro)));
-            await F.salvar(it);
+            await F.marcarSeIgual(it);
           }
         }
       } finally { F.enviando = false; }

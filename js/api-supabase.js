@@ -381,19 +381,34 @@
     },
 
     /* ---------- Vitrine pública (só totais e fotos aprovadas; funciona sem login) ---------- */
+    /* 56: a pasta da vitrine é privada; cada foto abre por um link assinado de 1 hora, que o servidor só dá enquanto a
+       autorização de imagem da mulher continuar valendo. Antes do 56 instalado (pasta ainda pública), usa o endereço público. */
+    async urlsVitrine(fotos) {
+      const l = (fotos || []).filter(f => f && f.path); if (!l.length) return;
+      try {
+        const { data, error } = await sb.storage.from('vitrine').createSignedUrls(l.map(f => f.path), 3600);
+        if (!error && Array.isArray(data)) {
+          data.forEach((u, i) => { if (u && u.signedUrl && !u.error) l[i].url = u.signedUrl; });
+          l.forEach(f => { if (!f.url) f.semLink = true; });
+          if (l.some(f => f.url)) { l.forEach(f => { f.url = f.url || ''; }); return; }
+        }
+      } catch (e) { /* sem resposta: tenta o endereço público abaixo */ }
+      // antes do script 56 a pasta ainda é pública; sem link nenhum, a foto fica de fora (a página não quebra)
+      l.forEach(f => { try { f.url = sb.storage.from('vitrine').getPublicUrl(f.path).data.publicUrl || ''; } catch (e) { f.url = ''; } });
+    },
     async vitrine() {
       if (!sb) sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, { auth: { persistSession: true } });
       const { data, error } = await sb.rpc('vitrine');
       if (error) throw erro(error);
       if (!data) return { fotos: [] };   // resposta vazia do servidor: a página pública abre sem fotos, não quebra
-      (data.fotos || []).forEach(f => { f.url = sb.storage.from('vitrine').getPublicUrl(f.path).data.publicUrl; });
+      await this.urlsVitrine(data.fotos); data.fotos = (data.fotos || []).filter(f => f.url);
       try { const r = await sb.rpc('vitrine_municipios'); if (!r.error) data.municipios = r.data; } catch (e) {}   // 40: sem o script, o mapa mostra só os municípios previstos
       return data;
     },
     async listarVitrine() {
       const { data, error } = await todas(() => sb.from('vitrine_fotos').select('*', CT).order('publicada_em', { ascending: false }).order('id'));
       if (error) throw erro(error);
-      data.forEach(f => { f.url = sb.storage.from('vitrine').getPublicUrl(f.path).data.publicUrl; });
+      await this.urlsVitrine(data);
       return data;
     },
     /* Copia uma foto de campo (privada) para o bucket público, com nome aleatório, e registra.

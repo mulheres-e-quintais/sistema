@@ -132,9 +132,9 @@
   document.addEventListener('change', async ev => {
     const inp = ev.target.closest && ev.target.closest('input[data-foto-av]'); if (!inp || !inp.files[0]) return;
     const k = inp.dataset.fotoAv; const dica = document.getElementById('av-f-' + k + '-dica');
-    if (inp.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; inp.value = ''; return; }
+    if (inp.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; inp.value = ''; MQ.campoUI.manteveFoto(dica, fotosAv[k]); return; }
     dica.textContent = 'Preparando foto…';
-    const foto = await MQ.campoUI.prepararFoto(inp, dica); if (!foto) { delete fotosAv[k]; return; }   // só imagem de verdade ("Este arquivo não é uma foto.")
+    const foto = await MQ.campoUI.prepararFoto(inp, dica); if (!foto) { MQ.campoUI.manteveFoto(dica, fotosAv[k]); return; }   // foto recusada: a boa que já estava continua
     fotosAv[k] = foto; dica.textContent = 'Foto pronta (' + Math.round(fotosAv[k].size / 1024) + ' KB).';
   });
 
@@ -219,7 +219,7 @@
 
   async function clique(a, el) {
     if (a === 'imp-uf') { G.uf = el.dataset.uf; U().render(); return; }
-    if (a === 'aval-novo') { Object.keys(fotosAv).forEach(k => delete fotosAv[k]); U().abrirPainel({ tipo: 'aval-form', ficha: el.dataset.ficha, visita: el.dataset.visita }); return; }
+    if (a === 'aval-novo') { Object.keys(fotosAv).forEach(k => delete fotosAv[k]); if (MQ.fotoDia) MQ.fotoDia.marcarDias('avaliacao', { ficha_id: el.dataset.ficha }, null); U().abrirPainel({ tipo: 'aval-form', ficha: el.dataset.ficha, visita: el.dataset.visita }); return; }
     if (a === 'aval-ver') { U().abrirPainel({ tipo: 'aval-ver', ficha: el.dataset.ficha }); return; }
     if (a === 'aval-gps') {
       const dica = document.getElementById('av-gps-dica'); const fm = document.querySelector('form[data-form=aval]');
@@ -272,8 +272,9 @@
       U().toast(enviado ? 'Avaliação registrada. A visita conta como feita e pode entrar na ajuda de custo.' : 'Avaliação guardada no aparelho. Será enviada quando houver internet.');
     });
   }
-  function conferir(it) { Object.keys(fotosAv).forEach(k => delete fotosAv[k]); Object.assign(fotosAv, it.fotos || {}); U().abrirPainel({ tipo: 'aval-form', ficha: it.dados.ficha_id, visita: it.dados.visita_id || '' }); }
+  function conferir(it) { Object.keys(fotosAv).forEach(k => delete fotosAv[k]); Object.assign(fotosAv, it.fotos || {}); if (MQ.fotoDia) MQ.fotoDia.marcarDias('avaliacao', it.dados || {}, it.fotosDias); U().abrirPainel({ tipo: 'aval-form', ficha: it.dados.ficha_id, visita: it.dados.visita_id || '' }); }
   function painel(p) { return p.tipo === 'aval-ver' ? painelVer(p) : painelForm(p); }
 
+  if (MQ.fotoDia) MQ.fotoDia.registrarMapa('aval', fotosAv, k => document.getElementById('av-f-' + k + '-dica'));
   MQ.impactoUI = { conferir, bloco, ler, validar, classificar, menorDaFamilia, secaoCoord, painel, clique, enviar, indicadores, avaliacoes };
 })();

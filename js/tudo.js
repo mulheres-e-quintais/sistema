@@ -441,6 +441,8 @@ MQ.ORCAMENTO = {
     return 'bolsista';
   };
   R.modeloTermo = x => { const m = (MQ.MODELOS_TERMO || {})[R.tipoTermo(x)]; return m && m.arquivo ? m : null; };
+  /* 56: valor da bolsa da função, em reais com centavos (o banco usa o mesmo: public.valor_bolsa) */
+  R.valorBolsa = papel => { const b = (MQ.PAPEIS[papel] || {}).bolsa; return papel !== 'coord_geral' && b ? Math.round(b * 100) / 100 : null; };
   R.MSG_TERMO_SEM_ARQUIVO = 'Sem o termo anexado não há o que conferir: a data só é registrada depois que o termo preenchido e assinado estiver anexado.';
   R.MSG_TERMO_SEM_DATA = 'Você anexou o termo: confira no documento a data da assinatura e preencha aqui.';
   R.TERMO_EXT = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
@@ -1436,6 +1438,9 @@ MQ.ORCAMENTO = {
         if (total != null && Math.round(+valor * 100) > Math.round(total * 100) + 1) throw falha('O valor pedido (' + R.fmtBRL(+valor) + ') passa do total das visitas detalhadas (' + R.fmtBRL(total) + '). Confira o pedido.');
         detalhe = Object.assign({}, det); delete detalhe.complementar; if (complementar) detalhe.complementar = true;   // quem diz se é complementar é o sistema
       } else if (String(relatorio || '').trim().length < 50) throw falha('Escreva o relatório de atividades do mês (pelo menos algumas linhas).');
+      // 56: a bolsa é exatamente o valor da função (plano de trabalho), como no banco (o gatilho do banco confere na gravação, depois das outras regras)
+      if (tipo === 'bolsa') { const vf = R.valorBolsa(eu.papel); if (vf == null) throw falha('Esta função não recebe bolsa pelo projeto.');
+        if (Math.round((+valor || 0) * 100) !== Math.round(vf * 100)) throw falha('A bolsa de ' + MQ.PAPEIS[eu.papel].nome.toLowerCase() + ' é de ' + R.fmtBRL(vf) + ' por mês (plano de trabalho). Atualize a página e peça de novo.'); }
       const agora = new Date().toISOString(); let alvo = s;
       if (tipo === 'bolsa' && eu.papel === 'professor_fic') {   // 38: relatório com os encontros do mês e a presença, gravado pelo sistema
         const enc = (d.ficEncontros || []).filter(e => e.professor_id === eu.id && !e.cancelado_em && String(e.data).slice(0, 7) === m.slice(0, 7)).sort((a, b) => String(a.data).localeCompare(String(b.data)));
@@ -1469,6 +1474,7 @@ MQ.ORCAMENTO = {
         if (vAval > teto) throw falha('Valor muito acima do pedido (' + R.fmtBRL(+s.valor_solicitado || 0) + '). Confira o valor: o aval da ajuda de custo vai até R$ 2.000,00 por visita.');
       }
       if (ok && s.tipo === 'bolsa' && s.valor_solicitado != null && vAval > s.valor_solicitado) throw falha('O aval passa do valor pedido. Para pagar mais, devolva para a pessoa corrigir o valor.');
+      if (ok && s.tipo === 'bolsa' && R.valorBolsa(pe.papel) != null && vAval > R.valorBolsa(pe.papel)) throw falha('O aval da bolsa não pode passar do valor da função (' + R.fmtBRL(R.valorBolsa(pe.papel)) + ').');   // 56
       if (ok) Object.assign(s, { situacao: 'avalizada', valor_avalizado: vAval, aval_por: eu.id, aval_em: agora, obs_aval: obs || null });
       else {
         if (String(obs || '').trim().length < 5) throw falha('Para devolver, escreva o que precisa ser corrigido.');
@@ -2618,19 +2624,34 @@ MQ.ORCAMENTO = {
     },
 
     /* ---------- Vitrine pública (só totais e fotos aprovadas; funciona sem login) ---------- */
+    /* 56: a pasta da vitrine é privada; cada foto abre por um link assinado de 1 hora, que o servidor só dá enquanto a
+       autorização de imagem da mulher continuar valendo. Antes do 56 instalado (pasta ainda pública), usa o endereço público. */
+    async urlsVitrine(fotos) {
+      const l = (fotos || []).filter(f => f && f.path); if (!l.length) return;
+      try {
+        const { data, error } = await sb.storage.from('vitrine').createSignedUrls(l.map(f => f.path), 3600);
+        if (!error && Array.isArray(data)) {
+          data.forEach((u, i) => { if (u && u.signedUrl && !u.error) l[i].url = u.signedUrl; });
+          l.forEach(f => { if (!f.url) f.semLink = true; });
+          if (l.some(f => f.url)) { l.forEach(f => { f.url = f.url || ''; }); return; }
+        }
+      } catch (e) { /* sem resposta: tenta o endereço público abaixo */ }
+      // antes do script 56 a pasta ainda é pública; sem link nenhum, a foto fica de fora (a página não quebra)
+      l.forEach(f => { try { f.url = sb.storage.from('vitrine').getPublicUrl(f.path).data.publicUrl || ''; } catch (e) { f.url = ''; } });
+    },
     async vitrine() {
       if (!sb) sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, { auth: { persistSession: true } });
       const { data, error } = await sb.rpc('vitrine');
       if (error) throw erro(error);
       if (!data) return { fotos: [] };   // resposta vazia do servidor: a página pública abre sem fotos, não quebra
-      (data.fotos || []).forEach(f => { f.url = sb.storage.from('vitrine').getPublicUrl(f.path).data.publicUrl; });
+      await this.urlsVitrine(data.fotos); data.fotos = (data.fotos || []).filter(f => f.url);
       try { const r = await sb.rpc('vitrine_municipios'); if (!r.error) data.municipios = r.data; } catch (e) {}   // 40: sem o script, o mapa mostra só os municípios previstos
       return data;
     },
     async listarVitrine() {
       const { data, error } = await todas(() => sb.from('vitrine_fotos').select('*', CT).order('publicada_em', { ascending: false }).order('id'));
       if (error) throw erro(error);
-      data.forEach(f => { f.url = sb.storage.from('vitrine').getPublicUrl(f.path).data.publicUrl; });
+      await this.urlsVitrine(data);
       return data;
     },
     /* Copia uma foto de campo (privada) para o bucket público, com nome aleatório, e registra.
@@ -2899,22 +2920,45 @@ MQ.ORCAMENTO = {
       try {
         const req = indexedDB.open(BANCO, 1);
         req.onupgradeneeded = () => req.result.createObjectStore(LOJA, { keyPath: 'id' });
-        req.onsuccess = () => res(req.result);
+        req.onsuccess = () => { res(req.result); pedirPermanente(); };
         req.onerror = () => res(null);
       } catch (e) { res(null); }
     });
     return dbp;
   }
+  /* 12/10/2026 (auditoria, item 4): pede ao navegador para NÃO apagar a fila quando falta espaço (sem isso, o navegador
+     pode limpar os dados do site num celular cheio). Pedido uma vez; navegador que não tem o recurso segue como antes. */
+  let pediuPermanente = false;
+  function pedirPermanente() {
+    if (pediuPermanente) return; pediuPermanente = true;
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) { /* sem o recurso */ }
+  }
+  /* memória do celular cheia: a gravação é CANCELADA pelo navegador (abort), não dá "erro". Antes ninguém tratava esse caso
+     e o botão ficava em "Salvando…" para sempre, sem guardar nada. Agora a promessa falha com mensagem clara. */
+  MQ.MSG_MEMORIA_CHEIA = 'A memória do celular está cheia: o registro NÃO foi guardado. Apague fotos ou vídeos antigos (WhatsApp ocupa muito) e toque em salvar de novo. O que você digitou continua na tela.';
+  const falhaGravar = erro => { const cheia = /quota/i.test(String((erro && (erro.name || erro.message)) || ''));
+    const e = new Error(cheia || !erro ? MQ.MSG_MEMORIA_CHEIA : 'Não foi possível guardar no aparelho: ' + (erro.message || erro.name || 'erro desconhecido') + '. Tente de novo.');
+    e.memoriaCheia = cheia || !erro; e.original = erro; return e; };
   async function tx(modo, fn) {
     const db = await abrir();
     if (!db) { const r = fn(null); return r && typeof r === 'object' && 'result' in r ? r.result : r; }
     return new Promise((res, rej) => {
-      const t = db.transaction(LOJA, modo); const loja = t.objectStore(LOJA);
-      const r = fn(loja);
+      let t, r;
+      try { t = db.transaction(LOJA, modo); r = fn(t.objectStore(LOJA)); } catch (e) { rej(falhaGravar(e)); return; }
       t.oncomplete = () => res(r && r.result !== undefined ? r.result : r);
-      t.onerror = () => rej(t.error);
+      t.onerror = () => rej(falhaGravar(t.error));
+      t.onabort = () => rej(falhaGravar(t.error));
     });
   }
+  /* falha passageira (servidor fora do ar, instabilidade, sessão vencida, banco ocupado): o item NÃO vira erro definitivo,
+     fica para a próxima tentativa sozinho. Recusa por regra (dado errado, conflito) continua marcada para a pessoa corrigir. */
+  MQ.falhaPassageira = e => {
+    if (!e) return false; if (e.semRede || e.transitorio) return true;
+    const o = e.original || {}; const st = +(o.status || o.statusCode || e.status || 0);
+    if (st === 408 || st === 429 || st >= 500) return true;
+    const txt = [e.message, o.message, o.code, o.error, o.details].filter(Boolean).join(' ');
+    return /\b(50[0-9]|408|429)\b|time-?out|timed out|JWT|jwt expired|not authenticated|Auth session missing|refresh token|Entre no sistema|Failed to fetch|Load failed|NetworkError|network|ocupado com outra grava|could not obtain lock|lock timeout|canceling statement|Service Unavailable|Bad Gateway|Gateway Time/i.test(txt);
+  };
 
   /* 47: o que a pessoa MUDOU em relação ao registro que ela leu (lista de campos). Num conflito, a tela mostra o registro
      como está no servidor e, por cima, só estes campos: dado velho não volta por cima de dado novo. */
@@ -2952,11 +2996,24 @@ MQ.ORCAMENTO = {
     },
     async salvar(item) {
       // regravar (corrigir um item que já estava na fila) mantém a data original: a ordem de envio não muda
-      if (!item.criado) { const antes = await tx('readonly', l => l ? l.get(item.id) : { result: memoria.get(item.id) }); item.criado = (antes && antes.criado) || Date.now(); }
+      if (!item.criado) { const antes = await F.ler(item.id); item.criado = (antes && antes.criado) || Date.now(); }
+      // 12/10/2026 (auditoria, item 1): cada gravação feita pela pessoa ganha uma VERSÃO nova. O envio só apaga (ou marca com
+      // erro) o item se ele ainda for a versão que saiu; uma correção salva no meio do envio fica na fila e sobe em seguida.
+      item.ver = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
       await tx('readwrite', l => { if (l) l.put(item); else memoria.set(item.id, item); });
       return item;
     },
+    async ler(id) { return tx('readonly', l => l ? l.get(id) : { result: memoria.get(id) }); },
     async remover(id) { await tx('readwrite', l => { if (l) l.delete(id); else memoria.delete(id); }); },
+    /* só a fila mexe aqui: marca o resultado do envio SEM criar versão nova, e só se o item ainda for a versão enviada */
+    async marcarSeIgual(item) {
+      const agora = await F.ler(item.id); if (!agora || agora.ver !== item.ver) return false;
+      await tx('readwrite', l => { if (l) l.put(item); else memoria.set(item.id, item); }); return true;
+    },
+    async removerSeIgual(item) {
+      const agora = await F.ler(item.id); if (agora && agora.ver !== item.ver) return false;
+      await F.remover(item.id); return true;
+    },
 
     /* Envia o que estiver pendente. Erros de regra ficam marcados no item para a bolsista corrigir;
        falta de rede só deixa para depois. */
@@ -2974,13 +3031,21 @@ MQ.ORCAMENTO = {
             else if (it.tipo === 'diagnostico') await api.salvarDiagnostico(it.dados, it.fotos || {}, op);
             else if (it.tipo === 'avaliacao') await api.salvarAvaliacao(it.dados, it.fotos || {}, op);
             else await api.salvarFicha(it.dados, it.fotos || {}, op);
-            await F.remover(it.id); enviados++;
+            // subiu: sai da fila, a não ser que a pessoa tenha salvo uma correção enquanto subia (aí a correção fica e sobe na próxima)
+            if (await F.removerSeIgual(it)) enviados++;
           } catch (e) {
             if (e.semRede) break;
-            it.erro = (MQ.regras && MQ.regras.mensagemErro ? MQ.regras.mensagemErro(e) : e.message) || 'Não foi possível enviar. Tente de novo.'; it.reenviar = false;   // mensagem já traduzida, não o texto cru do servidor
+            const msg = (MQ.regras && MQ.regras.mensagemErro ? MQ.regras.mensagemErro(e) : e.message) || 'Não foi possível enviar. Tente de novo.';   // mensagem já traduzida, não o texto cru do servidor
+            if (MQ.falhaPassageira(e)) {
+              // 12/10/2026 (auditoria, item 3): falha passageira não trava o item: fica para a próxima tentativa, com o aviso na tela
+              it.erro = null; it.reenviar = false; it.tentativas = (it.tentativas || 0) + 1; it.ultimaFalha = msg; it.falhaEm = Date.now();
+              await F.marcarSeIgual(it);
+              continue;
+            }
+            it.erro = msg; it.reenviar = false;
             // recusado porque outra pessoa alterou: o item NÃO é descartado (o que foi digitado fica); a tela reabre com o dado novo e só o que ela mudou
             it.conflito = !!(MQ.regras && MQ.regras.ehConflito && (MQ.regras.ehConflito(e) || MQ.regras.ehConflito(it.erro)));
-            await F.salvar(it);
+            await F.marcarSeIgual(it);
           }
         }
       } finally { F.enviando = false; }
@@ -4351,6 +4416,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
    - a foto só vale se essa data for o dia da visita informado no formulário;
    - sem data dentro do arquivo (foto encaminhada pelo WhatsApp, captura de tela, imagem baixada), a foto é recusada
      e o sistema oferece a própria câmera: a foto tirada por ela é sempre de agora.
+   - visita que passa da meia-noite: vale também foto do dia seguinte tirada até as 4h da manhã;
+   - foto recusada não apaga a foto boa que já estava no campo;
+   - as fotos escolhidas ficam guardadas NESTE aparelho (IndexedDB) até o formulário ser salvo: se o sistema sair
+     sozinho (15 minutos sem uso) ou o celular fechar a página, elas voltam ao abrir o mesmo formulário. Saem do
+     aparelho ao salvar, ao sair da conta pelo botão Sair e depois de 3 dias;
+   - a data de cada foto vai junto com o registro guardado sem internet, e é conferida de novo ao corrigir e salvar.
    Limite conhecido: ninguém impede fotografar, hoje, uma foto antiga impressa ou mostrada em outra tela. */
 (function () {
   const R = MQ.regras;
@@ -4359,43 +4430,65 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const diaDaVisita = form => { const i = form && form.querySelector('input[name="data_visita"], input[name="data_realizada"]'); return (i && i.value) || R.hoje(); };
   const hojeLocal = () => R.hoje();
 
-  /* data em que a foto foi tirada, lida do EXIF de um JPEG: DateTimeOriginal (0x9003), senão DateTimeDigitized (0x9004),
-     senão DateTime (0x0132). Devolve 'AAAA-MM-DD' ou null (sem EXIF, HEIC, PNG, arquivo estranho). Nunca lança erro. */
-  async function lerDataExif(arquivo) {
+  /* momento em que a foto foi tirada, lido do EXIF: DateTimeOriginal (0x9003), senão DateTimeDigitized (0x9004),
+     senão DateTime (0x0132). Devolve { dia: 'AAAA-MM-DD', hora: 0..23 } ou null. Nunca lança erro.
+     JPEG: segmento APP1 "Exif". HEIC (iPhone), PNG e WebP guardam o mesmo bloco TIFF em outro lugar do arquivo:
+     procura o cabeçalho TIFF ("II*\0" ou "MM\0*") no começo do arquivo e, se não achar, no arquivo inteiro. */
+  async function lerMomentoExif(arquivo) {
     try {
-      const buf = await arquivo.slice(0, 256 * 1024).arrayBuffer(); const v = new DataView(buf);
-      if (v.byteLength < 4 || v.getUint16(0) !== 0xFFD8) return null;
-      let p = 2;
-      while (p + 4 <= v.byteLength) {
-        if (v.getUint8(p) !== 0xFF) return null;
-        const marca = v.getUint8(p + 1), tam = v.getUint16(p + 2);
-        if (marca === 0xE1 && p + 10 <= v.byteLength && v.getUint32(p + 4) === 0x45786966) return lerTiff(v, p + 10, Math.min(v.byteLength, p + 2 + tam));
-        if (marca === 0xDA || marca === 0xD9) return null;
-        p += 2 + tam;
+      const ini = await arquivo.slice(0, 512 * 1024).arrayBuffer(); const v = new DataView(ini);
+      if (v.byteLength >= 4 && v.getUint16(0) === 0xFFD8) {
+        let p = 2;
+        while (p + 4 <= v.byteLength) {
+          if (v.getUint8(p) !== 0xFF) break;
+          const marca = v.getUint8(p + 1), tam = v.getUint16(p + 2);
+          if (marca === 0xE1 && p + 10 <= v.byteLength && v.getUint32(p + 4) === 0x45786966) { const r = lerTiff(v, p + 10, Math.min(v.byteLength, p + 2 + tam)); if (r) return r; break; }
+          if (marca === 0xDA || marca === 0xD9) break;
+          p += 2 + tam;
+        }
+        return null;   // JPEG sem EXIF (WhatsApp, captura de tela): não adianta procurar no resto
       }
-      return null;
+      const r = procurarTiff(v); if (r || arquivo.size <= ini.byteLength) return r;
+      return procurarTiff(new DataView(await arquivo.slice(0, 16 * 1024 * 1024).arrayBuffer()));
     } catch (e) { return null; }
   }
+  async function lerDataExif(arquivo) { const m = await lerMomentoExif(arquivo); return m ? m.dia : null; }
+  function procurarTiff(v) {
+    const n = v.byteLength - 8;
+    for (let i = 0; i < n; i++) {
+      const a = v.getUint8(i);
+      if ((a === 0x49 && v.getUint8(i + 1) === 0x49 && v.getUint8(i + 2) === 0x2A && v.getUint8(i + 3) === 0)
+        || (a === 0x4D && v.getUint8(i + 1) === 0x4D && v.getUint8(i + 2) === 0 && v.getUint8(i + 3) === 0x2A)) {
+        let r = null; try { r = lerTiff(v, i, v.byteLength); } catch (e) { r = null; }
+        if (r) return r;
+      }
+    }
+    return null;
+  }
   function lerTiff(v, t, fim) {
+    if (t + 8 > fim) return null;
     const le = v.getUint16(t) === 0x4949; const u16 = o => v.getUint16(o, le), u32 = o => v.getUint32(o, le);
     if (u16(t + 2) !== 42) return null;
-    const ifd = off => { const base = t + off; if (base + 2 > fim) return []; const n = u16(base); const l = [];
-      for (let i = 0; i < n; i++) { const e = base + 2 + i * 12; if (e + 12 > fim) break; l.push({ tag: u16(e), tipo: u16(e + 2), qtd: u32(e + 4), val: u32(e + 8), e }); } return l; };
+    const ifd = off => { const base = t + off; if (off < 8 || base + 2 > fim) return []; const n = u16(base); const l = [];
+      for (let i = 0; i < n && i < 500; i++) { const e = base + 2 + i * 12; if (e + 12 > fim) break; l.push({ tag: u16(e), tipo: u16(e + 2), qtd: u32(e + 4), val: u32(e + 8), e }); } return l; };
     const texto = x => { if (!x || x.tipo !== 2 || x.qtd < 19) return null; const o = x.qtd > 4 ? t + x.val : x.e + 8; if (o + 19 > fim) return null;
       let s = ''; for (let i = 0; i < 19; i++) s += String.fromCharCode(v.getUint8(o + i)); return s; };
     const ifd0 = ifd(u32(t + 4)); const ptr = ifd0.find(x => x.tag === 0x8769);
     const exif = ptr ? ifd(ptr.val) : [];
     const bruto = texto(exif.find(x => x.tag === 0x9003)) || texto(exif.find(x => x.tag === 0x9004)) || texto(ifd0.find(x => x.tag === 0x0132));
-    const m = /^(\d{4}):(\d{2}):(\d{2}) \d{2}:\d{2}:\d{2}$/.exec(bruto || '');
+    const m = /^(\d{4}):(\d{2}):(\d{2}) (\d{2}):\d{2}:\d{2}$/.exec(bruto || '');
     if (!m || m[1] === '0000') return null;
-    return m[1] + '-' + m[2] + '-' + m[3];
+    return { dia: m[1] + '-' + m[2] + '-' + m[3], hora: +m[4] };
   }
 
   /* regra: devolve null (vale) ou a mensagem que explica por que não vale */
   const MSG_SEM_DATA = 'Não deu para confirmar quando esta foto foi tirada (foto da galeria encaminhada pelo WhatsApp, captura de tela ou imagem baixada). Tire a foto agora.';
-  function conferir(diaFoto, diaVisita) {
+  const HORA_MADRUGADA = 4;   // visita que passou da meia-noite: foto do dia seguinte até as 4h ainda é da visita
+  const diaSeguinte = d => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + 1); return x.toISOString().slice(0, 10); };
+  function conferir(diaFoto, diaVisita, hora) {
     if (!diaFoto) return MSG_SEM_DATA;
     if (diaFoto > hojeLocal()) return 'A data desta foto está no futuro (' + R.fmtData(diaFoto) + '). Confira a data do celular e tire a foto de novo.';
+    if (diaFoto === diaSeguinte(diaVisita) && hora != null && hora < HORA_MADRUGADA) return null;
     if (diaFoto !== diaVisita) return 'Esta foto é de ' + R.fmtData(diaFoto) + ' e a visita é de ' + R.fmtData(diaVisita) + '. Só vale foto tirada no dia da visita: tire a foto de novo ou corrija a data da visita.';
     return null;
   }
@@ -4406,10 +4499,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const arq = inp.files && inp.files[0]; if (!arq) return { ok: false, msg: MSG_SEM_DATA, semData: true };
     const daCamera = inp.dataset.camApp === '1' && arq.name && /^quintal_\d+\.jpg$/.test(arq.name);
     delete inp.dataset.camApp;   // vale uma vez só: a próxima escolha de arquivo é conferida de novo
-    const dia = daCamera ? hojeLocal() : await lerDataExif(arq);
-    const msg = conferir(dia, diaDaVisita(form));
-    if (msg) { delete inp.dataset.diaFoto; return { ok: false, msg, semData: !dia }; }
-    inp.dataset.diaFoto = dia; return { ok: true, dia };
+    const m = daCamera ? { dia: hojeLocal(), hora: new Date().getHours() } : await lerMomentoExif(arq);
+    const dia = m && m.dia, hora = m ? m.hora : null;
+    const msg = conferir(dia, diaDaVisita(form), hora);
+    if (msg) { delete inp.dataset.diaFoto; delete inp.dataset.horaFoto; return { ok: false, msg, semData: !dia }; }
+    inp.dataset.diaFoto = dia; inp.dataset.horaFoto = hora == null ? '' : String(hora); return { ok: true, dia, hora };
   }
 
   /* câmera do próprio sistema (traseira): a foto é tirada agora, não vem de arquivo guardado */
@@ -4446,20 +4540,114 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const b = ev.target.closest && ev.target.closest('[data-acao="foto-agora"]'); if (!b) return;
       const inp = document.getElementById(b.dataset.alvo); if (inp) abrirCamera(inp);
     });
-    /* na hora de enviar: foto escolhida antes de a data da visita mudar também tem de ser do dia da visita */
+    /* na hora de enviar: toda foto do formulário (escolhida agora, recuperada deste aparelho ou que voltou da fila
+       sem internet) tem de ser do dia da visita, mesmo que a data da visita tenha mudado depois */
     document.addEventListener('submit', ev => {
-      const form = ev.target; if (!form || !form.matches || !FORMS.some(f => form.matches('form[data-form="' + f + '"]'))) return;
-      const dia = diaDaVisita(form);
-      const errada = [...form.querySelectorAll('input[type=file]')].find(i => i.files && i.files.length && i.dataset.diaFoto && i.dataset.diaFoto !== dia);
-      if (!errada) return;
+      const form = ev.target; if (!form || !form.matches || !formDoQuintal(form)) return;
+      const ruim = fotoForaDoDia(form); if (!ruim) return;
       ev.preventDefault(); ev.stopImmediatePropagation();
       const box = form.querySelector('[data-erro]');
-      const msg = 'Há foto de ' + R.fmtData(errada.dataset.diaFoto) + ', mas a visita está com a data de ' + R.fmtData(dia) + '. Só vale foto tirada no dia da visita: corrija a data ou tire a foto de novo.';
+      const msg = 'Há foto de ' + R.fmtData(ruim.dia) + ', mas a visita está com a data de ' + R.fmtData(diaDaVisita(form)) + '. Só vale foto tirada no dia da visita: corrija a data ou tire a foto de novo.';
       if (box) { box.textContent = msg; box.hidden = false; box.scrollIntoView && box.scrollIntoView({ block: 'center' }); } else MQ.ui.toast(msg);
     }, true);
   }
 
-  MQ.fotoDia = { lerDataExif, conferir, checar, abrirCamera, MSG_SEM_DATA };
+  /* ---------- fotos do formulário aberto: data de cada uma e cópia guardada no aparelho ----------
+     Cada tela registra o seu "mapa" de fotos (campo → foto pronta). A chave do formulário é estável entre aberturas:
+     diagnóstico e avaliação pela mulher (ficha), registro de visita feita pela visita. */
+  const mapas = {};   // nome do form → { mapa, dica(campo) → elemento, depois(form) }
+  const dias = {};    // chave do form → { campo: { dia, hora } }
+  const chaveDe = form => form.dataset.form + ':' + (form.dataset.form === 'visita-feita' ? form.dataset.id : (form.dataset.ficha || form.dataset.id));
+  const chaveDoRegistro = (tipo, d) => tipo === 'diagnostico' ? 'diag:' + d.ficha_id : tipo === 'avaliacao' ? 'aval:' + d.ficha_id : tipo === 'visita' ? 'visita-feita:' + d.id : null;
+  const campoDe = inp => inp.dataset.foto || inp.dataset.fotoVis || inp.dataset.fotoAv || null;
+  function registrarMapa(nome, mapa, dica, depois) { mapas[nome] = { mapa, dica, depois }; }
+  function fotoForaDoDia(form) {
+    const m = mapas[form.dataset.form]; if (!m) return null;
+    const visita = diaDaVisita(form), reg = dias[chaveDe(form)] || {};
+    for (const campo of Object.keys(m.mapa)) {
+      const info = m.mapa[campo] && reg[campo];
+      if (info && conferir(info.dia, visita, info.hora)) return info;   // foto sem data registrada: veio de antes desta regra (fila antiga) e passa
+    }
+    return null;
+  }
+  /* datas das fotos que vão para a fila sem internet, e de volta ao abrir o registro da fila */
+  function diasDe(tipo, dados, fotos) {
+    const reg = dias[chaveDoRegistro(tipo, dados || {})] || {}; const r = {};
+    Object.keys(fotos || {}).forEach(c => { if (reg[c]) r[c] = reg[c]; });
+    return Object.keys(r).length ? r : null;
+  }
+  function marcarDias(tipo, dados, fd) { const k = chaveDoRegistro(tipo, dados || {}); if (k) dias[k] = Object.assign({}, fd || {}); }
+
+  /* cópia no aparelho (IndexedDB "mq-fotos-rascunho"): sem IndexedDB (navegação privada antiga) segue sem cópia */
+  const BD = 'mq-fotos-rascunho', LOJA = 'fotos', VALIDADE = 3 * 24 * 60 * 60 * 1000;
+  let bdP = null;
+  function abrirBD() {
+    if (bdP) return bdP;
+    bdP = new Promise(res => {
+      try {
+        if (typeof indexedDB === 'undefined' || !indexedDB) return res(null);
+        const r = indexedDB.open(BD, 1);
+        r.onupgradeneeded = () => { const os = r.result.createObjectStore(LOJA, { keyPath: 'id' }); os.createIndex('chave', 'chave'); };
+        r.onsuccess = () => res(r.result); r.onerror = () => res(null); r.onblocked = () => res(null);
+      } catch (e) { res(null); }
+    });
+    return bdP;
+  }
+  async function op(modo, fn) {
+    const db = await abrirBD(); if (!db) return null;
+    return new Promise(res => {
+      try { const t = db.transaction(LOJA, modo); const os = t.objectStore(LOJA); let out = null;
+        const r = fn(os); if (r) r.onsuccess = () => { out = r.result; };
+        t.oncomplete = () => res(out); t.onerror = () => res(null); t.onabort = () => res(null);
+      } catch (e) { res(null); }
+    });
+  }
+  const dono = () => { const S = MQ.ui && MQ.ui.S; return (S && S.eu && S.eu.id) || ''; };
+  /* chamada por campo.js quando a foto ficou pronta: registra a data e guarda a cópia */
+  async function aceitar(inp, blob) {
+    const form = formDoQuintal(inp), campo = campoDe(inp); if (!form || !campo) return;
+    const k = chaveDe(form); const info = { dia: inp.dataset.diaFoto || null, hora: inp.dataset.horaFoto === '' || inp.dataset.horaFoto == null ? null : +inp.dataset.horaFoto };
+    if (info.dia) (dias[k] = dias[k] || {})[campo] = info;
+    const d = dono(); if (!d || !blob) return;
+    await op('readwrite', os => os.put({ id: d + '|' + k + '|' + campo, dono: d, chave: d + '|' + k, campo, blob, dia: info.dia, hora: info.hora, em: Date.now() }));
+  }
+  async function guardadas(k) {
+    const d = dono(); if (!d) return [];
+    const l = await op('readonly', os => os.index('chave').getAll(d + '|' + k)) || [];
+    return l.filter(x => x && x.blob && Date.now() - x.em < VALIDADE);
+  }
+  /* depois de salvar (enviado ou na fila): a cópia não é mais necessária */
+  async function limparRegistro(tipo, dados) {
+    const k = chaveDoRegistro(tipo, dados || {}); if (!k) return; delete dias[k];
+    const l = await guardadas(k); if (!l.length) return;
+    await op('readwrite', os => { l.forEach(x => os.delete(x.id)); return null; });
+  }
+  /* saiu da conta pelo botão Sair (LGPD) ou cópia vencida: apaga */
+  async function limparAparelho(tudo) {
+    Object.keys(dias).forEach(k => delete dias[k]);
+    await op('readwrite', os => { const r = os.openCursor(); r.onsuccess = () => { const c = r.result; if (!c) return;
+      if (tudo || !c.value || Date.now() - c.value.em >= VALIDADE) c.delete(); c.continue(); }; return null; });
+  }
+  /* o formulário apareceu na tela: as fotos guardadas deste formulário voltam (as mais novas valem sobre as da fila) */
+  const vistos = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
+  async function recuperar(form) {
+    if (!vistos || vistos.has(form)) return; vistos.add(form);
+    const m = mapas[form.dataset.form]; if (!m) return;
+    const k = chaveDe(form); const l = await guardadas(k); if (!l.length || !form.isConnected) return;
+    l.forEach(x => {
+      m.mapa[x.campo] = x.blob; if (x.dia) (dias[k] = dias[k] || {})[x.campo] = { dia: x.dia, hora: x.hora };
+      const dica = m.dica(x.campo, form);
+      if (dica) { dica.classList.remove('erro-foto'); dica.textContent = 'Foto recuperada deste aparelho' + (x.dia ? ' (tirada em ' + R.fmtData(x.dia) + ')' : '') + '. Confira e salve.'; }
+    });
+    if (m.depois) m.depois(form);
+  }
+  if (typeof document !== 'undefined' && typeof MutationObserver !== 'undefined' && document.documentElement) {
+    new MutationObserver(() => { FORMS.forEach(n => document.querySelectorAll('form[data-form="' + n + '"]').forEach(f => { recuperar(f); })); })
+      .observe(document.documentElement, { childList: true, subtree: true });
+    limparAparelho(false);
+  }
+
+  MQ.fotoDia = { lerDataExif, lerMomentoExif, conferir, checar, abrirCamera, MSG_SEM_DATA, registrarMapa, aceitar, diasDe, marcarDias, limparRegistro, limparAparelho, fotoForaDoDia, chaveDe, recuperar };
 })();
 ;
 /* ===== campo.js ===== */
@@ -4661,7 +4849,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const sel = selecionadas(uf);
     const dg = diagnosticos().filter(d => d.uf === uf);
     const usados = diasUsados(uf);
-    const pend = S().fila.filter(i => i.tipo === 'visita' || i.tipo === 'diagnostico');
+    const pend = S().fila.filter(i => TIPOS_CAMPO.includes(i.tipo));
     return `<section class="secao" aria-labelledby="t-campo">
       <div class="secao-cab"><div><h2 id="t-campo">Trabalho de campo · ${E(U().nomeUF(uf))}</h2>
         <p>Diagnóstico com plano do quintal na 1ª visita, depois implantação e 2 acompanhamentos. Quem visita pode ser você, a outra bolsista ou uma agente de campo habilitada.</p></div>
@@ -4673,8 +4861,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <div><span class="v num">${dg.filter(d => d.sem_agua).length}</span><span class="l">sem água na seca</span></div>
       </div>
       ${avisoConflitos()}
-      ${pend.length ? `<div class="aviso${pend.some(i => i.erro) ? ' erro' : ''}"><b>${pend.length} registro${pend.length > 1 ? 's' : ''} de campo neste aparelho</b>${pend.some(i => i.erro) ? ': ' + E(pend.find(i => i.erro).erro) : ', aguardando internet para enviar.'}
-        ${navigator.onLine ? ' <button class="link" data-acao="ficha-enviar">Enviar agora</button>' : ''}</div>` : ''}
+      ${avisoFila(pend)}
       ${sel.length ? paraFazer(uf, sel) : '<div class="vazio"><span>As visitas começam quando a coordenação técnica aprovar as primeiras fichas como "selecionada".</span></div>'}
       ${U().dobra('campo-roteiro', '<span><b>Roteiro do mês</b> <span class="small muted">· todas as visitas e o que falta registrar</span></span>', roteiro(uf, true))}
       ${sel.length ? U().dobra('campo-quintais', `<span><b>Ver os ${sel.length} quintais</b> <span class="small muted">· etapa de cada um</span></span>`,
@@ -4686,6 +4873,23 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
             <div class="acoes">${temDiag ? `<button class="btn peq" data-acao="campo-diag-ver" data-ficha="${E(f.id)}">Ver diagnóstico</button>${MQ.vendaUI ? MQ.vendaUI.botaoOrientar(f.id) : ''}`
               : `<button class="btn peq pri" data-acao="campo-diag-novo" data-ficha="${E(f.id)}">Registrar diagnóstico</button>`}</div></div>`; }).join('')}</div>`) : ''}
     </section>`;
+  }
+
+  /* 12/10/2026 (auditoria, item 3): todo registro de campo guardado no aparelho aparece, um por um, com a situação:
+     esperando internet, tentando de novo (falha passageira, com o motivo) ou recusado (com o motivo e o que fazer).
+     Antes, a agente só via os diagnósticos e nunca via o erro: a visita parecia enviada sem ter chegado ao servidor. */
+  const TIPOS_CAMPO = ['visita', 'diagnostico', 'avaliacao'];
+  const NOME_TIPO = { visita: 'Registro de visita', diagnostico: 'Diagnóstico', avaliacao: 'Avaliação final' };
+  function avisoFila(pend) {
+    const l = (pend || []).filter(i => !i.conflito); if (!l.length) return '';
+    const erro = l.filter(i => i.erro), tentando = l.filter(i => !i.erro && i.tentativas);
+    const quem = it => { const d = it.dados || {}; const f = ficha(d.ficha_id) || {}; return E(f.nome || 'Quintal') + (d.data_realizada || d.data_visita ? ' · ' + R.fmtData(d.data_realizada || d.data_visita) : ''); };
+    const linha = it => `<li><b>${NOME_TIPO[it.tipo] || 'Registro'}</b> · ${quem(it)}<br><span class="small">${it.erro ? '<b>Não foi aceito:</b> ' + E(it.erro)
+      : it.tentativas ? 'Tentando enviar de novo (' + it.tentativas + (it.tentativas > 1 ? ' tentativas' : ' tentativa') + '). Último motivo: ' + E(it.ultimaFalha || 'falha na conexão') : 'Esperando internet para enviar.'}</span></li>`;
+    return `<div class="aviso${erro.length ? ' erro' : ''} fila-campo" role="status"><b>${l.length} registro${l.length > 1 ? 's' : ''} de campo guardado${l.length > 1 ? 's' : ''} neste aparelho, ainda não ${l.length > 1 ? 'chegaram' : 'chegou'} ao servidor.</b>
+      ${erro.length ? ' Abra o registro, corrija o que o motivo diz e salve de novo; ou toque em Enviar agora para tentar outra vez.' : tentando.length ? ' O sistema tenta de novo sozinho.' : ''}
+      <ul class="fila-lista">${l.map(linha).join('')}</ul>
+      ${navigator.onLine ? '<button class="btn peq" data-acao="ficha-enviar">Enviar agora</button>' : '<span class="small">Sem internet agora: o envio é automático quando ela voltar.</span>'}</div>`;
   }
 
   /* ---------- tela da agente de campo ---------- */
@@ -4705,7 +4909,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           : v.situacao === 'realizada' ? `<span class="small muted">${E(String(v.relato || '').slice(0, 90))}${String(v.relato || '').length > 90 ? '…' : ''}</span>${MQ.vendaUI ? MQ.vendaUI.botaoOrientar(v.ficha_id) : ''}`
           : botaoFeita(v)}</div></div>`; };
     const porMes = {}; feitas.forEach(v => { const m = String(v.data_realizada).slice(0, 7); porMes[m] = (porMes[m] || 0) + 1; });
-    const pend = S().fila.filter(i => i.tipo === 'diagnostico');
+    const pend = S().fila.filter(i => TIPOS_CAMPO.includes(i.tipo));
     return `<main class="wrap" id="principal">
       <div class="cab"><div><span class="eyebrow">Agente de campo · ${E(U().nomeUF(eu.uf))}</span><h1>Olá, ${E(primeiroNome(eu.nome))}</h1>
         <p>${E(MQ.PAPEIS.agente.faz)}</p></div><span class="chip chip-lg ${s.cod}">${E(s.rot)}</span></div>
@@ -4714,7 +4918,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       ${MQ.encUI ? MQ.encUI.blocoConfirmar() : ''}
       ${!R.habilitado(eu) ? `<div class="aviso erro"><b>Você ainda não pode receber visitas no roteiro.</b> Faltam passos da habilitação (matrícula no FIC, documentos na FUNCERN e termo). Sem eles, a ajuda de custo não pode ser paga.</div>` : ''}
       ${avisoConflitos()}
-      ${pend.length ? `<div class="aviso">${pend.length} diagnóstico${pend.length > 1 ? 's' : ''} guardado${pend.length > 1 ? 's' : ''} neste aparelho, aguardando internet.${navigator.onLine ? ' <button class="link" data-acao="ficha-enviar">Enviar agora</button>' : ''}</div>` : ''}
+      ${avisoFila(pend)}
       <section class="secao"><div class="secao-cab"><h2 id="t-prox">Próximas visitas</h2><span class="muted small">${prox.length} prevista${prox.length === 1 ? '' : 's'}</span></div>
         ${prox.length ? `<div class="lista-fichas">${prox.map(linha).join('')}</div>` : '<div class="vazio"><span>Nenhuma visita atribuída a você. Quem agenda é a bolsista do estado ou a coordenação técnica.</span></div>'}</section>
       <section class="secao"><div class="secao-cab"><h2 id="t-feitas">Visitas feitas</h2><span class="small">${Object.entries(porMes).map(([m, n]) => `<b>${nomeMes(m)}</b>: ${n} dia${n > 1 ? 's' : ''} de campo`).join(' · ') || ''}</span></div>
@@ -5146,15 +5350,17 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   document.addEventListener('change', async ev => {
     const inp = ev.target.closest && ev.target.closest('input[data-foto-vis]'); if (!inp || !inp.files[0]) return;
     const n = inp.dataset.fotoVis; const dica = document.getElementById('vf-f' + n + '-dica');
-    if (inp.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; inp.value = ''; return; }
+    if (inp.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; inp.value = ''; manteveFoto(dica, fotosVis[n]); return; }
     dica.textContent = 'Preparando foto…';
-    const foto = await prepararFoto(inp, dica); if (!foto) { delete fotosVis[n]; return; }
+    const foto = await prepararFoto(inp, dica); if (!foto) { manteveFoto(dica, fotosVis[n]); return; }   // a foto boa que já estava continua
     fotosVis[n] = foto; dica.textContent = 'Foto pronta (' + Math.round(fotosVis[n].size / 1024) + ' KB).';
   });
   /* Só aceita foto de verdade (imagem, com tamanho e que o aparelho consiga abrir). Arquivo que não é foto
      (texto, PDF, arquivo vazio ou renomeado para .jpg) é recusado na hora, com o aviso embaixo do campo.
      A conferência é a de MQ.comprimirFoto (fila.js); aqui a tela mostra o motivo e limpa o campo. */
   const MSG_NAO_FOTO = 'Este arquivo não é uma foto.';
+  /* foto nova recusada não apaga a foto boa que o campo já tinha */
+  function manteveFoto(dica, tinha) { if (tinha && dica) dica.appendChild(document.createTextNode(' A foto anterior continua valendo.')); }
   async function prepararFoto(inp, dica) {
     const arq = inp.files[0];
     const recusar = () => { inp.value = ''; if (dica) { dica.textContent = MSG_NAO_FOTO + ' Tire a foto de novo ou escolha outra imagem.'; dica.classList.add('erro-foto'); } return null; };
@@ -5170,8 +5376,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         return null;
       }
     }
-    try { const b = await MQ.comprimirFoto(arq, undefined, undefined, { semAviso: true }); return b && b.size > 0 ? b : recusar(); }
-    catch (e) { return recusar(); }
+    let b = null;
+    try { b = await MQ.comprimirFoto(arq, undefined, undefined, { semAviso: true }); } catch (e) { b = null; }
+    if (!(b && b.size > 0)) return recusar();
+    if (MQ.fotoDia) { try { await MQ.fotoDia.aceitar(inp, b); } catch (e) { /* sem cópia no aparelho: segue */ } }   // data da foto e cópia neste aparelho
+    return b;
   }
 
   /* 47: registros deste aparelho que o servidor recusou porque outra pessoa alterou antes. Não são descartados:
@@ -5196,9 +5405,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (a === 'campo-conferir') {
       const it = (S().fila || []).find(i => i.id === el.dataset.id); if (!it) return;
       const d = it.dados || {};
-      if (it.tipo === 'visita' && d.situacao === 'realizada') { Object.keys(fotosVis).forEach(k => delete fotosVis[k]); Object.assign(fotosVis, it.fotos || {}); U().abrirPainel({ tipo: 'visita-feita', id: it.id }); }
+      if (it.tipo === 'visita' && d.situacao === 'realizada') { Object.keys(fotosVis).forEach(k => delete fotosVis[k]); Object.assign(fotosVis, it.fotos || {}); diasFila(it); U().abrirPainel({ tipo: 'visita-feita', id: it.id }); }
       else if (it.tipo === 'visita') U().abrirPainel({ tipo: 'visita-form', id: it.id });
-      else if (it.tipo === 'diagnostico') { Object.keys(fotosTemp).forEach(k => delete fotosTemp[k]); Object.assign(fotosTemp, it.fotos || {});
+      else if (it.tipo === 'diagnostico') { Object.keys(fotosTemp).forEach(k => delete fotosTemp[k]); Object.assign(fotosTemp, it.fotos || {}); diasFila(it);
         U().abrirPainel({ tipo: 'diag-form', ficha: d.ficha_id, visita: d.visita_id || '' }); setTimeout(() => { const fm = $('form[data-form=diag]'); if (fm) atualizarDiag(fm); }, 0); }
       else if (it.tipo === 'avaliacao' && MQ.impactoUI) MQ.impactoUI.conferir(it);
       const p = document.getElementById('painel'), f0 = p && p.querySelector('form[data-form]');
@@ -5207,7 +5416,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     }
     else if (a === 'campo-visita-nova') U().abrirPainel({ tipo: 'visita-form', uf: eu.uf });
     else if (a === 'campo-visita-editar') U().abrirPainel({ tipo: 'visita-form', id: el.dataset.id });
-    else if (a === 'campo-feita') { Object.keys(fotosVis).forEach(k => delete fotosVis[k]); U().abrirPainel({ tipo: 'visita-feita', id: el.dataset.id }); }
+    else if (a === 'campo-feita') { Object.keys(fotosVis).forEach(k => delete fotosVis[k]); if (MQ.fotoDia) MQ.fotoDia.marcarDias('visita', { id: el.dataset.id }, null); U().abrirPainel({ tipo: 'visita-feita', id: el.dataset.id }); }
     else if (a === 'campo-mes') { const n = +el.dataset.n; mesRoteiro = n === 0 ? mesAtual() : mesMais(mesRoteiro || mesAtual(), n); limRot = ROT_PASSO; U().render(); }
     else if (a === 'campo-uf') { ufRoteiro = el.dataset.uf; limRot = ROT_PASSO; U().render(); }
     else if (a === 'campo-rot-mais' || a === 'campo-rot-todas') { limRot = a === 'campo-rot-todas' ? Infinity : limRot + ROT_PASSO; S().rolarPara = window.scrollY; U().render(); }
@@ -5216,6 +5425,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       Object.keys(fotosTemp).forEach(k => delete fotosTemp[k]);
       const naFila = (S().fila || []).find(it => it.tipo === 'diagnostico' && it.dados && it.dados.ficha_id === el.dataset.ficha);
       if (naFila && naFila.fotos) Object.assign(fotosTemp, naFila.fotos);   // correção de item não enviado mantém as fotos
+      if (naFila) diasFila(naFila); else if (MQ.fotoDia) MQ.fotoDia.marcarDias('diagnostico', { ficha_id: el.dataset.ficha }, null);
       const vid = el.dataset.visita || (ativasDe(el.dataset.ficha, 'diagnostico')[0] || {}).id || '';
       U().abrirPainel({ tipo: 'diag-form', ficha: el.dataset.ficha, visita: vid });
       setTimeout(() => { const fm = $('form[data-form=diag]'); if (fm) atualizarDiag(fm); }, 0);
@@ -5261,7 +5471,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     // 47: a versão que a pessoa leu (atualizado_em de quando o formulário abriu) vai com o envio e fica na fila se estiver sem internet
     const vista = U().vista(), lista = { visita: 'visitas', diagnostico: 'diagnosticos', avaliacao: 'avaliacoes' }[tipo];
     const antes = (vista.fila || []).find(i => i.id === limpo.id && i.tipo === tipo), noServ = ((vista[lista]) || []).find(x => x.id === limpo.id);
-    await MQ.fila.salvar({ id: limpo.id, dono: s.eu.id, tipo, dados: limpo, fotos: fotos || null, erro: null,
+    const fotosDias = MQ.fotoDia && fotos ? MQ.fotoDia.diasDe(tipo, limpo, fotos) : null;   // data de cada foto: conferida de novo se o registro voltar da fila
+    await MQ.fila.salvar({ id: limpo.id, dono: s.eu.id, tipo, dados: limpo, fotos: fotos || null, fotosDias, erro: null,
       marca: U().marcaAberta(tipo, limpo.id), mud: MQ.camposMudados(limpo, noServ, antes && antes.mud) });
     s.fila = await MQ.fila.listar(s.eu.id);
     if (navigator.onLine) await U().sincronizar(false);
@@ -5272,8 +5483,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (resta.conflito && U().reabrirComConflito) { await MQ.fila.remover(resta.id); s.fila = await MQ.fila.listar(s.eu.id); if (U().reabrirComConflito(resta.erro)) e.jaAvisado = true; }
       throw e;
     }
+    if (MQ.fotoDia && fotos) MQ.fotoDia.limparRegistro(tipo, limpo);   // salvo (enviado ou na fila): a cópia das fotos sai do aparelho
     return !resta;   // true = enviado
   }
+  /* registro aberto da fila: as datas das fotos dele voltam para a conferência do envio */
+  function diasFila(it) { if (MQ.fotoDia) MQ.fotoDia.marcarDias(it.tipo, it.dados || {}, it.fotosDias); }
 
   async function enviar(tipo, form, fd) {
     const eu = S().eu;
@@ -5387,9 +5601,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (!form) return;
     if (ev.target.type === 'file' && ev.target.files[0]) {
       const k = ev.target.dataset.foto; const dica = form.querySelector('#dg-f-' + k + '-dica');
-      if (ev.target.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; ev.target.value = ''; return; }
+      if (ev.target.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; ev.target.value = ''; manteveFoto(dica, fotosTemp[k]); return; }
       dica.textContent = 'Preparando foto…';
-      const foto = await prepararFoto(ev.target, dica); if (!foto) { delete fotosTemp[k]; atualizarDiag(form); return; }
+      const foto = await prepararFoto(ev.target, dica); if (!foto) { manteveFoto(dica, fotosTemp[k]); atualizarDiag(form); return; }   // a foto boa que já estava continua
       fotosTemp[k] = foto;
       dica.textContent = 'Foto pronta (' + Math.round(fotosTemp[k].size / 1024) + ' KB).';
       const w = form.querySelector('#w-fotos'); if (w) w.classList.remove('tem-erro');
@@ -5427,7 +5641,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const devolvidos = diagnosticos().filter(d => d.situacao === 'devolvido' && (eu.papel === 'agente' ? (visitas().find(v => v.id === d.visita_id) || {}).executor_id === eu.id : d.uf === eu.uf)).length;
     return vencidas + devolvidos;
   }
-  MQ.campoUI = { htmlPlano, blocoKitItens, comRef, contaAFazer, secaoBolsista, telaAgente, abaCoord, painel, clique, enviar, diagnosticos, visitas, guardar, numBR, totalKit, prepararFoto, localDiag, kmEntre, centroMun, MOTIVOS_SEM_GPS };
+  /* fotos guardadas neste aparelho voltam sozinhas ao abrir o mesmo formulário (fotodia.js) */
+  if (MQ.fotoDia) {
+    MQ.fotoDia.registrarMapa('diag', fotosTemp, (k, form) => form.querySelector('#dg-f-' + k + '-dica'), form => atualizarDiag(form));
+    MQ.fotoDia.registrarMapa('visita-feita', fotosVis, n => document.getElementById('vf-f' + n + '-dica'));
+  }
+  MQ.campoUI = { htmlPlano, blocoKitItens, comRef, contaAFazer, secaoBolsista, telaAgente, abaCoord, painel, clique, enviar, diagnosticos, visitas, guardar, numBR, totalKit, prepararFoto, manteveFoto, localDiag, kmEntre, centroMun, MOTIVOS_SEM_GPS };
 })();
 ;
 /* ===== vitrine.js ===== */
@@ -9099,9 +9318,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   document.addEventListener('change', async ev => {
     const inp = ev.target.closest && ev.target.closest('input[data-foto-av]'); if (!inp || !inp.files[0]) return;
     const k = inp.dataset.fotoAv; const dica = document.getElementById('av-f-' + k + '-dica');
-    if (inp.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; inp.value = ''; return; }
+    if (inp.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; inp.value = ''; MQ.campoUI.manteveFoto(dica, fotosAv[k]); return; }
     dica.textContent = 'Preparando foto…';
-    const foto = await MQ.campoUI.prepararFoto(inp, dica); if (!foto) { delete fotosAv[k]; return; }   // só imagem de verdade ("Este arquivo não é uma foto.")
+    const foto = await MQ.campoUI.prepararFoto(inp, dica); if (!foto) { MQ.campoUI.manteveFoto(dica, fotosAv[k]); return; }   // foto recusada: a boa que já estava continua
     fotosAv[k] = foto; dica.textContent = 'Foto pronta (' + Math.round(fotosAv[k].size / 1024) + ' KB).';
   });
 
@@ -9186,7 +9405,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   async function clique(a, el) {
     if (a === 'imp-uf') { G.uf = el.dataset.uf; U().render(); return; }
-    if (a === 'aval-novo') { Object.keys(fotosAv).forEach(k => delete fotosAv[k]); U().abrirPainel({ tipo: 'aval-form', ficha: el.dataset.ficha, visita: el.dataset.visita }); return; }
+    if (a === 'aval-novo') { Object.keys(fotosAv).forEach(k => delete fotosAv[k]); if (MQ.fotoDia) MQ.fotoDia.marcarDias('avaliacao', { ficha_id: el.dataset.ficha }, null); U().abrirPainel({ tipo: 'aval-form', ficha: el.dataset.ficha, visita: el.dataset.visita }); return; }
     if (a === 'aval-ver') { U().abrirPainel({ tipo: 'aval-ver', ficha: el.dataset.ficha }); return; }
     if (a === 'aval-gps') {
       const dica = document.getElementById('av-gps-dica'); const fm = document.querySelector('form[data-form=aval]');
@@ -9239,9 +9458,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       U().toast(enviado ? 'Avaliação registrada. A visita conta como feita e pode entrar na ajuda de custo.' : 'Avaliação guardada no aparelho. Será enviada quando houver internet.');
     });
   }
-  function conferir(it) { Object.keys(fotosAv).forEach(k => delete fotosAv[k]); Object.assign(fotosAv, it.fotos || {}); U().abrirPainel({ tipo: 'aval-form', ficha: it.dados.ficha_id, visita: it.dados.visita_id || '' }); }
+  function conferir(it) { Object.keys(fotosAv).forEach(k => delete fotosAv[k]); Object.assign(fotosAv, it.fotos || {}); if (MQ.fotoDia) MQ.fotoDia.marcarDias('avaliacao', it.dados || {}, it.fotosDias); U().abrirPainel({ tipo: 'aval-form', ficha: it.dados.ficha_id, visita: it.dados.visita_id || '' }); }
   function painel(p) { return p.tipo === 'aval-ver' ? painelVer(p) : painelForm(p); }
 
+  if (MQ.fotoDia) MQ.fotoDia.registrarMapa('aval', fotosAv, k => document.getElementById('av-f-' + k + '-dica'));
   MQ.impactoUI = { conferir, bloco, ler, validar, classificar, menorDaFamilia, secaoCoord, painel, clique, enviar, indicadores, avaliacoes };
 })();
 ;
@@ -9490,17 +9710,31 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
   function desenhar() { const el = $('#convite'); if (el) { el.innerHTML = corpo(); rascunho.restaurar(PUB.token); } }
   /* rascunho no próprio celular: se a página recarregar (trocou de aplicativo, a tela apagou), nada do que foi digitado se perde */
+  /* 12/10/2026 (auditoria, item 11): o link costuma ser aberto em celular ou computador emprestado. O rascunho NÃO guarda
+     CPF, NIS, data de nascimento, endereço nem o questionário socioeconômico (raça/cor, renda, escolaridade, pessoas da casa):
+     esses a pessoa digita de novo se a página recarregar. E o rascunho vence em 24 horas (antes ficava para sempre). */
+  const RASC_CONV = 'mq-rascunho-conv-', RASC_CONV_VALIDADE = 24 * 3600 * 1000;
+  const NAO_GUARDA = ['cpf', 'nis', 'data_nascimento', 'cep', 'logradouro', 'numero', 'complemento', 'bairro', 'raca_etnia', 'renda_familiar', 'escolaridade', 'pessoas_casa', 'tem_socio', 'siape'];
+  function limparRascunhosConvite() {
+    try { Object.keys(localStorage).filter(k => k.indexOf(RASC_CONV) === 0).forEach(k => {
+      let r = null; try { r = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) {}
+      if (!r || r.v !== 2 || !(Date.now() - (r.em || 0) < RASC_CONV_VALIDADE)) localStorage.removeItem(k);   // formato antigo (com CPF) ou vencido: sai
+    }); } catch (e) {}
+  }
+  limparRascunhosConvite();
   const rascunho = {
-    chave: t => 'mq-rascunho-conv-' + t,
+    chave: t => RASC_CONV + t,
     salvar(form) {
       if (!PUB.token || PUB.enviado) return; const o = {};
-      new FormData(form).forEach((v, k) => { if (typeof v === 'string' && v !== '') o[k] = v; });
-      try { localStorage.setItem(this.chave(PUB.token), JSON.stringify(o)); } catch (e) {}
+      new FormData(form).forEach((v, k) => { if (typeof v === 'string' && v !== '' && !NAO_GUARDA.includes(k)) o[k] = v; });
+      try { localStorage.setItem(this.chave(PUB.token), JSON.stringify({ v: 2, em: Date.now(), campos: o })); } catch (e) {}
     },
     apagar(t) { try { localStorage.removeItem(this.chave(t)); } catch (e) {} },
     restaurar(t) {
       const f = document.querySelector('form[data-form=conv-enviar]'); if (!f || !t) return;
-      let o = null; try { o = JSON.parse(localStorage.getItem(this.chave(t)) || 'null'); } catch (e) {}
+      limparRascunhosConvite();
+      let r = null; try { r = JSON.parse(localStorage.getItem(this.chave(t)) || 'null'); } catch (e) {}
+      const o = r && r.v === 2 ? r.campos : null;
       if (!o || !Object.keys(o).length) return;
       Object.entries(o).forEach(([k, v]) => {
         f.querySelectorAll(`[name="${k}"]`).forEach(el => {
@@ -9509,7 +9743,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           else el.value = v;
         });
       });
-      f.insertAdjacentHTML('afterbegin', '<div class="aviso ok conv-rasc">Recuperamos o que você já tinha preenchido neste celular. Confira e continue.</div>');
+      f.insertAdjacentHTML('afterbegin', '<div class="aviso ok conv-rasc">Recuperamos parte do que você já tinha preenchido neste aparelho. Por segurança, CPF, NIS, nascimento, endereço e o questionário não ficam guardados: preencha de novo. Confira e continue.</div>');
     }
   };
   document.addEventListener('input', ev => { const f = ev.target.closest && ev.target.closest('form[data-form=conv-enviar]'); if (f) rascunho.salvar(f); });
@@ -10578,7 +10812,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         'Quem agenda as visitas é a bolsista do estado ou a coordenação técnica. Registre cada visita no mesmo dia, com fotos e localização.'
       ],
       duvidas: [
-        ['O sistema recusou a minha foto do quintal.', 'Só vale foto tirada <b>no dia da visita</b>. Foto antiga da galeria, foto encaminhada pelo WhatsApp ou captura de tela é recusada. Tire a foto na hora; se o celular não abrir a câmera, toque em <b>Tirar foto agora</b> embaixo do campo. Se a data da visita estiver errada, corrija a data.'],
+        ['O sistema recusou a minha foto do quintal.', 'Só vale foto tirada <b>no dia da visita</b>. Foto antiga da galeria, foto encaminhada pelo WhatsApp ou captura de tela é recusada. Tire a foto na hora; se o celular não abrir a câmera, toque em <b>Tirar foto agora</b> embaixo do campo. Se a data da visita estiver errada, corrija a data. A foto boa que já estava no campo continua valendo, e em visita que passou da meia-noite vale foto até as 4h do dia seguinte.'],
+        ['O sistema saiu sozinho e eu tinha tirado fotos.', 'As fotos ficam guardadas no celular até você salvar. Abra o mesmo formulário de novo: elas voltam com o aviso <b>Foto recuperada deste aparelho</b>. Se você sair pelo botão <b>Sair</b>, elas são apagadas do celular.'],
         ['Não aparece nenhuma visita.', 'Você só vê os quintais atribuídos a você, e só depois de habilitada (FIC, Arlo e termo).'],
         ['Posso mudar a data da visita?', 'Não. Fale com a bolsista do estado para reagendar.'],
         ['Estou sem internet no quintal.', 'Pode registrar. Fica guardado no celular e sobe quando a internet voltar. Não saia do sistema enquanto estiver sem sinal.'],
@@ -11872,7 +12107,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (S.eu && !S.verEntrada) await registrarAcesso(aviso ? 'saida_inatividade' : 'saida');   // antes de encerrar a sessão no servidor
     try { sessionStorage.removeItem(CHAVE_ABRIU); } catch (e) {}
     fecharPainel({ semFoco: true, manterRascunho: !!aviso });
-    if (!aviso) { try { localStorage.removeItem(chaveRasc()); } catch (e) {} }   // saiu da conta por vontade própria: os rascunhos dela não ficam no aparelho (LGPD)
+    if (!aviso) { try { localStorage.removeItem(chaveRasc()); } catch (e) {} if (MQ.fotoDia) MQ.fotoDia.limparAparelho(true); }   // saiu da conta por vontade própria: os rascunhos dela não ficam no aparelho (LGPD)
     S.menuAberto = false; S.aba = null; lembrarAba(); limparHashAba(); if (MQ.bancoUI) MQ.bancoUI.limpar();
     try { Object.keys(sessionStorage).filter(k => /^mq-pend-visto-/.test(k)).forEach(k => sessionStorage.removeItem(k)); } catch (e) {}
     S.pendVisto = false; S.avisoLogin = aviso || null;
@@ -13043,7 +13278,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const f = formsDoPainel(el)[0]; if (!f) return;
     todosDe(el, '.rascunho-volta').forEach(x => x.remove());
     const nota = document.createElement('p'); nota.className = 'aviso rascunho-volta'; nota.setAttribute('role', 'status');
-    nota.textContent = texto + (!semArquivo && el.querySelector('form[data-form] input[type=file]') ? ' Fotos e arquivos não ficam guardados: se já tinha escolhido, tire a foto ou escolha o arquivo de novo.' : '')
+    // fotos do quintal (diagnóstico, visita feita, avaliação) ficam guardadas e voltam sozinhas (fotodia.js); outros arquivos não
+    const outros = el.querySelector('form[data-form] input[type=file]:not([data-foto]):not([data-foto-vis]):not([data-foto-av])');
+    nota.textContent = texto + (!semArquivo && outros ? ' Arquivos não ficam guardados: se já tinha escolhido, escolha o arquivo de novo.' : '')
       + (faltou ? ' Alguma linha que você tinha acrescentado pode não ter voltado: confira.' : '');
     f.prepend(nota);
   }

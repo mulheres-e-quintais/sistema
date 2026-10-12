@@ -232,9 +232,9 @@ select t('2. pedido devolvido volta pelo MESMO registro, com o rótulo que tinha
   if (select detalhe ->> 'complementar' from public.solicitacoes_pagamento where id = v) is distinct from 'true' then raise exception 'o novo não veio como complementar'; end if;
   if (select count(*) from public.solicitacoes_pagamento where equipe_id = public.meu_id() and tipo = 'ajuda_custo' and mes = %L) <> 3 then raise exception 'não ficaram 3 pedidos'; end if; end $x$$q$,
   :'s1', :'s1', :'rg_logar', :'m1', :'s1', :'m1', :'m1'), 'ok');
-select t('2. a BOLSA continua uma por mês por pessoa', :BB, $q$select public.solicitar_pagamento('bolsa', public.fic_hoje(), 700, repeat('Relatório de atividades do mês. ', 3), null, '{}')$q$, 'Você já solicitou este mês');
+select t('2. a BOLSA continua uma por mês por pessoa', :BB, $q$select public.solicitar_pagamento('bolsa', public.fic_hoje(), 2200, repeat('Relatório de atividades do mês. ', 3), null, '{}')$q$, 'Você já solicitou este mês');
 select t('2. ... também por baixo da função: o banco não aceita duas bolsas da mesma pessoa no mesmo mês', null, format($q$do $x$ begin set local role none;
-  insert into public.solicitacoes_pagamento (tipo, equipe_id, mes, valor_solicitado, relatorio) select 'bolsa', equipe_id, mes, 700, relatorio from public.solicitacoes_pagamento where id = 'f6800000-0000-0000-0000-000000000001'; end $x$$q$), 'uma_por_mes');
+  insert into public.solicitacoes_pagamento (tipo, equipe_id, mes, valor_solicitado, relatorio) select 'bolsa', equipe_id, mes, 2200, relatorio from public.solicitacoes_pagamento where id = 'f6800000-0000-0000-0000-000000000001'; end $x$$q$), 'uma_por_mes');
 select t('2. a trava "uma_por_mes" agora é só da bolsa (índice parcial, sem a restrição antiga)', null, $q$do $x$ begin set local role none;
   if exists (select 1 from pg_constraint where conname = 'uma_por_mes') then raise exception 'a restrição antiga continua'; end if;
   if not exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'uma_por_mes' and indexdef ilike '%unique%' and indexdef ilike '%where%bolsa%') then raise exception 'sem o índice parcial'; end if; end $x$$q$, 'ok');
@@ -816,7 +816,7 @@ select t('18. conexão em outro fuso: pedido de evento para HOJE (de Fortaleza),
 select t('18. conexão em outro fuso: pedido de evento para ONTEM (de Fortaleza) é recusado', :BB, $q$do $x$ begin set local timezone = 'Etc/GMT+12';
   perform public.salvar_pedido_apoio(null, 'evento', 'Evento de ontem no fuso', public.fic_hoje() - 1, '{"valor_estimado": 10, "local": "Sede"}', 'Evento confirmado em cima da hora pela prefeitura'); end $x$$q$, 'Informe uma data que ainda não passou');
 select t('18. conexão em outro fuso: o mês seguinte ao de Fortaleza não é aceito no pagamento nem na entrega', :BB, format($q$do $x$ declare m text; begin set local timezone = 'Pacific/Kiritimati';
-  begin perform public.solicitar_pagamento('bolsa', (%L::date + interval '1 month')::date, 700, repeat('Relatório de atividades do mês. ', 3), null, '{}'); m := 'aceitou';
+  begin perform public.solicitar_pagamento('bolsa', (%L::date + interval '1 month')::date, 2200, repeat('Relatório de atividades do mês. ', 3), null, '{}'); m := 'aceitou';
   exception when others then m := sqlerrm; end;
   if m <> 'Só dá para solicitar o mês atual ou meses anteriores.' then raise exception 'pagamento: %%', m; end if;
   begin insert into public.entregas_mes (equipe_id, mes, item) values (public.meu_id(), (%L::date + interval '1 month')::date, 'presenca'); m := 'aceitou';
@@ -836,12 +836,12 @@ select t('23. vitrine: município com e sem acento conta como um só, com o nome
   alter table public.fichas disable trigger user;
   insert into public.fichas (id, uf, municipio, comunidade, nome, cpf, data_nascimento, endereco, c_agricultora,c_maior18,c_espaco,c_agua,c_disponibilidade,c_sem_kit,c_sem_parentesco,c_casa_unica,autodeclaracao, consent_dados, resultado, data_ficha)
   select gen_random_uuid(), 'PE', m, 'Vila', 'Maria Vitrine ' || i, cpf_t(96300000000 + i), '1980-01-01', 'Sítio', true,true,true,true,true,true,true,true,true,true, 'selecionada', public.fic_hoje()
-    from unnest(array['São José do Belmonte', 'Sao Jose do Belmonte', 'SÃO JOSÉ DO  BELMONTE ', 'sao jose do belmonte']) with ordinality x(m, i);
+    from unnest(array['Bodocó', 'Bodoco', 'BODOCÓ ', 'bodoco']) with ordinality x(m, i);   -- (56: só municípios do projeto aparecem)
   alter table public.fichas enable trigger user;
   v := public.vitrine_municipios();
-  select count(*) into n from jsonb_array_elements(v) e where e ->> 'uf' = 'PE' and public.sem_acento(e ->> 'municipio') = 'sao jose do belmonte';
+  select count(*) into n from jsonb_array_elements(v) e where e ->> 'uf' = 'PE' and public.sem_acento(e ->> 'municipio') = 'bodoco';
   if n <> 1 then raise exception 'ficaram % círculos: %', n, v; end if;
-  if not exists (select 1 from jsonb_array_elements(v) e where e ->> 'uf' = 'PE' and e ->> 'municipio' = 'São José do Belmonte' and (e ->> 'n')::int = 4) then raise exception 'nome ou total: %', v; end if; end $x$$q$, 'ok');
+  if not exists (select 1 from jsonb_array_elements(v) e where e ->> 'uf' = 'PE' and e ->> 'municipio' = 'Bodocó' and (e ->> 'n')::int >= 4) then raise exception 'nome ou total: %', v; end if; end $x$$q$, 'ok');
 select t('23. vitrine: nenhum município aparece duas vezes no mesmo estado, e o anônimo continua lendo', null, $q$do $x$ declare v jsonb := public.vitrine_municipios(); begin
   if jsonb_typeof(v) <> 'array' then raise exception 'veio: %', v; end if;
   set local role none;

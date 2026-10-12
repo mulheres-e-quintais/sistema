@@ -66,7 +66,7 @@ describe('Número nos atalhos das telas pessoais', () => {
   });
   test('pagamento devolvido aparece no atalho "Pedir pagamento" da bolsista', async () => {
     const t = await montar('bolsista'); const mes = diaMais(0).slice(0, 7) + '-01';
-    const id = await t.api.solicitarPagamento('bolsa', mes, 1000, 'Neste mês visitei os quintais do território e organizei as listas de presença.', [], {});
+    const id = await t.api.solicitarPagamento('bolsa', mes, 2200, 'Neste mês visitei os quintais do território e organizei as listas de presença.', [], {});
     await t.trocar('coord_tecnico'); await t.api.avalizarPagamento(id, false, 'Falta o relatório de presença.', null);
     await t.trocar('bolsista'); assert.equal(numeroDoAtalho(t.aba(null), '#t-pag'), 1);
   });

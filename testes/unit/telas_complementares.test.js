@@ -38,14 +38,14 @@ describe('Pagamentos', () => {
     assert.ok(ht.includes('Solicitações de pagamento')); assert.ok(ht.includes('Solicitar pagamento'));
   });
   test('bolsa da bolsista: aval é da coordenação técnica (a geral vê como "com a coordenação técnica")', async () => {
-    const t = await montar('bolsista'); await t.api.solicitarPagamento('bolsa', mes(), 1000, REL, [], {});
+    const t = await montar('bolsista'); await t.api.solicitarPagamento('bolsa', mes(), 2200, REL, [], {});
     await t.trocar('coord_tecnico'); assert.equal(t.MQ.pagUI.contaAval(), 1);
     await t.trocar('coord_geral'); assert.equal(t.MQ.pagUI.contaAval(), 0);
     assert.ok(texto(t.aba('pagamentos')).includes('Com a coordenação técnica'));
   });
   test('depois do aval, o pedido aparece para o auxiliar lançar no Arlo', async () => {
-    const t = await montar('bolsista'); const id = await t.api.solicitarPagamento('bolsa', mes(), 1000, REL, [], {});
-    await t.trocar('coord_tecnico'); await t.api.avalizarPagamento(id, true, null, 1000);
+    const t = await montar('bolsista'); const id = await t.api.solicitarPagamento('bolsa', mes(), 2200, REL, [], {});
+    await t.trocar('coord_tecnico'); await t.api.avalizarPagamento(id, true, null, 2200);
     await t.trocar('auxiliar'); const h = t.aba(null);
     assert.ok(texto(h).includes('Pagamentos para lançar no Arlo'));
     assert.ok(botoes(h, 'pag-ver').some(b => b.includes(id)));
@@ -128,11 +128,11 @@ describe('Sem coordenação técnica ativa, a coordenação geral assume a vez d
   const pass = { valor_estimado: 1500, finalidade: 'intercambio', passageiros: [{ nome: 'Maria das Dores', cpf: '52998224725', nascimento: '1970-01-01', rg: '1' }] };
   const semTec = t => { t.S.equipe = t.S.equipe.map(m => m.papel === 'coord_tecnico' ? Object.assign({}, m, { status: 'desligada' }) : m); };
   test('com técnica ativa: bolsa da bolsista NÃO conta para a geral (fluxo normal)', async () => {
-    const t = await montar('bolsista'); await t.api.solicitarPagamento('bolsa', mes(), 1000, REL, [], {});
+    const t = await montar('bolsista'); await t.api.solicitarPagamento('bolsa', mes(), 2200, REL, [], {});
     await t.trocar('coord_geral'); assert.equal(t.MQ.ui.semTecnica(), false); assert.equal(t.MQ.pagUI.contaAval(), 0);
   });
   test('sem técnica: a bolsa da bolsista conta no aviso da geral e aparece em "Esperando o seu aval"', async () => {
-    const t = await montar('bolsista'); await t.api.solicitarPagamento('bolsa', mes(), 1000, REL, [], {});
+    const t = await montar('bolsista'); await t.api.solicitarPagamento('bolsa', mes(), 2200, REL, [], {});
     await t.trocar('coord_geral'); semTec(t);
     assert.equal(t.MQ.ui.semTecnica(), true); assert.equal(t.MQ.pagUI.contaAval(), 1);
     const h = texto(t.aba('pagamentos'));
@@ -183,7 +183,7 @@ describe('Viagens e eventos: quem confere na falta da coordenação técnica', (
   });
   test('auxiliar não autoriza nem recusa; não dá aval em pagamento (regra só de viagens)', async () => {
     const t = await montar('bolsista'); const id = await pedir(t);
-    const pag = await t.api.solicitarPagamento('bolsa', mes(), 1000, REL, [], {});
+    const pag = await t.api.solicitarPagamento('bolsa', mes(), 2200, REL, [], {});
     await desligar(t, 'coord_tecnico'); await t.trocar('auxiliar');
     await t.api.moverPedido(id, 'conferir');
     await assert.rejects(t.api.moverPedido(id, 'autorizar'), /coordenação geral/);

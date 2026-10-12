@@ -173,21 +173,21 @@ describe('pedidos de pagamento', () => {
   const mes = () => diaMais(0).slice(0, 7) + '-01';
   test('bolsista habilitada pede a bolsa; relatório curto é recusado; o mesmo mês não repete', async () => {
     await como('bolsista');
-    await falha(api.solicitarPagamento('bolsa', mes(), 1000, 'curto', [], {}), /relatório/);
-    await api.solicitarPagamento('bolsa', mes(), 1000, rel, [], {});
-    await falha(api.solicitarPagamento('bolsa', mes(), 1000, rel, [], {}), /já solicitou/);
+    await falha(api.solicitarPagamento('bolsa', mes(), 2200, 'curto', [], {}), /relatório/);
+    await api.solicitarPagamento('bolsa', mes(), 2200, rel, [], {});
+    await falha(api.solicitarPagamento('bolsa', mes(), 2200, rel, [], {}), /já solicitou/);
   });
   test('mês futuro é recusado', async () => {
     await como('bolsista'); const d = new Date(); d.setMonth(d.getMonth() + 2);
-    await falha(api.solicitarPagamento('bolsa', d.toISOString().slice(0, 7) + '-01', 1000, rel, [], {}), /mês atual/);
+    await falha(api.solicitarPagamento('bolsa', d.toISOString().slice(0, 7) + '-01', 2200, rel, [], {}), /mês atual/);
   });
   test('agente não pede bolsa; ajuda de custo exige visitas', async () => {
     await como('agente');
-    await falha(api.solicitarPagamento('bolsa', mes(), 1000, rel, [], {}), /não recebe bolsa/);
+    await falha(api.solicitarPagamento('bolsa', mes(), 2200, rel, [], {}), /não recebe bolsa/);
     await falha(api.solicitarPagamento('ajuda_custo', mes(), 100, null, [], {}), /Marque as visitas/);
   });
   test('aval: devolver exige motivo; ninguém dá aval no próprio; técnica não lança no Arlo; auxiliar lança', async () => {
-    await como('bolsista'); const id = await api.solicitarPagamento('bolsa', mes(), 1000, rel, [], {});
+    await como('bolsista'); const id = await api.solicitarPagamento('bolsa', mes(), 2200, rel, [], {});
     await como('coord_tecnico');
     await falha(api.avalizarPagamento(id, false, 'ab'), /corrigido/);
     await api.avalizarPagamento(id, true, null, 900);

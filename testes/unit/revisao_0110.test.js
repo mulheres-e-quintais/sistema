@@ -36,10 +36,10 @@ test('somar dias não pula um dia por causa do fuso', () => {
 test('aval: valor zero ou maior que o pedido é recusado; igual ou menor passa', async () => {
   const t = await montar('bolsista'); const rel = 'Relatório do mês com as visitas, os encontros e o que foi feito no campo.';
   const mes = t.MQ.regras.hoje().slice(0, 7) + '-01';
-  const id = await t.api.solicitarPagamento('bolsa', mes, 1400, rel, [], {});
+  const id = await t.api.solicitarPagamento('bolsa', mes, 2200, rel, [], {});   // 56: bolsa é o valor da função (articulação: R$ 2.200)
   await t.trocar('coord_tecnico');
   await assert.rejects(t.api.avalizarPagamento(id, true, null, 0), /maior que zero/);
-  await assert.rejects(t.api.avalizarPagamento(id, true, null, 2000), /passa do valor pedido/);
+  await assert.rejects(t.api.avalizarPagamento(id, true, null, 2500), /passa do valor pedido|valor da função/);
   await t.api.avalizarPagamento(id, true, null, 1200);
   assert.equal(JSON.parse(t.janela.localStorage.getItem('mq-demo-v4')).solicitacoes.find(s => s.id === id).valor_avalizado, 1200);
 });

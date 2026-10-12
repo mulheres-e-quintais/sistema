@@ -67,7 +67,8 @@ select est_lista('tabelas com RLS e NENHUMA regra de acesso são só as quatro q
       and not exists (select 1 from pg_policy p where p.polrelid = c.oid)$q$,
   array['acesso_codigos','contas_ja_ligadas','equipe_bancario','observadores']);
 select est_caso('toda regra de acesso (policy) é só para quem entrou no sistema (authenticated): nenhuma para anon ou public',
-  $q$select tablename || '.' || policyname from pg_policies where schemaname in ('public', 'storage') and roles <> '{authenticated}'$q$);
+  $q$select tablename || '.' || policyname from pg_policies where schemaname in ('public', 'storage') and roles <> '{authenticated}'
+       and policyname <> 'vitrine_arq_ler_publico'$q$);   -- 56: a foto da vitrine abre para o visitante (link assinado) só enquanto a autorização valer
 select est_caso('nenhuma regra de acesso "aberta" (true) para ler ou gravar',
   $q$select tablename || '.' || policyname from pg_policies where schemaname in ('public', 'storage') and (coalesce(qual, '') = 'true' or coalesce(with_check, '') = 'true')$q$);
 select est_lista('apagar (DELETE) só tem regra de acesso nas tabelas em que é permitido de propósito (fora a regra geral da coordenação geral)',
@@ -112,7 +113,7 @@ select est_caso('usuário comum não cria objetos no schema public',
 select est_lista('funções security definer que o ANÔNIMO executa: só as cinco públicas de propósito',
   $q$select p.proname::text from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosecdef and p.prorettype <> 'trigger'::regtype
       and has_function_privilege('anon', p.oid, 'EXECUTE')$q$,
-  array['enviar_pre_cadastro','pedir_novo_acesso','ver_convite','vitrine','vitrine_municipios']);
+  array['enviar_pre_cadastro','pedir_novo_acesso','ver_convite','vitrine','vitrine_foto_publica','vitrine_municipios']);
 select est_lista('funções internas que NINGUÉM chama pelo app (nem quem entrou)',
   $q$select p.proname::text from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prorettype <> 'trigger'::regtype
       and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
@@ -314,9 +315,9 @@ select est_caso('ordem dos gatilhos: em fichas e diagnósticos, a trava de limit
       (case when 'a1_versao' < 'visitas_antes' and 'avaliacoes_a1_versao' < 'avaliacoes_antes' then null else 'visitas/avaliacoes' end)) v(x) where x is not null$q$);
 
 -- ===================================================================== 10. ARQUIVOS (storage)
-select est_lista('pastas de arquivos: sete, e só a vitrine é pública',
+select est_lista('pastas de arquivos: sete, nenhuma pública (56: a vitrine abre por link assinado)',
   $q$select id || case when public then ':publica' else '' end from storage.buckets$q$,
-  array['campo','documentos','equipe','execucao','fichas','termos','vitrine:publica']);
+  array['campo','documentos','equipe','execucao','fichas','termos','vitrine']);
 select est_caso('pastas de documentos e de execução financeira: sem regra para trocar (UPDATE) nem apagar (DELETE) arquivo',
   $q$select policyname::text from pg_policies where schemaname = 'storage' and cmd in ('UPDATE', 'DELETE') and (coalesce(qual, '') ~ '''(documentos|execucao)''' and coalesce(qual, '') !~ 'ANY')$q$);
 
@@ -327,7 +328,7 @@ select est_caso('pastas de documentos e de execução financeira: sem regra para
 select est_lista('funções que o ANÔNIMO executa (todas as do sistema, não só as security definer): só as cinco públicas',
   $q$select p.proname::text from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prorettype <> 'trigger'::regtype and (p.proacl is not null or p.prosecdef)
       and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e') and has_function_privilege('anon', p.oid, 'EXECUTE')$q$,
-  array['enviar_pre_cadastro','pedir_novo_acesso','ver_convite','vitrine','vitrine_municipios']);
+  array['enviar_pre_cadastro','pedir_novo_acesso','ver_convite','vitrine','vitrine_foto_publica','vitrine_municipios']);
 select est_caso('nenhuma função do sistema ficou com a permissão padrão do Postgres (aberta a todos): toda função de gatilho e toda função com o direito do banco tem permissão própria',
   $q$select p.proname::text from pg_proc p where p.pronamespace = 'public'::regnamespace and (p.prosecdef or p.prorettype = 'trigger'::regtype) and p.proacl is null
       and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')$q$);

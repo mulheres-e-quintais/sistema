@@ -196,7 +196,7 @@
     const sel = selecionadas(uf);
     const dg = diagnosticos().filter(d => d.uf === uf);
     const usados = diasUsados(uf);
-    const pend = S().fila.filter(i => i.tipo === 'visita' || i.tipo === 'diagnostico');
+    const pend = S().fila.filter(i => TIPOS_CAMPO.includes(i.tipo));
     return `<section class="secao" aria-labelledby="t-campo">
       <div class="secao-cab"><div><h2 id="t-campo">Trabalho de campo · ${E(U().nomeUF(uf))}</h2>
         <p>Diagnóstico com plano do quintal na 1ª visita, depois implantação e 2 acompanhamentos. Quem visita pode ser você, a outra bolsista ou uma agente de campo habilitada.</p></div>
@@ -208,8 +208,7 @@
         <div><span class="v num">${dg.filter(d => d.sem_agua).length}</span><span class="l">sem água na seca</span></div>
       </div>
       ${avisoConflitos()}
-      ${pend.length ? `<div class="aviso${pend.some(i => i.erro) ? ' erro' : ''}"><b>${pend.length} registro${pend.length > 1 ? 's' : ''} de campo neste aparelho</b>${pend.some(i => i.erro) ? ': ' + E(pend.find(i => i.erro).erro) : ', aguardando internet para enviar.'}
-        ${navigator.onLine ? ' <button class="link" data-acao="ficha-enviar">Enviar agora</button>' : ''}</div>` : ''}
+      ${avisoFila(pend)}
       ${sel.length ? paraFazer(uf, sel) : '<div class="vazio"><span>As visitas começam quando a coordenação técnica aprovar as primeiras fichas como "selecionada".</span></div>'}
       ${U().dobra('campo-roteiro', '<span><b>Roteiro do mês</b> <span class="small muted">· todas as visitas e o que falta registrar</span></span>', roteiro(uf, true))}
       ${sel.length ? U().dobra('campo-quintais', `<span><b>Ver os ${sel.length} quintais</b> <span class="small muted">· etapa de cada um</span></span>`,
@@ -221,6 +220,23 @@
             <div class="acoes">${temDiag ? `<button class="btn peq" data-acao="campo-diag-ver" data-ficha="${E(f.id)}">Ver diagnóstico</button>${MQ.vendaUI ? MQ.vendaUI.botaoOrientar(f.id) : ''}`
               : `<button class="btn peq pri" data-acao="campo-diag-novo" data-ficha="${E(f.id)}">Registrar diagnóstico</button>`}</div></div>`; }).join('')}</div>`) : ''}
     </section>`;
+  }
+
+  /* 12/10/2026 (auditoria, item 3): todo registro de campo guardado no aparelho aparece, um por um, com a situação:
+     esperando internet, tentando de novo (falha passageira, com o motivo) ou recusado (com o motivo e o que fazer).
+     Antes, a agente só via os diagnósticos e nunca via o erro: a visita parecia enviada sem ter chegado ao servidor. */
+  const TIPOS_CAMPO = ['visita', 'diagnostico', 'avaliacao'];
+  const NOME_TIPO = { visita: 'Registro de visita', diagnostico: 'Diagnóstico', avaliacao: 'Avaliação final' };
+  function avisoFila(pend) {
+    const l = (pend || []).filter(i => !i.conflito); if (!l.length) return '';
+    const erro = l.filter(i => i.erro), tentando = l.filter(i => !i.erro && i.tentativas);
+    const quem = it => { const d = it.dados || {}; const f = ficha(d.ficha_id) || {}; return E(f.nome || 'Quintal') + (d.data_realizada || d.data_visita ? ' · ' + R.fmtData(d.data_realizada || d.data_visita) : ''); };
+    const linha = it => `<li><b>${NOME_TIPO[it.tipo] || 'Registro'}</b> · ${quem(it)}<br><span class="small">${it.erro ? '<b>Não foi aceito:</b> ' + E(it.erro)
+      : it.tentativas ? 'Tentando enviar de novo (' + it.tentativas + (it.tentativas > 1 ? ' tentativas' : ' tentativa') + '). Último motivo: ' + E(it.ultimaFalha || 'falha na conexão') : 'Esperando internet para enviar.'}</span></li>`;
+    return `<div class="aviso${erro.length ? ' erro' : ''} fila-campo" role="status"><b>${l.length} registro${l.length > 1 ? 's' : ''} de campo guardado${l.length > 1 ? 's' : ''} neste aparelho, ainda não ${l.length > 1 ? 'chegaram' : 'chegou'} ao servidor.</b>
+      ${erro.length ? ' Abra o registro, corrija o que o motivo diz e salve de novo; ou toque em Enviar agora para tentar outra vez.' : tentando.length ? ' O sistema tenta de novo sozinho.' : ''}
+      <ul class="fila-lista">${l.map(linha).join('')}</ul>
+      ${navigator.onLine ? '<button class="btn peq" data-acao="ficha-enviar">Enviar agora</button>' : '<span class="small">Sem internet agora: o envio é automático quando ela voltar.</span>'}</div>`;
   }
 
   /* ---------- tela da agente de campo ---------- */
@@ -240,7 +256,7 @@
           : v.situacao === 'realizada' ? `<span class="small muted">${E(String(v.relato || '').slice(0, 90))}${String(v.relato || '').length > 90 ? '…' : ''}</span>${MQ.vendaUI ? MQ.vendaUI.botaoOrientar(v.ficha_id) : ''}`
           : botaoFeita(v)}</div></div>`; };
     const porMes = {}; feitas.forEach(v => { const m = String(v.data_realizada).slice(0, 7); porMes[m] = (porMes[m] || 0) + 1; });
-    const pend = S().fila.filter(i => i.tipo === 'diagnostico');
+    const pend = S().fila.filter(i => TIPOS_CAMPO.includes(i.tipo));
     return `<main class="wrap" id="principal">
       <div class="cab"><div><span class="eyebrow">Agente de campo · ${E(U().nomeUF(eu.uf))}</span><h1>Olá, ${E(primeiroNome(eu.nome))}</h1>
         <p>${E(MQ.PAPEIS.agente.faz)}</p></div><span class="chip chip-lg ${s.cod}">${E(s.rot)}</span></div>
@@ -249,7 +265,7 @@
       ${MQ.encUI ? MQ.encUI.blocoConfirmar() : ''}
       ${!R.habilitado(eu) ? `<div class="aviso erro"><b>Você ainda não pode receber visitas no roteiro.</b> Faltam passos da habilitação (matrícula no FIC, documentos na FUNCERN e termo). Sem eles, a ajuda de custo não pode ser paga.</div>` : ''}
       ${avisoConflitos()}
-      ${pend.length ? `<div class="aviso">${pend.length} diagnóstico${pend.length > 1 ? 's' : ''} guardado${pend.length > 1 ? 's' : ''} neste aparelho, aguardando internet.${navigator.onLine ? ' <button class="link" data-acao="ficha-enviar">Enviar agora</button>' : ''}</div>` : ''}
+      ${avisoFila(pend)}
       <section class="secao"><div class="secao-cab"><h2 id="t-prox">Próximas visitas</h2><span class="muted small">${prox.length} prevista${prox.length === 1 ? '' : 's'}</span></div>
         ${prox.length ? `<div class="lista-fichas">${prox.map(linha).join('')}</div>` : '<div class="vazio"><span>Nenhuma visita atribuída a você. Quem agenda é a bolsista do estado ou a coordenação técnica.</span></div>'}</section>
       <section class="secao"><div class="secao-cab"><h2 id="t-feitas">Visitas feitas</h2><span class="small">${Object.entries(porMes).map(([m, n]) => `<b>${nomeMes(m)}</b>: ${n} dia${n > 1 ? 's' : ''} de campo`).join(' · ') || ''}</span></div>
@@ -681,15 +697,17 @@
   document.addEventListener('change', async ev => {
     const inp = ev.target.closest && ev.target.closest('input[data-foto-vis]'); if (!inp || !inp.files[0]) return;
     const n = inp.dataset.fotoVis; const dica = document.getElementById('vf-f' + n + '-dica');
-    if (inp.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; inp.value = ''; return; }
+    if (inp.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; inp.value = ''; manteveFoto(dica, fotosVis[n]); return; }
     dica.textContent = 'Preparando foto…';
-    const foto = await prepararFoto(inp, dica); if (!foto) { delete fotosVis[n]; return; }
+    const foto = await prepararFoto(inp, dica); if (!foto) { manteveFoto(dica, fotosVis[n]); return; }   // a foto boa que já estava continua
     fotosVis[n] = foto; dica.textContent = 'Foto pronta (' + Math.round(fotosVis[n].size / 1024) + ' KB).';
   });
   /* Só aceita foto de verdade (imagem, com tamanho e que o aparelho consiga abrir). Arquivo que não é foto
      (texto, PDF, arquivo vazio ou renomeado para .jpg) é recusado na hora, com o aviso embaixo do campo.
      A conferência é a de MQ.comprimirFoto (fila.js); aqui a tela mostra o motivo e limpa o campo. */
   const MSG_NAO_FOTO = 'Este arquivo não é uma foto.';
+  /* foto nova recusada não apaga a foto boa que o campo já tinha */
+  function manteveFoto(dica, tinha) { if (tinha && dica) dica.appendChild(document.createTextNode(' A foto anterior continua valendo.')); }
   async function prepararFoto(inp, dica) {
     const arq = inp.files[0];
     const recusar = () => { inp.value = ''; if (dica) { dica.textContent = MSG_NAO_FOTO + ' Tire a foto de novo ou escolha outra imagem.'; dica.classList.add('erro-foto'); } return null; };
@@ -705,8 +723,11 @@
         return null;
       }
     }
-    try { const b = await MQ.comprimirFoto(arq, undefined, undefined, { semAviso: true }); return b && b.size > 0 ? b : recusar(); }
-    catch (e) { return recusar(); }
+    let b = null;
+    try { b = await MQ.comprimirFoto(arq, undefined, undefined, { semAviso: true }); } catch (e) { b = null; }
+    if (!(b && b.size > 0)) return recusar();
+    if (MQ.fotoDia) { try { await MQ.fotoDia.aceitar(inp, b); } catch (e) { /* sem cópia no aparelho: segue */ } }   // data da foto e cópia neste aparelho
+    return b;
   }
 
   /* 47: registros deste aparelho que o servidor recusou porque outra pessoa alterou antes. Não são descartados:
@@ -731,9 +752,9 @@
     if (a === 'campo-conferir') {
       const it = (S().fila || []).find(i => i.id === el.dataset.id); if (!it) return;
       const d = it.dados || {};
-      if (it.tipo === 'visita' && d.situacao === 'realizada') { Object.keys(fotosVis).forEach(k => delete fotosVis[k]); Object.assign(fotosVis, it.fotos || {}); U().abrirPainel({ tipo: 'visita-feita', id: it.id }); }
+      if (it.tipo === 'visita' && d.situacao === 'realizada') { Object.keys(fotosVis).forEach(k => delete fotosVis[k]); Object.assign(fotosVis, it.fotos || {}); diasFila(it); U().abrirPainel({ tipo: 'visita-feita', id: it.id }); }
       else if (it.tipo === 'visita') U().abrirPainel({ tipo: 'visita-form', id: it.id });
-      else if (it.tipo === 'diagnostico') { Object.keys(fotosTemp).forEach(k => delete fotosTemp[k]); Object.assign(fotosTemp, it.fotos || {});
+      else if (it.tipo === 'diagnostico') { Object.keys(fotosTemp).forEach(k => delete fotosTemp[k]); Object.assign(fotosTemp, it.fotos || {}); diasFila(it);
         U().abrirPainel({ tipo: 'diag-form', ficha: d.ficha_id, visita: d.visita_id || '' }); setTimeout(() => { const fm = $('form[data-form=diag]'); if (fm) atualizarDiag(fm); }, 0); }
       else if (it.tipo === 'avaliacao' && MQ.impactoUI) MQ.impactoUI.conferir(it);
       const p = document.getElementById('painel'), f0 = p && p.querySelector('form[data-form]');
@@ -742,7 +763,7 @@
     }
     else if (a === 'campo-visita-nova') U().abrirPainel({ tipo: 'visita-form', uf: eu.uf });
     else if (a === 'campo-visita-editar') U().abrirPainel({ tipo: 'visita-form', id: el.dataset.id });
-    else if (a === 'campo-feita') { Object.keys(fotosVis).forEach(k => delete fotosVis[k]); U().abrirPainel({ tipo: 'visita-feita', id: el.dataset.id }); }
+    else if (a === 'campo-feita') { Object.keys(fotosVis).forEach(k => delete fotosVis[k]); if (MQ.fotoDia) MQ.fotoDia.marcarDias('visita', { id: el.dataset.id }, null); U().abrirPainel({ tipo: 'visita-feita', id: el.dataset.id }); }
     else if (a === 'campo-mes') { const n = +el.dataset.n; mesRoteiro = n === 0 ? mesAtual() : mesMais(mesRoteiro || mesAtual(), n); limRot = ROT_PASSO; U().render(); }
     else if (a === 'campo-uf') { ufRoteiro = el.dataset.uf; limRot = ROT_PASSO; U().render(); }
     else if (a === 'campo-rot-mais' || a === 'campo-rot-todas') { limRot = a === 'campo-rot-todas' ? Infinity : limRot + ROT_PASSO; S().rolarPara = window.scrollY; U().render(); }
@@ -751,6 +772,7 @@
       Object.keys(fotosTemp).forEach(k => delete fotosTemp[k]);
       const naFila = (S().fila || []).find(it => it.tipo === 'diagnostico' && it.dados && it.dados.ficha_id === el.dataset.ficha);
       if (naFila && naFila.fotos) Object.assign(fotosTemp, naFila.fotos);   // correção de item não enviado mantém as fotos
+      if (naFila) diasFila(naFila); else if (MQ.fotoDia) MQ.fotoDia.marcarDias('diagnostico', { ficha_id: el.dataset.ficha }, null);
       const vid = el.dataset.visita || (ativasDe(el.dataset.ficha, 'diagnostico')[0] || {}).id || '';
       U().abrirPainel({ tipo: 'diag-form', ficha: el.dataset.ficha, visita: vid });
       setTimeout(() => { const fm = $('form[data-form=diag]'); if (fm) atualizarDiag(fm); }, 0);
@@ -796,7 +818,8 @@
     // 47: a versão que a pessoa leu (atualizado_em de quando o formulário abriu) vai com o envio e fica na fila se estiver sem internet
     const vista = U().vista(), lista = { visita: 'visitas', diagnostico: 'diagnosticos', avaliacao: 'avaliacoes' }[tipo];
     const antes = (vista.fila || []).find(i => i.id === limpo.id && i.tipo === tipo), noServ = ((vista[lista]) || []).find(x => x.id === limpo.id);
-    await MQ.fila.salvar({ id: limpo.id, dono: s.eu.id, tipo, dados: limpo, fotos: fotos || null, erro: null,
+    const fotosDias = MQ.fotoDia && fotos ? MQ.fotoDia.diasDe(tipo, limpo, fotos) : null;   // data de cada foto: conferida de novo se o registro voltar da fila
+    await MQ.fila.salvar({ id: limpo.id, dono: s.eu.id, tipo, dados: limpo, fotos: fotos || null, fotosDias, erro: null,
       marca: U().marcaAberta(tipo, limpo.id), mud: MQ.camposMudados(limpo, noServ, antes && antes.mud) });
     s.fila = await MQ.fila.listar(s.eu.id);
     if (navigator.onLine) await U().sincronizar(false);
@@ -807,8 +830,11 @@
       if (resta.conflito && U().reabrirComConflito) { await MQ.fila.remover(resta.id); s.fila = await MQ.fila.listar(s.eu.id); if (U().reabrirComConflito(resta.erro)) e.jaAvisado = true; }
       throw e;
     }
+    if (MQ.fotoDia && fotos) MQ.fotoDia.limparRegistro(tipo, limpo);   // salvo (enviado ou na fila): a cópia das fotos sai do aparelho
     return !resta;   // true = enviado
   }
+  /* registro aberto da fila: as datas das fotos dele voltam para a conferência do envio */
+  function diasFila(it) { if (MQ.fotoDia) MQ.fotoDia.marcarDias(it.tipo, it.dados || {}, it.fotosDias); }
 
   async function enviar(tipo, form, fd) {
     const eu = S().eu;
@@ -922,9 +948,9 @@
     if (!form) return;
     if (ev.target.type === 'file' && ev.target.files[0]) {
       const k = ev.target.dataset.foto; const dica = form.querySelector('#dg-f-' + k + '-dica');
-      if (ev.target.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; ev.target.value = ''; return; }
+      if (ev.target.files[0].size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; ev.target.value = ''; manteveFoto(dica, fotosTemp[k]); return; }
       dica.textContent = 'Preparando foto…';
-      const foto = await prepararFoto(ev.target, dica); if (!foto) { delete fotosTemp[k]; atualizarDiag(form); return; }
+      const foto = await prepararFoto(ev.target, dica); if (!foto) { manteveFoto(dica, fotosTemp[k]); atualizarDiag(form); return; }   // a foto boa que já estava continua
       fotosTemp[k] = foto;
       dica.textContent = 'Foto pronta (' + Math.round(fotosTemp[k].size / 1024) + ' KB).';
       const w = form.querySelector('#w-fotos'); if (w) w.classList.remove('tem-erro');
@@ -962,5 +988,10 @@
     const devolvidos = diagnosticos().filter(d => d.situacao === 'devolvido' && (eu.papel === 'agente' ? (visitas().find(v => v.id === d.visita_id) || {}).executor_id === eu.id : d.uf === eu.uf)).length;
     return vencidas + devolvidos;
   }
-  MQ.campoUI = { htmlPlano, blocoKitItens, comRef, contaAFazer, secaoBolsista, telaAgente, abaCoord, painel, clique, enviar, diagnosticos, visitas, guardar, numBR, totalKit, prepararFoto, localDiag, kmEntre, centroMun, MOTIVOS_SEM_GPS };
+  /* fotos guardadas neste aparelho voltam sozinhas ao abrir o mesmo formulário (fotodia.js) */
+  if (MQ.fotoDia) {
+    MQ.fotoDia.registrarMapa('diag', fotosTemp, (k, form) => form.querySelector('#dg-f-' + k + '-dica'), form => atualizarDiag(form));
+    MQ.fotoDia.registrarMapa('visita-feita', fotosVis, n => document.getElementById('vf-f' + n + '-dica'));
+  }
+  MQ.campoUI = { htmlPlano, blocoKitItens, comRef, contaAFazer, secaoBolsista, telaAgente, abaCoord, painel, clique, enviar, diagnosticos, visitas, guardar, numBR, totalKit, prepararFoto, manteveFoto, localDiag, kmEntre, centroMun, MOTIVOS_SEM_GPS };
 })();

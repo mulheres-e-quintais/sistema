@@ -10,8 +10,8 @@ do $x$ begin
    where user_id = current_setting('t.bb')::uuid;
   alter table public.equipe enable trigger user;
 end $x$;
-select t('bolsa do mês anterior ao início é recusada', :BB, $q$select public.solicitar_pagamento('bolsa', (date_trunc('month', current_date) - interval '1 month')::date, 1000, repeat('relatório do mês ', 5), null, '{}')$q$, 'começou no projeto');
-select t('bolsa do mês de início é aceita (mesmo começando no dia 4)', :BB, $q$select public.solicitar_pagamento('bolsa', date_trunc('month', current_date)::date, 1000, repeat('relatório do mês ', 5), null, '{}')$q$, 'ok');
+select t('bolsa do mês anterior ao início é recusada', :BB, $q$select public.solicitar_pagamento('bolsa', (date_trunc('month', current_date) - interval '1 month')::date, 2200, repeat('relatório do mês ', 5), null, '{}')$q$, 'começou no projeto');
+select t('bolsa do mês de início é aceita (mesmo começando no dia 4)', :BB, $q$select public.solicitar_pagamento('bolsa', date_trunc('month', current_date)::date, 2200, repeat('relatório do mês ', 5), null, '{}')$q$, 'ok');
 select t('presença do mês anterior ao início é recusada', :BB, $q$insert into public.entregas_mes (equipe_id, mes, item) select id, (date_trunc('month', current_date) - interval '1 month')::date, 'presenca' from public.equipe where user_id = current_setting('t.bb')::uuid$q$, 'começou no projeto');
 select t('presença do mês de início é aceita', :BB, $q$insert into public.entregas_mes (equipe_id, mes, item) select id, date_trunc('month', current_date)::date, 'presenca' from public.equipe where user_id = current_setting('t.bb')::uuid$q$, 'ok');
 select t('AVA antes do início é recusado', :G, $q$insert into public.entregas_mes (equipe_id, mes, item) select id, (date_trunc('month', current_date) - interval '1 month')::date, 'ava' from public.equipe where user_id = current_setting('t.bb')::uuid$q$, 'começou no projeto');

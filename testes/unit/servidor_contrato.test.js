@@ -57,9 +57,17 @@ describe('gravações: o banco recusou ou a internet caiu → sempre erro, nunca
 describe('nenhuma função da camada de produção fica sem teste', () => {
   test('toda função está numa das listas (ou é de entrada/sessão/arquivo, testada à parte)', async () => {
     const { api } = await montarApi();
-    const AParte = /^(iniciar|eu|entrar|entrarSenha|criarSenha|trocarSenha|sair|organizarTexto|linkFoto|linkTermo|linkDocumento|linkPlanilhaExec|verConvite|publicarFoto)$/;
+    const AParte = /^(iniciar|eu|entrar|entrarSenha|criarSenha|trocarSenha|sair|organizarTexto|linkFoto|linkTermo|linkDocumento|linkPlanilhaExec|verConvite|publicarFoto|urlsVitrine)$/;
     const fora = Object.keys(api).filter(k => typeof api[k] === 'function' && !LEITURAS.includes(k) && !GRAVACOES[k] && !MELHOR_ESFORCO.includes(k) && !AParte.test(k));
     assert.deepEqual(fora, [], 'função nova sem teste de contrato: ' + fora.join(', '));
+  });
+});
+
+describe('vitrine: link de 1 hora para cada foto (56)', () => {
+  test('urlsVitrine não derruba a página pública se o banco recusar ou a internet cair', async () => {
+    for (const modo of ['erro', 'rede']) { const t = await montarApi({ modo }); const fotos = [{ path: 'a.jpg' }];
+      await assert.doesNotReject(t.api.urlsVitrine(fotos)); }
+    const t = await montarApi(); await assert.doesNotReject(t.api.urlsVitrine([])); await assert.doesNotReject(t.api.urlsVitrine(null));
   });
 });
 

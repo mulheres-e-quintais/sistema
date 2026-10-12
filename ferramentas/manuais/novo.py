@@ -123,6 +123,13 @@ def mensagens():
         ['Já há coordenação técnica (ou auxiliar) ativa', 'Desligue a pessoa atual antes de cadastrar outra'],
         ['Este cadastro está desligado e não é mais alterado', 'Peça a correção à coordenação geral'],
         ['Este registro foi alterado por outra pessoa enquanto você editava', 'Abra de novo, confira e refaça a sua alteração'],
+        ['Esta foto é de outro dia. Só vale foto tirada no dia da visita', 'Tire a foto na hora ou toque em Tirar foto agora. A foto boa que já estava no campo continua valendo. Em visita que passou da meia-noite, vale foto até as 4h do dia seguinte'],
+        ['Foto recuperada deste aparelho', 'O sistema saiu sozinho ou a página fechou: a foto voltou. Confira e salve. Ao salvar, ou ao sair pelo botão Sair, ela some do celular'],
+        ['Registro de campo guardado neste aparelho: Não foi aceito', 'Leia o motivo, abra o registro, corrija e salve de novo. Falha de internet ou do servidor é tentada de novo sozinha'],
+        ['A memória do celular está cheia: o registro NÃO foi guardado', 'Apague fotos ou vídeos do celular e salve de novo. Não feche o formulário antes'],
+        ['A visita é agendada primeiro e marcada como feita depois', 'Agende a visita e marque como feita pelo formulário (diagnóstico, avaliação) ou pelo registro da visita'],
+        ['A bolsa desta função é de R$ ... por mês', 'O valor é o do plano de trabalho, já preenchido. Atualize a página e peça de novo'],
+        ['Esta pessoa já entrou no sistema antes. Só a coordenação geral libera um novo primeiro acesso', 'Peça à coordenação geral o novo código de acesso'],
     ], 'msg')
     return h
 

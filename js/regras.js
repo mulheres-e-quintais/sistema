@@ -73,6 +73,8 @@
     return 'bolsista';
   };
   R.modeloTermo = x => { const m = (MQ.MODELOS_TERMO || {})[R.tipoTermo(x)]; return m && m.arquivo ? m : null; };
+  /* 56: valor da bolsa da função, em reais com centavos (o banco usa o mesmo: public.valor_bolsa) */
+  R.valorBolsa = papel => { const b = (MQ.PAPEIS[papel] || {}).bolsa; return papel !== 'coord_geral' && b ? Math.round(b * 100) / 100 : null; };
   R.MSG_TERMO_SEM_ARQUIVO = 'Sem o termo anexado não há o que conferir: a data só é registrada depois que o termo preenchido e assinado estiver anexado.';
   R.MSG_TERMO_SEM_DATA = 'Você anexou o termo: confira no documento a data da assinatura e preencha aqui.';
   R.TERMO_EXT = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
