@@ -20,7 +20,9 @@ const R = []; const ok = (n, c, d = '') => R.push([c ? 'PASSOU' : 'FALHOU', n, d
   ok('painel "Aparência da tela" abre', /Aparência da tela/.test(await p.textContent('#painel')));
   ok('chave do modo sol começa desligada', (await p.getAttribute('[data-acao=aparencia-sol]', 'aria-checked')) === 'false');
   await foto('2-painel');
+  await p.evaluate(() => { document.querySelector('main').dataset.velho = '1'; });
   await p.click('[data-acao=aparencia-sol]'); await p.waitForTimeout(300);
+  ok('a página atrás do painel é redesenhada na hora (Safari não repinta sozinho)', await p.evaluate(() => !document.querySelector('main[data-velho]') && !!document.querySelector('main')));
   a = await attr(); ok('modo sol liga na hora: tela clara e modo sol', a.tema === 'light' && a.sol, JSON.stringify(a));
   ok('fundo fica branco puro', (await cor('body')) === 'rgb(255, 255, 255)', await cor('body'));
   ok('a chave mostra ligado e o foco fica nela', (await p.getAttribute('[data-acao=aparencia-sol]', 'aria-checked')) === 'true' && await p.evaluate(() => document.activeElement.dataset.acao === 'aparencia-sol'));

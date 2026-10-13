@@ -21,6 +21,7 @@ window.MQ = window.MQ || {};
     const tema = v.sol ? 'light' : v.tema === 'claro' ? 'light' : v.tema === 'escuro' ? 'dark' : null;
     if (tema) raiz.setAttribute('data-theme', tema); else raiz.removeAttribute('data-theme');
     if (v.sol) raiz.setAttribute('data-sol', ''); else raiz.removeAttribute('data-sol');
+    void raiz.offsetHeight;   // força o navegador a recalcular as cores agora
     return v;
   }
   function mudar(campo, valor) { const v = ler(); v[campo] = valor; gravar(v); aplicar(v); return v; }

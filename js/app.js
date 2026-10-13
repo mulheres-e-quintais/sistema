@@ -1932,8 +1932,9 @@
       else if (a === 'aparencia-sol' || a === 'aparencia-tema') {   // muda na hora, sem recarregar; a barra de cima mostra se o modo sol está ligado
         if (a === 'aparencia-sol') MQ.aparencia.mudar('sol', el.getAttribute('aria-checked') !== 'true'); else MQ.aparencia.mudar('tema', el.dataset.v);
         const foco = a === 'aparencia-sol' ? '[data-acao=aparencia-sol]' : `[data-acao=aparencia-tema][data-v="${el.dataset.v}"]`;
-        desenharPainel(); const b = document.querySelector('.barra .btn-aparencia'); if (b) b.outerHTML = MQ.aparencia.botao();
-        const be = document.querySelector('.ent-aparencia'); if (be) be.outerHTML = MQ.aparencia.botaoEntrada();
+        // redesenha a tela inteira (e o painel, com o fundo escurecido) na hora: alguns navegadores (Safari) não repintam
+        // sozinhos quando só as cores mudam, e a nova aparência só aparecia ao trocar de aba (12/10/2026)
+        const y = window.scrollY; render(); window.scrollTo(0, y); desenharPainel();
         const f = $('#painel ' + foco); if (f && !f.disabled) f.focus(); else { const x = $('#painel [data-acao=aparencia-sol]'); if (x) x.focus(); }
         toast(a === 'aparencia-sol' ? (MQ.aparencia.ler().sol ? 'Modo sol ligado.' : 'Modo sol desligado.') : 'Tema: ' + MQ.aparencia.TEMAS[el.dataset.v] + '.'); }
       else if (a === 'meus-dados') { if (S.menuAberto) { S.menuAberto = false; render(); } S.voltarFoco = el; abrirPainel({ tipo: 'meus-dados' }); }
