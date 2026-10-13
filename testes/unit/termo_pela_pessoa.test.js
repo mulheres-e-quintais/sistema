@@ -82,7 +82,7 @@ describe('Termo de compromisso anexado pela própria pessoa', () => {
 });
 
 describe('Dois modelos de termo: servidor do IFRN e bolsista/agente', () => {
-  test('professor do FIC e auxiliar usam o termo de autorização do servidor; técnica, bolsistas e agentes, o termo de compromisso', async () => {
+  test('professor do curso FIC e auxiliar usam o termo de autorização do servidor; técnica, bolsistas e agentes, o termo de compromisso', async () => {
     const t = await montar('coord_geral'); const R = t.MQ.regras;
     assert.deepEqual(['professor_fic', 'auxiliar_adm'].map(R.tipoTermo), ['servidor', 'servidor']);
     assert.deepEqual(['coord_tecnico', 'articulacao', 'apoio', 'agente'].map(R.tipoTermo), ['bolsista', 'bolsista', 'bolsista', 'bolsista']);
@@ -147,7 +147,7 @@ describe('Tela de entrada, Arlo e aba Equipe (02/10/2026)', () => {
       assert.ok(texto(h).includes('Marque Não'), 'diz o que marcar quando a pessoa não sabe');
     }
   });
-  test('coordenação técnica NÃO vê auxiliar administrativo nem professores do FIC na aba Equipe; a geral vê', async () => {
+  test('coordenação técnica NÃO vê auxiliar administrativo nem professores do curso FIC na aba Equipe; a geral vê', async () => {
     let t = await montar('coord_tecnico'); let h = t.aba('equipe');
     assert.ok(!/id="t-aux"/.test(h)); assert.ok(!/id="t-prof"/.test(h)); assert.match(h, /id="t-b"/); assert.match(h, /id="t-ag"/);
     t = await montar('coord_geral'); h = t.aba('equipe');

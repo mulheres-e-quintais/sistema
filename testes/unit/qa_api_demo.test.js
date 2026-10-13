@@ -103,7 +103,7 @@ test('relatório da bolsa do professor: carga horária somada com 1 casa (0,1 + 
   assert.equal(s.detalhe.fic_carga_horaria, 0.3);
 });
 
-test('50: no máximo 2 professores do FIC ativos (cadastro direto e link); com vaga, volta a aceitar', async () => {
+test('50: no máximo 2 professores do curso FIC ativos (cadastro direto e link); com vaga, volta a aceitar', async () => {
   const T = await montar('coord_geral');
   const prof = n => ({ papel: 'professor_fic', nome: 'Professor Teste ' + n, cpf: cpfValido(555666770 + n), email: 'prof' + n + '@ifrn.edu.br', telefone: '84999990000', data_inicio: '2026-10-01', consentimento_lgpd: true });
   await assert.rejects(() => T.api.criar(prof(1)), /no máximo 2 professores/);
@@ -112,5 +112,5 @@ test('50: no máximo 2 professores do FIC ativos (cadastro direto e link); com v
   const novo = await T.api.criar(prof(2)); assert.equal(novo.papel, 'professor_fic');
   await assert.rejects(() => T.api.criar(prof(3)), /no máximo 2 professores/);
   const h = (await montar('coord_geral')).aba('equipe');
-  assert.match(h, /As 2 vagas de professor do FIC estão ocupadas/);
+  assert.match(h, /As 2 vagas de professor do curso FIC estão ocupadas/);
 });

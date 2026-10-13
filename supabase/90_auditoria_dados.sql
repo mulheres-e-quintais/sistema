@@ -721,7 +721,7 @@ with c (codigo, verificacao, quantidade, como_ver) as (
     (select count(*) from (select e.id, e.papel, e.uf, e.matricula_fic_em, e.matricula_fic_numero, m.matriculado_em, m.numero from public.equipe e full join (select * from public.matriculas_fic where cancelada_em is null) m on m.equipe_id = e.id where e.status = 'ativa' and (e.matricula_fic_em is not null or m.id is not null) and (e.matricula_fic_em is distinct from m.matriculado_em or lower(trim(coalesce(e.matricula_fic_numero, ''))) is distinct from lower(trim(coalesce(m.numero, ''))))) q),
     $q$select e.id, e.papel, e.uf, e.matricula_fic_em, e.matricula_fic_numero, m.matriculado_em, m.numero from public.equipe e full join (select * from public.matriculas_fic where cancelada_em is null) m on m.equipe_id = e.id where e.status = 'ativa' and (e.matricula_fic_em is not null or m.id is not null) and (e.matricula_fic_em is distinct from m.matriculado_em or lower(trim(coalesce(e.matricula_fic_numero, ''))) is distinct from lower(trim(coalesce(m.numero, ''))));$q$
   union all
-  select 'F33', 'incoerência: professor do FIC, auxiliar ou coordenação geral com matrícula no FIC',
+  select 'F33', 'incoerência: professor do curso FIC, auxiliar ou coordenação geral com matrícula no FIC',
     (select count(*) from (select id, papel, matricula_fic_em from public.equipe where papel in ('professor_fic','auxiliar_adm','coord_geral') and (matricula_fic_em is not null or matricula_fic_numero is not null)) q),
     $q$select id, papel, matricula_fic_em from public.equipe where papel in ('professor_fic','auxiliar_adm','coord_geral') and (matricula_fic_em is not null or matricula_fic_numero is not null);$q$
   union all
@@ -801,7 +801,7 @@ with c (codigo, verificacao, quantidade, como_ver) as (
     (select count(*) from (select s.id, s.tipo, s.mes, s.situacao, p.data_fim from public.solicitacoes_pagamento s join public.equipe p on p.id = s.equipe_id where s.situacao in ('solicitada','avalizada') and p.status <> 'ativa') q),
     $q$select s.id, s.tipo, s.mes, s.situacao, p.data_fim from public.solicitacoes_pagamento s join public.equipe p on p.id = s.equipe_id where s.situacao in ('solicitada','avalizada') and p.status <> 'ativa';$q$
   union all
-  select 'G18', 'entre tabelas: bolsa de professor do FIC sem encontro no mês e sem justificativa (30 letras)',
+  select 'G18', 'entre tabelas: bolsa de professor do curso FIC sem encontro no mês e sem justificativa (30 letras)',
     (select count(*) from (select s.id, s.equipe_id, s.mes, s.situacao from public.solicitacoes_pagamento s join public.equipe p on p.id = s.equipe_id where s.tipo = 'bolsa' and p.papel = 'professor_fic' and s.situacao <> 'devolvida' and not exists (select 1 from public.fic_encontros e where e.professor_id = s.equipe_id and date_trunc('month', e.data)::date = s.mes and e.cancelado_em is null) and length(trim(coalesce(s.detalhe ->> 'justificativa_sem_encontro', ''))) < 30) q),
     $q$select s.id, s.equipe_id, s.mes, s.situacao from public.solicitacoes_pagamento s join public.equipe p on p.id = s.equipe_id where s.tipo = 'bolsa' and p.papel = 'professor_fic' and s.situacao <> 'devolvida' and not exists (select 1 from public.fic_encontros e where e.professor_id = s.equipe_id and date_trunc('month', e.data)::date = s.mes and e.cancelado_em is null) and length(trim(coalesce(s.detalhe ->> 'justificativa_sem_encontro', ''))) < 30;$q$
   union all
@@ -845,7 +845,7 @@ with c (codigo, verificacao, quantidade, como_ver) as (
     (select count(*) from (select r.path from public.vitrine_remover r join public.vitrine_fotos v on v.path = r.path) q),
     $q$select r.path from public.vitrine_remover r join public.vitrine_fotos v on v.path = r.path;$q$
   union all
-  select 'G29', 'entre tabelas: turma do FIC com professor que não é professor do FIC ativo (turma em andamento)',
+  select 'G29', 'entre tabelas: turma do FIC com professor que não é professor do curso FIC ativo (turma em andamento)',
     (select count(*) from (select t.id, t.nome, e.papel, e.status from public.turmas_fic t join public.equipe e on e.id = t.professor_id where e.papel <> 'professor_fic' or (e.status <> 'ativa' and (t.fim is null or t.fim >= (now() at time zone 'America/Fortaleza')::date))) q),
     $q$select t.id, t.nome, e.papel, e.status from public.turmas_fic t join public.equipe e on e.id = t.professor_id where e.papel <> 'professor_fic' or (e.status <> 'ativa' and (t.fim is null or t.fim >= (now() at time zone 'America/Fortaleza')::date));$q$
   union all

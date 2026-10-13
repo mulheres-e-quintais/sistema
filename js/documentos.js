@@ -80,7 +80,7 @@
     };
   }
 
-  /* Relatórios mensais da equipe (12/10/2026): o texto que cada bolsista, a coordenação técnica, os professores do FIC e o auxiliar
+  /* Relatórios mensais da equipe (12/10/2026): o texto que cada bolsista, a coordenação técnica, os professores do curso FIC e o auxiliar
      escrevem ao pedir a bolsa do mês. Quadro de entregas (pessoa × mês) sempre; os textos só quando pedidos e SÓ os que tiveram aval.
      Agentes de campo ficam de fora: não fazem relatório mensal (o relato delas é por visita e fala de uma mulher). */
   const PAPEIS_REL = ['coord_tecnico', 'articulacao', 'apoio', 'professor_fic', 'auxiliar_adm'];
@@ -171,7 +171,7 @@
     'rel-selecao': ['Relatório: seleção das mulheres', 'Totais por estado e a lista das fichas, com município, resultado e situação.'],
     'rel-campo': ['Relatório: campo e visitas', 'Visitas por estado e etapa, e a lista de visitas com data, quintal e quem visita.'],
     'fic-bolsistas': ['Fichas de cadastro: bolsistas', 'Uma página por bolsista de articulação e de apoio, com os dados do cadastro.'],
-    'fic-membros': ['Fichas de cadastro: demais membros', 'Uma página por pessoa: coordenação técnica, agentes de campo, professores do FIC e auxiliar.']
+    'fic-membros': ['Fichas de cadastro: demais membros', 'Uma página por pessoa: coordenação técnica, agentes de campo, professores do curso FIC e auxiliar.']
   };
   const ORDEM_PAPEL = ['coord_tecnico', 'professor_fic', 'auxiliar_adm', 'articulacao', 'apoio', 'agente'];
   const ativosDaEquipe = (s, uf) => (s.equipe || []).filter(m => m.status === 'ativa' && m.papel !== 'coord_geral' && (!uf || !m.uf || m.uf === uf))

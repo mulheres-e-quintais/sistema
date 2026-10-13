@@ -1,7 +1,7 @@
 /* Mulheres & Quintais — entregas do mês, ciência do Guia e guia das agentes.
    Conteúdo do "Guia das bolsistas" levado para o momento em que cada pessoa precisa dele.
    O que o sistema sabe sozinho (fotos, fichas, relatório, metas) é calculado; a lista de presença
-   é marcada pela bolsista e o acesso ao AVA é confirmado pelo professor do FIC (19_entregas_do_mes.sql). */
+   é marcada pela bolsista e o acesso ao AVA é confirmado pelo professor do curso FIC (19_entregas_do_mes.sql). */
 (function () {
   const R = MQ.regras, P = MQ.PAPEIS;
   const U = () => MQ.ui; const S = () => MQ.ui.S; const E = s => MQ.ui.esc(s);
@@ -39,7 +39,7 @@
         e: !feitas.length ? 'info' : comRelato.length === feitas.length ? 'ok' : 'falta',
         d: !feitas.length ? 'Sem visitas no mês.' : `${comRelato.length} de ${n(feitas.length, 'visita')} com o registro do quintal.` },
       { id: 'ava', t: 'Acesso ao AVA', o: 'Entrar no curso pelo menos uma vez no mês e fazer as atividades.', e: ava ? 'ok' : 'pend',
-        d: ava ? `Confirmado pelo professor do FIC em ${new Date(ava.marcado_em).toLocaleDateString('pt-BR')}.` : 'O professor do FIC confirma quando você acessar.' },
+        d: ava ? `Confirmado pelo professor do curso FIC em ${new Date(ava.marcado_em).toLocaleDateString('pt-BR')}.` : 'O professor do curso FIC confirma quando você acessar.' },
       { id: 'metas', t: 'Metas do mês', o: 'Andamento do que estava previsto no calendário.',
         e: !previstas.length ? 'info' : prevFeitas.length === previstas.length ? 'ok' : 'pend',
         d: !previstas.length ? 'Nenhuma visita prevista para você neste mês.' : `${prevFeitas.length} de ${n(previstas.length, 'visita')} prevista${previstas.length === 1 ? '' : 's'} feita${prevFeitas.length === 1 ? '' : 's'}.` }
@@ -73,7 +73,7 @@
     return `<div class="bloco"><h3>Entregas de ${E(nomeMes(mes))}</h3><p class="small muted">${its.filter(i => i.e === 'ok').length} de 6 em dia. Confira antes de dar o aval.</p>${lista(m, mes, false)}</div>`;
   }
 
-  /* professor do FIC (ou coordenação geral): confirma o acesso ao AVA no mês */
+  /* professor do curso FIC (ou coordenação geral): confirma o acesso ao AVA no mês */
   function secaoAva() {
     if (semBanco() || !['professor_fic', 'coord_geral'].includes(S().eu.papel)) return '';
     const mes = G.avaMes || mesAtual();

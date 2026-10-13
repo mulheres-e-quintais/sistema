@@ -114,7 +114,7 @@ chk as (
                    and exists (select 1 from pg_proc where proname = 'saldo_passagens_eventos' and prosrc like '%passagem_pedagogico_teto%')
                    and exists (select 1 from pg_proc where proname = 'mover_pedido_apoio' and prosrc like '%só a coordenação geral confere%')
                    and exists (select 1 from pg_proc where proname = 'salvar_pedido_apoio' and prosrc like '%1.000.000,00%')
-  union all select 'professor do FIC só altera a própria turma (se FALTA: rode o 46)',
+  union all select 'professor do curso FIC só altera a própria turma (se FALTA: rode o 46)',
                    exists (select 1 from pg_policy where polname = 'turmas_alterar' and pg_get_expr(polqual, polrelid) like '%professor_id%')
                    and exists (select 1 from pg_proc where proname = 'turmas_fic_antes' and prosrc like '%Só a coordenação geral passa a turma%')
   union all select 'FIC: matrícula sem número repetido, encontros até 12 horas por dia (se FALTA: rode o 46)',
@@ -128,6 +128,8 @@ chk as (
                    and exists (select 1 from pg_proc where proname = 'vitrine_municipios' and prosrc like '%sem_acento%')
   union all select '52_acompanhamento (perfis de acompanhamento do MDA e do MPA)', to_regclass('public.observadores') is not null and exists (select 1 from pg_proc where proname = 'acompanhamento_dados') and exists (select 1 from pg_proc where proname = 'bloquear_conta_nao_cadastrada' and prosrc like '%observadores%')
   union all select '51_kit_itens (itens do kit com preço de referência)', to_regclass('public.kit_itens') is not null and exists (select 1 from pg_proc where proname = 'salvar_kit_item')
+  union all select '60_planilha_e_mpa (planilhas baixadas no Histórico; equipe habilitada na tela do MPA)',
+                   exists (select 1 from pg_proc where proname = 'registrar_planilha') and exists (select 1 from pg_proc where proname = 'acompanhamento_equipe_uf')
   union all select '59_corrige_desligamento (desligamento com as duas travas: visita agendada e pagamento a pedir)',
                    (select count(distinct tgfoid) from pg_trigger where not tgisinternal and tgname in ('equipe_desligar_pendencias', 'a1_desligar_pendencias')) = 2
                    and exists (select 1 from pg_proc where proname = 'desligar_sem_pedido' and prosrc like '%não é desligada por aqui%')
@@ -146,7 +148,7 @@ chk as (
                    and exists (select 1 from pg_proc where proname = 'gerar_codigo_acesso' and prosrc like '%contas_ja_ligadas%')
                    and not coalesce((select public from storage.buckets where id = 'vitrine'), false)
   union all select '55_relatos_problema (relatar problema no sistema)', to_regclass('public.relatos_problema') is not null and exists (select 1 from pg_proc where proname = 'relatar_problema') and exists (select 1 from pg_proc where proname = 'listar_relatos') and exists (select 1 from pg_proc where proname = 'resolver_relato')
-  union all select '50_limite_professores (no máximo 2 professores do FIC ativos)', exists (select 1 from pg_trigger where not tgisinternal and tgname = 'equipe_limite_professores') and exists (select 1 from pg_trigger where not tgisinternal and tgname = 'convites_limite_professores')
+  union all select '50_limite_professores (no máximo 2 professores do curso FIC ativos)', exists (select 1 from pg_trigger where not tgisinternal and tgname = 'equipe_limite_professores') and exists (select 1 from pg_trigger where not tgisinternal and tgname = 'convites_limite_professores')
   union all select '47_auditoria_bd (correções da auditoria do banco de dados)',
                    (select count(*) from fn where proname in ('aprovar_pre_cadastro', 'minhas_fichas', 'trava_aviso', 'cpf_valido', 'limites_texto', 'chave_fixa', 'equipe_solta_login')) = 7
                    and (select count(*) from pg_trigger where not tgisinternal and tgname = 'a00_chave_fixa') >= 7

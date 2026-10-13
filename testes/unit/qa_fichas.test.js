@@ -26,7 +26,7 @@ test('tela da coordenação: a busca filtra a lista e o contador mostra "X de N"
   F.filtro.busca = 'antonia  zuleide';
   const h = F.secaoCoord();
   assert.match(texto(h), new RegExp('Todas as fichas \\(1 de ' + n + '\\)')); assert.match(h, /Antônia Zuleide Xavier/);
-  assert.match(texto(h), new RegExp('Baixar CSV \\(1 de ' + n + '\\)'));
+  assert.match(texto(h), new RegExp('Baixar planilha \\(1 de ' + n + '\\)'));
   F.filtro.busca = 'Inexistente 2';
   assert.match(texto(F.secaoCoord()), new RegExp('Todas as fichas \\(0 de ' + n + '\\)'));
   limparFiltro(F);

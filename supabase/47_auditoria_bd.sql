@@ -578,7 +578,7 @@ returns uuid language plpgsql security definer set search_path = public, pg_temp
 declare e public.fic_encontros; t public.turmas_fic; v_id uuid; m record; eu uuid := public.meu_id(); v_papel text := coalesce(public.meu_papel(), '');
         v_pres uuid[] := coalesce(p_presentes, '{}'); v_soma numeric; v_prof_ant uuid;
 begin
-  if v_papel not in ('professor_fic', 'coord_geral') then raise exception 'Quem registra os encontros do curso é o professor do FIC.'; end if;
+  if v_papel not in ('professor_fic', 'coord_geral') then raise exception 'Quem registra os encontros do curso é o professor do curso FIC.'; end if;
   if coalesce(array_length(p_presentes, 1), 0) > 500 then raise exception 'Lista de presença grande demais (máximo 500 pessoas).'; end if;   -- 47
   select * into t from public.turmas_fic where id = p_turma;
   if t.id is null then raise exception 'Turma não encontrada.'; end if;
@@ -668,7 +668,7 @@ create or replace function public.cancelar_encontro_fic(p_id uuid, p_motivo text
 language plpgsql security definer set search_path = public, pg_temp as $$
 declare e public.fic_encontros; eu uuid := public.meu_id(); v_papel text := coalesce(public.meu_papel(), ''); v_prof uuid;
 begin
-  if v_papel not in ('professor_fic', 'coord_geral') then raise exception 'Quem cancela um encontro é o professor do FIC.'; end if;
+  if v_papel not in ('professor_fic', 'coord_geral') then raise exception 'Quem cancela um encontro é o professor do curso FIC.'; end if;
   -- 47: um de cada vez com o pedido de bolsa do professor (mesma trava de solicitar_pagamento)
   select x.professor_id into v_prof from public.fic_encontros x where x.id = p_id;
   if v_prof is not null then perform public.trava_aviso('solicitar_pagamento_' || v_prof::text); end if;

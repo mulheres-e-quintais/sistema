@@ -1,5 +1,5 @@
 /* Mulheres & Quintais — curso FIC: turmas e matrícula da coordenação técnica, das bolsistas e das agentes de campo.
-   O professor do FIC (ou a coordenação geral) cria a turma e matricula; a matrícula preenche
+   O professor do curso FIC (ou a coordenação geral) cria a turma e matricula; a matrícula preenche
    o passo "matrícula no FIC" da habilitação. Mesmas regras do supabase/11_fic.sql. */
 (function () {
   const R = MQ.regras, P = MQ.PAPEIS;
@@ -12,7 +12,7 @@
   const souProf = () => S().eu.papel === 'professor_fic';
   const podeCriarTurma = () => R.podeMatricular(S().eu.papel);
   const podeEditarTurma = t => S().eu.papel === 'coord_geral' || (souProf() && t.professor_id === S().eu.id);   // a turma é de quem dá a aula: o colega matricula nela, mas não altera
-  const podeNaTurma = t => souProf() || S().eu.papel === 'coord_geral';   // qualquer professor do FIC, em qualquer turma (ninguém trava na ausência do outro)
+  const podeNaTurma = t => souProf() || S().eu.papel === 'coord_geral';   // qualquer professor do curso FIC, em qualquer turma (ninguém trava na ausência do outro)
   const deCampo = () => (S().equipe || []).filter(m => m.status === 'ativa' && R.matriculaFIC(m.papel));   // coordenação técnica, bolsistas e agentes
   const professores = () => (S().equipe || []).filter(m => m.status === 'ativa' && m.papel === 'professor_fic');
   const matDe = id => matriculas().find(x => x.equipe_id === id);
@@ -33,7 +33,7 @@
     const avulsas = comMat.filter(m => !matDe(m.id));   // matrícula registrada à mão na habilitação, sem turma no sistema
     const h = souProf() ? 'h2' : 'h1';
     return `<div class="cab${souProf() ? ' cab-sub' : ''}"><div><span class="eyebrow">Curso FIC · IFRN</span><${h}>Turmas e matrículas</${h}>
-        <p>${souProf() ? 'Crie a sua turma e matricule a coordenação técnica, as bolsistas e as agentes de campo. Você também pode matricular nas turmas do outro professor.' : (S().eu.papel === 'coord_geral' ? 'Os professores do FIC criam as turmas e matriculam; a coordenação geral também pode fazer isso aqui.' : 'Só os professores do FIC criam turmas e matriculam a coordenação técnica, as bolsistas e as agentes de campo; aqui a coordenação acompanha.')} A matrícula registrada aqui conta como o passo <b>matrícula no FIC</b> da habilitação: sem ela, a pessoa não recebe bolsa nem faz visita paga.</p></div>
+        <p>${souProf() ? 'Crie a sua turma e matricule a coordenação técnica, as bolsistas e as agentes de campo. Você também pode matricular nas turmas do outro professor.' : (S().eu.papel === 'coord_geral' ? 'Os professores do curso FIC criam as turmas e matriculam; a coordenação geral também pode fazer isso aqui.' : 'Só os professores do curso FIC criam turmas e matriculam a coordenação técnica, as bolsistas e as agentes de campo; aqui a coordenação acompanha.')} A matrícula registrada aqui conta como o passo <b>matrícula no FIC</b> da habilitação: sem ela, a pessoa não recebe bolsa nem faz visita paga.</p></div>
         ${podeCriarTurma() ? '<button class="btn pri" data-acao="fic-turma-nova">+ Nova turma</button>' : ''}</div>
       <div class="eq-kpis" aria-label="Resumo do curso FIC">
         ${U().kpi(turmas().length, null, 'turma' + (turmas().length === 1 ? '' : 's'), 1, { sem: true })}
@@ -108,8 +108,8 @@
     return `<section class="secao" aria-labelledby="t-prof">
       <div class="secao-cab"><div><h2 id="t-prof">Professores do curso FIC</h2><p>IFRN · cadastrados pela coordenação geral · criam as turmas e matriculam a coordenação técnica, as bolsistas e as agentes</p></div></div>
       ${l.map(m => U().cartaoPessoa(m)).join('')}
-      ${l.length >= MQ.regras.MAX_PROFESSORES ? `<p class="small muted vagas-cheias">As ${MQ.regras.MAX_PROFESSORES} vagas de professor do FIC estão ocupadas. Para trocar, desligue um e cadastre o outro.</p>`
-        : U().vagaAberta ? U().vagaAberta(l.length ? `<b>1 professor cadastrado.</b> Falta 1: o projeto tem ${MQ.regras.MAX_PROFESSORES} professores do FIC.` : `Nenhum professor do FIC cadastrado. O projeto tem ${MQ.regras.MAX_PROFESSORES}. Digite os dados ou gere um link para ele preencher.`, souGeral,
+      ${l.length >= MQ.regras.MAX_PROFESSORES ? `<p class="small muted vagas-cheias">As ${MQ.regras.MAX_PROFESSORES} vagas de professor do curso FIC estão ocupadas. Para trocar, desligue um e cadastre o outro.</p>`
+        : U().vagaAberta ? U().vagaAberta(l.length ? `<b>1 professor cadastrado.</b> Falta 1: o projeto tem ${MQ.regras.MAX_PROFESSORES} professores do curso FIC.` : `Nenhum professor do curso FIC cadastrado. O projeto tem ${MQ.regras.MAX_PROFESSORES}. Digite os dados ou gere um link para ele preencher.`, souGeral,
         MQ.botaoAcao({ acao: 'novo', icone: 'capelo', texto: 'Cadastrar professor(a) do FIC', curto: 'Cadastrar', attrs: 'data-papel="professor_fic"' }), 'Vaga aberta') : ''}
     </section>`;
   }

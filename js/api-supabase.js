@@ -20,7 +20,8 @@
     return { data: tudo, error: null };
   }
   const erro = e => {
-    const x = new Error(R.mensagemErro(e)); x.original = e;
+    // mensagens do banco já instalado ainda dizem "professor do FIC": o nome certo é "professor do curso FIC" (12/10/2026)
+    const x = new Error(String(R.mensagemErro(e)).replace(/([Pp]rofessor(?:es|a)?) do FIC/g, '$1 do curso FIC')); x.original = e;
     x.semRede = !navigator.onLine || /Failed to fetch|NetworkError|Load failed|network/i.test(String((e && e.message) || e));
     // auditoria 2 (12/10/2026): prazo estourado não é "sem internet": é falha daquele envio (a fila passa para o próximo)
     x.prazoEsgotado = /o servidor não respondeu em/.test(String((e && e.message) || e));
@@ -523,7 +524,18 @@
     async listarOrientacoesVenda() { const { data, error } = await todas(() => sb.from('orientacoes_venda').select('*', CT).order('feito_em', { ascending: false }).order('id')); if (error) throw erro(error); return data; },
     async registrarOrientacaoVenda(ficha_id, dados) { const { data, error } = await sb.rpc('registrar_orientacao_venda', { p_ficha: ficha_id, p_dados: dados }); if (error) throw erro(error); return data; },
     /* perfis de acompanhamento, MDA e MPA (52_acompanhamento.sql): só contagens */
-    async dadosAcompanhamento(orgao) { const { data, error } = await sb.rpc('acompanhamento_dados', { p_orgao: orgao || null }); if (error) throw erro(error); return data; },
+    async dadosAcompanhamento(orgao) {
+      const { data, error } = await sb.rpc('acompanhamento_dados', { p_orgao: orgao || null }); if (error) throw erro(error);
+      // 60: na tela do MPA, equipe habilitada e diagnósticos esperando, por estado (sem o script, a tela segue sem esses números)
+      if (data && data.orgao === 'mpa' && Array.isArray(data.por_uf)) {
+        try { const r = await sb.rpc('acompanhamento_equipe_uf', { p_orgao: orgao || null });
+          if (!r.error && Array.isArray(r.data)) r.data.forEach(x => { const u = data.por_uf.find(y => y.uf === x.uf); if (u) Object.assign(u, { equipe_campo: x.equipe_campo, habilitadas: x.habilitadas, diag_aguardando: x.diag_aguardando, diag_devolvidos: x.diag_devolvidos }); });
+        } catch (e) {}
+      }
+      return data;
+    },
+    // 60: planilha das fichas ou cópia dos dados baixada → Histórico
+    async registrarPlanilha(tipo, qtd, filtro) { const { error } = await sb.rpc('registrar_planilha', { p_tipo: tipo, p_qtd: qtd, p_filtro: filtro || null }); if (error) throw erro(error); },
     async relatarProblema(x) { const { data, error } = await sb.rpc('relatar_problema', { p_texto: x.texto, p_tela: x.tela || null, p_versao: x.versao || null, p_aparelho: x.aparelho || null }); if (error) throw erro(error); return data; },
     async listarRelatos() { const { data, error } = await sb.rpc('listar_relatos'); if (error) throw erro(error); return data || []; },
     /* 58: só a contagem do que este celular guarda sem enviar (nunca atrapalha: sem o script, só não informa) */

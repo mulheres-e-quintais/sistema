@@ -87,7 +87,7 @@ language plpgsql security definer set search_path = public as $$
 declare e public.fic_encontros; t public.turmas_fic; v_id uuid; m record; eu uuid := public.meu_id(); v_papel text := coalesce(public.meu_papel(), '');
         v_pres uuid[] := coalesce(p_presentes, '{}');
 begin
-  if v_papel not in ('professor_fic', 'coord_geral') then raise exception 'Quem registra os encontros do curso é o professor do FIC.'; end if;
+  if v_papel not in ('professor_fic', 'coord_geral') then raise exception 'Quem registra os encontros do curso é o professor do curso FIC.'; end if;
   select * into t from public.turmas_fic where id = p_turma;
   if t.id is null then raise exception 'Turma não encontrada.'; end if;
   if t.professor_id is null then raise exception 'Esta turma não tem professor(a): ajuste a turma antes.'; end if;
@@ -148,7 +148,7 @@ create or replace function public.cancelar_encontro_fic(p_id uuid, p_motivo text
 language plpgsql security definer set search_path = public as $$
 declare e public.fic_encontros; eu uuid := public.meu_id(); v_papel text := coalesce(public.meu_papel(), '');
 begin
-  if v_papel not in ('professor_fic', 'coord_geral') then raise exception 'Quem cancela um encontro é o professor do FIC.'; end if;
+  if v_papel not in ('professor_fic', 'coord_geral') then raise exception 'Quem cancela um encontro é o professor do curso FIC.'; end if;
   select * into e from public.fic_encontros where id = p_id for update;
   if e.id is null then raise exception 'Encontro não encontrado.'; end if;
   if v_papel = 'professor_fic' and e.professor_id <> eu then raise exception 'Este encontro é de outro(a) professor(a).'; end if;

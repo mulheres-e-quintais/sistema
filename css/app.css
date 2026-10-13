@@ -3349,3 +3349,15 @@ section.secao[data-tab-bloco]:focus-visible { outline-offset: 8px; }
 .abas button[aria-current="page"]:focus-visible { background: color-mix(in srgb, var(--accent) 32%, var(--surface)); }
 .abas-m summary:focus-visible, .abas-m-grade button:focus-visible:not([aria-current="page"]) { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); outline: 2px solid var(--focus); outline-offset: 1px; }
 .pr-falta { display: inline-grid; gap: 2px; justify-items: start; } .pr-falta small { font-size: var(--t-xs); color: var(--ink-2); }
+
+/* ---------- v264: "Baixar planilha" da Seleção com duas opções (sem documentos / completa) ---------- */
+.menu-planilha { position: relative; }
+.menu-planilha > summary { list-style: none; cursor: pointer; }
+.menu-planilha > summary::-webkit-details-marker { display: none; }
+.menu-planilha > summary::after { content: "▾"; margin-left: 6px; font-size: .85em; }
+.menu-planilha[open] > summary::after { content: "▴"; }
+.menu-planilha-op { position: absolute; right: 0; top: calc(100% + 6px); z-index: 15; width: min(360px, calc(100vw - 32px)); display: grid; gap: 8px; padding: 10px;
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r); box-shadow: var(--shadow); }
+.menu-planilha-op .btn { display: grid; justify-items: start; gap: 2px; text-align: left; white-space: normal; width: 100%; }
+.menu-planilha-op .btn small { font: 400 var(--t-sm)/1.35 var(--sans); color: var(--ink-2); }
+@media (max-width: 760px) { .menu-planilha-op { position: static; width: 100%; margin-top: 6px; } }

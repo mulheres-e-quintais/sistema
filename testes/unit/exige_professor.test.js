@@ -1,4 +1,4 @@
-/* 29/09/2026: técnica, bolsistas e agentes só se cadastram com professor do FIC ativo e habilitado (33_exige_professor_fic.sql). */
+/* 29/09/2026: técnica, bolsistas e agentes só se cadastram com professor do curso FIC ativo e habilitado (33_exige_professor_fic.sql). */
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { montar, texto } = require('./telas');
@@ -11,11 +11,11 @@ async function semProfessorHabilitado(t) {
 }
 test('sem professor habilitado: não cadastra agente nem gera link; a tela explica', async () => {
   const t = await montar('coord_geral'); await semProfessorHabilitado(t);
-  await assert.rejects(t.api.criar({ papel: 'agente', uf: 'PE', nome: 'Fulana Agente Teste', cpf: cpfValido(812345671), email: 'fa@t.com', telefone: '(84) 99999-0000', data_inicio: '2026-10-01', consentimento_lgpd: true }), /professor do FIC/);
-  await assert.rejects(t.api.criarConvite('agente', 'PE', null), /professor do FIC/);
+  await assert.rejects(t.api.criar({ papel: 'agente', uf: 'PE', nome: 'Fulana Agente Teste', cpf: cpfValido(812345671), email: 'fa@t.com', telefone: '(84) 99999-0000', data_inicio: '2026-10-01', consentimento_lgpd: true }), /professor do curso FIC/);
+  await assert.rejects(t.api.criarConvite('agente', 'PE', null), /professor do curso FIC/);
   const h = texto(t.painel({ tipo: 'cadastro', papel: 'agente', uf: 'PE' }));
   assert.ok(h.includes('Ainda não dá para cadastrar')); assert.ok(h.includes('falta registrar o cadastro no Arlo e o termo'));
-  assert.ok(texto(t.aba('equipe')).includes('Cadastre e habilite um professor do FIC'));   // 12/10: o aviso virou o "primeiro passo" com os 3 passos
+  assert.ok(texto(t.aba('equipe')).includes('Cadastre e habilite um professor do curso FIC'));   // 12/10: o aviso virou o "primeiro passo" com os 3 passos
   assert.match(texto(t.aba('equipe')), /Primeiro passo · \d de 3/);
 });
 test('professor e auxiliar continuam podendo ser cadastrados; com professor habilitado, o resto libera', async () => {

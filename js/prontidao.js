@@ -75,7 +75,7 @@
     const st = m => !m ? 'vaga aberta' : !R.habilitado(m) ? 'falta habilitar' : (demo || m.user_id) ? 'pronta' : 'ainda não entrou';
     const tec = eq.find(m => m.papel === 'coord_tecnico'), aux = eq.find(m => m.papel === 'auxiliar_adm');
     const profs = eq.filter(m => m.papel === 'professor_fic'), profsHab = profs.filter(m => R.habilitado(m)).length;
-    return `<p class="small pront-coord"><b>Coordenação técnica:</b> ${st(tec)} · <b>Auxiliar:</b> ${st(aux)} · <b>Professores do FIC:</b> ${profs.length ? profsHab + ' de ' + profs.length + ' habilitado' + (profs.length > 1 ? 's' : '') : 'nenhum cadastrado (sem professor habilitado, ninguém da equipe de campo pode ser cadastrado)'}</p>`;
+    return `<p class="small pront-coord"><b>Coordenação técnica:</b> ${st(tec)} · <b>Auxiliar:</b> ${st(aux)} · <b>Professores do curso FIC:</b> ${profs.length ? profsHab + ' de ' + profs.length + ' habilitado' + (profs.length > 1 ? 's' : '') : 'nenhum cadastrado (sem professor habilitado, ninguém da equipe de campo pode ser cadastrado)'}</p>`;
   }
   /* mesma cara do quadro "Bolsistas por estado" da aba Equipe: tabela no computador, cartões no celular */
   const barra = (n, de, sub, rot) => { const pc = de ? Math.min(100, Math.round(n / de * 100)) : 0;
@@ -180,6 +180,7 @@
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
     a.download = 'copia_mulheres_e_quintais_' + R.hoje() + '.xlsx'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
     const total = abas.reduce((t, [, l]) => t + Math.max(0, l.length - 1), 0);
+    if (S().api && S().api.registrarPlanilha) Promise.resolve().then(() => S().api.registrarPlanilha('copia_dados', total, null)).catch(() => {});   // 60: fica no Histórico
     if (MQ.ui.toast) MQ.ui.toast('Cópia baixada: ' + total + ' registros em ' + abas.length + ' abas. Ela tem CPF e endereço: guarde num lugar seguro.');
   }
 

@@ -38,11 +38,11 @@ describe('Prontidão para o campo', () => {
     const d = P.porUF(uf);
     assert.ok(d.eq >= 1 && d.hab <= d.eq && d.fichas >= 0 && d.prox >= 0);
     const h = texto(t.aba('visao'));
-    assert.match(h, /Coordenação técnica:/); assert.match(h, /Professores do FIC:/);
+    assert.match(h, /Coordenação técnica:/); assert.match(h, /Professores do curso FIC:/);
   });
   test('a técnica não vê a linha da coordenação (só a geral)', async () => {
     const t = await montar('coord_tecnico');
-    assert.doesNotMatch(texto(t.aba('campo')), /Professores do FIC:/);
+    assert.doesNotMatch(texto(t.aba('campo')), /Professores do curso FIC:/);
   });
 });
 

@@ -9,7 +9,7 @@
 --   não dá para multiplicar), 50 agentes de campo (10 por estado),
 --   1.395 fichas de mulheres (1.000 selecionadas e aprovadas, 200 por estado; e mais lista de espera, sem água,
 --   não atende, aguardando e devolvida), 4.000 visitas feitas e 1.000 diagnósticos com plano aprovado.
---   Se ainda não houver: 2 professores do FIC habilitados, 1 auxiliar administrativo e 1 coordenação técnica.
+--   Se ainda não houver: 2 professores do curso FIC habilitados, 1 auxiliar administrativo e 1 coordenação técnica.
 --
 -- ATENÇÃO: isto é 5 vezes o plano de trabalho (200 quintais, 40 por estado). As telas vão mostrar "1.000 de 200" e
 -- metas em 500%, e as travas de vagas por estado e de dias de campo recusam registro novo enquanto estes dados
@@ -50,7 +50,7 @@ do $$ begin
   end if;
 end $$;
 
--- professores do FIC (habilitados) e auxiliar administrativo: só se ainda não houver
+-- professores do curso FIC (habilitados) e auxiliar administrativo: só se ainda não houver
 do $$ begin
   if not exists (select 1 from public.equipe where papel = 'professor_fic' and status = 'ativa' and docs_funcern_em is not null and termo_assinado_em is not null) then
     insert into public.equipe (id, papel, uf, nome, cpf, email, telefone, municipio, organizacao, data_inicio, consentimento_lgpd, status, docs_funcern_em, termo_assinado_em) values

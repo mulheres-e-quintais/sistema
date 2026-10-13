@@ -186,7 +186,7 @@ describe('mensagemErro: nada de texto técnico na tela', () => {
   test('mensagemParaTela: o que a API já traduziu (e.original) e as regras da demonstração (e.regra) passam; o resto é traduzido; nunca vazio', () => {
     const jaTraduzido = Object.assign(new Error('Você já solicitou este mês.'), { original: { code: '23505' } });
     assert.equal(R.mensagemParaTela(jaTraduzido), 'Você já solicitou este mês.');
-    assert.equal(R.mensagemParaTela(Object.assign(new Error('Só o professor do FIC confirma o acesso ao AVA.'), { regra: true })), 'Só o professor do FIC confirma o acesso ao AVA.');
+    assert.equal(R.mensagemParaTela(Object.assign(new Error('Só o professor do curso FIC confirma o acesso ao AVA.'), { regra: true })), 'Só o professor do curso FIC confirma o acesso ao AVA.');
     assert.equal(R.mensagemParaTela(new TypeError('x.y is not a function')), GENERICA);
     for (const e of [undefined, { code: '500' }, 'undefined', Object.assign(new Error(''), { original: { code: 'P0001', message: '' } }), Object.assign(new Error('[object Object]'), { original: {} })]) {
       const m = R.mensagemParaTela(e); assert.ok(m && !/undefined|null|\[object/.test(m), JSON.stringify(e) + ' → ' + m);

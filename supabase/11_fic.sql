@@ -8,7 +8,7 @@
 --   * Novo perfil: professor(a) do curso FIC (IFRN, sem estado). Só a coordenação geral cadastra,
 --     à mão ou por link de convite. Tem os mesmos dados pessoais e bancários das bolsistas.
 --   * Habilitação do professor: documentos na FUNCERN e termo (não se matricula no FIC).
---   * Só os professores do FIC criam turmas e matriculam bolsistas e agentes de campo (qualquer um
+--   * Só os professores do curso FIC criam turmas e matriculam bolsistas e agentes de campo (qualquer um
 --     deles, em qualquer turma, para ninguém ficar travado na ausência do outro). A matrícula preenche
 --     a "matrícula no FIC" da habilitação; ninguém mais altera esse passo.
 --   * O professor vê da equipe só o necessário para matricular (nome, função, estado, município
@@ -147,7 +147,7 @@ create trigger turmas_fic_auditoria after insert or update on public.turmas_fic 
 drop trigger if exists matriculas_fic_auditoria on public.matriculas_fic;
 create trigger matriculas_fic_auditoria after insert or update on public.matriculas_fic for each row execute function public.auditar();
 
--- quem matricula: sempre um professor do FIC (qualquer um deles, em qualquer turma)
+-- quem matricula: sempre um professor do curso FIC (qualquer um deles, em qualquer turma)
 create or replace function public.pode_matricular(p_turma uuid) returns boolean
 language sql stable security definer set search_path = public as $$
   select coalesce(public.meu_papel(), '') = 'professor_fic' and exists (select 1 from public.turmas_fic t where t.id = p_turma);

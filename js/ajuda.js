@@ -88,7 +88,7 @@
     },
     equipe: {
       t: 'Equipe',
-      intro: 'Cadastro de todas as pessoas do projeto: coordenação técnica, auxiliar administrativo, professores do FIC, bolsistas por estado e agentes de campo.',
+      intro: 'Cadastro de todas as pessoas do projeto: coordenação técnica, auxiliar administrativo, professores do curso FIC, bolsistas por estado e agentes de campo.',
       tarefas: [
         ['Cadastrar pelo link (recomendado)', ['Na aba <b>Equipe</b>, toque na vaga ou em <b>Cadastrar</b>.', 'Toque em <b>Gerar link de cadastro</b>.', 'Toque em <b>Enviar pelo WhatsApp</b> e escolha a pessoa.', 'Quando ela enviar, abra <b>Cadastros enviados pelo link</b>.', 'Confira os dados e toque em <b>Conferir e cadastrar</b> → <b>Cadastrar</b>.']],
         ['Cadastrar digitando', ['Toque na vaga ou em <b>Cadastrar</b> → <b>Digitar os dados agora</b>.', 'Preencha nome, CPF, celular e e-mail.', 'Responda se a pessoa já tem cadastro no Arlo e, para quem vai a campo, o perfil no campo.', 'Marque a ciência sobre o uso dos dados.', 'Toque em <b>Cadastrar</b>.']],
@@ -105,10 +105,10 @@
         'Cadastros que chegam pelo link aparecem em <b>Cadastros enviados pelo link</b>. Abra, confira, complete e salve: ao salvar, o cadastro é aprovado.',
         'Na ficha da pessoa ficam a <b>habilitação</b> (FIC, Arlo e termo), a <b>leitura do guia</b> e o <b>perfil no campo</b>. O botão <b>Hoje</b> preenche a data do dia.',
         '<b>Desligar</b> não apaga o cadastro: a vaga fica livre para a substituta e o histórico guarda quem desligou, quando e por quê.',
-        '<b>Acompanhamento externo:</b> quem acompanha pelo MDA ou pelo MPA entra numa área própria, só de leitura e só com números. Não vê nome, CPF, endereço, pagamento nem a equipe. O MDA vê o projeto inteiro, sem parte financeira; o MPA vê o andamento em cada estado. Os números são ao vivo e não contam os dados de exemplo.'
+        '<b>Acompanhamento externo:</b> quem acompanha pelo MDA ou pelo MPA entra numa área própria, só de leitura e só com números. Não vê nome, CPF, endereço, pagamento nem a equipe. O MDA vê o projeto inteiro, sem parte financeira; o MPA vê o andamento em cada estado, inclusive quantas pessoas da equipe de campo já estão habilitadas e quantos diagnósticos esperam a aprovação da coordenação. Os números são ao vivo e não contam os dados de exemplo.'
       ],
       duvidas: [
-        ['Quem cadastra quem?', 'A coordenação geral cadastra a coordenação técnica, os professores do FIC e o auxiliar, e pode cadastrar todos os outros. A coordenação técnica cadastra bolsistas e agentes.'],
+        ['Quem cadastra quem?', 'A coordenação geral cadastra a coordenação técnica, os professores do curso FIC e o auxiliar, e pode cadastrar todos os outros. A coordenação técnica cadastra bolsistas e agentes.'],
         ['A pessoa perdeu o código ou ele venceu.', 'Abra a ficha dela e gere outro. O anterior deixa de valer na hora.'],
         ['A pessoa esqueceu a senha.', 'Quando ela toca em "Esqueci a senha" na entrada, o pedido aparece na aba <b>Equipe</b> (com número na aba), em "Pedidos de novo acesso". Só a coordenação geral resolve: abra a ficha, toque em "Liberar novo primeiro acesso" (confirme) e mande o código pelo WhatsApp do cadastro. A senha antiga é apagada; os dados não mudam. Se a pessoa não sabe do pedido, descarte.'],
         ['Errei o CPF.', 'CPF e estado não mudam depois de salvos. Desligue o cadastro errado e faça um novo.'],
@@ -121,7 +121,7 @@
       intro: 'Cada mulher indicada pela comunidade tem uma ficha de indicação, preenchida pela bolsista do estado, com os critérios do edital e o termo de consentimento. Aqui a coordenação aprova ou devolve.',
       tarefas: [
         ['Aprovar ou devolver uma ficha', ['Na aba <b>Seleção</b>, abra uma ficha que aguarda.', 'Confira dados, critérios e a foto do termo assinado.', 'Toque em <b>Aprovar</b>, ou escreva o que corrigir e toque em <b>Devolver para correção</b>.']],
-        ['Baixar as fichas', ['Toque em <b>Baixar CSV</b>.', 'Abra o arquivo no Excel ou no Google Planilhas.']]
+        ['Baixar a planilha das fichas', ['Use os filtros, se quiser só parte das fichas (a planilha segue o filtro da tela).', 'Toque em <b>Baixar planilha</b> e escolha: <b>Sem documentos</b> (nome, local, celular, endereço e situação, para entregar o kit e falar com as mulheres) ou <b>Completa</b> (com CPF, NIS, CAF e data de nascimento, só para conferir documentos).', 'Abra no Excel ou no Google Planilhas. Guarde em pasta restrita e não mande a completa por WhatsApp: cada planilha baixada fica registrada no Histórico.']]
       ],
       passos: [
         'A tabela mostra, por estado, as fichas lançadas e a situação: <b>selecionadas aprovadas</b> (as que ocupam as 40 vagas), <b>lista de espera</b>, <b>sem água</b>, <b>não atende</b> e as que <b>aguardam</b> decisão.',
@@ -169,7 +169,7 @@
         ['Confirmar o acesso ao AVA', ['Em <b>Acesso ao AVA no mês</b>, confira o mês (use ‹ › para mudar).', 'Marque quem entrou e fez as atividades. Salva na hora.']]
       ],
       passos: [
-        'Os professores do FIC criam as turmas e matriculam, em qualquer turma. A coordenação geral também pode.',
+        'Os professores do curso FIC criam as turmas e matriculam, em qualquer turma. A coordenação geral também pode.',
         'Para matricular: abra a turma, toque em <b>+ Matricular</b>, escolha a pessoa, informe o número da matrícula (SUAP) e a data.',
         'Turma de um estado só aceita gente daquele estado. Turma "vários estados" aceita todos.',
         'Em <b>Acesso ao AVA no mês</b>, marque quem entrou no curso e fez as atividades. Use ‹ › para mudar o mês.'
@@ -177,7 +177,7 @@
       duvidas: [
         ['Professor e auxiliar se matriculam?', 'Não. A habilitação deles é cadastro no Arlo e termo de compromisso.'],
         ['Matriculei errado.', 'Para corrigir número ou data, matricule de novo na mesma turma. Para trocar de turma, cancele antes (com motivo).'],
-        ['Marquei o AVA por engano.', 'Toque de novo para desmarcar. Só professores do FIC e a coordenação geral marcam.']
+        ['Marquei o AVA por engano.', 'Toque de novo para desmarcar. Só professores do curso FIC e a coordenação geral marcam.']
       ]
     },
     pagamentos: {
@@ -364,7 +364,7 @@
           '<b>Apoio estadual:</b> cuida da logística, da coleta e organização das informações, dos registros das ações e do monitoramento.']],
         ['Passo a passo para começar', [
           '<b>Enviar os dados:</b> nome completo, CPF e e-mail, repassados pela coordenação técnica.',
-          '<b>Matrícula no curso FIC:</b> os professores do FIC fazem a matrícula e enviam o acesso ao AVA e a declaração de matrícula. A bolsa só pode ser paga a estudantes do IFRN, por isso o curso.',
+          '<b>Matrícula no curso FIC:</b> os professores do curso FIC fazem a matrícula e enviam o acesso ao AVA e a declaração de matrícula. A bolsa só pode ser paga a estudantes do IFRN, por isso o curso.',
           '<b>Cadastro na FUNCERN:</b> entregue os documentos pedidos pela fundação, com conta bancária ou chave Pix no seu nome (informe em <b>Meus dados</b>, no alto da tela).',
           '<b>Início das atividades:</b> com matrícula e cadastro prontos, a bolsa conta a partir do início da execução do projeto.']],
         ['Como é o pagamento', [
@@ -387,7 +387,7 @@
           'Se você já recebe outra bolsa, avise a coordenação antes de se cadastrar.']],
         ['Com quem falar', [
           'Fale primeiro com a <b>coordenação técnica</b> do projeto.',
-          'Se ela não puder resolver: <b>coordenação geral</b> para questões gerais do projeto; <b>professores do FIC</b> para matrícula, curso e acesso ao AVA; <b>auxiliar administrativo</b> para documentos, conta ou Pix e pagamento.']]
+          'Se ela não puder resolver: <b>coordenação geral</b> para questões gerais do projeto; <b>professores do curso FIC</b> para matrícula, curso e acesso ao AVA; <b>auxiliar administrativo</b> para documentos, conta ou Pix e pagamento.']]
       ],
       rodape: 'Realização: Subsecretaria de Mulheres Rurais · IFRN · FUNCERN'
     },
@@ -417,12 +417,12 @@
         ['Com quem falar', [
           'Agenda das visitas: a <b>bolsista do estado</b>.',
           'Dúvidas do trabalho: a <b>coordenação técnica</b>.',
-          'Curso e AVA: os <b>professores do FIC</b>. Documentos, conta ou Pix e pagamento: o <b>auxiliar administrativo</b>.']]
+          'Curso e AVA: os <b>professores do curso FIC</b>. Documentos, conta ou Pix e pagamento: o <b>auxiliar administrativo</b>.']]
       ],
       rodape: 'Realização: Subsecretaria de Mulheres Rurais · IFRN · FUNCERN'
     },
     professor_fic: {
-      t: 'Sua tela (professor do FIC)',
+      t: 'Sua tela (professor do curso FIC)',
       intro: 'Turmas do curso FIC, matrículas da coordenação técnica, das bolsistas e das agentes de campo e a confirmação mensal do acesso ao AVA.',
       tarefas: [
         ['Matricular alunas', ['No topo, toque em <b>Matricular alunas</b>.', 'Na turma, toque em <b>+ Matricular</b> (se não houver turma, crie em <b>+ Nova turma</b>).', 'Marque as pessoas, digite o número do SUAP e toque em <b>Salvar</b>.']],

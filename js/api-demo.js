@@ -278,6 +278,14 @@
       d.orientacoesVenda.push(o); gravar(d); return o.id;
     },
     /* perfis de acompanhamento (mesmas regras do 52_acompanhamento.sql): só contagens; na demonstração os dados de exemplo entram na conta */
+    async registrarPlanilha(tipo, qtd, filtro) {   // 60: igual ao banco
+      const d = ler(); const eu = euMesmo();
+      if (!eu || !['coord_geral', 'coord_tecnico'].includes(eu.papel)) throw falha('Só a coordenação baixa as planilhas das fichas.');
+      if (!['completa', 'sem_documentos', 'copia_dados'].includes(tipo)) throw falha('Tipo de planilha inválido.');
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'planilhas', registro_id: null, acao: 'PLANILHA', por: eu.id, em: new Date().toISOString(), antes: null,
+        depois: { tipo, qtd: +qtd || 0, filtro: String(filtro || '').trim().slice(0, 200) || null } });
+      gravar();
+    },
     async dadosAcompanhamento(orgao) {
       const d = ler(); const eu = euMesmo(); let org = eu && eu.observador ? eu.orgao : null;
       if (!org) { if (eu && ['coord_geral', 'coord_tecnico'].includes(eu.papel) && ['mda', 'mpa'].includes(orgao)) org = orgao; else throw falha('Acesso restrito ao acompanhamento do projeto.'); }
@@ -678,7 +686,7 @@
     },
     async salvarEncontroFic(x) {
       const d = ler(); const eu = euMesmo(); d.ficEncontros = d.ficEncontros || []; d.ficPresencas = d.ficPresencas || [];
-      if (!eu || !['professor_fic', 'coord_geral'].includes(eu.papel)) throw falha('Quem registra os encontros do curso é o professor do FIC.');
+      if (!eu || !['professor_fic', 'coord_geral'].includes(eu.papel)) throw falha('Quem registra os encontros do curso é o professor do curso FIC.');
       const t = (d.turmas || []).find(y => y.id === x.turma_id);
       if (!t) throw falha('Turma não encontrada.');
       if (!t.professor_id) throw falha('Esta turma não tem professor(a): ajuste a turma antes.');
@@ -730,7 +738,7 @@
     },
     async cancelarEncontroFic(id, motivo) {
       const d = ler(); const eu = euMesmo(); const e = (d.ficEncontros || []).find(y => y.id === id);
-      if (!eu || !['professor_fic', 'coord_geral'].includes(eu.papel)) throw falha('Quem cancela um encontro é o professor do FIC.');
+      if (!eu || !['professor_fic', 'coord_geral'].includes(eu.papel)) throw falha('Quem cancela um encontro é o professor do curso FIC.');
       if (!e) throw falha('Encontro não encontrado.');
       if (eu.papel === 'professor_fic' && e.professor_id !== eu.id) throw falha('Este encontro é de outro(a) professor(a).');
       if (e.cancelado_em) throw falha('Este encontro já foi cancelado.');
@@ -749,7 +757,7 @@
     },
     async salvarTurma(t) {
       const d = ler(); const eu = euMesmo();
-      if (!eu || !R.podeMatricular(eu.papel)) throw falha('Só os professores do FIC criam turmas.');
+      if (!eu || !R.podeMatricular(eu.papel)) throw falha('Só os professores do curso FIC criam turmas.');
       if (!d.equipe.some(m => m.id === t.professor_id && m.papel === 'professor_fic' && m.status === 'ativa')) throw falha('A turma precisa de um(a) professor(a) do FIC ativo(a).');
       if (String(t.nome || '').trim().length < 3) throw falha('Dê um nome à turma.');
       if (t.inicio && t.fim && t.fim < t.inicio) throw falha('O fim da turma é antes do início.');
@@ -826,7 +834,7 @@
     async marcarEntrega(equipe_id, mes, item, marcar) {
       const d = ler(); const eu = euMesmo(); d.entregas = d.entregas || [];
       if (item === 'presenca' && (!eu || eu.id !== equipe_id)) throw falha('Só a própria bolsista marca a lista de presença.');
-      if (item === 'ava' && (!eu || !['professor_fic', 'coord_geral'].includes(eu.papel))) throw falha('Só o professor do FIC confirma o acesso ao AVA.');
+      if (item === 'ava' && (!eu || !['professor_fic', 'coord_geral'].includes(eu.papel))) throw falha('Só o professor do curso FIC confirma o acesso ao AVA.');
       if (marcar) {   // 32: nada antes do mês de início (e o AVA, antes da matrícula no FIC)
         const p = d.equipe.find(x => x.id === equipe_id) || {}; const m7 = String(mes).slice(0, 7);
         if (p.data_inicio && m7 < String(p.data_inicio).slice(0, 7)) throw falha((p.nome_social || p.nome) + ' começou no projeto em ' + String(p.data_inicio).slice(5, 7) + '/' + String(p.data_inicio).slice(0, 4) + ': não há entrega antes desse mês.');
@@ -1186,7 +1194,7 @@
       const ativa = d.equipe.find(m => m.status === 'ativa' && m.papel === papel && (papel === 'coord_tecnico' || (R.ehBolsista(papel) && m.uf === uf)));
       if (ativa && papel !== 'agente') throw falha(papel === 'coord_tecnico' ? 'Já há coordenação técnica ativa. Desligue antes de convidar outra.' : 'Esta vaga já está ocupada no estado.');
       if (papel === 'auxiliar_adm' && d.equipe.some(m => m.status === 'ativa' && m.papel === 'auxiliar_adm')) throw falha('Já há auxiliar administrativo ativo. Desligue antes de convidar outro.');
-      if (papel === 'professor_fic' && d.equipe.filter(m => m.status === 'ativa' && m.papel === 'professor_fic').length >= R.MAX_PROFESSORES) throw falha('O projeto tem no máximo 2 professores do FIC ativos. Desligue um antes de convidar outro.');   // 50
+      if (papel === 'professor_fic' && d.equipe.filter(m => m.status === 'ativa' && m.papel === 'professor_fic').length >= R.MAX_PROFESSORES) throw falha('O projeto tem no máximo 2 professores do curso FIC ativos. Desligue um antes de convidar outro.');   // 50
       const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
       d.convites = (d.convites || []).concat([{ id: uid(), token, papel, uf: ['coord_tecnico', 'professor_fic', 'auxiliar_adm'].includes(papel) ? null : uf, substitui_id: subst || null, criado_por: eu.id,
         criado_em: new Date().toISOString(), expira_em: new Date(Date.now() + 7 * 864e5).toISOString(), usado_em: null }]);

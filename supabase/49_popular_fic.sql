@@ -29,7 +29,7 @@ begin
     raise exception 'A equipe de exemplo não está ativa (bolsistas e agentes desligados). Nada mudou.';
   end if;
   if not exists (select 1 from public.equipe where papel = 'professor_fic' and status = 'ativa') then
-    raise exception 'Não há professor do FIC ativo. Nada mudou.';
+    raise exception 'Não há professor do curso FIC ativo. Nada mudou.';
   end if;
 end $$;
 

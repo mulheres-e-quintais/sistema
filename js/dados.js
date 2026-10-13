@@ -20,7 +20,7 @@ MQ.PROJETO = {
 
 /* Modelos do termo: a pessoa baixa, preenche com os dados dela, assina e anexa no próprio cadastro.
    São dois, porque são documentos diferentes (decisão de 02/10/2026):
-   - servidor: servidores do IFRN (professores do FIC e auxiliar administrativo) usam o termo de autorização de participação
+   - servidor: servidores do IFRN (professores do curso FIC e auxiliar administrativo) usam o termo de autorização de participação
      em programa gerenciado pela FUNCERN (Anexo I da Portaria 017/2017 – SUP/FUNCERN), com parecer da chefia e da direção-geral
      (o auxiliar só conta como servidor se tiver matrícula SIAPE no cadastro: R.tipoTermo);
    - bolsista: coordenação técnica, bolsistas e agentes de campo (MPA, não são servidores) usam o termo de compromisso do projeto.
@@ -55,7 +55,7 @@ MQ.PAPEIS = {
                    faz: 'Faz as visitas de diagnóstico, implantação e acompanhamento nos quintais atribuídos a ela, com ajuda de custo por dia de campo.' },
   auxiliar_adm:  { nome: 'Auxiliar administrativo', curto: 'Auxiliar adm.', bolsa: 1200, org: 'IFRN',
                    faz: 'Cadastra a equipe no Arlo (FUNCERN) e registra no sistema o cadastro no Arlo e o termo de compromisso assinado.' },
-  professor_fic: { nome: 'Professor(a) do curso FIC', curto: 'Professor FIC', bolsa: 2200, org: 'IFRN',
+  professor_fic: { nome: 'Professor(a) do curso FIC', curto: 'Professor do curso FIC', bolsa: 2200, org: 'IFRN',
                    faz: 'Dá as aulas do curso FIC e registra no sistema as turmas e a matrícula da coordenação técnica, das bolsistas e das agentes de campo.' }
 };
 

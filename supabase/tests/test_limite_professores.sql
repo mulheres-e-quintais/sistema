@@ -1,6 +1,6 @@
 -- roda na MESMA sessão do psql, depois do test_cadastro_equipe.sql (usa :G, :T, t(), f(), ins(), cpf_t()):
 --   psql -d teste -f tests/test_cadastro_equipe.sql -f tests/test_limite_professores.sql
--- 50_limite_professores.sql: no máximo 2 professores do FIC ativos (cadastro direto e link de cadastro).
+-- 50_limite_professores.sql: no máximo 2 professores do curso FIC ativos (cadastro direto e link de cadastro).
 -- Os testes antigos foram escritos quando não havia limite e criam vários professores: a suíte começa tirando os dois
 -- gatilhos do 50 (drop trigger equipe_limite_professores / convites_limite_professores) e este arquivo os recoloca só aqui dentro.
 -- Tudo acontece numa transação desfeita no fim: não muda nada para os testes que vêm depois.

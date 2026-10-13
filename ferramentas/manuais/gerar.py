@@ -134,7 +134,7 @@ A(tela('equipe_estados', 'Equipe: bolsistas por estado e agentes de campo', [
     (1, 'Botão de cadastro', 'Aparece na vaga aberta: Cadastrar articulação, Cadastrar apoio ou Cadastrar substituta.'), (2, 'Cartão da pessoa', 'Mostra a situação da habilitação e o resumo do trabalho. Toque para abrir a ficha.'), (3, 'Seleção no estado', 'Quantas das 40 vagas já têm mulher selecionada e aprovada.'), (4, 'Adicionar agente', 'Cadastra uma agente de campo no estado.')]))
 A(passos('cadastrar pelo link (recomendado)', ['Toque no botão de cadastro da vaga, por exemplo ' + b('Cadastrar articulação', 'pessoa_mais') + '.', 'Toque em <b class="bt">Gerar link de cadastro</b>.', 'Toque em <b class="bt">Enviar pelo WhatsApp</b> e escolha a pessoa.', 'Quando ela enviar, abra <b class="bt">Cadastros enviados pelo link</b>.', 'Confira e toque em <b class="bt">Conferir e cadastrar</b>.'], 'A pessoa passa a ocupar a vaga. Falta mandar o acesso.'))
 A(passos('cadastrar digitando', ['Toque no botão de cadastro da vaga e escolha <b class="bt">Digitar os dados agora</b>.', 'Preencha nome, CPF, celular e e-mail.', 'Marque a ciência da pessoa sobre o uso dos dados.', 'Toque em <b class="bt">Cadastrar</b>.'], 'A pessoa aparece na vaga, com a habilitação pendente.'))
-A(caixa('importante', 'Antes de cadastrar coordenação técnica, bolsista ou agente, é preciso haver um professor do FIC cadastrado e habilitado.'))
+A(caixa('importante', 'Antes de cadastrar coordenação técnica, bolsista ou agente, é preciso haver um professor do curso FIC cadastrado e habilitado.'))
 A(tela('equipe_ficha', 'Ficha de uma pessoa da equipe', [
     (1, 'Tirar foto e Trocar foto', 'Tira a foto da pessoa na hora, pela câmera, ou escolhe uma foto do aparelho.'), (2, 'Passos da habilitação', 'Dados, matrícula no FIC, cadastro no Arlo e termo. O que falta aparece como pendente.'), (3, 'Registrar passos da habilitação', 'Abre os campos de data de cada passo.'), (4, 'Hoje', 'Preenche a data do dia.')]))
 A(passos('mandar o acesso para a pessoa', ['Abra a ficha da pessoa.', 'Toque em <b class="bt">Gerar código de acesso</b>.', 'Toque em <b class="bt">Mandar por WhatsApp</b>.'], 'A pessoa recebe o endereço, o e-mail e o código para o primeiro acesso.'))
@@ -149,7 +149,7 @@ A(sec('Seleção das mulheres'))
 A(serve('Reúne as fichas de indicação dos cinco estados. A coordenação técnica aprova ou devolve cada ficha antes do diagnóstico.'))
 A(acesso(['Abas', 'Gestão', 'Seleção'], 'coordenação técnica e coordenação geral.'))
 A(tela('selecao', 'Seleção das beneficiárias', [
-    (1, 'Baixar CSV', 'Baixa as fichas para abrir no Excel ou no Google Planilhas.'), (2, 'Tabela por estado', 'Total de fichas e como elas se repartem. Só a coluna Selecionadas ocupa vaga.'), (3, 'Para você aprovar', 'Fichas esperando a sua decisão. A faixa âmbar indica tarefa pendente.'), (4, 'Todas as fichas', 'Abre a lista completa.')]))
+    (1, 'Baixar planilha', 'Baixa as fichas da tela para o Excel ou o Google Planilhas: sem documentos (para entregar o kit e falar com as mulheres) ou completa (com CPF, NIS, CAF e nascimento). Cada planilha baixada fica no Histórico.'), (2, 'Tabela por estado', 'Total de fichas e como elas se repartem. Só a coluna Selecionadas ocupa vaga.'), (3, 'Para você aprovar', 'Fichas esperando a sua decisão. A faixa âmbar indica tarefa pendente.'), (4, 'Todas as fichas', 'Abre a lista completa.')]))
 A(tela('selecao_ficha', 'Ficha de indicação aberta', [
     (1, 'Situação', 'Resultado da seleção e situação da aprovação.'), (2, 'Identificação', 'Dados da mulher e quem lançou a ficha.'), (3, 'Termo de consentimento', 'O que ela autorizou: dados, imagem e voz, crianças nas fotos.'), (4, 'Critérios obrigatórios', 'Os critérios do edital, um a um.')]))
 A(passos('aprovar ou devolver uma ficha', ['Em Para você aprovar, toque na ficha.', 'Confira os dados, os critérios e a foto do termo assinado.', 'No fim da ficha, toque em <b class="bt">Aprovar</b>. Ou escreva o que corrigir e toque em <b class="bt">Devolver para correção</b>.'], 'A ficha aprovada libera o agendamento do diagnóstico. A devolvida volta para a bolsista corrigir.'))
@@ -171,7 +171,7 @@ A(caixa('importante', 'Quem agenda a visita é a bolsista do estado, na tela del
 
 A(sec('Curso FIC'))
 A(serve('Controla as turmas do curso FIC do IFRN, as matrículas, os encontros com lista de presença e o acesso mensal ao AVA.'))
-A(acesso(['Abas', 'Execução', 'Curso FIC'], 'coordenação geral. O professor do FIC faz o mesmo na tela dele (capítulo [[N:Professor(a) do curso FIC]]).'))
+A(acesso(['Abas', 'Execução', 'Curso FIC'], 'coordenação geral. O professor do curso FIC faz o mesmo na tela dele (capítulo [[N:Professor(a) do curso FIC]]).'))
 A(tela('fic', 'Curso FIC: turmas, matrículas, encontros e AVA', [
     (1, '+ Nova turma', 'Cria uma turma, com estado e datas.'), (2, '+ Matricular', 'Matricula pessoas na turma, com o número do SUAP.'), (3, 'Registrar encontro', 'Lança data, carga horária, conteúdo e presença.'), (4, 'Acesso ao AVA no mês', 'Marca quem entrou no AVA e fez as atividades.')]))
 A(p('O passo a passo de cada tarefa está no capítulo [[L:Professor(a) do curso FIC]].'))
@@ -279,14 +279,14 @@ A(fimcap())
 A(cap('Professor(a) do curso FIC', 'Turmas, matrículas, encontros, presença e acesso ao AVA.'))
 A(sec('A sua tela'))
 A(serve('Reúne as turmas do curso FIC, as matrículas, os encontros e a confirmação mensal do acesso ao AVA.'))
-A(acesso(['Entrar no sistema'], 'professores do FIC. A coordenação geral faz o mesmo pela aba Curso FIC.'))
-A(tela('professor', 'Tela do professor do FIC', [(1, 'Matricular alunas', 'Leva às turmas e matrículas.'), (2, 'Registrar encontro e presença', 'Leva aos encontros do curso.'), (3, 'Confirmar acesso ao AVA', 'Leva ao quadro do AVA do mês.'), (4, 'Pedir a minha bolsa', 'Leva ao pedido da bolsa.'), (5, '+ Nova turma', 'Cria uma turma.')]))
+A(acesso(['Entrar no sistema'], 'professores do curso FIC. A coordenação geral faz o mesmo pela aba Curso FIC.'))
+A(tela('professor', 'Tela do professor do curso FIC', [(1, 'Matricular alunas', 'Leva às turmas e matrículas.'), (2, 'Registrar encontro e presença', 'Leva aos encontros do curso.'), (3, 'Confirmar acesso ao AVA', 'Leva ao quadro do AVA do mês.'), (4, 'Pedir a minha bolsa', 'Leva ao pedido da bolsa.'), (5, '+ Nova turma', 'Cria uma turma.')]))
 A(passos('criar uma turma', ['Toque em <b class="bt">+ Nova turma</b>.', 'Dê o nome, o estado (ou vários estados) e as datas.', 'Toque em <b class="bt">Criar turma</b>.'], 'A turma aparece em Suas turmas.'))
 A(passos('matricular', ['Na turma, toque em <b class="bt">+ Matricular</b>.', 'Marque as pessoas e digite o número da matrícula no SUAP de cada uma.', 'Confira a data e toque em <b class="bt">Salvar</b>.'], 'A matrícula conta como um passo da habilitação da pessoa.'))
 A(passos('registrar um encontro e a presença', ['Toque em ' + b('Registrar encontro', 'calendario') + '.', 'Escolha a turma e informe a data, a carga horária (até 12 horas no dia) e a modalidade.', 'Escreva o que foi trabalhado.', 'Marque quem participou.', 'Toque em <b class="bt">Registrar encontro</b>.'], 'O encontro entra no relatório do mês. Cada aluna confirma a própria presença na tela dela.'))
 A(passos('confirmar o acesso ao AVA', ['Em Acesso ao AVA no mês, confira o mês.', 'Marque quem entrou e fez as atividades.'], 'Salva na hora. É uma das entregas do mês das bolsistas.'))
 A(caixa('atencao', 'Encontro lançado por engano não é apagado: abra e toque em <b>Cancelar encontro</b>. Mês sem encontro só é aceito com justificativa.'))
-A(caixa('importante', 'O projeto tem no máximo 2 professores do FIC ativos.'))
+A(caixa('importante', 'O projeto tem no máximo 2 professores do curso FIC ativos.'))
 A(fimcap())
 
 # =========================== 8. AUXILIAR ===========================
@@ -320,7 +320,7 @@ A(tabela(['Parte da tela', 'O que mostra'], [
 ]))
 A(sec('A tela do MPA'))
 A(serve('O andamento no território: cada estado, a equipe de campo, a formação e o que pede atenção.'))
-A(tela('acomp_mpa', 'Acompanhamento: tela do MPA', [(1, 'Atualizar agora', 'Busca os números de novo.'), (2, 'Números do alto', 'Selecionadas, comunidades, equipe de campo e visitas feitas, agendadas e atrasadas.'), (3, 'Estado por estado', 'Um cartão por estado, com as metas do estado, a equipe e as comunidades.'), (4, 'O que pede atenção', 'Visitas com a data vencida, equipe incompleta, casos sem água e lista de espera.')]))
+A(tela('acomp_mpa', 'Acompanhamento: tela do MPA', [(1, 'Atualizar agora', 'Busca os números de novo.'), (2, 'Números do alto', 'Selecionadas, comunidades, equipe de campo (e quantas já estão habilitadas) e visitas feitas, agendadas e atrasadas.'), (3, 'Estado por estado', 'Um cartão por estado, com as metas do estado, a equipe, quantas pessoas estão prontas para trabalhar, os diagnósticos esperando e as comunidades.'), (4, 'O que pede atenção', 'Visitas com a data vencida, equipe incompleta ou sem habilitação completa, diagnósticos esperando aprovação ou devolvidos, casos sem água e lista de espera.')]))
 A(tabela(['Parte da tela', 'O que mostra'], [
     ['Formação da equipe', 'Turmas, matrículas e encontros registrados no curso de formação'],
     ['Onde o projeto está', 'Mapa, municípios com mais quintais e tabela por estado, com bolsistas e agentes'],
@@ -337,7 +337,7 @@ prob = [
     ('A localização ou a câmera não funciona.', 'Abra no Chrome ou no Safari, não por dentro do WhatsApp ou do Instagram, e permita o acesso quando o navegador perguntar.'),
     ('Não aparece nenhuma visita para mim.', 'Você só vê os quintais atribuídos a você, e só depois de habilitada (FIC, Arlo e termo).'),
     ('Não consigo agendar a visita para uma pessoa.', 'Ela ainda não está habilitada, ou não é do mesmo estado do quintal.'),
-    ('O botão de cadastrar professor sumiu.', 'As 2 vagas de professor do FIC estão ocupadas. Desligue um para cadastrar outro.'),
+    ('O botão de cadastrar professor sumiu.', 'As 2 vagas de professor do curso FIC estão ocupadas. Desligue um para cadastrar outro.'),
     ('Aparece “Este registro foi alterado por outra pessoa enquanto você editava”.', 'Alguém salvou o mesmo registro antes de você. Feche, abra de novo e refaça a alteração.'),
     ('O sistema saiu sozinho.', 'Foram 15 minutos sem uso. Entre de novo: o formulário que estava pela metade volta, neste aparelho, por até 24 horas.'),
     ('Preenchi sem internet e não subiu.', 'Abra o sistema com sinal e toque em <b>Enviar agora</b>.'),

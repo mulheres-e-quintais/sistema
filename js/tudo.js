@@ -152,7 +152,7 @@ MQ.PROJETO = {
 
 /* Modelos do termo: a pessoa baixa, preenche com os dados dela, assina e anexa no próprio cadastro.
    São dois, porque são documentos diferentes (decisão de 02/10/2026):
-   - servidor: servidores do IFRN (professores do FIC e auxiliar administrativo) usam o termo de autorização de participação
+   - servidor: servidores do IFRN (professores do curso FIC e auxiliar administrativo) usam o termo de autorização de participação
      em programa gerenciado pela FUNCERN (Anexo I da Portaria 017/2017 – SUP/FUNCERN), com parecer da chefia e da direção-geral
      (o auxiliar só conta como servidor se tiver matrícula SIAPE no cadastro: R.tipoTermo);
    - bolsista: coordenação técnica, bolsistas e agentes de campo (MPA, não são servidores) usam o termo de compromisso do projeto.
@@ -187,7 +187,7 @@ MQ.PAPEIS = {
                    faz: 'Faz as visitas de diagnóstico, implantação e acompanhamento nos quintais atribuídos a ela, com ajuda de custo por dia de campo.' },
   auxiliar_adm:  { nome: 'Auxiliar administrativo', curto: 'Auxiliar adm.', bolsa: 1200, org: 'IFRN',
                    faz: 'Cadastra a equipe no Arlo (FUNCERN) e registra no sistema o cadastro no Arlo e o termo de compromisso assinado.' },
-  professor_fic: { nome: 'Professor(a) do curso FIC', curto: 'Professor FIC', bolsa: 2200, org: 'IFRN',
+  professor_fic: { nome: 'Professor(a) do curso FIC', curto: 'Professor do curso FIC', bolsa: 2200, org: 'IFRN',
                    faz: 'Dá as aulas do curso FIC e registra no sistema as turmas e a matrícula da coordenação técnica, das bolsistas e das agentes de campo.' }
 };
 
@@ -533,7 +533,7 @@ MQ.ORCAMENTO = {
     (meuPapel === 'coord_tecnico' && (R.ehBolsista(papelAlvo) || papelAlvo === 'agente'));
 
   /* Habilitação para receber bolsa: passo a passo do Guia das bolsistas */
-  /* professor do FIC não se matricula no curso: habilita com FUNCERN e termo */
+  /* professor do curso FIC não se matricula no curso: habilita com FUNCERN e termo */
   R.fazFIC = papel => !['professor_fic', 'auxiliar_adm', 'coord_geral'].includes(papel);
   /* quem é matriculado no curso FIC: coordenação técnica, bolsistas e agentes de campo (decisão de 29/09/2026) */
   R.matriculaFIC = papel => ['coord_tecnico', 'articulacao', 'apoio', 'agente'].includes(papel);
@@ -548,8 +548,8 @@ MQ.ORCAMENTO = {
   /* termo de compromisso: a pessoa anexa o termo preenchido e assinado no próprio cadastro; quem confere abre o arquivo e só então registra a data.
      'falta' (nada anexado) → 'enviado' (anexado, esperando conferência) → 'conferido' (data registrada) */
   R.termoSituacao = m => m.termo_assinado_em ? 'conferido' : m.termo_path ? 'enviado' : 'falta';
-  /* qual termo cada função assina: servidor do IFRN (professor do FIC, auxiliar) ou bolsista/agente (MPA) */
-  /* aceita a função (texto) ou a pessoa: professor do FIC é sempre servidor; nas outras funções do IFRN (auxiliar administrativo),
+  /* qual termo cada função assina: servidor do IFRN (professor do curso FIC, auxiliar) ou bolsista/agente (MPA) */
+  /* aceita a função (texto) ou a pessoa: professor do curso FIC é sempre servidor; nas outras funções do IFRN (auxiliar administrativo),
      é servidor quem tem matrícula SIAPE no cadastro; sem a pessoa em mãos, o auxiliar conta como servidor */
   R.tipoTermo = x => {
     const papel = x && typeof x === 'object' ? x.papel : x;
@@ -871,16 +871,16 @@ MQ.ORCAMENTO = {
 (function () {
   const R = MQ.regras;
   R.ehCampo = p => p === 'articulacao' || p === 'apoio' || p === 'agente';
-  /* 33: técnica, bolsistas e agentes precisam da matrícula no FIC; só se cadastram com professor do FIC ativo e habilitado */
+  /* 33: técnica, bolsistas e agentes precisam da matrícula no FIC; só se cadastram com professor do curso FIC ativo e habilitado */
   R.PRECISA_PROFESSOR = ['coord_tecnico', 'articulacao', 'apoio', 'agente'];
-  /* 50: o orçamento prevê 2 professores do FIC; o banco recusa o terceiro */
+  /* 50: o orçamento prevê 2 professores do curso FIC; o banco recusa o terceiro */
   R.MAX_PROFESSORES = 2;
-  R.MSG_MAX_PROFESSORES = 'O projeto tem no máximo 2 professores do FIC ativos. Desligue um antes de cadastrar outro.';
+  R.MSG_MAX_PROFESSORES = 'O projeto tem no máximo 2 professores do curso FIC ativos. Desligue um antes de cadastrar outro.';
   R.temProfessorHabilitado = equipe => (equipe || []).some(m => m.papel === 'professor_fic' && m.status === 'ativa' && m.docs_funcern_em && m.termo_assinado_em);
-  R.MSG_SEM_PROFESSOR = 'Antes, cadastre e habilite um professor do FIC (cadastro no Arlo e termo assinado): sem ele, ninguém consegue a matrícula no curso.';
+  R.MSG_SEM_PROFESSOR = 'Antes, cadastre e habilite um professor do curso FIC (cadastro no Arlo e termo assinado): sem ele, ninguém consegue a matrícula no curso.';
   R.habilitado = m => !!(m && m.status === 'ativa' && (m.matricula_fic_em || !R.fazFIC(m.papel)) && m.docs_funcern_em && m.termo_assinado_em);
   R.podeMatricular = papel => papel === 'professor_fic' || papel === 'coord_geral';
-  R.decideCampo = papel => papel === 'coord_tecnico' || papel === 'coord_geral';   // aprova ou devolve fichas e diagnósticos, agenda visitas   // sempre um dos professores do FIC, em qualquer turma
+  R.decideCampo = papel => papel === 'coord_tecnico' || papel === 'coord_geral';   // aprova ou devolve fichas e diagnósticos, agenda visitas   // sempre um dos professores do curso FIC, em qualquer turma
   /* sem água na seca (ou só carro-pipa): a visita para na Parte A */
   R.semAgua = d => d.agua_seca === 'nao' || (Array.isArray(d.fontes_agua) && d.fontes_agua.length > 0 && d.fontes_agua.every(f => f === 'carro_pipa'));
   /* projeção do kit: quantidade × valor de cada item. Item com quantidade ou valor negativo NÃO abate o total. */
@@ -1262,6 +1262,14 @@ MQ.ORCAMENTO = {
       d.orientacoesVenda.push(o); gravar(d); return o.id;
     },
     /* perfis de acompanhamento (mesmas regras do 52_acompanhamento.sql): só contagens; na demonstração os dados de exemplo entram na conta */
+    async registrarPlanilha(tipo, qtd, filtro) {   // 60: igual ao banco
+      const d = ler(); const eu = euMesmo();
+      if (!eu || !['coord_geral', 'coord_tecnico'].includes(eu.papel)) throw falha('Só a coordenação baixa as planilhas das fichas.');
+      if (!['completa', 'sem_documentos', 'copia_dados'].includes(tipo)) throw falha('Tipo de planilha inválido.');
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'planilhas', registro_id: null, acao: 'PLANILHA', por: eu.id, em: new Date().toISOString(), antes: null,
+        depois: { tipo, qtd: +qtd || 0, filtro: String(filtro || '').trim().slice(0, 200) || null } });
+      gravar();
+    },
     async dadosAcompanhamento(orgao) {
       const d = ler(); const eu = euMesmo(); let org = eu && eu.observador ? eu.orgao : null;
       if (!org) { if (eu && ['coord_geral', 'coord_tecnico'].includes(eu.papel) && ['mda', 'mpa'].includes(orgao)) org = orgao; else throw falha('Acesso restrito ao acompanhamento do projeto.'); }
@@ -1662,7 +1670,7 @@ MQ.ORCAMENTO = {
     },
     async salvarEncontroFic(x) {
       const d = ler(); const eu = euMesmo(); d.ficEncontros = d.ficEncontros || []; d.ficPresencas = d.ficPresencas || [];
-      if (!eu || !['professor_fic', 'coord_geral'].includes(eu.papel)) throw falha('Quem registra os encontros do curso é o professor do FIC.');
+      if (!eu || !['professor_fic', 'coord_geral'].includes(eu.papel)) throw falha('Quem registra os encontros do curso é o professor do curso FIC.');
       const t = (d.turmas || []).find(y => y.id === x.turma_id);
       if (!t) throw falha('Turma não encontrada.');
       if (!t.professor_id) throw falha('Esta turma não tem professor(a): ajuste a turma antes.');
@@ -1714,7 +1722,7 @@ MQ.ORCAMENTO = {
     },
     async cancelarEncontroFic(id, motivo) {
       const d = ler(); const eu = euMesmo(); const e = (d.ficEncontros || []).find(y => y.id === id);
-      if (!eu || !['professor_fic', 'coord_geral'].includes(eu.papel)) throw falha('Quem cancela um encontro é o professor do FIC.');
+      if (!eu || !['professor_fic', 'coord_geral'].includes(eu.papel)) throw falha('Quem cancela um encontro é o professor do curso FIC.');
       if (!e) throw falha('Encontro não encontrado.');
       if (eu.papel === 'professor_fic' && e.professor_id !== eu.id) throw falha('Este encontro é de outro(a) professor(a).');
       if (e.cancelado_em) throw falha('Este encontro já foi cancelado.');
@@ -1733,7 +1741,7 @@ MQ.ORCAMENTO = {
     },
     async salvarTurma(t) {
       const d = ler(); const eu = euMesmo();
-      if (!eu || !R.podeMatricular(eu.papel)) throw falha('Só os professores do FIC criam turmas.');
+      if (!eu || !R.podeMatricular(eu.papel)) throw falha('Só os professores do curso FIC criam turmas.');
       if (!d.equipe.some(m => m.id === t.professor_id && m.papel === 'professor_fic' && m.status === 'ativa')) throw falha('A turma precisa de um(a) professor(a) do FIC ativo(a).');
       if (String(t.nome || '').trim().length < 3) throw falha('Dê um nome à turma.');
       if (t.inicio && t.fim && t.fim < t.inicio) throw falha('O fim da turma é antes do início.');
@@ -1810,7 +1818,7 @@ MQ.ORCAMENTO = {
     async marcarEntrega(equipe_id, mes, item, marcar) {
       const d = ler(); const eu = euMesmo(); d.entregas = d.entregas || [];
       if (item === 'presenca' && (!eu || eu.id !== equipe_id)) throw falha('Só a própria bolsista marca a lista de presença.');
-      if (item === 'ava' && (!eu || !['professor_fic', 'coord_geral'].includes(eu.papel))) throw falha('Só o professor do FIC confirma o acesso ao AVA.');
+      if (item === 'ava' && (!eu || !['professor_fic', 'coord_geral'].includes(eu.papel))) throw falha('Só o professor do curso FIC confirma o acesso ao AVA.');
       if (marcar) {   // 32: nada antes do mês de início (e o AVA, antes da matrícula no FIC)
         const p = d.equipe.find(x => x.id === equipe_id) || {}; const m7 = String(mes).slice(0, 7);
         if (p.data_inicio && m7 < String(p.data_inicio).slice(0, 7)) throw falha((p.nome_social || p.nome) + ' começou no projeto em ' + String(p.data_inicio).slice(5, 7) + '/' + String(p.data_inicio).slice(0, 4) + ': não há entrega antes desse mês.');
@@ -2170,7 +2178,7 @@ MQ.ORCAMENTO = {
       const ativa = d.equipe.find(m => m.status === 'ativa' && m.papel === papel && (papel === 'coord_tecnico' || (R.ehBolsista(papel) && m.uf === uf)));
       if (ativa && papel !== 'agente') throw falha(papel === 'coord_tecnico' ? 'Já há coordenação técnica ativa. Desligue antes de convidar outra.' : 'Esta vaga já está ocupada no estado.');
       if (papel === 'auxiliar_adm' && d.equipe.some(m => m.status === 'ativa' && m.papel === 'auxiliar_adm')) throw falha('Já há auxiliar administrativo ativo. Desligue antes de convidar outro.');
-      if (papel === 'professor_fic' && d.equipe.filter(m => m.status === 'ativa' && m.papel === 'professor_fic').length >= R.MAX_PROFESSORES) throw falha('O projeto tem no máximo 2 professores do FIC ativos. Desligue um antes de convidar outro.');   // 50
+      if (papel === 'professor_fic' && d.equipe.filter(m => m.status === 'ativa' && m.papel === 'professor_fic').length >= R.MAX_PROFESSORES) throw falha('O projeto tem no máximo 2 professores do curso FIC ativos. Desligue um antes de convidar outro.');   // 50
       const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
       d.convites = (d.convites || []).concat([{ id: uid(), token, papel, uf: ['coord_tecnico', 'professor_fic', 'auxiliar_adm'].includes(papel) ? null : uf, substitui_id: subst || null, criado_por: eu.id,
         criado_em: new Date().toISOString(), expira_em: new Date(Date.now() + 7 * 864e5).toISOString(), usado_em: null }]);
@@ -2425,7 +2433,8 @@ MQ.ORCAMENTO = {
     return { data: tudo, error: null };
   }
   const erro = e => {
-    const x = new Error(R.mensagemErro(e)); x.original = e;
+    // mensagens do banco já instalado ainda dizem "professor do FIC": o nome certo é "professor do curso FIC" (12/10/2026)
+    const x = new Error(String(R.mensagemErro(e)).replace(/([Pp]rofessor(?:es|a)?) do FIC/g, '$1 do curso FIC')); x.original = e;
     x.semRede = !navigator.onLine || /Failed to fetch|NetworkError|Load failed|network/i.test(String((e && e.message) || e));
     // auditoria 2 (12/10/2026): prazo estourado não é "sem internet": é falha daquele envio (a fila passa para o próximo)
     x.prazoEsgotado = /o servidor não respondeu em/.test(String((e && e.message) || e));
@@ -2928,7 +2937,18 @@ MQ.ORCAMENTO = {
     async listarOrientacoesVenda() { const { data, error } = await todas(() => sb.from('orientacoes_venda').select('*', CT).order('feito_em', { ascending: false }).order('id')); if (error) throw erro(error); return data; },
     async registrarOrientacaoVenda(ficha_id, dados) { const { data, error } = await sb.rpc('registrar_orientacao_venda', { p_ficha: ficha_id, p_dados: dados }); if (error) throw erro(error); return data; },
     /* perfis de acompanhamento, MDA e MPA (52_acompanhamento.sql): só contagens */
-    async dadosAcompanhamento(orgao) { const { data, error } = await sb.rpc('acompanhamento_dados', { p_orgao: orgao || null }); if (error) throw erro(error); return data; },
+    async dadosAcompanhamento(orgao) {
+      const { data, error } = await sb.rpc('acompanhamento_dados', { p_orgao: orgao || null }); if (error) throw erro(error);
+      // 60: na tela do MPA, equipe habilitada e diagnósticos esperando, por estado (sem o script, a tela segue sem esses números)
+      if (data && data.orgao === 'mpa' && Array.isArray(data.por_uf)) {
+        try { const r = await sb.rpc('acompanhamento_equipe_uf', { p_orgao: orgao || null });
+          if (!r.error && Array.isArray(r.data)) r.data.forEach(x => { const u = data.por_uf.find(y => y.uf === x.uf); if (u) Object.assign(u, { equipe_campo: x.equipe_campo, habilitadas: x.habilitadas, diag_aguardando: x.diag_aguardando, diag_devolvidos: x.diag_devolvidos }); });
+        } catch (e) {}
+      }
+      return data;
+    },
+    // 60: planilha das fichas ou cópia dos dados baixada → Histórico
+    async registrarPlanilha(tipo, qtd, filtro) { const { error } = await sb.rpc('registrar_planilha', { p_tipo: tipo, p_qtd: qtd, p_filtro: filtro || null }); if (error) throw erro(error); },
     async relatarProblema(x) { const { data, error } = await sb.rpc('relatar_problema', { p_texto: x.texto, p_tela: x.tela || null, p_versao: x.versao || null, p_aparelho: x.aparelho || null }); if (error) throw erro(error); return data; },
     async listarRelatos() { const { data, error } = await sb.rpc('listar_relatos'); if (error) throw erro(error); return data || []; },
     /* 58: só a contagem do que este celular guarda sem enviar (nunca atrapalha: sem o script, só não informa) */
@@ -3471,7 +3491,7 @@ MQ.ORCAMENTO = {
     return `<section class="secao" aria-labelledby="t-sel">
       <div class="cab"><div><span class="eyebrow">Seleção das mulheres</span><h1 id="t-sel">Seleção das beneficiárias</h1>
         <p>Fichas de indicação dos 5 estados. ${souTec ? 'Você aprova ou devolve cada ficha antes do diagnóstico.' : 'A aprovação é da coordenação técnica.'} O sistema impede CPF repetido e mais de ${MQ.VAGAS_UF} selecionadas aprovadas por estado.</p></div>
-        <button class="btn" data-acao="ficha-csv">Baixar CSV${temFiltro() ? ' (' + conta + ')' : ''}</button></div>
+        ${botaoPlanilha(temFiltro() ? conta : '')}</div>
       ${(() => { const u = MQ.UFS.find(x => contar(lista, x.uf).total); if (!u) return ''; const c = contar(lista, u.uf);
         const partes = [[c.aprovadas, 'selecionada'], [c.espera, 'na lista de espera'], [c.sem_agua, 'sem água'], [c.nao_atende, 'que não atende'], [c.aguardando, 'para aprovar'], [c.devolvidas, 'devolvida']].filter(x => x[0]).map(x => x[0] + ' ' + x[1]);
         return `<div class="aviso" style="margin:0"><b>Como ler:</b> a coluna <b>Fichas</b> é o total de mulheres indicadas no estado, e as colunas ao lado repartem esse total (cada mulher aparece numa só). As <b>${MQ.VAGAS_UF} vagas</b> são só a coluna <b>Selecionadas</b>; as outras não ocupam vaga.
@@ -3749,7 +3769,7 @@ MQ.ORCAMENTO = {
           : '<p class="nota">A foto ainda está só no aparelho de quem preencheu.</p>';
       } catch (e) { box.innerHTML = `<p class="nota">${E(e.message)}</p>`; }
     }
-    else if (a === 'ficha-csv') baixarCSV();
+    else if (a === 'ficha-csv') { const d = el.closest('details'); if (d) d.open = false; baixarCSV(el.dataset.tipo === 'sem_documentos' ? 'sem_documentos' : 'completa'); }
     else if (a === 'ficha-limpar-filtros') {
       filtro.uf = filtro.situacao = filtro.busca = ''; (S.aberto = S.aberto || {})['fichas-coord'] = true;   // a lista continua aberta, agora inteira
       U().render(); const n = document.getElementById('ff-busca'); if (n) n.focus();
@@ -3828,9 +3848,26 @@ MQ.ORCAMENTO = {
     nis: 'NIS', caf: 'CAF', pessoas_familia: 'Pessoas na família', indicada_por: 'Indicada por', data_ficha: 'Data da ficha', autodeclaracao: 'Autodeclaração assinada', pontos: 'Pontos de prioridade', resultado: 'Resultado',
     posicao_espera: 'Posição na lista de espera', encaminhada_para: 'Encaminhada para', situacao: 'Situação', aprovada_em: 'Aprovada em', bolsista: 'Bolsista', consent_imagem: 'Autoriza uso de imagem' };
   const DATAS_CSV = ['data_nascimento', 'data_ficha', 'aprovada_em'];
-  function montarCSV() {
+  // planilha "sem documentos": para entregar kit e falar com as mulheres não precisa de CPF, NIS, CAF nem data de nascimento
+  // (se a planilha circular por WhatsApp, o estrago é menor). A completa continua para quem precisa conferir documentos.
+  const DOCUMENTOS = ['cpf', 'data_nascimento', 'nis', 'caf'];
+  const TIPOS_PLANILHA = { completa: 'Planilha completa', sem_documentos: 'Planilha sem documentos' };
+  function botaoPlanilha(conta) {
+    return `<details class="menu-planilha"><summary class="btn">Baixar planilha${conta ? ' (' + conta + ')' : ''}</summary>
+      <div class="menu-planilha-op">
+        <button type="button" class="btn" data-acao="ficha-csv" data-tipo="sem_documentos"><b>Sem documentos</b><small>Nome, local, celular, endereço e situação. Para entregar o kit e falar com as mulheres.</small></button>
+        <button type="button" class="btn" data-acao="ficha-csv" data-tipo="completa"><b>Completa</b><small>Com CPF, NIS, CAF e data de nascimento. Só para conferir documentos.</small></button>
+        <p class="small muted">Abre no Excel ou no Google Planilhas. Cada planilha baixada fica registrada no Histórico.</p>
+      </div></details>`;
+  }
+  function filtroTexto() {
+    return [filtro.uf ? 'Estado ' + filtro.uf : '', filtro.situacao ? 'Situação: ' + filtro.situacao : '', semAcento(filtro.busca) ? 'Busca: ' + String(filtro.busca).trim().slice(0, 60) : ''].filter(Boolean).join(' · ');
+  }
+  function montarCSV(tipo) {
+    const semDoc = tipo === 'sem_documentos';
     const col = ['uf', 'municipio', 'comunidade', 'nome', 'cpf', 'data_nascimento', 'celular', 'endereco', 'ponto_referencia', 'nis', 'caf', 'pessoas_familia', 'indicada_por', 'data_ficha',
-      ...MQ.CRITERIOS.map(c => c[0]), 'autodeclaracao', 'pontos', 'resultado', 'posicao_espera', 'encaminhada_para', 'situacao', 'aprovada_em', 'bolsista', 'consent_imagem'];
+      ...MQ.CRITERIOS.map(c => c[0]), 'autodeclaracao', 'pontos', 'resultado', 'posicao_espera', 'encaminhada_para', 'situacao', 'aprovada_em', 'bolsista', 'consent_imagem']
+      .filter(c => !semDoc || !DOCUMENTOS.includes(c));
     const rot = c => ROTULO_CSV[c] || ((MQ.CRITERIOS.find(x => x[0] === c) || [])[1]) || c;
     const tudo = todas(); const lista = filtrar(tudo);
     const linhas = lista.map(f => col.map(c => {
@@ -3843,15 +3880,17 @@ MQ.ORCAMENTO = {
     }).join(';'));
     const partes = [filtro.uf, filtro.situacao, semAcento(filtro.busca) ? 'busca' : ''].filter(Boolean).map(x => String(x).replace(/[^a-zA-Z0-9_]+/g, ''));
     return { texto: '\ufeff' + col.map(c => celCSV(rot(c))).join(';') + '\n' + linhas.join('\n'), n: lista.length, total: tudo.length, filtrado: temFiltro(),
-      nome: 'fichas_mulheres_e_quintais_' + (partes.length ? 'filtro_' + partes.join('_') + '_' : '') + R.hoje() + '.csv' };
+      nome: 'fichas_mulheres_e_quintais_' + (semDoc ? 'sem_documentos_' : '') + (partes.length ? 'filtro_' + partes.join('_') + '_' : '') + R.hoje() + '.csv', tipo: semDoc ? 'sem_documentos' : 'completa' };
   }
-  function baixarCSV() {
-    const r = montarCSV();
+  function baixarCSV(tipo) {
+    const r = montarCSV(tipo);
+    // fica no Histórico (60_planilha_e_mpa.sql): quem baixou, qual planilha, quantas fichas e o filtro. Sem o script, só não registra.
+    const api = U().S.api; if (api && api.registrarPlanilha) Promise.resolve().then(() => api.registrarPlanilha(r.tipo, r.n, filtroTexto())).catch(() => {});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([r.texto], { type: 'text/csv;charset=utf-8' }));
     a.download = r.nome; a.hidden = true; a.setAttribute('aria-hidden', 'true'); a.tabIndex = -1;   // link só para disparar o download: não aparece nem entra na ordem do Tab
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-    U().toast((r.filtrado ? `Planilha gerada com ${r.n} de ${r.total} fichas (filtro da tela).` : 'Planilha gerada.') + ' Ela tem dados pessoais: guarde em pasta restrita.');
+    U().toast((r.filtrado ? `Planilha gerada com ${r.n} de ${r.total} fichas (filtro da tela).` : 'Planilha gerada.') + (r.tipo === 'completa' ? ' Ela tem CPF e outros documentos: guarde em pasta restrita e não mande por WhatsApp.' : ' Ela tem nome, celular e endereço: guarde em pasta restrita.'));
   }
 
   /* reatividade do formulário e dos filtros */
@@ -3900,6 +3939,11 @@ MQ.ORCAMENTO = {
     if (b) b.form.dataset.decisao = b.value;
   }, true);
 
+  // menu "Baixar planilha": fecha com clique fora ou Esc (o foco volta ao botão)
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('click', e => { document.querySelectorAll('details.menu-planilha[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }); });
+    document.addEventListener('keydown', e => { if (e.key !== 'Escape') return; const d = document.querySelector('details.menu-planilha[open]'); if (!d) return; d.open = false; const s = d.querySelector('summary'); if (s) s.focus(); });
+  }
   MQ.fichasUI = { secaoBolsista, secaoCoord, painel, clique, enviar, contar, casaBusca, filtrar, filtro, montarCSV, celCSV, versaoDe, MSG_MUDOU, ROTULO_FILA };
 })();
 ;
@@ -4331,7 +4375,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
             <li><span>Coordenação técnica</span><b class="num">${conta('coord_tecnico')}</b></li>
             <li><span>Bolsistas (articulação e apoio estadual)</span><b class="num">${bols}<small class="muted"> de 10</small></b></li>
             <li><span>Agentes de campo</span><b class="num">${conta('agente')}</b></li>
-            <li><span>Professores do FIC</span><b class="num">${conta('professor_fic')}</b></li>
+            <li><span>Professores do curso FIC</span><b class="num">${conta('professor_fic')}</b></li>
             <li><span>Auxiliar administrativo</span><b class="num">${conta('auxiliar_adm')}</b></li>
             ${leram.length ? `<li><span>Bolsistas e agentes que leram o guia</span><b class="num">${nLeram}<small class="muted"> de ${leram.length}</small></b></li>` : ''}
           </ul></div>
@@ -6579,7 +6623,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 ;
 /* ===== fic.js ===== */
 /* Mulheres & Quintais — curso FIC: turmas e matrícula da coordenação técnica, das bolsistas e das agentes de campo.
-   O professor do FIC (ou a coordenação geral) cria a turma e matricula; a matrícula preenche
+   O professor do curso FIC (ou a coordenação geral) cria a turma e matricula; a matrícula preenche
    o passo "matrícula no FIC" da habilitação. Mesmas regras do supabase/11_fic.sql. */
 (function () {
   const R = MQ.regras, P = MQ.PAPEIS;
@@ -6592,7 +6636,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const souProf = () => S().eu.papel === 'professor_fic';
   const podeCriarTurma = () => R.podeMatricular(S().eu.papel);
   const podeEditarTurma = t => S().eu.papel === 'coord_geral' || (souProf() && t.professor_id === S().eu.id);   // a turma é de quem dá a aula: o colega matricula nela, mas não altera
-  const podeNaTurma = t => souProf() || S().eu.papel === 'coord_geral';   // qualquer professor do FIC, em qualquer turma (ninguém trava na ausência do outro)
+  const podeNaTurma = t => souProf() || S().eu.papel === 'coord_geral';   // qualquer professor do curso FIC, em qualquer turma (ninguém trava na ausência do outro)
   const deCampo = () => (S().equipe || []).filter(m => m.status === 'ativa' && R.matriculaFIC(m.papel));   // coordenação técnica, bolsistas e agentes
   const professores = () => (S().equipe || []).filter(m => m.status === 'ativa' && m.papel === 'professor_fic');
   const matDe = id => matriculas().find(x => x.equipe_id === id);
@@ -6613,7 +6657,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const avulsas = comMat.filter(m => !matDe(m.id));   // matrícula registrada à mão na habilitação, sem turma no sistema
     const h = souProf() ? 'h2' : 'h1';
     return `<div class="cab${souProf() ? ' cab-sub' : ''}"><div><span class="eyebrow">Curso FIC · IFRN</span><${h}>Turmas e matrículas</${h}>
-        <p>${souProf() ? 'Crie a sua turma e matricule a coordenação técnica, as bolsistas e as agentes de campo. Você também pode matricular nas turmas do outro professor.' : (S().eu.papel === 'coord_geral' ? 'Os professores do FIC criam as turmas e matriculam; a coordenação geral também pode fazer isso aqui.' : 'Só os professores do FIC criam turmas e matriculam a coordenação técnica, as bolsistas e as agentes de campo; aqui a coordenação acompanha.')} A matrícula registrada aqui conta como o passo <b>matrícula no FIC</b> da habilitação: sem ela, a pessoa não recebe bolsa nem faz visita paga.</p></div>
+        <p>${souProf() ? 'Crie a sua turma e matricule a coordenação técnica, as bolsistas e as agentes de campo. Você também pode matricular nas turmas do outro professor.' : (S().eu.papel === 'coord_geral' ? 'Os professores do curso FIC criam as turmas e matriculam; a coordenação geral também pode fazer isso aqui.' : 'Só os professores do curso FIC criam turmas e matriculam a coordenação técnica, as bolsistas e as agentes de campo; aqui a coordenação acompanha.')} A matrícula registrada aqui conta como o passo <b>matrícula no FIC</b> da habilitação: sem ela, a pessoa não recebe bolsa nem faz visita paga.</p></div>
         ${podeCriarTurma() ? '<button class="btn pri" data-acao="fic-turma-nova">+ Nova turma</button>' : ''}</div>
       <div class="eq-kpis" aria-label="Resumo do curso FIC">
         ${U().kpi(turmas().length, null, 'turma' + (turmas().length === 1 ? '' : 's'), 1, { sem: true })}
@@ -6688,8 +6732,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `<section class="secao" aria-labelledby="t-prof">
       <div class="secao-cab"><div><h2 id="t-prof">Professores do curso FIC</h2><p>IFRN · cadastrados pela coordenação geral · criam as turmas e matriculam a coordenação técnica, as bolsistas e as agentes</p></div></div>
       ${l.map(m => U().cartaoPessoa(m)).join('')}
-      ${l.length >= MQ.regras.MAX_PROFESSORES ? `<p class="small muted vagas-cheias">As ${MQ.regras.MAX_PROFESSORES} vagas de professor do FIC estão ocupadas. Para trocar, desligue um e cadastre o outro.</p>`
-        : U().vagaAberta ? U().vagaAberta(l.length ? `<b>1 professor cadastrado.</b> Falta 1: o projeto tem ${MQ.regras.MAX_PROFESSORES} professores do FIC.` : `Nenhum professor do FIC cadastrado. O projeto tem ${MQ.regras.MAX_PROFESSORES}. Digite os dados ou gere um link para ele preencher.`, souGeral,
+      ${l.length >= MQ.regras.MAX_PROFESSORES ? `<p class="small muted vagas-cheias">As ${MQ.regras.MAX_PROFESSORES} vagas de professor do curso FIC estão ocupadas. Para trocar, desligue um e cadastre o outro.</p>`
+        : U().vagaAberta ? U().vagaAberta(l.length ? `<b>1 professor cadastrado.</b> Falta 1: o projeto tem ${MQ.regras.MAX_PROFESSORES} professores do curso FIC.` : `Nenhum professor do curso FIC cadastrado. O projeto tem ${MQ.regras.MAX_PROFESSORES}. Digite os dados ou gere um link para ele preencher.`, souGeral,
         MQ.botaoAcao({ acao: 'novo', icone: 'capelo', texto: 'Cadastrar professor(a) do FIC', curto: 'Cadastrar', attrs: 'data-papel="professor_fic"' }), 'Vaga aberta') : ''}
     </section>`;
   }
@@ -8215,7 +8259,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     };
   }
 
-  /* Relatórios mensais da equipe (12/10/2026): o texto que cada bolsista, a coordenação técnica, os professores do FIC e o auxiliar
+  /* Relatórios mensais da equipe (12/10/2026): o texto que cada bolsista, a coordenação técnica, os professores do curso FIC e o auxiliar
      escrevem ao pedir a bolsa do mês. Quadro de entregas (pessoa × mês) sempre; os textos só quando pedidos e SÓ os que tiveram aval.
      Agentes de campo ficam de fora: não fazem relatório mensal (o relato delas é por visita e fala de uma mulher). */
   const PAPEIS_REL = ['coord_tecnico', 'articulacao', 'apoio', 'professor_fic', 'auxiliar_adm'];
@@ -8306,7 +8350,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     'rel-selecao': ['Relatório: seleção das mulheres', 'Totais por estado e a lista das fichas, com município, resultado e situação.'],
     'rel-campo': ['Relatório: campo e visitas', 'Visitas por estado e etapa, e a lista de visitas com data, quintal e quem visita.'],
     'fic-bolsistas': ['Fichas de cadastro: bolsistas', 'Uma página por bolsista de articulação e de apoio, com os dados do cadastro.'],
-    'fic-membros': ['Fichas de cadastro: demais membros', 'Uma página por pessoa: coordenação técnica, agentes de campo, professores do FIC e auxiliar.']
+    'fic-membros': ['Fichas de cadastro: demais membros', 'Uma página por pessoa: coordenação técnica, agentes de campo, professores do curso FIC e auxiliar.']
   };
   const ORDEM_PAPEL = ['coord_tecnico', 'professor_fic', 'auxiliar_adm', 'articulacao', 'apoio', 'agente'];
   const ativosDaEquipe = (s, uf) => (s.equipe || []).filter(m => m.status === 'ativa' && m.papel !== 'coord_geral' && (!uf || !m.uf || m.uf === uf))
@@ -9017,7 +9061,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 /* Mulheres & Quintais — entregas do mês, ciência do Guia e guia das agentes.
    Conteúdo do "Guia das bolsistas" levado para o momento em que cada pessoa precisa dele.
    O que o sistema sabe sozinho (fotos, fichas, relatório, metas) é calculado; a lista de presença
-   é marcada pela bolsista e o acesso ao AVA é confirmado pelo professor do FIC (19_entregas_do_mes.sql). */
+   é marcada pela bolsista e o acesso ao AVA é confirmado pelo professor do curso FIC (19_entregas_do_mes.sql). */
 (function () {
   const R = MQ.regras, P = MQ.PAPEIS;
   const U = () => MQ.ui; const S = () => MQ.ui.S; const E = s => MQ.ui.esc(s);
@@ -9055,7 +9099,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         e: !feitas.length ? 'info' : comRelato.length === feitas.length ? 'ok' : 'falta',
         d: !feitas.length ? 'Sem visitas no mês.' : `${comRelato.length} de ${n(feitas.length, 'visita')} com o registro do quintal.` },
       { id: 'ava', t: 'Acesso ao AVA', o: 'Entrar no curso pelo menos uma vez no mês e fazer as atividades.', e: ava ? 'ok' : 'pend',
-        d: ava ? `Confirmado pelo professor do FIC em ${new Date(ava.marcado_em).toLocaleDateString('pt-BR')}.` : 'O professor do FIC confirma quando você acessar.' },
+        d: ava ? `Confirmado pelo professor do curso FIC em ${new Date(ava.marcado_em).toLocaleDateString('pt-BR')}.` : 'O professor do curso FIC confirma quando você acessar.' },
       { id: 'metas', t: 'Metas do mês', o: 'Andamento do que estava previsto no calendário.',
         e: !previstas.length ? 'info' : prevFeitas.length === previstas.length ? 'ok' : 'pend',
         d: !previstas.length ? 'Nenhuma visita prevista para você neste mês.' : `${prevFeitas.length} de ${n(previstas.length, 'visita')} prevista${previstas.length === 1 ? '' : 's'} feita${prevFeitas.length === 1 ? '' : 's'}.` }
@@ -9089,7 +9133,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `<div class="bloco"><h3>Entregas de ${E(nomeMes(mes))}</h3><p class="small muted">${its.filter(i => i.e === 'ok').length} de 6 em dia. Confira antes de dar o aval.</p>${lista(m, mes, false)}</div>`;
   }
 
-  /* professor do FIC (ou coordenação geral): confirma o acesso ao AVA no mês */
+  /* professor do curso FIC (ou coordenação geral): confirma o acesso ao AVA no mês */
   function secaoAva() {
     if (semBanco() || !['professor_fic', 'coord_geral'].includes(S().eu.papel)) return '';
     const mes = G.avaMes || mesAtual();
@@ -10804,7 +10848,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     },
     equipe: {
       t: 'Equipe',
-      intro: 'Cadastro de todas as pessoas do projeto: coordenação técnica, auxiliar administrativo, professores do FIC, bolsistas por estado e agentes de campo.',
+      intro: 'Cadastro de todas as pessoas do projeto: coordenação técnica, auxiliar administrativo, professores do curso FIC, bolsistas por estado e agentes de campo.',
       tarefas: [
         ['Cadastrar pelo link (recomendado)', ['Na aba <b>Equipe</b>, toque na vaga ou em <b>Cadastrar</b>.', 'Toque em <b>Gerar link de cadastro</b>.', 'Toque em <b>Enviar pelo WhatsApp</b> e escolha a pessoa.', 'Quando ela enviar, abra <b>Cadastros enviados pelo link</b>.', 'Confira os dados e toque em <b>Conferir e cadastrar</b> → <b>Cadastrar</b>.']],
         ['Cadastrar digitando', ['Toque na vaga ou em <b>Cadastrar</b> → <b>Digitar os dados agora</b>.', 'Preencha nome, CPF, celular e e-mail.', 'Responda se a pessoa já tem cadastro no Arlo e, para quem vai a campo, o perfil no campo.', 'Marque a ciência sobre o uso dos dados.', 'Toque em <b>Cadastrar</b>.']],
@@ -10821,10 +10865,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         'Cadastros que chegam pelo link aparecem em <b>Cadastros enviados pelo link</b>. Abra, confira, complete e salve: ao salvar, o cadastro é aprovado.',
         'Na ficha da pessoa ficam a <b>habilitação</b> (FIC, Arlo e termo), a <b>leitura do guia</b> e o <b>perfil no campo</b>. O botão <b>Hoje</b> preenche a data do dia.',
         '<b>Desligar</b> não apaga o cadastro: a vaga fica livre para a substituta e o histórico guarda quem desligou, quando e por quê.',
-        '<b>Acompanhamento externo:</b> quem acompanha pelo MDA ou pelo MPA entra numa área própria, só de leitura e só com números. Não vê nome, CPF, endereço, pagamento nem a equipe. O MDA vê o projeto inteiro, sem parte financeira; o MPA vê o andamento em cada estado. Os números são ao vivo e não contam os dados de exemplo.'
+        '<b>Acompanhamento externo:</b> quem acompanha pelo MDA ou pelo MPA entra numa área própria, só de leitura e só com números. Não vê nome, CPF, endereço, pagamento nem a equipe. O MDA vê o projeto inteiro, sem parte financeira; o MPA vê o andamento em cada estado, inclusive quantas pessoas da equipe de campo já estão habilitadas e quantos diagnósticos esperam a aprovação da coordenação. Os números são ao vivo e não contam os dados de exemplo.'
       ],
       duvidas: [
-        ['Quem cadastra quem?', 'A coordenação geral cadastra a coordenação técnica, os professores do FIC e o auxiliar, e pode cadastrar todos os outros. A coordenação técnica cadastra bolsistas e agentes.'],
+        ['Quem cadastra quem?', 'A coordenação geral cadastra a coordenação técnica, os professores do curso FIC e o auxiliar, e pode cadastrar todos os outros. A coordenação técnica cadastra bolsistas e agentes.'],
         ['A pessoa perdeu o código ou ele venceu.', 'Abra a ficha dela e gere outro. O anterior deixa de valer na hora.'],
         ['A pessoa esqueceu a senha.', 'Quando ela toca em "Esqueci a senha" na entrada, o pedido aparece na aba <b>Equipe</b> (com número na aba), em "Pedidos de novo acesso". Só a coordenação geral resolve: abra a ficha, toque em "Liberar novo primeiro acesso" (confirme) e mande o código pelo WhatsApp do cadastro. A senha antiga é apagada; os dados não mudam. Se a pessoa não sabe do pedido, descarte.'],
         ['Errei o CPF.', 'CPF e estado não mudam depois de salvos. Desligue o cadastro errado e faça um novo.'],
@@ -10837,7 +10881,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       intro: 'Cada mulher indicada pela comunidade tem uma ficha de indicação, preenchida pela bolsista do estado, com os critérios do edital e o termo de consentimento. Aqui a coordenação aprova ou devolve.',
       tarefas: [
         ['Aprovar ou devolver uma ficha', ['Na aba <b>Seleção</b>, abra uma ficha que aguarda.', 'Confira dados, critérios e a foto do termo assinado.', 'Toque em <b>Aprovar</b>, ou escreva o que corrigir e toque em <b>Devolver para correção</b>.']],
-        ['Baixar as fichas', ['Toque em <b>Baixar CSV</b>.', 'Abra o arquivo no Excel ou no Google Planilhas.']]
+        ['Baixar a planilha das fichas', ['Use os filtros, se quiser só parte das fichas (a planilha segue o filtro da tela).', 'Toque em <b>Baixar planilha</b> e escolha: <b>Sem documentos</b> (nome, local, celular, endereço e situação, para entregar o kit e falar com as mulheres) ou <b>Completa</b> (com CPF, NIS, CAF e data de nascimento, só para conferir documentos).', 'Abra no Excel ou no Google Planilhas. Guarde em pasta restrita e não mande a completa por WhatsApp: cada planilha baixada fica registrada no Histórico.']]
       ],
       passos: [
         'A tabela mostra, por estado, as fichas lançadas e a situação: <b>selecionadas aprovadas</b> (as que ocupam as 40 vagas), <b>lista de espera</b>, <b>sem água</b>, <b>não atende</b> e as que <b>aguardam</b> decisão.',
@@ -10885,7 +10929,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         ['Confirmar o acesso ao AVA', ['Em <b>Acesso ao AVA no mês</b>, confira o mês (use ‹ › para mudar).', 'Marque quem entrou e fez as atividades. Salva na hora.']]
       ],
       passos: [
-        'Os professores do FIC criam as turmas e matriculam, em qualquer turma. A coordenação geral também pode.',
+        'Os professores do curso FIC criam as turmas e matriculam, em qualquer turma. A coordenação geral também pode.',
         'Para matricular: abra a turma, toque em <b>+ Matricular</b>, escolha a pessoa, informe o número da matrícula (SUAP) e a data.',
         'Turma de um estado só aceita gente daquele estado. Turma "vários estados" aceita todos.',
         'Em <b>Acesso ao AVA no mês</b>, marque quem entrou no curso e fez as atividades. Use ‹ › para mudar o mês.'
@@ -10893,7 +10937,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       duvidas: [
         ['Professor e auxiliar se matriculam?', 'Não. A habilitação deles é cadastro no Arlo e termo de compromisso.'],
         ['Matriculei errado.', 'Para corrigir número ou data, matricule de novo na mesma turma. Para trocar de turma, cancele antes (com motivo).'],
-        ['Marquei o AVA por engano.', 'Toque de novo para desmarcar. Só professores do FIC e a coordenação geral marcam.']
+        ['Marquei o AVA por engano.', 'Toque de novo para desmarcar. Só professores do curso FIC e a coordenação geral marcam.']
       ]
     },
     pagamentos: {
@@ -11080,7 +11124,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           '<b>Apoio estadual:</b> cuida da logística, da coleta e organização das informações, dos registros das ações e do monitoramento.']],
         ['Passo a passo para começar', [
           '<b>Enviar os dados:</b> nome completo, CPF e e-mail, repassados pela coordenação técnica.',
-          '<b>Matrícula no curso FIC:</b> os professores do FIC fazem a matrícula e enviam o acesso ao AVA e a declaração de matrícula. A bolsa só pode ser paga a estudantes do IFRN, por isso o curso.',
+          '<b>Matrícula no curso FIC:</b> os professores do curso FIC fazem a matrícula e enviam o acesso ao AVA e a declaração de matrícula. A bolsa só pode ser paga a estudantes do IFRN, por isso o curso.',
           '<b>Cadastro na FUNCERN:</b> entregue os documentos pedidos pela fundação, com conta bancária ou chave Pix no seu nome (informe em <b>Meus dados</b>, no alto da tela).',
           '<b>Início das atividades:</b> com matrícula e cadastro prontos, a bolsa conta a partir do início da execução do projeto.']],
         ['Como é o pagamento', [
@@ -11103,7 +11147,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           'Se você já recebe outra bolsa, avise a coordenação antes de se cadastrar.']],
         ['Com quem falar', [
           'Fale primeiro com a <b>coordenação técnica</b> do projeto.',
-          'Se ela não puder resolver: <b>coordenação geral</b> para questões gerais do projeto; <b>professores do FIC</b> para matrícula, curso e acesso ao AVA; <b>auxiliar administrativo</b> para documentos, conta ou Pix e pagamento.']]
+          'Se ela não puder resolver: <b>coordenação geral</b> para questões gerais do projeto; <b>professores do curso FIC</b> para matrícula, curso e acesso ao AVA; <b>auxiliar administrativo</b> para documentos, conta ou Pix e pagamento.']]
       ],
       rodape: 'Realização: Subsecretaria de Mulheres Rurais · IFRN · FUNCERN'
     },
@@ -11133,12 +11177,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         ['Com quem falar', [
           'Agenda das visitas: a <b>bolsista do estado</b>.',
           'Dúvidas do trabalho: a <b>coordenação técnica</b>.',
-          'Curso e AVA: os <b>professores do FIC</b>. Documentos, conta ou Pix e pagamento: o <b>auxiliar administrativo</b>.']]
+          'Curso e AVA: os <b>professores do curso FIC</b>. Documentos, conta ou Pix e pagamento: o <b>auxiliar administrativo</b>.']]
       ],
       rodape: 'Realização: Subsecretaria de Mulheres Rurais · IFRN · FUNCERN'
     },
     professor_fic: {
-      t: 'Sua tela (professor do FIC)',
+      t: 'Sua tela (professor do curso FIC)',
       intro: 'Turmas do curso FIC, matrículas da coordenação técnica, das bolsistas e das agentes de campo e a confirmação mensal do acesso ao AVA.',
       tarefas: [
         ['Matricular alunas', ['No topo, toque em <b>Matricular alunas</b>.', 'Na turma, toque em <b>+ Matricular</b> (se não houver turma, crie em <b>+ Nova turma</b>).', 'Marque as pessoas, digite o número do SUAP e toque em <b>Salvar</b>.']],
@@ -11880,7 +11924,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         acompanhamentos: v.filter(x => x.etapa === 'acompanhamento' && x.situacao === 'realizada').length,
         avaliacoes: av.filter(x => x.uf === uf).length, visitas_feitas: v.filter(x => x.situacao === 'realizada').length,
         agendadas: v.filter(x => x.situacao === 'prevista' && String(x.data_prevista) >= hoje).length, atrasadas: v.filter(x => x.situacao === 'prevista' && String(x.data_prevista) < hoje).length,
-        bolsistas: equipe.filter(m => m.uf === uf && (m.papel === 'articulacao' || m.papel === 'apoio')).length, agentes: equipe.filter(m => m.uf === uf && m.papel === 'agente').length };
+        bolsistas: equipe.filter(m => m.uf === uf && (m.papel === 'articulacao' || m.papel === 'apoio')).length, agentes: equipe.filter(m => m.uf === uf && m.papel === 'agente').length,
+        // 60: equipe de campo habilitada e diagnósticos esperando a coordenação (a mesma conta de acompanhamento_equipe_uf)
+        equipe_campo: equipe.filter(m => m.uf === uf && ['articulacao', 'apoio', 'agente'].includes(m.papel)).length,
+        habilitadas: equipe.filter(m => m.uf === uf && ['articulacao', 'apoio', 'agente'].includes(m.papel) && MQ.regras.habilitado(m)).length,
+        diag_aguardando: g.filter(x => x.situacao === 'aguardando').length, diag_devolvidos: g.filter(x => x.situacao === 'devolvido').length };
     });
     const impl = new Set(vs.filter(v => v.etapa === 'implantacao' && v.situacao === 'realizada').map(v => v.ficha_id));
     const gm = {}; sel.forEach(f => { const k = f.uf + '|' + semAcento(f.municipio); const x = gm[k] || (gm[k] = { uf: f.uf, municipio: String(f.municipio).replace(/\s+/g, ' ').trim(), n: 0, implantados: 0 }); x.n++; if (impl.has(f.id)) x.implantados++; });
@@ -11995,6 +12043,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `<div class="ac-ufs">${a.por_uf.map(u => `<section class="bloco ac-uf" aria-label="${E(U().nomeUF ? U().nomeUF(u.uf) : u.uf)}"><h3>${E(U().nomeUF ? U().nomeUF(u.uf) : u.uf)}${u.atrasadas ? ` <span class="chip crit">${n(u.atrasadas)} visita${u.atrasadas > 1 ? 's' : ''} atrasada${u.atrasadas > 1 ? 's' : ''}</span>` : ' <span class="chip ok">Visitas em dia</span>'}</h3>
         ${barra('Selecionadas', u.selecionadas, ALVO_UF.selecionadas)}${barra('Diagnósticos', u.diagnosticos, ALVO_UF.diagnosticos)}${barra('Quintais implantados', u.implantados, ALVO_UF.implantados)}${barra('Acompanhamentos', u.acompanhamentos, ALVO_UF.acompanhamentos)}
         <dl class="dl ac-dl"><dt>Equipe no estado</dt><dd>${n(u.bolsistas)} bolsista${u.bolsistas === 1 ? '' : 's'} e ${n(u.agentes)} agente${u.agentes === 1 ? '' : 's'} de campo</dd>
+          ${u.habilitadas != null ? `<dt>Prontas para trabalhar</dt><dd>${n(u.habilitadas)} de ${n(u.equipe_campo)} com a habilitação completa${u.equipe_campo && u.habilitadas < u.equipe_campo ? ' <span class="chip pend">falta habilitar ' + n(u.equipe_campo - u.habilitadas) + '</span>' : ''}</dd>` : ''}
+          ${u.diag_aguardando != null ? `<dt>Diagnósticos esperando</dt><dd>${n(u.diag_aguardando)} aguardando a coordenação${u.diag_devolvidos ? ' · ' + n(u.diag_devolvidos) + ' devolvido' + (u.diag_devolvidos > 1 ? 's' : '') + ' para correção' : ''}</dd>` : ''}
           <dt>Comunidades</dt><dd>${n(u.comunidades)} em ${n(u.municipios)} município${u.municipios === 1 ? '' : 's'}</dd><dt>Visitas agendadas</dt><dd>${n(u.agendadas)}</dd>
           <dt>Lista de espera</dt><dd>${n(u.espera)}</dd><dt>Sem água na seca</dt><dd>${n(u.sem_agua + u.diag_sem_agua)}</dd></dl></section>`).join('')}</div>`;
   }
@@ -12004,6 +12054,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const it = [];
     if (atr) it.push(`<li><b>${n(atr)} visita${atr > 1 ? 's' : ''} com a data vencida</b> e ainda sem registro: ${a.por_uf.filter(u => u.atrasadas).map(u => u.uf + ' ' + u.atrasadas).join(', ')}.</li>`);
     if (semEq.length) it.push(`<li><b>Equipe incompleta</b> (menos de 2 bolsistas) em: ${semEq.join(', ')}.</li>`);
+    const semHab = a.por_uf.filter(u => u.habilitadas != null && u.equipe_campo > u.habilitadas);
+    if (semHab.length) it.push(`<li><b>Equipe sem habilitação completa</b> (ainda não pode trabalhar nem receber): ${semHab.map(u => u.uf + ' ' + (u.equipe_campo - u.habilitadas)).join(', ')}.</li>`);
+    const dgEsp = total(a, 'diag_aguardando'), dgDev = total(a, 'diag_devolvidos');
+    if (dgEsp) it.push(`<li><b>${n(dgEsp)} diagnóstico${dgEsp > 1 ? 's' : ''} esperando a aprovação da coordenação</b>: o quintal só é implantado depois do plano aprovado. ${a.por_uf.filter(u => u.diag_aguardando).map(u => u.uf + ' ' + u.diag_aguardando).join(', ')}.</li>`);
+    if (dgDev) it.push(`<li><b>${n(dgDev)} diagnóstico${dgDev > 1 ? 's' : ''} devolvido${dgDev > 1 ? 's' : ''} para correção</b>: ${a.por_uf.filter(u => u.diag_devolvidos).map(u => u.uf + ' ' + u.diag_devolvidos).join(', ')}.</li>`);
     if (agua) it.push(`<li><b>${n(agua)} mulher${agua > 1 ? 'es' : ''} sem água que dure na seca</b>: não recebem o kit até haver solução (cisterna ou outro programa).</li>`);
     if (esp) it.push(`<li><b>${n(esp)} na lista de espera</b>, para o caso de alguma vaga abrir.</li>`);
     return it.length ? `<ul class="ac-lista">${it.join('')}</ul>` : '<p class="muted">Nada parado no momento.</p>';
@@ -12013,7 +12068,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const kp = a.orgao === 'mda'
       ? numeroGrande(n(total(a, 'selecionadas')), 'mulheres selecionadas', 'de 200 previstas') + numeroGrande(n(total(a, 'pessoas')), 'pessoas nas famílias') + numeroGrande(n(total(a, 'implantados')), 'quintais implantados', 'de 200 previstos')
         + numeroGrande(n(total(a, 'municipios')), 'municípios') + numeroGrande(n(total(a, 'comunidades')), 'comunidades rurais') + numeroGrande(n(total(a, 'visitas_feitas')), 'visitas de campo feitas', 'de 1.000 previstas')
-      : numeroGrande(n(total(a, 'selecionadas')), 'mulheres selecionadas', 'de 200 previstas') + numeroGrande(n(total(a, 'comunidades')), 'comunidades', 'em ' + n(total(a, 'municipios')) + ' municípios') + numeroGrande(n(total(a, 'bolsistas') + total(a, 'agentes')), 'pessoas da equipe de campo')
+      : numeroGrande(n(total(a, 'selecionadas')), 'mulheres selecionadas', 'de 200 previstas') + numeroGrande(n(total(a, 'comunidades')), 'comunidades', 'em ' + n(total(a, 'municipios')) + ' municípios') + numeroGrande(n(total(a, 'bolsistas') + total(a, 'agentes')), 'pessoas da equipe de campo', a.por_uf.some(u => u.habilitadas != null) ? n(total(a, 'habilitadas')) + ' com a habilitação completa' : '')
         + numeroGrande(n(total(a, 'visitas_feitas')), 'visitas feitas') + numeroGrande(n(total(a, 'agendadas')), 'visitas agendadas') + numeroGrande(n(total(a, 'atrasadas')), 'visitas atrasadas');
     const sec = (id, t, sub, h) => `<section class="ac-sec" id="ac-${id}" aria-labelledby="ac-${id}-t"><h2 id="ac-${id}-t">${t}</h2>${sub ? `<p class="ac-sub">${sub}</p>` : ''}${h}</section>`;
     const area = total(a, 'area_m2');
@@ -12325,7 +12380,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const st = m => !m ? 'vaga aberta' : !R.habilitado(m) ? 'falta habilitar' : (demo || m.user_id) ? 'pronta' : 'ainda não entrou';
     const tec = eq.find(m => m.papel === 'coord_tecnico'), aux = eq.find(m => m.papel === 'auxiliar_adm');
     const profs = eq.filter(m => m.papel === 'professor_fic'), profsHab = profs.filter(m => R.habilitado(m)).length;
-    return `<p class="small pront-coord"><b>Coordenação técnica:</b> ${st(tec)} · <b>Auxiliar:</b> ${st(aux)} · <b>Professores do FIC:</b> ${profs.length ? profsHab + ' de ' + profs.length + ' habilitado' + (profs.length > 1 ? 's' : '') : 'nenhum cadastrado (sem professor habilitado, ninguém da equipe de campo pode ser cadastrado)'}</p>`;
+    return `<p class="small pront-coord"><b>Coordenação técnica:</b> ${st(tec)} · <b>Auxiliar:</b> ${st(aux)} · <b>Professores do curso FIC:</b> ${profs.length ? profsHab + ' de ' + profs.length + ' habilitado' + (profs.length > 1 ? 's' : '') : 'nenhum cadastrado (sem professor habilitado, ninguém da equipe de campo pode ser cadastrado)'}</p>`;
   }
   /* mesma cara do quadro "Bolsistas por estado" da aba Equipe: tabela no computador, cartões no celular */
   const barra = (n, de, sub, rot) => { const pc = de ? Math.min(100, Math.round(n / de * 100)) : 0;
@@ -12430,6 +12485,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
     a.download = 'copia_mulheres_e_quintais_' + R.hoje() + '.xlsx'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
     const total = abas.reduce((t, [, l]) => t + Math.max(0, l.length - 1), 0);
+    if (S().api && S().api.registrarPlanilha) Promise.resolve().then(() => S().api.registrarPlanilha('copia_dados', total, null)).catch(() => {});   // 60: fica no Histórico
     if (MQ.ui.toast) MQ.ui.toast('Cópia baixada: ' + total + ' registros em ' + abas.length + ' abas. Ela tem CPF e endereço: guarde num lugar seguro.');
   }
 
@@ -12929,7 +12985,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const p = S.api.perfisDemo();
     const b = (id, t) => `<button type="button" data-acao="perfil" data-p="${id}" aria-pressed="${S.verEntrada ? id === 'entrada' : p === id}">${t}</button>`;
     return `<div class="demo"><div class="demo-in"><span class="demo-selo"><span aria-hidden="true">⚠</span> <b>Ambiente de demonstração</b> · os dados exibidos são fictícios</span>
-      <span class="demo-ver">Ver como: <span class="seg" role="group" aria-label="Perfil">${b('coord_geral', 'Coord. geral')}${b('coord_tecnico', 'Coord. técnica')}${b('bolsista', 'Bolsista')}${b('agente', 'Agente')}${b('professor', 'Professor FIC')}${b('auxiliar', 'Auxiliar adm.')}${b('obs_mda', 'MDA')}${b('obs_mpa', 'MPA')}${b('entrada', 'Tela de entrada')}</span></span>
+      <span class="demo-ver">Ver como: <span class="seg" role="group" aria-label="Perfil">${b('coord_geral', 'Coord. geral')}${b('coord_tecnico', 'Coord. técnica')}${b('bolsista', 'Bolsista')}${b('agente', 'Agente')}${b('professor', 'Professor do curso FIC')}${b('auxiliar', 'Auxiliar adm.')}${b('obs_mda', 'MDA')}${b('obs_mpa', 'MPA')}${b('entrada', 'Tela de entrada')}</span></span>
       <details class="demo-mais"><summary>Ver detalhes</summary><p>Os dados ficam gravados só neste navegador e servem para testar. Nada aqui vai para o servidor nem para a vitrine pública.</p>
         <button class="link" data-acao="recomecar">Recomeçar demonstração</button></details></div></div>`;
   }
@@ -13171,20 +13227,20 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <span>${fs.length} ficha${fs.length === 1 ? '' : 's'}${aguard ? ` · <b>${aguard}</b> aguardando aprovação` : ''}</span></div>`;
   }
 
-  /* primeiro passo da equipe: sem professor do FIC habilitado, ninguém da equipe de campo é cadastrado (33_exige_professor_fic) */
+  /* primeiro passo da equipe: sem professor do curso FIC habilitado, ninguém da equipe de campo é cadastrado (33_exige_professor_fic) */
   function passoProfessorFic(souGeral) {
     const profs = ativos().filter(m => m.papel === 'professor_fic');
     const p = profs.sort((a, b) => (!!b.docs_funcern_em + !!b.termo_assinado_em) - (!!a.docs_funcern_em + !!a.termo_assinado_em))[0];
-    const passos = [['Cadastrar', !!p, 'Cadastrar o professor do FIC'], ['Cadastro no Arlo', !!(p && p.docs_funcern_em), 'Cadastro no Arlo (documentação da FUNCERN)'], ['Termo assinado', !!(p && p.termo_assinado_em), 'Termo de compromisso assinado e conferido']];
+    const passos = [['Cadastrar', !!p, 'Cadastrar o professor do curso FIC'], ['Cadastro no Arlo', !!(p && p.docs_funcern_em), 'Cadastro no Arlo (documentação da FUNCERN)'], ['Termo assinado', !!(p && p.termo_assinado_em), 'Termo de compromisso assinado e conferido']];
     const feitos = passos.filter(x => x[1]).length;
     const acao = !souGeral ? '<p class="small pf-quem">Quem cadastra e habilita o professor é a coordenação geral.</p>'
-      : !p ? '<button class="btn pri" data-acao="novo" data-papel="professor_fic">Cadastrar professor do FIC</button>'
+      : !p ? '<button class="btn pri" data-acao="novo" data-papel="professor_fic">Cadastrar professor do curso FIC</button>'
       : `<button class="btn pri" data-acao="ver" data-id="${p.id}">Completar a habilitação de ${esc(nomeDe(p).split(' ')[0])}</button>`;
     return `<section class="passo-fic" role="status" aria-labelledby="pf-t">
       <span class="pf-ic" aria-hidden="true">${MQ.ICONES && MQ.ICONES.capelo ? MQ.ICONES.capelo : ''}</span>
       <div class="pf-corpo">
         <span class="eyebrow">Primeiro passo · ${feitos} de ${passos.length}</span>
-        <h2 id="pf-t">${souGeral ? 'Cadastre e habilite um professor do FIC' : 'Ainda não há professor do FIC habilitado'}</h2>
+        <h2 id="pf-t">${souGeral ? 'Cadastre e habilite um professor do curso FIC' : 'Ainda não há professor do curso FIC habilitado'}</h2>
         <p>Sem ele habilitado, não dá para cadastrar a coordenação técnica, as bolsistas nem os agentes.</p>
         <ol class="pf-passos">${passos.map(([t, ok, longo], i) => `<li title="${longo}" class="${ok ? 'ok' : i === passos.findIndex(x => !x[1]) ? 'agora' : ''}"><span class="pf-n" aria-hidden="true">${ok ? '✓' : i + 1}</span><span>${t}${ok ? '<span class="so-leitor"> (feito)</span>' : ''}</span></li>`).join('')}</ol>
       </div>
@@ -13208,6 +13264,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const alvo = a.depois || a.antes || {};
     const papel = P[alvo.papel] ? P[alvo.papel].nome.toLowerCase() + (alvo.uf ? ' ' + alvo.uf : '') : '';
     if (a.tabela === 'equipe_bancario' && a.acao === 'VIEW') return `<b>${esc(quem)}</b> consultou a conta bancária de <b>${esc((porId(a.registro_id) || {}).nome || 'uma pessoa')}</b> para o cadastro no Arlo.`;
+    if (a.tabela === 'planilhas' && a.acao === 'PLANILHA') { const D = a.depois || {}; const q = +D.qtd || 0;
+      const nome = { completa: 'a planilha completa das fichas (com CPF, NIS e CAF)', sem_documentos: 'a planilha das fichas sem documentos', copia_dados: 'a cópia dos dados do projeto' }[D.tipo] || 'uma planilha';
+      return `<b>${esc(quem)}</b> baixou ${nome}${D.tipo === 'copia_dados' ? ` (${q} registros)` : ` (${q} ficha${q === 1 ? '' : 's'})`}${D.filtro ? ' · filtro: ' + esc(D.filtro) : ''}.`; }
     if (a.tabela === 'equipe_bancario' && a.acao === 'EXPORT') return `<b>${esc(quem)}</b> gerou a planilha bancária para a FUNCERN.`;
     if (a.tabela === 'equipe_bancario') return `<b>${esc(quem)}</b> informou ou alterou a própria conta bancária.`;
     // 47: o login (só a senha) de quem saiu é removido pelo banco
@@ -14081,11 +14140,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const cabP = `<div class="painel-cab"><div class="t"><span class="eyebrow">${titulo}</span>
         <h2 id="painel-t">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(nomeUF(m.uf)) : ''}</h2></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>`;
-    // 33: técnica, bolsistas e agentes só com professor do FIC habilitado (a matrícula no curso depende dele)
+    // 33: técnica, bolsistas e agentes só com professor do curso FIC habilitado (a matrícula no curso depende dele)
     if (!edit && R.PRECISA_PROFESSOR.includes(m.papel) && !R.temProfessorHabilitado(S.equipe)) {
       const prof = (S.equipe || []).find(x => x.papel === 'professor_fic' && x.status === 'ativa');
       return cabP + `<div class="painel-corpo"><div class="aviso erro sem-professor"><b>Ainda não dá para cadastrar.</b> ${esc(R.MSG_SEM_PROFESSOR)}</div>
-        <p class="small muted">${prof ? `${esc(nomeDe(prof))} já está cadastrado(a) como professor(a): falta registrar o cadastro no Arlo e o termo assinado, na ficha dele(a).` : 'Nenhum professor do FIC cadastrado ainda. Quem cadastra professor é a coordenação geral, na aba Equipe.'}</p>
+        <p class="small muted">${prof ? `${esc(nomeDe(prof))} já está cadastrado(a) como professor(a): falta registrar o cadastro no Arlo e o termo assinado, na ficha dele(a).` : 'Nenhum professor do curso FIC cadastrado ainda. Quem cadastra professor é a coordenação geral, na aba Equipe.'}</p>
         ${prof && S.eu.papel === 'coord_geral' ? `<div class="acoes"><button class="btn" data-acao="ver" data-id="${esc(prof.id)}" aria-label="Ver detalhes de ${esc(nomeDe(prof))}">Ver detalhes</button></div>` : ''}</div>`;
     }
     // cadastro novo: primeiro escolhe como (link para a pessoa preencher ou à mão)

@@ -38,7 +38,11 @@
         acompanhamentos: v.filter(x => x.etapa === 'acompanhamento' && x.situacao === 'realizada').length,
         avaliacoes: av.filter(x => x.uf === uf).length, visitas_feitas: v.filter(x => x.situacao === 'realizada').length,
         agendadas: v.filter(x => x.situacao === 'prevista' && String(x.data_prevista) >= hoje).length, atrasadas: v.filter(x => x.situacao === 'prevista' && String(x.data_prevista) < hoje).length,
-        bolsistas: equipe.filter(m => m.uf === uf && (m.papel === 'articulacao' || m.papel === 'apoio')).length, agentes: equipe.filter(m => m.uf === uf && m.papel === 'agente').length };
+        bolsistas: equipe.filter(m => m.uf === uf && (m.papel === 'articulacao' || m.papel === 'apoio')).length, agentes: equipe.filter(m => m.uf === uf && m.papel === 'agente').length,
+        // 60: equipe de campo habilitada e diagnósticos esperando a coordenação (a mesma conta de acompanhamento_equipe_uf)
+        equipe_campo: equipe.filter(m => m.uf === uf && ['articulacao', 'apoio', 'agente'].includes(m.papel)).length,
+        habilitadas: equipe.filter(m => m.uf === uf && ['articulacao', 'apoio', 'agente'].includes(m.papel) && MQ.regras.habilitado(m)).length,
+        diag_aguardando: g.filter(x => x.situacao === 'aguardando').length, diag_devolvidos: g.filter(x => x.situacao === 'devolvido').length };
     });
     const impl = new Set(vs.filter(v => v.etapa === 'implantacao' && v.situacao === 'realizada').map(v => v.ficha_id));
     const gm = {}; sel.forEach(f => { const k = f.uf + '|' + semAcento(f.municipio); const x = gm[k] || (gm[k] = { uf: f.uf, municipio: String(f.municipio).replace(/\s+/g, ' ').trim(), n: 0, implantados: 0 }); x.n++; if (impl.has(f.id)) x.implantados++; });
@@ -153,6 +157,8 @@
     return `<div class="ac-ufs">${a.por_uf.map(u => `<section class="bloco ac-uf" aria-label="${E(U().nomeUF ? U().nomeUF(u.uf) : u.uf)}"><h3>${E(U().nomeUF ? U().nomeUF(u.uf) : u.uf)}${u.atrasadas ? ` <span class="chip crit">${n(u.atrasadas)} visita${u.atrasadas > 1 ? 's' : ''} atrasada${u.atrasadas > 1 ? 's' : ''}</span>` : ' <span class="chip ok">Visitas em dia</span>'}</h3>
         ${barra('Selecionadas', u.selecionadas, ALVO_UF.selecionadas)}${barra('Diagnósticos', u.diagnosticos, ALVO_UF.diagnosticos)}${barra('Quintais implantados', u.implantados, ALVO_UF.implantados)}${barra('Acompanhamentos', u.acompanhamentos, ALVO_UF.acompanhamentos)}
         <dl class="dl ac-dl"><dt>Equipe no estado</dt><dd>${n(u.bolsistas)} bolsista${u.bolsistas === 1 ? '' : 's'} e ${n(u.agentes)} agente${u.agentes === 1 ? '' : 's'} de campo</dd>
+          ${u.habilitadas != null ? `<dt>Prontas para trabalhar</dt><dd>${n(u.habilitadas)} de ${n(u.equipe_campo)} com a habilitação completa${u.equipe_campo && u.habilitadas < u.equipe_campo ? ' <span class="chip pend">falta habilitar ' + n(u.equipe_campo - u.habilitadas) + '</span>' : ''}</dd>` : ''}
+          ${u.diag_aguardando != null ? `<dt>Diagnósticos esperando</dt><dd>${n(u.diag_aguardando)} aguardando a coordenação${u.diag_devolvidos ? ' · ' + n(u.diag_devolvidos) + ' devolvido' + (u.diag_devolvidos > 1 ? 's' : '') + ' para correção' : ''}</dd>` : ''}
           <dt>Comunidades</dt><dd>${n(u.comunidades)} em ${n(u.municipios)} município${u.municipios === 1 ? '' : 's'}</dd><dt>Visitas agendadas</dt><dd>${n(u.agendadas)}</dd>
           <dt>Lista de espera</dt><dd>${n(u.espera)}</dd><dt>Sem água na seca</dt><dd>${n(u.sem_agua + u.diag_sem_agua)}</dd></dl></section>`).join('')}</div>`;
   }
@@ -162,6 +168,11 @@
     const it = [];
     if (atr) it.push(`<li><b>${n(atr)} visita${atr > 1 ? 's' : ''} com a data vencida</b> e ainda sem registro: ${a.por_uf.filter(u => u.atrasadas).map(u => u.uf + ' ' + u.atrasadas).join(', ')}.</li>`);
     if (semEq.length) it.push(`<li><b>Equipe incompleta</b> (menos de 2 bolsistas) em: ${semEq.join(', ')}.</li>`);
+    const semHab = a.por_uf.filter(u => u.habilitadas != null && u.equipe_campo > u.habilitadas);
+    if (semHab.length) it.push(`<li><b>Equipe sem habilitação completa</b> (ainda não pode trabalhar nem receber): ${semHab.map(u => u.uf + ' ' + (u.equipe_campo - u.habilitadas)).join(', ')}.</li>`);
+    const dgEsp = total(a, 'diag_aguardando'), dgDev = total(a, 'diag_devolvidos');
+    if (dgEsp) it.push(`<li><b>${n(dgEsp)} diagnóstico${dgEsp > 1 ? 's' : ''} esperando a aprovação da coordenação</b>: o quintal só é implantado depois do plano aprovado. ${a.por_uf.filter(u => u.diag_aguardando).map(u => u.uf + ' ' + u.diag_aguardando).join(', ')}.</li>`);
+    if (dgDev) it.push(`<li><b>${n(dgDev)} diagnóstico${dgDev > 1 ? 's' : ''} devolvido${dgDev > 1 ? 's' : ''} para correção</b>: ${a.por_uf.filter(u => u.diag_devolvidos).map(u => u.uf + ' ' + u.diag_devolvidos).join(', ')}.</li>`);
     if (agua) it.push(`<li><b>${n(agua)} mulher${agua > 1 ? 'es' : ''} sem água que dure na seca</b>: não recebem o kit até haver solução (cisterna ou outro programa).</li>`);
     if (esp) it.push(`<li><b>${n(esp)} na lista de espera</b>, para o caso de alguma vaga abrir.</li>`);
     return it.length ? `<ul class="ac-lista">${it.join('')}</ul>` : '<p class="muted">Nada parado no momento.</p>';
@@ -171,7 +182,7 @@
     const kp = a.orgao === 'mda'
       ? numeroGrande(n(total(a, 'selecionadas')), 'mulheres selecionadas', 'de 200 previstas') + numeroGrande(n(total(a, 'pessoas')), 'pessoas nas famílias') + numeroGrande(n(total(a, 'implantados')), 'quintais implantados', 'de 200 previstos')
         + numeroGrande(n(total(a, 'municipios')), 'municípios') + numeroGrande(n(total(a, 'comunidades')), 'comunidades rurais') + numeroGrande(n(total(a, 'visitas_feitas')), 'visitas de campo feitas', 'de 1.000 previstas')
-      : numeroGrande(n(total(a, 'selecionadas')), 'mulheres selecionadas', 'de 200 previstas') + numeroGrande(n(total(a, 'comunidades')), 'comunidades', 'em ' + n(total(a, 'municipios')) + ' municípios') + numeroGrande(n(total(a, 'bolsistas') + total(a, 'agentes')), 'pessoas da equipe de campo')
+      : numeroGrande(n(total(a, 'selecionadas')), 'mulheres selecionadas', 'de 200 previstas') + numeroGrande(n(total(a, 'comunidades')), 'comunidades', 'em ' + n(total(a, 'municipios')) + ' municípios') + numeroGrande(n(total(a, 'bolsistas') + total(a, 'agentes')), 'pessoas da equipe de campo', a.por_uf.some(u => u.habilitadas != null) ? n(total(a, 'habilitadas')) + ' com a habilitação completa' : '')
         + numeroGrande(n(total(a, 'visitas_feitas')), 'visitas feitas') + numeroGrande(n(total(a, 'agendadas')), 'visitas agendadas') + numeroGrande(n(total(a, 'atrasadas')), 'visitas atrasadas');
     const sec = (id, t, sub, h) => `<section class="ac-sec" id="ac-${id}" aria-labelledby="ac-${id}-t"><h2 id="ac-${id}-t">${t}</h2>${sub ? `<p class="ac-sub">${sub}</p>` : ''}${h}</section>`;
     const area = total(a, 'area_m2');

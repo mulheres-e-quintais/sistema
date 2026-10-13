@@ -5,7 +5,7 @@
 --
 -- entregas_mes: o que o sistema não consegue saber sozinho entre as entregas mensais do Guia das bolsistas:
 --   'presenca' → a própria bolsista marca que entregou as listas de presença do mês;
---   'ava'      → o professor do FIC (ou a coordenação geral) confirma o acesso ao AVA no mês.
+--   'ava'      → o professor do curso FIC (ou a coordenação geral) confirma o acesso ao AVA no mês.
 --   (fotos, fichas, relatório e metas o sistema calcula pelas visitas e pelo pedido de bolsa)
 -- ciencias: registro de que a pessoa leu os pontos importantes do Guia ("Li e entendi"). Não se apaga.
 -- perfil: perguntas do perfil no campo (é agricultora, atua com mulheres rurais, movimento, experiência…)

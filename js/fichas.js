@@ -137,7 +137,7 @@
     return `<section class="secao" aria-labelledby="t-sel">
       <div class="cab"><div><span class="eyebrow">Seleção das mulheres</span><h1 id="t-sel">Seleção das beneficiárias</h1>
         <p>Fichas de indicação dos 5 estados. ${souTec ? 'Você aprova ou devolve cada ficha antes do diagnóstico.' : 'A aprovação é da coordenação técnica.'} O sistema impede CPF repetido e mais de ${MQ.VAGAS_UF} selecionadas aprovadas por estado.</p></div>
-        <button class="btn" data-acao="ficha-csv">Baixar CSV${temFiltro() ? ' (' + conta + ')' : ''}</button></div>
+        ${botaoPlanilha(temFiltro() ? conta : '')}</div>
       ${(() => { const u = MQ.UFS.find(x => contar(lista, x.uf).total); if (!u) return ''; const c = contar(lista, u.uf);
         const partes = [[c.aprovadas, 'selecionada'], [c.espera, 'na lista de espera'], [c.sem_agua, 'sem água'], [c.nao_atende, 'que não atende'], [c.aguardando, 'para aprovar'], [c.devolvidas, 'devolvida']].filter(x => x[0]).map(x => x[0] + ' ' + x[1]);
         return `<div class="aviso" style="margin:0"><b>Como ler:</b> a coluna <b>Fichas</b> é o total de mulheres indicadas no estado, e as colunas ao lado repartem esse total (cada mulher aparece numa só). As <b>${MQ.VAGAS_UF} vagas</b> são só a coluna <b>Selecionadas</b>; as outras não ocupam vaga.
@@ -415,7 +415,7 @@
           : '<p class="nota">A foto ainda está só no aparelho de quem preencheu.</p>';
       } catch (e) { box.innerHTML = `<p class="nota">${E(e.message)}</p>`; }
     }
-    else if (a === 'ficha-csv') baixarCSV();
+    else if (a === 'ficha-csv') { const d = el.closest('details'); if (d) d.open = false; baixarCSV(el.dataset.tipo === 'sem_documentos' ? 'sem_documentos' : 'completa'); }
     else if (a === 'ficha-limpar-filtros') {
       filtro.uf = filtro.situacao = filtro.busca = ''; (S.aberto = S.aberto || {})['fichas-coord'] = true;   // a lista continua aberta, agora inteira
       U().render(); const n = document.getElementById('ff-busca'); if (n) n.focus();
@@ -494,9 +494,26 @@
     nis: 'NIS', caf: 'CAF', pessoas_familia: 'Pessoas na família', indicada_por: 'Indicada por', data_ficha: 'Data da ficha', autodeclaracao: 'Autodeclaração assinada', pontos: 'Pontos de prioridade', resultado: 'Resultado',
     posicao_espera: 'Posição na lista de espera', encaminhada_para: 'Encaminhada para', situacao: 'Situação', aprovada_em: 'Aprovada em', bolsista: 'Bolsista', consent_imagem: 'Autoriza uso de imagem' };
   const DATAS_CSV = ['data_nascimento', 'data_ficha', 'aprovada_em'];
-  function montarCSV() {
+  // planilha "sem documentos": para entregar kit e falar com as mulheres não precisa de CPF, NIS, CAF nem data de nascimento
+  // (se a planilha circular por WhatsApp, o estrago é menor). A completa continua para quem precisa conferir documentos.
+  const DOCUMENTOS = ['cpf', 'data_nascimento', 'nis', 'caf'];
+  const TIPOS_PLANILHA = { completa: 'Planilha completa', sem_documentos: 'Planilha sem documentos' };
+  function botaoPlanilha(conta) {
+    return `<details class="menu-planilha"><summary class="btn">Baixar planilha${conta ? ' (' + conta + ')' : ''}</summary>
+      <div class="menu-planilha-op">
+        <button type="button" class="btn" data-acao="ficha-csv" data-tipo="sem_documentos"><b>Sem documentos</b><small>Nome, local, celular, endereço e situação. Para entregar o kit e falar com as mulheres.</small></button>
+        <button type="button" class="btn" data-acao="ficha-csv" data-tipo="completa"><b>Completa</b><small>Com CPF, NIS, CAF e data de nascimento. Só para conferir documentos.</small></button>
+        <p class="small muted">Abre no Excel ou no Google Planilhas. Cada planilha baixada fica registrada no Histórico.</p>
+      </div></details>`;
+  }
+  function filtroTexto() {
+    return [filtro.uf ? 'Estado ' + filtro.uf : '', filtro.situacao ? 'Situação: ' + filtro.situacao : '', semAcento(filtro.busca) ? 'Busca: ' + String(filtro.busca).trim().slice(0, 60) : ''].filter(Boolean).join(' · ');
+  }
+  function montarCSV(tipo) {
+    const semDoc = tipo === 'sem_documentos';
     const col = ['uf', 'municipio', 'comunidade', 'nome', 'cpf', 'data_nascimento', 'celular', 'endereco', 'ponto_referencia', 'nis', 'caf', 'pessoas_familia', 'indicada_por', 'data_ficha',
-      ...MQ.CRITERIOS.map(c => c[0]), 'autodeclaracao', 'pontos', 'resultado', 'posicao_espera', 'encaminhada_para', 'situacao', 'aprovada_em', 'bolsista', 'consent_imagem'];
+      ...MQ.CRITERIOS.map(c => c[0]), 'autodeclaracao', 'pontos', 'resultado', 'posicao_espera', 'encaminhada_para', 'situacao', 'aprovada_em', 'bolsista', 'consent_imagem']
+      .filter(c => !semDoc || !DOCUMENTOS.includes(c));
     const rot = c => ROTULO_CSV[c] || ((MQ.CRITERIOS.find(x => x[0] === c) || [])[1]) || c;
     const tudo = todas(); const lista = filtrar(tudo);
     const linhas = lista.map(f => col.map(c => {
@@ -509,15 +526,17 @@
     }).join(';'));
     const partes = [filtro.uf, filtro.situacao, semAcento(filtro.busca) ? 'busca' : ''].filter(Boolean).map(x => String(x).replace(/[^a-zA-Z0-9_]+/g, ''));
     return { texto: '\ufeff' + col.map(c => celCSV(rot(c))).join(';') + '\n' + linhas.join('\n'), n: lista.length, total: tudo.length, filtrado: temFiltro(),
-      nome: 'fichas_mulheres_e_quintais_' + (partes.length ? 'filtro_' + partes.join('_') + '_' : '') + R.hoje() + '.csv' };
+      nome: 'fichas_mulheres_e_quintais_' + (semDoc ? 'sem_documentos_' : '') + (partes.length ? 'filtro_' + partes.join('_') + '_' : '') + R.hoje() + '.csv', tipo: semDoc ? 'sem_documentos' : 'completa' };
   }
-  function baixarCSV() {
-    const r = montarCSV();
+  function baixarCSV(tipo) {
+    const r = montarCSV(tipo);
+    // fica no Histórico (60_planilha_e_mpa.sql): quem baixou, qual planilha, quantas fichas e o filtro. Sem o script, só não registra.
+    const api = U().S.api; if (api && api.registrarPlanilha) Promise.resolve().then(() => api.registrarPlanilha(r.tipo, r.n, filtroTexto())).catch(() => {});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([r.texto], { type: 'text/csv;charset=utf-8' }));
     a.download = r.nome; a.hidden = true; a.setAttribute('aria-hidden', 'true'); a.tabIndex = -1;   // link só para disparar o download: não aparece nem entra na ordem do Tab
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-    U().toast((r.filtrado ? `Planilha gerada com ${r.n} de ${r.total} fichas (filtro da tela).` : 'Planilha gerada.') + ' Ela tem dados pessoais: guarde em pasta restrita.');
+    U().toast((r.filtrado ? `Planilha gerada com ${r.n} de ${r.total} fichas (filtro da tela).` : 'Planilha gerada.') + (r.tipo === 'completa' ? ' Ela tem CPF e outros documentos: guarde em pasta restrita e não mande por WhatsApp.' : ' Ela tem nome, celular e endereço: guarde em pasta restrita.'));
   }
 
   /* reatividade do formulário e dos filtros */
@@ -566,5 +585,10 @@
     if (b) b.form.dataset.decisao = b.value;
   }, true);
 
+  // menu "Baixar planilha": fecha com clique fora ou Esc (o foco volta ao botão)
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('click', e => { document.querySelectorAll('details.menu-planilha[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }); });
+    document.addEventListener('keydown', e => { if (e.key !== 'Escape') return; const d = document.querySelector('details.menu-planilha[open]'); if (!d) return; d.open = false; const s = d.querySelector('summary'); if (s) s.focus(); });
+  }
   MQ.fichasUI = { secaoBolsista, secaoCoord, painel, clique, enviar, contar, casaBusca, filtrar, filtro, montarCSV, celCSV, versaoDe, MSG_MUDOU, ROTULO_FILA };
 })();

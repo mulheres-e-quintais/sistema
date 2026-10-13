@@ -21,7 +21,7 @@
 --     esse valor (a coordenação geral não solicita bolsa pelo sistema).
 --
 -- B. PENDÊNCIAS DA AUDITORIA
---  5. Professor do FIC só altera a turma em que ELE é o professor; só a coordenação geral passa a turma a outro.
+--  5. Professor do curso FIC só altera a turma em que ELE é o professor; só a coordenação geral passa a turma a outro.
 --  6. Ajuda de custo: o valor pedido não passa do total detalhado por visita (tolerância de 1 centavo).
 --  7. Km de visita que já está em pedido lançado no Arlo não muda mais; ninguém apaga o km de visita já paga.
 --  8. Valores do custo da visita (parâmetros): só números, dentro do que faz sentido.
@@ -673,7 +673,7 @@ returns uuid language plpgsql security definer set search_path = public as $$
 declare e public.fic_encontros; t public.turmas_fic; v_id uuid; m record; eu uuid := public.meu_id(); v_papel text := coalesce(public.meu_papel(), '');
         v_pres uuid[] := coalesce(p_presentes, '{}'); v_soma numeric;
 begin
-  if v_papel not in ('professor_fic', 'coord_geral') then raise exception 'Quem registra os encontros do curso é o professor do FIC.'; end if;
+  if v_papel not in ('professor_fic', 'coord_geral') then raise exception 'Quem registra os encontros do curso é o professor do curso FIC.'; end if;
   select * into t from public.turmas_fic where id = p_turma;
   if t.id is null then raise exception 'Turma não encontrada.'; end if;
   if t.professor_id is null then raise exception 'Esta turma não tem professor(a): ajuste a turma antes.'; end if;

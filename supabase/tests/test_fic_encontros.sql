@@ -19,8 +19,8 @@ select id as geral_id from public.equipe where papel = 'coord_geral' and status 
 
 select t('anônimo NÃO lê encontros', null, $q$select count(*) from public.fic_encontros$q$, 'permission denied');
 select t('anônimo NÃO registra encontro', null, $q$select public.registrar_encontro_fic(null, gen_random_uuid(), public.fic_hoje(), 2, 'presencial', 'Aula sobre quintais', '{}')$q$, 'permission denied');
-select t('bolsista NÃO registra encontro', :B2, format($q$select public.registrar_encontro_fic(null, %L, public.fic_hoje(), 2, 'presencial', 'Aula sobre quintais', '{}')$q$, :'turma'), 'professor do FIC');
-select t('técnica NÃO registra encontro', :T, format($q$select public.registrar_encontro_fic(null, %L, public.fic_hoje(), 2, 'presencial', 'Aula sobre quintais', '{}')$q$, :'turma'), 'professor do FIC');
+select t('bolsista NÃO registra encontro', :B2, format($q$select public.registrar_encontro_fic(null, %L, public.fic_hoje(), 2, 'presencial', 'Aula sobre quintais', '{}')$q$, :'turma'), 'professor do curso FIC');
+select t('técnica NÃO registra encontro', :T, format($q$select public.registrar_encontro_fic(null, %L, public.fic_hoje(), 2, 'presencial', 'Aula sobre quintais', '{}')$q$, :'turma'), 'professor do curso FIC');
 select t('ninguém grava direto na tabela', :PR, format($q$insert into public.fic_encontros (turma_id, professor_id, data, carga_horaria, modalidade, conteudo) values (%L, %L, public.fic_hoje(), 2, 'ava', 'Aula direta na tabela')$q$, :'turma', :'prof'), 'permission denied');
 select t('data no futuro é recusada', :PR, format($q$select public.registrar_encontro_fic(null, %L, public.fic_hoje() + 3, 2, 'presencial', 'Aula sobre quintais', '{}')$q$, :'turma'), 'futuro');
 select t('sem conteúdo é recusado', :PR, format($q$select public.registrar_encontro_fic(null, %L, public.fic_hoje(), 2, 'presencial', 'curto', '{}')$q$, :'turma'), 'trabalhado');

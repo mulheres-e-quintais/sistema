@@ -490,7 +490,7 @@
     const p = S.api.perfisDemo();
     const b = (id, t) => `<button type="button" data-acao="perfil" data-p="${id}" aria-pressed="${S.verEntrada ? id === 'entrada' : p === id}">${t}</button>`;
     return `<div class="demo"><div class="demo-in"><span class="demo-selo"><span aria-hidden="true">⚠</span> <b>Ambiente de demonstração</b> · os dados exibidos são fictícios</span>
-      <span class="demo-ver">Ver como: <span class="seg" role="group" aria-label="Perfil">${b('coord_geral', 'Coord. geral')}${b('coord_tecnico', 'Coord. técnica')}${b('bolsista', 'Bolsista')}${b('agente', 'Agente')}${b('professor', 'Professor FIC')}${b('auxiliar', 'Auxiliar adm.')}${b('obs_mda', 'MDA')}${b('obs_mpa', 'MPA')}${b('entrada', 'Tela de entrada')}</span></span>
+      <span class="demo-ver">Ver como: <span class="seg" role="group" aria-label="Perfil">${b('coord_geral', 'Coord. geral')}${b('coord_tecnico', 'Coord. técnica')}${b('bolsista', 'Bolsista')}${b('agente', 'Agente')}${b('professor', 'Professor do curso FIC')}${b('auxiliar', 'Auxiliar adm.')}${b('obs_mda', 'MDA')}${b('obs_mpa', 'MPA')}${b('entrada', 'Tela de entrada')}</span></span>
       <details class="demo-mais"><summary>Ver detalhes</summary><p>Os dados ficam gravados só neste navegador e servem para testar. Nada aqui vai para o servidor nem para a vitrine pública.</p>
         <button class="link" data-acao="recomecar">Recomeçar demonstração</button></details></div></div>`;
   }
@@ -732,20 +732,20 @@
       <span>${fs.length} ficha${fs.length === 1 ? '' : 's'}${aguard ? ` · <b>${aguard}</b> aguardando aprovação` : ''}</span></div>`;
   }
 
-  /* primeiro passo da equipe: sem professor do FIC habilitado, ninguém da equipe de campo é cadastrado (33_exige_professor_fic) */
+  /* primeiro passo da equipe: sem professor do curso FIC habilitado, ninguém da equipe de campo é cadastrado (33_exige_professor_fic) */
   function passoProfessorFic(souGeral) {
     const profs = ativos().filter(m => m.papel === 'professor_fic');
     const p = profs.sort((a, b) => (!!b.docs_funcern_em + !!b.termo_assinado_em) - (!!a.docs_funcern_em + !!a.termo_assinado_em))[0];
-    const passos = [['Cadastrar', !!p, 'Cadastrar o professor do FIC'], ['Cadastro no Arlo', !!(p && p.docs_funcern_em), 'Cadastro no Arlo (documentação da FUNCERN)'], ['Termo assinado', !!(p && p.termo_assinado_em), 'Termo de compromisso assinado e conferido']];
+    const passos = [['Cadastrar', !!p, 'Cadastrar o professor do curso FIC'], ['Cadastro no Arlo', !!(p && p.docs_funcern_em), 'Cadastro no Arlo (documentação da FUNCERN)'], ['Termo assinado', !!(p && p.termo_assinado_em), 'Termo de compromisso assinado e conferido']];
     const feitos = passos.filter(x => x[1]).length;
     const acao = !souGeral ? '<p class="small pf-quem">Quem cadastra e habilita o professor é a coordenação geral.</p>'
-      : !p ? '<button class="btn pri" data-acao="novo" data-papel="professor_fic">Cadastrar professor do FIC</button>'
+      : !p ? '<button class="btn pri" data-acao="novo" data-papel="professor_fic">Cadastrar professor do curso FIC</button>'
       : `<button class="btn pri" data-acao="ver" data-id="${p.id}">Completar a habilitação de ${esc(nomeDe(p).split(' ')[0])}</button>`;
     return `<section class="passo-fic" role="status" aria-labelledby="pf-t">
       <span class="pf-ic" aria-hidden="true">${MQ.ICONES && MQ.ICONES.capelo ? MQ.ICONES.capelo : ''}</span>
       <div class="pf-corpo">
         <span class="eyebrow">Primeiro passo · ${feitos} de ${passos.length}</span>
-        <h2 id="pf-t">${souGeral ? 'Cadastre e habilite um professor do FIC' : 'Ainda não há professor do FIC habilitado'}</h2>
+        <h2 id="pf-t">${souGeral ? 'Cadastre e habilite um professor do curso FIC' : 'Ainda não há professor do curso FIC habilitado'}</h2>
         <p>Sem ele habilitado, não dá para cadastrar a coordenação técnica, as bolsistas nem os agentes.</p>
         <ol class="pf-passos">${passos.map(([t, ok, longo], i) => `<li title="${longo}" class="${ok ? 'ok' : i === passos.findIndex(x => !x[1]) ? 'agora' : ''}"><span class="pf-n" aria-hidden="true">${ok ? '✓' : i + 1}</span><span>${t}${ok ? '<span class="so-leitor"> (feito)</span>' : ''}</span></li>`).join('')}</ol>
       </div>
@@ -769,6 +769,9 @@
     const alvo = a.depois || a.antes || {};
     const papel = P[alvo.papel] ? P[alvo.papel].nome.toLowerCase() + (alvo.uf ? ' ' + alvo.uf : '') : '';
     if (a.tabela === 'equipe_bancario' && a.acao === 'VIEW') return `<b>${esc(quem)}</b> consultou a conta bancária de <b>${esc((porId(a.registro_id) || {}).nome || 'uma pessoa')}</b> para o cadastro no Arlo.`;
+    if (a.tabela === 'planilhas' && a.acao === 'PLANILHA') { const D = a.depois || {}; const q = +D.qtd || 0;
+      const nome = { completa: 'a planilha completa das fichas (com CPF, NIS e CAF)', sem_documentos: 'a planilha das fichas sem documentos', copia_dados: 'a cópia dos dados do projeto' }[D.tipo] || 'uma planilha';
+      return `<b>${esc(quem)}</b> baixou ${nome}${D.tipo === 'copia_dados' ? ` (${q} registros)` : ` (${q} ficha${q === 1 ? '' : 's'})`}${D.filtro ? ' · filtro: ' + esc(D.filtro) : ''}.`; }
     if (a.tabela === 'equipe_bancario' && a.acao === 'EXPORT') return `<b>${esc(quem)}</b> gerou a planilha bancária para a FUNCERN.`;
     if (a.tabela === 'equipe_bancario') return `<b>${esc(quem)}</b> informou ou alterou a própria conta bancária.`;
     // 47: o login (só a senha) de quem saiu é removido pelo banco
@@ -1642,11 +1645,11 @@
     const cabP = `<div class="painel-cab"><div class="t"><span class="eyebrow">${titulo}</span>
         <h2 id="painel-t">${esc(P[m.papel].nome)}${m.uf ? ' · ' + esc(nomeUF(m.uf)) : ''}</h2></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>`;
-    // 33: técnica, bolsistas e agentes só com professor do FIC habilitado (a matrícula no curso depende dele)
+    // 33: técnica, bolsistas e agentes só com professor do curso FIC habilitado (a matrícula no curso depende dele)
     if (!edit && R.PRECISA_PROFESSOR.includes(m.papel) && !R.temProfessorHabilitado(S.equipe)) {
       const prof = (S.equipe || []).find(x => x.papel === 'professor_fic' && x.status === 'ativa');
       return cabP + `<div class="painel-corpo"><div class="aviso erro sem-professor"><b>Ainda não dá para cadastrar.</b> ${esc(R.MSG_SEM_PROFESSOR)}</div>
-        <p class="small muted">${prof ? `${esc(nomeDe(prof))} já está cadastrado(a) como professor(a): falta registrar o cadastro no Arlo e o termo assinado, na ficha dele(a).` : 'Nenhum professor do FIC cadastrado ainda. Quem cadastra professor é a coordenação geral, na aba Equipe.'}</p>
+        <p class="small muted">${prof ? `${esc(nomeDe(prof))} já está cadastrado(a) como professor(a): falta registrar o cadastro no Arlo e o termo assinado, na ficha dele(a).` : 'Nenhum professor do curso FIC cadastrado ainda. Quem cadastra professor é a coordenação geral, na aba Equipe.'}</p>
         ${prof && S.eu.papel === 'coord_geral' ? `<div class="acoes"><button class="btn" data-acao="ver" data-id="${esc(prof.id)}" aria-label="Ver detalhes de ${esc(nomeDe(prof))}">Ver detalhes</button></div>` : ''}</div>`;
     }
     // cadastro novo: primeiro escolhe como (link para a pessoa preencher ou à mão)

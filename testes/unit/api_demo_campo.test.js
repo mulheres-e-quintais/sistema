@@ -116,7 +116,7 @@ describe('visitas de campo', () => {
 
 describe('curso FIC', () => {
   test('coordenação técnica não cria turma; turma sem nome ou com fim antes do início é recusada', async () => {
-    await como('coord_tecnico'); await falha(api.salvarTurma({ nome: 'Turma X' }), /professores do FIC/);
+    await como('coord_tecnico'); await falha(api.salvarTurma({ nome: 'Turma X' }), /professores do curso FIC/);
     await como('professor'); const eu = await api.eu();
     await falha(api.salvarTurma({ nome: 'T', professor_id: eu.id }), /nome/);
     await falha(api.salvarTurma({ nome: 'Turma PI', professor_id: eu.id, inicio: '2026-11-01', fim: '2026-10-01' }), /antes do início/);

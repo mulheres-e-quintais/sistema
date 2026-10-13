@@ -6,7 +6,7 @@
 -- O que entra (tudo inventado; e-mails terminam em @exemplo.invalid, ninguém entra com eles):
 --   10 bolsistas (articulação e apoio nos 5 estados), 10 agentes de campo, 279 fichas de mulheres
 --   (200 selecionadas e aprovadas), 800 visitas feitas e 200 diagnósticos com plano aprovado.
---   Se ainda não houver: 2 professores do FIC habilitados, 1 auxiliar administrativo e 1 coordenação técnica.
+--   Se ainda não houver: 2 professores do curso FIC habilitados, 1 auxiliar administrativo e 1 coordenação técnica.
 --   A coordenação técnica que já existe (ex.: a TESTE) é mantida e passa a aparecer como quem aprovou as fichas.
 -- NÃO mexe em nada que já existe e NÃO apaga nada.
 -- Todo registro fica anotado na tabela public.exemplo: não aparece na vitrine pública, e a coordenação
@@ -46,7 +46,7 @@ do $$ begin
   end if;
 end $$;
 
--- professores do FIC (habilitados) e auxiliar administrativo: só se ainda não houver
+-- professores do curso FIC (habilitados) e auxiliar administrativo: só se ainda não houver
 do $$ begin
   if not exists (select 1 from public.equipe where papel = 'professor_fic' and status = 'ativa' and docs_funcern_em is not null and termo_assinado_em is not null) then
     insert into public.equipe (id, papel, uf, nome, cpf, email, telefone, municipio, organizacao, data_inicio, consentimento_lgpd, status, docs_funcern_em, termo_assinado_em) values

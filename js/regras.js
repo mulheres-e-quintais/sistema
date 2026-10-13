@@ -48,7 +48,7 @@
     (meuPapel === 'coord_tecnico' && (R.ehBolsista(papelAlvo) || papelAlvo === 'agente'));
 
   /* Habilitação para receber bolsa: passo a passo do Guia das bolsistas */
-  /* professor do FIC não se matricula no curso: habilita com FUNCERN e termo */
+  /* professor do curso FIC não se matricula no curso: habilita com FUNCERN e termo */
   R.fazFIC = papel => !['professor_fic', 'auxiliar_adm', 'coord_geral'].includes(papel);
   /* quem é matriculado no curso FIC: coordenação técnica, bolsistas e agentes de campo (decisão de 29/09/2026) */
   R.matriculaFIC = papel => ['coord_tecnico', 'articulacao', 'apoio', 'agente'].includes(papel);
@@ -63,8 +63,8 @@
   /* termo de compromisso: a pessoa anexa o termo preenchido e assinado no próprio cadastro; quem confere abre o arquivo e só então registra a data.
      'falta' (nada anexado) → 'enviado' (anexado, esperando conferência) → 'conferido' (data registrada) */
   R.termoSituacao = m => m.termo_assinado_em ? 'conferido' : m.termo_path ? 'enviado' : 'falta';
-  /* qual termo cada função assina: servidor do IFRN (professor do FIC, auxiliar) ou bolsista/agente (MPA) */
-  /* aceita a função (texto) ou a pessoa: professor do FIC é sempre servidor; nas outras funções do IFRN (auxiliar administrativo),
+  /* qual termo cada função assina: servidor do IFRN (professor do curso FIC, auxiliar) ou bolsista/agente (MPA) */
+  /* aceita a função (texto) ou a pessoa: professor do curso FIC é sempre servidor; nas outras funções do IFRN (auxiliar administrativo),
      é servidor quem tem matrícula SIAPE no cadastro; sem a pessoa em mãos, o auxiliar conta como servidor */
   R.tipoTermo = x => {
     const papel = x && typeof x === 'object' ? x.papel : x;
@@ -386,16 +386,16 @@
 (function () {
   const R = MQ.regras;
   R.ehCampo = p => p === 'articulacao' || p === 'apoio' || p === 'agente';
-  /* 33: técnica, bolsistas e agentes precisam da matrícula no FIC; só se cadastram com professor do FIC ativo e habilitado */
+  /* 33: técnica, bolsistas e agentes precisam da matrícula no FIC; só se cadastram com professor do curso FIC ativo e habilitado */
   R.PRECISA_PROFESSOR = ['coord_tecnico', 'articulacao', 'apoio', 'agente'];
-  /* 50: o orçamento prevê 2 professores do FIC; o banco recusa o terceiro */
+  /* 50: o orçamento prevê 2 professores do curso FIC; o banco recusa o terceiro */
   R.MAX_PROFESSORES = 2;
-  R.MSG_MAX_PROFESSORES = 'O projeto tem no máximo 2 professores do FIC ativos. Desligue um antes de cadastrar outro.';
+  R.MSG_MAX_PROFESSORES = 'O projeto tem no máximo 2 professores do curso FIC ativos. Desligue um antes de cadastrar outro.';
   R.temProfessorHabilitado = equipe => (equipe || []).some(m => m.papel === 'professor_fic' && m.status === 'ativa' && m.docs_funcern_em && m.termo_assinado_em);
-  R.MSG_SEM_PROFESSOR = 'Antes, cadastre e habilite um professor do FIC (cadastro no Arlo e termo assinado): sem ele, ninguém consegue a matrícula no curso.';
+  R.MSG_SEM_PROFESSOR = 'Antes, cadastre e habilite um professor do curso FIC (cadastro no Arlo e termo assinado): sem ele, ninguém consegue a matrícula no curso.';
   R.habilitado = m => !!(m && m.status === 'ativa' && (m.matricula_fic_em || !R.fazFIC(m.papel)) && m.docs_funcern_em && m.termo_assinado_em);
   R.podeMatricular = papel => papel === 'professor_fic' || papel === 'coord_geral';
-  R.decideCampo = papel => papel === 'coord_tecnico' || papel === 'coord_geral';   // aprova ou devolve fichas e diagnósticos, agenda visitas   // sempre um dos professores do FIC, em qualquer turma
+  R.decideCampo = papel => papel === 'coord_tecnico' || papel === 'coord_geral';   // aprova ou devolve fichas e diagnósticos, agenda visitas   // sempre um dos professores do curso FIC, em qualquer turma
   /* sem água na seca (ou só carro-pipa): a visita para na Parte A */
   R.semAgua = d => d.agua_seca === 'nao' || (Array.isArray(d.fontes_agua) && d.fontes_agua.length > 0 && d.fontes_agua.every(f => f === 'carro_pipa'));
   /* projeção do kit: quantidade × valor de cada item. Item com quantidade ou valor negativo NÃO abate o total. */

@@ -419,7 +419,7 @@
             <li><span>Coordenação técnica</span><b class="num">${conta('coord_tecnico')}</b></li>
             <li><span>Bolsistas (articulação e apoio estadual)</span><b class="num">${bols}<small class="muted"> de 10</small></b></li>
             <li><span>Agentes de campo</span><b class="num">${conta('agente')}</b></li>
-            <li><span>Professores do FIC</span><b class="num">${conta('professor_fic')}</b></li>
+            <li><span>Professores do curso FIC</span><b class="num">${conta('professor_fic')}</b></li>
             <li><span>Auxiliar administrativo</span><b class="num">${conta('auxiliar_adm')}</b></li>
             ${leram.length ? `<li><span>Bolsistas e agentes que leram o guia</span><b class="num">${nLeram}<small class="muted"> de ${leram.length}</small></b></li>` : ''}
           </ul></div>

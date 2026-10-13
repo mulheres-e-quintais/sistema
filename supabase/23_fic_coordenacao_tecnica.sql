@@ -3,7 +3,7 @@
 -- Supabase > SQL Editor > New query > cole este arquivo inteiro > Run. Pode rodar de novo.
 -- Decisão de 29/09/2026: a coordenação técnica participa do curso FIC (a bolsa só pode ser paga a
 -- estudante do IFRN). Antes, a habilitação dela pedia a matrícula, mas o sistema não deixava matriculá-la.
--- Agora: os professores do FIC matriculam a coordenação técnica em qualquer turma (ela atua nos 5 estados)
+-- Agora: os professores do curso FIC matriculam a coordenação técnica em qualquer turma (ela atua nos 5 estados)
 -- e ela aparece na lista de quem ainda não tem matrícula e no acesso ao AVA do mês.
 -- =====================================================================
 begin;

@@ -119,7 +119,7 @@ def mensagens():
         ['Passa do teto de passagens (ou de eventos)', 'O pedido não cabe no saldo. A mensagem mostra o saldo; reduza o pedido'],
         ['Ninguém confere o próprio pedido', 'Outra pessoa da coordenação precisa conferir'],
         ['A bolsa deste mês já foi pedida', 'O encontro ou a entrega do mês não muda mais. Se a coordenação devolver o pedido, reabre'],
-        ['O projeto tem no máximo 2 professores do FIC ativos', 'Desligue um antes de cadastrar outro'],
+        ['O projeto tem no máximo 2 professores do curso FIC ativos', 'Desligue um antes de cadastrar outro'],
         ['Já há coordenação técnica (ou auxiliar) ativa', 'Desligue a pessoa atual antes de cadastrar outra'],
         ['Este cadastro está desligado e não é mais alterado', 'Peça a correção à coordenação geral'],
         ['Este registro foi alterado por outra pessoa enquanto você editava', 'Abra de novo, confira e refaça a sua alteração'],

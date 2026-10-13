@@ -35,7 +35,7 @@ test('só o professor (e a coordenação geral) registram; a bolsista confirma e
   await t.api.salvarEncontroFic({ turma_id: turma.id, data: hoje, carga_horaria: 3, modalidade: 'presencial', conteudo: 'Planejamento do quintal e calendário de plantio', presentes: [bol.id] });
   const id = (await t.api.listarEncontrosFic())[0].id;
   await t.trocar('bolsista'); if (t.S.eu.id !== bol.id) { t.S.eu = await t.api.trocarPerfil('bolsista'); }
-  await assert.rejects(t.api.salvarEncontroFic({ turma_id: turma.id, data: hoje, carga_horaria: 1, modalidade: 'ava', conteudo: 'Tentando registrar', presentes: [] }), /professor do FIC/);
+  await assert.rejects(t.api.salvarEncontroFic({ turma_id: turma.id, data: hoje, carga_horaria: 1, modalidade: 'ava', conteudo: 'Tentando registrar', presentes: [] }), /professor do curso FIC/);
   const eu = t.S.eu;
   assert.equal(eu.id, bol.id, 'o perfil bolsista da demonstração é a bolsista matriculada'); {
     const h = texto(t.aba()); assert.match(h, /Curso FIC: presença nos encontros/); assert.match(h, /Confirmo que participei/);

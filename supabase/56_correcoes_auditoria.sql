@@ -54,7 +54,7 @@ begin
   if (tg_op = 'INSERT' or new.valor_solicitado is distinct from old.valor_solicitado) and new.valor_solicitado is distinct from v then
     raise exception 'A bolsa de % é de % por mês (plano de trabalho). Atualize a página e peça de novo.',
       lower(case papel when 'coord_tecnico' then 'coordenação técnica' when 'articulacao' then 'articulação estadual' when 'apoio' then 'apoio estadual'
-                       when 'professor_fic' then 'professor do FIC' when 'auxiliar_adm' then 'auxiliar administrativo' else papel end),
+                       when 'professor_fic' then 'professor do curso FIC' when 'auxiliar_adm' then 'auxiliar administrativo' else papel end),
       public.brl(v);
   end if;
   if new.valor_avalizado is not null and new.valor_avalizado is distinct from old.valor_avalizado and new.valor_avalizado > v then

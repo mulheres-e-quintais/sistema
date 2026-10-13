@@ -10,7 +10,7 @@
 --     feitas no mês. Cada visita entra numa solicitação só. Depois de solicitada, a visita não muda
 --     (para corrigir, a solicitação precisa ser devolvida).
 --   * Bolsa mensal: a própria bolsista solicita, com o relatório de atividades do mês.
---   * Aval: a coordenação técnica. A bolsa da própria coordenação técnica, dos professores do FIC e
+--   * Aval: a coordenação técnica. A bolsa da própria coordenação técnica, dos professores do curso FIC e
 --     dos auxiliares vai para a coordenação geral. A coordenação geral também pode dar o aval quando a
 --     técnica não puder (vaga aberta, afastamento). Ninguém dá aval na própria solicitação.
 --   * Com o aval, a solicitação chega ao auxiliar administrativo, que lança no Arlo e registra aqui

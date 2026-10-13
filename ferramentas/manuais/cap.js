@@ -11,7 +11,7 @@ const TELAS = [
   { id: 'equipe_coord', perfil: 'coord_geral', aba: 'equipe', clip: 'de:main h1:section[aria-labelledby=t-prof]', m: [['.resumo, .kpis, .cab + div', 1], ['t:Ver detalhes', 2], ['#t-prof', 3]] },
   { id: 'equipe_estados', perfil: 'coord_geral', aba: 'equipe', clip: 'de:section[aria-labelledby=t-b]:section[aria-labelledby=t-ag]', m: [['.eq-quadro .vaga-slot .btn-acao', 1], ['.eq-quadro .vagabtn.com-foto', 2], ['.eq-quadro .plano', 3], ['.ag-acao .btn-acao', 4]] },
   { id: 'equipe_ficha', perfil: 'coord_geral', aba: 'equipe', clique: '.eq-quadro .vagabtn.com-foto', clip: 'el:aside.painel', m: [['p:Trocar foto', 1], ['aside.painel .passos', 2], ['p:Registrar passos da habilitação', 3], ['p:Hoje', 4]] },
-  { id: 'selecao', perfil: 'coord_geral', aba: 'selecao', clip: 'main', m: [['t:Baixar CSV', 1], ['.quadro-sel', 2], ['.painel-sit', 3], ['t:Todas as fichas', 4]] },
+  { id: 'selecao', perfil: 'coord_geral', aba: 'selecao', clip: 'main', m: [['t:Baixar planilha', 1], ['.quadro-sel', 2], ['.painel-sit', 3], ['t:Todas as fichas', 4]] },
   { id: 'selecao_ficha', perfil: 'coord_geral', aba: 'selecao', clique: '.painel-sit [data-acao=ficha-ver]', clip: 'el:aside.painel', m: [['aside.painel .painel-cab .chip', 1], ['p:Identificação', 2], ['p:Termo de consentimento', 3], ['p:Critérios obrigatórios', 4]] },
   { id: 'campo_estados', perfil: 'coord_geral', aba: 'campo', clip: 'de:main h1:.quadro-scroll', m: [['t:+ Agendar visita', 1], ['.tab-campo-uf', 2]] },
   { id: 'campo_roteiro', perfil: 'coord_geral', aba: 'campo', clip: 'roteiro', m: [['t:Planos para você aprovar', 1], ['.tab-rot', 2], ['.rot-acoes', 3]] },

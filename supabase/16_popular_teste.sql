@@ -9,7 +9,7 @@
 --   * Cria 6 logins de teste, um por perfil, com apelidos do SEU e-mail (seu+tecnica@..., seu+articulacao@...).
 --     O Gmail entrega "seu+qualquercoisa@gmail.com" na sua caixa, mas o sistema não manda e-mail nenhum:
 --     você entra em "Primeiro acesso" com cada apelido e cria uma senha.
---   * Professores do FIC (2), auxiliar administrativo, turmas e matrículas do FIC.
+--   * Professores do curso FIC (2), auxiliar administrativo, turmas e matrículas do FIC.
 --   * Coloca o projeto "no meio do caminho": diagnósticos feitos, parte das implantações e
 --     acompanhamentos feitos, o resto agendado para as próximas semanas, algumas avaliações de impacto.
 --   * Linha de base de impacto (EBIA etc.) em todos os diagnósticos e avaliações com melhora.
@@ -99,7 +99,7 @@ begin
    where papel = 'agente' and status = 'ativa';
 
   -- -------------------------------------------------------------------
-  -- 2. Professores do FIC, auxiliar administrativo, turmas e matrículas
+  -- 2. Professores do curso FIC, auxiliar administrativo, turmas e matrículas
   -- -------------------------------------------------------------------
   insert into public.equipe (id, papel, uf, nome, cpf, email, telefone, municipio, organizacao, data_inicio, consentimento_lgpd, criado_por,
                              docs_funcern_em, termo_assinado_em, siape)
@@ -258,7 +258,7 @@ commit;
 
 -- Seus logins de teste: entre em "Primeiro acesso" com cada e-mail e o código ao lado (vale 7 dias) e crie uma senha
 select case papel when 'coord_tecnico' then '1 Coordenação técnica' when 'articulacao' then '2 Bolsista de articulação (PI)' when 'apoio' then '3 Bolsista de apoio (PI)'
-         when 'agente' then '4 Agente de campo (PI)' when 'professor_fic' then '5 Professor do FIC' when 'auxiliar_adm' then '6 Auxiliar administrativo' end as perfil,
+         when 'agente' then '4 Agente de campo (PI)' when 'professor_fic' then '5 Professor do curso FIC' when 'auxiliar_adm' then '6 Auxiliar administrativo' end as perfil,
        nome, email, case when user_id is null then public.novo_codigo_acesso(id) else 'já tem senha' end as codigo_de_acesso
   from public.equipe where email like '%+%@%' and status = 'ativa'
 union all select '0 Coordenação geral (você)', nome, email, case when user_id is null then 'crie a senha sem código' else 'já tem senha' end

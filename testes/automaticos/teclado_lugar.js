@@ -51,6 +51,15 @@ const R = []; const ok = (n, c, d = '') => R.push([c ? 'PASSOU' : 'FALHOU', n, d
   ok('formulário: nenhum bloco extra no caminho do Tab', await p.evaluate(() => !document.querySelector('#painel form [data-tab-bloco]')));
   await p.evaluate(() => MQ.ui.fecharPainel()); await p.waitForTimeout(200);
 
+  // menu "Baixar planilha" da Seleção: abre pelo teclado e fecha com Esc, voltando o foco ao botão
+  await p.evaluate(() => document.querySelector('[data-acao=aba][data-aba=selecao]').click()); await p.waitForTimeout(400);
+  await p.focus('.menu-planilha > summary'); await p.keyboard.press('Enter'); await p.waitForTimeout(150);
+  const abriu = await p.evaluate(() => document.querySelector('.menu-planilha').open);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(100);
+  ok('menu da planilha: Enter abre, Esc fecha e o foco volta ao botão', abriu && await p.evaluate(() => !document.querySelector('.menu-planilha').open && document.activeElement.matches('.menu-planilha > summary')));
+  await p.click('.menu-planilha > summary'); await p.click('h1'); await p.waitForTimeout(100);
+  ok('menu da planilha fecha com clique fora', await p.evaluate(() => !document.querySelector('.menu-planilha').open));
+
   // 2. sair e entrar de novo: volta para a mesma aba e altura
   await p.evaluate(() => document.querySelector('[data-aba="pagamentos"]').click()); await p.waitForTimeout(500);
   await p.evaluate(() => window.scrollTo(0, 400)); await p.waitForTimeout(150);
