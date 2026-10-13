@@ -14392,7 +14392,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       }
       else if (a === 'sair') await sairDoSistema();
       else if (a === 'fechar') pedirFechar();
-      else if (a === 'aba') { irParaAba(el.dataset.aba); S.menuAberto = false; render(); window.scrollTo(0, 0); digitouEm = 0; carregarDaAba(); atualizarEmSegundoPlano(); }
+      else if (a === 'aba') { irParaAba(el.dataset.aba); S.menuAberto = false; render(); window.scrollTo(0, 0); digitouEm = 0; focarAba(el.dataset.aba); carregarDaAba(); atualizarEmSegundoPlano(); }
       else if ((rota = rotaDoClique(a))) {   // ações dos módulos: tabela ROTAS_CLIQUE
         if (rota[2] === null) S.voltarFoco = null; else if (rota[2] === true || (rota[2] && rota[2](a))) S.voltarFoco = el;
         await MQ[rota[1]].clique(a, el);
@@ -14473,6 +14473,13 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     noHistorico(() => { if (abaDoHash()) H.replaceState(null, '', location.pathname + location.search); });
   }
   /* trocar de aba: entrada nova no histórico do navegador (Voltar e Avançar funcionam), sem mexer no endereço */
+  /* v263: depois de trocar de aba, o foco fica na aba escolhida (o redesenho jogava o foco para o começo da página):
+     pelo teclado, o próximo Tab vai para o item seguinte do menu. No celular, fica no botão "Seção". */
+  function focarAba(x) {
+    const vis = e => e && e.offsetParent !== null;
+    const alvo = [...document.querySelectorAll(`nav.abas [data-aba="${x}"]`)].find(vis) || [...document.querySelectorAll('.abas-m summary')].find(vis);
+    if (alvo) try { alvo.focus({ preventScroll: true }); } catch (e) { alvo.focus(); }
+  }
   function irParaAba(x) {
     const naEntradaDoPainel = !!S.painelHist;
     if (S.painel || $('#painel')) fecharPainel({ semFoco: true, semHistorico: true });

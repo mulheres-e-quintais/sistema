@@ -28,6 +28,14 @@ const R = []; const ok = (n, c, d = '') => R.push([c ? 'PASSOU' : 'FALHOU', n, d
   await p.evaluate(() => document.querySelector('nav.abas [data-aba]').focus()); await p.keyboard.press('Tab');
   const fundoAba = await p.evaluate(() => getComputedStyle(document.activeElement).backgroundColor);
   ok('aba do menu com foco do teclado ganha fundo realçado', !/rgba\(0, 0, 0, 0\)|transparent/.test(fundoAba), fundoAba);
+  // menu de cima pelo teclado: Enter numa aba abre a aba e o foco fica nela; o próximo Tab vai para a aba seguinte
+  await p.evaluate(() => document.querySelector('nav.abas [data-aba="equipe"]').focus()); await p.keyboard.press('Enter'); await p.waitForTimeout(400);
+  const depoisEnter = await p.evaluate(() => ({ aba: MQ.ui.S.aba, foco: document.activeElement.dataset.aba }));
+  await p.keyboard.press('Tab');
+  const proximo = await p.evaluate(() => { const l = [...document.querySelectorAll('nav.abas [data-aba]')].map(b => b.dataset.aba); return { foco: document.activeElement.dataset.aba, esperado: l[l.indexOf('equipe') + 1] }; });
+  ok('Enter na aba: abre e o foco continua nela', depoisEnter.aba === 'equipe' && depoisEnter.foco === 'equipe', JSON.stringify(depoisEnter));
+  ok('o Tab seguinte vai para a próxima aba do menu (não volta ao começo)', proximo.foco && proximo.foco === proximo.esperado, JSON.stringify(proximo));
+  await p.evaluate(() => document.querySelector('nav.abas [data-aba="visao"]').click()); await p.waitForTimeout(400);
   // em todas as abas da coordenação: todo bloco de conteúdo fora de formulário é parada do Tab
   const abas = await p.evaluate(() => [...new Set([...document.querySelectorAll('[data-aba]')].map(x => x.dataset.aba))]);
   const faltas = [];
