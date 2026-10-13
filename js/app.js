@@ -552,7 +552,7 @@
       : 'Cadastre as bolsistas indicadas pelo MPA: uma de articulação estadual e uma de apoio estadual por estado.';
     let corpo = '';
     if (aba === 'visao') corpo = MQ.painelUI ? MQ.painelUI.visaoGeral(S) : '';
-    else if (aba === 'equipe') corpo = (!R.temProfessorHabilitado(S.equipe) ? `<div class="aviso erro" role="status"><b>${souGeral ? 'Cadastre e habilite primeiro um professor do FIC.' : 'Ainda não há professor do FIC habilitado.'}</b> Sem professor com cadastro no Arlo e termo assinado, o sistema não cadastra coordenação técnica, bolsistas nem agentes de campo (a matrícula no curso depende dele).${souGeral ? '' : ' Quem cadastra e habilita o professor é a coordenação geral.'}</div>` : '') + secaoPedidosAcesso() + (MQ.convitesUI ? MQ.convitesUI.secaoPendentes() : '') + `
+    else if (aba === 'equipe') corpo = (!R.temProfessorHabilitado(S.equipe) ? passoProfessorFic(souGeral) : '') + secaoPedidosAcesso() + (MQ.convitesUI ? MQ.convitesUI.secaoPendentes() : '') + `
       <div class="cab eq-cab"><div><span class="eyebrow">Equipe do projeto</span><h1>Coordenação e bolsistas</h1><p class="eq-intro">${intro}</p>${prazoChip()}</div></div>
       <div class="eq-kpis" aria-label="Resumo da equipe">
         ${kpiEq(ct ? 1 : 0, 1, 'coordenação técnica cadastrada', 1)}
@@ -720,6 +720,25 @@
       <span>${fs.length} ficha${fs.length === 1 ? '' : 's'}${aguard ? ` · <b>${aguard}</b> aguardando aprovação` : ''}</span></div>`;
   }
 
+  /* primeiro passo da equipe: sem professor do FIC habilitado, ninguém da equipe de campo é cadastrado (33_exige_professor_fic) */
+  function passoProfessorFic(souGeral) {
+    const profs = ativos().filter(m => m.papel === 'professor_fic');
+    const p = profs.sort((a, b) => (!!b.docs_funcern_em + !!b.termo_assinado_em) - (!!a.docs_funcern_em + !!a.termo_assinado_em))[0];
+    const passos = [['Cadastrar o professor do FIC', !!p], ['Cadastro no Arlo (documentação da FUNCERN)', !!(p && p.docs_funcern_em)], ['Termo de compromisso assinado e conferido', !!(p && p.termo_assinado_em)]];
+    const feitos = passos.filter(x => x[1]).length;
+    const acao = !souGeral ? '<p class="small pf-quem">Quem cadastra e habilita o professor é a coordenação geral.</p>'
+      : !p ? MQ.botaoAcao({ acao: 'novo', icone: 'pessoa_mais', texto: 'Cadastrar professor do FIC', attrs: 'data-papel="professor_fic"' })
+      : `<button class="btn pri" data-acao="ver" data-id="${p.id}">Completar a habilitação de ${esc(nomeDe(p).split(' ')[0])}</button>`;
+    return `<section class="passo-fic" role="status" aria-labelledby="pf-t">
+      <span class="pf-ic" aria-hidden="true">${MQ.ICONES && MQ.ICONES.capelo ? MQ.ICONES.capelo : ''}</span>
+      <div class="pf-corpo">
+        <span class="eyebrow">Primeiro passo · ${feitos} de ${passos.length}</span>
+        <h2 id="pf-t">${souGeral ? 'Cadastre e habilite um professor do FIC' : 'Ainda não há professor do FIC habilitado'}</h2>
+        <p>A matrícula no curso FIC depende dele: sem professor com cadastro no Arlo e termo assinado, o sistema não cadastra coordenação técnica, bolsistas nem agentes de campo.</p>
+        <ol class="pf-passos">${passos.map(([t, ok], i) => `<li class="${ok ? 'ok' : i === passos.findIndex(x => !x[1]) ? 'agora' : ''}"><span class="pf-n" aria-hidden="true">${ok ? '✓' : i + 1}</span><span>${t}${ok ? '<span class="so-leitor"> (feito)</span>' : ''}</span></li>`).join('')}</ol>
+        <div class="pf-acao">${acao}</div>
+      </div></section>`;
+  }
   function quadroTabela() {
     return `<div class="quadro-scroll eq-cx"><table class="quadro eq-quadro"><colgroup><col class="c-uf"><col><col><col class="c-plano"></colgroup><thead><tr><th scope="col">Estado</th><th scope="col">Articulação estadual</th>
       <th scope="col">Apoio estadual</th><th scope="col">Seleção no estado</th></tr></thead><tbody>

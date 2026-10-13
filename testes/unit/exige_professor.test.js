@@ -15,7 +15,8 @@ test('sem professor habilitado: não cadastra agente nem gera link; a tela expli
   await assert.rejects(t.api.criarConvite('agente', 'PE', null), /professor do FIC/);
   const h = texto(t.painel({ tipo: 'cadastro', papel: 'agente', uf: 'PE' }));
   assert.ok(h.includes('Ainda não dá para cadastrar')); assert.ok(h.includes('falta registrar o cadastro no Arlo e o termo'));
-  assert.ok(texto(t.aba('equipe')).includes('Cadastre e habilite primeiro um professor do FIC'));
+  assert.ok(texto(t.aba('equipe')).includes('Cadastre e habilite um professor do FIC'));   // 12/10: o aviso virou o "primeiro passo" com os 3 passos
+  assert.match(texto(t.aba('equipe')), /Primeiro passo · \d de 3/);
 });
 test('professor e auxiliar continuam podendo ser cadastrados; com professor habilitado, o resto libera', async () => {
   const t = await montar('coord_geral'); await semProfessorHabilitado(t);

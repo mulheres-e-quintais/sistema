@@ -12151,17 +12151,29 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       .map(f => Object.assign({ pessoa: eq.get(f.equipe_id) }, f))
       .sort((a, b) => String(a.mais_antigo || '').localeCompare(String(b.mais_antigo || '')));
   }
+  const IC_CEL = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg>';
+  const IC_OK = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
+  const iniciais = n => String(n || '?').trim().split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
   function blocoFila() {
-    const cab = '<h3>Registros parados nos celulares</h3>';
-    if (S().filaCelularSemBanco) return `<div class="bloco">${cab}<p class="small muted">Para ver quem tem visita, diagnóstico ou avaliação guardada no celular sem enviar, rode no Supabase o arquivo 58_fila_nos_celulares.sql.</p></div>`;
+    const cab = (chip) => `<div class="fc-cab"><span class="fc-ic">${IC_CEL}</span><div class="fc-tit"><h3>Registros parados nos celulares</h3>
+        <span class="small muted">O que a equipe salvou sem internet e ainda não chegou ao servidor</span></div>${chip || ''}</div>`;
+    const comoFunciona = `<details class="fc-como"><summary>Como funciona</summary><p class="small muted">O que é salvo sem internet só chega ao servidor quando o celular conecta. Cada celular avisa quantos registros guarda sempre que tem internet (só a contagem, nunca o conteúdo). Quem nunca abriu o sistema atualizado não aparece aqui.</p></details>`;
+    if (S().filaCelularSemBanco) return `<div class="bloco fila-cel">${cab('<span class="fc-chip off">Não instalado</span>')}<p class="small muted">Para ver quem tem visita, diagnóstico ou avaliação guardada no celular sem enviar, rode no Supabase o arquivo 58_fila_nos_celulares.sql.</p></div>`;
     const l = parados();
-    const linha = f => { const dd = diasDesde(f.mais_antigo), alerta = dd >= DIAS_ALERTA || f.recusados;
-      return `<li class="${alerta ? 'fila-alerta' : ''}"><b>${E(nomeDe(f.pessoa))}</b> <span class="muted">(${E(papelDe(f.pessoa))}${f.pessoa.uf ? ' · ' + E(f.pessoa.uf) : ''})</span>:
-        ${f.qtd} registro${f.qtd > 1 ? 's' : ''} guardado${f.qtd > 1 ? 's' : ''} no celular desde ${R.fmtData(f.mais_antigo)}${dd ? ' (' + dd + ' dia' + (dd > 1 ? 's' : '') + ')' : ''}${f.recusados ? ` · <b>${f.recusados} recusado${f.recusados > 1 ? 's' : ''} pelo servidor</b>` : ''}
-        <br><span class="small muted">Último contato com internet: ${E(quando(f.visto_em))}</span></li>`; };
-    return `<div class="bloco fila-cel">${cab}
-      <p class="small muted">O que é salvo sem internet só chega ao servidor quando o celular conecta. Cada celular avisa quantos registros guarda sempre que tem internet (só a contagem, nunca o conteúdo).${l.length ? ' Se o registro está parado há dias, fale com a pessoa: ela precisa abrir o sistema com internet e tocar em "Enviar agora".' : ''}</p>
-      ${l.length ? `<ul class="fila-cel-lista">${l.map(linha).join('')}</ul>` : '<p>Nenhum registro parado nos celulares da equipe.</p>'}</div>`;
+    if (!l.length) return `<div class="bloco fila-cel">${cab('<span class="fc-chip ok">Tudo enviado</span>')}
+      <div class="fc-vazio"><span class="fc-ok">${IC_OK}</span><div><b>Nenhum registro parado nos celulares da equipe.</b><br><span class="small muted">Tudo o que foi salvo sem internet já chegou ao servidor.</span></div></div>${comoFunciona}</div>`;
+    const alertas = l.filter(f => diasDesde(f.mais_antigo) >= DIAS_ALERTA || f.recusados).length;
+    const chip = `<span class="fc-chip ${alertas ? 'crit' : 'pend'}">${l.length} pessoa${l.length > 1 ? 's' : ''} com registro parado</span>`;
+    const linha = f => { const dd = diasDesde(f.mais_antigo), alerta = dd >= DIAS_ALERTA || f.recusados, q = +f.qtd || 0, rec = +f.recusados || 0;
+      return `<li class="fc-item${alerta ? ' fila-alerta' : ''}">
+        <span class="fc-av" aria-hidden="true">${E(iniciais(nomeDe(f.pessoa)))}</span>
+        <div class="fc-txt"><b>${E(nomeDe(f.pessoa))}</b> <span class="muted small">${E(papelDe(f.pessoa))}${f.pessoa.uf ? ' · ' + E(f.pessoa.uf) : ''}</span>
+          <span class="fc-meta">${q} registro${q > 1 ? 's' : ''} guardado${q > 1 ? 's' : ''} no celular desde ${E(R.fmtData(f.mais_antigo))}${dd ? ' (' + dd + ' dia' + (dd > 1 ? 's' : '') + ')' : ''}${rec ? ` · <b>${rec} recusado${rec > 1 ? 's' : ''} pelo servidor</b>` : ''}</span>
+          <span class="fc-meta small muted">Último contato com internet: ${E(quando(f.visto_em))}</span></div>
+        <span class="fc-n" aria-hidden="true"><b class="num">${q}</b><small>${dd ? dd + 'd' : 'hoje'}</small></span></li>`; };
+    return `<div class="bloco fila-cel">${cab(chip)}
+      <ul class="fila-cel-lista">${l.map(linha).join('')}</ul>
+      <p class="small fc-dica">Se o registro está parado há dias, fale com a pessoa: ela precisa abrir o sistema com internet e tocar em <b>Enviar agora</b>.</p>${comoFunciona}</div>`;
   }
 
   /* ---------- 2. prontidão para o campo ---------- */
@@ -12172,7 +12184,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const hab = eq.filter(m => R.habilitado(m)).length;
     const fichas = (S().fichas || []).filter(f => f.uf === uf && f.resultado === 'selecionada' && f.situacao === 'aprovada').length;
     const dgs = (S().diagnosticos || []).filter(d => d.uf === uf).length;
-    const hoje = R.hoje(), fim = new Date(Date.now() + 7 * 864e5 - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+    const hoje = R.hoje(), fim = new Date(Date.now() + 6 * 864e5 - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);   // hoje e os 6 dias seguintes
     const prox = (S().visitas || []).filter(v => v.uf === uf && v.situacao === 'prevista' && v.data_prevista >= hoje && v.data_prevista <= fim).length;
     const ids = new Set(eq.map(m => m.id));
     const fila = (S().filaCelular || []).filter(f => ids.has(f.equipe_id)).reduce((t, f) => t + (+f.qtd || 0), 0);
@@ -12186,21 +12198,36 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const profs = eq.filter(m => m.papel === 'professor_fic'), profsHab = profs.filter(m => R.habilitado(m)).length;
     return `<p class="small pront-coord"><b>Coordenação técnica:</b> ${st(tec)} · <b>Auxiliar:</b> ${st(aux)} · <b>Professores do FIC:</b> ${profs.length ? profsHab + ' de ' + profs.length + ' habilitado' + (profs.length > 1 ? 's' : '') : 'nenhum cadastrado (sem professor habilitado, ninguém da equipe de campo pode ser cadastrado)'}</p>`;
   }
+  /* mesma cara do quadro "Bolsistas por estado" da aba Equipe: tabela no computador, cartões no celular */
+  const barra = (n, de, sub, rot) => { const pc = de ? Math.min(100, Math.round(n / de * 100)) : 0;
+    return `<div class="plano"><div class="ln" style="grid-template-columns:minmax(0,1fr) 64px"><span class="bar" role="img" aria-label="${E(rot)}: ${n} de ${de}"><i class="${de && n >= de ? 'cheio' : ''}" style="width:${pc}%"></i></span><span class="num"><b>${n}</b><small class="muted"> / ${de}</small></span></div>${sub ? `<span>${sub}</span>` : ''}</div>`; };
+  function celulas(u) {
+    const d = porUF(u.uf);
+    const dgsAprov = (S().diagnosticos || []).filter(x => x.uf === u.uf && x.situacao === 'aprovado').length;
+    return {
+      eq: d.eq ? barra(d.hab, d.eq, `${d.entraram} já entr${d.entraram === 1 ? 'ou' : 'aram'} no sistema`, 'Equipe de campo habilitada') : '<span class="pr-vazio">Ninguém cadastrado</span>',
+      fichas: barra(d.fichas, MQ.VAGAS_UF, '', 'Fichas aprovadas'),
+      dgs: barra(d.dgs, MQ.META_UF.diagnosticos, dgsAprov ? `${dgsAprov} com plano aprovado` : '', 'Diagnósticos'),
+      prox: `<span class="pr-n"><b class="num">${d.prox}</b><small>agendada${d.prox === 1 ? '' : 's'}</small></span>`,
+      fila: d.fila ? `<span class="fc-chip crit">${d.fila} registro${d.fila > 1 ? 's' : ''}</span>` : '<span class="fc-chip ok">Nenhum</span>'
+    };
+  }
   function secao() {
     const eu = S().eu || {}; if (!/^coord/.test(eu.papel)) return '';
-    const n = (x, de) => `<span class="num"><b>${x}</b>${de != null ? ` <span class="muted">de ${de}</span>` : ''}</span>`;
-    const linha = u => { const d = porUF(u.uf);
-      const eqTxt = d.eq ? `${n(d.hab, d.eq)} <span class="small muted">habilitada${d.hab === 1 ? '' : 's'} · ${d.entraram} já entr${d.entraram === 1 ? 'ou' : 'aram'}</span>` : '<span class="muted">ninguém cadastrado</span>';
-      return `<tr><td class="uf"><span class="sigla">${u.uf}</span><span class="nomeuf">${u.nome}</span></td>
-        <td class="pr-eq" data-rot="Equipe de campo">${eqTxt}</td>
-        <td class="num c" data-rot="Fichas aprovadas">${n(d.fichas, MQ.VAGAS_UF)}</td>
-        <td class="num c" data-rot="Diagnósticos">${n(d.dgs, MQ.META_UF.diagnosticos)}</td>
-        <td class="num c" data-rot="Visitas nos próximos 7 dias">${d.prox}</td>
-        <td class="num c" data-rot="Registros parados nos celulares">${d.fila ? `<b class="fila-alerta-n">${d.fila}</b>` : '0'}</td></tr>`; };
+    const sub = u => { const d = porUF(u.uf); return d.eq ? `${d.eq} na equipe de campo` : ''; };
+    const tabela = `<div class="quadro-scroll eq-cx"><table class="quadro eq-quadro pr-quadro"><colgroup><col class="c-uf"><col class="c-eq"><col class="c-b"><col class="c-b"><col class="c-n"><col class="c-n"></colgroup>
+      <thead><tr><th scope="col">Estado</th><th scope="col">Equipe de campo habilitada</th><th scope="col">Fichas aprovadas</th><th scope="col">Diagnósticos</th><th scope="col">Próximos 7 dias</th><th scope="col">Parados no celular</th></tr></thead><tbody>
+      ${MQ.UFS.map(u => { const c = celulas(u);
+        return `<tr><td class="uf"><span class="ag-uf"><span class="sigla">${u.uf}</span><span class="ag-nome"><b>${E(u.nome)}</b>${sub(u) ? `<small>${sub(u)}</small>` : ''}</span></span></td>
+          <td>${c.eq}</td><td>${c.fichas}</td><td>${c.dgs}</td><td>${c.prox}</td><td>${c.fila}</td></tr>`; }).join('')}
+      </tbody></table></div>`;
+    const cartoes = `<div class="cartoes eq-cartoes pr-cartoes">${MQ.UFS.map(u => { const c = celulas(u);
+      return `<div class="cartao"><div class="cab-uf"><span class="uf"><span class="sigla">${u.uf}</span></span><span class="nomeuf muted">${E(u.nome)}</span></div>
+        <span class="fn">Equipe de campo habilitada</span>${c.eq}<span class="fn">Fichas aprovadas</span>${c.fichas}<span class="fn">Diagnósticos</span>${c.dgs}
+        <div class="pr-par"><div><span class="fn">Próximos 7 dias</span>${c.prox}</div><div><span class="fn">Parados no celular</span>${c.fila}</div></div></div>`; }).join('')}</div>`;
     return `<section class="secao prontidao" aria-labelledby="t-pront">
-      <div class="secao-cab"><div><h2 id="t-pront">Prontidão para o campo</h2><p>Por estado: quem da equipe de campo está habilitada e já entrou no sistema, o que está aprovado e o que está agendado para a semana.</p></div></div>
-      <div class="quadro-scroll" style="display:block"><table class="quadro tab-pront"><thead><tr><th>Estado</th><th>Equipe de campo</th><th class="c">Fichas aprovadas</th><th class="c">Diagnósticos</th><th class="c">Visitas em 7 dias</th><th class="c">Parados no celular</th></tr></thead>
-        <tbody>${MQ.UFS.map(linha).join('')}</tbody></table></div>
+      <div class="secao-cab"><div><h2 id="t-pront">Prontidão para o campo</h2><p>Por estado: equipe de campo habilitada e que já entrou no sistema · fichas aprovadas e diagnósticos (meta de 40) · visitas agendadas para a semana · registros parados nos celulares</p></div></div>
+      ${tabela}${cartoes}
       ${eu.papel === 'coord_geral' ? coordenacao() : ''}
       ${blocoFila()}
     </section>`;
@@ -12835,7 +12862,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       : 'Cadastre as bolsistas indicadas pelo MPA: uma de articulação estadual e uma de apoio estadual por estado.';
     let corpo = '';
     if (aba === 'visao') corpo = MQ.painelUI ? MQ.painelUI.visaoGeral(S) : '';
-    else if (aba === 'equipe') corpo = (!R.temProfessorHabilitado(S.equipe) ? `<div class="aviso erro" role="status"><b>${souGeral ? 'Cadastre e habilite primeiro um professor do FIC.' : 'Ainda não há professor do FIC habilitado.'}</b> Sem professor com cadastro no Arlo e termo assinado, o sistema não cadastra coordenação técnica, bolsistas nem agentes de campo (a matrícula no curso depende dele).${souGeral ? '' : ' Quem cadastra e habilita o professor é a coordenação geral.'}</div>` : '') + secaoPedidosAcesso() + (MQ.convitesUI ? MQ.convitesUI.secaoPendentes() : '') + `
+    else if (aba === 'equipe') corpo = (!R.temProfessorHabilitado(S.equipe) ? passoProfessorFic(souGeral) : '') + secaoPedidosAcesso() + (MQ.convitesUI ? MQ.convitesUI.secaoPendentes() : '') + `
       <div class="cab eq-cab"><div><span class="eyebrow">Equipe do projeto</span><h1>Coordenação e bolsistas</h1><p class="eq-intro">${intro}</p>${prazoChip()}</div></div>
       <div class="eq-kpis" aria-label="Resumo da equipe">
         ${kpiEq(ct ? 1 : 0, 1, 'coordenação técnica cadastrada', 1)}
@@ -13003,6 +13030,25 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <span>${fs.length} ficha${fs.length === 1 ? '' : 's'}${aguard ? ` · <b>${aguard}</b> aguardando aprovação` : ''}</span></div>`;
   }
 
+  /* primeiro passo da equipe: sem professor do FIC habilitado, ninguém da equipe de campo é cadastrado (33_exige_professor_fic) */
+  function passoProfessorFic(souGeral) {
+    const profs = ativos().filter(m => m.papel === 'professor_fic');
+    const p = profs.sort((a, b) => (!!b.docs_funcern_em + !!b.termo_assinado_em) - (!!a.docs_funcern_em + !!a.termo_assinado_em))[0];
+    const passos = [['Cadastrar o professor do FIC', !!p], ['Cadastro no Arlo (documentação da FUNCERN)', !!(p && p.docs_funcern_em)], ['Termo de compromisso assinado e conferido', !!(p && p.termo_assinado_em)]];
+    const feitos = passos.filter(x => x[1]).length;
+    const acao = !souGeral ? '<p class="small pf-quem">Quem cadastra e habilita o professor é a coordenação geral.</p>'
+      : !p ? MQ.botaoAcao({ acao: 'novo', icone: 'pessoa_mais', texto: 'Cadastrar professor do FIC', attrs: 'data-papel="professor_fic"' })
+      : `<button class="btn pri" data-acao="ver" data-id="${p.id}">Completar a habilitação de ${esc(nomeDe(p).split(' ')[0])}</button>`;
+    return `<section class="passo-fic" role="status" aria-labelledby="pf-t">
+      <span class="pf-ic" aria-hidden="true">${MQ.ICONES && MQ.ICONES.capelo ? MQ.ICONES.capelo : ''}</span>
+      <div class="pf-corpo">
+        <span class="eyebrow">Primeiro passo · ${feitos} de ${passos.length}</span>
+        <h2 id="pf-t">${souGeral ? 'Cadastre e habilite um professor do FIC' : 'Ainda não há professor do FIC habilitado'}</h2>
+        <p>A matrícula no curso FIC depende dele: sem professor com cadastro no Arlo e termo assinado, o sistema não cadastra coordenação técnica, bolsistas nem agentes de campo.</p>
+        <ol class="pf-passos">${passos.map(([t, ok], i) => `<li class="${ok ? 'ok' : i === passos.findIndex(x => !x[1]) ? 'agora' : ''}"><span class="pf-n" aria-hidden="true">${ok ? '✓' : i + 1}</span><span>${t}${ok ? '<span class="so-leitor"> (feito)</span>' : ''}</span></li>`).join('')}</ol>
+        <div class="pf-acao">${acao}</div>
+      </div></section>`;
+  }
   function quadroTabela() {
     return `<div class="quadro-scroll eq-cx"><table class="quadro eq-quadro"><colgroup><col class="c-uf"><col><col><col class="c-plano"></colgroup><thead><tr><th scope="col">Estado</th><th scope="col">Articulação estadual</th>
       <th scope="col">Apoio estadual</th><th scope="col">Seleção no estado</th></tr></thead><tbody>
