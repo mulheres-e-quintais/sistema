@@ -50,7 +50,12 @@
         ['Pelo teclado (computador)', [
           '<b>Tab</b> passa por todos os blocos da tela, inclusive os que são só de leitura, e pelos botões e campos; <b>Shift + Tab</b> volta. O bloco em que você está fica contornado.',
           'Nos formulários, o Tab vai direto de campo em campo.',
-          'Quadro mais largo que a tela: chegue nele com Tab e use as setas para os lados.']],
+          'Quadro mais largo que a tela: chegue nele com Tab e use as setas para os lados.', 'O primeiro Tab de cada tela mostra <b>Pular para o conteúdo</b>: com Enter, vai direto ao conteúdo, sem passar pelo menu.']],
+        ['No celular e no tablet', [
+          'Na <b>Visão geral</b>, o botão <b>itens pedem atenção ↓</b>, logo abaixo do título, leva direto ao quadro <b>O que pede atenção</b>.',
+          'Quadro com uma sombra na borda direita tem mais colunas: arraste para o lado.',
+          'Com o celular deitado, o botão de salvar fica sempre à vista, embaixo do formulário.',
+          'Quando o sistema vai para o segundo plano (lista de apps recentes), a tela fica desfocada, para CPF e endereço não aparecerem na miniatura.']],
         ['Ao entrar de novo', [
           'Se você sair do sistema (pelo botão ou depois de 15 minutos sem uso), ao entrar de novo neste aparelho o sistema volta para a mesma aba e o mesmo ponto da tela em que você estava.',
           'Se outra pessoa entrar no aparelho, ela começa do início.']],

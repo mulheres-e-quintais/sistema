@@ -3635,10 +3635,10 @@ MQ.ORCAMENTO = {
           <div class="campo"><label for="fi-nasc">Data de nascimento</label><input id="fi-nasc" name="data_nascimento" type="date" value="${v('data_nascimento')}" max="${R.hoje()}"></div>
           <div class="campo"><label for="fi-cel">Celular / WhatsApp</label><input id="fi-cel" name="celular" maxlength="40" inputmode="tel" value="${v('celular')}"></div>
           <div class="campo"><label for="fi-pess">Nº de pessoas na família</label><input id="fi-pess" name="pessoas_familia" type="number" min="1" max="30" inputmode="numeric" value="${v('pessoas_familia')}"></div>
-          <div class="campo"><label for="fi-mun">Município</label><input id="fi-mun" name="municipio" maxlength="120" list="fi-lista-mun" value="${v('municipio')}"><datalist id="fi-lista-mun">${munis.map(m => `<option value="${E(m)}">`).join('')}</datalist></div>
-          <div class="campo"><label for="fi-com">Comunidade / assentamento</label><input id="fi-com" name="comunidade" maxlength="300" value="${v('comunidade')}"></div>
-          <div class="campo inteiro"><label for="fi-end">Endereço (rua, sítio, nº)</label><input id="fi-end" name="endereco" maxlength="300" value="${v('endereco')}"><span class="dica">Escreva do jeito mais completo possível: é por ele que o sistema confere se já há alguém da mesma casa.</span></div>
-          <div class="campo inteiro"><label for="fi-ref">Ponto de referência</label><input id="fi-ref" name="ponto_referencia" maxlength="300" value="${v('ponto_referencia')}"></div>
+          <div class="campo"><label for="fi-mun">Município</label><input id="fi-mun" name="municipio" autocomplete="off" maxlength="120" list="fi-lista-mun" value="${v('municipio')}"><datalist id="fi-lista-mun">${munis.map(m => `<option value="${E(m)}">`).join('')}</datalist></div>
+          <div class="campo"><label for="fi-com">Comunidade / assentamento</label><input id="fi-com" name="comunidade" autocomplete="off" maxlength="300" value="${v('comunidade')}"></div>
+          <div class="campo inteiro"><label for="fi-end">Endereço (rua, sítio, nº)</label><input id="fi-end" name="endereco" autocomplete="off" maxlength="300" value="${v('endereco')}"><span class="dica">Escreva do jeito mais completo possível: é por ele que o sistema confere se já há alguém da mesma casa.</span></div>
+          <div class="campo inteiro"><label for="fi-ref">Ponto de referência</label><input id="fi-ref" name="ponto_referencia" autocomplete="off" maxlength="300" value="${v('ponto_referencia')}"></div>
           <div class="campo"><label for="fi-nis">NIS (CadÚnico)</label><input id="fi-nis" name="nis" inputmode="numeric" value="${v('nis')}" placeholder="Se tiver"></div>
           <div class="campo"><label for="fi-caf">CAF nº</label><input id="fi-caf" name="caf" maxlength="60" value="${v('caf')}" placeholder="Se tiver"></div>
           <div class="campo inteiro"><label for="fi-ind">Quem indicou (organização / liderança)</label><input id="fi-ind" name="indicada_por" maxlength="200" value="${v('indicada_por')}"></div>
@@ -4029,7 +4029,8 @@ MQ.ORCAMENTO = {
 
   // menu "Baixar planilha": fecha com clique fora ou Esc (o foco volta ao botão)
   if (typeof document !== 'undefined' && document.addEventListener) {
-    document.addEventListener('click', e => { document.querySelectorAll('details.menu-planilha[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }); });
+    const fecharFora = e => { document.querySelectorAll('details.menu-planilha[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }); };
+    document.addEventListener('click', fecharFora); document.addEventListener('pointerdown', fecharFora);
     document.addEventListener('keydown', e => { if (e.key !== 'Escape') return; const d = document.querySelector('details.menu-planilha[open]'); if (!d) return; d.open = false; const s = d.querySelector('summary'); if (s) s.focus(); });
   }
   MQ.fichasUI = { secaoBolsista, secaoCoord, painel, clique, enviar, contar, casaBusca, filtrar, filtro, montarCSV, celCSV, versaoDe, MSG_MUDOU, ROTULO_FILA };
@@ -4509,6 +4510,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
             <span class="atalho-seta" aria-hidden="true">↗</span></a>` : ''}
         </div></header>
 
+      ${al.length ? `<button type="button" class="ir-atencao ${al.some(x => x.nivel === 'crit') ? 'crit' : 'pend'}" data-acao="ir-atencao">${al.length} ${al.length === 1 ? 'item pede' : 'itens pedem'} atenção <span aria-hidden="true">↓</span></button>` : ''}
       <section class="dx-topo" aria-label="Indicadores principais">
         ${ex.html}
         <div class="dx-kpis">
@@ -5809,7 +5811,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     }
     else if (a === 'campo-visita-cancelar') {
       const fm = $('form[data-form=visita]'); const v = visitas().find(x => x.id === fm.dataset.id);
-      if (!fm.dataset.confirmar) { fm.dataset.confirmar = '1'; el.textContent = 'Confirmar cancelamento'; return; }
+      if (!fm.dataset.confirmar) { fm.dataset.confirmar = '1'; fm.dataset.confEm = String(Date.now()); el.textContent = 'Confirmar cancelamento'; return; }
+      if (Date.now() - (+fm.dataset.confEm || 0) < 450) return;   // 13/10/2026: toque duplo não confirma
       await U().ocupado(fm, async () => { await guardar('visita', Object.assign({}, v, { situacao: 'cancelada' })); U().fecharPainel(); U().render(); U().toast('Visita cancelada. O dia de campo volta para o saldo do estado.'); }, { semConferir: true });
     }
   }
@@ -6255,7 +6258,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   async function clique(a, el) {
     if (a === 'vit-retirar') {
-      if (!el.dataset.conf) { el.dataset.conf = '1'; el.textContent = 'Confirmar: retirar'; return; }
+      if (!el.dataset.conf) { el.dataset.conf = '1'; el.dataset.confEm = String(Date.now()); el.textContent = 'Confirmar: retirar'; return; }
+      if (Date.now() - (+el.dataset.confEm || 0) < 450) return;   // 13/10/2026: toque duplo não confirma
       await S().api.retirarFoto(el.dataset.id, el.dataset.path);
       V.lista = (V.lista || []).filter(v => v.id !== el.dataset.id); V.em = 0;
       const box = $('#vit-coord'); if (box) box.innerHTML = corpoCoord();
@@ -10906,7 +10910,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         ['Pelo teclado (computador)', [
           '<b>Tab</b> passa por todos os blocos da tela, inclusive os que são só de leitura, e pelos botões e campos; <b>Shift + Tab</b> volta. O bloco em que você está fica contornado.',
           'Nos formulários, o Tab vai direto de campo em campo.',
-          'Quadro mais largo que a tela: chegue nele com Tab e use as setas para os lados.']],
+          'Quadro mais largo que a tela: chegue nele com Tab e use as setas para os lados.', 'O primeiro Tab de cada tela mostra <b>Pular para o conteúdo</b>: com Enter, vai direto ao conteúdo, sem passar pelo menu.']],
+        ['No celular e no tablet', [
+          'Na <b>Visão geral</b>, o botão <b>itens pedem atenção ↓</b>, logo abaixo do título, leva direto ao quadro <b>O que pede atenção</b>.',
+          'Quadro com uma sombra na borda direita tem mais colunas: arraste para o lado.',
+          'Com o celular deitado, o botão de salvar fica sempre à vista, embaixo do formulário.',
+          'Quando o sistema vai para o segundo plano (lista de apps recentes), a tela fica desfocada, para CPF e endereço não aparecerem na miniatura.']],
         ['Ao entrar de novo', [
           'Se você sair do sistema (pelo botão ou depois de 15 minutos sem uso), ao entrar de novo neste aparelho o sistema volta para a mesma aba e o mesmo ponto da tela em que você estava.',
           'Se outra pessoa entrar no aparelho, ela começa do início.']],
@@ -12976,6 +12985,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     finally { atualizando = false; }
   }
   if (typeof document !== 'undefined') {
+    // 13/10/2026: no segundo plano (lista de apps recentes do celular) a tela fica desfocada: CPF e endereço não aparecem na miniatura
+    document.addEventListener('visibilitychange', () => { try { document.documentElement.classList.toggle('mq-oculto', document.visibilityState === 'hidden' && !!S.eu); } catch (e) {} });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') atualizarEmSegundoPlano(); });
     window.addEventListener('focus', () => atualizarEmSegundoPlano());
     window.addEventListener('online', () => atualizarEmSegundoPlano(true));
@@ -14586,6 +14597,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           S.aud = S.aud.concat(novos); if ((v || []).length < 200) S.audFim = true; (S.aberto = S.aberto || {})['hist-antigos'] = true; renderFundo(); }
         catch (e) { el.disabled = false; el.textContent = 'Carregar registros mais antigos'; toast(avisarErro(e)); }
       }
+      else if (a === 'ir-atencao') { const s = document.querySelector('.dx-atencao'); if (s) { s.scrollIntoView({ behavior: 'smooth', block: 'start' }); if (!s.hasAttribute('tabindex')) s.setAttribute('tabindex', '-1'); s.focus({ preventScroll: true }); } }
       else if (a === 'pular') { if (MQ.teclado) MQ.teclado.pular(); }
       else if (a === 'aparencia') { if (S.menuAberto) { S.menuAberto = false; render(); } S.voltarFoco = el; abrirPainel({ tipo: 'aparencia' }); }
       else if (a === 'aparencia-sol' || a === 'aparencia-tema') {   // muda na hora, sem recarregar; a barra de cima mostra se o modo sol está ligado
@@ -14606,11 +14618,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         S.modoLogin = el.dataset.m; S.esqueciEnviado = false; render(); const f = $('#l-email') || $('#e-email'); if (f) f.focus(); }
       else if (a === 'sair' && !el.dataset.ok && (!navigator.onLine || (S.fila || []).length)) {
         // sem internet, não dá para entrar de novo; e o que está guardado no aparelho só sobe depois de entrar
-        el.dataset.ok = '1'; el.textContent = 'Sair mesmo?';
+        el.dataset.ok = '1'; el.dataset.okEm = String(Date.now()); el.textContent = 'Sair mesmo?';
         toast(!navigator.onLine ? 'Você está sem internet: se sair, só consegue entrar de novo quando a conexão voltar.' : (S.fila.length + (S.fila.length > 1 ? ' registros ainda estão' : ' registro ainda está') + ' só neste aparelho. Se sair, eles sobem quando você entrar de novo.'));
         setTimeout(() => { if (el.isConnected) { delete el.dataset.ok; el.textContent = 'Sair'; } }, 6000);
       }
-      else if (a === 'sair') await sairDoSistema();
+      else if (a === 'sair') { if (Date.now() - (+el.dataset.okEm || 0) < 450) return; await sairDoSistema(); }   // toque duplo não confirma
       else if (a === 'fechar') pedirFechar();
       else if (a === 'aba') { irParaAba(el.dataset.aba); S.menuAberto = false; render(); window.scrollTo(0, 0); digitouEm = 0; focarAba(el.dataset.aba); carregarDaAba(); atualizarEmSegundoPlano(); }
       else if ((rota = rotaDoClique(a))) {   // ações dos módulos: tabela ROTAS_CLIQUE

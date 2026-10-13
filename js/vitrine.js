@@ -250,7 +250,8 @@
 
   async function clique(a, el) {
     if (a === 'vit-retirar') {
-      if (!el.dataset.conf) { el.dataset.conf = '1'; el.textContent = 'Confirmar: retirar'; return; }
+      if (!el.dataset.conf) { el.dataset.conf = '1'; el.dataset.confEm = String(Date.now()); el.textContent = 'Confirmar: retirar'; return; }
+      if (Date.now() - (+el.dataset.confEm || 0) < 450) return;   // 13/10/2026: toque duplo não confirma
       await S().api.retirarFoto(el.dataset.id, el.dataset.path);
       V.lista = (V.lista || []).filter(v => v.id !== el.dataset.id); V.em = 0;
       const box = $('#vit-coord'); if (box) box.innerHTML = corpoCoord();

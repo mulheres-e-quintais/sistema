@@ -194,10 +194,10 @@
           <div class="campo"><label for="fi-nasc">Data de nascimento</label><input id="fi-nasc" name="data_nascimento" type="date" value="${v('data_nascimento')}" max="${R.hoje()}"></div>
           <div class="campo"><label for="fi-cel">Celular / WhatsApp</label><input id="fi-cel" name="celular" maxlength="40" inputmode="tel" value="${v('celular')}"></div>
           <div class="campo"><label for="fi-pess">Nº de pessoas na família</label><input id="fi-pess" name="pessoas_familia" type="number" min="1" max="30" inputmode="numeric" value="${v('pessoas_familia')}"></div>
-          <div class="campo"><label for="fi-mun">Município</label><input id="fi-mun" name="municipio" maxlength="120" list="fi-lista-mun" value="${v('municipio')}"><datalist id="fi-lista-mun">${munis.map(m => `<option value="${E(m)}">`).join('')}</datalist></div>
-          <div class="campo"><label for="fi-com">Comunidade / assentamento</label><input id="fi-com" name="comunidade" maxlength="300" value="${v('comunidade')}"></div>
-          <div class="campo inteiro"><label for="fi-end">Endereço (rua, sítio, nº)</label><input id="fi-end" name="endereco" maxlength="300" value="${v('endereco')}"><span class="dica">Escreva do jeito mais completo possível: é por ele que o sistema confere se já há alguém da mesma casa.</span></div>
-          <div class="campo inteiro"><label for="fi-ref">Ponto de referência</label><input id="fi-ref" name="ponto_referencia" maxlength="300" value="${v('ponto_referencia')}"></div>
+          <div class="campo"><label for="fi-mun">Município</label><input id="fi-mun" name="municipio" autocomplete="off" maxlength="120" list="fi-lista-mun" value="${v('municipio')}"><datalist id="fi-lista-mun">${munis.map(m => `<option value="${E(m)}">`).join('')}</datalist></div>
+          <div class="campo"><label for="fi-com">Comunidade / assentamento</label><input id="fi-com" name="comunidade" autocomplete="off" maxlength="300" value="${v('comunidade')}"></div>
+          <div class="campo inteiro"><label for="fi-end">Endereço (rua, sítio, nº)</label><input id="fi-end" name="endereco" autocomplete="off" maxlength="300" value="${v('endereco')}"><span class="dica">Escreva do jeito mais completo possível: é por ele que o sistema confere se já há alguém da mesma casa.</span></div>
+          <div class="campo inteiro"><label for="fi-ref">Ponto de referência</label><input id="fi-ref" name="ponto_referencia" autocomplete="off" maxlength="300" value="${v('ponto_referencia')}"></div>
           <div class="campo"><label for="fi-nis">NIS (CadÚnico)</label><input id="fi-nis" name="nis" inputmode="numeric" value="${v('nis')}" placeholder="Se tiver"></div>
           <div class="campo"><label for="fi-caf">CAF nº</label><input id="fi-caf" name="caf" maxlength="60" value="${v('caf')}" placeholder="Se tiver"></div>
           <div class="campo inteiro"><label for="fi-ind">Quem indicou (organização / liderança)</label><input id="fi-ind" name="indicada_por" maxlength="200" value="${v('indicada_por')}"></div>
@@ -588,7 +588,8 @@
 
   // menu "Baixar planilha": fecha com clique fora ou Esc (o foco volta ao botão)
   if (typeof document !== 'undefined' && document.addEventListener) {
-    document.addEventListener('click', e => { document.querySelectorAll('details.menu-planilha[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }); });
+    const fecharFora = e => { document.querySelectorAll('details.menu-planilha[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }); };
+    document.addEventListener('click', fecharFora); document.addEventListener('pointerdown', fecharFora);
     document.addEventListener('keydown', e => { if (e.key !== 'Escape') return; const d = document.querySelector('details.menu-planilha[open]'); if (!d) return; d.open = false; const s = d.querySelector('summary'); if (s) s.focus(); });
   }
   MQ.fichasUI = { secaoBolsista, secaoCoord, painel, clique, enviar, contar, casaBusca, filtrar, filtro, montarCSV, celCSV, versaoDe, MSG_MUDOU, ROTULO_FILA };

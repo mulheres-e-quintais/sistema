@@ -369,6 +369,8 @@
     finally { atualizando = false; }
   }
   if (typeof document !== 'undefined') {
+    // 13/10/2026: no segundo plano (lista de apps recentes do celular) a tela fica desfocada: CPF e endereço não aparecem na miniatura
+    document.addEventListener('visibilitychange', () => { try { document.documentElement.classList.toggle('mq-oculto', document.visibilityState === 'hidden' && !!S.eu); } catch (e) {} });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') atualizarEmSegundoPlano(); });
     window.addEventListener('focus', () => atualizarEmSegundoPlano());
     window.addEventListener('online', () => atualizarEmSegundoPlano(true));
@@ -1979,6 +1981,7 @@
           S.aud = S.aud.concat(novos); if ((v || []).length < 200) S.audFim = true; (S.aberto = S.aberto || {})['hist-antigos'] = true; renderFundo(); }
         catch (e) { el.disabled = false; el.textContent = 'Carregar registros mais antigos'; toast(avisarErro(e)); }
       }
+      else if (a === 'ir-atencao') { const s = document.querySelector('.dx-atencao'); if (s) { s.scrollIntoView({ behavior: 'smooth', block: 'start' }); if (!s.hasAttribute('tabindex')) s.setAttribute('tabindex', '-1'); s.focus({ preventScroll: true }); } }
       else if (a === 'pular') { if (MQ.teclado) MQ.teclado.pular(); }
       else if (a === 'aparencia') { if (S.menuAberto) { S.menuAberto = false; render(); } S.voltarFoco = el; abrirPainel({ tipo: 'aparencia' }); }
       else if (a === 'aparencia-sol' || a === 'aparencia-tema') {   // muda na hora, sem recarregar; a barra de cima mostra se o modo sol está ligado
@@ -1999,11 +2002,11 @@
         S.modoLogin = el.dataset.m; S.esqueciEnviado = false; render(); const f = $('#l-email') || $('#e-email'); if (f) f.focus(); }
       else if (a === 'sair' && !el.dataset.ok && (!navigator.onLine || (S.fila || []).length)) {
         // sem internet, não dá para entrar de novo; e o que está guardado no aparelho só sobe depois de entrar
-        el.dataset.ok = '1'; el.textContent = 'Sair mesmo?';
+        el.dataset.ok = '1'; el.dataset.okEm = String(Date.now()); el.textContent = 'Sair mesmo?';
         toast(!navigator.onLine ? 'Você está sem internet: se sair, só consegue entrar de novo quando a conexão voltar.' : (S.fila.length + (S.fila.length > 1 ? ' registros ainda estão' : ' registro ainda está') + ' só neste aparelho. Se sair, eles sobem quando você entrar de novo.'));
         setTimeout(() => { if (el.isConnected) { delete el.dataset.ok; el.textContent = 'Sair'; } }, 6000);
       }
-      else if (a === 'sair') await sairDoSistema();
+      else if (a === 'sair') { if (Date.now() - (+el.dataset.okEm || 0) < 450) return; await sairDoSistema(); }   // toque duplo não confirma
       else if (a === 'fechar') pedirFechar();
       else if (a === 'aba') { irParaAba(el.dataset.aba); S.menuAberto = false; render(); window.scrollTo(0, 0); digitouEm = 0; focarAba(el.dataset.aba); carregarDaAba(); atualizarEmSegundoPlano(); }
       else if ((rota = rotaDoClique(a))) {   // ações dos módulos: tabela ROTAS_CLIQUE

@@ -465,6 +465,7 @@
             <span class="atalho-seta" aria-hidden="true">↗</span></a>` : ''}
         </div></header>
 
+      ${al.length ? `<button type="button" class="ir-atencao ${al.some(x => x.nivel === 'crit') ? 'crit' : 'pend'}" data-acao="ir-atencao">${al.length} ${al.length === 1 ? 'item pede' : 'itens pedem'} atenção <span aria-hidden="true">↓</span></button>` : ''}
       <section class="dx-topo" aria-label="Indicadores principais">
         ${ex.html}
         <div class="dx-kpis">

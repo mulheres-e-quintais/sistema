@@ -864,9 +864,9 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
   .ent-ufs li span { display: none; }
   .ent-ufs b { width: 36px; height: 36px; font-size: var(--t-xs); box-shadow: 0 4px 10px -4px color-mix(in srgb, var(--accent) 60%, transparent); }
   .ent-broto { display: none; }
-  /* no celular: marca, frase e estados; depois o login; os números por último */
+  /* no celular: marca e título; logo depois o login (13/10/2026: antes ficava a mais de uma tela de distância); depois a frase, os estados e os números */
   .ent-hero { display: contents; }
-  .ent-marca { order: 1; } .ent-t { order: 2; } .ent-s { order: 3; } .ent-ufs { order: 4; } .ent-acesso { order: 5; } .ent-hero .vitrine { order: 6; }
+  .ent-marca { order: 1; } .ent-t { order: 2; } .ent-acesso { order: 3; } .ent-s { order: 4; } .ent-ufs { order: 5; } .ent-hero .vitrine { order: 6; }
   .ent { gap: 14px; }
   .ent-acesso { margin-top: 8px; }
 }
@@ -915,7 +915,7 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 
 /* ---------- celular e tablet: menu de seções (grade) no lugar das abas ---------- */
 .abas-m { display: none; }
-@media (max-width: 1000px) {
+@media (max-width: 1100px) {   /* 13/10/2026: até 1100 (tablet deitado também usa o menu "Seção") */
   .abas { display: none; }
   .abas-m { display: block; position: relative; margin: 2px 0 6px; }
   .abas-m summary { list-style: none; display: flex; align-items: center; gap: 8px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px;
@@ -3387,3 +3387,102 @@ section.secao[data-tab-bloco]:focus-visible { outline-offset: 8px; }
 /* tema escuro: trilho das barras de progresso visível (antes quase da cor do fundo) */
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bar, :root:not([data-theme="light"]) .medidor, :root:not([data-theme="light"]) .pf-bar { background: #4A3D34; } }
 :root[data-theme="dark"] .bar, :root[data-theme="dark"] .medidor, :root[data-theme="dark"] .pf-bar { background: #4A3D34; }
+
+/* =====================================================================
+   v266 — celular e tablet (auditoria de responsividade, 13/10/2026)
+   ===================================================================== */
+/* 1. iPhone deitado: nada embaixo do entalhe (áreas seguras da esquerda e da direita) */
+.barra-in, .wrap, .rodape-in { padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+.painel-cab, .painel-corpo { padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+@media (max-width: 640px) { .barra-in { padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); } }
+.sessao-aviso { bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+/* 2. telas de toque (celular e tablet, qualquer largura): campos com 16 px, para o iPhone não dar zoom ao tocar */
+@media (pointer: coarse) {
+  input, select, textarea { font-size: max(16px, 1em); }
+  /* com o id na frente para vencer as regras de cada formulário (.campo input etc.), que têm 15 px */
+  :is(#app, #painel) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea) { font-size: max(16px, 1em); }
+  .imp-uf select { font-size: 16px; }
+}
+.imp-uf select { font-size: max(16px, 1em); }
+/* 7. alvos de toque com 40–44 px em qualquer tela de toque (antes só até 640/700 px; no tablet ficavam com 20–32 px) */
+@media (pointer: coarse) {
+  .btn.peq, button.link, .btn-voz, .seg button { min-height: 40px; }
+  .seg button[aria-label="Mês anterior"], .seg button[aria-label="Próximo mês"] { min-width: 40px; }
+  .btn-ajuda, .btn-meus { width: 40px; height: 40px; min-width: 40px; }
+  .linha-din .fechar, .painel-cab .fechar { min-width: 40px; min-height: 40px; }
+  main summary, #painel summary { min-height: 44px; display: flex; align-items: center; gap: 6px; }
+  .link.perigo, a.link, .ent-link { display: inline-flex; align-items: center; min-height: 40px; }
+  .marco-meta { min-height: 40px; }
+}
+/* 6. tablet em pé (641–900 px): barra de cima numa linha só (antes quebrava em duas e comia a primeira tela) */
+@media (min-width: 641px) and (max-width: 900px) {
+  .barra-in { flex-wrap: nowrap; }
+  .barra-in .marca { flex: 1; min-width: 0; }
+  .marca .sis { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .quem { flex: none; } .quem > span { display: none; }   /* nome e função: tocando na foto (Meus dados) */
+}
+/* 17. tablet deitado (até 1100 px): menu "Seção" no lugar das abas em grupos (o grupo Documentação caía sozinho numa 2ª linha) */
+@media (max-width: 1100px) {
+  .abas.abas-grupos { display: none; }
+  .abas { display: none; }
+  .abas-m { display: block; position: relative; margin: 2px 0 6px; }
+}
+/* 3. página pública "O projeto em números" entre 561 e 720 px: nada rola para o lado */
+.pub-l > span { min-width: 0; }
+@media (max-width: 720px) { .pub-l { grid-template-columns: 1fr 1fr; } .pub-l > span:first-child { grid-column: 1 / -1; } .pub-l.cab { display: none; } }
+/* 9. números da tela de entrada a 320 px: um embaixo do outro (antes "selecionadas" vazava do quadro) */
+@media (max-width: 400px) { .vitrine .vts, .vts.vts-3 { grid-template-columns: 1fr; } }
+/* 5. celular deitado (altura até 500 px): cabeçalho do painel enxuto e botão de salvar sempre à mão */
+@media (orientation: landscape) and (max-height: 500px) {
+  .painel-cab { padding-top: 8px; padding-bottom: 8px; }
+  .painel-cab h2 { font-size: var(--t-lg); }
+  .painel-cab .sub, .painel-cab .vb-foto, .painel-cab .eyebrow { display: none; }
+  .painel-corpo { scroll-padding-top: 60px; }
+  .painel-corpo > form.f:last-child > .acoes:last-child, .painel-corpo > form.f:only-of-type > .acoes:last-child {
+    position: sticky; bottom: calc(-28px - env(safe-area-inset-bottom, 0px)); z-index: 2; margin: 4px -4px 0; padding: 8px 4px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg); border-top: 1px solid var(--line); }
+}
+/* 14. o fim do formulário não arrasta a página de trás; com painel aberto a página não rola */
+.painel-corpo { overscroll-behavior: contain; }
+html:has(#painel .painel) { overflow: hidden; }
+/* 8. quadro que rola para o lado mostra uma sombra na borda onde há mais conteúdo */
+.quadro-scroll {
+  background:
+    linear-gradient(to right, var(--surface) 30%, transparent) left / 24px 100% no-repeat local,
+    linear-gradient(to left, var(--surface) 30%, transparent) right / 24px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, .18), transparent) left / 10px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, .18), transparent) right / 10px 100% no-repeat scroll,
+    var(--surface);
+}
+@media (max-width: 420px) { .quadro-sel th, .quadro-sel td { padding-left: 6px; padding-right: 6px; } }
+/* 11. metas no celular: a área "ver detalhes" também (sem ela o navegador criava colunas sobrando) */
+@media (max-width: 420px) {
+  .dx-meta summary, .dx-duas .dx-meta summary { grid-template-columns: 40px minmax(0, 1fr); grid-template-areas: "id nome" "id st" "id barra" "id num" "id ver"; }
+  .dx-meta .meta-ver { justify-self: start; }
+}
+/* 12. Acesso à água: palavra inteira (a regra antiga "anywhere" vencia a correção) */
+.dx-agua .agua-sit li span { overflow-wrap: normal; word-break: normal; }
+@media (max-width: 380px) { .agua-sit { grid-template-columns: 1fr; } }
+/* 13. selo do mês nos próximos marcos: cabe "OUT 2026"; marco passado sem a linha atravessando a data */
+.marco-cal { width: 58px; } .marco-cal b, .marco-cal span { letter-spacing: 0; }
+.marco.passou .marco-cal { opacity: 1; }
+.marco.passou .marco-cal b, .marco.passou .marco-cal span { color: var(--muted); }
+/* 16. tablet em pé (600–760 px): cartões em duas colunas (antes um cartão esticado por linha) */
+@media (min-width: 600px) and (max-width: 760px) { .cartoes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* 19. gráfico do ritmo do gasto: rola para o lado só nos celulares estreitos */
+@media (max-width: 640px) { .eg-caixa svg { min-width: 0; } }
+@media (max-width: 480px) { .eg-caixa svg { min-width: 520px; } }
+/* 22. lista rótulo/valor no celular: valor com mais espaço (e-mail e data inteiros) */
+@media (max-width: 420px) { .dl { grid-template-columns: minmax(0, 38%) minmax(0, 1fr); } }
+/* 23. ajuda: listas numeradas não encostam na borda */
+.ajuda-duvidas details ol, .ajuda-duvidas details ul { padding-right: 16px; }
+/* 20. app no segundo plano (lista de apps recentes): a tela fica desfocada, sem CPF nem endereço legíveis */
+html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
+
+/* 15. celular e tablet: atalho no topo da Visão geral para "O que pede atenção" (que fica lá embaixo da página) */
+.ir-atencao { display: none; }
+@media (max-width: 1000px) {
+  .ir-atencao { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 48px; padding: 10px 16px; border-radius: var(--r);
+    font: 600 var(--t-base) var(--sans); cursor: pointer; border: 1px solid var(--pend); background: var(--pend-bg); color: var(--pend); }
+  .ir-atencao.crit { border-color: var(--crit); background: var(--crit-bg); color: var(--crit); }
+}

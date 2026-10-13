@@ -812,7 +812,8 @@
     }
     else if (a === 'campo-visita-cancelar') {
       const fm = $('form[data-form=visita]'); const v = visitas().find(x => x.id === fm.dataset.id);
-      if (!fm.dataset.confirmar) { fm.dataset.confirmar = '1'; el.textContent = 'Confirmar cancelamento'; return; }
+      if (!fm.dataset.confirmar) { fm.dataset.confirmar = '1'; fm.dataset.confEm = String(Date.now()); el.textContent = 'Confirmar cancelamento'; return; }
+      if (Date.now() - (+fm.dataset.confEm || 0) < 450) return;   // 13/10/2026: toque duplo não confirma
       await U().ocupado(fm, async () => { await guardar('visita', Object.assign({}, v, { situacao: 'cancelada' })); U().fecharPainel(); U().render(); U().toast('Visita cancelada. O dia de campo volta para o saldo do estado.'); }, { semConferir: true });
     }
   }
