@@ -16,7 +16,7 @@ const R = []; const ok = (n, c, d = '') => R.push([c ? 'PASSOU' : 'FALHOU', n, d
     await entrar('coord_geral');
     await p.evaluate(() => { MQ.ui.S.aba = 'visao'; MQ.ui.render(); }); await p.waitForTimeout(400);
     const txt = await p.textContent('#app');
-    ok(`${w}: Visão geral mostra "Prontidão para o campo"`, /Prontidão para o campo/.test(txt));
+    ok(`${w}: Visão geral mostra "Situação do campo em cada estado"`, /Situação do campo em cada estado/.test(txt));
     ok(`${w}: lista a agente com 2 registros parados há 3 dias`, /2 registros guardados no celular desde .* \(3 dias\)/.test(txt));
     ok(`${w}: sem rolagem para o lado na página`, await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
     if (D) { const s = await p.$('.prontidao'); if (s) await s.screenshot({ path: D + '/prontidao_' + w + '.png' }); }
@@ -29,9 +29,9 @@ const R = []; const ok = (n, c, d = '') => R.push([c ? 'PASSOU' : 'FALHOU', n, d
       console.log('ARQUIVO ' + caminho); }
     // a técnica vê no Campo; a bolsista não vê nada disso
     await entrar('coord_tecnico'); await p.evaluate(() => { MQ.ui.S.aba = 'campo'; MQ.ui.render(); }); await p.waitForTimeout(400);
-    ok(`${w}: técnica vê os registros parados na aba Campo`, /Registros parados nos celulares/.test(await p.textContent('#app')));
+    ok(`${w}: técnica vê os registros parados na aba Campo`, /Registros que ainda não foram enviados/.test(await p.textContent('#app')));
     await entrar('bolsista');
-    ok(`${w}: bolsista não vê a prontidão`, !/Prontidão para o campo/.test(await p.textContent('#app')));
+    ok(`${w}: bolsista não vê a prontidão`, !/Situação do campo em cada estado/.test(await p.textContent('#app')));
     ok(`${w}: sem erro de página`, errs.length === 0, errs.join('|'));
     await ctx.close();
   }

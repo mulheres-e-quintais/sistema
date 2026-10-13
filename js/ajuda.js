@@ -33,6 +33,18 @@
           '<b>?</b> abre esta ajuda, sempre sobre a tela em que você está.',
           'A <b>sua foto</b> (ou suas iniciais) abre <b>Meus dados</b>: celular, endereço e conta bancária para a FUNCERN.',
           'Se aparecer um aviso de <b>pendências no seu cadastro</b>, resolva primeiro: sem elas, a FUNCERN não paga.']],
+        ['No sol: modo sol', [
+          'O botão do <b>sol</b>, no alto da tela (na tela de entrada, <b>Modo sol</b>, no cartão de acesso), abre <b>Aparência da tela</b>.',
+          'Ligue o <b>Modo sol</b> para usar no campo com sol forte: letra preta em fundo branco, bordas escuras e letra maior. Deixe também o brilho do celular no máximo.',
+          'Em <b>Tema</b> você escolhe Automático (segue o celular), Claro ou Escuro. O escuro é bom à noite, mas no sol é difícil de ler.',
+          'A escolha fica guardada no aparelho e continua depois de sair do sistema.']],
+        ['Pelo teclado (computador)', [
+          '<b>Tab</b> passa por todos os blocos da tela, inclusive os que são só de leitura, e pelos botões e campos; <b>Shift + Tab</b> volta. O bloco em que você está fica contornado.',
+          'Nos formulários, o Tab vai direto de campo em campo.',
+          'Quadro mais largo que a tela: chegue nele com Tab e use as setas para os lados.']],
+        ['Ao entrar de novo', [
+          'Se você sair do sistema (pelo botão ou depois de 15 minutos sem uso), ao entrar de novo neste aparelho o sistema volta para a mesma aba e o mesmo ponto da tela em que você estava.',
+          'Se outra pessoa entrar no aparelho, ela começa do início.']],
         ['Falar em vez de digitar', [
           'Nos campos de texto (relato, observações, relatório), toque em <b>Falar</b> e fale normalmente. O texto vai aparecendo; toque em <b>Parar</b> quando terminar e revise antes de salvar.',
           'Diga "vírgula", "ponto final" ou "nova linha" para pontuar.',
@@ -333,7 +345,7 @@
       ],
       duvidas: [
         ['O sistema recusou a minha foto do quintal.', 'Só vale foto tirada <b>no dia da visita</b>. Foto antiga da galeria, foto encaminhada pelo WhatsApp ou captura de tela é recusada. Tire a foto na hora; se o celular não abrir a câmera, toque em <b>Tirar foto agora</b> embaixo do campo. Se a data da visita estiver errada, corrija a data. A foto boa que já estava no campo continua valendo, e em visita que passou da meia-noite vale foto até as 4h do dia seguinte.'],
-        ['O que é "Registros parados nos celulares"?', 'Na Visão geral (coordenação geral) e na aba Campo (coordenação técnica). O que é salvo sem internet fica só no celular até ele conectar. Sempre que o celular tem internet, ele avisa quantos registros guarda (só a contagem, nunca o conteúdo). Se aparecer alguém com registro parado há dias, peça que ela abra o sistema com internet e toque em <b>Enviar agora</b>.'],
+        ['O que é "Registros que ainda não foram enviados" (coluna Falta enviar)?', 'Na Visão geral (coordenação geral) e na aba Campo (coordenação técnica). O que é salvo sem internet fica só no celular até ele conectar. Sempre que o celular tem internet, ele avisa quantos registros guarda (só a contagem, nunca o conteúdo). Se aparecer alguém com registro esperando há dias, peça que ela abra o sistema com internet e toque em <b>Enviar agora</b>.'],
         ['Como guardo uma cópia dos dados?', 'Coordenação geral: em <b>Documentos</b>, toque em <b>Baixar cópia dos dados</b>. Sai uma planilha com fichas, visitas, diagnósticos, avaliações, pagamentos, equipe e FIC, sem conta bancária. Baixe toda semana e guarde num lugar seguro: ela tem CPF e endereço.'],
         ['O sistema saiu sozinho e eu tinha tirado fotos.', 'As fotos ficam guardadas no celular até você salvar. Abra o mesmo formulário de novo: elas voltam com o aviso <b>Foto recuperada deste aparelho</b>. Se você sair pelo botão <b>Sair</b>, elas são apagadas do celular.'],
         ['Não aparece nenhuma visita.', 'Você só vê os quintais atribuídos a você, e só depois de habilitada (FIC, Arlo e termo).'],

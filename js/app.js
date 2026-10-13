@@ -10,6 +10,17 @@
   // ao recarregar a página, volta para a mesma seção e a mesma altura da tela (só neste navegador)
   try { S.aba = localStorage.getItem('mq-aba') || null; const y = +sessionStorage.getItem('mq-rolagem'); if (y) S.rolarPara = y; } catch (e) {}
   const lembrarAba = () => { try { if (S.aba) localStorage.setItem('mq-aba', S.aba); else localStorage.removeItem('mq-aba'); } catch (e) {} };
+  /* v261: ao sair (botão ou 15 minutos sem uso), guarda a aba e a altura da tela de QUEM saiu; quando a MESMA pessoa entra de
+     novo neste aparelho (até 7 dias), volta para o mesmo lugar. Outra pessoa que entrar começa do início. Só o nome da aba
+     e a altura: nenhum dado do projeto. A aba é conferida com o perfil na hora de mostrar (abaAtual). */
+  const CHAVE_VOLTAR = 'mq-voltar';
+  const guardarLugar = () => { try { if (S.eu && S.eu.id && !S.verEntrada) localStorage.setItem(CHAVE_VOLTAR, JSON.stringify({ quem: S.eu.id, aba: S.aba || null, y: Math.round(window.scrollY || 0), em: Date.now() })); } catch (e) {} };
+  const voltarAoLugar = () => {
+    let v = null; try { v = JSON.parse(localStorage.getItem(CHAVE_VOLTAR) || 'null'); } catch (e) { v = null; }
+    if (!v || !S.eu || v.quem !== S.eu.id || !(Date.now() - v.em < 7 * 864e5)) return false;
+    try { localStorage.removeItem(CHAVE_VOLTAR); } catch (e) {}
+    S.aba = typeof v.aba === 'string' ? v.aba : null; lembrarAba(); if (v.y > 0) S.rolarPara = v.y; return true;
+  };
   /* histórico do navegador (botão Voltar, gesto do Android): cada aba da coordenação vira uma entrada do histórico (o endereço não muda)
      e cada painel aberto ganha uma entrada, para o Voltar fechar o painel em vez de sair do sistema.
      Os outros endereços continuam como eram: #numeros, #convite=..., #teste e a recuperação de senha do Supabase. */
@@ -108,6 +119,7 @@
     try { sessionStorage.removeItem(CHAVE_ABRIU); } catch (e) {}
     fecharPainel({ semFoco: true, manterRascunho: !!aviso });
     if (!aviso) { try { localStorage.removeItem(chaveRasc()); } catch (e) {} if (MQ.fotoDia) MQ.fotoDia.limparAparelho(true); }   // saiu da conta por vontade própria: os rascunhos dela não ficam no aparelho (LGPD)
+    guardarLugar();   // antes de esquecer a aba: a mesma pessoa volta para cá quando entrar de novo
     S.menuAberto = false; S.aba = null; lembrarAba(); limparHashAba(); if (MQ.bancoUI) MQ.bancoUI.limpar();
     try { Object.keys(sessionStorage).filter(k => /^mq-pend-visto-/.test(k)).forEach(k => sessionStorage.removeItem(k)); } catch (e) {}
     S.pendVisto = false; S.avisoLogin = aviso || null;
@@ -469,8 +481,8 @@
     return `<header class="barra"><div class="barra-in">
       <div class="marca"><img class="emb" src="assets/isotipo.svg" alt="" width="36" height="52"><img src="assets/logo-claro.svg" alt="Mulheres &amp; Quintais" width="112" height="36"><span class="sep" aria-hidden="true"></span>
         <span class="sis"><b>Sistema do projeto</b>Quintais Produtivos para Mulheres Rurais</span></div>
-      ${publica ? (semBotao ? '' : `<a class="btn-barra" href="#">${S.eu ? 'Voltar ao sistema' : 'Entrar'}</a>`) : S.eu && !S.verEntrada ? `<div class="quem"><button class="btn-ajuda" data-acao="ajuda" title="Ajuda desta tela" aria-label="Ajuda desta tela">?</button><button class="btn-meus" data-acao="meus-dados" title="Meus dados" aria-label="Meus dados e conta bancária">${avatar(Object.assign({}, S.eu, porId(S.eu.id) || {}), 34)}</button><span><span class="nome">${esc(S.eu.nome)}</span><br><span class="papel">${esc(P[S.eu.papel].nome)}${S.eu.uf ? ' · ' + esc(S.eu.uf) : ''}</span></span>
-        ${S.api.modo === 'supabase' ? '<button class="btn-ajuda btn-sair" data-acao="sair" title="Sair do sistema" aria-label="Sair do sistema"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h3a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-3"/><path d="M4 12h11"/><path d="M11 8l4 4-4 4"/></svg></button>' : ''}</div>` : ''}
+      ${publica ? (semBotao ? '' : `<a class="btn-barra" href="#">${S.eu ? 'Voltar ao sistema' : 'Entrar'}</a>`) : S.eu && !S.verEntrada ? `<div class="quem">${MQ.aparencia ? MQ.aparencia.botao() : ''}<button class="btn-ajuda" data-acao="ajuda" title="Ajuda desta tela" aria-label="Ajuda desta tela">?</button><button class="btn-meus" data-acao="meus-dados" title="Meus dados" aria-label="Meus dados e conta bancária">${avatar(Object.assign({}, S.eu, porId(S.eu.id) || {}), 34)}</button><span><span class="nome">${esc(S.eu.nome)}</span><br><span class="papel">${esc(P[S.eu.papel].nome)}${S.eu.uf ? ' · ' + esc(S.eu.uf) : ''}</span></span>
+        ${S.api.modo === 'supabase' ? '<button class="btn-ajuda btn-sair" data-acao="sair" title="Sair do sistema" aria-label="Sair do sistema"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h3a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-3"/><path d="M4 12h11"/><path d="M11 8l4 4-4 4"/></svg></button>' : ''}</div>` : `<div class="quem">${MQ.aparencia ? MQ.aparencia.botao() : ''}</div>`}
     </div></header>`;
   }
 
@@ -724,20 +736,20 @@
   function passoProfessorFic(souGeral) {
     const profs = ativos().filter(m => m.papel === 'professor_fic');
     const p = profs.sort((a, b) => (!!b.docs_funcern_em + !!b.termo_assinado_em) - (!!a.docs_funcern_em + !!a.termo_assinado_em))[0];
-    const passos = [['Cadastrar o professor do FIC', !!p], ['Cadastro no Arlo (documentação da FUNCERN)', !!(p && p.docs_funcern_em)], ['Termo de compromisso assinado e conferido', !!(p && p.termo_assinado_em)]];
+    const passos = [['Cadastrar', !!p, 'Cadastrar o professor do FIC'], ['Cadastro no Arlo', !!(p && p.docs_funcern_em), 'Cadastro no Arlo (documentação da FUNCERN)'], ['Termo assinado', !!(p && p.termo_assinado_em), 'Termo de compromisso assinado e conferido']];
     const feitos = passos.filter(x => x[1]).length;
     const acao = !souGeral ? '<p class="small pf-quem">Quem cadastra e habilita o professor é a coordenação geral.</p>'
-      : !p ? MQ.botaoAcao({ acao: 'novo', icone: 'pessoa_mais', texto: 'Cadastrar professor do FIC', attrs: 'data-papel="professor_fic"' })
+      : !p ? '<button class="btn pri" data-acao="novo" data-papel="professor_fic">Cadastrar professor do FIC</button>'
       : `<button class="btn pri" data-acao="ver" data-id="${p.id}">Completar a habilitação de ${esc(nomeDe(p).split(' ')[0])}</button>`;
     return `<section class="passo-fic" role="status" aria-labelledby="pf-t">
       <span class="pf-ic" aria-hidden="true">${MQ.ICONES && MQ.ICONES.capelo ? MQ.ICONES.capelo : ''}</span>
       <div class="pf-corpo">
         <span class="eyebrow">Primeiro passo · ${feitos} de ${passos.length}</span>
         <h2 id="pf-t">${souGeral ? 'Cadastre e habilite um professor do FIC' : 'Ainda não há professor do FIC habilitado'}</h2>
-        <p>A matrícula no curso FIC depende dele: sem professor com cadastro no Arlo e termo assinado, o sistema não cadastra coordenação técnica, bolsistas nem agentes de campo.</p>
-        <ol class="pf-passos">${passos.map(([t, ok], i) => `<li class="${ok ? 'ok' : i === passos.findIndex(x => !x[1]) ? 'agora' : ''}"><span class="pf-n" aria-hidden="true">${ok ? '✓' : i + 1}</span><span>${t}${ok ? '<span class="so-leitor"> (feito)</span>' : ''}</span></li>`).join('')}</ol>
-        <div class="pf-acao">${acao}</div>
-      </div></section>`;
+        <p>Sem ele habilitado, não dá para cadastrar a coordenação técnica, as bolsistas nem os agentes.</p>
+        <ol class="pf-passos">${passos.map(([t, ok, longo], i) => `<li title="${longo}" class="${ok ? 'ok' : i === passos.findIndex(x => !x[1]) ? 'agora' : ''}"><span class="pf-n" aria-hidden="true">${ok ? '✓' : i + 1}</span><span>${t}${ok ? '<span class="so-leitor"> (feito)</span>' : ''}</span></li>`).join('')}</ol>
+      </div>
+      <div class="pf-acao">${acao}</div></section>`;
   }
   function quadroTabela() {
     return `<div class="quadro-scroll eq-cx"><table class="quadro eq-quadro"><colgroup><col class="c-uf"><col><col><col class="c-plano"></colgroup><thead><tr><th scope="col">Estado</th><th scope="col">Articulação estadual</th>
@@ -993,7 +1005,7 @@
       <section class="ent-acesso">
         ${S.modoLogin === 'esqueci' ? formEsqueci() : `<form class="login ent-card" data-form="login" novalidate>
           ${S.avisoLogin ? `<div class="aviso sessao-saiu" role="status">${esc(S.avisoLogin)}</div>` : ''}
-          <div class="ent-cab"><span class="eyebrow">Área de acesso</span><h2 class="serif">${primeiro ? 'Primeiro acesso' : 'Que bom ver você'}</h2>
+          <div class="ent-cab"><div class="ent-cab-l"><span class="eyebrow">Área de acesso</span>${MQ.aparencia ? MQ.aparencia.botaoEntrada() : ''}</div><h2 class="serif">${primeiro ? 'Primeiro acesso' : 'Que bom ver você'}</h2>
             <p class="muted">${primeiro ? 'Crie a sua senha com o e-mail que a coordenação cadastrou.' : 'Entre com o e-mail cadastrado pela coordenação.'}</p></div>
           <span class="seg ent-seg" role="group" aria-label="Tipo de acesso">${aba('entrar', 'Já tenho senha')}${aba('primeiro', 'Primeiro acesso')}</span>
           <div class="campo"><label for="l-email">E-mail</label><input id="l-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="seu@email.com" value="${esc(S.emailDigitado || '')}" maxlength="254" required></div>
@@ -1434,7 +1446,7 @@
     let el = $('#painel');
     if (!el) { el = document.createElement('div'); el.id = 'painel'; document.body.appendChild(el); }
     const p = S.painel;
-    const corpo = p.tipo === 'relato-form' && MQ.relatosUI ? MQ.relatosUI.painel(p) : /^acomp-(form|previa)$/.test(p.tipo) && MQ.acompUI ? MQ.acompUI.painel(p) : p.tipo === 'roteiro' && MQ.roteiroUI ? MQ.roteiroUI.painel(p) : p.tipo === 'ajuda' ? MQ.ajudaUI.painel(p) : p.tipo === 'meus-dados' ? painelMeusDados() : /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^viag-/.test(p.tipo) && MQ.viagUI ? MQ.viagUI.painel(p) : /^doc-/.test(p.tipo) && MQ.docsUI ? MQ.docsUI.painel(p) : /^exec-/.test(p.tipo) && MQ.execUI ? MQ.execUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : /^enc-/.test(p.tipo) && MQ.encUI ? MQ.encUI.painel(p) : /^agua-/.test(p.tipo) && MQ.aguaUI ? MQ.aguaUI.painel(p) : /^venda-/.test(p.tipo) && MQ.vendaUI ? MQ.vendaUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
+    const corpo = p.tipo === 'relato-form' && MQ.relatosUI ? MQ.relatosUI.painel(p) : /^acomp-(form|previa)$/.test(p.tipo) && MQ.acompUI ? MQ.acompUI.painel(p) : p.tipo === 'roteiro' && MQ.roteiroUI ? MQ.roteiroUI.painel(p) : p.tipo === 'ajuda' ? MQ.ajudaUI.painel(p) : p.tipo === 'meus-dados' ? painelMeusDados() : p.tipo === 'aparencia' ? MQ.aparencia.painel() : /^pend/.test(p.tipo) ? MQ.pendUI.painel(p) : /^aval-/.test(p.tipo) ? MQ.impactoUI.painel(p) : /^pag-/.test(p.tipo) ? MQ.pagUI.painel(p) : /^viag-/.test(p.tipo) && MQ.viagUI ? MQ.viagUI.painel(p) : /^doc-/.test(p.tipo) && MQ.docsUI ? MQ.docsUI.painel(p) : /^exec-/.test(p.tipo) && MQ.execUI ? MQ.execUI.painel(p) : /^fic-/.test(p.tipo) ? MQ.ficUI.painel(p) : /^enc-/.test(p.tipo) && MQ.encUI ? MQ.encUI.painel(p) : /^agua-/.test(p.tipo) && MQ.aguaUI ? MQ.aguaUI.painel(p) : /^venda-/.test(p.tipo) && MQ.vendaUI ? MQ.vendaUI.painel(p) : p.tipo === 'pre-ver' ? MQ.convitesUI.painel(p) : /^ficha/.test(p.tipo) ? MQ.fichasUI.painel(p) : /^(visita|diag)/.test(p.tipo) ? MQ.campoUI.painel(p) : p.tipo === 'cadastro' ? painelCadastro(p) : painelDetalhe(p);
     el.innerHTML = `<div class="fundo" data-acao="fechar"></div><aside class="painel${/^(ficha|diag|aval)-(form|ver)$/.test(p.tipo) ? ' largo' : ''}${p.tipo === 'acomp-previa' ? ' centro' : ''}" role="dialog" aria-modal="true" aria-labelledby="painel-t">${GUARDA}${corpo}${GUARDA}</aside>`;   // formulários longos do campo: painel mais largo
     restaurarRascunhoPainel(el);
     // questionário de campo: opção de imprimir em branco para aplicar no papel (só para quem preenche)
@@ -1871,7 +1883,7 @@
       if (a === 'perfil' && el.dataset.p === 'entrada') { S.verEntrada = true; fecharPainel({ semFoco: true }); render(); window.scrollTo(0, 0); }
       else if (a === 'perfil') { S.verEntrada = false; S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); S.aba = null; lembrarAba(); limparHashAba(); fecharPainel({ semFoco: true });
         todosDe(el.parentElement, '[data-acao=perfil]').forEach(b => b.setAttribute('aria-pressed', String(b === el))); el.setAttribute('aria-busy', 'true');   // o perfil escolhido já aparece marcado enquanto os dados chegam
-        try { await comCarregando(async () => { S.eu = await S.api.trocarPerfil(el.dataset.p); marcarAbriu(); registrarAcesso('entrada'); await carregar(); }); }
+        try { await comCarregando(async () => { S.eu = await S.api.trocarPerfil(el.dataset.p); voltarAoLugar(); marcarAbriu(); registrarAcesso('entrada'); await carregar(); }); }
         finally { if (el.isConnected) el.removeAttribute('aria-busy'); render(); } }
       else if (a === 'recomecar') { fecharPainel({ semFoco: true }); try { await comCarregando(async () => { S.eu = await S.api.recomecar(); await carregar(); }); } finally { render(); } toast('Demonstração recomeçada com os dados de exemplo.'); }
       else if (a === 'gerar-codigo-nao') { S.confirmaAcesso = null; abrirPainel(S.painel); }
@@ -1916,6 +1928,14 @@
         }
       }
       else if (a === 'ajuda') { if (S.menuAberto) { S.menuAberto = false; render(); } S.voltarFoco = el; abrirPainel({ tipo: 'ajuda', k: el.dataset.k }); }
+      else if (a === 'aparencia') { if (S.menuAberto) { S.menuAberto = false; render(); } S.voltarFoco = el; abrirPainel({ tipo: 'aparencia' }); }
+      else if (a === 'aparencia-sol' || a === 'aparencia-tema') {   // muda na hora, sem recarregar; a barra de cima mostra se o modo sol está ligado
+        if (a === 'aparencia-sol') MQ.aparencia.mudar('sol', el.getAttribute('aria-checked') !== 'true'); else MQ.aparencia.mudar('tema', el.dataset.v);
+        const foco = a === 'aparencia-sol' ? '[data-acao=aparencia-sol]' : `[data-acao=aparencia-tema][data-v="${el.dataset.v}"]`;
+        desenharPainel(); const b = document.querySelector('.barra .btn-aparencia'); if (b) b.outerHTML = MQ.aparencia.botao();
+        const be = document.querySelector('.ent-aparencia'); if (be) be.outerHTML = MQ.aparencia.botaoEntrada();
+        const f = $('#painel ' + foco); if (f && !f.disabled) f.focus(); else { const x = $('#painel [data-acao=aparencia-sol]'); if (x) x.focus(); }
+        toast(a === 'aparencia-sol' ? (MQ.aparencia.ler().sol ? 'Modo sol ligado.' : 'Modo sol desligado.') : 'Tema: ' + MQ.aparencia.TEMAS[el.dataset.v] + '.'); }
       else if (a === 'meus-dados') { if (S.menuAberto) { S.menuAberto = false; render(); } S.voltarFoco = el; abrirPainel({ tipo: 'meus-dados' }); }
       else if (a === 'copiar-texto') { const t = el.closest('.bloco').querySelector('textarea'); try { await navigator.clipboard.writeText(t.value); toast('Mensagem copiada.'); } catch (e) { t.select(); toast('Selecione e copie a mensagem.'); } }
       else if (a === 'ver-senha') {   // troca só o tipo do campo: o que foi digitado continua lá, e o foco fica no botão
@@ -2137,6 +2157,7 @@
           if (S.eu) { S.avisoLogin = null; if (MQ.sessao) MQ.sessao.tocar(true); marcarAbriu(); registrarAcesso(S.modoLogin === 'primeiro' ? 'primeiro_acesso' : 'entrada');
             limparRascunhosVencidos();
             telaCarregando('Carregando os seus dados…');   // a senha foi aceita: agora é a espera dos dados (o desenho da abertura)
+            voltarAoLugar();   // a mesma pessoa que saiu: volta à aba e à altura em que estava
             try { await carregar(); } catch (e) { render(); toast(avisarErro(e)); return; }   // a tela de entrada já saiu: o aviso vai no pé da tela
             setTimeout(() => sincronizar(false), 500); if (MQ.relatosUI) setTimeout(() => MQ.relatosUI.enviarPendentes().catch(() => {}), 1500); }
           render();

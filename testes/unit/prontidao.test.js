@@ -17,16 +17,17 @@ describe('Registros parados nos celulares', () => {
     await t.api.informarFila({ qtd: 3, recusados: 1, mais_antigo: new Date(Date.now() - 4 * 864e5).toISOString() });
     await t.trocar('coord_geral');
     const h = texto(t.aba('visao'));
-    assert.match(h, /Prontidão para o campo/);
+    assert.match(h, /Situação do campo em cada estado/);
     assert.match(h, new RegExp(ag.nome.split(' ')[0] + '.*3 registros guardados no celular desde'));
     assert.match(h, /1 recusado pelo servidor/); assert.match(h, /Último contato com internet/);
     await t.trocar('coord_tecnico');
-    assert.match(texto(t.aba('campo')), /Registros parados nos celulares/);
+    assert.match(texto(t.aba('campo')), /Registros que ainda não foram enviados/);
     await t.trocar('bolsista'); assert.equal((await t.api.listarFilaCelular()).length, 0, 'bolsista não vê a fila dos outros');
   });
   test('sem o script 58 no banco, a tela pede para rodar (nunca diz "nenhum parado" sem saber)', async () => {
     const t = await montar('coord_geral'); t.S.filaCelularSemBanco = true;
     assert.match(texto(t.aba('visao')), /rode no Supabase o arquivo 58_fila_nos_celulares\.sql/);
+    assert.doesNotMatch(texto(t.aba("visao")), /Nenhum registro esperando envio/);
   });
 });
 

@@ -4,7 +4,7 @@ const CSSF = `@font-face{font-family:Manrope;font-weight:400 800;src:url(https:/
 const CEL = process.env.CEL; const SUF = CEL ? '_cel' : '';
 const TELAS = [
   { id: 'entrada', perfil: 'entrada', clip: 'vp:760', m: [['.ent-seg', 1], ['#l-email', 2], ['#l-senha', 3], ['.ent-btn', 4], ['.ent-esqueci', 5], ['.ent-ajuda', 6]] },
-  { id: 'topo', perfil: 'coord_geral', aba: 'visao', clip: 'y:0:225', m: [['nav.abas', 1], ['.btn-ajuda', 2], ['.btn-meus', 3], ['.btn-sair', 4]] },
+  { id: 'topo', perfil: 'coord_geral', aba: 'visao', clip: 'y:0:225', m: [['nav.abas', 1], ['.btn-ajuda[data-acao=ajuda]', 2], ['.btn-meus', 3], ['.btn-sair', 4], ['.btn-aparencia', 5]] },
   { id: 'visao_atencao', perfil: 'coord_geral', aba: 'visao', clip: 'de:main h1:.dx-atencao', m: [['.dx-atencao h2', 1], ['.dx-conta', 2], ['.dx-atencao .dx-ir', 3]] },
   { id: 'visao_metas', perfil: 'coord_geral', aba: 'visao', clip: 'el:.dx-duas', m: [['#t-metas', 1], ['.meta-ver', 2], ['#t-marcos', 3]] },
   { id: 'visao_mapa', perfil: 'coord_geral', aba: 'visao', clip: 'el:.dx-mapa', m: [['.dx-mapa .seg', 1], ['.dx-mapa .mapa-caixa, .dx-mapa svg.mapa', 2], ['t:Status das fichas', 3], ['t:Municípios com mais fichas', 4]] },

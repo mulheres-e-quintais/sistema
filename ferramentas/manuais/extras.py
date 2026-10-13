@@ -40,6 +40,7 @@ E.append(p('O problema aparece para quem decide, em ordem de gravidade e com pra
 E.append(h2('3. Cuidados contra falhas e perda de dados'))
 E.append(lista([
     '<b>Campo sem internet.</b> Fichas, diagnósticos e visitas são preenchidos sem sinal, ficam guardados no celular com as fotos e sobem quando a conexão volta.',
+    '<b>Leitura no sol.</b> O modo sol deixa a tela em preto no branco, com bordas escuras e letra maior, para o uso no campo ao meio-dia; há também tema escuro para a noite.',
     '<b>Envio repetido não duplica.</b> Se a rede cai no meio de um envio e a pessoa tenta de novo, o banco grava uma vez só.',
     '<b>Duas pessoas no mesmo registro.</b> Quem salva depois é avisado; ninguém apaga o trabalho do outro sem saber.',
     '<b>Nada é apagado.</b> Erro se corrige, pessoa se desliga, documento se arquiva. O histórico continua.',
@@ -87,7 +88,7 @@ open(B + '/essencial.html', 'w', encoding='utf8').write('<!doctype html><html la
 END = 'mulheres-e-quintais.github.io/sistema'
 ENTRAR = ('Entrar pela primeira vez', ['Abra o endereço que veio no WhatsApp.', 'Toque em <b>Primeiro acesso</b>.', 'Digite o e-mail e o código de 8 letras e números.', 'Crie a senha e toque em <b>Criar senha e entrar</b>.'])
 TERMO = ('Anexar o seu termo de compromisso', ['Toque na sua foto e abra <b>Meus dados</b>.', 'Toque em <b>Gerar o termo preenchido</b>.', 'Assine no papel, ou salve em PDF e assine em <b>assinador.iti.br</b> (gov.br).', 'Anexe no mesmo lugar a foto do papel ou o PDF assinado.'])
-OFF = ('Trabalhar sem internet', ['Antes de sair, abra o sistema com sinal.', 'No campo, preencha normalmente: fica guardado no celular.', 'Com sinal de volta, o envio é automático. Ou toque em <b>Enviar agora</b>.'])
+OFF = ('Trabalhar sem internet', ['Antes de sair, abra o sistema com sinal.', 'No campo, preencha normalmente: fica guardado no celular.', 'Com sinal de volta, o envio é automático. Ou toque em <b>Enviar agora</b>.', 'No sol, ligue o <b>Modo sol</b> no botão do sol, no alto da tela.'])
 G = [
  ('Coordenação geral', 'Acompanha o projeto, monta a equipe, dá aval e autoriza.', [
    ('Ver o que pede atenção', ['Abra a aba <b>Visão geral</b>.', 'Leia o quadro <b>O que pede atenção</b> de cima para baixo: o mais grave vem primeiro.', 'Toque em ' + b('Resolver', 'resolver') + ' e faça a ação na aba que abrir.']),

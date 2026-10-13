@@ -83,8 +83,9 @@ A(serve('A barra do alto aparece em todas as telas. Por ela você muda de seçã
 A(acesso(['Qualquer tela, depois de entrar'], 'todos os perfis. As abas aparecem só para a coordenação.'))
 A(tela('topo', 'Barra do alto e abas, como a coordenação geral vê', [
     (1, 'Abas', 'As seções do sistema, em quatro grupos: Gestão, Execução, Financeiro e Documentação. O número ao lado mostra quantos itens esperam você.'),
-    (2, 'Ajuda', 'Abre a ajuda da tela em que você está.'), (3, 'Meus dados', 'A sua foto ou as suas iniciais: abre o seu cadastro.'), (4, 'Sair', 'Sai do sistema neste aparelho.')]))
-A(caixa('dica', 'Depois de 15 minutos sem uso o sistema sai sozinho. Aos 13 minutos aparece um aviso: toque em <b>Continuar usando</b>.'))
+    (2, 'Ajuda', 'Abre a ajuda da tela em que você está.'), (3, 'Meus dados', 'A sua foto ou as suas iniciais: abre o seu cadastro.'), (4, 'Sair', 'Sai do sistema neste aparelho.'), (5, 'Aparência da tela', 'O botão do sol: liga o modo sol, para ler no campo com sol forte, e escolhe o tema claro ou escuro.')]))
+A(caixa('dica', 'Depois de 15 minutos sem uso o sistema sai sozinho. Aos 13 minutos aparece um aviso: toque em <b>Continuar usando</b>. O botão do <b>sol</b>, ao lado da ajuda, abre <b>Aparência da tela</b>: modo sol para o campo e tema claro ou escuro (veja Usar no celular e sem internet).'))
+A(caixa('dica', 'Ao entrar de novo depois de sair, o sistema volta para a aba e o ponto da tela em que você estava (só para a mesma pessoa, no mesmo aparelho). No computador, a tecla <b>Tab</b> passa por todos os blocos da tela e pelos botões; <b>Shift + Tab</b> volta.'))
 A(sec('Meus dados e termo de compromisso'))
 A(serve('Guarda os seus dados pessoais, a conta bancária para a FUNCERN e o termo de compromisso. Sem isso em dia, a bolsa e a ajuda de custo não são pagas.'))
 A(acesso(['Barra do alto', 'sua foto ou iniciais', 'Meus dados'], 'todos os perfis, cada um nos próprios dados.'))
@@ -102,6 +103,8 @@ A(serve('No campo nem sempre há sinal. O sistema guarda o que você preenche e 
 A(passos('instalar como aplicativo', ['Com o sistema aberto, toque no menu do navegador.', 'Toque em <b class="bt">Adicionar à tela inicial</b>.', 'Abra pelo ícone que apareceu.'], 'O sistema abre como aplicativo e funciona também sem internet.'))
 A('<ul class="lst"><li>Fichas, diagnósticos, visitas feitas e avaliações podem ser preenchidos sem sinal.</li><li>Antes de ir a campo, abra o sistema com internet para atualizar a lista de visitas.</li><li>Com o sinal de volta, o envio é automático. Se preferir, toque em <b>Enviar agora</b>.</li></ul>')
 A(caixa('atencao', 'Não apague os dados do navegador nem desinstale o aplicativo com registros pendentes: eles se perdem.'))
+A(passos('ler a tela no sol: modo sol', ['Toque no botão do <b>sol</b>, no alto da tela. Na tela de entrada, é o botão <b class="bt">Modo sol</b>, no cartão de acesso.', 'Em <b>Aparência da tela</b>, ligue a chave <b class="bt">Modo sol</b>.', 'Deixe também o brilho do celular no máximo.'], 'A tela fica com letra preta em fundo branco, bordas escuras e letra maior. A escolha fica guardada no aparelho, inclusive depois de sair do sistema. Para desligar, faça o mesmo caminho.'))
+A(caixa('dica', 'Em <b>Aparência da tela</b> também se escolhe o tema: <b>Automático</b> (segue o celular), <b>Claro</b> ou <b>Escuro</b>. O escuro é bom à noite e gasta menos bateria em alguns celulares, mas no sol é difícil de ler: no campo, use o modo sol.'))
 A(novo.lgpd())
 A(fimcap())
 
@@ -109,11 +112,12 @@ A(fimcap())
 
 A(cap('Coordenação geral e coordenação técnica', 'Acompanhar o projeto, montar a equipe, aprovar e autorizar.'))
 A(sec('Visão geral'))
-A(serve('Mostra o retrato do projeto em uma tela: o mês em que estamos, as metas, o que pede atenção, o mapa dos quintais e o acesso à água.'))
+A(serve('Mostra o retrato do projeto em uma tela: o mês em que estamos, as metas, a situação do campo em cada estado, o que pede atenção, o mapa dos quintais e o acesso à água.'))
 A(acesso(['Abas', 'Gestão', 'Visão geral'], 'só a coordenação geral.'))
 A(tela('visao_atencao', 'Visão geral: execução física e o quadro O que pede atenção', [
     (1, 'O que pede atenção', 'Lista os problemas do mais grave para o menos grave.'), (2, 'Contadores', 'Quantos itens há em cada nível: requer ação (vermelho), atenção (âmbar) e aviso (cinza).'), (3, 'Resolver', 'Abre a aba onde o problema se resolve.')]))
 A(passos('resolver um item', ['Leia o quadro de cima para baixo.', 'Toque em ' + b('Resolver', 'resolver') + ' (ou em ' + b('Consultar', 'ver') + ', nos avisos).', 'Faça a ação na aba que abriu e volte à Visão geral.'], 'O item some da lista quando o problema acaba.'))
+A(caixa('dica', 'O quadro <b>Situação do campo em cada estado</b> mostra se o trabalho de campo já pode andar em cada estado: equipe de campo habilitada e que já entrou no sistema, fichas aprovadas, diagnósticos feitos (meta de 40), visitas marcadas para os próximos 7 dias e, na coluna <b>Falta enviar</b>, os registros salvos sem internet que ainda não chegaram ao sistema. Logo abaixo, <b>Registros que ainda não foram enviados</b> diz quem tem algo guardado no celular e desde quando.'))
 A(tela('visao_metas', 'Visão geral: metas do plano de trabalho e próximos marcos', [
     (1, 'Metas do plano de trabalho', 'Uma linha por meta, com o realizado, o previsto e a situação.'), (2, 'Ver detalhes', 'Abre os números e os marcos da meta.'), (3, 'Próximos marcos', 'Datas do plano de trabalho que estão chegando, ligadas à meta.')]))
 A(tela('visao_mapa', 'Visão geral: onde estão os quintais produtivos', [
