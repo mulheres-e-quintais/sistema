@@ -63,7 +63,7 @@
         final_n: av.length, produz: { sim: q(av, x => x.quintal_produz === 'sim'), em_parte: q(av, x => x.quintal_produz === 'em_parte'), nao: q(av, x => x.quintal_produz === 'nao') },
         ebia_final: { seguranca: q(av, x => x.ebia_nivel === 'seguranca'), leve: q(av, x => x.ebia_nivel === 'leve'), moderada: q(av, x => x.ebia_nivel === 'moderada'), grave: q(av, x => x.ebia_nivel === 'grave') } };
     } else {
-      r.formacao = { turmas: (d.turmas || []).length, matriculas: (d.matriculas || []).length, encontros: (d.encontros || d.ficEncontros || []).length };
+      r.formacao = { turmas: (d.turmas || []).length, matriculas: (d.matriculas || []).filter(x => !x.cancelada_em).length, encontros: (d.encontros || d.ficEncontros || []).filter(x => !x.cancelado_em).length };   // 13/10/2026: sem as canceladas
     }
     return r;
   }
@@ -140,7 +140,7 @@
     const NIV = { seguranca: 'Segurança alimentar', leve: 'Insegurança leve', moderada: 'Insegurança moderada', grave: 'Insegurança grave' };
     const PROD = { sim: 'Produzindo', em_parte: 'Produzindo em parte', nao: 'Sem produzir' };
     return `<div class="ac-duo"><div class="bloco"><h3>Antes do quintal (linha de base)</h3>
-        <p class="ac-frase"><b class="num">${n(i.base_n)}</b> famílias com diagnóstico feito${i.renda_quintal_media != null ? `. Venda média do quintal antes do projeto: <b class="num">${MQ.regras.fmtBRL(i.renda_quintal_media)}</b> por mês.` : '.'}</p>
+        <p class="ac-frase"><b class="num">${n(i.base_n)}</b> ${i.base_n === 1 ? 'família' : 'famílias'} com diagnóstico feito${i.renda_quintal_media != null ? `. Venda média do quintal antes do projeto: <b class="num">${MQ.regras.fmtBRL(i.renda_quintal_media)}</b> por mês.` : '.'}</p>
         <p class="small muted">O diagnóstico registra produção, renda e alimentação da família antes da implantação. É a referência para medir o que mudou.</p></div>
       <div class="bloco"><h3>Depois do quintal (avaliação final)</h3>
         ${i.final_n ? `<p class="ac-frase"><b class="num">${n(i.final_n)}</b> quintais já avaliados na 5ª visita.</p>
@@ -169,7 +169,7 @@
     if (atr) it.push(`<li><b>${n(atr)} visita${atr > 1 ? 's' : ''} com a data vencida</b> e ainda sem registro: ${a.por_uf.filter(u => u.atrasadas).map(u => u.uf + ' ' + u.atrasadas).join(', ')}.</li>`);
     if (semEq.length) it.push(`<li><b>Equipe incompleta</b> (menos de 2 bolsistas) em: ${semEq.join(', ')}.</li>`);
     const semHab = a.por_uf.filter(u => u.habilitadas != null && u.equipe_campo > u.habilitadas);
-    if (semHab.length) it.push(`<li><b>Equipe sem habilitação completa</b> (ainda não pode trabalhar nem receber): ${semHab.map(u => u.uf + ' ' + (u.equipe_campo - u.habilitadas)).join(', ')}.</li>`);
+    if (semHab.length) it.push(`<li><b>Equipe sem habilitação completa</b> (ainda não pode trabalhar no campo): ${semHab.map(u => { const q = u.equipe_campo - u.habilitadas; return (U().nomeUF ? U().nomeUF(u.uf) : u.uf) + ', ' + q + (q === 1 ? ' pessoa' : ' pessoas'); }).join('; ')}.</li>`);
     const dgEsp = total(a, 'diag_aguardando'), dgDev = total(a, 'diag_devolvidos');
     if (dgEsp) it.push(`<li><b>${n(dgEsp)} diagnóstico${dgEsp > 1 ? 's' : ''} esperando a aprovação da coordenação</b>: o quintal só é implantado depois do plano aprovado. ${a.por_uf.filter(u => u.diag_aguardando).map(u => u.uf + ' ' + u.diag_aguardando).join(', ')}.</li>`);
     if (dgDev) it.push(`<li><b>${n(dgDev)} diagnóstico${dgDev > 1 ? 's' : ''} devolvido${dgDev > 1 ? 's' : ''} para correção</b>: ${a.por_uf.filter(u => u.diag_devolvidos).map(u => u.uf + ' ' + u.diag_devolvidos).join(', ')}.</li>`);
@@ -190,7 +190,7 @@
       + (a.orgao === 'mda'
         ? sec('caminho', 'O caminho de cada quintal', 'Da indicação da mulher pela comunidade até a avaliação final, cada etapa é registrada no sistema, com data, local e foto.', funil(a))
           + sec('metas', 'Metas físicas do plano de trabalho', 'O número de cada meta vem dos próprios registros de campo.', `<div class="ac-metas">${metas(a)}</div>`)
-          + sec('mapa', 'Onde o projeto está', `${n(total(a, 'municipios'))} municípios em 5 estados do Nordeste${area ? `, com ${n(area)} m² de quintais diagnosticados` : ''}.`, mapa(a) + tabelaUF(a, false))
+          + sec('mapa', 'Onde o projeto está', (() => { const m = total(a, 'municipios'), e = (a.por_uf || []).filter(u => u.selecionadas).length; return `Mulheres selecionadas em ${n(m)} município${m === 1 ? '' : 's'} de ${n(e)} estado${e === 1 ? '' : 's'} (o projeto atua em 5 estados do Nordeste)${area ? `, com ${n(area)} m² de quintais diagnosticados` : ''}.`; })(), mapa(a) + tabelaUF(a, false))
           + sec('evolucao', 'Evolução do trabalho de campo', 'Visitas feitas em cada mês.', evolucao(a))
           + sec('perfil', 'Quem são as mulheres', 'As prioridades de seleção do projeto, em números. Sem nome nem dado pessoal.', perfil(a))
           + sec('impacto', 'O que muda na vida das famílias', 'As mesmas perguntas são feitas antes da implantação e na avaliação final.', impacto(a))

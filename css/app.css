@@ -3361,3 +3361,29 @@ section.secao[data-tab-bloco]:focus-visible { outline-offset: 8px; }
 .menu-planilha-op .btn { display: grid; justify-items: start; gap: 2px; text-align: left; white-space: normal; width: 100%; }
 .menu-planilha-op .btn small { font: 400 var(--t-sm)/1.35 var(--sans); color: var(--ink-2); }
 @media (max-width: 760px) { .menu-planilha-op { position: static; width: 100%; margin-top: 6px; } }
+
+/* v265: "Pular para o conteúdo" — primeiro item do Tab, escondido até receber o foco */
+.pular { position: absolute; left: 8px; top: -60px; z-index: 50; padding: 10px 16px; border-radius: 10px; border: 0; background: var(--surface); color: var(--ink);
+  font: 600 var(--t-md) var(--sans); box-shadow: var(--shadow); cursor: pointer; }
+.pular:focus { top: 8px; outline: 3px solid var(--focus); outline-offset: 2px; }
+.barra { position: relative; }
+
+/* ---------- v265: ajustes da auditoria de telas (13/10/2026) ---------- */
+/* MDA e MPA no celular: tabelas com largura própria e rolagem para o lado (antes cabeçalhos e números se sobrepunham) */
+.quadro.ac-tab { table-layout: auto; min-width: 520px; }
+.ac-duo .quadro.ac-tab { min-width: 420px; }
+/* metas da Visão geral no celular: o selo de situação vai para uma linha própria (antes ficava por cima do nome) */
+@media (max-width: 420px) {
+  .dx-meta summary, .dx-duas .dx-meta summary { grid-template-columns: 40px minmax(0, 1fr); grid-template-areas: "id nome" "id st" "id barra" "id num"; }
+  .dx-meta .st-chip { justify-self: start; }
+}
+/* barra "Ver como" da demonstração: rola para o lado em vez de sobrepor os botões */
+.demo .seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.demo .seg button { flex: none; }
+/* roteiro de visitas: data inteira numa linha */
+.tab-rot td:first-child, .tab-rot td.num { overflow-wrap: normal; white-space: nowrap; }
+/* cartões em duas colunas no celular não quebram palavra no meio */
+.dx-agua, .dx-agua *, .agua-cards, .agua-cards * { overflow-wrap: normal; word-break: normal; hyphens: auto; }
+/* tema escuro: trilho das barras de progresso visível (antes quase da cor do fundo) */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bar, :root:not([data-theme="light"]) .medidor, :root:not([data-theme="light"]) .pf-bar { background: #4A3D34; } }
+:root[data-theme="dark"] .bar, :root[data-theme="dark"] .medidor, :root[data-theme="dark"] .pf-bar { background: #4A3D34; }

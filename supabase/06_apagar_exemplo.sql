@@ -36,6 +36,6 @@ alter table public.diagnosticos enable trigger user;
 alter table public.equipe enable trigger user;
 commit;
 
-select 'Dados de exemplo apagados' as resultado,
+select case when exists (select 1 from public.exemplo) then 'ATENÇÃO: NADA foi apagado. Algum registro de verdade aponta para um dado de exemplo (veja o erro acima). Fale com quem mantém o sistema.' else 'Dados de exemplo apagados' end as resultado,
   (select count(*) from public.equipe) as equipe_que_ficou,
   (select count(*) from public.fichas) as fichas_que_ficaram;

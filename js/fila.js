@@ -109,8 +109,11 @@
        falta de rede só deixa para depois. */
     enviando: false,
     async sincronizar(api, dono) {
-      if (F.enviando) return { enviados: 0 };
-      F.enviando = true; let enviados = 0;
+      // 13/10/2026 (auditoria): registro salvo enquanto outro sobe não fica parado: no fim desta volta, roda mais uma
+      if (F.enviando) { F.denovo = { api, dono }; return { enviados: 0 }; }
+      // sem login (saiu em outra aba, sessão encerrada no servidor): não manda nada, para a recusa não virar erro definitivo
+      if (api && api.temSessao === false) return { enviados: 0 };
+      F.enviando = true; F.denovo = null; let enviados = 0, quedasSeguidas = 0;
       try {
         for (const it of await F.listar(dono)) {
           if (it.erro && !it.reenviar) continue;
@@ -123,8 +126,12 @@
             else await api.salvarFicha(it.dados, it.fotos || {}, op);
             // subiu: sai da fila, a não ser que a pessoa tenha salvo uma correção enquanto subia (aí a correção fica e sobe na próxima)
             if (await F.removerSeIgual(it)) enviados++;
+            quedasSeguidas = 0;
           } catch (e) {
-            if (e.semRede && !e.prazoEsgotado) break;   // sem internet: para e tenta tudo depois
+            // sem internet de verdade: para e tenta tudo depois. Se o aparelho diz que TEM internet, a queda pode ser só deste
+            // registro (arquivo grande cortado no 3G): conta a tentativa dele e passa para o próximo; duas quedas seguidas = sem internet
+            const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+            if (e.semRede && !e.prazoEsgotado && (offline || ++quedasSeguidas >= 2)) break;
             // auditoria 2: prazo estourado (arquivo grande em internet fraca) conta como tentativa DESTE item e a fila segue:
             // antes ele travava a fila inteira, porque ia sempre primeiro e estourava de novo
             const msg = (MQ.regras && MQ.regras.mensagemErro ? MQ.regras.mensagemErro(e) : e.message) || 'Não foi possível enviar. Tente de novo.';   // mensagem já traduzida, não o texto cru do servidor
@@ -140,7 +147,11 @@
             await F.marcarSeIgual(it);
           }
         }
-      } finally { F.enviando = false; }
+      } finally {
+        F.enviando = false;
+        const d = F.denovo; F.denovo = null;
+        if (d) setTimeout(() => { F.sincronizar(d.api, d.dono).then(r => { if (r && r.enviados && F.aoEnviarDepois) F.aoEnviarDepois(r); }).catch(() => {}); }, 0);
+      }
       return { enviados };
     }
   });
@@ -156,7 +167,15 @@
     try { const b = new Uint8Array(await arquivo.slice(0, 12).arrayBuffer()); const t = String.fromCharCode(...b);
       return t.slice(4, 8) === 'ftyp' && /^(heic|heix|hevc|hevx|heim|heis|mif1|msf1)$/.test(t.slice(8, 12)); } catch (e) { return false; }
   }
-  MQ.comprimirFoto = function (arquivo, max = 1600, qualidade = 0.8, op) {
+  // 13/10/2026 (auditoria): quantas fotos estão "Preparando foto…" agora. Salvar no meio descartava a foto sem aviso.
+  MQ.fotosPreparando = 0;
+  MQ.comprimirFoto = function (arquivo, max, qualidade, op) {
+    MQ.fotosPreparando++;
+    const p = comprimirFotoAgora(arquivo, max, qualidade, op);
+    p.then(() => {}, () => {}).then(() => { MQ.fotosPreparando = Math.max(0, MQ.fotosPreparando - 1); });
+    return p;
+  };
+  function comprimirFotoAgora(arquivo, max = 1600, qualidade = 0.8, op) {
     return new Promise((res, rej) => {
       const recusar = () => { const e = new Error(MQ.MSG_NAO_E_FOTO); e.naoEhFoto = true;
         if (!(op && op.semAviso) && MQ.ui && MQ.ui.toast) { try { MQ.ui.toast(e.message); } catch (x) { /* sem tela */ } }

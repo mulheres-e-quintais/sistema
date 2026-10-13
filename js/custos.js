@@ -422,7 +422,7 @@
   MQ.custosUI = { aba, clique, enviar, celCSV, calcular: (etapa, km) => { C.par = C.par || sanear(null); return calcular(etapa, km); },
     simular: (etapa, kmTxt) => { C.par = C.par || sanear(null); return simular(etapa, kmTxt); },
     // usados na solicitação de pagamento (mesmo cálculo do Pagamento do mês)
-    garantir: async () => { if (!C.carregado) await carregar(); },
+    garantir: async () => { if (C.carregado) return; C.buscando = C.buscando || carregar().finally(() => { C.buscando = null; }); await C.buscando; },   // 13/10/2026: três pedidos ao mesmo tempo viram um só
     pronto: () => C.carregado,
     custoVisita: v => { C.par = C.par || sanear(null); C.km = C.km || {}; const k = kmIda(v); return Object.assign(calcular(v.etapa, k.km), { km: k.km, fonte: k.fonte }); } };
 })();

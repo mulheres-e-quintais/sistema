@@ -79,23 +79,32 @@ window.MQ = window.MQ || {};
 })();
 ;
 /* ===== teclado.js ===== */
-/* Mulheres & Quintais — todo bloco de conteúdo alcançável pelo teclado (12/10/2026, v261).
+/* Mulheres & Quintais — todo bloco de conteúdo alcançável pelo teclado (12/10/2026, v261; revisto em 13/10/2026).
    Quem navega com Tab só parava em botões e campos: um quadro só de leitura (ex.: "Situação do campo em cada estado")
-   era pulado. Aqui cada bloco de conteúdo — seção, cartão, aviso, quadro — vira uma parada do Tab, com o contorno de
-   foco, SEM cara de link (não sublinha, não muda o cursor, não faz nada ao apertar Enter).
-   O leitor de tela anuncia o bloco pelo título dele (aria-labelledby) ou como grupo.
+   era pulado. Aqui cada bloco de conteúdo — seção, cartão, aviso — vira uma parada do Tab, com o contorno de foco,
+   SEM cara de link (não sublinha, não muda o cursor, não faz nada ao apertar Enter).
+   13/10/2026 (auditoria de telas): sem paradas repetidas. Bloco que só embrulha outros blocos (ou os números de um resumo)
+   não vira parada: o Tab vai direto aos de dentro. Grupo sem título repetido (o leitor lia o título duas vezes).
+   Quadro mais largo que a tela vira parada (para rolar com as setas), com o nome da seção (antes eram todos iguais).
    Roda sozinho a cada mudança na tela (MutationObserver), então vale para todas as telas e painéis. */
 window.MQ = window.MQ || {};
 (function () {
   // blocos que viram parada do Tab (dentro da tela principal e dos painéis)
-  const BLOCOS = ['section.secao', '.bloco', '.cartao', '.pessoa', '.vazio', '.aviso', '.resumo', '.fc-item', '.passo-fic', '.ent-hero']
-    .map(s => `main ${s}, #painel ${s}`).join(', ');
+  const BASE = ['section.secao', '.bloco', '.cartao', '.pessoa', '.vazio', '.aviso', '.fc-item', '.passo-fic', '.ent-hero'];
+  const BLOCOS = BASE.map(s => `main ${s}, #painel ${s}`).join(', ');
+  const DENTRO = BASE.join(', ') + ', .dx-exec, .dx-kpi, .eq-kpi, .resumo > div';   // o que já é parada por conta própria
   const INTERATIVO = 'a[href], button, input, select, textarea, summary, label, [contenteditable="true"]';
   let n = 0;
-  function rotular(el) {
+  function rotularSecao(el) {
     if (el.hasAttribute('aria-labelledby') || el.hasAttribute('aria-label')) return;
-    const h = el.querySelector('h1, h2, h3, h4, legend, .fn, b');
-    if (h && /^(H\d|LEGEND)$/.test(h.tagName)) { if (!h.id) h.id = 'tb-' + (++n); el.setAttribute('aria-labelledby', h.id); }
+    const h = el.querySelector('h1, h2, h3'); if (!h) return;
+    if (!h.id) h.id = 'tb-' + (++n); el.setAttribute('aria-labelledby', h.id);
+  }
+  const embrulha = el => !el.matches('section.secao') && !!el.querySelector(DENTRO);
+  function nomeDoQuadro(el) {
+    const t = el.querySelector('caption, h1, h2, h3') || (el.closest('section, .bloco, .ac-sec') || document).querySelector('h2, h3');
+    const nome = t ? t.textContent.replace(/\s+/g, ' ').trim() : '';
+    return (nome ? nome + ': quadro' : 'Quadro') + ' (use as setas para rolar para o lado)';
   }
   function marcar(raiz) {
     const r = raiz || document;
@@ -103,15 +112,18 @@ window.MQ = window.MQ || {};
     let k = 0;
     r.querySelectorAll(BLOCOS).forEach(el => {
       if (el.hasAttribute('tabindex') || el.matches(INTERATIVO) || el.closest('[hidden], [inert], form')) return;   // dentro de formulário, o Tab segue de campo em campo
+      if (embrulha(el)) return;
       el.setAttribute('tabindex', '0'); el.setAttribute('data-tab-bloco', '');
-      if (!el.hasAttribute('role') && el.tagName !== 'SECTION') el.setAttribute('role', 'group');
-      rotular(el); k++;
+      if (el.tagName === 'SECTION') rotularSecao(el); else if (!el.hasAttribute('role')) el.setAttribute('role', 'group');
+      k++;
     });
-    // quadro mais largo que a tela: o teclado também precisa rolar para o lado
-    r.querySelectorAll('main .quadro-scroll, #painel .quadro-scroll').forEach(el => {
+    // quadro mais largo (ou mais alto) que o espaço: o teclado precisa parar nele para rolar. Com botão dentro, o Tab já entra.
+    r.querySelectorAll('main .quadro-scroll, #painel .quadro-scroll, main .rel-previa, #painel .rel-previa, main .eg-caixa').forEach(el => {
       if (el.hasAttribute('tabindex') || (el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight)) return;
+      if (el.querySelector('a[href], button:not([disabled]), input, select, textarea, [tabindex]')) return;
       el.setAttribute('tabindex', '0'); el.setAttribute('data-tab-bloco', ''); if (!el.hasAttribute('role')) el.setAttribute('role', 'region');
-      if (!el.hasAttribute('aria-label')) el.setAttribute('aria-label', 'Quadro (use as setas para rolar para o lado)'); k++;
+      if (!el.hasAttribute('aria-label') && !el.hasAttribute('aria-labelledby')) el.setAttribute('aria-label', nomeDoQuadro(el));
+      k++;
     });
     return k;
   }
@@ -126,7 +138,13 @@ window.MQ = window.MQ || {};
     window.addEventListener('resize', agendar); window.addEventListener('load', agendar);
     agendar();
   }
-  MQ.teclado = { marcar, BLOCOS };
+  // "Pular para o conteúdo": primeiro item do Tab em todas as telas (fica escondido até receber o foco)
+  function pular() {
+    const m = document.querySelector('main'); if (!m) return;
+    if (!m.hasAttribute('tabindex')) m.setAttribute('tabindex', '-1');
+    m.focus(); try { m.scrollIntoView({ block: 'start' }); } catch (e) {}
+  }
+  MQ.teclado = { marcar, BLOCOS, pular };
 })();
 ;
 /* ===== dados.js ===== */
@@ -570,6 +588,16 @@ MQ.ORCAMENTO = {
     const dev = (solicitacoes || []).filter(s => s.equipe_id === id && s.situacao === 'devolvida');
     return { visitas: vs.length, devolvidos: dev.length, total: vs.length + dev.length };
   };
+  /* 13/10/2026 (auditoria): meses de bolsa já começados e ainda sem pedido (aviso ao desligar: depois ela não entra mais
+     e ninguém pede por ela). Do mês de início (ou outubro/2026) até o mês de hoje; não bloqueia, só avisa. */
+  R.mesesBolsaSemPedido = (m, solicitacoes) => {
+    if (!m || !['coord_tecnico', 'articulacao', 'apoio', 'professor_fic', 'auxiliar_adm'].includes(m.papel)) return [];
+    const ini = [String(m.data_inicio || '').slice(0, 7), R.LIM.bolsaMesMin].sort().pop(), fim = [R.hoje().slice(0, 7), R.LIM.bolsaMesMax].sort()[0];
+    const pedidos = new Set((solicitacoes || []).filter(s => s.equipe_id === m.id && s.tipo === 'bolsa').map(s => String(s.mes).slice(0, 7)));
+    const out = []; let [a, mm] = ini.split('-').map(Number);
+    for (let i = 0; i < 24; i++) { const k = a + '-' + String(mm).padStart(2, '0'); if (k > fim) break; if (!pedidos.has(k)) out.push(k); mm++; if (mm > 12) { mm = 1; a++; } }
+    return out;
+  };
   R.mesBolsaOk = m => { const x = String(m || '').slice(0, 7); return x >= R.LIM.bolsaMesMin && x <= R.LIM.bolsaMesMax; };
   R.MSG_TERMO_SEM_ARQUIVO = 'Sem o termo anexado não há o que conferir: a data só é registrada depois que o termo preenchido e assinado estiver anexado.';
   R.MSG_TERMO_SEM_DATA = 'Você anexou o termo: confira no documento a data da assinatura e preencha aqui.';
@@ -587,7 +615,7 @@ MQ.ORCAMENTO = {
   R.validar = function (m, equipe) {
     const e = {};
     if (!m.nome || m.nome.trim().split(/\s+/).length < 2) e.nome = 'Escreva o nome completo, como no documento.';
-    if (!R.cpfValido(m.cpf)) e.cpf = 'CPF inválido. Confira os 11 números.';
+    if (!R.cpfValido(m.cpf)) e.cpf = String(m.cpf || '').replace(/\D/g, '') ? 'CPF inválido. Confira os 11 números.' : 'Informe o CPF (11 números).';
     if (!R.emailValido(m.email)) e.email = 'E-mail inválido. É por ele que a pessoa entra no sistema.';
     if (R.soDigitos(m.telefone).length < 10) e.telefone = 'Informe o celular com DDD.';
     if (!m.data_inicio) e.data_inicio = 'Informe a data de início.';
@@ -827,7 +855,7 @@ MQ.ORCAMENTO = {
   R.validarFicha = function (f, fichas) {
     const e = {};
     if (!f.nome || f.nome.trim().split(/\s+/).length < 2) e.nome = 'Nome completo, como no documento.';
-    if (!R.cpfValido(f.cpf)) e.cpf = 'CPF inválido. Confira os 11 números.';
+    if (!R.cpfValido(f.cpf)) e.cpf = String(f.cpf || '').replace(/\D/g, '') ? 'CPF inválido. Confira os 11 números.' : 'Informe o CPF (11 números).';
     else if (fichas.some(x => x.id !== f.id && x.cpf === R.soDigitos(f.cpf))) e.cpf = 'Esta mulher já tem ficha no projeto.';
     if (!f.data_nascimento) e.data_nascimento = 'Informe a data de nascimento.';
     else { const i = R.idade(f.data_nascimento, f.data_ficha); if (i == null || i < 0 || i > 110) e.data_nascimento = 'Data de nascimento inválida.'; }
@@ -1742,7 +1770,7 @@ MQ.ORCAMENTO = {
     async salvarTurma(t) {
       const d = ler(); const eu = euMesmo();
       if (!eu || !R.podeMatricular(eu.papel)) throw falha('Só os professores do curso FIC criam turmas.');
-      if (!d.equipe.some(m => m.id === t.professor_id && m.papel === 'professor_fic' && m.status === 'ativa')) throw falha('A turma precisa de um(a) professor(a) do FIC ativo(a).');
+      if (!d.equipe.some(m => m.id === t.professor_id && m.papel === 'professor_fic' && m.status === 'ativa')) throw falha('A turma precisa de um(a) professor(a) do curso FIC ativo(a).');
       if (String(t.nome || '').trim().length < 3) throw falha('Dê um nome à turma.');
       if (t.inicio && t.fim && t.fim < t.inicio) throw falha('O fim da turma é antes do início.');
       d.turmas = d.turmas || []; const agora = new Date().toISOString(); const i = d.turmas.findIndex(x => x.id === t.id);
@@ -1899,9 +1927,9 @@ MQ.ORCAMENTO = {
       }
       return copia(d.equipe.filter(x => x.id === eu.id));
     },
-    async auditoria() {
+    async auditoria(antesDe) {
       const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') return [];   // como o banco (25_historico_e_cadastro.sql)
-      return copia(ler().auditoria).reverse();
+      return copia(ler().auditoria).reverse().filter(a => !antesDe || String(a.em) < String(antesDe)).slice(0, 200);
     },
 
     async criar(m) {
@@ -2103,6 +2131,9 @@ MQ.ORCAMENTO = {
       const fts = Object.keys(fotos || {}).filter(k => fotos[k]).map(k => v.uf + '/' + v.ficha_id + '/aval_' + k + '.jpg');
       const i = d.avaliacoes.findIndex(a => a.id === dados.id); const agora = new Date().toISOString();
       const n = Object.assign({}, i >= 0 ? d.avaliacoes[i] : { criado_em: agora }, dados, { uf: v.uf, executor_id: v.executor_id, atualizado_em: agora, fotos: [...new Set([...(dados.fotos || []), ...fts])] });
+      if ((v.situacao !== 'realizada' || (v.data_realizada || null) !== (dados.data_visita || null)) && (d.solic_visitas || {})[v.id]
+          && ['solicitada', 'avalizada', 'lancada'].includes(((d.solicitacoes || []).find(s => s.id === d.solic_visitas[v.id]) || {}).situacao))
+        throw falha('Esta visita já está numa solicitação de pagamento. Para mudar, a solicitação precisa ser devolvida pela coordenação.');   // 13/10/2026: igual ao banco
       if (i >= 0) d.avaliacoes[i] = n; else d.avaliacoes.push(n);
       Object.assign(v, { situacao: 'realizada', data_realizada: dados.data_visita, atualizado_em: agora });
       gravar(); return copia(n);
@@ -2144,6 +2175,9 @@ MQ.ORCAMENTO = {
       const n = Object.assign({}, antes || {}, dados, { uf: v.uf, executor_id: v.executor_id, fotos: [...caminhos], situacao: 'aguardando',
         aprovado_por: antes ? antes.aprovado_por : null, aprovado_em: antes ? antes.aprovado_em : null, obs_coordenacao: antes ? antes.obs_coordenacao : null,
         criado_em: antes ? antes.criado_em : agora, atualizado_em: agora, conteudo_alterado_por: eu.id, conteudo_alterado_em: agora });
+      if ((v.situacao !== 'realizada' || (v.data_realizada || null) !== (n.data_visita || null)) && (d.solic_visitas || {})[v.id]
+          && ['solicitada', 'avalizada', 'lancada'].includes(((d.solicitacoes || []).find(s => s.id === d.solic_visitas[v.id]) || {}).situacao))
+        throw falha('Esta visita já está numa solicitação de pagamento. Para mudar, a solicitação precisa ser devolvida pela coordenação.');   // 13/10/2026: igual ao banco
       if (i >= 0) d.diagnosticos[i] = n; else d.diagnosticos.push(n);
       Object.assign(v, { situacao: 'realizada', data_realizada: n.data_visita, atualizado_em: agora });
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'diagnosticos', registro_id: n.id, acao: antes ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: antes && copia(antes), depois: copia(n) });
@@ -2393,6 +2427,12 @@ MQ.ORCAMENTO = {
     },
     async enviarTermo(id, arquivo) { return arquivo.name; },   // no demo guarda só o nome
     /* 48: a própria pessoa anexa o termo preenchido e assinado (só o arquivo: a data é de quem confere) */
+    async conferirTermo(id, pathVisto, data) {   // 61: igual ao banco
+      const d = ler(); const m = d.equipe.find(x => x.id === id);
+      if (!m) throw falha('Cadastro não encontrado, ou você não tem permissão para conferir este termo.');
+      if ((m.termo_path || null) !== (pathVisto || null)) throw falha('O termo foi trocado enquanto você conferia. Abra o cadastro de novo, confira o arquivo novo e registre a data.');
+      return this.atualizar(id, { termo_assinado_em: data });
+    },
     async enviarMeuTermo(id, arquivo) {
       const d = ler(); const eu = euMesmo();
       if (!eu || eu.id !== id) throw falha('Cada pessoa anexa o próprio termo, no cadastro dela.');
@@ -2504,16 +2544,38 @@ MQ.ORCAMENTO = {
   MQ.fetchComPrazo = fetchComPrazo;
   const opcoesCliente = extra => ({ global: { fetch: fetchComPrazo }, auth: Object.assign({ persistSession: true }, extra || {}) });
 
+  /* fotos da equipe: link temporário (1 h) guardado e reaproveitado até faltarem 10 min para vencer (13/10/2026, auditoria):
+     antes cada atualização de 2 em 2 minutos gerava links novos, a tela "mudava" sem nada mudar e as fotos eram baixadas de novo */
+  const linksFoto = new Map();
+  async function linksDasFotos(lista) {
+    const agora = Date.now();
+    lista.forEach(m => { const g = m.foto_path && !m.foto_url && linksFoto.get(m.foto_path); if (g && g.vence - agora > 600000) m.foto_url = g.url; });
+    const com = lista.filter(m => m.foto_path && !m.foto_url);
+    if (!com.length) return;
+    try {
+      const caminhos = [...new Set(com.map(m => m.foto_path))];
+      const { data: urls } = await sb.storage.from('equipe').createSignedUrls(caminhos, 3600);
+      (urls || []).forEach((u, i) => { if (u && u.signedUrl) linksFoto.set(caminhos[i], { url: u.signedUrl, vence: agora + 3600000 }); });
+      com.forEach(m => { const g = linksFoto.get(m.foto_path); if (g) m.foto_url = g.url; });
+    } catch (e) { /* sem foto: ficam as iniciais */ }
+  }
   MQ.apiSupabase = {
     modo: 'supabase',
     async iniciar() {
       sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, opcoesCliente({ detectSessionInUrl: true }));
-      let sessao = null;
-      try { sessao = (await sb.auth.getSession()).data.session; } catch (e) { /* sem rede */ }
+      // 13/10/2026 (auditoria): saiu em outra aba (ou a sessão foi encerrada no servidor): esta aba também sai, sem apagar a fila
+      try { sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') { this.temSessao = false; if (MQ.ui && MQ.ui.sessaoEncerrada) MQ.ui.sessaoEncerrada(); } }); } catch (e) {}
+      let sessao = null, prazo = false;
       const guardado = lerEuGuardado();
+      // 13/10/2026 (auditoria): com o login vencido e sem servidor, a renovação demorava ~30 s; com perfil guardado, espera no máximo 6 s
+      try { const r = await (guardado ? Promise.race([sb.auth.getSession(), new Promise(ok => setTimeout(() => { prazo = true; ok(null); }, 6000))]) : sb.auth.getSession());
+        sessao = r && r.data ? r.data.session : null; } catch (e) { /* sem rede */ }
+      // a sessão ainda está guardada no aparelho (a renovação falhou por falta de servidor, não porque saiu)
+      const tokenGuardado = (() => { try { return Object.keys(localStorage).some(k => /^sb-.*-auth-token$/.test(k)); } catch (e) { return false; } })();
       if (!sessao) {
-        // Sem internet, a sessão pode não ser renovada: usa o perfil guardado para trabalhar offline
-        if (!navigator.onLine && guardado) { this.temSessao = true; this.offline = true; euCache = guardado; return guardado; }
+        // Sem internet (ou "sinal que engana": o celular diz que tem rede, mas o servidor não responde), a sessão não é renovada:
+        // usa o perfil guardado para trabalhar sem internet. Saiu de verdade (token apagado): vai para a entrada.
+        if (guardado && (!navigator.onLine || prazo || tokenGuardado)) { this.temSessao = true; this.offline = true; euCache = guardado; return guardado; }
         this.temSessao = false; return null;
       }
       this.temSessao = true;
@@ -2879,6 +2941,7 @@ MQ.ORCAMENTO = {
     },
 
     async sair() {
+      linksFoto.clear();   // links de foto da equipe não ficam para a próxima pessoa
       euCache = null; this.temSessao = false;
       // tira do aparelho a cópia dos dados (nomes, CPF, endereços); o que não foi enviado continua na fila para a próxima entrada
       try { Object.keys(localStorage).filter(k => k === 'mq-eu' || k.startsWith('mq-cache-')).forEach(k => localStorage.removeItem(k)); } catch (e) {}
@@ -2894,13 +2957,7 @@ MQ.ORCAMENTO = {
       try { const r = await sb.rpc('equipe_do_estado'); if (!r.error && Array.isArray(r.data)) { const ja = new Set(data.map(m => m.id)); r.data.forEach(m => { if (!ja.has(m.id)) data.push(m); }); } } catch (e) { /* 43 ainda não instalado */ }
       // fotos: links temporários (1 h) de uma vez só; se a etapa 7 não foi instalada, segue com as iniciais
       data.forEach(m => { const x = /^exemplo:(\d+)$/.exec(m.foto_path || ''); if (x) m.foto_url = 'assets/exemplo/pessoa-' + x[1] + '.svg'; });   // ilustrações dos dados de exemplo
-      const com = data.filter(m => m.foto_path && !m.foto_url);
-      if (com.length) {
-        try {
-          const { data: urls } = await sb.storage.from('equipe').createSignedUrls(com.map(m => m.foto_path), 3600);
-          (urls || []).forEach((u, i) => { if (u && u.signedUrl) com[i].foto_url = u.signedUrl; });
-        } catch (e) { /* sem foto */ }
-      }
+      await linksDasFotos(data);
       return data;
     },
     async enviarFotoEquipe(id, blob) {
@@ -2940,6 +2997,9 @@ MQ.ORCAMENTO = {
     async dadosAcompanhamento(orgao) {
       const { data, error } = await sb.rpc('acompanhamento_dados', { p_orgao: orgao || null }); if (error) throw erro(error);
       // 60: na tela do MPA, equipe habilitada e diagnósticos esperando, por estado (sem o script, a tela segue sem esses números)
+      if (data && data.orgao === 'mpa') {   // 61: formação sem matrículas e encontros cancelados
+        try { const f = await sb.rpc('acompanhamento_formacao', { p_orgao: orgao || null }); if (!f.error && f.data) data.formacao = f.data; } catch (e) {}
+      }
       if (data && data.orgao === 'mpa' && Array.isArray(data.por_uf)) {
         try { const r = await sb.rpc('acompanhamento_equipe_uf', { p_orgao: orgao || null });
           if (!r.error && Array.isArray(r.data)) r.data.forEach(x => { const u = data.por_uf.find(y => y.uf === x.uf); if (u) Object.assign(u, { equipe_campo: x.equipe_campo, habilitadas: x.habilitadas, diag_aguardando: x.diag_aguardando, diag_devolvidos: x.diag_devolvidos }); });
@@ -3045,9 +3105,7 @@ MQ.ORCAMENTO = {
       const { data: lido, error } = await sb.rpc('equipe_para_fic'); if (error) throw erro(error);
       const data = lido || [];
       data.forEach(m => { const x = /^exemplo:(\d+)$/.exec(m.foto_path || ''); if (x) m.foto_url = 'assets/exemplo/pessoa-' + x[1] + '.svg'; });
-      const com = data.filter(m => m.foto_path && !m.foto_url);
-      if (com.length) { try { const { data: urls } = await sb.storage.from('equipe').createSignedUrls(com.map(m => m.foto_path), 3600);
-        (urls || []).forEach((u, i) => { if (u && u.signedUrl) com[i].foto_url = u.signedUrl; }); } catch (e) { /* sem foto */ } }
+      await linksDasFotos(data);
       return data;
     },
     /* encontros do FIC e lista de presença (38) */
@@ -3072,8 +3130,10 @@ MQ.ORCAMENTO = {
     },
     async cancelarMatricula(id, motivo) { const { error } = await sb.rpc('cancelar_matricula_fic', { p_id: id, p_motivo: motivo }); if (error) throw erro(error); },
 
-    async auditoria() {
-      const { data, error } = await sb.from('auditoria').select('*').order('em', { ascending: false }).limit(200);
+    async auditoria(antesDe) {   // 200 por vez; "antesDe" busca os mais antigos que isso (13/10/2026: antes só os 200 últimos)
+      let q = sb.from('auditoria').select('*').order('em', { ascending: false }).limit(200);
+      if (antesDe) q = q.lt('em', antesDe);
+      const { data, error } = await q;
       if (error) throw erro(error);
       return data;
     },
@@ -3093,6 +3153,14 @@ MQ.ORCAMENTO = {
       // 57: com pagamento a pedir, só a coordenação geral desliga, justificando (desligar_sem_pedido grava no histórico)
       if (semPedido != null) { const { error } = await sb.rpc('desligar_sem_pedido', { p_equipe: id, p_data: data_fim, p_motivo: motivo, p_justificativa: semPedido }); if (error) throw erro(error); return; }
       return this.atualizar(id, { status: 'desligada', data_fim, motivo_desligamento: motivo });
+    },
+    /* 61: quem confere registra a data só do arquivo que abriu (se a pessoa trocou o termo enquanto isso, o banco recusa).
+       Sem o script 61, grava a data como antes. */
+    async conferirTermo(id, pathVisto, data) {
+      const { error } = await sb.rpc('conferir_termo', { p_equipe: id, p_path: pathVisto, p_data: data });
+      if (!error) return;
+      if (/conferir_termo/.test(error.message || '') && /not find|does not exist|schema cache/i.test(error.message || '')) return void (await this.atualizar(id, { termo_assinado_em: data }));
+      throw erro(error);
     },
     async enviarTermo(id, arquivo) {
       const ext = (arquivo.name.split('.').pop() || 'pdf').toLowerCase();
@@ -3231,8 +3299,11 @@ MQ.ORCAMENTO = {
        falta de rede só deixa para depois. */
     enviando: false,
     async sincronizar(api, dono) {
-      if (F.enviando) return { enviados: 0 };
-      F.enviando = true; let enviados = 0;
+      // 13/10/2026 (auditoria): registro salvo enquanto outro sobe não fica parado: no fim desta volta, roda mais uma
+      if (F.enviando) { F.denovo = { api, dono }; return { enviados: 0 }; }
+      // sem login (saiu em outra aba, sessão encerrada no servidor): não manda nada, para a recusa não virar erro definitivo
+      if (api && api.temSessao === false) return { enviados: 0 };
+      F.enviando = true; F.denovo = null; let enviados = 0, quedasSeguidas = 0;
       try {
         for (const it of await F.listar(dono)) {
           if (it.erro && !it.reenviar) continue;
@@ -3245,8 +3316,12 @@ MQ.ORCAMENTO = {
             else await api.salvarFicha(it.dados, it.fotos || {}, op);
             // subiu: sai da fila, a não ser que a pessoa tenha salvo uma correção enquanto subia (aí a correção fica e sobe na próxima)
             if (await F.removerSeIgual(it)) enviados++;
+            quedasSeguidas = 0;
           } catch (e) {
-            if (e.semRede && !e.prazoEsgotado) break;   // sem internet: para e tenta tudo depois
+            // sem internet de verdade: para e tenta tudo depois. Se o aparelho diz que TEM internet, a queda pode ser só deste
+            // registro (arquivo grande cortado no 3G): conta a tentativa dele e passa para o próximo; duas quedas seguidas = sem internet
+            const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+            if (e.semRede && !e.prazoEsgotado && (offline || ++quedasSeguidas >= 2)) break;
             // auditoria 2: prazo estourado (arquivo grande em internet fraca) conta como tentativa DESTE item e a fila segue:
             // antes ele travava a fila inteira, porque ia sempre primeiro e estourava de novo
             const msg = (MQ.regras && MQ.regras.mensagemErro ? MQ.regras.mensagemErro(e) : e.message) || 'Não foi possível enviar. Tente de novo.';   // mensagem já traduzida, não o texto cru do servidor
@@ -3262,7 +3337,11 @@ MQ.ORCAMENTO = {
             await F.marcarSeIgual(it);
           }
         }
-      } finally { F.enviando = false; }
+      } finally {
+        F.enviando = false;
+        const d = F.denovo; F.denovo = null;
+        if (d) setTimeout(() => { F.sincronizar(d.api, d.dono).then(r => { if (r && r.enviados && F.aoEnviarDepois) F.aoEnviarDepois(r); }).catch(() => {}); }, 0);
+      }
       return { enviados };
     }
   });
@@ -3278,7 +3357,15 @@ MQ.ORCAMENTO = {
     try { const b = new Uint8Array(await arquivo.slice(0, 12).arrayBuffer()); const t = String.fromCharCode(...b);
       return t.slice(4, 8) === 'ftyp' && /^(heic|heix|hevc|hevx|heim|heis|mif1|msf1)$/.test(t.slice(8, 12)); } catch (e) { return false; }
   }
-  MQ.comprimirFoto = function (arquivo, max = 1600, qualidade = 0.8, op) {
+  // 13/10/2026 (auditoria): quantas fotos estão "Preparando foto…" agora. Salvar no meio descartava a foto sem aviso.
+  MQ.fotosPreparando = 0;
+  MQ.comprimirFoto = function (arquivo, max, qualidade, op) {
+    MQ.fotosPreparando++;
+    const p = comprimirFotoAgora(arquivo, max, qualidade, op);
+    p.then(() => {}, () => {}).then(() => { MQ.fotosPreparando = Math.max(0, MQ.fotosPreparando - 1); });
+    return p;
+  };
+  function comprimirFotoAgora(arquivo, max = 1600, qualidade = 0.8, op) {
     return new Promise((res, rej) => {
       const recusar = () => { const e = new Error(MQ.MSG_NAO_E_FOTO); e.naoEhFoto = true;
         if (!(op && op.semAviso) && MQ.ui && MQ.ui.toast) { try { MQ.ui.toast(e.message); } catch (x) { /* sem tela */ } }
@@ -3885,7 +3972,8 @@ MQ.ORCAMENTO = {
   function baixarCSV(tipo) {
     const r = montarCSV(tipo);
     // fica no Histórico (60_planilha_e_mpa.sql): quem baixou, qual planilha, quantas fichas e o filtro. Sem o script, só não registra.
-    const api = U().S.api; if (api && api.registrarPlanilha) Promise.resolve().then(() => api.registrarPlanilha(r.tipo, r.n, filtroTexto())).catch(() => {});
+    const api = U().S.api; if (api && api.registrarPlanilha) Promise.resolve().then(() => api.registrarPlanilha(r.tipo, r.n, filtroTexto()))
+      .catch(e => { if (!/registrar_planilha/.test(String(e && e.message)) || !/not find|does not exist|schema cache/i.test(String(e && e.message))) setTimeout(() => U().toast('A planilha foi baixada, mas o download não ficou registrado no Histórico (' + (e && e.semRede ? 'sem internet' : 'o servidor recusou') + ').'), 4500); });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([r.texto], { type: 'text/csv;charset=utf-8' }));
     a.download = r.nome; a.hidden = true; a.setAttribute('aria-hidden', 'true'); a.tabIndex = -1;   // link só para disparar o download: não aparece nem entra na ordem do Tab
@@ -4002,8 +4090,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const semHab = d.pagaveis.filter(m => R.situacao(m).cod !== 'ok');
     if (semHab.length) a.push({ nivel: 'pend', texto: `${semHab.length} pessoa${semHab.length > 1 ? 's' : ''} ainda sem habilitação completa para a bolsa`,
       det: semHab.slice(0, 4).map(m => m.nome.split(' ')[0] + ' (' + R.passosHabilitacao(m).filter(p => !p.feito).map(p => p.id === 'fic' ? 'FIC' : p.id === 'funcern' ? 'FUNCERN' : 'termo').join(', ') + ')').join(' · ') + (semHab.length > 4 ? ' …' : ''), aba: 'equipe' });
-    const velhas = d.fichas.filter(f => f.situacao === 'aguardando' && f.criado_em && (Date.now() - new Date(f.criado_em)) > 5 * 864e5);
-    if (velhas.length) a.push({ nivel: 'pend', prazo: R.somaDias(velhas.map(f => R.diaLocal(f.criado_em)).sort()[0], 5), texto: `${velhas.length} ficha${velhas.length > 1 ? 's' : ''} aguardando aprovação há mais de 5 dias`, det: 'A aprovação é da coordenação técnica. Sem ela, o diagnóstico não começa.', aba: 'selecao' });
+    const desde = f => f.atualizado_em || f.criado_em;   // 13/10/2026: ficha devolvida e reenviada hoje não conta como atrasada
+    const velhas = d.fichas.filter(f => f.situacao === 'aguardando' && desde(f) && (Date.now() - new Date(desde(f))) > 5 * 864e5);
+    if (velhas.length) a.push({ nivel: 'pend', prazo: R.somaDias(velhas.map(f => R.diaLocal(desde(f))).sort()[0], 5), texto: `${velhas.length} ficha${velhas.length > 1 ? 's' : ''} aguardando aprovação há mais de 5 dias`, det: 'A aprovação é da coordenação técnica. Sem ela, o diagnóstico não começa.', aba: 'selecao' });
     const nCasas = R.contarCasas(d.fichas); const casas = d.fichas.filter(f => { const k = R.chaveCasa(f); return k && nCasas.get(k) > 1; });
     if (casas.length) a.push({ nivel: 'crit', prazo: 'imediato', texto: `${casas.length} fichas com o mesmo endereço de outra ficha`, det: 'Duas pessoas da mesma casa não podem ser selecionadas (risco de questionamento da seleção).', aba: 'selecao' });
     MQ.UFS.forEach(u => {
@@ -4044,7 +4133,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const vs = (S.visitas || []).filter(v => v.etapa === etapa);
       atual = vs.filter(v => v.situacao === 'realizada').length;
       const prevs = vs.filter(v => v.situacao === 'prevista').length;
-      nota = `Visitas de ${etapa === 'implantacao' ? 'implantação' : 'acompanhamento'} marcadas como feitas no roteiro${prevs ? ` · ${prevs} agendada${prevs > 1 ? 's' : ''}` : ''}. O relatório de visita ainda é em papel.`;
+      nota = `Visitas de ${etapa === 'implantacao' ? 'implantação' : 'acompanhamento'} marcadas como feitas no roteiro${prevs ? ` · ${prevs} agendada${prevs > 1 ? 's' : ''}` : ''}. O relato e as fotos ficam no registro de cada visita.`;
     } else if (meta.fonte) nota = 'O formulário desta etapa ainda não está no sistema. Por enquanto o registro é em papel.';
     else nota = 'Acompanhada fora deste sistema, no painel financeiro e de entregas.';
     const antes = mes - 1 < meta.ini, depois = mes - 1 >= meta.fim;
@@ -4332,7 +4421,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <div class="secao-cab"><div><h2 id="t-perfil">Quem são as mulheres</h2><p>${base.length ? 'Percentual ' + rotBase + ', pelos critérios de prioridade da ficha.' : 'Aparece quando houver mulheres selecionadas.'}</p></div></div>
       <div class="duas-col perfil-cols">
         <div class="bloco">${base.length ? `<ul class="perfil">${barras}</ul>
-          <p class="nota">"Negra, indígena, quilombola ou de comunidade tradicional" é um único campo na ficha v2: não dá para separar quilombolas.</p>` : '<p class="muted">Sem dados ainda.</p>'}</div>
+          <p class="nota">"Negra, indígena, quilombola ou de comunidade tradicional" é uma única pergunta na ficha: não dá para separar quilombolas.</p>` : '<p class="muted">Sem dados ainda.</p>'}</div>
         <div class="bloco"><h3>Ponto de partida${temDepois ? ' e hoje' : ''}</h3>
           ${diags.length ? `<div class="resumo r2">
               <div><span class="v num">${R.fmtBRL(mq || 0).replace(',00', '')}</span><span class="l">mediana por mês com vendas do quintal${mqD != null ? ` · nos ${avPar.length} avaliados: ${R.fmtBRL(mqA || 0).replace(',00', '')} → <b>${R.fmtBRL(mqD).replace(',00', '')}</b>` : ''}</span></div>
@@ -5252,7 +5341,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     <select name="fam_par" aria-label="Parentesco">${MQ.DIAG.parentesco.map(p => `<option ${x.parentesco === p ? 'selected' : ''}>${p}</option>`).join('')}</select>
     <input name="fam_ocup" placeholder="Estuda / trabalha?" value="${E(x.ocupacao || '')}" aria-label="Estuda ou trabalha" maxlength="120">
     <label class="mini-chk"><input type="checkbox" name="fam_ajuda" ${x.ajuda ? 'checked' : ''}>Ajuda no quintal</label>
-    <button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`;
+    <button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover esta pessoa da família" title="Remover esta pessoa da família">×</button></div>`;
   /* Preços do kit (decisão de 04/10/2026): a compra é feita por empresa contratada; o valor é só referência e
      aparece só para a coordenação geral. Os outros perfis escolhem item, quantidade e para quê. O valor que já
      estava gravado num plano segue escondido no formulário, para não se perder quando outra pessoa edita. */
@@ -5260,11 +5349,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const linhaKit = (x = {}) => !vePreco() ? `<div class="linha-din kit" data-linha="kit">
     <input name="kit_item" list="kit-lista" autocomplete="off" placeholder="Item (escolha na lista)" value="${E(x.item || '')}" aria-label="Item" maxlength="120"><input name="kit_qtd" placeholder="Qtd." inputmode="decimal" value="${E(x.qtd_txt || x.qtd || '')}" aria-label="Quantidade" maxlength="40">
     <input type="hidden" name="kit_valor" value="${E(x.valor != null ? String(x.valor).replace('.', ',') : '')}">
-    <input name="kit_para" placeholder="Para quê" value="${E(x.para || '')}" aria-label="Para quê" maxlength="200"><button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`
+    <input name="kit_para" placeholder="Para quê" value="${E(x.para || '')}" aria-label="Para quê" maxlength="200"><button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover este item do kit" title="Remover este item do kit">×</button></div>`
   : `<div class="linha-din kit kit5" data-linha="kit">
     <input name="kit_item" list="kit-lista" autocomplete="off" placeholder="Item (escolha na lista)" value="${E(x.item || '')}" aria-label="Item" maxlength="120"><input name="kit_qtd" placeholder="Qtd." inputmode="decimal" value="${E(x.qtd_txt || x.qtd || '')}" aria-label="Quantidade" maxlength="40">
     <input name="kit_valor" placeholder="R$ unid." inputmode="decimal" value="${E(x.valor != null ? String(x.valor).replace('.', ',') : '')}" aria-label="Valor estimado de cada unidade (R$)" maxlength="20">
-    <input name="kit_para" placeholder="Para quê" value="${E(x.para || '')}" aria-label="Para quê" maxlength="200"><button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`;
+    <input name="kit_para" placeholder="Para quê" value="${E(x.para || '')}" aria-label="Para quê" maxlength="200"><button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover este item do kit" title="Remover este item do kit">×</button></div>`;
   /* coordenação: valor do kit por quintal e o total projetado pelos planos */
   function blocoKitPar() {
     const lim = +((S().kitPar || {}).valor_quintal) || 0; const nQ = MQ.VAGAS_UF * MQ.UFS.length;
@@ -5376,7 +5465,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const linhaCron = (x = {}) => `<div class="linha-din kit" data-linha="cron">
     <input name="cr_oque" placeholder="O que fazer" value="${E(x.oque || '')}" aria-label="O que fazer" maxlength="200"><input name="cr_ini" placeholder="Mês início" value="${E(x.inicio || '')}" aria-label="Mês de início" maxlength="40">
     <input name="cr_fim" placeholder="Mês fim" value="${E(x.fim || '')}" aria-label="Mês de fim" maxlength="40"><input name="cr_quem" placeholder="Quem faz" value="${E(x.quem || '')}" aria-label="Quem faz" maxlength="120">
-    <button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`;
+    <button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover esta etapa do cronograma" title="Remover esta etapa do cronograma">×</button></div>`;
 
   function painelDiag(p) {
     const f = ficha(p.ficha); if (!f) return '<div class="painel-corpo"><p>Ficha não encontrada.</p></div>';
@@ -5399,9 +5488,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
             <span class="dica" id="dg-gps-dica">${d.latitude ? E(d.latitude + ', ' + d.longitude) : 'Registre em pé, no quintal, durante a visita.'}</span></div>
           ${(() => { const mt = String(d.sem_gps_motivo || ''); const tipo = MOTIVOS_SEM_GPS.find(x => mt.startsWith(x + '. ')) || ''; const det = tipo ? mt.slice(tipo.length + 2) : mt;
             return `<div class="campo inteiro sem-gps" id="w-sem_gps_motivo"><label for="dg-semgps-tipo">Sem localização? Por quê</label>
-              <select id="dg-semgps-tipo" name="sem_gps_tipo"><option value="">Escolha, se não conseguiu registrar…</option>${MOTIVOS_SEM_GPS.map(x => `<option${x === tipo ? ' selected' : ''}>${E(x)}</option>`).join('')}</select>
+              <select id="dg-semgps-tipo" name="sem_gps_tipo"><option value="">Por que não registrou?</option>${MOTIVOS_SEM_GPS.map(x => `<option${x === tipo ? ' selected' : ''}>${E(x)}</option>`).join('')}</select>
               <label for="dg-semgps" class="so-leitor">Explique com suas palavras</label>
-              <input id="dg-semgps" name="sem_gps_detalhe" value="${E(det)}" maxlength="500" placeholder="Explique com suas palavras: onde fica o quintal e o que aconteceu">
+              <input id="dg-semgps" name="sem_gps_detalhe" value="${E(det)}" maxlength="500" placeholder="Onde fica e o que aconteceu">
               <span class="dica">Sem localização, a coordenação só aprova depois de confirmar a visita de outro jeito.</span></div>`; })()}
         </div></fieldset>
 
@@ -5477,7 +5566,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <button type="button" class="btn-add" data-acao="campo-linha-add" data-tipo="cron"><span aria-hidden="true">+</span> Atividade</button>
           <div class="campos">
             <div class="campo" id="w-lote"><label>Lote de implantação</label>${rad('lote', [['1', 'Lote 1 (jan–abr)'], ['2', 'Lote 2 (mai–jul)']], d.lote ? String(d.lote) : '')}</div>
-            <div class="campo"><label for="dg-mes">Mês previsto</label><input id="dg-mes" name="mes_implantacao" value="${v('mes_implantacao')}" maxlength="120" placeholder="No início das chuvas ou com água garantida"></div>
+            <div class="campo"><label for="dg-mes">Mês previsto</label><input id="dg-mes" name="mes_implantacao" value="${v('mes_implantacao')}" maxlength="120" placeholder="Ex.: início das chuvas"></div>
           </div></fieldset>
         <fieldset><legend>12. Compromissos</legend>
           <label class="check" id="w-compromissos"><input type="checkbox" name="compromissos" ${d.compromissos ? 'checked' : ''}><span>Ela concorda em usar o kit no quintal, cuidar da produção, receber as visitas, participar das formações e avisar a equipe se deixar de usar o quintal.</span></label>
@@ -6616,7 +6705,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   MQ.custosUI = { aba, clique, enviar, celCSV, calcular: (etapa, km) => { C.par = C.par || sanear(null); return calcular(etapa, km); },
     simular: (etapa, kmTxt) => { C.par = C.par || sanear(null); return simular(etapa, kmTxt); },
     // usados na solicitação de pagamento (mesmo cálculo do Pagamento do mês)
-    garantir: async () => { if (!C.carregado) await carregar(); },
+    garantir: async () => { if (C.carregado) return; C.buscando = C.buscando || carregar().finally(() => { C.buscando = null; }); await C.buscando; },   // 13/10/2026: três pedidos ao mesmo tempo viram um só
     pronto: () => C.carregado,
     custoVisita: v => { C.par = C.par || sanear(null); C.km = C.km || {}; const k = kmIda(v); return Object.assign(calcular(v.etapa, k.km), { km: k.km, fonte: k.fonte }); } };
 })();
@@ -6734,7 +6823,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       ${l.map(m => U().cartaoPessoa(m)).join('')}
       ${l.length >= MQ.regras.MAX_PROFESSORES ? `<p class="small muted vagas-cheias">As ${MQ.regras.MAX_PROFESSORES} vagas de professor do curso FIC estão ocupadas. Para trocar, desligue um e cadastre o outro.</p>`
         : U().vagaAberta ? U().vagaAberta(l.length ? `<b>1 professor cadastrado.</b> Falta 1: o projeto tem ${MQ.regras.MAX_PROFESSORES} professores do curso FIC.` : `Nenhum professor do curso FIC cadastrado. O projeto tem ${MQ.regras.MAX_PROFESSORES}. Digite os dados ou gere um link para ele preencher.`, souGeral,
-        MQ.botaoAcao({ acao: 'novo', icone: 'capelo', texto: 'Cadastrar professor(a) do FIC', curto: 'Cadastrar', attrs: 'data-papel="professor_fic"' }), 'Vaga aberta') : ''}
+        MQ.botaoAcao({ acao: 'novo', icone: 'capelo', texto: 'Cadastrar professor(a) do curso FIC', curto: 'Cadastrar', attrs: 'data-papel="professor_fic"' }), 'Vaga aberta') : ''}
     </section>`;
   }
 
@@ -7397,6 +7486,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     auxiliar_adm: 'O que você fez no mês: cadastros no Arlo, pagamentos lançados, documentos organizados, pendências com a FUNCERN.'
   };
   const podeBolsa = papel => ['coord_tecnico', 'articulacao', 'apoio', 'professor_fic', 'auxiliar_adm'].includes(papel);
+  // 13/10/2026 (auditoria): com aval, esperando lançamento que só a coordenação geral pode fazer (a bolsa do próprio auxiliar,
+  // ou qualquer uma quando não há auxiliar ativo). Antes ficava parado sem aparecer no número de ninguém.
+  const semAuxiliar = () => !(S().equipe || []).some(m => m.papel === 'auxiliar_adm' && m.status === 'ativa');
+  const soGeralLanca = () => lista().filter(s => s.situacao === 'avalizada' && s.equipe_id !== (S().eu || {}).id && (semAuxiliar() || pessoa(s.equipe_id).papel === 'auxiliar_adm'));
   const quemAvaliza = (tipo, papel) => tipo === 'bolsa' && ['coord_tecnico', 'professor_fic', 'auxiliar_adm'].includes(papel) ? 'coord_geral' : 'coord_tecnico';
   const lista = () => S().solic || [];
   const vinculadas = () => S().solicVis || {};
@@ -7422,7 +7515,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const ajudasDoMes = minhas.filter(s => s.tipo === 'ajuda_custo' && String(s.mes).slice(0, 7) === m).sort((a, b) => String(a.solicitada_em).localeCompare(String(b.solicitada_em)));
     const hab = R.habilitado(eu);
     return `<section class="secao pag" aria-labelledby="t-pag">
-      <div class="secao-cab"><div><h2 id="t-pag">Solicitar pagamento</h2><p>Você solicita, a ${quemAvaliza('bolsa', papel) === 'coord_geral' && !podeAjuda(papel) ? 'coordenação geral' : 'coordenação técnica'} dá o aval e o auxiliar administrativo lança no Arlo (FUNCERN).</p></div>
+      <div class="secao-cab"><div><h2 id="t-pag">Solicitar pagamento</h2><p>Você solicita, a ${quemAvaliza('bolsa', papel) === 'coord_geral' && !podeAjuda(papel) ? 'coordenação geral' : 'coordenação técnica'} dá o aval (aprova) e ${papel === 'auxiliar_adm' ? 'a coordenação geral lança a sua bolsa' : 'o auxiliar administrativo lança'} no Arlo, o sistema de pagamentos da FUNCERN.</p></div>
         <span class="seg"><button type="button" data-acao="pag-mes" data-n="-1" aria-label="Mês anterior" ${mesIni && m <= mesIni ? 'disabled' : ''}>‹</button><button type="button" data-acao="pag-mes" data-n="0">${nomeMes(m)}</button><button type="button" data-acao="pag-mes" data-n="1" aria-label="Próximo mês" ${m >= mesHoje() ? 'disabled' : ''}>›</button></span></div>
       ${mesIni && mesIni > mesHoje() ? `<div class="aviso">Você começa no projeto em ${nomeMes(mesIni)}: a partir desse mês dá para solicitar.</div>` : ''}
       ${!hab ? '<div class="aviso erro"><b>Sua habilitação ainda não está completa.</b> Sem ela não há pagamento: <button type="button" class="link" data-acao="pend-ver">veja os passos que faltam</button>.</div>' : ''}
@@ -7533,7 +7626,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       ${U().semTecnica && U().semTecnica() ? '<div class="aviso">Sem coordenação técnica ativa: os avais que seriam dela estão com você.</div>' : ''}
       ${bloco('Esperando o seu aval', aval, 'Nada esperando o seu aval.', 'pend')}
       ${outrasAval.length ? bloco(souGeral ? 'Com a coordenação técnica (você pode dar o aval se ela não puder)' : 'Com a coordenação geral', outrasAval, '') : ''}
-      ${bloco('Com aval, falta o auxiliar lançar no Arlo', arlo, 'Nenhuma.')}
+      ${souGeral && soGeralLanca().length ? bloco(semAuxiliar() ? 'Com aval, esperando você lançar no Arlo (não há auxiliar ativo)' : 'Bolsa do auxiliar: com aval, esperando você lançar no Arlo', soGeralLanca(), '', 'pend') : ''}
+      ${bloco(eu.papel === 'auxiliar_adm' ? 'Com aval, falta você lançar no Arlo' : 'Com aval, falta o auxiliar lançar no Arlo', souGeral ? arlo.filter(s => !soGeralLanca().includes(s)) : arlo, 'Nenhuma.')}
       ${dev.length ? bloco('Devolvidas para corrigir', dev, '', 'crit') : ''}
       <details class="hist"><summary>Lançadas no Arlo (${lanc.length})</summary><div class="pag-lista" style="padding:0 18px 16px">${lanc.map(s => linha(s, true)).join('') || '<p class="muted">Nenhuma ainda.</p>'}</div></details>
       ${eu.papel === 'coord_tecnico' ? secaoMinha() : ''}`;
@@ -7670,7 +7764,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   MQ.pagUI = { secaoMinha, abaCoord, secaoAuxiliar, painel, clique, enviar,
     contaDevolvidas: () => lista().filter(s => s.equipe_id === S().eu.id && s.situacao === 'devolvida').length,   // meus pedidos para corrigir
     contaLancar: () => lista().filter(s => s.situacao === 'avalizada' && s.equipe_id !== S().eu.id).length,       // auxiliar: lançar no Arlo
-    contaAval: () => { const eu = S().eu; const sem = U().semTecnica && U().semTecnica(); return lista().filter(s => s.situacao === 'solicitada' && s.equipe_id !== eu.id && (sem || quemAvaliza(s.tipo, pessoa(s.equipe_id).papel) === eu.papel)).length; } };
+    contaAval: () => { const eu = S().eu; const sem = U().semTecnica && U().semTecnica();
+      const avais = lista().filter(s => s.situacao === 'solicitada' && s.equipe_id !== eu.id && (sem || quemAvaliza(s.tipo, pessoa(s.equipe_id).papel) === eu.papel)).length;
+      return avais + (eu.papel === 'coord_geral' ? soGeralLanca().length : 0); } };
 
   /* desmarcou ou marcou uma visita: o total e o botão mostram o que vai ser pedido de fato */
   if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('change', ev => {
@@ -10793,6 +10889,15 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           '<b>?</b> abre esta ajuda, sempre sobre a tela em que você está.',
           'A <b>sua foto</b> (ou suas iniciais) abre <b>Meus dados</b>: celular, endereço e conta bancária para a FUNCERN.',
           'Se aparecer um aviso de <b>pendências no seu cadastro</b>, resolva primeiro: sem elas, a FUNCERN não paga.']],
+        ['Palavras usadas no sistema', [
+          '<b>Arlo</b>: o sistema de pagamentos da FUNCERN. O pagamento só sai depois de lançado lá.',
+          '<b>Aval</b>: a aprovação de um pedido de pagamento pela coordenação, antes do lançamento no Arlo.',
+          '<b>AVA</b>: a sala do curso FIC na internet (Ambiente Virtual de Aprendizagem do IFRN).',
+          '<b>FIC</b>: o curso de Formação Inicial e Continuada do IFRN, que a equipe de campo faz durante o projeto.',
+          '<b>FUNCERN</b>: a fundação que administra o dinheiro do projeto e paga bolsas e ajudas de custo.',
+          '<b>Habilitação</b>: os passos para poder trabalhar e receber (matrícula no FIC, cadastro no Arlo e termo assinado e conferido).',
+          '<b>Linha de base</b>: as respostas do diagnóstico, antes da implantação, comparadas depois com a avaliação final.',
+          '<b>Meta 1 a 8</b>: as metas do plano de trabalho do projeto (equipe, diagnósticos, quintais, visitas, eventos, intercâmbio, acompanhamento pedagógico e relatório).']],
         ['No sol: modo sol', [
           'O botão do <b>sol</b>, no alto da tela (na tela de entrada, <b>Modo sol</b>, no cartão de acesso), abre <b>Aparência da tela</b>.',
           'Ligue o <b>Modo sol</b> para usar no campo com sol forte: letra preta em fundo branco, bordas escuras e letra maior. Deixe também o brilho do celular no máximo.',
@@ -10832,11 +10937,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       t: 'Visão geral',
       intro: 'O retrato do projeto em uma tela: em que mês estamos, como está a equipe, a seleção das mulheres, o campo e os avisos que pedem atenção.',
       tarefas: [
-        ['Resolver um aviso', ['Leia os avisos do topo, do mais urgente para o menos.', 'Toque no aviso: o sistema abre a aba que resolve.', 'Faça a ação e volte à <b>Visão geral</b>: o aviso some quando o problema acaba.']]
+        ['Resolver o que pede atenção', ['Role a página até o quadro <b>O que pede atenção</b> (vem depois de <b>Situação do campo em cada estado</b>). Os itens vêm do mais grave para o menos grave.', 'Toque em <b>Resolver</b> (ou em <b>Consultar</b>, nos avisos): o sistema abre a aba que resolve.', 'Faça a ação e volte à <b>Visão geral</b>: o item some quando o problema acaba.']]
       ],
       passos: [
         'A linha de 13 quadradinhos mostra os meses do projeto; o quadrado colorido é o mês atual. Ao lado, quantos dias faltam para o fim da vigência.',
-        'Os <b>avisos</b> vêm por ordem de urgência (crítico, atenção, informação). Toque no aviso para ir direto à aba que resolve.',
+        '<b>Situação do campo em cada estado</b> mostra se o trabalho de campo já pode andar: equipe habilitada, fichas aprovadas, diagnósticos, visitas da semana e registros que ainda não foram enviados.', '<b>O que pede atenção</b> lista os problemas em três níveis: <b>Requer ação</b>, <b>Atenção</b> e <b>Aviso</b>. O botão <b>Resolver</b> leva direto à aba que resolve.',
         'O cartão <b>Ponto de partida</b> (e, depois das avaliações, <b>hoje</b>) compara a linha de base do diagnóstico com a avaliação final (fome, renda do quintal, consumo, venda, autonomia). Só entra quem já tem as duas medidas.',
         '<b>Financeiro e entregas</b> abre o painel de recursos, rubricas e metas físicas. Só a coordenação geral vê esse botão.'
       ],
@@ -11949,7 +12054,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         final_n: av.length, produz: { sim: q(av, x => x.quintal_produz === 'sim'), em_parte: q(av, x => x.quintal_produz === 'em_parte'), nao: q(av, x => x.quintal_produz === 'nao') },
         ebia_final: { seguranca: q(av, x => x.ebia_nivel === 'seguranca'), leve: q(av, x => x.ebia_nivel === 'leve'), moderada: q(av, x => x.ebia_nivel === 'moderada'), grave: q(av, x => x.ebia_nivel === 'grave') } };
     } else {
-      r.formacao = { turmas: (d.turmas || []).length, matriculas: (d.matriculas || []).length, encontros: (d.encontros || d.ficEncontros || []).length };
+      r.formacao = { turmas: (d.turmas || []).length, matriculas: (d.matriculas || []).filter(x => !x.cancelada_em).length, encontros: (d.encontros || d.ficEncontros || []).filter(x => !x.cancelado_em).length };   // 13/10/2026: sem as canceladas
     }
     return r;
   }
@@ -12026,7 +12131,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const NIV = { seguranca: 'Segurança alimentar', leve: 'Insegurança leve', moderada: 'Insegurança moderada', grave: 'Insegurança grave' };
     const PROD = { sim: 'Produzindo', em_parte: 'Produzindo em parte', nao: 'Sem produzir' };
     return `<div class="ac-duo"><div class="bloco"><h3>Antes do quintal (linha de base)</h3>
-        <p class="ac-frase"><b class="num">${n(i.base_n)}</b> famílias com diagnóstico feito${i.renda_quintal_media != null ? `. Venda média do quintal antes do projeto: <b class="num">${MQ.regras.fmtBRL(i.renda_quintal_media)}</b> por mês.` : '.'}</p>
+        <p class="ac-frase"><b class="num">${n(i.base_n)}</b> ${i.base_n === 1 ? 'família' : 'famílias'} com diagnóstico feito${i.renda_quintal_media != null ? `. Venda média do quintal antes do projeto: <b class="num">${MQ.regras.fmtBRL(i.renda_quintal_media)}</b> por mês.` : '.'}</p>
         <p class="small muted">O diagnóstico registra produção, renda e alimentação da família antes da implantação. É a referência para medir o que mudou.</p></div>
       <div class="bloco"><h3>Depois do quintal (avaliação final)</h3>
         ${i.final_n ? `<p class="ac-frase"><b class="num">${n(i.final_n)}</b> quintais já avaliados na 5ª visita.</p>
@@ -12055,7 +12160,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (atr) it.push(`<li><b>${n(atr)} visita${atr > 1 ? 's' : ''} com a data vencida</b> e ainda sem registro: ${a.por_uf.filter(u => u.atrasadas).map(u => u.uf + ' ' + u.atrasadas).join(', ')}.</li>`);
     if (semEq.length) it.push(`<li><b>Equipe incompleta</b> (menos de 2 bolsistas) em: ${semEq.join(', ')}.</li>`);
     const semHab = a.por_uf.filter(u => u.habilitadas != null && u.equipe_campo > u.habilitadas);
-    if (semHab.length) it.push(`<li><b>Equipe sem habilitação completa</b> (ainda não pode trabalhar nem receber): ${semHab.map(u => u.uf + ' ' + (u.equipe_campo - u.habilitadas)).join(', ')}.</li>`);
+    if (semHab.length) it.push(`<li><b>Equipe sem habilitação completa</b> (ainda não pode trabalhar no campo): ${semHab.map(u => { const q = u.equipe_campo - u.habilitadas; return (U().nomeUF ? U().nomeUF(u.uf) : u.uf) + ', ' + q + (q === 1 ? ' pessoa' : ' pessoas'); }).join('; ')}.</li>`);
     const dgEsp = total(a, 'diag_aguardando'), dgDev = total(a, 'diag_devolvidos');
     if (dgEsp) it.push(`<li><b>${n(dgEsp)} diagnóstico${dgEsp > 1 ? 's' : ''} esperando a aprovação da coordenação</b>: o quintal só é implantado depois do plano aprovado. ${a.por_uf.filter(u => u.diag_aguardando).map(u => u.uf + ' ' + u.diag_aguardando).join(', ')}.</li>`);
     if (dgDev) it.push(`<li><b>${n(dgDev)} diagnóstico${dgDev > 1 ? 's' : ''} devolvido${dgDev > 1 ? 's' : ''} para correção</b>: ${a.por_uf.filter(u => u.diag_devolvidos).map(u => u.uf + ' ' + u.diag_devolvidos).join(', ')}.</li>`);
@@ -12076,7 +12181,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       + (a.orgao === 'mda'
         ? sec('caminho', 'O caminho de cada quintal', 'Da indicação da mulher pela comunidade até a avaliação final, cada etapa é registrada no sistema, com data, local e foto.', funil(a))
           + sec('metas', 'Metas físicas do plano de trabalho', 'O número de cada meta vem dos próprios registros de campo.', `<div class="ac-metas">${metas(a)}</div>`)
-          + sec('mapa', 'Onde o projeto está', `${n(total(a, 'municipios'))} municípios em 5 estados do Nordeste${area ? `, com ${n(area)} m² de quintais diagnosticados` : ''}.`, mapa(a) + tabelaUF(a, false))
+          + sec('mapa', 'Onde o projeto está', (() => { const m = total(a, 'municipios'), e = (a.por_uf || []).filter(u => u.selecionadas).length; return `Mulheres selecionadas em ${n(m)} município${m === 1 ? '' : 's'} de ${n(e)} estado${e === 1 ? '' : 's'} (o projeto atua em 5 estados do Nordeste)${area ? `, com ${n(area)} m² de quintais diagnosticados` : ''}.`; })(), mapa(a) + tabelaUF(a, false))
           + sec('evolucao', 'Evolução do trabalho de campo', 'Visitas feitas em cada mês.', evolucao(a))
           + sec('perfil', 'Quem são as mulheres', 'As prioridades de seleção do projeto, em números. Sem nome nem dado pessoal.', perfil(a))
           + sec('impacto', 'O que muda na vida das famílias', 'As mesmas perguntas são feitas antes da implantação e na avaliação final.', impacto(a))
@@ -12211,8 +12316,14 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   'use strict';
   const U = () => MQ.ui, S = () => MQ.ui.S, E = s => MQ.ui.esc(s), R = () => MQ.regras;
   const CH = 'mq-relatos-pendentes';
-  const pend = () => { try { const l = JSON.parse(localStorage.getItem(CH) || '[]'); return Array.isArray(l) ? l : []; } catch (e) { return []; } };
-  const guardar = l => { try { if (l.length) localStorage.setItem(CH, JSON.stringify(l.slice(-20))); else localStorage.removeItem(CH); } catch (e) { /* aparelho sem espaço: o relato não fica */ } };
+  // 13/10/2026 (auditoria): cada relato guardado tem dono. Antes a lista era do aparelho, e o relato de uma pessoa subia
+  // com o nome de quem entrasse depois no mesmo celular. Relato antigo sem dono não sobe (não dá para saber de quem é).
+  const dono = () => { const s = S(); return s && s.eu ? s.eu.id : null; };
+  const todos = () => { try { const l = JSON.parse(localStorage.getItem(CH) || '[]'); return Array.isArray(l) ? l : []; } catch (e) { return []; } };
+  const pend = () => { const d = dono(); return todos().filter(x => x && d && x._dono === d); };
+  const guardarTodos = l => { try { if (l.length) localStorage.setItem(CH, JSON.stringify(l.slice(-40))); else localStorage.removeItem(CH); return true; } catch (e) { return false; } };
+  const guardar = meus => { const d = dono(); return guardarTodos(todos().filter(x => x && x._dono && x._dono !== d).concat(meus.map(x => Object.assign({}, x, { _dono: d })))); };
+  const semDono = x => { const c = Object.assign({}, x); delete c._dono; return c; };
   const NOME_TELA = { visao: 'Visão geral', equipe: 'Equipe', selecao: 'Seleção', campo: 'Campo', fic: 'Curso FIC', execucao: 'Execução', pagamentos: 'Pagamentos', custos: 'Custos', viagens: 'Viagens e eventos', documentos: 'Documentos', historico: 'Histórico' };
   async function contexto(tela) {
     let versao = ''; try { if (typeof caches !== 'undefined') versao = ((await caches.keys()).filter(k => /^mq-v\d+/.test(k)).sort().pop()) || ''; } catch (e) { versao = ''; }
@@ -12242,7 +12353,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const s = S(); if (!s.eu || s.eu.observador || !s.api || !s.api.relatarProblema) return 0;
     let l = pend(), foi = 0; if (!l.length) return 0;
     for (const x of l.slice()) {
-      try { await s.api.relatarProblema(x); foi++; l = l.filter(k => k !== x); guardar(l); }
+      try { await s.api.relatarProblema(semDono(x)); foi++; l = l.filter(k => k !== x); guardar(l); }
       catch (e) { if (R().erroDeRede(e) || e.semRede) break; l = l.filter(k => k !== x); guardar(l); }   // recusado pelo sistema: não adianta tentar de novo
     }
     return foi;
@@ -12258,7 +12369,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       try { if (semRede) throw Object.assign(new Error('sem rede'), { semRede: true }); await S().api.relatarProblema(x); S().relatos = undefined; U().fecharPainel(); U().toast('Relato enviado. Obrigada por avisar.'); }
       catch (e) {
         if (!(e.semRede || R().erroDeRede(e) || e.message === R().MSG_SEM_REDE)) throw e;
-        guardar(pend().concat([x])); U().fecharPainel(); U().toast('Sem internet: o relato ficou guardado neste aparelho e vai subir quando o sinal voltar.');
+        const ok = guardar(pend().concat([x])); U().fecharPainel();
+        U().toast(ok ? 'Sem internet: o relato ficou guardado neste aparelho e vai subir quando o sinal voltar.' : 'Sem internet e sem espaço neste aparelho: o relato NÃO ficou guardado. Envie de novo quando houver sinal.');
       }
     }, { texto: 'Enviando…' });
   }
@@ -12555,7 +12667,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     await esperarAbertura();
     render();
     if ('serviceWorker' in navigator && location.protocol === 'https:' && !MQ.CONFIG.semServiceWorker) {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
+      navigator.serviceWorker.register('sw.js').then(reg => {
+        // 13/10/2026: app instalado que fica dias aberto em segundo plano também procura versão nova (ao voltar à tela e quando o sinal volta)
+        const procurar = () => { try { reg.update(); } catch (e) {} };
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') procurar(); });
+        window.addEventListener('online', procurar);
+      }).catch(() => {});
     }
   }
   const modoDemoAtivo = () => !!(S.api && S.api.modo === 'demo');
@@ -12608,7 +12725,13 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
   const AVISO_INATIVO = 'Você saiu do sistema depois de 15 minutos sem uso. Entre de novo. O que estava guardado no celular não se perdeu: é enviado quando você entrar.';
   /* sai do sistema (botão Sair ou 15 minutos sem uso): fecha o painel, apaga do aparelho a cópia dos dados e volta para a entrada */
+  let saindo = false;
   async function sairDoSistema(aviso) {
+    if (saindo) return; saindo = true;
+    try { await sairDoSistemaAgora(aviso); } finally { saindo = false; }
+  }
+  const AVISO_OUTRA_JANELA = 'Você saiu do sistema (em outra janela, ou a sessão terminou). Entre de novo. O que estava guardado no celular não se perdeu.';
+  async function sairDoSistemaAgora(aviso) {
     if (aviso) guardarRascunhoPainel('inatividade');   // saiu sozinho: guarda o formulário pela metade
     if (S.eu && !S.verEntrada) await registrarAcesso(aviso ? 'saida_inatividade' : 'saida');   // antes de encerrar a sessão no servidor
     try { sessionStorage.removeItem(CHAVE_ABRIU); } catch (e) {}
@@ -12622,9 +12745,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     // LGPD: a cópia dos dados (fichas, equipe, histórico) não fica no aparelho depois de sair.
     // Para entrar de novo é preciso internet, e aí tudo é recarregado. A fila do que não foi enviado fica.
     try { localStorage.removeItem(chaveCache()); } catch (e) {}
+    S.cacheGravado = null;   // a cópia saiu do aparelho: na próxima carga ela é gravada de novo
     if (modoDemoAtivo()) { S.verEntrada = true; render(); return; }   // demonstração: volta para a tela de entrada
     try { await S.api.sair(); } catch (e) { /* sem internet: a sessão já foi apagada do aparelho */ }
-    S.eu = null; S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.documentos = []; S.acessos = []; S.execPlanilhas = []; S.encontros = []; S.agua = [];
+    S.eu = null; S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.audFim = false; S.documentos = []; S.acessos = []; S.execPlanilhas = []; S.encontros = []; S.agua = [];
     S.acomp = null; S.acompErro = null; S.acompPrevia = null; S.acompCodigo = null; S.acompConfirma = null; S.observadores = []; S.kitItens = [];   // números do acompanhamento, código de acesso recém-gerado e listas da coordenação não ficam na memória depois de sair
     S.solic = []; S.pedidos = []; S.pre = []; S.pedidosAcesso = []; S.entregas = []; S.matriculas = []; S.turmas = []; S.avaliacoes = []; S.codigos = {}; S.confirmaAcesso = null; S.painel = null; S.solicVis = {}; S.canaisVenda = []; S.orientacoesVenda = []; S.vendaFolha = null; S.ciencias = []; S.testes = []; S.saldoPed = null; S.quemConfere = null; S.filaCelular = []; S.filaCelularSemBanco = false;   // nada da pessoa anterior fica na memória
     if (MQ.convitesUI && MQ.convitesUI.limparCache) MQ.convitesUI.limparCache();
@@ -12639,7 +12763,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
      nas abas deles. Na entrada e nas atualizações de fundo eles só são lidos se a aba estiver na tela.
      Cada parte diz em que aba aparece, como busca, o que vale enquanto não veio e onde guarda. */
   const DA_ABA = {
-    aud:  { nome: 'histórico', abas: ['historico'], busca: () => S.api.auditoria(), antes: () => S.aud || [], poe: v => { S.aud = v; } },
+    aud:  { nome: 'histórico', abas: ['historico'], busca: () => S.api.auditoria(), antes: () => S.aud || [], poe: v => { const ja = new Set(v.map(x => x.id)), corte = v.length ? String(v[v.length - 1].em) : '';   // os mais antigos já carregados continuam
+      S.aud = v.concat((S.aud || []).filter(x => !ja.has(x.id) && corte && String(x.em) < corte)); } },
     docs: { nome: 'documentos', abas: ['documentos'], busca: () => (S.api.listarDocumentos ? talvez(() => S.api.listarDocumentos(), semFic) : [true, []]),   // 24_documentos.sql
             antes: () => [!S.docSemBanco, S.documentos || []], poe: v => { S.docSemBanco = !v[0]; S.documentos = v[0] ? v[1] : []; } }
   };
@@ -12654,7 +12779,14 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (!buscandoAba) { buscandoAba = true; Promise.resolve().then(() => carregarDaAba()).catch(() => {}).then(() => { buscandoAba = false; }); }
     return '<p class="muted" role="status" data-carregando-aba>Carregando…</p>';
   };
-  async function carregarDaAba() {
+  const abaEmCurso = {};
+  function carregarDaAba() {   // 13/10/2026: uma busca por vez (o clique e o "Carregando…" pediam a mesma coisa duas vezes)
+    if (!S.eu) return Promise.resolve();
+    const chave = S.eu.id + '|' + abaAtual();
+    if (!abaEmCurso[chave]) abaEmCurso[chave] = carregarDaAbaAgora().finally(() => { delete abaEmCurso[chave]; });
+    return abaEmCurso[chave];
+  }
+  async function carregarDaAbaAgora() {
     if (!S.eu || S.verEntrada || S.eu.papel !== 'coord_geral' || S.semRede || semLinha()) return;
     const id = S.eu.id, aba = abaAtual(), ks = Object.keys(DA_ABA).filter(daAbaNaTela); if (!ks.length) return;
     await Promise.all(ks.map(async k => {
@@ -12742,34 +12874,41 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       S.perfisSemBanco = !perfis[0]; S.perfisEquipe = perfis[0] ? perfis[1] : [];
       S.pre = pre; S.exemplo = exemplo; S.pedidosAcesso = pedAcesso[0] ? pedAcesso[1] : [];
       S.acessosSemBanco = !acessos[0]; S.acessos = acessos[0] ? acessos[1] : [];
-      // 58: registros parados nos celulares (só a coordenação; sem o script, a tela pede para rodar)
-      if (coord && S.api.listarFilaCelular) { try { S.filaCelular = await S.api.listarFilaCelular(); S.filaCelularSemBanco = false; }
-        catch (e) { if (e && e.semRede) throw e; S.filaCelularSemBanco = true; S.filaCelular = S.filaCelular || []; } }   // sem o script (ou erro do banco): a tela diz o que fazer, nunca "nenhum registro parado" sem saber
-      // segunda leva: os pedidos de viagem dependem de saber quem confere (22 e 26)
-      const pedAntes = S.pedidos || []; S.pedSemBanco = false; S.pedidos = [];
-      if (S.api.listarPedidos && MQ.viagUI && (MQ.viagUI.podeVer(papel) || MQ.viagUI.souConferente())) {
-        try {
-          const r = await talvez(() => S.api.listarPedidos(), semFic); S.pedSemBanco = !r[0]; S.pedidos = r[0] ? r[1] : [];
-          if (S.api.saldoPedidos && !S.pedSemBanco) { const sd = await talvez(() => S.api.saldoPedidos(), qualquer); S.saldoPed = sd[0] ? sd[1] : null; }   // 35
-        } catch (e) { if (e && e.semRede) throw e; falhas.push('viagens e eventos'); S.pedidos = pedAntes; }
-      }
-      /* itens do kit com preço de referência (51_kit_itens.sql): sem a tabela, ou com ela vazia, vale a lista do sistema */
-      S.kitItensSemBanco = true;
-      if (S.api.listarKitItens && (campoPapel || coord)) {
-        try { const r = await talvez(() => S.api.listarKitItens(), semFic); S.kitItensSemBanco = !r[0]; S.kitItens = r[0] ? r[1] : []; }
-        catch (e) { if (e && e.semRede) throw e; falhas.push('itens do kit'); }
-      }
-      /* quem acompanha o projeto de fora (52_acompanhamento.sql): a lista é só da coordenação geral */
-      S.obsSemBanco = true;
-      if (papel === 'coord_geral' && S.api.listarObservadores) {
-        try { const r = await talvez(() => S.api.listarObservadores(), semFic); S.obsSemBanco = !r[0]; S.observadores = r[0] ? r[1] : []; }
-        catch (e) { if (e && e.semRede) throw e; falhas.push('acompanhamento externo'); }
-      }
+      // 13/10/2026 (auditoria): estas quatro leituras não dependem umas das outras: vão AO MESMO TEMPO (antes, uma depois da outra:
+      // ~1,6 s a mais por carga da coordenação no 3G). Sem internet, qualquer uma derruba a carga, como antes.
+      const pedAntes = S.pedidos || []; S.pedSemBanco = false; S.pedidos = []; S.kitItensSemBanco = true; S.obsSemBanco = true;
+      await Promise.all([
+        (async () => {   // 58: registros parados nos celulares (só a coordenação; sem o script, a tela pede para rodar)
+          if (coord && S.api.listarFilaCelular) { try { S.filaCelular = await S.api.listarFilaCelular(); S.filaCelularSemBanco = false; }
+            catch (e) { if (e && e.semRede) throw e; S.filaCelularSemBanco = true; S.filaCelular = S.filaCelular || []; } }   // sem o script (ou erro do banco): a tela diz o que fazer
+        })(),
+        (async () => {   // pedidos de viagem: dependem de saber quem confere (22 e 26), e o saldo depende dos pedidos
+          if (S.api.listarPedidos && MQ.viagUI && (MQ.viagUI.podeVer(papel) || MQ.viagUI.souConferente())) {
+            try {
+              const r = await talvez(() => S.api.listarPedidos(), semFic); S.pedSemBanco = !r[0]; S.pedidos = r[0] ? r[1] : [];
+              if (S.api.saldoPedidos && !S.pedSemBanco) { const sd = await talvez(() => S.api.saldoPedidos(), qualquer); S.saldoPed = sd[0] ? sd[1] : null; }   // 35
+            } catch (e) { if (e && e.semRede) throw e; falhas.push('viagens e eventos'); S.pedidos = pedAntes; }
+          }
+        })(),
+        (async () => {   // itens do kit com preço de referência (51_kit_itens.sql): sem a tabela, ou com ela vazia, vale a lista do sistema
+          if (S.api.listarKitItens && (campoPapel || coord)) {
+            try { const r = await talvez(() => S.api.listarKitItens(), semFic); S.kitItensSemBanco = !r[0]; S.kitItens = r[0] ? r[1] : []; }
+            catch (e) { if (e && e.semRede) throw e; falhas.push('itens do kit'); }
+          }
+        })(),
+        (async () => {   // quem acompanha o projeto de fora (52_acompanhamento.sql): a lista é só da coordenação geral
+          if (papel === 'coord_geral' && S.api.listarObservadores) {
+            try { const r = await talvez(() => S.api.listarObservadores(), semFic); S.obsSemBanco = !r[0]; S.observadores = r[0] ? r[1] : []; }
+            catch (e) { if (e && e.semRede) throw e; falhas.push('acompanhamento externo'); }
+          }
+        })()
+      ]);
       S.cargaParcial = falhas.length ? falhas : null;
       // cálculo de custos carregado em segundo plano: a aba Custos abre pronta, sem "Carregando…" e sem a página pular
       if (coord && MQ.custosUI && !MQ.custosUI.pronto()) MQ.custosUI.garantir().then(() => { if (S.aba === 'custos') renderFundo(); }).catch(() => {});
       S.semRede = false;
-      if (!falhas.length) try { localStorage.setItem(chaveCache(), JSON.stringify({ equipe: S.equipe, fichas: S.fichas, visitas: S.visitas, diagnosticos: S.diagnosticos, aud: S.aud, kitItens: S.kitItens || [], em: Date.now() })); } catch (e) {}
+      if (!falhas.length) try { const corpo = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.aud, S.kitItens || []]);   // 13/10/2026: só regrava a cópia do aparelho quando os dados mudaram
+        if (corpo !== S.cacheGravado) { localStorage.setItem(chaveCache(), JSON.stringify({ equipe: S.equipe, fichas: S.fichas, visitas: S.visitas, diagnosticos: S.diagnosticos, aud: S.aud, kitItens: S.kitItens || [], em: Date.now() })); S.cacheGravado = corpo; } } catch (e) {}
     } catch (e) {
       if (!e.semRede) throw e;
       // Sem internet: mostra a última cópia guardada no aparelho
@@ -12790,6 +12929,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       await S.api.informarFila(r); filaInformada = ch; filaInformadaEm = Date.now();
     } catch (e) { /* nunca atrapalha */ }
   }
+  // a fila rodou mais uma volta sozinha (registro salvo enquanto outro subia): atualiza a tela e avisa
+  if (MQ.fila) MQ.fila.aoEnviarDepois = r => { informarFila(); carregar().then(() => renderFundo()).catch(() => {}); toast(r.enviados + (r.enviados > 1 ? ' registros enviados.' : ' registro enviado.')); };
   async function sincronizar(avisar) {
     if (!S.eu || !R.ehCampo(S.eu.papel) || !navigator.onLine) return;
     const antes = (await MQ.fila.listar(S.eu.id)).length; if (!antes) { informarFila(); return; }
@@ -12810,7 +12951,16 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const digitando = () => { const a = document.activeElement;
     return (a && a.closest && a.closest('#app') && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) || Date.now() - digitouEm < 60000; };
   async function atualizarEmSegundoPlano(forcar) {
+    // abriu sem internet e o sinal voltou: relê o perfil e os dados (antes a faixa "Sem internet" ficava até recarregar a página)
+    if (S.eu && !S.verEntrada && !atualizando && (S.semRede || (S.api && S.api.offline)) && !(typeof navigator !== 'undefined' && navigator.onLine === false)) {
+      atualizando = true;
+      try { if (S.api.eu) { const eu = await S.api.eu(true); if (eu) S.eu = eu; } S.semRede = false; await carregar(); atualizadoEm = Date.now(); renderFundo(); } catch (e) {} finally { atualizando = false; }
+      if (!S.semRede) sincronizar(false).catch(() => {});
+      return;
+    }
     if (!S.eu || S.verEntrada || atualizando || S.semRede || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
+    // 13/10/2026: registro guardado no celular sobe também aqui (antes só ao salvar outro ou ao entrar)
+    if (MQ.fila && !MQ.fila.enviando) { try { if ((await MQ.fila.listar(S.eu.id)).some(it => !it.erro || it.reenviar)) { sincronizar(false).catch(() => {}); } } catch (e) {} }
     if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
     if (!forcar && Date.now() - atualizadoEm < ATUALIZA_MIN) return;
     atualizando = true;
@@ -12834,7 +12984,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   /* sem coordenação técnica ativa (vaga aberta, desligada): a coordenação geral assume a vez dela
      nos contadores e listas, para nenhum pedido ficar parado sem aviso. Só vale para quem vê a equipe toda. */
   const semTecnica = () => !!(S.eu && S.eu.papel === 'coord_geral') && !(S.equipe || []).some(m => m.papel === 'coord_tecnico' && m.status === 'ativa');
-  MQ.ui = { kpi: (n, de, rot, k, op) => kpiEq(n, de, rot, k, op), vagaAberta, S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: o => render(o), renderFundo: () => renderFundo(), abrirPainel: p => abrirPainel(p), fecharPainel: o => fecharPainel(o), pedirFechar: () => pedirFechar(), painelAlterado: () => painelAlterado(),
+  MQ.ui = { sessaoEncerrada: () => { if (S.eu && !S.verEntrada && !saindo) sairDoSistema(AVISO_OUTRA_JANELA); }, kpi: (n, de, rot, k, op) => kpiEq(n, de, rot, k, op), vagaAberta, S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: o => render(o), renderFundo: () => renderFundo(), abrirPainel: p => abrirPainel(p), fecharPainel: o => fecharPainel(o), pedirFechar: () => pedirFechar(), painelAlterado: () => painelAlterado(),
     irParaAba: x => irParaAba(x), avisarVersaoNova: () => avisarVersaoNova(), declarados: (f, r) => declarados(f, r),
     vista: () => vistaDoPainel(), marcaAberta: (t, id) => marcaAberta(t, id), reabrirComConflito: m => reabrirComConflito(m),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), carregarDaAba: () => carregarDaAba(), sincronizar: a => sincronizar(a),
@@ -12955,12 +13105,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         : [txt(c.querySelector('.eq-n, .dx-kpi-n, .v')), txt(c.querySelector('.eq-l, .dx-kpi-r, .l')), txt(c.querySelector('.dx-kpi-p')), txt(c.querySelector('.dx-kpi-s, .eq-ok'))];
       const rot = partes.filter(Boolean).join(', '); if (rot) c.setAttribute('aria-label', rot);
     });
-    todosDe(raiz, '.quadro-scroll, .rel-previa, .eg-caixa').forEach(c => {
-      if (c.hasAttribute('tabindex') || !(c.scrollWidth > c.clientWidth + 1 || c.scrollHeight > c.clientHeight + 1)) return;
-      if (c.querySelector('a[href],button:not([disabled]),input,select,textarea,[tabindex]')) return;   // já tem onde parar
-      c.setAttribute('tabindex', '0'); if (!c.getAttribute('role')) c.setAttribute('role', 'region');
-      if (!c.getAttribute('aria-label') && !c.getAttribute('aria-labelledby')) { const t = c.querySelector('caption, h1, h2, h3'); c.setAttribute('aria-label', (t && t.textContent.trim()) || 'Tabela: role para o lado para ver tudo'); }
-    });
+    // quadro que rola para o lado: js/teclado.js (uma rotina só, com o nome da seção em cada um)
+    if (MQ.teclado) MQ.teclado.marcar(raiz);
   }
 
   /* rodapé de todas as páginas */
@@ -12973,7 +13119,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     </div></footer>`;
   }
   function barra(publica, semBotao) {
-    return `<header class="barra"><div class="barra-in">
+    return `<header class="barra"><button type="button" class="pular" data-acao="pular">Pular para o conteúdo</button><div class="barra-in">
       <div class="marca"><img class="emb" src="assets/isotipo.svg" alt="" width="36" height="52"><img src="assets/logo-claro.svg" alt="Mulheres &amp; Quintais" width="112" height="36"><span class="sep" aria-hidden="true"></span>
         <span class="sis"><b>Sistema do projeto</b>Quintais Produtivos para Mulheres Rurais</span></div>
       ${publica ? (semBotao ? '' : `<a class="btn-barra" href="#">${S.eu ? 'Voltar ao sistema' : 'Entrar'}</a>`) : S.eu && !S.verEntrada ? `<div class="quem">${MQ.aparencia ? MQ.aparencia.botao() : ''}<button class="btn-ajuda" data-acao="ajuda" title="Ajuda desta tela" aria-label="Ajuda desta tela">?</button><button class="btn-meus" data-acao="meus-dados" title="Meus dados" aria-label="Meus dados e conta bancária">${avatar(Object.assign({}, S.eu, porId(S.eu.id) || {}), 34)}</button><span><span class="nome">${esc(S.eu.nome)}</span><br><span class="papel">${esc(P[S.eu.papel].nome)}${S.eu.uf ? ' · ' + esc(S.eu.uf) : ''}</span></span>
@@ -13052,7 +13198,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const grupos = GRUPOS_ABAS.map(([g, ids]) => [g, ids.map(id => abas.find(([i]) => i === id)).filter(Boolean)]).filter(([, l]) => l.length);
     const soltas = abas.filter(([id]) => !GRUPOS_ABAS.some(([, ids]) => ids.includes(id)));
     const nav = `<nav class="abas abas-grupos" aria-label="Seções">${grupos.map(([g, l]) => `<div class="aba-grupo" role="group" aria-label="${g}"><span class="aba-g" aria-hidden="true">${g}</span><div class="aba-btns">${l.map(btnAba).join('')}</div></div>`).join('')}${soltas.length ? `<div class="aba-grupo"><div class="aba-btns">${soltas.map(btnAba).join('')}</div></div>` : ''}</nav>
-      <details class="abas-m"><summary><span class="small muted">Seção</span> <b>${(abas.find(([id]) => id === aba) || abas[0])[1]}</b>${somaOutras ? `<span class="conta abas-m-pend" aria-hidden="true">${somaOutras}</span><span class="so-leitor"> (${somaOutras} esperando você em: ${esc(outras.map(([id]) => nomeAba(id)).join(', '))})</span>` : ''}<span class="abas-m-seta" aria-hidden="true">▾</span></summary>
+      <details class="abas-m"><summary><span class="small muted">Seção</span> <b>${esc(nomeAba(aba))}</b>${somaOutras ? `<span class="conta abas-m-pend" aria-hidden="true">${somaOutras}</span><span class="so-leitor"> (${somaOutras} esperando você em: ${esc(outras.map(([id]) => nomeAba(id)).join(', '))})</span>` : ''}<span class="abas-m-seta" aria-hidden="true">▾</span></summary>
         <div class="abas-m-grade">${grupos.map(([g, l]) => `<span class="aba-g">${g}</span>${l.map(btnAba).join('')}`).join('')}${soltas.map(btnAba).join('')}</div></details>`;
     const intro = souGeral
       ? 'Você cadastra a coordenação técnica indicada pelo MPA, os professores do curso FIC e o auxiliar administrativo, e tem acesso a tudo: também pode cadastrar, editar e desligar bolsistas e agentes, registrar a habilitação e matricular no FIC.'
@@ -13330,7 +13476,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (A.status === 'ativa' && D.status === 'desligada') return `<b>${esc(quem)}</b> desligou <b>${esc(D.nome)}</b> (${esc(papel)}): ${esc(D.motivo_desligamento)}`;
     const partes = [];
     if (!A.matricula_fic_em && D.matricula_fic_em) partes.push('matrícula no FIC');
-    if (!A.docs_funcern_em && D.docs_funcern_em) partes.push('documentos na FUNCERN');
+    if (!A.docs_funcern_em && D.docs_funcern_em) partes.push('cadastro no Arlo (FUNCERN)');
     if (!A.termo_assinado_em && D.termo_assinado_em) partes.push('termo de compromisso');
     if (A.user_id !== D.user_id && D.user_id) return `<b>${esc(D.nome)}</b> entrou no sistema pela primeira vez.`;
     if (partes.length) return `<b>${esc(quem)}</b> registrou ${partes.join(', ')} de <b>${esc(D.nome)}</b>.`;
@@ -13347,10 +13493,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       return cab + `<li><time datetime="${esc(a.em)}">${fmtH(a.em)}</time><span>${descreverAud(a)}</span></li>`; }).join(''); };
     const semana = S.aud.filter(a => Date.now() - new Date(a.em) < 7 * 864e5).length;
     const ord = S.aud.slice().sort((x, y) => String(y.em).localeCompare(String(x.em)));
-    const N = 12, rec = ord.slice(0, N), resto = ord.slice(N, 200);
-    return `<p class="small muted">${S.aud.length} registro${S.aud.length > 1 ? 's' : ''} · ${semana} nos últimos 7 dias</p>
+    const N = 12, rec = ord.slice(0, N), resto = ord.slice(N);
+    // 13/10/2026 (auditoria): o histórico inteiro, 200 por vez (antes só os 200 últimos; os downloads de planilha sumiam em dias)
+    const mais = S.audFim ? '' : (S.aud.length >= 200 ? '<p><button type="button" class="btn peq" data-acao="hist-mais">Carregar registros mais antigos</button></p>' : '');
+    return `<p class="small muted">${S.aud.length} registro${S.aud.length > 1 ? 's' : ''} carregado${S.aud.length > 1 ? 's' : ''} · ${semana} nos últimos 7 dias</p>
       <ul class="linha-tempo lt-hora">${lista(rec)}</ul>
-      ${resto.length ? dobra('hist-antigos', `Ver ${resto.length} registro${resto.length > 1 ? 's' : ''} anterior${resto.length > 1 ? 'es' : ''}`, `<ul class="linha-tempo lt-hora">${lista(resto)}</ul>`) : ''}`;
+      ${resto.length ? dobra('hist-antigos', `Ver ${resto.length} registro${resto.length > 1 ? 's' : ''} anterior${resto.length > 1 ? 'es' : ''}`, `<ul class="linha-tempo lt-hora">${lista(resto)}</ul>${mais}`) : mais}`;
   }
 
   /* ---------- Últimos acessos (só a coordenação geral; 30_ultimos_acessos.sql) ---------- */
@@ -14017,6 +14165,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
               return (ts.length ? `<div class="aviso erro"><b>Ainda não dá para desligar.</b> É professor(a) da turma em andamento ${esc(ts.map(t => t.nome).join(', '))}. Passe a turma para outro(a) professor(a) na aba Curso FIC (Editar) e desligue depois.</div>` : '')
                 + (pg.length ? `<div class="aviso"><b>${pg.length} pagamento${pg.length > 1 ? 's' : ''} em aberto</b> (${pg.map(x => (x.tipo === 'bolsa' ? 'bolsa' : 'ajuda de custo') + ' de ' + String(x.mes || '').slice(5, 7) + '/' + String(x.mes || '').slice(0, 4)).join(', ')}). O desligamento não cancela: ela tem direito a receber pelo que fez. O pedido continua até o lançamento no Arlo.</div>` : '')
                 + (pd.length ? `<div class="aviso"><b>${pd.length} pedido${pd.length > 1 ? 's' : ''} de passagem ou evento ainda não autorizado${pd.length > 1 ? 's' : ''}</b> ser${pd.length > 1 ? 'ão' : 'á'} cancelado${pd.length > 1 ? 's' : ''} ao desligar, com o motivo registrado.</div>` : ''); })()}
+          ${(() => {   // 13/10/2026: bolsa de mês já começado e sem pedido (só aviso: pode ser que o mês não tenha sido trabalhado)
+              const ms = R.mesesBolsaSemPedido(m, S.solic); if (!ms.length) return '';
+              const nm = k => { const [a, mm] = k.split('-'); return ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][+mm - 1] + '/' + a; };
+              return `<div class="aviso" data-bolsa-sem-pedido><b>Bolsa sem pedido: ${ms.map(nm).join(', ')}.</b> Se ela trabalhou nesse período, peça que faça o pedido antes de desligar: depois ela não entra mais no sistema e ninguém pede por ela.</div>`;
+            })()}
           ${(() => {   // 57: visita feita sem pedido ou pedido devolvido: ela perderia o pagamento ao ser desligada (perde o acesso)
               const pe = R.pendenciasPagamento(m.id, S.visitas, S.solicVis, S.solic); if (!pe.total) return '';
               const o = [pe.visitas ? pe.visitas + ' visita' + (pe.visitas > 1 ? 's feitas' : ' feita') + ' sem pedido de ajuda de custo' : '', pe.devolvidos ? pe.devolvidos + ' pedido' + (pe.devolvidos > 1 ? 's devolvidos' : ' devolvido') + ' para corrigir' : ''].filter(Boolean).join(' e ');
@@ -14426,6 +14579,14 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         }
       }
       else if (a === 'ajuda') { if (S.menuAberto) { S.menuAberto = false; render(); } S.voltarFoco = el; abrirPainel({ tipo: 'ajuda', k: el.dataset.k }); }
+      else if (a === 'hist-mais') {
+        const ord = (S.aud || []).slice().sort((x, y) => String(y.em).localeCompare(String(x.em))); const ult = ord[ord.length - 1];
+        el.disabled = true; el.textContent = 'Carregando…';
+        try { const v = await S.api.auditoria(ult ? ult.em : null); const ja = new Set(S.aud.map(x => x.id)); const novos = (v || []).filter(x => !ja.has(x.id));
+          S.aud = S.aud.concat(novos); if ((v || []).length < 200) S.audFim = true; (S.aberto = S.aberto || {})['hist-antigos'] = true; renderFundo(); }
+        catch (e) { el.disabled = false; el.textContent = 'Carregar registros mais antigos'; toast(avisarErro(e)); }
+      }
+      else if (a === 'pular') { if (MQ.teclado) MQ.teclado.pular(); }
       else if (a === 'aparencia') { if (S.menuAberto) { S.menuAberto = false; render(); } S.voltarFoco = el; abrirPainel({ tipo: 'aparencia' }); }
       else if (a === 'aparencia-sol' || a === 'aparencia-tema') {   // muda na hora, sem recarregar; a barra de cima mostra se o modo sol está ligado
         if (a === 'aparencia-sol') MQ.aparencia.mudar('sol', el.getAttribute('aria-checked') !== 'true'); else MQ.aparencia.mudar('tema', el.dataset.v);
@@ -14622,6 +14783,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   document.addEventListener('submit', async ev => {
     const form = ev.target.closest('form[data-form]'); if (!form) return;
     ev.preventDefault();
+    // 13/10/2026: salvar com uma foto ainda em "Preparando foto…" descartava a foto sem aviso
+    if (MQ.fotosPreparando > 0 && form.querySelector('input[type=file]')) return mostrarErros(form, {}, 'Espere a foto terminar de preparar (aparece "Foto pronta") e toque em salvar de novo.');
     const tipo = form.dataset.form;
     const fd = new FormData(form);
     S.acaoNoPainel = (S.acaoNoPainel || 0) + 1;
@@ -14752,7 +14915,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         await ocupado(form, async () => {
           if (temArq) patch.termo_path = await S.api.enviarTermo(id, arq);
           if (!Object.keys(patch).length) { toast('Nada mudou.'); return; }
-          await S.api.atualizar(id, patch); await recarregar(); abrirPainel({ tipo: 'detalhe', id });
+          // 61: data do termo sem anexo novo = conferência do arquivo que está na tela (se a pessoa trocou nesse meio-tempo, o banco recusa)
+          if (patch.termo_assinado_em && !temArq && S.api.conferirTermo) { await S.api.conferirTermo(id, m.termo_path || null, patch.termo_assinado_em); delete patch.termo_assinado_em; }
+          if (Object.keys(patch).length) await S.api.atualizar(id, patch);
+          await recarregar(); abrirPainel({ tipo: 'detalhe', id });
           const n = porId(id); toast(R.situacao(n).cod === 'ok' ? n.nome.split(' ')[0] + ' está habilitada: todos os passos concluídos.' : 'Habilitação atualizada.');
         });
       }

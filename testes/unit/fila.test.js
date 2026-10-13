@@ -4,8 +4,8 @@ const { test, describe, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { carregar, simples } = require('./ambiente');
 
-let F;
-beforeEach(() => { F = carregar(['fila.js']).MQ.fila; });
+let F, AMB;
+beforeEach(() => { AMB = carregar(['fila.js']); F = AMB.MQ.fila; });
 
 function apiFalsa(comportamento = {}) {
   const chamadas = [];
@@ -57,12 +57,47 @@ describe('sincronizar', () => {
     api = apiFalsa(); const r = await F.sincronizar(api, 'u'); assert.equal(r.enviados, 1);
   });
   test('sem rede: para na hora e não marca erro (tenta depois)', async () => {
+    AMB.janela.navigator.onLine = false;   // o aparelho sabe que está sem internet
     await F.salvar({ id: 'a', dono: 'u', tipo: 'ficha', dados: { id: 'a' }, criado: 1 });
     await F.salvar({ id: 'b', dono: 'u', tipo: 'ficha', dados: { id: 'b' }, criado: 2 });
     const api = apiFalsa({ a: erroRede() });
     const r = await F.sincronizar(api, 'u');
     assert.equal(r.enviados, 0); assert.equal(api.chamadas.length, 1);   // nem tentou o segundo
     const l = await F.listar('u'); assert.equal(l.length, 2); assert.ok(l.every(x => !x.erro));
+  });
+  test('13/10/2026: com internet, a queda de UM registro (arquivo cortado no 3G) não trava os outros', async () => {
+    AMB.janela.navigator.onLine = true;
+    await F.salvar({ id: 'a', dono: 'u', tipo: 'ficha', dados: { id: 'a' }, criado: 1 });
+    await F.salvar({ id: 'b', dono: 'u', tipo: 'ficha', dados: { id: 'b' }, criado: 2 });
+    const api = apiFalsa({ a: erroRede() });
+    const r = await F.sincronizar(api, 'u');
+    assert.equal(r.enviados, 1, 'o b subiu');
+    const l = await F.listar('u'); assert.deepEqual(simples(l.map(x => x.id)), ['a']); assert.equal(l[0].tentativas, 1); assert.ok(!l[0].erro, 'queda não vira erro definitivo');
+  });
+  test('13/10/2026: duas quedas seguidas com "internet" = sem internet de verdade: para', async () => {
+    AMB.janela.navigator.onLine = true;
+    for (const [id, c] of [['a', 1], ['b', 2], ['c', 3]]) await F.salvar({ id, dono: 'u', tipo: 'ficha', dados: { id }, criado: c });
+    const api = apiFalsa({ a: erroRede(), b: erroRede() });
+    await F.sincronizar(api, 'u'); assert.equal(api.chamadas.length, 2, 'não tentou o c');
+  });
+  test('13/10/2026: registro salvo enquanto outro sobe vai na volta seguinte, sozinho', async () => {
+    AMB.janela.navigator.onLine = true;
+    await F.salvar({ id: 'a', dono: 'u', tipo: 'ficha', dados: { id: 'a' }, criado: 1 });
+    let soltar; const api = apiFalsa(); const lento = api.salvarFicha;
+    api.salvarFicha = async d => { if (d.id === 'a') await new Promise(r => { soltar = r; }); return lento(d); };
+    let depois = null; F.aoEnviarDepois = r => { depois = r; };
+    const p = F.sincronizar(api, 'u');
+    await new Promise(r => setTimeout(r, 5));
+    await F.salvar({ id: 'b', dono: 'u', tipo: 'ficha', dados: { id: 'b' }, criado: 2 });
+    await F.sincronizar(api, 'u');   // chega enquanto a primeira volta está ocupada
+    soltar(); await p; await new Promise(r => setTimeout(r, 30));
+    assert.deepEqual(simples((await F.listar('u')).map(x => x.id)), [], 'o b também subiu');
+    assert.equal(depois && depois.enviados, 1);
+  });
+  test('13/10/2026: sem login (saiu em outra aba), não manda nada', async () => {
+    await F.salvar({ id: 'a', dono: 'u', tipo: 'ficha', dados: { id: 'a' } });
+    const api = apiFalsa(); api.temSessao = false;
+    const r = await F.sincronizar(api, 'u'); assert.equal(r.enviados, 0); assert.equal(api.chamadas.length, 0);
   });
   test('duas sincronizações ao mesmo tempo não enviam em dobro', async () => {
     await F.salvar({ id: 'a', dono: 'u', tipo: 'ficha', dados: { id: 'a' } });

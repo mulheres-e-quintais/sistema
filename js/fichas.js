@@ -531,7 +531,8 @@
   function baixarCSV(tipo) {
     const r = montarCSV(tipo);
     // fica no Histórico (60_planilha_e_mpa.sql): quem baixou, qual planilha, quantas fichas e o filtro. Sem o script, só não registra.
-    const api = U().S.api; if (api && api.registrarPlanilha) Promise.resolve().then(() => api.registrarPlanilha(r.tipo, r.n, filtroTexto())).catch(() => {});
+    const api = U().S.api; if (api && api.registrarPlanilha) Promise.resolve().then(() => api.registrarPlanilha(r.tipo, r.n, filtroTexto()))
+      .catch(e => { if (!/registrar_planilha/.test(String(e && e.message)) || !/not find|does not exist|schema cache/i.test(String(e && e.message))) setTimeout(() => U().toast('A planilha foi baixada, mas o download não ficou registrado no Histórico (' + (e && e.semRede ? 'sem internet' : 'o servidor recusou') + ').'), 4500); });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([r.texto], { type: 'text/csv;charset=utf-8' }));
     a.download = r.nome; a.hidden = true; a.setAttribute('aria-hidden', 'true'); a.tabIndex = -1;   // link só para disparar o download: não aparece nem entra na ordem do Tab

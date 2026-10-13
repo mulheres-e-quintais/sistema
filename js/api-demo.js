@@ -758,7 +758,7 @@
     async salvarTurma(t) {
       const d = ler(); const eu = euMesmo();
       if (!eu || !R.podeMatricular(eu.papel)) throw falha('Só os professores do curso FIC criam turmas.');
-      if (!d.equipe.some(m => m.id === t.professor_id && m.papel === 'professor_fic' && m.status === 'ativa')) throw falha('A turma precisa de um(a) professor(a) do FIC ativo(a).');
+      if (!d.equipe.some(m => m.id === t.professor_id && m.papel === 'professor_fic' && m.status === 'ativa')) throw falha('A turma precisa de um(a) professor(a) do curso FIC ativo(a).');
       if (String(t.nome || '').trim().length < 3) throw falha('Dê um nome à turma.');
       if (t.inicio && t.fim && t.fim < t.inicio) throw falha('O fim da turma é antes do início.');
       d.turmas = d.turmas || []; const agora = new Date().toISOString(); const i = d.turmas.findIndex(x => x.id === t.id);
@@ -915,9 +915,9 @@
       }
       return copia(d.equipe.filter(x => x.id === eu.id));
     },
-    async auditoria() {
+    async auditoria(antesDe) {
       const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') return [];   // como o banco (25_historico_e_cadastro.sql)
-      return copia(ler().auditoria).reverse();
+      return copia(ler().auditoria).reverse().filter(a => !antesDe || String(a.em) < String(antesDe)).slice(0, 200);
     },
 
     async criar(m) {
@@ -1119,6 +1119,9 @@
       const fts = Object.keys(fotos || {}).filter(k => fotos[k]).map(k => v.uf + '/' + v.ficha_id + '/aval_' + k + '.jpg');
       const i = d.avaliacoes.findIndex(a => a.id === dados.id); const agora = new Date().toISOString();
       const n = Object.assign({}, i >= 0 ? d.avaliacoes[i] : { criado_em: agora }, dados, { uf: v.uf, executor_id: v.executor_id, atualizado_em: agora, fotos: [...new Set([...(dados.fotos || []), ...fts])] });
+      if ((v.situacao !== 'realizada' || (v.data_realizada || null) !== (dados.data_visita || null)) && (d.solic_visitas || {})[v.id]
+          && ['solicitada', 'avalizada', 'lancada'].includes(((d.solicitacoes || []).find(s => s.id === d.solic_visitas[v.id]) || {}).situacao))
+        throw falha('Esta visita já está numa solicitação de pagamento. Para mudar, a solicitação precisa ser devolvida pela coordenação.');   // 13/10/2026: igual ao banco
       if (i >= 0) d.avaliacoes[i] = n; else d.avaliacoes.push(n);
       Object.assign(v, { situacao: 'realizada', data_realizada: dados.data_visita, atualizado_em: agora });
       gravar(); return copia(n);
@@ -1160,6 +1163,9 @@
       const n = Object.assign({}, antes || {}, dados, { uf: v.uf, executor_id: v.executor_id, fotos: [...caminhos], situacao: 'aguardando',
         aprovado_por: antes ? antes.aprovado_por : null, aprovado_em: antes ? antes.aprovado_em : null, obs_coordenacao: antes ? antes.obs_coordenacao : null,
         criado_em: antes ? antes.criado_em : agora, atualizado_em: agora, conteudo_alterado_por: eu.id, conteudo_alterado_em: agora });
+      if ((v.situacao !== 'realizada' || (v.data_realizada || null) !== (n.data_visita || null)) && (d.solic_visitas || {})[v.id]
+          && ['solicitada', 'avalizada', 'lancada'].includes(((d.solicitacoes || []).find(s => s.id === d.solic_visitas[v.id]) || {}).situacao))
+        throw falha('Esta visita já está numa solicitação de pagamento. Para mudar, a solicitação precisa ser devolvida pela coordenação.');   // 13/10/2026: igual ao banco
       if (i >= 0) d.diagnosticos[i] = n; else d.diagnosticos.push(n);
       Object.assign(v, { situacao: 'realizada', data_realizada: n.data_visita, atualizado_em: agora });
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'diagnosticos', registro_id: n.id, acao: antes ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: antes && copia(antes), depois: copia(n) });
@@ -1409,6 +1415,12 @@
     },
     async enviarTermo(id, arquivo) { return arquivo.name; },   // no demo guarda só o nome
     /* 48: a própria pessoa anexa o termo preenchido e assinado (só o arquivo: a data é de quem confere) */
+    async conferirTermo(id, pathVisto, data) {   // 61: igual ao banco
+      const d = ler(); const m = d.equipe.find(x => x.id === id);
+      if (!m) throw falha('Cadastro não encontrado, ou você não tem permissão para conferir este termo.');
+      if ((m.termo_path || null) !== (pathVisto || null)) throw falha('O termo foi trocado enquanto você conferia. Abra o cadastro de novo, confira o arquivo novo e registre a data.');
+      return this.atualizar(id, { termo_assinado_em: data });
+    },
     async enviarMeuTermo(id, arquivo) {
       const d = ler(); const eu = euMesmo();
       if (!eu || eu.id !== id) throw falha('Cada pessoa anexa o próprio termo, no cadastro dela.');

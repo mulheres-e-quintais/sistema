@@ -57,7 +57,7 @@ test('planilha: fornecedor chamado "Total ..." com data é gasto; linha "Total" 
 test('ao sair, códigos de acesso, pagamentos, pedidos e dados pessoais do usuário anterior somem da memória', () => {
   // fora do modo demonstração (que só volta para a tela de entrada): a rotina de saída zera tudo
   const src = require('fs').readFileSync(require('path').join(__dirname, '../../js/app.js'), 'utf8');
-  const i0 = src.indexOf('async function sairDoSistema'); const sair = src.slice(i0, src.indexOf('\n  }\n', i0));
+  const i0 = src.indexOf('async function sairDoSistemaAgora'); const sair = src.slice(i0, src.indexOf('\n  }\n', i0));
   for (const k of ['S.eu = null', 'S.equipe = []', 'S.fichas = []', 'S.solic = []', 'S.pedidos = []', 'S.turmas = []', 'S.matriculas = []', 'S.codigos = {}', 'limparCache()'])
     assert.ok(sair.includes(k), 'falta zerar ' + k);
 });

@@ -33,7 +33,7 @@ A(tabela(['Perfil', 'O que faz no sistema', 'Capítulo'], [
     ['Coordenação técnica', 'Cadastra bolsistas e agentes; aprova fichas e planos; dá aval na ajuda de custo e na bolsa das bolsistas; confere passagens e eventos', '[[L:Coordenação geral e coordenação técnica]]'],
     ['Bolsista (articulação ou apoio)', 'Lança as fichas das mulheres do estado; agenda e registra visitas; marca as entregas do mês; pede bolsa e ajuda de custo', '[[L:Bolsista de articulação e de apoio]]'],
     ['Agente de campo', 'Registra as visitas atribuídas a ela e pede a ajuda de custo', '[[L:Agente de campo]]'],
-    ['Professor(a) do FIC', 'Cria turmas, matricula, registra encontros e presença, confirma o acesso ao AVA', '[[L:Professor(a) do curso FIC]]'],
+    ['Professor(a) do curso FIC', 'Cria turmas, matricula, registra encontros e presença, confirma o acesso ao AVA', '[[L:Professor(a) do curso FIC]]'],
     ['Auxiliar administrativo', 'Registra o cadastro no Arlo e o termo de compromisso; lança os pagamentos no Arlo', '[[L:Auxiliar administrativo]]'],
     ['Acompanhamento (MDA e MPA)', 'Só leitura: vê os números do projeto, sem nome nem dado pessoal de ninguém. Não altera nada', '[[L:Acompanhamento do projeto (MDA e MPA)]]'],
 ]))
@@ -51,7 +51,7 @@ A(tabela(['Símbolo', 'Botão', 'Onde fica'], [
     [ic('pessoa_mais'), 'Cadastrar articulação, Cadastrar apoio, Cadastrar substituta, Adicionar agente', 'Aba Equipe'],
     [ic('equipe'), 'Cadastrar coordenação técnica', 'Aba Equipe'],
     [ic('pasta'), 'Cadastrar auxiliar administrativo', 'Aba Equipe'],
-    [ic('capelo'), 'Cadastrar professor(a) do FIC', 'Aba Equipe'],
+    [ic('capelo'), 'Cadastrar professor(a) do curso FIC', 'Aba Equipe'],
     [ic('resolver'), 'Resolver', 'Visão geral e aviso de pendências'],
     [ic('ver'), 'Consultar', 'Visão geral, nos avisos'],
     [ic('enviar'), 'Enviar planilha de gastos', 'Aba Execução'],
@@ -127,7 +127,7 @@ A(caixa('importante', 'O mapa mostra onde as mulheres moram. Use só dentro do s
 A(sec('Equipe'))
 A(serve('Guarda o cadastro de todas as pessoas do projeto e mostra as vagas abertas.'))
 A(acesso(['Abas', 'Gestão', 'Equipe'], 'coordenação geral (cadastra coordenação técnica, professores e auxiliar) e coordenação técnica (cadastra bolsistas e agentes).'))
-A(tabela(['Função', 'Vagas'], [['Coordenação técnica', '1'], ['Auxiliar administrativo', '1'], ['Professor(a) do FIC', 'até 2'], ['Articulação estadual', '1 por estado'], ['Apoio estadual', '1 por estado'], ['Agente de campo', 'sem limite']], 'curta'))
+A(tabela(['Função', 'Vagas'], [['Coordenação técnica', '1'], ['Auxiliar administrativo', '1'], ['Professor(a) do curso FIC', 'até 2'], ['Articulação estadual', '1 por estado'], ['Apoio estadual', '1 por estado'], ['Agente de campo', 'sem limite']], 'curta'))
 A(tela('equipe_coord', 'Equipe: resumo, coordenação técnica, auxiliar e professores', [
     (1, 'Resumo', 'Quantas pessoas estão cadastradas e quantas estão habilitadas.'), (2, 'Ver detalhes', 'Abre a ficha da pessoa.'), (3, 'Professores do curso FIC', 'Até 2 professores. Com as duas vagas ocupadas, o botão de cadastrar não aparece.')]))
 A(tela('equipe_estados', 'Equipe: bolsistas por estado e agentes de campo', [

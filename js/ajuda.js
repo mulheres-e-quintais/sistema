@@ -33,6 +33,15 @@
           '<b>?</b> abre esta ajuda, sempre sobre a tela em que você está.',
           'A <b>sua foto</b> (ou suas iniciais) abre <b>Meus dados</b>: celular, endereço e conta bancária para a FUNCERN.',
           'Se aparecer um aviso de <b>pendências no seu cadastro</b>, resolva primeiro: sem elas, a FUNCERN não paga.']],
+        ['Palavras usadas no sistema', [
+          '<b>Arlo</b>: o sistema de pagamentos da FUNCERN. O pagamento só sai depois de lançado lá.',
+          '<b>Aval</b>: a aprovação de um pedido de pagamento pela coordenação, antes do lançamento no Arlo.',
+          '<b>AVA</b>: a sala do curso FIC na internet (Ambiente Virtual de Aprendizagem do IFRN).',
+          '<b>FIC</b>: o curso de Formação Inicial e Continuada do IFRN, que a equipe de campo faz durante o projeto.',
+          '<b>FUNCERN</b>: a fundação que administra o dinheiro do projeto e paga bolsas e ajudas de custo.',
+          '<b>Habilitação</b>: os passos para poder trabalhar e receber (matrícula no FIC, cadastro no Arlo e termo assinado e conferido).',
+          '<b>Linha de base</b>: as respostas do diagnóstico, antes da implantação, comparadas depois com a avaliação final.',
+          '<b>Meta 1 a 8</b>: as metas do plano de trabalho do projeto (equipe, diagnósticos, quintais, visitas, eventos, intercâmbio, acompanhamento pedagógico e relatório).']],
         ['No sol: modo sol', [
           'O botão do <b>sol</b>, no alto da tela (na tela de entrada, <b>Modo sol</b>, no cartão de acesso), abre <b>Aparência da tela</b>.',
           'Ligue o <b>Modo sol</b> para usar no campo com sol forte: letra preta em fundo branco, bordas escuras e letra maior. Deixe também o brilho do celular no máximo.',
@@ -72,11 +81,11 @@
       t: 'Visão geral',
       intro: 'O retrato do projeto em uma tela: em que mês estamos, como está a equipe, a seleção das mulheres, o campo e os avisos que pedem atenção.',
       tarefas: [
-        ['Resolver um aviso', ['Leia os avisos do topo, do mais urgente para o menos.', 'Toque no aviso: o sistema abre a aba que resolve.', 'Faça a ação e volte à <b>Visão geral</b>: o aviso some quando o problema acaba.']]
+        ['Resolver o que pede atenção', ['Role a página até o quadro <b>O que pede atenção</b> (vem depois de <b>Situação do campo em cada estado</b>). Os itens vêm do mais grave para o menos grave.', 'Toque em <b>Resolver</b> (ou em <b>Consultar</b>, nos avisos): o sistema abre a aba que resolve.', 'Faça a ação e volte à <b>Visão geral</b>: o item some quando o problema acaba.']]
       ],
       passos: [
         'A linha de 13 quadradinhos mostra os meses do projeto; o quadrado colorido é o mês atual. Ao lado, quantos dias faltam para o fim da vigência.',
-        'Os <b>avisos</b> vêm por ordem de urgência (crítico, atenção, informação). Toque no aviso para ir direto à aba que resolve.',
+        '<b>Situação do campo em cada estado</b> mostra se o trabalho de campo já pode andar: equipe habilitada, fichas aprovadas, diagnósticos, visitas da semana e registros que ainda não foram enviados.', '<b>O que pede atenção</b> lista os problemas em três níveis: <b>Requer ação</b>, <b>Atenção</b> e <b>Aviso</b>. O botão <b>Resolver</b> leva direto à aba que resolve.',
         'O cartão <b>Ponto de partida</b> (e, depois das avaliações, <b>hoje</b>) compara a linha de base do diagnóstico com a avaliação final (fome, renda do quintal, consumo, venda, autonomia). Só entra quem já tem as duas medidas.',
         '<b>Financeiro e entregas</b> abre o painel de recursos, rubricas e metas físicas. Só a coordenação geral vê esse botão.'
       ],

@@ -46,8 +46,9 @@
     const semHab = d.pagaveis.filter(m => R.situacao(m).cod !== 'ok');
     if (semHab.length) a.push({ nivel: 'pend', texto: `${semHab.length} pessoa${semHab.length > 1 ? 's' : ''} ainda sem habilitação completa para a bolsa`,
       det: semHab.slice(0, 4).map(m => m.nome.split(' ')[0] + ' (' + R.passosHabilitacao(m).filter(p => !p.feito).map(p => p.id === 'fic' ? 'FIC' : p.id === 'funcern' ? 'FUNCERN' : 'termo').join(', ') + ')').join(' · ') + (semHab.length > 4 ? ' …' : ''), aba: 'equipe' });
-    const velhas = d.fichas.filter(f => f.situacao === 'aguardando' && f.criado_em && (Date.now() - new Date(f.criado_em)) > 5 * 864e5);
-    if (velhas.length) a.push({ nivel: 'pend', prazo: R.somaDias(velhas.map(f => R.diaLocal(f.criado_em)).sort()[0], 5), texto: `${velhas.length} ficha${velhas.length > 1 ? 's' : ''} aguardando aprovação há mais de 5 dias`, det: 'A aprovação é da coordenação técnica. Sem ela, o diagnóstico não começa.', aba: 'selecao' });
+    const desde = f => f.atualizado_em || f.criado_em;   // 13/10/2026: ficha devolvida e reenviada hoje não conta como atrasada
+    const velhas = d.fichas.filter(f => f.situacao === 'aguardando' && desde(f) && (Date.now() - new Date(desde(f))) > 5 * 864e5);
+    if (velhas.length) a.push({ nivel: 'pend', prazo: R.somaDias(velhas.map(f => R.diaLocal(desde(f))).sort()[0], 5), texto: `${velhas.length} ficha${velhas.length > 1 ? 's' : ''} aguardando aprovação há mais de 5 dias`, det: 'A aprovação é da coordenação técnica. Sem ela, o diagnóstico não começa.', aba: 'selecao' });
     const nCasas = R.contarCasas(d.fichas); const casas = d.fichas.filter(f => { const k = R.chaveCasa(f); return k && nCasas.get(k) > 1; });
     if (casas.length) a.push({ nivel: 'crit', prazo: 'imediato', texto: `${casas.length} fichas com o mesmo endereço de outra ficha`, det: 'Duas pessoas da mesma casa não podem ser selecionadas (risco de questionamento da seleção).', aba: 'selecao' });
     MQ.UFS.forEach(u => {
@@ -88,7 +89,7 @@
       const vs = (S.visitas || []).filter(v => v.etapa === etapa);
       atual = vs.filter(v => v.situacao === 'realizada').length;
       const prevs = vs.filter(v => v.situacao === 'prevista').length;
-      nota = `Visitas de ${etapa === 'implantacao' ? 'implantação' : 'acompanhamento'} marcadas como feitas no roteiro${prevs ? ` · ${prevs} agendada${prevs > 1 ? 's' : ''}` : ''}. O relatório de visita ainda é em papel.`;
+      nota = `Visitas de ${etapa === 'implantacao' ? 'implantação' : 'acompanhamento'} marcadas como feitas no roteiro${prevs ? ` · ${prevs} agendada${prevs > 1 ? 's' : ''}` : ''}. O relato e as fotos ficam no registro de cada visita.`;
     } else if (meta.fonte) nota = 'O formulário desta etapa ainda não está no sistema. Por enquanto o registro é em papel.';
     else nota = 'Acompanhada fora deste sistema, no painel financeiro e de entregas.';
     const antes = mes - 1 < meta.ini, depois = mes - 1 >= meta.fim;
@@ -376,7 +377,7 @@
       <div class="secao-cab"><div><h2 id="t-perfil">Quem são as mulheres</h2><p>${base.length ? 'Percentual ' + rotBase + ', pelos critérios de prioridade da ficha.' : 'Aparece quando houver mulheres selecionadas.'}</p></div></div>
       <div class="duas-col perfil-cols">
         <div class="bloco">${base.length ? `<ul class="perfil">${barras}</ul>
-          <p class="nota">"Negra, indígena, quilombola ou de comunidade tradicional" é um único campo na ficha v2: não dá para separar quilombolas.</p>` : '<p class="muted">Sem dados ainda.</p>'}</div>
+          <p class="nota">"Negra, indígena, quilombola ou de comunidade tradicional" é uma única pergunta na ficha: não dá para separar quilombolas.</p>` : '<p class="muted">Sem dados ainda.</p>'}</div>
         <div class="bloco"><h3>Ponto de partida${temDepois ? ' e hoje' : ''}</h3>
           ${diags.length ? `<div class="resumo r2">
               <div><span class="v num">${R.fmtBRL(mq || 0).replace(',00', '')}</span><span class="l">mediana por mês com vendas do quintal${mqD != null ? ` · nos ${avPar.length} avaliados: ${R.fmtBRL(mqA || 0).replace(',00', '')} → <b>${R.fmtBRL(mqD).replace(',00', '')}</b>` : ''}</span></div>

@@ -128,6 +128,11 @@ chk as (
                    and exists (select 1 from pg_proc where proname = 'vitrine_municipios' and prosrc like '%sem_acento%')
   union all select '52_acompanhamento (perfis de acompanhamento do MDA e do MPA)', to_regclass('public.observadores') is not null and exists (select 1 from pg_proc where proname = 'acompanhamento_dados') and exists (select 1 from pg_proc where proname = 'bloquear_conta_nao_cadastrada' and prosrc like '%observadores%')
   union all select '51_kit_itens (itens do kit com preço de referência)', to_regclass('public.kit_itens') is not null and exists (select 1 from pg_proc where proname = 'salvar_kit_item')
+  union all select '61_auditoria_campo (termo conferido é o arquivo aberto; bolsa depois da saída; acompanhamento repetido; plano para a agente escalada)',
+                   exists (select 1 from pg_proc where proname = 'conferir_termo') and exists (select 1 from pg_trigger where not tgisinternal and tgname = 'z_depois_da_saida')
+                   and exists (select 1 from pg_policy where polname = 'diag_ler_escalada') and exists (select 1 from pg_trigger where not tgisinternal and tgname = 'z_visitas_fotos_ficam')
+  union all select 'vitrine pública: quem não entrou vê as fotos (se FALTA: rode o 61)',
+                   to_regprocedure('public.vitrine_foto_publica(text)') is null or has_function_privilege('anon', 'public.vitrine_foto_publica(text)', 'EXECUTE')
   union all select '60_planilha_e_mpa (planilhas baixadas no Histórico; equipe habilitada na tela do MPA)',
                    exists (select 1 from pg_proc where proname = 'registrar_planilha') and exists (select 1 from pg_proc where proname = 'acompanhamento_equipe_uf')
   union all select '59_corrige_desligamento (desligamento com as duas travas: visita agendada e pagamento a pedir)',

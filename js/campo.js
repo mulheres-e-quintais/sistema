@@ -344,7 +344,7 @@
     <select name="fam_par" aria-label="Parentesco">${MQ.DIAG.parentesco.map(p => `<option ${x.parentesco === p ? 'selected' : ''}>${p}</option>`).join('')}</select>
     <input name="fam_ocup" placeholder="Estuda / trabalha?" value="${E(x.ocupacao || '')}" aria-label="Estuda ou trabalha" maxlength="120">
     <label class="mini-chk"><input type="checkbox" name="fam_ajuda" ${x.ajuda ? 'checked' : ''}>Ajuda no quintal</label>
-    <button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`;
+    <button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover esta pessoa da família" title="Remover esta pessoa da família">×</button></div>`;
   /* Preços do kit (decisão de 04/10/2026): a compra é feita por empresa contratada; o valor é só referência e
      aparece só para a coordenação geral. Os outros perfis escolhem item, quantidade e para quê. O valor que já
      estava gravado num plano segue escondido no formulário, para não se perder quando outra pessoa edita. */
@@ -352,11 +352,11 @@
   const linhaKit = (x = {}) => !vePreco() ? `<div class="linha-din kit" data-linha="kit">
     <input name="kit_item" list="kit-lista" autocomplete="off" placeholder="Item (escolha na lista)" value="${E(x.item || '')}" aria-label="Item" maxlength="120"><input name="kit_qtd" placeholder="Qtd." inputmode="decimal" value="${E(x.qtd_txt || x.qtd || '')}" aria-label="Quantidade" maxlength="40">
     <input type="hidden" name="kit_valor" value="${E(x.valor != null ? String(x.valor).replace('.', ',') : '')}">
-    <input name="kit_para" placeholder="Para quê" value="${E(x.para || '')}" aria-label="Para quê" maxlength="200"><button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`
+    <input name="kit_para" placeholder="Para quê" value="${E(x.para || '')}" aria-label="Para quê" maxlength="200"><button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover este item do kit" title="Remover este item do kit">×</button></div>`
   : `<div class="linha-din kit kit5" data-linha="kit">
     <input name="kit_item" list="kit-lista" autocomplete="off" placeholder="Item (escolha na lista)" value="${E(x.item || '')}" aria-label="Item" maxlength="120"><input name="kit_qtd" placeholder="Qtd." inputmode="decimal" value="${E(x.qtd_txt || x.qtd || '')}" aria-label="Quantidade" maxlength="40">
     <input name="kit_valor" placeholder="R$ unid." inputmode="decimal" value="${E(x.valor != null ? String(x.valor).replace('.', ',') : '')}" aria-label="Valor estimado de cada unidade (R$)" maxlength="20">
-    <input name="kit_para" placeholder="Para quê" value="${E(x.para || '')}" aria-label="Para quê" maxlength="200"><button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`;
+    <input name="kit_para" placeholder="Para quê" value="${E(x.para || '')}" aria-label="Para quê" maxlength="200"><button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover este item do kit" title="Remover este item do kit">×</button></div>`;
   /* coordenação: valor do kit por quintal e o total projetado pelos planos */
   function blocoKitPar() {
     const lim = +((S().kitPar || {}).valor_quintal) || 0; const nQ = MQ.VAGAS_UF * MQ.UFS.length;
@@ -468,7 +468,7 @@
   const linhaCron = (x = {}) => `<div class="linha-din kit" data-linha="cron">
     <input name="cr_oque" placeholder="O que fazer" value="${E(x.oque || '')}" aria-label="O que fazer" maxlength="200"><input name="cr_ini" placeholder="Mês início" value="${E(x.inicio || '')}" aria-label="Mês de início" maxlength="40">
     <input name="cr_fim" placeholder="Mês fim" value="${E(x.fim || '')}" aria-label="Mês de fim" maxlength="40"><input name="cr_quem" placeholder="Quem faz" value="${E(x.quem || '')}" aria-label="Quem faz" maxlength="120">
-    <button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover">×</button></div>`;
+    <button type="button" class="fechar" data-acao="campo-linha-rem" aria-label="Remover esta etapa do cronograma" title="Remover esta etapa do cronograma">×</button></div>`;
 
   function painelDiag(p) {
     const f = ficha(p.ficha); if (!f) return '<div class="painel-corpo"><p>Ficha não encontrada.</p></div>';
@@ -491,9 +491,9 @@
             <span class="dica" id="dg-gps-dica">${d.latitude ? E(d.latitude + ', ' + d.longitude) : 'Registre em pé, no quintal, durante a visita.'}</span></div>
           ${(() => { const mt = String(d.sem_gps_motivo || ''); const tipo = MOTIVOS_SEM_GPS.find(x => mt.startsWith(x + '. ')) || ''; const det = tipo ? mt.slice(tipo.length + 2) : mt;
             return `<div class="campo inteiro sem-gps" id="w-sem_gps_motivo"><label for="dg-semgps-tipo">Sem localização? Por quê</label>
-              <select id="dg-semgps-tipo" name="sem_gps_tipo"><option value="">Escolha, se não conseguiu registrar…</option>${MOTIVOS_SEM_GPS.map(x => `<option${x === tipo ? ' selected' : ''}>${E(x)}</option>`).join('')}</select>
+              <select id="dg-semgps-tipo" name="sem_gps_tipo"><option value="">Por que não registrou?</option>${MOTIVOS_SEM_GPS.map(x => `<option${x === tipo ? ' selected' : ''}>${E(x)}</option>`).join('')}</select>
               <label for="dg-semgps" class="so-leitor">Explique com suas palavras</label>
-              <input id="dg-semgps" name="sem_gps_detalhe" value="${E(det)}" maxlength="500" placeholder="Explique com suas palavras: onde fica o quintal e o que aconteceu">
+              <input id="dg-semgps" name="sem_gps_detalhe" value="${E(det)}" maxlength="500" placeholder="Onde fica e o que aconteceu">
               <span class="dica">Sem localização, a coordenação só aprova depois de confirmar a visita de outro jeito.</span></div>`; })()}
         </div></fieldset>
 
@@ -569,7 +569,7 @@
           <button type="button" class="btn-add" data-acao="campo-linha-add" data-tipo="cron"><span aria-hidden="true">+</span> Atividade</button>
           <div class="campos">
             <div class="campo" id="w-lote"><label>Lote de implantação</label>${rad('lote', [['1', 'Lote 1 (jan–abr)'], ['2', 'Lote 2 (mai–jul)']], d.lote ? String(d.lote) : '')}</div>
-            <div class="campo"><label for="dg-mes">Mês previsto</label><input id="dg-mes" name="mes_implantacao" value="${v('mes_implantacao')}" maxlength="120" placeholder="No início das chuvas ou com água garantida"></div>
+            <div class="campo"><label for="dg-mes">Mês previsto</label><input id="dg-mes" name="mes_implantacao" value="${v('mes_implantacao')}" maxlength="120" placeholder="Ex.: início das chuvas"></div>
           </div></fieldset>
         <fieldset><legend>12. Compromissos</legend>
           <label class="check" id="w-compromissos"><input type="checkbox" name="compromissos" ${d.compromissos ? 'checked' : ''}><span>Ela concorda em usar o kit no quintal, cuidar da produção, receber as visitas, participar das formações e avisar a equipe se deixar de usar o quintal.</span></label>

@@ -60,7 +60,12 @@
     await esperarAbertura();
     render();
     if ('serviceWorker' in navigator && location.protocol === 'https:' && !MQ.CONFIG.semServiceWorker) {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
+      navigator.serviceWorker.register('sw.js').then(reg => {
+        // 13/10/2026: app instalado que fica dias aberto em segundo plano também procura versão nova (ao voltar à tela e quando o sinal volta)
+        const procurar = () => { try { reg.update(); } catch (e) {} };
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') procurar(); });
+        window.addEventListener('online', procurar);
+      }).catch(() => {});
     }
   }
   const modoDemoAtivo = () => !!(S.api && S.api.modo === 'demo');
@@ -113,7 +118,13 @@
   }
   const AVISO_INATIVO = 'Você saiu do sistema depois de 15 minutos sem uso. Entre de novo. O que estava guardado no celular não se perdeu: é enviado quando você entrar.';
   /* sai do sistema (botão Sair ou 15 minutos sem uso): fecha o painel, apaga do aparelho a cópia dos dados e volta para a entrada */
+  let saindo = false;
   async function sairDoSistema(aviso) {
+    if (saindo) return; saindo = true;
+    try { await sairDoSistemaAgora(aviso); } finally { saindo = false; }
+  }
+  const AVISO_OUTRA_JANELA = 'Você saiu do sistema (em outra janela, ou a sessão terminou). Entre de novo. O que estava guardado no celular não se perdeu.';
+  async function sairDoSistemaAgora(aviso) {
     if (aviso) guardarRascunhoPainel('inatividade');   // saiu sozinho: guarda o formulário pela metade
     if (S.eu && !S.verEntrada) await registrarAcesso(aviso ? 'saida_inatividade' : 'saida');   // antes de encerrar a sessão no servidor
     try { sessionStorage.removeItem(CHAVE_ABRIU); } catch (e) {}
@@ -127,9 +138,10 @@
     // LGPD: a cópia dos dados (fichas, equipe, histórico) não fica no aparelho depois de sair.
     // Para entrar de novo é preciso internet, e aí tudo é recarregado. A fila do que não foi enviado fica.
     try { localStorage.removeItem(chaveCache()); } catch (e) {}
+    S.cacheGravado = null;   // a cópia saiu do aparelho: na próxima carga ela é gravada de novo
     if (modoDemoAtivo()) { S.verEntrada = true; render(); return; }   // demonstração: volta para a tela de entrada
     try { await S.api.sair(); } catch (e) { /* sem internet: a sessão já foi apagada do aparelho */ }
-    S.eu = null; S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.documentos = []; S.acessos = []; S.execPlanilhas = []; S.encontros = []; S.agua = [];
+    S.eu = null; S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.audFim = false; S.documentos = []; S.acessos = []; S.execPlanilhas = []; S.encontros = []; S.agua = [];
     S.acomp = null; S.acompErro = null; S.acompPrevia = null; S.acompCodigo = null; S.acompConfirma = null; S.observadores = []; S.kitItens = [];   // números do acompanhamento, código de acesso recém-gerado e listas da coordenação não ficam na memória depois de sair
     S.solic = []; S.pedidos = []; S.pre = []; S.pedidosAcesso = []; S.entregas = []; S.matriculas = []; S.turmas = []; S.avaliacoes = []; S.codigos = {}; S.confirmaAcesso = null; S.painel = null; S.solicVis = {}; S.canaisVenda = []; S.orientacoesVenda = []; S.vendaFolha = null; S.ciencias = []; S.testes = []; S.saldoPed = null; S.quemConfere = null; S.filaCelular = []; S.filaCelularSemBanco = false;   // nada da pessoa anterior fica na memória
     if (MQ.convitesUI && MQ.convitesUI.limparCache) MQ.convitesUI.limparCache();
@@ -144,7 +156,8 @@
      nas abas deles. Na entrada e nas atualizações de fundo eles só são lidos se a aba estiver na tela.
      Cada parte diz em que aba aparece, como busca, o que vale enquanto não veio e onde guarda. */
   const DA_ABA = {
-    aud:  { nome: 'histórico', abas: ['historico'], busca: () => S.api.auditoria(), antes: () => S.aud || [], poe: v => { S.aud = v; } },
+    aud:  { nome: 'histórico', abas: ['historico'], busca: () => S.api.auditoria(), antes: () => S.aud || [], poe: v => { const ja = new Set(v.map(x => x.id)), corte = v.length ? String(v[v.length - 1].em) : '';   // os mais antigos já carregados continuam
+      S.aud = v.concat((S.aud || []).filter(x => !ja.has(x.id) && corte && String(x.em) < corte)); } },
     docs: { nome: 'documentos', abas: ['documentos'], busca: () => (S.api.listarDocumentos ? talvez(() => S.api.listarDocumentos(), semFic) : [true, []]),   // 24_documentos.sql
             antes: () => [!S.docSemBanco, S.documentos || []], poe: v => { S.docSemBanco = !v[0]; S.documentos = v[0] ? v[1] : []; } }
   };
@@ -159,7 +172,14 @@
     if (!buscandoAba) { buscandoAba = true; Promise.resolve().then(() => carregarDaAba()).catch(() => {}).then(() => { buscandoAba = false; }); }
     return '<p class="muted" role="status" data-carregando-aba>Carregando…</p>';
   };
-  async function carregarDaAba() {
+  const abaEmCurso = {};
+  function carregarDaAba() {   // 13/10/2026: uma busca por vez (o clique e o "Carregando…" pediam a mesma coisa duas vezes)
+    if (!S.eu) return Promise.resolve();
+    const chave = S.eu.id + '|' + abaAtual();
+    if (!abaEmCurso[chave]) abaEmCurso[chave] = carregarDaAbaAgora().finally(() => { delete abaEmCurso[chave]; });
+    return abaEmCurso[chave];
+  }
+  async function carregarDaAbaAgora() {
     if (!S.eu || S.verEntrada || S.eu.papel !== 'coord_geral' || S.semRede || semLinha()) return;
     const id = S.eu.id, aba = abaAtual(), ks = Object.keys(DA_ABA).filter(daAbaNaTela); if (!ks.length) return;
     await Promise.all(ks.map(async k => {
@@ -247,34 +267,41 @@
       S.perfisSemBanco = !perfis[0]; S.perfisEquipe = perfis[0] ? perfis[1] : [];
       S.pre = pre; S.exemplo = exemplo; S.pedidosAcesso = pedAcesso[0] ? pedAcesso[1] : [];
       S.acessosSemBanco = !acessos[0]; S.acessos = acessos[0] ? acessos[1] : [];
-      // 58: registros parados nos celulares (só a coordenação; sem o script, a tela pede para rodar)
-      if (coord && S.api.listarFilaCelular) { try { S.filaCelular = await S.api.listarFilaCelular(); S.filaCelularSemBanco = false; }
-        catch (e) { if (e && e.semRede) throw e; S.filaCelularSemBanco = true; S.filaCelular = S.filaCelular || []; } }   // sem o script (ou erro do banco): a tela diz o que fazer, nunca "nenhum registro parado" sem saber
-      // segunda leva: os pedidos de viagem dependem de saber quem confere (22 e 26)
-      const pedAntes = S.pedidos || []; S.pedSemBanco = false; S.pedidos = [];
-      if (S.api.listarPedidos && MQ.viagUI && (MQ.viagUI.podeVer(papel) || MQ.viagUI.souConferente())) {
-        try {
-          const r = await talvez(() => S.api.listarPedidos(), semFic); S.pedSemBanco = !r[0]; S.pedidos = r[0] ? r[1] : [];
-          if (S.api.saldoPedidos && !S.pedSemBanco) { const sd = await talvez(() => S.api.saldoPedidos(), qualquer); S.saldoPed = sd[0] ? sd[1] : null; }   // 35
-        } catch (e) { if (e && e.semRede) throw e; falhas.push('viagens e eventos'); S.pedidos = pedAntes; }
-      }
-      /* itens do kit com preço de referência (51_kit_itens.sql): sem a tabela, ou com ela vazia, vale a lista do sistema */
-      S.kitItensSemBanco = true;
-      if (S.api.listarKitItens && (campoPapel || coord)) {
-        try { const r = await talvez(() => S.api.listarKitItens(), semFic); S.kitItensSemBanco = !r[0]; S.kitItens = r[0] ? r[1] : []; }
-        catch (e) { if (e && e.semRede) throw e; falhas.push('itens do kit'); }
-      }
-      /* quem acompanha o projeto de fora (52_acompanhamento.sql): a lista é só da coordenação geral */
-      S.obsSemBanco = true;
-      if (papel === 'coord_geral' && S.api.listarObservadores) {
-        try { const r = await talvez(() => S.api.listarObservadores(), semFic); S.obsSemBanco = !r[0]; S.observadores = r[0] ? r[1] : []; }
-        catch (e) { if (e && e.semRede) throw e; falhas.push('acompanhamento externo'); }
-      }
+      // 13/10/2026 (auditoria): estas quatro leituras não dependem umas das outras: vão AO MESMO TEMPO (antes, uma depois da outra:
+      // ~1,6 s a mais por carga da coordenação no 3G). Sem internet, qualquer uma derruba a carga, como antes.
+      const pedAntes = S.pedidos || []; S.pedSemBanco = false; S.pedidos = []; S.kitItensSemBanco = true; S.obsSemBanco = true;
+      await Promise.all([
+        (async () => {   // 58: registros parados nos celulares (só a coordenação; sem o script, a tela pede para rodar)
+          if (coord && S.api.listarFilaCelular) { try { S.filaCelular = await S.api.listarFilaCelular(); S.filaCelularSemBanco = false; }
+            catch (e) { if (e && e.semRede) throw e; S.filaCelularSemBanco = true; S.filaCelular = S.filaCelular || []; } }   // sem o script (ou erro do banco): a tela diz o que fazer
+        })(),
+        (async () => {   // pedidos de viagem: dependem de saber quem confere (22 e 26), e o saldo depende dos pedidos
+          if (S.api.listarPedidos && MQ.viagUI && (MQ.viagUI.podeVer(papel) || MQ.viagUI.souConferente())) {
+            try {
+              const r = await talvez(() => S.api.listarPedidos(), semFic); S.pedSemBanco = !r[0]; S.pedidos = r[0] ? r[1] : [];
+              if (S.api.saldoPedidos && !S.pedSemBanco) { const sd = await talvez(() => S.api.saldoPedidos(), qualquer); S.saldoPed = sd[0] ? sd[1] : null; }   // 35
+            } catch (e) { if (e && e.semRede) throw e; falhas.push('viagens e eventos'); S.pedidos = pedAntes; }
+          }
+        })(),
+        (async () => {   // itens do kit com preço de referência (51_kit_itens.sql): sem a tabela, ou com ela vazia, vale a lista do sistema
+          if (S.api.listarKitItens && (campoPapel || coord)) {
+            try { const r = await talvez(() => S.api.listarKitItens(), semFic); S.kitItensSemBanco = !r[0]; S.kitItens = r[0] ? r[1] : []; }
+            catch (e) { if (e && e.semRede) throw e; falhas.push('itens do kit'); }
+          }
+        })(),
+        (async () => {   // quem acompanha o projeto de fora (52_acompanhamento.sql): a lista é só da coordenação geral
+          if (papel === 'coord_geral' && S.api.listarObservadores) {
+            try { const r = await talvez(() => S.api.listarObservadores(), semFic); S.obsSemBanco = !r[0]; S.observadores = r[0] ? r[1] : []; }
+            catch (e) { if (e && e.semRede) throw e; falhas.push('acompanhamento externo'); }
+          }
+        })()
+      ]);
       S.cargaParcial = falhas.length ? falhas : null;
       // cálculo de custos carregado em segundo plano: a aba Custos abre pronta, sem "Carregando…" e sem a página pular
       if (coord && MQ.custosUI && !MQ.custosUI.pronto()) MQ.custosUI.garantir().then(() => { if (S.aba === 'custos') renderFundo(); }).catch(() => {});
       S.semRede = false;
-      if (!falhas.length) try { localStorage.setItem(chaveCache(), JSON.stringify({ equipe: S.equipe, fichas: S.fichas, visitas: S.visitas, diagnosticos: S.diagnosticos, aud: S.aud, kitItens: S.kitItens || [], em: Date.now() })); } catch (e) {}
+      if (!falhas.length) try { const corpo = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.aud, S.kitItens || []]);   // 13/10/2026: só regrava a cópia do aparelho quando os dados mudaram
+        if (corpo !== S.cacheGravado) { localStorage.setItem(chaveCache(), JSON.stringify({ equipe: S.equipe, fichas: S.fichas, visitas: S.visitas, diagnosticos: S.diagnosticos, aud: S.aud, kitItens: S.kitItens || [], em: Date.now() })); S.cacheGravado = corpo; } } catch (e) {}
     } catch (e) {
       if (!e.semRede) throw e;
       // Sem internet: mostra a última cópia guardada no aparelho
@@ -295,6 +322,8 @@
       await S.api.informarFila(r); filaInformada = ch; filaInformadaEm = Date.now();
     } catch (e) { /* nunca atrapalha */ }
   }
+  // a fila rodou mais uma volta sozinha (registro salvo enquanto outro subia): atualiza a tela e avisa
+  if (MQ.fila) MQ.fila.aoEnviarDepois = r => { informarFila(); carregar().then(() => renderFundo()).catch(() => {}); toast(r.enviados + (r.enviados > 1 ? ' registros enviados.' : ' registro enviado.')); };
   async function sincronizar(avisar) {
     if (!S.eu || !R.ehCampo(S.eu.papel) || !navigator.onLine) return;
     const antes = (await MQ.fila.listar(S.eu.id)).length; if (!antes) { informarFila(); return; }
@@ -315,7 +344,16 @@
   const digitando = () => { const a = document.activeElement;
     return (a && a.closest && a.closest('#app') && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) || Date.now() - digitouEm < 60000; };
   async function atualizarEmSegundoPlano(forcar) {
+    // abriu sem internet e o sinal voltou: relê o perfil e os dados (antes a faixa "Sem internet" ficava até recarregar a página)
+    if (S.eu && !S.verEntrada && !atualizando && (S.semRede || (S.api && S.api.offline)) && !(typeof navigator !== 'undefined' && navigator.onLine === false)) {
+      atualizando = true;
+      try { if (S.api.eu) { const eu = await S.api.eu(true); if (eu) S.eu = eu; } S.semRede = false; await carregar(); atualizadoEm = Date.now(); renderFundo(); } catch (e) {} finally { atualizando = false; }
+      if (!S.semRede) sincronizar(false).catch(() => {});
+      return;
+    }
     if (!S.eu || S.verEntrada || atualizando || S.semRede || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
+    // 13/10/2026: registro guardado no celular sobe também aqui (antes só ao salvar outro ou ao entrar)
+    if (MQ.fila && !MQ.fila.enviando) { try { if ((await MQ.fila.listar(S.eu.id)).some(it => !it.erro || it.reenviar)) { sincronizar(false).catch(() => {}); } } catch (e) {} }
     if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
     if (!forcar && Date.now() - atualizadoEm < ATUALIZA_MIN) return;
     atualizando = true;
@@ -339,7 +377,7 @@
   /* sem coordenação técnica ativa (vaga aberta, desligada): a coordenação geral assume a vez dela
      nos contadores e listas, para nenhum pedido ficar parado sem aviso. Só vale para quem vê a equipe toda. */
   const semTecnica = () => !!(S.eu && S.eu.papel === 'coord_geral') && !(S.equipe || []).some(m => m.papel === 'coord_tecnico' && m.status === 'ativa');
-  MQ.ui = { kpi: (n, de, rot, k, op) => kpiEq(n, de, rot, k, op), vagaAberta, S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: o => render(o), renderFundo: () => renderFundo(), abrirPainel: p => abrirPainel(p), fecharPainel: o => fecharPainel(o), pedirFechar: () => pedirFechar(), painelAlterado: () => painelAlterado(),
+  MQ.ui = { sessaoEncerrada: () => { if (S.eu && !S.verEntrada && !saindo) sairDoSistema(AVISO_OUTRA_JANELA); }, kpi: (n, de, rot, k, op) => kpiEq(n, de, rot, k, op), vagaAberta, S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: o => render(o), renderFundo: () => renderFundo(), abrirPainel: p => abrirPainel(p), fecharPainel: o => fecharPainel(o), pedirFechar: () => pedirFechar(), painelAlterado: () => painelAlterado(),
     irParaAba: x => irParaAba(x), avisarVersaoNova: () => avisarVersaoNova(), declarados: (f, r) => declarados(f, r),
     vista: () => vistaDoPainel(), marcaAberta: (t, id) => marcaAberta(t, id), reabrirComConflito: m => reabrirComConflito(m),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), carregarDaAba: () => carregarDaAba(), sincronizar: a => sincronizar(a),
@@ -460,12 +498,8 @@
         : [txt(c.querySelector('.eq-n, .dx-kpi-n, .v')), txt(c.querySelector('.eq-l, .dx-kpi-r, .l')), txt(c.querySelector('.dx-kpi-p')), txt(c.querySelector('.dx-kpi-s, .eq-ok'))];
       const rot = partes.filter(Boolean).join(', '); if (rot) c.setAttribute('aria-label', rot);
     });
-    todosDe(raiz, '.quadro-scroll, .rel-previa, .eg-caixa').forEach(c => {
-      if (c.hasAttribute('tabindex') || !(c.scrollWidth > c.clientWidth + 1 || c.scrollHeight > c.clientHeight + 1)) return;
-      if (c.querySelector('a[href],button:not([disabled]),input,select,textarea,[tabindex]')) return;   // já tem onde parar
-      c.setAttribute('tabindex', '0'); if (!c.getAttribute('role')) c.setAttribute('role', 'region');
-      if (!c.getAttribute('aria-label') && !c.getAttribute('aria-labelledby')) { const t = c.querySelector('caption, h1, h2, h3'); c.setAttribute('aria-label', (t && t.textContent.trim()) || 'Tabela: role para o lado para ver tudo'); }
-    });
+    // quadro que rola para o lado: js/teclado.js (uma rotina só, com o nome da seção em cada um)
+    if (MQ.teclado) MQ.teclado.marcar(raiz);
   }
 
   /* rodapé de todas as páginas */
@@ -478,7 +512,7 @@
     </div></footer>`;
   }
   function barra(publica, semBotao) {
-    return `<header class="barra"><div class="barra-in">
+    return `<header class="barra"><button type="button" class="pular" data-acao="pular">Pular para o conteúdo</button><div class="barra-in">
       <div class="marca"><img class="emb" src="assets/isotipo.svg" alt="" width="36" height="52"><img src="assets/logo-claro.svg" alt="Mulheres &amp; Quintais" width="112" height="36"><span class="sep" aria-hidden="true"></span>
         <span class="sis"><b>Sistema do projeto</b>Quintais Produtivos para Mulheres Rurais</span></div>
       ${publica ? (semBotao ? '' : `<a class="btn-barra" href="#">${S.eu ? 'Voltar ao sistema' : 'Entrar'}</a>`) : S.eu && !S.verEntrada ? `<div class="quem">${MQ.aparencia ? MQ.aparencia.botao() : ''}<button class="btn-ajuda" data-acao="ajuda" title="Ajuda desta tela" aria-label="Ajuda desta tela">?</button><button class="btn-meus" data-acao="meus-dados" title="Meus dados" aria-label="Meus dados e conta bancária">${avatar(Object.assign({}, S.eu, porId(S.eu.id) || {}), 34)}</button><span><span class="nome">${esc(S.eu.nome)}</span><br><span class="papel">${esc(P[S.eu.papel].nome)}${S.eu.uf ? ' · ' + esc(S.eu.uf) : ''}</span></span>
@@ -557,7 +591,7 @@
     const grupos = GRUPOS_ABAS.map(([g, ids]) => [g, ids.map(id => abas.find(([i]) => i === id)).filter(Boolean)]).filter(([, l]) => l.length);
     const soltas = abas.filter(([id]) => !GRUPOS_ABAS.some(([, ids]) => ids.includes(id)));
     const nav = `<nav class="abas abas-grupos" aria-label="Seções">${grupos.map(([g, l]) => `<div class="aba-grupo" role="group" aria-label="${g}"><span class="aba-g" aria-hidden="true">${g}</span><div class="aba-btns">${l.map(btnAba).join('')}</div></div>`).join('')}${soltas.length ? `<div class="aba-grupo"><div class="aba-btns">${soltas.map(btnAba).join('')}</div></div>` : ''}</nav>
-      <details class="abas-m"><summary><span class="small muted">Seção</span> <b>${(abas.find(([id]) => id === aba) || abas[0])[1]}</b>${somaOutras ? `<span class="conta abas-m-pend" aria-hidden="true">${somaOutras}</span><span class="so-leitor"> (${somaOutras} esperando você em: ${esc(outras.map(([id]) => nomeAba(id)).join(', '))})</span>` : ''}<span class="abas-m-seta" aria-hidden="true">▾</span></summary>
+      <details class="abas-m"><summary><span class="small muted">Seção</span> <b>${esc(nomeAba(aba))}</b>${somaOutras ? `<span class="conta abas-m-pend" aria-hidden="true">${somaOutras}</span><span class="so-leitor"> (${somaOutras} esperando você em: ${esc(outras.map(([id]) => nomeAba(id)).join(', '))})</span>` : ''}<span class="abas-m-seta" aria-hidden="true">▾</span></summary>
         <div class="abas-m-grade">${grupos.map(([g, l]) => `<span class="aba-g">${g}</span>${l.map(btnAba).join('')}`).join('')}${soltas.map(btnAba).join('')}</div></details>`;
     const intro = souGeral
       ? 'Você cadastra a coordenação técnica indicada pelo MPA, os professores do curso FIC e o auxiliar administrativo, e tem acesso a tudo: também pode cadastrar, editar e desligar bolsistas e agentes, registrar a habilitação e matricular no FIC.'
@@ -835,7 +869,7 @@
     if (A.status === 'ativa' && D.status === 'desligada') return `<b>${esc(quem)}</b> desligou <b>${esc(D.nome)}</b> (${esc(papel)}): ${esc(D.motivo_desligamento)}`;
     const partes = [];
     if (!A.matricula_fic_em && D.matricula_fic_em) partes.push('matrícula no FIC');
-    if (!A.docs_funcern_em && D.docs_funcern_em) partes.push('documentos na FUNCERN');
+    if (!A.docs_funcern_em && D.docs_funcern_em) partes.push('cadastro no Arlo (FUNCERN)');
     if (!A.termo_assinado_em && D.termo_assinado_em) partes.push('termo de compromisso');
     if (A.user_id !== D.user_id && D.user_id) return `<b>${esc(D.nome)}</b> entrou no sistema pela primeira vez.`;
     if (partes.length) return `<b>${esc(quem)}</b> registrou ${partes.join(', ')} de <b>${esc(D.nome)}</b>.`;
@@ -852,10 +886,12 @@
       return cab + `<li><time datetime="${esc(a.em)}">${fmtH(a.em)}</time><span>${descreverAud(a)}</span></li>`; }).join(''); };
     const semana = S.aud.filter(a => Date.now() - new Date(a.em) < 7 * 864e5).length;
     const ord = S.aud.slice().sort((x, y) => String(y.em).localeCompare(String(x.em)));
-    const N = 12, rec = ord.slice(0, N), resto = ord.slice(N, 200);
-    return `<p class="small muted">${S.aud.length} registro${S.aud.length > 1 ? 's' : ''} · ${semana} nos últimos 7 dias</p>
+    const N = 12, rec = ord.slice(0, N), resto = ord.slice(N);
+    // 13/10/2026 (auditoria): o histórico inteiro, 200 por vez (antes só os 200 últimos; os downloads de planilha sumiam em dias)
+    const mais = S.audFim ? '' : (S.aud.length >= 200 ? '<p><button type="button" class="btn peq" data-acao="hist-mais">Carregar registros mais antigos</button></p>' : '');
+    return `<p class="small muted">${S.aud.length} registro${S.aud.length > 1 ? 's' : ''} carregado${S.aud.length > 1 ? 's' : ''} · ${semana} nos últimos 7 dias</p>
       <ul class="linha-tempo lt-hora">${lista(rec)}</ul>
-      ${resto.length ? dobra('hist-antigos', `Ver ${resto.length} registro${resto.length > 1 ? 's' : ''} anterior${resto.length > 1 ? 'es' : ''}`, `<ul class="linha-tempo lt-hora">${lista(resto)}</ul>`) : ''}`;
+      ${resto.length ? dobra('hist-antigos', `Ver ${resto.length} registro${resto.length > 1 ? 's' : ''} anterior${resto.length > 1 ? 'es' : ''}`, `<ul class="linha-tempo lt-hora">${lista(resto)}</ul>${mais}`) : mais}`;
   }
 
   /* ---------- Últimos acessos (só a coordenação geral; 30_ultimos_acessos.sql) ---------- */
@@ -1522,6 +1558,11 @@
               return (ts.length ? `<div class="aviso erro"><b>Ainda não dá para desligar.</b> É professor(a) da turma em andamento ${esc(ts.map(t => t.nome).join(', '))}. Passe a turma para outro(a) professor(a) na aba Curso FIC (Editar) e desligue depois.</div>` : '')
                 + (pg.length ? `<div class="aviso"><b>${pg.length} pagamento${pg.length > 1 ? 's' : ''} em aberto</b> (${pg.map(x => (x.tipo === 'bolsa' ? 'bolsa' : 'ajuda de custo') + ' de ' + String(x.mes || '').slice(5, 7) + '/' + String(x.mes || '').slice(0, 4)).join(', ')}). O desligamento não cancela: ela tem direito a receber pelo que fez. O pedido continua até o lançamento no Arlo.</div>` : '')
                 + (pd.length ? `<div class="aviso"><b>${pd.length} pedido${pd.length > 1 ? 's' : ''} de passagem ou evento ainda não autorizado${pd.length > 1 ? 's' : ''}</b> ser${pd.length > 1 ? 'ão' : 'á'} cancelado${pd.length > 1 ? 's' : ''} ao desligar, com o motivo registrado.</div>` : ''); })()}
+          ${(() => {   // 13/10/2026: bolsa de mês já começado e sem pedido (só aviso: pode ser que o mês não tenha sido trabalhado)
+              const ms = R.mesesBolsaSemPedido(m, S.solic); if (!ms.length) return '';
+              const nm = k => { const [a, mm] = k.split('-'); return ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][+mm - 1] + '/' + a; };
+              return `<div class="aviso" data-bolsa-sem-pedido><b>Bolsa sem pedido: ${ms.map(nm).join(', ')}.</b> Se ela trabalhou nesse período, peça que faça o pedido antes de desligar: depois ela não entra mais no sistema e ninguém pede por ela.</div>`;
+            })()}
           ${(() => {   // 57: visita feita sem pedido ou pedido devolvido: ela perderia o pagamento ao ser desligada (perde o acesso)
               const pe = R.pendenciasPagamento(m.id, S.visitas, S.solicVis, S.solic); if (!pe.total) return '';
               const o = [pe.visitas ? pe.visitas + ' visita' + (pe.visitas > 1 ? 's feitas' : ' feita') + ' sem pedido de ajuda de custo' : '', pe.devolvidos ? pe.devolvidos + ' pedido' + (pe.devolvidos > 1 ? 's devolvidos' : ' devolvido') + ' para corrigir' : ''].filter(Boolean).join(' e ');
@@ -1931,6 +1972,14 @@
         }
       }
       else if (a === 'ajuda') { if (S.menuAberto) { S.menuAberto = false; render(); } S.voltarFoco = el; abrirPainel({ tipo: 'ajuda', k: el.dataset.k }); }
+      else if (a === 'hist-mais') {
+        const ord = (S.aud || []).slice().sort((x, y) => String(y.em).localeCompare(String(x.em))); const ult = ord[ord.length - 1];
+        el.disabled = true; el.textContent = 'Carregando…';
+        try { const v = await S.api.auditoria(ult ? ult.em : null); const ja = new Set(S.aud.map(x => x.id)); const novos = (v || []).filter(x => !ja.has(x.id));
+          S.aud = S.aud.concat(novos); if ((v || []).length < 200) S.audFim = true; (S.aberto = S.aberto || {})['hist-antigos'] = true; renderFundo(); }
+        catch (e) { el.disabled = false; el.textContent = 'Carregar registros mais antigos'; toast(avisarErro(e)); }
+      }
+      else if (a === 'pular') { if (MQ.teclado) MQ.teclado.pular(); }
       else if (a === 'aparencia') { if (S.menuAberto) { S.menuAberto = false; render(); } S.voltarFoco = el; abrirPainel({ tipo: 'aparencia' }); }
       else if (a === 'aparencia-sol' || a === 'aparencia-tema') {   // muda na hora, sem recarregar; a barra de cima mostra se o modo sol está ligado
         if (a === 'aparencia-sol') MQ.aparencia.mudar('sol', el.getAttribute('aria-checked') !== 'true'); else MQ.aparencia.mudar('tema', el.dataset.v);
@@ -2127,6 +2176,8 @@
   document.addEventListener('submit', async ev => {
     const form = ev.target.closest('form[data-form]'); if (!form) return;
     ev.preventDefault();
+    // 13/10/2026: salvar com uma foto ainda em "Preparando foto…" descartava a foto sem aviso
+    if (MQ.fotosPreparando > 0 && form.querySelector('input[type=file]')) return mostrarErros(form, {}, 'Espere a foto terminar de preparar (aparece "Foto pronta") e toque em salvar de novo.');
     const tipo = form.dataset.form;
     const fd = new FormData(form);
     S.acaoNoPainel = (S.acaoNoPainel || 0) + 1;
@@ -2257,7 +2308,10 @@
         await ocupado(form, async () => {
           if (temArq) patch.termo_path = await S.api.enviarTermo(id, arq);
           if (!Object.keys(patch).length) { toast('Nada mudou.'); return; }
-          await S.api.atualizar(id, patch); await recarregar(); abrirPainel({ tipo: 'detalhe', id });
+          // 61: data do termo sem anexo novo = conferência do arquivo que está na tela (se a pessoa trocou nesse meio-tempo, o banco recusa)
+          if (patch.termo_assinado_em && !temArq && S.api.conferirTermo) { await S.api.conferirTermo(id, m.termo_path || null, patch.termo_assinado_em); delete patch.termo_assinado_em; }
+          if (Object.keys(patch).length) await S.api.atualizar(id, patch);
+          await recarregar(); abrirPainel({ tipo: 'detalhe', id });
           const n = porId(id); toast(R.situacao(n).cod === 'ok' ? n.nome.split(' ')[0] + ' está habilitada: todos os passos concluídos.' : 'Habilitação atualizada.');
         });
       }

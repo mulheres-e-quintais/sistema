@@ -91,16 +91,38 @@
   MQ.fetchComPrazo = fetchComPrazo;
   const opcoesCliente = extra => ({ global: { fetch: fetchComPrazo }, auth: Object.assign({ persistSession: true }, extra || {}) });
 
+  /* fotos da equipe: link temporário (1 h) guardado e reaproveitado até faltarem 10 min para vencer (13/10/2026, auditoria):
+     antes cada atualização de 2 em 2 minutos gerava links novos, a tela "mudava" sem nada mudar e as fotos eram baixadas de novo */
+  const linksFoto = new Map();
+  async function linksDasFotos(lista) {
+    const agora = Date.now();
+    lista.forEach(m => { const g = m.foto_path && !m.foto_url && linksFoto.get(m.foto_path); if (g && g.vence - agora > 600000) m.foto_url = g.url; });
+    const com = lista.filter(m => m.foto_path && !m.foto_url);
+    if (!com.length) return;
+    try {
+      const caminhos = [...new Set(com.map(m => m.foto_path))];
+      const { data: urls } = await sb.storage.from('equipe').createSignedUrls(caminhos, 3600);
+      (urls || []).forEach((u, i) => { if (u && u.signedUrl) linksFoto.set(caminhos[i], { url: u.signedUrl, vence: agora + 3600000 }); });
+      com.forEach(m => { const g = linksFoto.get(m.foto_path); if (g) m.foto_url = g.url; });
+    } catch (e) { /* sem foto: ficam as iniciais */ }
+  }
   MQ.apiSupabase = {
     modo: 'supabase',
     async iniciar() {
       sb = window.supabase.createClient(MQ.CONFIG.supabaseUrl, MQ.CONFIG.supabaseAnonKey, opcoesCliente({ detectSessionInUrl: true }));
-      let sessao = null;
-      try { sessao = (await sb.auth.getSession()).data.session; } catch (e) { /* sem rede */ }
+      // 13/10/2026 (auditoria): saiu em outra aba (ou a sessão foi encerrada no servidor): esta aba também sai, sem apagar a fila
+      try { sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') { this.temSessao = false; if (MQ.ui && MQ.ui.sessaoEncerrada) MQ.ui.sessaoEncerrada(); } }); } catch (e) {}
+      let sessao = null, prazo = false;
       const guardado = lerEuGuardado();
+      // 13/10/2026 (auditoria): com o login vencido e sem servidor, a renovação demorava ~30 s; com perfil guardado, espera no máximo 6 s
+      try { const r = await (guardado ? Promise.race([sb.auth.getSession(), new Promise(ok => setTimeout(() => { prazo = true; ok(null); }, 6000))]) : sb.auth.getSession());
+        sessao = r && r.data ? r.data.session : null; } catch (e) { /* sem rede */ }
+      // a sessão ainda está guardada no aparelho (a renovação falhou por falta de servidor, não porque saiu)
+      const tokenGuardado = (() => { try { return Object.keys(localStorage).some(k => /^sb-.*-auth-token$/.test(k)); } catch (e) { return false; } })();
       if (!sessao) {
-        // Sem internet, a sessão pode não ser renovada: usa o perfil guardado para trabalhar offline
-        if (!navigator.onLine && guardado) { this.temSessao = true; this.offline = true; euCache = guardado; return guardado; }
+        // Sem internet (ou "sinal que engana": o celular diz que tem rede, mas o servidor não responde), a sessão não é renovada:
+        // usa o perfil guardado para trabalhar sem internet. Saiu de verdade (token apagado): vai para a entrada.
+        if (guardado && (!navigator.onLine || prazo || tokenGuardado)) { this.temSessao = true; this.offline = true; euCache = guardado; return guardado; }
         this.temSessao = false; return null;
       }
       this.temSessao = true;
@@ -466,6 +488,7 @@
     },
 
     async sair() {
+      linksFoto.clear();   // links de foto da equipe não ficam para a próxima pessoa
       euCache = null; this.temSessao = false;
       // tira do aparelho a cópia dos dados (nomes, CPF, endereços); o que não foi enviado continua na fila para a próxima entrada
       try { Object.keys(localStorage).filter(k => k === 'mq-eu' || k.startsWith('mq-cache-')).forEach(k => localStorage.removeItem(k)); } catch (e) {}
@@ -481,13 +504,7 @@
       try { const r = await sb.rpc('equipe_do_estado'); if (!r.error && Array.isArray(r.data)) { const ja = new Set(data.map(m => m.id)); r.data.forEach(m => { if (!ja.has(m.id)) data.push(m); }); } } catch (e) { /* 43 ainda não instalado */ }
       // fotos: links temporários (1 h) de uma vez só; se a etapa 7 não foi instalada, segue com as iniciais
       data.forEach(m => { const x = /^exemplo:(\d+)$/.exec(m.foto_path || ''); if (x) m.foto_url = 'assets/exemplo/pessoa-' + x[1] + '.svg'; });   // ilustrações dos dados de exemplo
-      const com = data.filter(m => m.foto_path && !m.foto_url);
-      if (com.length) {
-        try {
-          const { data: urls } = await sb.storage.from('equipe').createSignedUrls(com.map(m => m.foto_path), 3600);
-          (urls || []).forEach((u, i) => { if (u && u.signedUrl) com[i].foto_url = u.signedUrl; });
-        } catch (e) { /* sem foto */ }
-      }
+      await linksDasFotos(data);
       return data;
     },
     async enviarFotoEquipe(id, blob) {
@@ -527,6 +544,9 @@
     async dadosAcompanhamento(orgao) {
       const { data, error } = await sb.rpc('acompanhamento_dados', { p_orgao: orgao || null }); if (error) throw erro(error);
       // 60: na tela do MPA, equipe habilitada e diagnósticos esperando, por estado (sem o script, a tela segue sem esses números)
+      if (data && data.orgao === 'mpa') {   // 61: formação sem matrículas e encontros cancelados
+        try { const f = await sb.rpc('acompanhamento_formacao', { p_orgao: orgao || null }); if (!f.error && f.data) data.formacao = f.data; } catch (e) {}
+      }
       if (data && data.orgao === 'mpa' && Array.isArray(data.por_uf)) {
         try { const r = await sb.rpc('acompanhamento_equipe_uf', { p_orgao: orgao || null });
           if (!r.error && Array.isArray(r.data)) r.data.forEach(x => { const u = data.por_uf.find(y => y.uf === x.uf); if (u) Object.assign(u, { equipe_campo: x.equipe_campo, habilitadas: x.habilitadas, diag_aguardando: x.diag_aguardando, diag_devolvidos: x.diag_devolvidos }); });
@@ -632,9 +652,7 @@
       const { data: lido, error } = await sb.rpc('equipe_para_fic'); if (error) throw erro(error);
       const data = lido || [];
       data.forEach(m => { const x = /^exemplo:(\d+)$/.exec(m.foto_path || ''); if (x) m.foto_url = 'assets/exemplo/pessoa-' + x[1] + '.svg'; });
-      const com = data.filter(m => m.foto_path && !m.foto_url);
-      if (com.length) { try { const { data: urls } = await sb.storage.from('equipe').createSignedUrls(com.map(m => m.foto_path), 3600);
-        (urls || []).forEach((u, i) => { if (u && u.signedUrl) com[i].foto_url = u.signedUrl; }); } catch (e) { /* sem foto */ } }
+      await linksDasFotos(data);
       return data;
     },
     /* encontros do FIC e lista de presença (38) */
@@ -659,8 +677,10 @@
     },
     async cancelarMatricula(id, motivo) { const { error } = await sb.rpc('cancelar_matricula_fic', { p_id: id, p_motivo: motivo }); if (error) throw erro(error); },
 
-    async auditoria() {
-      const { data, error } = await sb.from('auditoria').select('*').order('em', { ascending: false }).limit(200);
+    async auditoria(antesDe) {   // 200 por vez; "antesDe" busca os mais antigos que isso (13/10/2026: antes só os 200 últimos)
+      let q = sb.from('auditoria').select('*').order('em', { ascending: false }).limit(200);
+      if (antesDe) q = q.lt('em', antesDe);
+      const { data, error } = await q;
       if (error) throw erro(error);
       return data;
     },
@@ -680,6 +700,14 @@
       // 57: com pagamento a pedir, só a coordenação geral desliga, justificando (desligar_sem_pedido grava no histórico)
       if (semPedido != null) { const { error } = await sb.rpc('desligar_sem_pedido', { p_equipe: id, p_data: data_fim, p_motivo: motivo, p_justificativa: semPedido }); if (error) throw erro(error); return; }
       return this.atualizar(id, { status: 'desligada', data_fim, motivo_desligamento: motivo });
+    },
+    /* 61: quem confere registra a data só do arquivo que abriu (se a pessoa trocou o termo enquanto isso, o banco recusa).
+       Sem o script 61, grava a data como antes. */
+    async conferirTermo(id, pathVisto, data) {
+      const { error } = await sb.rpc('conferir_termo', { p_equipe: id, p_path: pathVisto, p_data: data });
+      if (!error) return;
+      if (/conferir_termo/.test(error.message || '') && /not find|does not exist|schema cache/i.test(error.message || '')) return void (await this.atualizar(id, { termo_assinado_em: data }));
+      throw erro(error);
     },
     async enviarTermo(id, arquivo) {
       const ext = (arquivo.name.split('.').pop() || 'pdf').toLowerCase();

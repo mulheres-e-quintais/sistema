@@ -24,7 +24,7 @@ const GRAVACOES = {
   salvarPedido: [{ tipo: 'passagem' }], definirValorPedido: ['p1', 10], moverPedido: ['p1', 'aprovar', null, null], salvarEncontroFic: [{ turma_id: 't1' }], cancelarEncontroFic: ['e1', 'm'],
   confirmarPresencaFic: ['e1', 'x1', true], salvarTurma: [{ nome: 'T' }], matricular: ['t1', 'e2'], cancelarMatricula: ['m1', 'm'], criar: [pessoa()], atualizar: ['e2', { nome: 'Ana B' }], desligar: ['e2', 'motivo', '2026-10-01'],
   relatarProblema: [{ texto: 'O botão de salvar não respondeu', tela: 'Campo', versao: 'mq-v250', aparelho: 'celular' }], resolverRelato: ['r1', 'Corrigido', false],
-  registrarPlanilha: ['completa', 3, 'Estado PI'],   // 60: planilha baixada no Histórico
+  registrarPlanilha: ['completa', 3, 'Estado PI'], conferirTermo: ['e2', 'equipe/e2/termo_1.pdf', '2026-10-10'],   // 60: planilha baixada no Histórico
   enviarTermo: ['e2', arq()], enviarMeuTermo: ['e2', arq()], enviarFotoEquipe: ['e2', arq()]
 };
 /* de propósito não derrubam a tela se falharem: são registros de apoio */

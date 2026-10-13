@@ -189,7 +189,8 @@ describe('Auditoria 2 (12/10/2026): fila e fotos', () => {
     // sem internet de verdade: para e não conta tentativa
     await F.salvar({ id: 'c1', dono, tipo: 'visita', dados: { id: 'c1' }, fotos: null, erro: null });
     const semRede = { async salvarVisita() { const e = new Error('Sem internet agora.'); e.semRede = true; throw e; } };
-    await F.sincronizar(semRede, dono);
+    t.janela.navigator.onLine = false;   // o aparelho sabe que está sem internet
+    await F.sincronizar(semRede, dono); t.janela.navigator.onLine = true;
     assert.equal((await F.listar(dono)).find(x => x.id === 'a1').tentativas, 3);
   });
   test('prazo de envio de arquivo cresce com o tamanho (internet fraca)', async () => {

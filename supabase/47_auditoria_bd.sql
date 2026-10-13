@@ -1545,7 +1545,7 @@ revoke all on function public.chave_fixa() from public, anon, authenticated;
 -- as cinco abertas de propósito a quem não entrou: tela de entrada ("esqueci a senha"), link de cadastro e vitrine pública
 do $$ declare f record; begin
   for f in select p.oid::regprocedure as nome from pg_proc p where p.pronamespace = 'public'::regnamespace
-              and p.proname in ('ver_convite', 'enviar_pre_cadastro', 'pedir_novo_acesso', 'vitrine', 'vitrine_municipios') loop
+              and p.proname in ('ver_convite', 'enviar_pre_cadastro', 'pedir_novo_acesso', 'vitrine', 'vitrine_municipios', 'vitrine_foto_publica') loop   -- 56: fotos da vitrine (13/10/2026: rodar o 47 de novo não fecha mais)
     execute format('grant execute on function %s to anon, authenticated', f.nome);
   end loop;
 end $$;

@@ -5,8 +5,14 @@
   'use strict';
   const U = () => MQ.ui, S = () => MQ.ui.S, E = s => MQ.ui.esc(s), R = () => MQ.regras;
   const CH = 'mq-relatos-pendentes';
-  const pend = () => { try { const l = JSON.parse(localStorage.getItem(CH) || '[]'); return Array.isArray(l) ? l : []; } catch (e) { return []; } };
-  const guardar = l => { try { if (l.length) localStorage.setItem(CH, JSON.stringify(l.slice(-20))); else localStorage.removeItem(CH); } catch (e) { /* aparelho sem espaço: o relato não fica */ } };
+  // 13/10/2026 (auditoria): cada relato guardado tem dono. Antes a lista era do aparelho, e o relato de uma pessoa subia
+  // com o nome de quem entrasse depois no mesmo celular. Relato antigo sem dono não sobe (não dá para saber de quem é).
+  const dono = () => { const s = S(); return s && s.eu ? s.eu.id : null; };
+  const todos = () => { try { const l = JSON.parse(localStorage.getItem(CH) || '[]'); return Array.isArray(l) ? l : []; } catch (e) { return []; } };
+  const pend = () => { const d = dono(); return todos().filter(x => x && d && x._dono === d); };
+  const guardarTodos = l => { try { if (l.length) localStorage.setItem(CH, JSON.stringify(l.slice(-40))); else localStorage.removeItem(CH); return true; } catch (e) { return false; } };
+  const guardar = meus => { const d = dono(); return guardarTodos(todos().filter(x => x && x._dono && x._dono !== d).concat(meus.map(x => Object.assign({}, x, { _dono: d })))); };
+  const semDono = x => { const c = Object.assign({}, x); delete c._dono; return c; };
   const NOME_TELA = { visao: 'Visão geral', equipe: 'Equipe', selecao: 'Seleção', campo: 'Campo', fic: 'Curso FIC', execucao: 'Execução', pagamentos: 'Pagamentos', custos: 'Custos', viagens: 'Viagens e eventos', documentos: 'Documentos', historico: 'Histórico' };
   async function contexto(tela) {
     let versao = ''; try { if (typeof caches !== 'undefined') versao = ((await caches.keys()).filter(k => /^mq-v\d+/.test(k)).sort().pop()) || ''; } catch (e) { versao = ''; }
@@ -36,7 +42,7 @@
     const s = S(); if (!s.eu || s.eu.observador || !s.api || !s.api.relatarProblema) return 0;
     let l = pend(), foi = 0; if (!l.length) return 0;
     for (const x of l.slice()) {
-      try { await s.api.relatarProblema(x); foi++; l = l.filter(k => k !== x); guardar(l); }
+      try { await s.api.relatarProblema(semDono(x)); foi++; l = l.filter(k => k !== x); guardar(l); }
       catch (e) { if (R().erroDeRede(e) || e.semRede) break; l = l.filter(k => k !== x); guardar(l); }   // recusado pelo sistema: não adianta tentar de novo
     }
     return foi;
@@ -52,7 +58,8 @@
       try { if (semRede) throw Object.assign(new Error('sem rede'), { semRede: true }); await S().api.relatarProblema(x); S().relatos = undefined; U().fecharPainel(); U().toast('Relato enviado. Obrigada por avisar.'); }
       catch (e) {
         if (!(e.semRede || R().erroDeRede(e) || e.message === R().MSG_SEM_REDE)) throw e;
-        guardar(pend().concat([x])); U().fecharPainel(); U().toast('Sem internet: o relato ficou guardado neste aparelho e vai subir quando o sinal voltar.');
+        const ok = guardar(pend().concat([x])); U().fecharPainel();
+        U().toast(ok ? 'Sem internet: o relato ficou guardado neste aparelho e vai subir quando o sinal voltar.' : 'Sem internet e sem espaço neste aparelho: o relato NÃO ficou guardado. Envie de novo quando houver sinal.');
       }
     }, { texto: 'Enviando…' });
   }

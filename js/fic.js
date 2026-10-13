@@ -110,7 +110,7 @@
       ${l.map(m => U().cartaoPessoa(m)).join('')}
       ${l.length >= MQ.regras.MAX_PROFESSORES ? `<p class="small muted vagas-cheias">As ${MQ.regras.MAX_PROFESSORES} vagas de professor do curso FIC estão ocupadas. Para trocar, desligue um e cadastre o outro.</p>`
         : U().vagaAberta ? U().vagaAberta(l.length ? `<b>1 professor cadastrado.</b> Falta 1: o projeto tem ${MQ.regras.MAX_PROFESSORES} professores do curso FIC.` : `Nenhum professor do curso FIC cadastrado. O projeto tem ${MQ.regras.MAX_PROFESSORES}. Digite os dados ou gere um link para ele preencher.`, souGeral,
-        MQ.botaoAcao({ acao: 'novo', icone: 'capelo', texto: 'Cadastrar professor(a) do FIC', curto: 'Cadastrar', attrs: 'data-papel="professor_fic"' }), 'Vaga aberta') : ''}
+        MQ.botaoAcao({ acao: 'novo', icone: 'capelo', texto: 'Cadastrar professor(a) do curso FIC', curto: 'Cadastrar', attrs: 'data-papel="professor_fic"' }), 'Vaga aberta') : ''}
     </section>`;
   }
 

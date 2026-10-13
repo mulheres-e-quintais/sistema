@@ -148,7 +148,7 @@ select t('1. ... mas a data corrigida não pode ficar antes do diagnóstico', :T
 select t('1. caminho completo: implantação feita com plano aprovado, depois o acompanhamento, com as datas em ordem', :BB, format($q$do $x$ declare m text; begin
   insert into public.visitas (id, ficha_id, uf, etapa, executor_id, data_prevista) values ('f6200000-0000-0000-0000-000000000022', 'f6100000-0000-0000-0000-000000000002', 'BA', 'implantacao', 'f6000000-0000-0000-0000-000000000001', public.fic_hoje());
   perform r46_como(%L);
-  if exists (select 1 from public.diagnosticos where ficha_id = 'f6100000-0000-0000-0000-000000000002') then raise exception 'a agente não deveria enxergar o plano feito por outra pessoa'; end if;
+  -- (até o 61 a agente não enxergava o plano feito por outra pessoa; desde o 61, a escalada para o quintal lê. A conferência abaixo vale nos dois casos)
   begin update public.visitas set situacao = 'realizada', data_realizada = %L::date - 21, relato = 'Implantação feita: dois canteiros e a caixa instalada.' where id = 'f6200000-0000-0000-0000-000000000022'; m := 'aceitou';
   exception when others then m := sqlerrm; end;
   if m not like 'A implantação não pode ter data anterior à do diagnóstico (%%' then raise exception 'data anterior ao diagnóstico: %%', m; end if;

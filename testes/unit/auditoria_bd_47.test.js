@@ -112,7 +112,7 @@ describe('47 · fila do aparelho com a marca', () => {
     await F.salvar({ id: 'a', dono: 'u', tipo: 'ficha', dados: { id: 'a' } }); await F.salvar({ id: 'b', dono: 'u', tipo: 'ficha', dados: { id: 'b' } });
     await F.sincronizar(apiFalsa({ a: Object.assign(new Error('Ficha já aprovada pela coordenação técnica.'), { regra: true }), b: Object.assign(new Error('Failed to fetch'), { semRede: true }) }), 'u');
     const its = await F.listar('u');
-    assert.equal(its.find(x => x.id === 'a').conflito, false); assert.equal(its.find(x => x.id === 'b').erro, undefined);
+    assert.equal(its.find(x => x.id === 'a').conflito, false); assert.ok(!its.find(x => x.id === 'b').erro, 'queda de rede não vira erro');
   });
   test('campos mudados: só o que difere do registro lido; soma com o que já estava mudado; sem registro lido, tudo', () => {
     const base = { id: '1', nome: 'Ana', comunidade: 'A', renda: 10, fotos: ['x'], atualizado_em: 't0' };

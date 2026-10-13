@@ -34,6 +34,10 @@
     auxiliar_adm: 'O que você fez no mês: cadastros no Arlo, pagamentos lançados, documentos organizados, pendências com a FUNCERN.'
   };
   const podeBolsa = papel => ['coord_tecnico', 'articulacao', 'apoio', 'professor_fic', 'auxiliar_adm'].includes(papel);
+  // 13/10/2026 (auditoria): com aval, esperando lançamento que só a coordenação geral pode fazer (a bolsa do próprio auxiliar,
+  // ou qualquer uma quando não há auxiliar ativo). Antes ficava parado sem aparecer no número de ninguém.
+  const semAuxiliar = () => !(S().equipe || []).some(m => m.papel === 'auxiliar_adm' && m.status === 'ativa');
+  const soGeralLanca = () => lista().filter(s => s.situacao === 'avalizada' && s.equipe_id !== (S().eu || {}).id && (semAuxiliar() || pessoa(s.equipe_id).papel === 'auxiliar_adm'));
   const quemAvaliza = (tipo, papel) => tipo === 'bolsa' && ['coord_tecnico', 'professor_fic', 'auxiliar_adm'].includes(papel) ? 'coord_geral' : 'coord_tecnico';
   const lista = () => S().solic || [];
   const vinculadas = () => S().solicVis || {};
@@ -59,7 +63,7 @@
     const ajudasDoMes = minhas.filter(s => s.tipo === 'ajuda_custo' && String(s.mes).slice(0, 7) === m).sort((a, b) => String(a.solicitada_em).localeCompare(String(b.solicitada_em)));
     const hab = R.habilitado(eu);
     return `<section class="secao pag" aria-labelledby="t-pag">
-      <div class="secao-cab"><div><h2 id="t-pag">Solicitar pagamento</h2><p>Você solicita, a ${quemAvaliza('bolsa', papel) === 'coord_geral' && !podeAjuda(papel) ? 'coordenação geral' : 'coordenação técnica'} dá o aval e o auxiliar administrativo lança no Arlo (FUNCERN).</p></div>
+      <div class="secao-cab"><div><h2 id="t-pag">Solicitar pagamento</h2><p>Você solicita, a ${quemAvaliza('bolsa', papel) === 'coord_geral' && !podeAjuda(papel) ? 'coordenação geral' : 'coordenação técnica'} dá o aval (aprova) e ${papel === 'auxiliar_adm' ? 'a coordenação geral lança a sua bolsa' : 'o auxiliar administrativo lança'} no Arlo, o sistema de pagamentos da FUNCERN.</p></div>
         <span class="seg"><button type="button" data-acao="pag-mes" data-n="-1" aria-label="Mês anterior" ${mesIni && m <= mesIni ? 'disabled' : ''}>‹</button><button type="button" data-acao="pag-mes" data-n="0">${nomeMes(m)}</button><button type="button" data-acao="pag-mes" data-n="1" aria-label="Próximo mês" ${m >= mesHoje() ? 'disabled' : ''}>›</button></span></div>
       ${mesIni && mesIni > mesHoje() ? `<div class="aviso">Você começa no projeto em ${nomeMes(mesIni)}: a partir desse mês dá para solicitar.</div>` : ''}
       ${!hab ? '<div class="aviso erro"><b>Sua habilitação ainda não está completa.</b> Sem ela não há pagamento: <button type="button" class="link" data-acao="pend-ver">veja os passos que faltam</button>.</div>' : ''}
@@ -170,7 +174,8 @@
       ${U().semTecnica && U().semTecnica() ? '<div class="aviso">Sem coordenação técnica ativa: os avais que seriam dela estão com você.</div>' : ''}
       ${bloco('Esperando o seu aval', aval, 'Nada esperando o seu aval.', 'pend')}
       ${outrasAval.length ? bloco(souGeral ? 'Com a coordenação técnica (você pode dar o aval se ela não puder)' : 'Com a coordenação geral', outrasAval, '') : ''}
-      ${bloco('Com aval, falta o auxiliar lançar no Arlo', arlo, 'Nenhuma.')}
+      ${souGeral && soGeralLanca().length ? bloco(semAuxiliar() ? 'Com aval, esperando você lançar no Arlo (não há auxiliar ativo)' : 'Bolsa do auxiliar: com aval, esperando você lançar no Arlo', soGeralLanca(), '', 'pend') : ''}
+      ${bloco(eu.papel === 'auxiliar_adm' ? 'Com aval, falta você lançar no Arlo' : 'Com aval, falta o auxiliar lançar no Arlo', souGeral ? arlo.filter(s => !soGeralLanca().includes(s)) : arlo, 'Nenhuma.')}
       ${dev.length ? bloco('Devolvidas para corrigir', dev, '', 'crit') : ''}
       <details class="hist"><summary>Lançadas no Arlo (${lanc.length})</summary><div class="pag-lista" style="padding:0 18px 16px">${lanc.map(s => linha(s, true)).join('') || '<p class="muted">Nenhuma ainda.</p>'}</div></details>
       ${eu.papel === 'coord_tecnico' ? secaoMinha() : ''}`;
@@ -307,7 +312,9 @@
   MQ.pagUI = { secaoMinha, abaCoord, secaoAuxiliar, painel, clique, enviar,
     contaDevolvidas: () => lista().filter(s => s.equipe_id === S().eu.id && s.situacao === 'devolvida').length,   // meus pedidos para corrigir
     contaLancar: () => lista().filter(s => s.situacao === 'avalizada' && s.equipe_id !== S().eu.id).length,       // auxiliar: lançar no Arlo
-    contaAval: () => { const eu = S().eu; const sem = U().semTecnica && U().semTecnica(); return lista().filter(s => s.situacao === 'solicitada' && s.equipe_id !== eu.id && (sem || quemAvaliza(s.tipo, pessoa(s.equipe_id).papel) === eu.papel)).length; } };
+    contaAval: () => { const eu = S().eu; const sem = U().semTecnica && U().semTecnica();
+      const avais = lista().filter(s => s.situacao === 'solicitada' && s.equipe_id !== eu.id && (sem || quemAvaliza(s.tipo, pessoa(s.equipe_id).papel) === eu.papel)).length;
+      return avais + (eu.papel === 'coord_geral' ? soGeralLanca().length : 0); } };
 
   /* desmarcou ou marcou uma visita: o total e o botão mostram o que vai ser pedido de fato */
   if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('change', ev => {

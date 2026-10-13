@@ -85,6 +85,16 @@
     const dev = (solicitacoes || []).filter(s => s.equipe_id === id && s.situacao === 'devolvida');
     return { visitas: vs.length, devolvidos: dev.length, total: vs.length + dev.length };
   };
+  /* 13/10/2026 (auditoria): meses de bolsa já começados e ainda sem pedido (aviso ao desligar: depois ela não entra mais
+     e ninguém pede por ela). Do mês de início (ou outubro/2026) até o mês de hoje; não bloqueia, só avisa. */
+  R.mesesBolsaSemPedido = (m, solicitacoes) => {
+    if (!m || !['coord_tecnico', 'articulacao', 'apoio', 'professor_fic', 'auxiliar_adm'].includes(m.papel)) return [];
+    const ini = [String(m.data_inicio || '').slice(0, 7), R.LIM.bolsaMesMin].sort().pop(), fim = [R.hoje().slice(0, 7), R.LIM.bolsaMesMax].sort()[0];
+    const pedidos = new Set((solicitacoes || []).filter(s => s.equipe_id === m.id && s.tipo === 'bolsa').map(s => String(s.mes).slice(0, 7)));
+    const out = []; let [a, mm] = ini.split('-').map(Number);
+    for (let i = 0; i < 24; i++) { const k = a + '-' + String(mm).padStart(2, '0'); if (k > fim) break; if (!pedidos.has(k)) out.push(k); mm++; if (mm > 12) { mm = 1; a++; } }
+    return out;
+  };
   R.mesBolsaOk = m => { const x = String(m || '').slice(0, 7); return x >= R.LIM.bolsaMesMin && x <= R.LIM.bolsaMesMax; };
   R.MSG_TERMO_SEM_ARQUIVO = 'Sem o termo anexado não há o que conferir: a data só é registrada depois que o termo preenchido e assinado estiver anexado.';
   R.MSG_TERMO_SEM_DATA = 'Você anexou o termo: confira no documento a data da assinatura e preencha aqui.';
@@ -102,7 +112,7 @@
   R.validar = function (m, equipe) {
     const e = {};
     if (!m.nome || m.nome.trim().split(/\s+/).length < 2) e.nome = 'Escreva o nome completo, como no documento.';
-    if (!R.cpfValido(m.cpf)) e.cpf = 'CPF inválido. Confira os 11 números.';
+    if (!R.cpfValido(m.cpf)) e.cpf = String(m.cpf || '').replace(/\D/g, '') ? 'CPF inválido. Confira os 11 números.' : 'Informe o CPF (11 números).';
     if (!R.emailValido(m.email)) e.email = 'E-mail inválido. É por ele que a pessoa entra no sistema.';
     if (R.soDigitos(m.telefone).length < 10) e.telefone = 'Informe o celular com DDD.';
     if (!m.data_inicio) e.data_inicio = 'Informe a data de início.';
@@ -342,7 +352,7 @@
   R.validarFicha = function (f, fichas) {
     const e = {};
     if (!f.nome || f.nome.trim().split(/\s+/).length < 2) e.nome = 'Nome completo, como no documento.';
-    if (!R.cpfValido(f.cpf)) e.cpf = 'CPF inválido. Confira os 11 números.';
+    if (!R.cpfValido(f.cpf)) e.cpf = String(f.cpf || '').replace(/\D/g, '') ? 'CPF inválido. Confira os 11 números.' : 'Informe o CPF (11 números).';
     else if (fichas.some(x => x.id !== f.id && x.cpf === R.soDigitos(f.cpf))) e.cpf = 'Esta mulher já tem ficha no projeto.';
     if (!f.data_nascimento) e.data_nascimento = 'Informe a data de nascimento.';
     else { const i = R.idade(f.data_nascimento, f.data_ficha); if (i == null || i < 0 || i > 110) e.data_nascimento = 'Data de nascimento inválida.'; }

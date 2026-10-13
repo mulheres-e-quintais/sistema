@@ -41,10 +41,18 @@ const R = []; const ok = (n, c, d = '') => R.push([c ? 'PASSOU' : 'FALHOU', n, d
   const faltas = [];
   for (const ab of abas) {
     await p.evaluate(ab => document.querySelector(`[data-aba="${ab}"]`).click(), ab); await p.waitForTimeout(400);
-    const f = await p.evaluate(sel => [...document.querySelectorAll(sel)].filter(e => e.offsetParent && !e.closest('form') && !e.matches('a[href],button,input,select,textarea,summary,label') && e.tabIndex < 0).map(e => e.className).slice(0, 3), await p.evaluate(() => MQ.teclado.BLOCOS));
+    const f = await p.evaluate(sel => [...document.querySelectorAll(sel)].filter(e => e.offsetParent && !e.closest('form') && !e.matches('a[href],button,input,select,textarea,summary,label') && e.tabIndex < 0 && ![...e.querySelectorAll('*')].some(d => d.tabIndex >= 0)).map(e => e.className).slice(0, 3), await p.evaluate(() => MQ.teclado.BLOCOS));
     if (f.length) faltas.push(ab + ': ' + f.join(','));
   }
-  ok(`todas as ${abas.length} abas: blocos alcançáveis pelo Tab`, abas.length > 5 && !faltas.length, faltas.join(' | '));
+  ok(`todas as ${abas.length} abas: todo bloco é parada do Tab ou tem paradas dentro`, abas.length > 5 && !faltas.length, faltas.join(' | '));
+  // sem parada repetida: bloco que já é parada não tem outro bloco-parada que só o embrulha; e os quadros roláveis têm nomes diferentes
+  await p.evaluate(() => document.querySelector('[data-aba="visao"]').click()); await p.waitForTimeout(500);
+  const aninh = await p.evaluate(() => [...document.querySelectorAll('[data-tab-bloco]')].filter(e => e.parentElement && e.parentElement.closest('[data-tab-bloco]:not(section)')).length);
+  ok('Visão geral: nenhum bloco-parada dentro de outro bloco-parada (fora as seções)', aninh === 0, String(aninh));
+  ok('"Pular para o conteúdo" é o primeiro item do Tab e leva ao conteúdo', await p.evaluate(() => { document.activeElement && document.activeElement.blur(); return true; }) && await (async () => {
+    await p.evaluate(() => { document.body.setAttribute('tabindex', '-1'); document.body.focus(); }); await p.keyboard.press('Tab');
+    const primeiro = await p.evaluate(() => document.activeElement.className); await p.keyboard.press('Enter'); await p.waitForTimeout(100);
+    return primeiro === 'pular' && await p.evaluate(() => document.activeElement.tagName === 'MAIN'); })());
   // dentro de formulário, o Tab vai de campo em campo (bloco não vira parada)
   await p.evaluate(() => { const S = MQ.ui.S; document.body.insertAdjacentHTML('beforeend', `<button id="ab" data-acao="campo-diag-novo" data-ficha="${S.fichas.find(x => x.resultado === 'selecionada').id}"></button>`); document.getElementById('ab').click(); document.getElementById('ab').remove(); });
   await p.waitForTimeout(500);
