@@ -191,7 +191,7 @@
     return a;
   }
   function aba() {
-    if (S().execSemBanco) return `<div class="cab"><div><span class="eyebrow">Execução</span><h1>Execução do orçamento</h1></div></div>
+    if (S().execSemBanco) return `<div class="cab"><div><span class="eyebrow">Financeiro</span><h1>Execução do orçamento</h1></div></div>
       <div class="aviso">A execução ainda não está instalada no servidor. Rode o arquivo <b>37_execucao_planilhas.sql</b> no Supabase.</div>`;
     const n = numeros(); const T = O().total; const al = alertas(n);
     const usoPct = pct(n.exec + n.comp, T), tempoPct = Math.round(n.tempo * 1000) / 10;
@@ -203,12 +203,11 @@
         <tr class="fin-detalhe" id="exc-${E(i.id)}" hidden><td colspan="6"><dl class="fin-det"><div><dt>Composição</dt><dd>${E(composicao(i))}</dd></div><div><dt>Previsto</dt><dd class="num">${brl(i.total)}</dd></div>
           <div><dt>Executado</dt><dd class="num">${brl(x.exec)}</dd></div><div><dt>Comprometido</dt><dd class="num">${brl(x.comp)}</dd></div><div><dt>Saldo</dt><dd class="num"><b>${brl(x.saldo)}</b></dd></div></dl></td></tr>`; };
     const semItem = x => x.semItem ? `<tr class="fin-item"><th scope="row"><span class="fin-nome sem">Sem item definido na planilha</span><span class="small muted">a planilha disse só a rubrica ou um item que não está no orçamento</span></th><td class="num" data-rot="Previsto">—</td><td class="num" data-rot="Executado">${vExec(x.semItem)}</td><td class="num" data-rot="Comprometido">—</td><td class="num" data-rot="Saldo">—</td><td></td></tr>` : '';
-    return `<div class="cab"><div><span class="eyebrow">Execução</span><h1>Execução do orçamento</h1>
+    return `<div class="cab"><div><span class="eyebrow">Financeiro</span><h1>Execução do orçamento</h1>
         <p>Previsto × executado do TED (R$ ${(T / 1e6).toLocaleString('pt-BR')} milhões), por rubrica e por meta. O executado vem da <b>planilha de gastos</b> mais recente; o comprometido, do que o sistema já sabe e a planilha ainda não trouxe. Só você vê esta aba.</p></div></div>
-      ${/* 14/10/2026: o envio da planilha (uma vez por mês) foi para o fim da página, junto das planilhas enviadas; aqui em cima só volta
-         como chamada quando falta a planilha ou ela está velha */ ''}
-      ${!n.pl || n.idade > 35 ? `<div class="exec-chamada">${MQ.acaoComDica({ acao: 'exec-enviar', icone: 'enviar', texto: 'Enviar planilha de gastos', curto: 'Enviar planilha' }, n.pl ? `A planilha vigente tem ${n.idade} dias. Pelo menos uma vez por mês: retrato completo desde o início.` : 'Sem ela, o executado fica zerado. Retrato completo desde o início: a mais nova substitui as anteriores.')}</div>` : ''}
-      <p class="small ${n.pl ? 'muted' : ''}">${n.pl ? `Planilha vigente: <b>${E(n.pl.arquivo_nome)}</b>, gastos até ${R.fmtData(n.pl.posicao_em)} (enviada em ${R.fmtData(n.pl.enviado_em)}). O envio da próxima fica no fim da página.` : ''}</p>
+      ${/* 14/10/2026: o envio da planilha (uma vez por mês) fica no fim da página, junto das planilhas enviadas. Quando falta a planilha
+         ou ela está velha, o aviso vermelho do meio da página traz o botão */ ''}
+      ${n.pl ? `<p class="small muted">Planilha vigente: <b>${E(n.pl.arquivo_nome)}</b>, gastos até ${R.fmtData(n.pl.posicao_em)} (enviada em ${R.fmtData(n.pl.enviado_em)}). O envio da próxima fica no fim da página.</p>` : ''}
       <section class="fin-resumo dx-topo fin-topo" aria-label="Execução financeira">
         <div class="dx-exec"><span class="dx-rot">Execução financeira</span>
           <div class="dx-exec-num"><b class="num">${pctBR(usoPct)}%</b></div>
@@ -224,7 +223,7 @@
         <p class="fin-sub muted fin-rodape">Recebido do MDA: <b>${brl(n.recebido)}</b> de ${brl(T)}${prox ? ` · próximo repasse: ${brl(prox.valor)}, previsto para ${prox.mes.slice(5)}/${prox.mes.slice(0, 4)}${prox.mes < R.hoje().slice(0, 7) ? ' (atrasado ou ainda fora da planilha)' : ''}` : ''} · em caixa na FUNCERN (recebido − executado): <b>${brl(n.caixa)}</b>. Comprometido = aval, Arlo ou autorização ${n.pl ? 'depois de ' + R.fmtData(n.pl.posicao_em) : 'ainda sem planilha'}.</p>
       </section>
       <div class="exec-grafs">${graficoRitmo(serie())}${graficoRubricas(n)}</div>
-      ${al.length ? `<div class="aviso erro"><ul class="exec-alertas">${al.map(x => `<li>${x}</li>`).join('')}</ul></div>` : ''}
+      ${al.length ? `<div class="aviso erro"><ul class="exec-alertas">${al.map(x => `<li>${x}</li>`).join('')}</ul>${!n.pl || n.idade > 35 ? `<p class="exec-alerta-acao">${MQ.botaoAcao({ acao: 'exec-enviar', icone: 'enviar', texto: 'Enviar planilha de gastos', sec: true, peq: true })}</p>` : ''}</div>` : ''}
       <section class="secao" aria-labelledby="t-exr"><div class="secao-cab"><div><h2 id="t-exr">Por rubrica</h2><p>Toque na rubrica para ver os itens; toque no item para ver a composição do valor.</p></div>
           <button type="button" class="btn peq" data-acao="exec-abrir-tudo">${rubAbertas.size ? 'Fechar todas' : 'Abrir todas'}</button></div>
         <div class="fin-wrap"><table class="fin exec-fin"><thead><tr><th scope="col">Rubrica</th><th scope="col">Previsto</th><th scope="col">Executado</th><th scope="col">Comprometido</th><th scope="col">Saldo</th><th scope="col">Execução</th></tr></thead>
@@ -275,7 +274,7 @@
   function painel(p) {
     if (p.tipo !== 'exec-enviar') return '';
     const pr = G.previa;
-    return cab('Execução', 'Enviar planilha de gastos') + `<div class="painel-corpo">
+    return cab('Financeiro', 'Enviar planilha de gastos') + `<div class="painel-corpo">
       <form class="f" data-form="exec-ler" novalidate><div class="campos">
         <div class="campo inteiro"><label for="ex-arq">Planilha (.xlsx ou .csv)</label><input id="ex-arq" name="arquivo" type="file" accept=".xlsx,.csv">
           <span class="dica">Todos os gastos desde o início, até a data de hoje (ou da última atualização da FUNCERN). Colunas: Data, Item do orçamento, Descrição, Documento, Valor. <a href="modelos/Modelo_planilha_de_gastos_Mulheres_e_Quintais.xlsx" download>Baixar o modelo</a>.</span></div></div>

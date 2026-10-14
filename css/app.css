@@ -3548,7 +3548,7 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 .fin-nota-meta { margin-top: 10px; max-width: 80ch; }
 .exec-meta .fin-rub { flex-wrap: wrap; }
 .fin-plano { flex-basis: 100%; order: 9; font-size: var(--t-xs); font-weight: 400; color: var(--muted); }
-.exec-chamada { margin: 4px 0 12px; }
+.exec-alerta-acao { margin: 10px 0 0; }
 .exec-planilhas .secao-cab { align-items: flex-start; flex-wrap: nowrap; gap: 16px 32px; }
 .exec-planilhas .secao-cab > div { flex: 1 1 auto; max-width: 72ch; }
 .exec-planilhas .secao-cab > .btn-acao { flex: 0 0 300px; margin-top: 4px; }

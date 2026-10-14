@@ -13,7 +13,7 @@
   const guardarTodos = l => { try { if (l.length) localStorage.setItem(CH, JSON.stringify(l.slice(-40))); else localStorage.removeItem(CH); return true; } catch (e) { return false; } };
   const guardar = meus => { const d = dono(); return guardarTodos(todos().filter(x => x && x._dono && x._dono !== d).concat(meus.map(x => Object.assign({}, x, { _dono: d })))); };
   const semDono = x => { const c = Object.assign({}, x); delete c._dono; return c; };
-  const NOME_TELA = { visao: 'Visão geral', equipe: 'Equipe', selecao: 'Seleção', campo: 'Campo', fic: 'Curso FIC', execucao: 'Execução', pagamentos: 'Pagamentos', custos: 'Custos', viagens: 'Viagens e eventos', documentos: 'Documentos', historico: 'Histórico' };
+  const NOME_TELA = { visao: 'Visão geral', equipe: 'Equipe', selecao: 'Seleção', campo: 'Campo', fic: 'Curso FIC', execucao: 'Financeiro', pagamentos: 'Pagamentos', custos: 'Custos', viagens: 'Viagens e eventos', documentos: 'Documentos', historico: 'Histórico' };
   async function contexto(tela) {
     let versao = ''; try { if (typeof caches !== 'undefined') versao = ((await caches.keys()).filter(k => /^mq-v\d+/.test(k)).sort().pop()) || ''; } catch (e) { versao = ''; }
     const ua = typeof navigator !== 'undefined' ? String(navigator.userAgent || '') : '';
