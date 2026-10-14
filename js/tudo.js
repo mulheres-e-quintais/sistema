@@ -4174,7 +4174,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <span class="cg-num" aria-hidden="true"><span class="num"><b>${x.atual == null ? '—' : x.atual}</b> de ${x.alvo}</span><small>${situ}</small></span>
       </li>`;
     }).join('');
-    const meses = MESES.map((l, k) => `<span class="${k === idx ? 'cg-agora' : ''}${k % 3 ? ' cg-mes-x' : ''}" style="left:${pct(k + 0.5)}">${l}</span>`).join('');
+    const meses = MESES.map((l, k) => `<span class="${k === idx ? 'cg-agora' : ''}${k % 3 ? ' cg-mes-x' : ''}" style="left:${pct(k + 0.5)}">${k === 0 || k === N - 1 || l.startsWith('jan') ? l : l.slice(0, 3)}</span>`).join('');   // ano só no começo, na virada e no fim: os rótulos não se encostam
     return `<section class="secao cg" aria-labelledby="t-cg">
       <div class="secao-cab cg-cab"><div><h2 id="t-cg">Cronograma físico do plano de trabalho</h2><p>De ${MESES[0]} a ${MESES[N - 1]}. A parte cheia da barra é o que já foi registrado no sistema. Toque na meta para ver o detalhe.</p></div>
         <ul class="cg-leg" aria-label="Legenda"><li><i class="lg-per"></i>período da meta</li><li><i class="lg-reg"></i>já registrado</li><li><i class="lg-fut"></i>ainda não começou</li><li><i class="lg-venc"></i>prazo vencido</li><li><i class="lg-hoje"></i>hoje</li></ul></div>

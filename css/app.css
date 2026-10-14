@@ -3495,16 +3495,17 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
    grade de 3 colunas: nome da meta | trilho dos 13 meses | número. O traço de hoje é desenhado por cima do trilho
    (--cg-hoje), as linhas verticais marcam os meses. No celular o nome e o número ficam em cima e o trilho embaixo. */
 .cg { --cg-nome: 260px; --cg-num: 132px; margin-top: 12px; }
-.cg-cab { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 32px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.cg-cab { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 32px; }
 .cg-leg { display: flex; flex-wrap: wrap; gap: 8px 20px; list-style: none; margin: 0; padding: 0; font-size: var(--t-sm); color: var(--ink-2); }
 .cg-leg li { display: inline-flex; align-items: center; gap: 8px; }
 .cg-leg i { display: inline-block; width: 30px; height: 12px; border-radius: 99px; }
-.cg-leg .lg-per { background: var(--surface-2); border: 1px solid var(--line-2); }
+.cg-leg .lg-per { background: color-mix(in srgb, var(--line-2) 55%, var(--surface)); border: 1px solid var(--line-2); }
 .cg-leg .lg-reg { background: var(--ok); }
 .cg-leg .lg-fut { border: 1.5px dashed var(--muted); }
 .cg-leg .lg-venc { background: var(--crit-bg); border: 1.5px solid var(--crit); }
 .cg-leg .lg-hoje { width: 3px; height: 18px; border-radius: 2px; background: var(--accent); }
-.cg-grade { position: relative; margin-top: 8px; }
+/* 14/10/2026: o quadro fica num cartão claro, como as tabelas da página (sobre o fundo bege, a barra e as linhas sumiam) */
+.cg-grade { position: relative; margin-top: 4px; padding: 8px 24px 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 8px 22px rgba(69, 43, 26, .06); }
 .cg-meses { display: grid; grid-template-columns: var(--cg-nome) 1fr var(--cg-num); gap: 0 16px; height: 52px; }
 .cg-meses-trilho { grid-column: 2; position: relative; }
 .cg-meses-trilho span { position: absolute; top: 10px; transform: translateX(-50%); font-size: var(--t-sm); color: var(--muted); white-space: nowrap; }
@@ -3519,10 +3520,10 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 .cg-nome:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .cg-id { flex: none; font: 600 var(--t-xs)/1 var(--sans); color: var(--ink-2); background: var(--surface-2); padding: 4px 7px; border-radius: 6px; }
 .cg-trilho { position: relative; align-self: stretch; min-height: 44px;
-  background: repeating-linear-gradient(to right, var(--line) 0 1px, transparent 1px calc(100% / 13)); }
+  background: repeating-linear-gradient(to right, color-mix(in srgb, var(--line) 65%, transparent) 0 1px, transparent 1px calc(100% / 13)); }
 .cg-trilho::after { content: ""; position: absolute; top: 0; bottom: 0; left: var(--cg-hoje); width: 2px; margin-left: -1px; background: var(--accent); }
 .cg-barra { position: absolute; top: 50%; height: 16px; margin-top: -8px; border-radius: 99px; overflow: hidden;
-  background: var(--surface-2); border: 1px solid var(--line-2); }
+  background: color-mix(in srgb, var(--line-2) 55%, var(--surface)); border: 1px solid var(--line-2); }
 .cg-barra i { position: absolute; inset: 0 auto 0 0; background: var(--ok); }
 .cg-futuro .cg-barra { background: transparent; border: 1.5px dashed var(--muted); }
 .cg-venc .cg-barra { background: var(--crit-bg); border: 1.5px solid var(--crit); }
@@ -3533,6 +3534,7 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 .cg-venc .cg-num small { color: var(--crit); font-weight: 600; }
 @media (max-width: 1100px) { .cg { --cg-nome: 210px; --cg-num: 110px; } .cg-meses-trilho .cg-mes-x { display: none; } }
 @media (max-width: 760px) {
+  .cg-grade { padding: 6px 14px 10px; }
   .cg-meses, .cg-linha { grid-template-columns: 1fr auto; }
   .cg-meses-trilho { grid-column: 1 / -1; }
   .cg-linha { grid-template-areas: "nome num" "trilho trilho"; padding: 6px 0 12px; }
