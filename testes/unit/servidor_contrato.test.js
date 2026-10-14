@@ -12,7 +12,8 @@ const LEITURAS = ['listarPerfisEquipe', 'listarTestes', 'listarEntregas', 'lista
 const arq = () => ({ name: 'a.pdf', size: 10, type: 'application/pdf', arrayBuffer: async () => new ArrayBuffer(1) });
 const pessoa = () => ({ nome: 'Ana', cpf: '476.024.360-75', email: ' Ana@X.br ', papel: 'apoio', uf: 'RN' });
 /* gravações: nome → argumentos de um pedido bem formado */
-const GRAVACOES = {
+const GRAVACOES = { registroAtual: ['visitas', 'v1'],   // 14/10/2026: leitura de um registro para a fila conferir um reenvio (com argumentos, por isso aqui)
+
   salvarTeste: [{ tarefa: 't1', resultado: 'ok' }], marcarEntrega: ['e1', '2026-10', true], darCiencia: ['doc'], pedirNovoAcesso: ['a@b.br'], descartarPedidoAcesso: ['p1'], gerarCodigoAcesso: ['e2'],
   salvarFicha: [{ id: 'f1', nome: 'Maria' }, {}, {}], decidirFicha: ['f1', 'aprovada', null, null], salvarVisita: [{ id: 'v1', ficha_id: 'f1' }, {}, {}], salvarDiagnostico: [{ id: 'd1', ficha_id: 'f1' }, {}, {}],
   salvarAvaliacao: [{ id: 'a1', ficha_id: 'f1' }, {}, {}], decidirDiagnostico: ['d1', 'aprovado', null, null], criarConvite: [{ papel: 'apoio', uf: 'RN' }], enviarPreCadastro: ['tok', { nome: 'A' }],
@@ -83,7 +84,7 @@ describe('o que vai para o banco', () => {
     const up = t.chamadas.find(c => c.nome === 'fichas').passos.find(p => p[0] === 'update')[1][0];
     assert.equal(up.atualizado_em, '2026-10-01T10:00:00.123456+00:00', 'a marca vai como texto, com os microssegundos');
     const u = await montarApi(); await u.api.decidirFicha('f1', 'recusada', 'faltou documento', 'x');
-    assert.ok(!('atualizado_em' in u.chamadas[0].passos.find(p => p[0] === 'update')[1][0]), 'recusar não depende da versão');
+    assert.equal(u.chamadas[0].passos.find(p => p[0] === 'update')[1][0].atualizado_em, 'x', 'devolver também manda a versão lida (14/10/2026, BD-5)');
   });
   test('pagamento: pedido e aval vão pelas funções do banco, com os nomes certos', async () => {
     const t = await montarApi(); await t.api.solicitarPagamento('bolsa', '2026-10', 700, 'rel', ['v1'], { a: 1 }); await t.api.avalizarPagamento('s1', false, 'sem entrega', null);

@@ -138,8 +138,8 @@ select t('coordenação geral corrige a visita feita e a correção fica no hist
                    and a.por = public.meu_id() and a.antes ->> 'situacao' = 'realizada' and a.depois ->> 'situacao' = 'prevista') then raise exception 'sem histórico'; end if; end $x$$q$, 'ok');
 -- o caminho normal não mudou: prevista → realizada, com relato e data na mesma gravação
 \set V4 ' where id = ''e2000000-0000-0000-0000-000000000004'''
-select t('agente marca a visita como feita (relato e data na mesma gravação)', :AG, $q$update public.visitas set situacao = 'realizada', data_realizada = public.fic_hoje(), relato = 'Implantação feita: dois canteiros e a caixa instalada.'$q$ || :'V4', 'ok');
-select t('marcar como feita com data no futuro continua recusado', :AG, $q$update public.visitas set situacao = 'realizada', data_realizada = public.fic_hoje() + 1, relato = 'Implantação feita: dois canteiros e a caixa instalada.'$q$ || :'V4', 'futuro');
+select t('agente marca a visita como feita (relato e data na mesma gravação)', :AG, $q$update public.visitas set situacao = 'realizada', data_realizada = public.fic_hoje(), relato = 'Implantação feita: dois canteiros e a caixa instalada.', fotos = array['BA/teste/foto1.jpg']$q$ || :'V4', 'ok');
+select t('marcar como feita com data no futuro continua recusado', :AG, $q$update public.visitas set situacao = 'realizada', data_realizada = public.fic_hoje() + 1, relato = 'Implantação feita: dois canteiros e a caixa instalada.', fotos = array['BA/teste/foto1.jpg']$q$ || :'V4', 'futuro');
 select t('visita ainda prevista: data de "feita" no futuro é recusada mesmo sem mudar a situação', :BB, $q$update public.visitas set data_realizada = public.fic_hoje() + 10$q$ || :'V4', 'não pode ser no futuro');
 select t('bolsista continua reagendando visita prevista', :BB, $q$update public.visitas set data_prevista = public.fic_hoje() + 7$q$ || :'V4', 'ok');
 

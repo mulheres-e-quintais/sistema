@@ -304,7 +304,7 @@
       el.disabled = true;
       try {
         const dados = await s.api.dadosAcompanhamento(el.dataset.o);
-        if (!s.verComo) s.verComoVolta = { aba: s.aba, y: Math.round(window.scrollY || 0) };   // para voltar ao mesmo lugar
+        if (!s.verComo) { s.verComoVolta = { aba: s.aba, y: Math.round(window.scrollY || 0) }; if (U().previaNoHistorico) U().previaNoHistorico(true); }   // para voltar ao mesmo lugar (e o Voltar do navegador sair da prévia)
         if (U().fecharPainel && s.painel) U().fecharPainel({ semFoco: true, semHistorico: true });
         s.verComo = { orgao: el.dataset.o, dados }; U().render(); window.scrollTo(0, 0);
         const b = document.getElementById('ac-voltar'); if (b) b.focus({ preventScroll: true });
@@ -336,8 +336,9 @@
   }
 
   MQ.acomp = { calcular, pequeno, ORG };
-  function sairPrevia() {
+  function sairPrevia(peloNavegador) {
     const s = S(); if (!s.verComo) return; const volta = s.verComoVolta || {}; s.verComo = null; s.verComoVolta = null;
+    if (!peloNavegador && U().previaNoHistorico) U().previaNoHistorico(false);   // tira a entrada da prévia do histórico do navegador
     if (volta.aba) s.aba = volta.aba; U().render();
     window.scrollTo(0, volta.y || 0);
     const b = document.querySelector('#ac-coord [data-acao="acomp-previa"]'); if (b) b.focus({ preventScroll: true });

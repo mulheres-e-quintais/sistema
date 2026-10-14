@@ -147,7 +147,8 @@
   R.MSG_GENERICA = 'Não deu certo. Tente de novo; se continuar, avise a coordenação.';
   // na tela de entrada: sem internet não dá para conferir a senha; o texto diz o que fazer (e como trabalhar no campo sem sinal)
   R.MSG_ENTRAR_SEM_REDE = 'Sem internet: para entrar no sistema é preciso estar conectada. Procure um lugar com sinal e tente de novo. Para trabalhar no campo sem internet, entre antes de sair e não toque em Sair.';
-  R.MSG_SEM_REDE = 'Sem internet agora: isto só pode ser feito com conexão. Nada foi alterado e o que você preencheu continua na tela. Tente de novo quando o sinal voltar.';
+  // 14/10/2026 (auditoria E2E-4): a conexão pode cair DEPOIS de o pedido chegar ao servidor; não dá para garantir que nada mudou
+  R.MSG_SEM_REDE = 'Sem internet agora: não deu para confirmar com o servidor. O que você preencheu continua na tela. Quando o sinal voltar, confira a lista antes de tentar de novo: pode ser que já tenha sido gravado.';
   R.MSG_SESSAO = 'Sua sessão venceu. Entre de novo.';
   const str = v => (typeof v === 'string' ? v : '');
   /* texto do erro (mensagem + detalhes), sem nunca transformar objeto em "[object Object]" */
@@ -471,10 +472,25 @@
   R.mensagemErro = function (err) {
     const s = R.textoErro(err);
     if (/visitas_etapa_unica/.test(s)) return 'Este quintal já tem essa visita agendada ou feita.';
+    if (/visitas_acompanhamento_dia/.test(s)) return 'Este quintal já tem um acompanhamento neste dia.';   // 61
     if (/diagnosticos_ficha_id_key|diagnosticos_visita_id_key/.test(s)) return 'Este quintal já tem diagnóstico registrado.';
     if (/gps_ou_motivo/.test(s)) return 'Registre a localização ou explique por que não foi possível.';
     if (/sem_agua_sem_plano|com_agua_com_lote/.test(s)) return 'Sem água na seca, não há plano nem lote; com água, escolha o lote.';
     return antigo(err);
+  };
+  /* 14/10/2026 (auditoria E2E-4): a internet caiu DEPOIS de o pedido chegar ao servidor, a pessoa tocou de novo e o servidor recusou
+     porque o registro já existe ("já solicitou", "já ocupa", "só com aval vai para o Arlo"...). Logo depois de uma queda, essa recusa
+     quer dizer que a primeira tentativa foi gravada: a tela diz isso, em vez de parecer um erro novo. */
+  const comQueda = R.mensagemParaTela; let ultimaQueda = 0;
+  const JA_GRAVADO = /já solicitou|já ocupa|já tem essa visita|já tem um acompanhamento|já tem diagnóstico|Só solicitação com aval vai para o Arlo|já está cadastrad|já existe|já foi registrad|já tem avaliação/i;
+  R.mensagemParaTela = function (err) {
+    const msg = comQueda(err);
+    if ((err && err.semRede) || msg === R.MSG_SEM_REDE) { ultimaQueda = Date.now(); return msg; }
+    if (ultimaQueda && Date.now() - ultimaQueda < 10 * 60 * 1000 && JA_GRAVADO.test(msg || '')) {
+      ultimaQueda = 0;
+      return 'A tentativa anterior já foi registrada: a internet caiu antes da confirmação chegar. Não precisa fazer de novo: feche e confira na lista.';
+    }
+    return msg;
   };
 })();
 

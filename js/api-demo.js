@@ -64,13 +64,14 @@
     const aprov = fichas.filter(f => f.uf === 'PI' && f.resultado === 'selecionada' && f.situacao === 'aprovada');
     const vis = (f, ex, data, o) => Object.assign({ id: uid(), ficha_id: f.id, uf: f.uf, etapa: 'diagnostico', executor_id: ex.id, data_prevista: data,
       data_realizada: null, situacao: 'prevista', obs: null, criado_por: ana.id, criado_em: '2026-10-22T15:00:00.000Z', atualizado_em: '2026-10-22T15:00:00.000Z' }, o);
-    const v1 = vis(aprov[0], ana, '2026-10-26', { situacao: 'realizada', data_realizada: '2026-10-26' });
+    const dDiag = R.somaDias ? R.somaDias(R.hoje(), -2) : '2026-10-12';   // 14/10/2026 (E2E-6): o diagnóstico de exemplo é de dois dias atrás (data fixa no futuro travava a implantação)
+    const v1 = vis(aprov[0], ana, dDiag, { situacao: 'realizada', data_realizada: dDiag });
     const v2 = vis(aprov[1], gil, '2026-10-28');
     const v3 = vis(aprov[2], gil, '2026-11-04');
-    const diag = { id: uid(), ficha_id: aprov[0].id, visita_id: v1.id, uf: 'PI', executor_id: ana.id, data_visita: '2026-10-26', codigo_quintal: 'PI-' + aprov[0].id.slice(1, 5).toUpperCase(),
+    const diag = { id: uid(), ficha_id: aprov[0].id, visita_id: v1.id, uf: 'PI', executor_id: ana.id, data_visita: dDiag, codigo_quintal: 'PI-' + aprov[0].id.slice(1, 5).toUpperCase(),
       latitude: aprov[0].latitude, longitude: aprov[0].longitude, sem_gps_motivo: null, area_m2: 300, renda_familiar: 900, renda_quintal: 150,
       agua_seca: 'sim', sem_agua: false, lote: 1, mes_implantacao: 'fevereiro', situacao: 'aguardando', aprovado_por: null, aprovado_em: null, obs_coordenacao: null,
-      fotos: ['exemplo'], criado_em: '2026-10-26T20:00:00.000Z', atualizado_em: '2026-10-26T20:00:00.000Z', exemplo: true,
+      fotos: ['exemplo'], criado_em: dDiag + 'T20:00:00.000Z', atualizado_em: dDiag + 'T20:00:00.000Z', exemplo: true,
       dados: { familia: [{ nome: 'Francisca', idade: 46, parentesco: 'Ela mesma', ocupacao: 'Agricultora', ajuda: true }, { nome: 'José', idade: 50, parentesco: 'Cônjuge/companheiro', ocupacao: 'Agricultor', ajuda: true }, { nome: 'Ana', idade: 14, parentesco: 'Filho(a)', ocupacao: 'Estuda', ajuda: false }],
         politicas: ['bolsa_familia', 'garantia_safra'], fonte_renda: 'Bolsa Família e venda de galinhas', terra: 'propria', cercado: 'em_parte',
         fontes_agua: ['cisterna_consumo', 'cisterna_producao'], capacidade_litros: 52000, meses_seca: 6, distancia_m: 20, reuso: true, irrigacao: 'regador', meses_chuva: 'janeiro a abril', solo: 'arenoso',
@@ -491,8 +492,13 @@
       // 46: passagem nova (ou quando a finalidade muda) diz para quê; pedido antigo sem finalidade não trava
       if (tipo === 'passagem' && (!p || (dados.finalidade || null) !== ((p.dados || {}).finalidade || null)) && !['intercambio', 'pedagogico'].includes(dados.finalidade))
         throw falha('Escolha para que é a passagem: intercâmbio ou acompanhamento pedagógico.');
+      if (!p) {   // 47 (como o banco): o mesmo pedido, da mesma pessoa, há menos de 2 minutos, é repetição depois de falha de rede: devolve o que já foi gravado
+        const igual = (d.pedidos || []).find(x => x.solicitante_id === eu.id && x.tipo === tipo && x.titulo === String(titulo || '').trim() && x.data_ref === data && JSON.stringify(x.dados) === JSON.stringify(dados)
+          && (x.justificativa_prazo || null) === (String(justificativa || '').trim() || null) && x.situacao === 'enviado' && Date.now() - new Date(x.criado_em).getTime() < 120000);
+        if (igual) return igual.id;
+      }
       if (!p) { p = { id: uid(), tipo, uf: eu.uf, solicitante_id: eu.id, criado_em: agora }; d.pedidos.push(p); }
-      Object.assign(p, { titulo, data_ref: data, dados: copia(dados), justificativa_prazo: justificativa || null, situacao: 'enviado', enviado_em: agora, conferido_por: null, conferido_em: null, decidido_por: null, decidido_em: null, valor_autorizado: null });
+      Object.assign(p, { titulo: String(titulo || '').trim(), data_ref: data, dados: copia(dados), justificativa_prazo: justificativa || null, situacao: 'enviado', enviado_em: agora, conferido_por: null, conferido_em: null, decidido_por: null, decidido_em: null, valor_autorizado: null });
       const aud = Object.assign({}, p); delete aud.dados;
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'pedidos_apoio', registro_id: p.id, acao: id ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: null, depois: aud });
       gravar(); return p.id;
@@ -643,13 +649,14 @@
       }
       if (ok && s.tipo === 'bolsa' && s.valor_solicitado != null && vAval > s.valor_solicitado) throw falha('O aval passa do valor pedido. Para pagar mais, devolva para a pessoa corrigir o valor.');
       if (ok && s.tipo === 'bolsa' && R.valorBolsa(pe.papel) != null && vAval > R.valorBolsa(pe.papel)) throw falha('O aval da bolsa não pode passar do valor da função (' + R.fmtBRL(R.valorBolsa(pe.papel)) + ').');   // 56
+      const antesS = copia(s);   // 14/10/2026 (E2E-7): o histórico guarda o antes, como o gatilho do banco ("ver o que mudou")
       if (ok) Object.assign(s, { situacao: 'avalizada', valor_avalizado: vAval, aval_por: eu.id, aval_em: agora, obs_aval: obs || null });
       else {
         if (String(obs || '').trim().length < 5) throw falha('Para devolver, escreva o que precisa ser corrigido.');
         Object.assign(s, { situacao: 'devolvida', aval_por: eu.id, aval_em: agora, obs_aval: obs });
         Object.keys(d.solic_visitas || {}).forEach(k => { if (d.solic_visitas[k] === s.id) delete d.solic_visitas[k]; });
       }
-      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: s.id, acao: 'UPDATE', por: eu.id, em: agora, antes: null, depois: copia(s) });
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: s.id, acao: 'UPDATE', por: eu.id, em: agora, antes: antesS, depois: copia(s) });
       gravar();
     },
     async registrarNoArlo(id, protocolo) {
@@ -658,9 +665,9 @@
       if (!s) throw falha('Solicitação não encontrada.');
       if (s.situacao !== 'avalizada') throw falha('Só solicitação com aval vai para o Arlo.');
       if (s.equipe_id === eu.id) throw falha('O seu próprio pagamento é lançado pela coordenação geral.');
-      const agora = new Date().toISOString();
+      const agora = new Date().toISOString(); const antesS = copia(s);
       Object.assign(s, { situacao: 'lancada', arlo_por: eu.id, arlo_em: agora, arlo_protocolo: protocolo || null });
-      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: s.id, acao: 'UPDATE', por: eu.id, em: agora, antes: null, depois: copia(s) });
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: s.id, acao: 'UPDATE', por: eu.id, em: agora, antes: antesS, depois: copia(s) });
       gravar();
     },
 
@@ -916,9 +923,11 @@
       }
       return copia(d.equipe.filter(x => x.id === eu.id));
     },
-    async auditoria(antesDe) {
+    async auditoria(antesDe, antesId) {
       const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') return [];   // como o banco (25_historico_e_cadastro.sql)
-      return copia(ler().auditoria).reverse().filter(a => !antesDe || String(a.em) < String(antesDe)).slice(0, 200);
+      // como a tela de produção: (em, id) decrescente; a página seguinte começa depois do último (em, id), sem pular empates
+      const l = copia(ler().auditoria).sort((x, y) => String(y.em).localeCompare(String(x.em)) || (+y.id || 0) - (+x.id || 0));
+      return l.filter(a => !antesDe || String(a.em) < String(antesDe) || (antesId != null && String(a.em) === String(antesDe) && (+a.id || 0) < +antesId)).slice(0, 200);
     },
 
     async criar(m) {
@@ -1021,7 +1030,7 @@
       const i = d.fichas.findIndex(x => x.id === id); if (i < 0) throw falha('Ficha não encontrada.');
       const antes = d.fichas[i];
       // 46: a tela manda a marca (atualizado_em) da ficha que leu; se a ficha mudou depois, a aprovação é recusada. Sem a marca, aprova como antes.
-      if (situacao === 'aprovada' && antes.situacao !== 'aprovada' && marca && marca !== antes.atualizado_em) throw falha(MSG_ALTERADO);
+      if (situacao !== antes.situacao && marca && marca !== antes.atualizado_em) throw falha(MSG_ALTERADO);   // 14/10/2026 (BD-5): devolver também confere a marca
       // 46: quintal em andamento (com diagnóstico): a ficha não é devolvida
       if (situacao === 'devolvida' && antes.situacao !== 'devolvida' && (d.diagnosticos || []).some(x => x.ficha_id === id))
         throw falha('Este quintal já está em andamento (tem diagnóstico registrado): a ficha não pode ser devolvida nem mudar de resultado. Para corrigir um dado da ficha, a coordenação geral altera direto. Se a mulher saiu do projeto, cancele antes as visitas agendadas e registre a saída na observação.');
@@ -1055,6 +1064,25 @@
       if (antes && antes.situacao === 'cancelada' && (v.situacao || antes.situacao) !== 'cancelada') throw falha('Visita cancelada não volta. Agende outra.');   // 03_campo.sql
       if (!eu || !(R.decideCampo(eu.papel) || (R.ehBolsista(eu.papel) && f.uf === eu.uf) || (antes && antes.executor_id === eu.id))) throw falha('Seu perfil não tem permissão para esta ação.');
       if (eu.papel === 'agente' && antes && (v.executor_id !== antes.executor_id || v.data_prevista !== antes.data_prevista || v.situacao === 'cancelada')) throw falha('O agente de campo não reagenda nem cancela visitas. Fale com a bolsista do estado.');
+      // 14/10/2026 (auditoria REG-2 a REG-6): as mesmas travas do banco (46, 56, 61)
+      if (!antes && v.situacao === 'realizada') throw falha('A visita é agendada primeiro e marcada como feita depois, pelo formulário (diagnóstico e avaliação) ou pelo registro da visita.');
+      if (antes && v.situacao === 'cancelada' && antes.situacao !== 'cancelada') {
+        if (antes.etapa === 'diagnostico' && (d.diagnosticos || []).some(x => x.visita_id === antes.id)) throw falha('Esta visita já tem diagnóstico registrado; não pode ser cancelada.');
+        if (antes.etapa === 'avaliacao' && (d.avaliacoes || []).some(x => x.visita_id === antes.id)) throw falha('Esta visita já tem avaliação registrada; não pode ser cancelada.');
+      }
+      if (antes && antes.situacao === 'realizada' && !/^coord_(geral|tecnico)$/.test(eu.papel)
+          && ((v.executor_id || antes.executor_id) !== antes.executor_id || (v.situacao || antes.situacao) !== antes.situacao || (v.data_prevista || antes.data_prevista) !== antes.data_prevista
+              || ((v.data_realizada || antes.data_realizada) !== antes.data_realizada && !['diagnostico', 'avaliacao'].includes(antes.etapa))))
+        throw falha('Esta visita já foi feita: quem fez, as datas e a situação não mudam mais. Se houver erro, peça à coordenação para corrigir.');
+      if (antes && v.situacao === 'realizada' && antes.situacao !== 'realizada') {
+        if (antes.etapa === 'diagnostico' && !(d.diagnosticos || []).some(x => x.visita_id === antes.id)) throw falha('A visita de diagnóstico é marcada como feita pelo próprio formulário do diagnóstico.');
+        if (antes.etapa === 'avaliacao' && !(d.avaliacoes || []).some(x => x.visita_id === antes.id)) throw falha('A visita de avaliação é marcada como feita pelo próprio formulário da avaliação.');
+      }
+      if ((v.etapa || (antes && antes.etapa)) === 'acompanhamento' && (v.situacao || (antes && antes.situacao)) !== 'cancelada') {
+        const dia = v.data_realizada || v.data_prevista || (antes && (antes.data_realizada || antes.data_prevista));
+        if (dia && d.visitas.some(x => x.id !== v.id && x.ficha_id === v.ficha_id && x.etapa === 'acompanhamento' && x.situacao !== 'cancelada' && (x.data_realizada || x.data_prevista) === dia))
+          throw falha('Este quintal já tem um acompanhamento neste dia.');
+      }
       if (!(f.resultado === 'selecionada' && f.situacao === 'aprovada')) throw falha('Só há visita para mulher selecionada e aprovada pela coordenação técnica.');
       // 57: dentro da vigência do TED (só ao criar ou quando a data muda: registro antigo não trava)
       { const fora = x => x && (String(x).slice(0, 10) < R.LIM.visitaMin || String(x).slice(0, 10) > R.LIM.visitaMax);
@@ -1081,8 +1109,10 @@
       if (v.situacao === 'realizada' && (!antes || antes.situacao !== 'realizada') && ['implantacao', 'acompanhamento'].includes(v.etapa)) {
         if (!v.data_realizada || v.data_realizada > R.hoje()) throw falha('Informe a data em que a visita foi feita (não pode ser no futuro).');
         if (String(v.relato || '').trim().length < 20) throw falha('Conte em poucas linhas o que foi feito na visita (pelo menos 20 letras).');
+        if (!((v.fotos || (antes && antes.fotos) || []).length)) throw falha('Para marcar a visita como feita, envie pelo menos uma foto do quintal.');   // 63 (REG-1)
       }
-      if (antes && (v.situacao !== antes.situacao || (v.data_realizada || null) !== (antes.data_realizada || null) || v.executor_id !== antes.executor_id)
+      if (antes && (v.situacao !== antes.situacao || (v.data_realizada || null) !== (antes.data_realizada || null) || v.executor_id !== antes.executor_id
+          || (v.relato !== undefined && (v.relato || null) !== (antes.relato || null)) || (v.fotos !== undefined && JSON.stringify(v.fotos || []) !== JSON.stringify(antes.fotos || [])))   // 63 (SEG-2): relato e fotos também
           && (d.solic_visitas || {})[antes.id] && ['solicitada', 'avalizada', 'lancada'].includes(((d.solicitacoes || []).find(s => s.id === d.solic_visitas[antes.id]) || {}).situacao))
         throw falha('Esta visita já está numa solicitação de pagamento. Para mudar, a solicitação precisa ser devolvida pela coordenação.');
       const agora = new Date().toISOString();
@@ -1177,7 +1207,7 @@
       if (!eu || !R.decideCampo(eu.papel)) throw falha('Só a coordenação aprova ou devolve o plano.');
       const i = d.diagnosticos.findIndex(x => x.id === id); if (i < 0) throw falha('Diagnóstico não encontrado.');
       // 46: aprovar com a marca do que foi lido; se o plano mudou depois, recusa. Sem a marca, aprova como antes.
-      if (situacao === 'aprovado' && d.diagnosticos[i].situacao !== 'aprovado' && marca && marca !== d.diagnosticos[i].atualizado_em) throw falha(MSG_ALTERADO);
+      if (situacao !== d.diagnosticos[i].situacao && marca && marca !== d.diagnosticos[i].atualizado_em) throw falha(MSG_ALTERADO);   // 14/10/2026 (BD-5)
       if (situacao === 'devolvido' && String(obs || '').trim().length < 5) throw falha('Para devolver, escreva o que precisa ser corrigido.');
       const agora = new Date().toISOString(); const antes = d.diagnosticos[i];
       // mesmas regras do 31_validacao_diagnostico.sql
@@ -1235,6 +1265,10 @@
         cadastro_arlo: !!dados.cadastro_arlo, siape: dados.siape || null, nome_social: dados.nome_social || null, data_nascimento: dados.data_nascimento || null, nis: dados.nis || null, endereco: dados.endereco || {}, socioeconomico: dados.socioeconomico || null, perfil: dados.perfil || null,
         consentimento_lgpd: true, enviado_em: new Date().toISOString(), situacao: 'aguardando' }]);
       c.usado_em = new Date().toISOString(); gravar();
+    },
+    async registroAtual(tabela, id) {   // como a de produção: o registro como está agora (para a fila conferir um reenvio)
+      if (!['visitas', 'diagnosticos', 'avaliacoes', 'fichas'].includes(tabela) || !id) return null;
+      const x = (ler()[tabela] || []).find(r => r.id === id); return x ? copia(x) : null;
     },
     async lerPrivado(id) {
       const d = ler(); const eu = euMesmo(); if (!eu || !(eu.id === id || /^coord|auxiliar_adm/.test(eu.papel))) return null;
@@ -1336,7 +1370,7 @@
         fichas: n(d.fichas, f => f.uf === uf),
         selecionadas: n(d.fichas, f => f.uf === uf && f.resultado === 'selecionada' && f.situacao === 'aprovada'),
         diagnosticos: n(d.diagnosticos || [], x => x.uf === uf),
-        planos: n(d.diagnosticos || [], x => x.uf === uf && x.situacao === 'aprovado'),
+        planos: n(d.diagnosticos || [], x => x.uf === uf && x.situacao === 'aprovado' && !x.sem_agua),   // 63: sem água não tem plano (como a tela do MDA)
         implantados: n(d.visitas || [], v => v.uf === uf && v.etapa === 'implantacao' && v.situacao === 'realizada'),
         acompanhamentos: n(d.visitas || [], v => v.uf === uf && v.etapa === 'acompanhamento' && v.situacao === 'realizada') }));
       const ativos = d.equipe.filter(m => m.status === 'ativa');

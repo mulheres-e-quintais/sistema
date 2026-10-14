@@ -891,6 +891,7 @@
           if (!R.habilitado(eu)) throw new Error('Você ainda não está habilitada (FIC, FUNCERN e termo): a visita não poderia ser paga.');
           visitaId = MQ.novoId();
           await guardar('visita', { id: visitaId, ficha_id: f.id, uf: f.uf, etapa: 'diagnostico', executor_id: eu.id, data_prevista: d.data_visita, situacao: 'prevista' });
+          form.dataset.visita = visitaId;   // 14/10/2026 (E2E-2): se o diagnóstico for recusado e ela corrigir, o novo envio usa esta visita (não cria outra)
         }
         const campos = ['data_visita', 'latitude', 'longitude', 'sem_gps_motivo', 'area_m2', 'renda_familiar', 'renda_quintal', 'agua_seca', 'lote', 'mes_implantacao'];
         const reg = { id: form.dataset.id, ficha_id: f.id, visita_id: visitaId, uf: f.uf, codigo_quintal: codigoQuintal(f), sem_agua: sem, fotos: d.fotos.filter(x => x !== 'exemplo') };

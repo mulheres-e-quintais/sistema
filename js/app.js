@@ -1,5 +1,9 @@
 /* Mulheres & Quintais — telas do sistema (cadastro da equipe) */
 (function () {
+  /* 14/10/2026 (auditoria SEG-6): o sistema não abre dentro da moldura (iframe) de outro site. O GitHub Pages não manda o
+     cabeçalho que impede isso e a meta CSP não aceita frame-ancestors: a página se esconde e tenta sair da moldura. */
+  try { if (window.top && window.top !== window.self) { let mesmo = false; try { mesmo = window.top.location.origin === window.location.origin; } catch (e) {}
+    if (!mesmo) { document.documentElement.style.visibility = 'hidden'; try { window.top.location = window.location.href; } catch (e) {} } } } catch (e) {}
   const R = MQ.regras;
   const P = MQ.PAPEIS;
   const $ = s => document.querySelector(s);
@@ -379,7 +383,8 @@
   /* sem coordenação técnica ativa (vaga aberta, desligada): a coordenação geral assume a vez dela
      nos contadores e listas, para nenhum pedido ficar parado sem aviso. Só vale para quem vê a equipe toda. */
   const semTecnica = () => !!(S.eu && S.eu.papel === 'coord_geral') && !(S.equipe || []).some(m => m.papel === 'coord_tecnico' && m.status === 'ativa');
-  MQ.ui = { sessaoEncerrada: () => { if (S.eu && !S.verEntrada && !saindo) sairDoSistema(AVISO_OUTRA_JANELA); }, kpi: (n, de, rot, k, op) => kpiEq(n, de, rot, k, op), vagaAberta, S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: o => render(o), renderFundo: () => renderFundo(), abrirPainel: p => abrirPainel(p), fecharPainel: o => fecharPainel(o), pedirFechar: () => pedirFechar(), painelAlterado: () => painelAlterado(),
+  MQ.ui = { previaNoHistorico: entrou => { if (!H) return; if (entrou) { try { H.pushState({ mq: 'previa' }, ''); } catch (e) {} } else if (H.state && H.state.mq === 'previa') voltarNoHistorico(); },   // 14/10/2026 (E2E-5): Voltar do navegador sai da prévia "Ver como"
+    sessaoEncerrada: () => { if (S.eu && !S.verEntrada && !saindo) sairDoSistema(AVISO_OUTRA_JANELA); }, kpi: (n, de, rot, k, op) => kpiEq(n, de, rot, k, op), vagaAberta, S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: o => render(o), renderFundo: () => renderFundo(), abrirPainel: p => abrirPainel(p), fecharPainel: o => fecharPainel(o), pedirFechar: () => pedirFechar(), painelAlterado: () => painelAlterado(),
     irParaAba: x => irParaAba(x), avisarVersaoNova: () => avisarVersaoNova(), declarados: (f, r) => declarados(f, r),
     vista: () => vistaDoPainel(), marcaAberta: (t, id) => marcaAberta(t, id), reabrirComConflito: m => reabrirComConflito(m),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), carregarDaAba: () => carregarDaAba(), sincronizar: a => sincronizar(a),
@@ -2047,9 +2052,9 @@
       else if (a === 'hist-limpar') { S.histF = { quem: '', grupo: '', busca: '' }; render(); const b = document.getElementById('hf-quem'); if (b) b.focus(); }
       else if (a === 'hist-csv') { el.disabled = true; try { await baixarHistorico(); } finally { el.disabled = false; } }
       else if (a === 'hist-mais') {
-        const ord = (S.aud || []).slice().sort((x, y) => String(y.em).localeCompare(String(x.em))); const ult = ord[ord.length - 1];
+        const ord = (S.aud || []).slice().sort((x, y) => String(y.em).localeCompare(String(x.em)) || (+y.id || 0) - (+x.id || 0)); const ult = ord[ord.length - 1];
         el.disabled = true; el.textContent = 'Carregando…';
-        try { const v = await S.api.auditoria(ult ? ult.em : null); const ja = new Set(S.aud.map(x => x.id)); const novos = (v || []).filter(x => !ja.has(x.id));
+        try { const v = await S.api.auditoria(ult ? ult.em : null, ult ? ult.id : null); const ja = new Set(S.aud.map(x => x.id)); const novos = (v || []).filter(x => !ja.has(x.id));
           S.aud = S.aud.concat(novos); if ((v || []).length < 200) S.audFim = true; (S.aberto = S.aberto || {})['hist-antigos'] = true; renderFundo(); }
         catch (e) { el.disabled = false; el.textContent = 'Carregar registros mais antigos'; toast(avisarErro(e)); }
       }
@@ -2196,6 +2201,7 @@
       if (painelAlterado() || $('#painel .confirma-rasc')) { try { H.pushState({ mq: 'painel' }, ''); S.painelHist = true; } catch (e) {} if (!$('#painel .confirma-rasc')) confirmarSaida(); return; }   // com uma pergunta na tela, o Voltar não fecha: a pessoa responde
       fecharPainel(); return;
     }
+    if (S.verComo && MQ.acompUI) { MQ.acompUI.sairPrevia(true); return; }   // Voltar do navegador na prévia "Ver como": sai dela, na mesma aba
     const st = ev && ev.state;
     if (st && st.mq === 'painel') { try { H.back(); } catch (e) {} return; }   // entrada de um painel que já fechou: segue em frente
     abaDoHistorico(st);

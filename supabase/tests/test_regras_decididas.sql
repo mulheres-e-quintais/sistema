@@ -127,8 +127,8 @@ select t('1. avaliação final continua exigindo a implantação', :BB, :'VIS' |
 select t('1. o diagnóstico continua sendo agendado como antes', :BB, :'VIS' || $q$09', 'BA', 'diagnostico', 'f6000000-0000-0000-0000-000000000001', public.fic_hoje() + 5)$q$, 'ok');
 select t('1. segunda implantação do mesmo quintal: mensagem clara (sem erro cru de registro repetido)', :BB, :'VIS' || $q$04', 'BA', 'implantacao', 'f6000000-0000-0000-0000-000000000001', public.fic_hoje() + 5)$q$, 'já tem essa visita agendada ou feita (implantação)');
 -- marcar como feita
-select t('1. implantação ANTIGA (plano devolvido) NÃO é marcada como feita', :RG, $q$update public.visitas set situacao = 'realizada', data_realizada = public.fic_hoje(), relato = 'Implantação feita: dois canteiros e a caixa instalada.'$q$ || :'V' || $q$052'$q$, 'O plano deste quintal ainda não foi aprovado');
-select t('1. acompanhamento ANTIGO (sem implantação) NÃO é marcado como feito', :RG, $q$update public.visitas set situacao = 'realizada', data_realizada = public.fic_hoje(), relato = 'Acompanhamento feito: horta produzindo bem.'$q$ || :'V' || $q$023'$q$, 'O acompanhamento é feito depois da implantação');
+select t('1. implantação ANTIGA (plano devolvido) NÃO é marcada como feita', :RG, $q$update public.visitas set situacao = 'realizada', data_realizada = public.fic_hoje(), relato = 'Implantação feita: dois canteiros e a caixa instalada.', fotos = array['BA/teste/foto1.jpg']$q$ || :'V' || $q$052'$q$, 'O plano deste quintal ainda não foi aprovado');
+select t('1. acompanhamento ANTIGO (sem implantação) NÃO é marcado como feito', :RG, $q$update public.visitas set situacao = 'realizada', data_realizada = public.fic_hoje(), relato = 'Acompanhamento feito: horta produzindo bem.', fotos = array['BA/teste/foto2.jpg']$q$ || :'V' || $q$023'$q$, 'O acompanhamento é feito depois da implantação');
 select t('1. implantação ANTIGA fora da regra continua podendo ser cancelada', :BB, $q$do $x$ declare n int; begin update public.visitas set situacao = 'cancelada', obs = 'aguardando o plano' where id = 'f6200000-0000-0000-0000-000000000052';
   get diagnostics n = row_count; if n <> 1 then raise exception 'não cancelou'; end if; end $x$$q$, 'ok');
 select t('1. implantação ANTIGA fora da regra continua podendo ser remarcada (data)', :BB, $q$do $x$ declare n int; begin update public.visitas set data_prevista = public.fic_hoje() + 20 where id = 'f6200000-0000-0000-0000-000000000052';
@@ -149,14 +149,14 @@ select t('1. caminho completo: implantação feita com plano aprovado, depois o 
   insert into public.visitas (id, ficha_id, uf, etapa, executor_id, data_prevista) values ('f6200000-0000-0000-0000-000000000022', 'f6100000-0000-0000-0000-000000000002', 'BA', 'implantacao', 'f6000000-0000-0000-0000-000000000001', public.fic_hoje());
   perform r46_como(%L);
   -- (até o 61 a agente não enxergava o plano feito por outra pessoa; desde o 61, a escalada para o quintal lê. A conferência abaixo vale nos dois casos)
-  begin update public.visitas set situacao = 'realizada', data_realizada = %L::date - 21, relato = 'Implantação feita: dois canteiros e a caixa instalada.' where id = 'f6200000-0000-0000-0000-000000000022'; m := 'aceitou';
+  begin update public.visitas set situacao = 'realizada', data_realizada = %L::date - 21, relato = 'Implantação feita: dois canteiros e a caixa instalada.', fotos = array['BA/teste/foto1.jpg'] where id = 'f6200000-0000-0000-0000-000000000022'; m := 'aceitou';
   exception when others then m := sqlerrm; end;
   if m not like 'A implantação não pode ter data anterior à do diagnóstico (%%' then raise exception 'data anterior ao diagnóstico: %%', m; end if;
-  update public.visitas set situacao = 'realizada', data_realizada = public.fic_hoje(), relato = 'Implantação feita: dois canteiros e a caixa instalada.' where id = 'f6200000-0000-0000-0000-000000000022';
-  begin update public.visitas set situacao = 'realizada', data_realizada = public.fic_hoje() - 1, relato = 'Acompanhamento feito: horta produzindo bem.' where id = 'f6200000-0000-0000-0000-000000000023'; m := 'aceitou';
+  update public.visitas set situacao = 'realizada', data_realizada = public.fic_hoje(), relato = 'Implantação feita: dois canteiros e a caixa instalada.', fotos = array['BA/teste/foto1.jpg'] where id = 'f6200000-0000-0000-0000-000000000022';
+  begin update public.visitas set situacao = 'realizada', data_realizada = public.fic_hoje() - 1, relato = 'Acompanhamento feito: horta produzindo bem.', fotos = array['BA/teste/foto2.jpg'] where id = 'f6200000-0000-0000-0000-000000000023'; m := 'aceitou';
   exception when others then m := sqlerrm; end;
   if m not like 'O acompanhamento não pode ter data anterior à da implantação (%%' then raise exception 'data anterior à implantação: %%', m; end if;
-  update public.visitas set situacao = 'realizada', data_realizada = public.fic_hoje(), relato = 'Acompanhamento feito: horta produzindo bem.' where id = 'f6200000-0000-0000-0000-000000000023';
+  update public.visitas set situacao = 'realizada', data_realizada = public.fic_hoje(), relato = 'Acompanhamento feito: horta produzindo bem.', fotos = array['BA/teste/foto2.jpg'] where id = 'f6200000-0000-0000-0000-000000000023';
   if (select count(*) from public.visitas where ficha_id = 'f6100000-0000-0000-0000-000000000002' and situacao = 'realizada') <> 3 then raise exception 'não ficou feito'; end if; end $x$$q$, :'rg_logar', :'mes'), 'ok');
 select t('1. avaliação com data anterior à implantação é recusada; na data certa é aceita; e não pode ser corrigida para antes', :RG, format($q$do $x$ declare m text; begin
   begin insert into public.avaliacoes (id, ficha_id, visita_id, uf, data_visita, latitude, longitude, quintal_produz)

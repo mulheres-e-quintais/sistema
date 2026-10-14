@@ -87,16 +87,17 @@ describe('visitas de campo', () => {
   });
   test('visita de implantação feita exige data não futura e relato de 20 letras', async () => {
     const f = await fichaAprovada(); const ex = await pessoa('agente', m => R.habilitado(m) && m.uf === 'PI');
-    const vd = await api.salvarVisita(visita(f, ex, { situacao: 'realizada', data_realizada: diaMais(-1) }), {});
-    // 46: a implantação só é agendada com o plano do quintal aprovado
-    await falha(api.salvarVisita(visita(f, ex, { etapa: 'implantacao' }), {}), /plano deste quintal ainda não foi aprovado/);
+    const vd = await api.salvarVisita(visita(f, ex, { data_prevista: diaMais(-1) }), {});   // 56: a visita nasce agendada; o diagnóstico a marca como feita
     await como('bolsista');
     const dg = await api.salvarDiagnostico({ id: 'dg' + f.id, ficha_id: f.id, visita_id: vd.id, uf: f.uf, data_visita: diaMais(-1), latitude: -8.1, longitude: -41.1, sem_agua: false, lote: 1, dados: {} }, {});
+    // 46: a implantação só é agendada com o plano do quintal aprovado
+    await falha(api.salvarVisita(visita(f, ex, { etapa: 'implantacao' }), {}), /plano deste quintal ainda não foi aprovado/);
     await como('coord_tecnico'); await api.decidirDiagnostico(dg.id, 'aprovado', 'Plano conferido.');
     const imp = await api.salvarVisita(visita(f, ex, { etapa: 'implantacao' }), {});
     await falha(api.salvarVisita(Object.assign({}, imp, { situacao: 'realizada', data_realizada: diaMais(1), relato: 'Implantamos os canteiros e o gotejamento.' }), {}), /não pode ser no futuro/);
     await falha(api.salvarVisita(Object.assign({}, imp, { situacao: 'realizada', data_realizada: diaMais(0), relato: 'Feito.' }), {}), /20 letras/);
-    const ok = await api.salvarVisita(Object.assign({}, imp, { situacao: 'realizada', data_realizada: diaMais(0), relato: 'Implantamos os canteiros e o gotejamento.' }), {});
+    await falha(api.salvarVisita(Object.assign({}, imp, { situacao: 'realizada', data_realizada: diaMais(0), relato: 'Implantamos os canteiros e o gotejamento.' }), {}), /pelo menos uma foto/);   // 63
+    const ok = await api.salvarVisita(Object.assign({}, imp, { situacao: 'realizada', data_realizada: diaMais(0), relato: 'Implantamos os canteiros e o gotejamento.', fotos: ['imp_1.jpg'] }), {});
     assert.equal(ok.situacao, 'realizada');
   });
   test('agente não reagenda nem cancela a própria visita', async () => {

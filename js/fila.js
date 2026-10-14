@@ -141,6 +141,11 @@
               await F.marcarSeIgual(it);
               continue;
             }
+            // 14/10/2026 (auditoria E2E-1): "outra pessoa alterou" logo depois de uma queda de rede pode ser o PRÓPRIO envio, que
+            // chegou ao servidor sem a resposta voltar. Se tudo o que este item muda já está igual lá, ele foi enviado: sai da fila.
+            if (MQ.regras && MQ.regras.ehConflito && (MQ.regras.ehConflito(e) || MQ.regras.ehConflito(msg)) && await F.jaEstaNoServidor(api, it)) {
+              if (await F.removerSeIgual(it)) enviados++; quedasSeguidas = 0; continue;
+            }
             it.erro = msg; it.reenviar = false;
             // recusado porque outra pessoa alterou: o item NÃO é descartado (o que foi digitado fica); a tela reabre com o dado novo e só o que ela mudou
             it.conflito = !!(MQ.regras && MQ.regras.ehConflito && (MQ.regras.ehConflito(e) || MQ.regras.ehConflito(it.erro)));
@@ -153,6 +158,15 @@
         if (d) setTimeout(() => { F.sincronizar(d.api, d.dono).then(r => { if (r && r.enviados && F.aoEnviarDepois) F.aoEnviarDepois(r); }).catch(() => {}); }, 0);
       }
       return { enviados };
+    },
+    async jaEstaNoServidor(api, it) {
+      const tabela = { visita: 'visitas', diagnostico: 'diagnosticos', avaliacao: 'avaliacoes', ficha: 'fichas' }[it.tipo];
+      if (!api || !api.registroAtual || !tabela || !it.dados || !it.dados.id) return false;
+      let r; try { r = await api.registroAtual(tabela, it.dados.id); } catch (e) { return false; }
+      if (!r) return false;
+      const estavel = v => v && typeof v === 'object' ? (Array.isArray(v) ? '[' + v.map(estavel).join(',') + ']' : '{' + Object.keys(v).sort().map(k => JSON.stringify(k) + ':' + estavel(v[k])).join(',') + '}') : JSON.stringify(v == null ? null : v);
+      const fora = /^(atualizado_em|criado_em|fotos|fotos_ok|marca|conteudo_alterado_por|conteudo_alterado_em)$/;
+      return Object.keys(it.dados).filter(k => !fora.test(k)).every(k => estavel(it.dados[k]) === estavel(r[k]));
     }
   });
 

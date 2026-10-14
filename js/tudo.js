@@ -653,7 +653,8 @@ MQ.ORCAMENTO = {
   R.MSG_GENERICA = 'Não deu certo. Tente de novo; se continuar, avise a coordenação.';
   // na tela de entrada: sem internet não dá para conferir a senha; o texto diz o que fazer (e como trabalhar no campo sem sinal)
   R.MSG_ENTRAR_SEM_REDE = 'Sem internet: para entrar no sistema é preciso estar conectada. Procure um lugar com sinal e tente de novo. Para trabalhar no campo sem internet, entre antes de sair e não toque em Sair.';
-  R.MSG_SEM_REDE = 'Sem internet agora: isto só pode ser feito com conexão. Nada foi alterado e o que você preencheu continua na tela. Tente de novo quando o sinal voltar.';
+  // 14/10/2026 (auditoria E2E-4): a conexão pode cair DEPOIS de o pedido chegar ao servidor; não dá para garantir que nada mudou
+  R.MSG_SEM_REDE = 'Sem internet agora: não deu para confirmar com o servidor. O que você preencheu continua na tela. Quando o sinal voltar, confira a lista antes de tentar de novo: pode ser que já tenha sido gravado.';
   R.MSG_SESSAO = 'Sua sessão venceu. Entre de novo.';
   const str = v => (typeof v === 'string' ? v : '');
   /* texto do erro (mensagem + detalhes), sem nunca transformar objeto em "[object Object]" */
@@ -977,10 +978,25 @@ MQ.ORCAMENTO = {
   R.mensagemErro = function (err) {
     const s = R.textoErro(err);
     if (/visitas_etapa_unica/.test(s)) return 'Este quintal já tem essa visita agendada ou feita.';
+    if (/visitas_acompanhamento_dia/.test(s)) return 'Este quintal já tem um acompanhamento neste dia.';   // 61
     if (/diagnosticos_ficha_id_key|diagnosticos_visita_id_key/.test(s)) return 'Este quintal já tem diagnóstico registrado.';
     if (/gps_ou_motivo/.test(s)) return 'Registre a localização ou explique por que não foi possível.';
     if (/sem_agua_sem_plano|com_agua_com_lote/.test(s)) return 'Sem água na seca, não há plano nem lote; com água, escolha o lote.';
     return antigo(err);
+  };
+  /* 14/10/2026 (auditoria E2E-4): a internet caiu DEPOIS de o pedido chegar ao servidor, a pessoa tocou de novo e o servidor recusou
+     porque o registro já existe ("já solicitou", "já ocupa", "só com aval vai para o Arlo"...). Logo depois de uma queda, essa recusa
+     quer dizer que a primeira tentativa foi gravada: a tela diz isso, em vez de parecer um erro novo. */
+  const comQueda = R.mensagemParaTela; let ultimaQueda = 0;
+  const JA_GRAVADO = /já solicitou|já ocupa|já tem essa visita|já tem um acompanhamento|já tem diagnóstico|Só solicitação com aval vai para o Arlo|já está cadastrad|já existe|já foi registrad|já tem avaliação/i;
+  R.mensagemParaTela = function (err) {
+    const msg = comQueda(err);
+    if ((err && err.semRede) || msg === R.MSG_SEM_REDE) { ultimaQueda = Date.now(); return msg; }
+    if (ultimaQueda && Date.now() - ultimaQueda < 10 * 60 * 1000 && JA_GRAVADO.test(msg || '')) {
+      ultimaQueda = 0;
+      return 'A tentativa anterior já foi registrada: a internet caiu antes da confirmação chegar. Não precisa fazer de novo: feche e confira na lista.';
+    }
+    return msg;
   };
 })();
 
@@ -1079,13 +1095,14 @@ MQ.ORCAMENTO = {
     const aprov = fichas.filter(f => f.uf === 'PI' && f.resultado === 'selecionada' && f.situacao === 'aprovada');
     const vis = (f, ex, data, o) => Object.assign({ id: uid(), ficha_id: f.id, uf: f.uf, etapa: 'diagnostico', executor_id: ex.id, data_prevista: data,
       data_realizada: null, situacao: 'prevista', obs: null, criado_por: ana.id, criado_em: '2026-10-22T15:00:00.000Z', atualizado_em: '2026-10-22T15:00:00.000Z' }, o);
-    const v1 = vis(aprov[0], ana, '2026-10-26', { situacao: 'realizada', data_realizada: '2026-10-26' });
+    const dDiag = R.somaDias ? R.somaDias(R.hoje(), -2) : '2026-10-12';   // 14/10/2026 (E2E-6): o diagnóstico de exemplo é de dois dias atrás (data fixa no futuro travava a implantação)
+    const v1 = vis(aprov[0], ana, dDiag, { situacao: 'realizada', data_realizada: dDiag });
     const v2 = vis(aprov[1], gil, '2026-10-28');
     const v3 = vis(aprov[2], gil, '2026-11-04');
-    const diag = { id: uid(), ficha_id: aprov[0].id, visita_id: v1.id, uf: 'PI', executor_id: ana.id, data_visita: '2026-10-26', codigo_quintal: 'PI-' + aprov[0].id.slice(1, 5).toUpperCase(),
+    const diag = { id: uid(), ficha_id: aprov[0].id, visita_id: v1.id, uf: 'PI', executor_id: ana.id, data_visita: dDiag, codigo_quintal: 'PI-' + aprov[0].id.slice(1, 5).toUpperCase(),
       latitude: aprov[0].latitude, longitude: aprov[0].longitude, sem_gps_motivo: null, area_m2: 300, renda_familiar: 900, renda_quintal: 150,
       agua_seca: 'sim', sem_agua: false, lote: 1, mes_implantacao: 'fevereiro', situacao: 'aguardando', aprovado_por: null, aprovado_em: null, obs_coordenacao: null,
-      fotos: ['exemplo'], criado_em: '2026-10-26T20:00:00.000Z', atualizado_em: '2026-10-26T20:00:00.000Z', exemplo: true,
+      fotos: ['exemplo'], criado_em: dDiag + 'T20:00:00.000Z', atualizado_em: dDiag + 'T20:00:00.000Z', exemplo: true,
       dados: { familia: [{ nome: 'Francisca', idade: 46, parentesco: 'Ela mesma', ocupacao: 'Agricultora', ajuda: true }, { nome: 'José', idade: 50, parentesco: 'Cônjuge/companheiro', ocupacao: 'Agricultor', ajuda: true }, { nome: 'Ana', idade: 14, parentesco: 'Filho(a)', ocupacao: 'Estuda', ajuda: false }],
         politicas: ['bolsa_familia', 'garantia_safra'], fonte_renda: 'Bolsa Família e venda de galinhas', terra: 'propria', cercado: 'em_parte',
         fontes_agua: ['cisterna_consumo', 'cisterna_producao'], capacidade_litros: 52000, meses_seca: 6, distancia_m: 20, reuso: true, irrigacao: 'regador', meses_chuva: 'janeiro a abril', solo: 'arenoso',
@@ -1506,8 +1523,13 @@ MQ.ORCAMENTO = {
       // 46: passagem nova (ou quando a finalidade muda) diz para quê; pedido antigo sem finalidade não trava
       if (tipo === 'passagem' && (!p || (dados.finalidade || null) !== ((p.dados || {}).finalidade || null)) && !['intercambio', 'pedagogico'].includes(dados.finalidade))
         throw falha('Escolha para que é a passagem: intercâmbio ou acompanhamento pedagógico.');
+      if (!p) {   // 47 (como o banco): o mesmo pedido, da mesma pessoa, há menos de 2 minutos, é repetição depois de falha de rede: devolve o que já foi gravado
+        const igual = (d.pedidos || []).find(x => x.solicitante_id === eu.id && x.tipo === tipo && x.titulo === String(titulo || '').trim() && x.data_ref === data && JSON.stringify(x.dados) === JSON.stringify(dados)
+          && (x.justificativa_prazo || null) === (String(justificativa || '').trim() || null) && x.situacao === 'enviado' && Date.now() - new Date(x.criado_em).getTime() < 120000);
+        if (igual) return igual.id;
+      }
       if (!p) { p = { id: uid(), tipo, uf: eu.uf, solicitante_id: eu.id, criado_em: agora }; d.pedidos.push(p); }
-      Object.assign(p, { titulo, data_ref: data, dados: copia(dados), justificativa_prazo: justificativa || null, situacao: 'enviado', enviado_em: agora, conferido_por: null, conferido_em: null, decidido_por: null, decidido_em: null, valor_autorizado: null });
+      Object.assign(p, { titulo: String(titulo || '').trim(), data_ref: data, dados: copia(dados), justificativa_prazo: justificativa || null, situacao: 'enviado', enviado_em: agora, conferido_por: null, conferido_em: null, decidido_por: null, decidido_em: null, valor_autorizado: null });
       const aud = Object.assign({}, p); delete aud.dados;
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'pedidos_apoio', registro_id: p.id, acao: id ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: null, depois: aud });
       gravar(); return p.id;
@@ -1658,13 +1680,14 @@ MQ.ORCAMENTO = {
       }
       if (ok && s.tipo === 'bolsa' && s.valor_solicitado != null && vAval > s.valor_solicitado) throw falha('O aval passa do valor pedido. Para pagar mais, devolva para a pessoa corrigir o valor.');
       if (ok && s.tipo === 'bolsa' && R.valorBolsa(pe.papel) != null && vAval > R.valorBolsa(pe.papel)) throw falha('O aval da bolsa não pode passar do valor da função (' + R.fmtBRL(R.valorBolsa(pe.papel)) + ').');   // 56
+      const antesS = copia(s);   // 14/10/2026 (E2E-7): o histórico guarda o antes, como o gatilho do banco ("ver o que mudou")
       if (ok) Object.assign(s, { situacao: 'avalizada', valor_avalizado: vAval, aval_por: eu.id, aval_em: agora, obs_aval: obs || null });
       else {
         if (String(obs || '').trim().length < 5) throw falha('Para devolver, escreva o que precisa ser corrigido.');
         Object.assign(s, { situacao: 'devolvida', aval_por: eu.id, aval_em: agora, obs_aval: obs });
         Object.keys(d.solic_visitas || {}).forEach(k => { if (d.solic_visitas[k] === s.id) delete d.solic_visitas[k]; });
       }
-      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: s.id, acao: 'UPDATE', por: eu.id, em: agora, antes: null, depois: copia(s) });
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: s.id, acao: 'UPDATE', por: eu.id, em: agora, antes: antesS, depois: copia(s) });
       gravar();
     },
     async registrarNoArlo(id, protocolo) {
@@ -1673,9 +1696,9 @@ MQ.ORCAMENTO = {
       if (!s) throw falha('Solicitação não encontrada.');
       if (s.situacao !== 'avalizada') throw falha('Só solicitação com aval vai para o Arlo.');
       if (s.equipe_id === eu.id) throw falha('O seu próprio pagamento é lançado pela coordenação geral.');
-      const agora = new Date().toISOString();
+      const agora = new Date().toISOString(); const antesS = copia(s);
       Object.assign(s, { situacao: 'lancada', arlo_por: eu.id, arlo_em: agora, arlo_protocolo: protocolo || null });
-      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: s.id, acao: 'UPDATE', por: eu.id, em: agora, antes: null, depois: copia(s) });
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: s.id, acao: 'UPDATE', por: eu.id, em: agora, antes: antesS, depois: copia(s) });
       gravar();
     },
 
@@ -1931,9 +1954,11 @@ MQ.ORCAMENTO = {
       }
       return copia(d.equipe.filter(x => x.id === eu.id));
     },
-    async auditoria(antesDe) {
+    async auditoria(antesDe, antesId) {
       const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') return [];   // como o banco (25_historico_e_cadastro.sql)
-      return copia(ler().auditoria).reverse().filter(a => !antesDe || String(a.em) < String(antesDe)).slice(0, 200);
+      // como a tela de produção: (em, id) decrescente; a página seguinte começa depois do último (em, id), sem pular empates
+      const l = copia(ler().auditoria).sort((x, y) => String(y.em).localeCompare(String(x.em)) || (+y.id || 0) - (+x.id || 0));
+      return l.filter(a => !antesDe || String(a.em) < String(antesDe) || (antesId != null && String(a.em) === String(antesDe) && (+a.id || 0) < +antesId)).slice(0, 200);
     },
 
     async criar(m) {
@@ -2036,7 +2061,7 @@ MQ.ORCAMENTO = {
       const i = d.fichas.findIndex(x => x.id === id); if (i < 0) throw falha('Ficha não encontrada.');
       const antes = d.fichas[i];
       // 46: a tela manda a marca (atualizado_em) da ficha que leu; se a ficha mudou depois, a aprovação é recusada. Sem a marca, aprova como antes.
-      if (situacao === 'aprovada' && antes.situacao !== 'aprovada' && marca && marca !== antes.atualizado_em) throw falha(MSG_ALTERADO);
+      if (situacao !== antes.situacao && marca && marca !== antes.atualizado_em) throw falha(MSG_ALTERADO);   // 14/10/2026 (BD-5): devolver também confere a marca
       // 46: quintal em andamento (com diagnóstico): a ficha não é devolvida
       if (situacao === 'devolvida' && antes.situacao !== 'devolvida' && (d.diagnosticos || []).some(x => x.ficha_id === id))
         throw falha('Este quintal já está em andamento (tem diagnóstico registrado): a ficha não pode ser devolvida nem mudar de resultado. Para corrigir um dado da ficha, a coordenação geral altera direto. Se a mulher saiu do projeto, cancele antes as visitas agendadas e registre a saída na observação.');
@@ -2070,6 +2095,25 @@ MQ.ORCAMENTO = {
       if (antes && antes.situacao === 'cancelada' && (v.situacao || antes.situacao) !== 'cancelada') throw falha('Visita cancelada não volta. Agende outra.');   // 03_campo.sql
       if (!eu || !(R.decideCampo(eu.papel) || (R.ehBolsista(eu.papel) && f.uf === eu.uf) || (antes && antes.executor_id === eu.id))) throw falha('Seu perfil não tem permissão para esta ação.');
       if (eu.papel === 'agente' && antes && (v.executor_id !== antes.executor_id || v.data_prevista !== antes.data_prevista || v.situacao === 'cancelada')) throw falha('O agente de campo não reagenda nem cancela visitas. Fale com a bolsista do estado.');
+      // 14/10/2026 (auditoria REG-2 a REG-6): as mesmas travas do banco (46, 56, 61)
+      if (!antes && v.situacao === 'realizada') throw falha('A visita é agendada primeiro e marcada como feita depois, pelo formulário (diagnóstico e avaliação) ou pelo registro da visita.');
+      if (antes && v.situacao === 'cancelada' && antes.situacao !== 'cancelada') {
+        if (antes.etapa === 'diagnostico' && (d.diagnosticos || []).some(x => x.visita_id === antes.id)) throw falha('Esta visita já tem diagnóstico registrado; não pode ser cancelada.');
+        if (antes.etapa === 'avaliacao' && (d.avaliacoes || []).some(x => x.visita_id === antes.id)) throw falha('Esta visita já tem avaliação registrada; não pode ser cancelada.');
+      }
+      if (antes && antes.situacao === 'realizada' && !/^coord_(geral|tecnico)$/.test(eu.papel)
+          && ((v.executor_id || antes.executor_id) !== antes.executor_id || (v.situacao || antes.situacao) !== antes.situacao || (v.data_prevista || antes.data_prevista) !== antes.data_prevista
+              || ((v.data_realizada || antes.data_realizada) !== antes.data_realizada && !['diagnostico', 'avaliacao'].includes(antes.etapa))))
+        throw falha('Esta visita já foi feita: quem fez, as datas e a situação não mudam mais. Se houver erro, peça à coordenação para corrigir.');
+      if (antes && v.situacao === 'realizada' && antes.situacao !== 'realizada') {
+        if (antes.etapa === 'diagnostico' && !(d.diagnosticos || []).some(x => x.visita_id === antes.id)) throw falha('A visita de diagnóstico é marcada como feita pelo próprio formulário do diagnóstico.');
+        if (antes.etapa === 'avaliacao' && !(d.avaliacoes || []).some(x => x.visita_id === antes.id)) throw falha('A visita de avaliação é marcada como feita pelo próprio formulário da avaliação.');
+      }
+      if ((v.etapa || (antes && antes.etapa)) === 'acompanhamento' && (v.situacao || (antes && antes.situacao)) !== 'cancelada') {
+        const dia = v.data_realizada || v.data_prevista || (antes && (antes.data_realizada || antes.data_prevista));
+        if (dia && d.visitas.some(x => x.id !== v.id && x.ficha_id === v.ficha_id && x.etapa === 'acompanhamento' && x.situacao !== 'cancelada' && (x.data_realizada || x.data_prevista) === dia))
+          throw falha('Este quintal já tem um acompanhamento neste dia.');
+      }
       if (!(f.resultado === 'selecionada' && f.situacao === 'aprovada')) throw falha('Só há visita para mulher selecionada e aprovada pela coordenação técnica.');
       // 57: dentro da vigência do TED (só ao criar ou quando a data muda: registro antigo não trava)
       { const fora = x => x && (String(x).slice(0, 10) < R.LIM.visitaMin || String(x).slice(0, 10) > R.LIM.visitaMax);
@@ -2096,8 +2140,10 @@ MQ.ORCAMENTO = {
       if (v.situacao === 'realizada' && (!antes || antes.situacao !== 'realizada') && ['implantacao', 'acompanhamento'].includes(v.etapa)) {
         if (!v.data_realizada || v.data_realizada > R.hoje()) throw falha('Informe a data em que a visita foi feita (não pode ser no futuro).');
         if (String(v.relato || '').trim().length < 20) throw falha('Conte em poucas linhas o que foi feito na visita (pelo menos 20 letras).');
+        if (!((v.fotos || (antes && antes.fotos) || []).length)) throw falha('Para marcar a visita como feita, envie pelo menos uma foto do quintal.');   // 63 (REG-1)
       }
-      if (antes && (v.situacao !== antes.situacao || (v.data_realizada || null) !== (antes.data_realizada || null) || v.executor_id !== antes.executor_id)
+      if (antes && (v.situacao !== antes.situacao || (v.data_realizada || null) !== (antes.data_realizada || null) || v.executor_id !== antes.executor_id
+          || (v.relato !== undefined && (v.relato || null) !== (antes.relato || null)) || (v.fotos !== undefined && JSON.stringify(v.fotos || []) !== JSON.stringify(antes.fotos || [])))   // 63 (SEG-2): relato e fotos também
           && (d.solic_visitas || {})[antes.id] && ['solicitada', 'avalizada', 'lancada'].includes(((d.solicitacoes || []).find(s => s.id === d.solic_visitas[antes.id]) || {}).situacao))
         throw falha('Esta visita já está numa solicitação de pagamento. Para mudar, a solicitação precisa ser devolvida pela coordenação.');
       const agora = new Date().toISOString();
@@ -2192,7 +2238,7 @@ MQ.ORCAMENTO = {
       if (!eu || !R.decideCampo(eu.papel)) throw falha('Só a coordenação aprova ou devolve o plano.');
       const i = d.diagnosticos.findIndex(x => x.id === id); if (i < 0) throw falha('Diagnóstico não encontrado.');
       // 46: aprovar com a marca do que foi lido; se o plano mudou depois, recusa. Sem a marca, aprova como antes.
-      if (situacao === 'aprovado' && d.diagnosticos[i].situacao !== 'aprovado' && marca && marca !== d.diagnosticos[i].atualizado_em) throw falha(MSG_ALTERADO);
+      if (situacao !== d.diagnosticos[i].situacao && marca && marca !== d.diagnosticos[i].atualizado_em) throw falha(MSG_ALTERADO);   // 14/10/2026 (BD-5)
       if (situacao === 'devolvido' && String(obs || '').trim().length < 5) throw falha('Para devolver, escreva o que precisa ser corrigido.');
       const agora = new Date().toISOString(); const antes = d.diagnosticos[i];
       // mesmas regras do 31_validacao_diagnostico.sql
@@ -2250,6 +2296,10 @@ MQ.ORCAMENTO = {
         cadastro_arlo: !!dados.cadastro_arlo, siape: dados.siape || null, nome_social: dados.nome_social || null, data_nascimento: dados.data_nascimento || null, nis: dados.nis || null, endereco: dados.endereco || {}, socioeconomico: dados.socioeconomico || null, perfil: dados.perfil || null,
         consentimento_lgpd: true, enviado_em: new Date().toISOString(), situacao: 'aguardando' }]);
       c.usado_em = new Date().toISOString(); gravar();
+    },
+    async registroAtual(tabela, id) {   // como a de produção: o registro como está agora (para a fila conferir um reenvio)
+      if (!['visitas', 'diagnosticos', 'avaliacoes', 'fichas'].includes(tabela) || !id) return null;
+      const x = (ler()[tabela] || []).find(r => r.id === id); return x ? copia(x) : null;
     },
     async lerPrivado(id) {
       const d = ler(); const eu = euMesmo(); if (!eu || !(eu.id === id || /^coord|auxiliar_adm/.test(eu.papel))) return null;
@@ -2351,7 +2401,7 @@ MQ.ORCAMENTO = {
         fichas: n(d.fichas, f => f.uf === uf),
         selecionadas: n(d.fichas, f => f.uf === uf && f.resultado === 'selecionada' && f.situacao === 'aprovada'),
         diagnosticos: n(d.diagnosticos || [], x => x.uf === uf),
-        planos: n(d.diagnosticos || [], x => x.uf === uf && x.situacao === 'aprovado'),
+        planos: n(d.diagnosticos || [], x => x.uf === uf && x.situacao === 'aprovado' && !x.sem_agua),   // 63: sem água não tem plano (como a tela do MDA)
         implantados: n(d.visitas || [], v => v.uf === uf && v.etapa === 'implantacao' && v.situacao === 'realizada'),
         acompanhamentos: n(d.visitas || [], v => v.uf === uf && v.etapa === 'acompanhamento' && v.situacao === 'realizada') }));
       const ativos = d.equipe.filter(m => m.status === 'ativa');
@@ -2724,7 +2774,7 @@ MQ.ORCAMENTO = {
     // marca = "atualizado_em" do registro que a coordenação leu: se a ficha mudou depois disso, o servidor recusa a aprovação
     async decidirFicha(id, situacao, obs, marca) {
       const muda = { situacao, obs_coordenacao: obs || null }; const m = marca || marcas.fichas[id];
-      if (situacao === 'aprovada' && m) muda.atualizado_em = m;
+      if (m) muda.atualizado_em = m;   // 14/10/2026 (BD-5): também na devolução, senão ela passava por cima da correção que chegou antes
       const { data, error } = await sb.from('fichas').update(muda).eq('id', id).select().single();
       if (error) throw erro(error);
       marcas.fichas[id] = data.atualizado_em;
@@ -2787,7 +2837,7 @@ MQ.ORCAMENTO = {
     },
     async decidirDiagnostico(id, situacao, obs, marca) {
       const muda = { situacao, obs_coordenacao: obs || null }; const m = marca || marcas.diagnosticos[id];
-      if (situacao === 'aprovado' && m) muda.atualizado_em = m;
+      if (m) muda.atualizado_em = m;   // 14/10/2026 (BD-5): também na devolução
       const { data, error } = await sb.from('diagnosticos').update(muda).eq('id', id).select().single();
       if (error) throw erro(error); marcas.diagnosticos[id] = data.atualizado_em; return data;
     },
@@ -2812,6 +2862,11 @@ MQ.ORCAMENTO = {
     async enviarPreCadastro(token, dados) {
       const { error } = await sb.rpc('enviar_pre_cadastro', { p_token: token, p_dados: dados });
       if (error) throw erro(error);
+    },
+    /* 14/10/2026 (auditoria E2E-1): a fila confere se o que ela ia mandar já está no servidor (a resposta se perdeu na queda de rede) */
+    async registroAtual(tabela, id) {
+      if (!['visitas', 'diagnosticos', 'avaliacoes', 'fichas'].includes(tabela) || !id) return null;
+      const { data, error } = await sb.from(tabela).select('*').eq('id', id).maybeSingle(); if (error) throw erro(error); return data || null;
     },
     async lerPrivado(id) {
       const { data, error } = await sb.from('equipe_privado').select('*').eq('equipe_id', id).maybeSingle();
@@ -3134,9 +3189,11 @@ MQ.ORCAMENTO = {
     },
     async cancelarMatricula(id, motivo) { const { error } = await sb.rpc('cancelar_matricula_fic', { p_id: id, p_motivo: motivo }); if (error) throw erro(error); },
 
-    async auditoria(antesDe) {   // 200 por vez; "antesDe" busca os mais antigos que isso (13/10/2026: antes só os 200 últimos)
-      let q = sb.from('auditoria').select('*').order('em', { ascending: false }).limit(200);
-      if (antesDe) q = q.lt('em', antesDe);
+    async auditoria(antesDe, antesId) {   // 200 por vez; "antesDe" busca os mais antigos que isso (13/10/2026: antes só os 200 últimos)
+      // 14/10/2026 (auditoria BD-1): várias linhas da mesma transação têm o mesmo "em"; a página seguinte vai por (em, id), senão o empate da borda sumia
+      let q = sb.from('auditoria').select('*').order('em', { ascending: false }).order('id', { ascending: false }).limit(200);
+      if (antesDe && antesId != null) q = q.or(`em.lt."${antesDe}",and(em.eq."${antesDe}",id.lt.${antesId})`);
+      else if (antesDe) q = q.lt('em', antesDe);
       const { data, error } = await q;
       if (error) throw erro(error);
       return data;
@@ -3335,6 +3392,11 @@ MQ.ORCAMENTO = {
               await F.marcarSeIgual(it);
               continue;
             }
+            // 14/10/2026 (auditoria E2E-1): "outra pessoa alterou" logo depois de uma queda de rede pode ser o PRÓPRIO envio, que
+            // chegou ao servidor sem a resposta voltar. Se tudo o que este item muda já está igual lá, ele foi enviado: sai da fila.
+            if (MQ.regras && MQ.regras.ehConflito && (MQ.regras.ehConflito(e) || MQ.regras.ehConflito(msg)) && await F.jaEstaNoServidor(api, it)) {
+              if (await F.removerSeIgual(it)) enviados++; quedasSeguidas = 0; continue;
+            }
             it.erro = msg; it.reenviar = false;
             // recusado porque outra pessoa alterou: o item NÃO é descartado (o que foi digitado fica); a tela reabre com o dado novo e só o que ela mudou
             it.conflito = !!(MQ.regras && MQ.regras.ehConflito && (MQ.regras.ehConflito(e) || MQ.regras.ehConflito(it.erro)));
@@ -3347,6 +3409,15 @@ MQ.ORCAMENTO = {
         if (d) setTimeout(() => { F.sincronizar(d.api, d.dono).then(r => { if (r && r.enviados && F.aoEnviarDepois) F.aoEnviarDepois(r); }).catch(() => {}); }, 0);
       }
       return { enviados };
+    },
+    async jaEstaNoServidor(api, it) {
+      const tabela = { visita: 'visitas', diagnostico: 'diagnosticos', avaliacao: 'avaliacoes', ficha: 'fichas' }[it.tipo];
+      if (!api || !api.registroAtual || !tabela || !it.dados || !it.dados.id) return false;
+      let r; try { r = await api.registroAtual(tabela, it.dados.id); } catch (e) { return false; }
+      if (!r) return false;
+      const estavel = v => v && typeof v === 'object' ? (Array.isArray(v) ? '[' + v.map(estavel).join(',') + ']' : '{' + Object.keys(v).sort().map(k => JSON.stringify(k) + ':' + estavel(v[k])).join(',') + '}') : JSON.stringify(v == null ? null : v);
+      const fora = /^(atualizado_em|criado_em|fotos|fotos_ok|marca|conteudo_alterado_por|conteudo_alterado_em)$/;
+      return Object.keys(it.dados).filter(k => !fora.test(k)).every(k => estavel(it.dados[k]) === estavel(r[k]));
     }
   });
 
@@ -4131,7 +4202,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     } else if (meta.fonte === 'diagnostico') {
       const dg = S.diagnosticos || [];
       atual = dg.length;
-      const aprov = dg.filter(x => x.situacao === 'aprovado').length, seca = dg.filter(x => x.sem_agua).length;
+      const aprov = dg.filter(x => x.situacao === 'aprovado' && !x.sem_agua).length, seca = dg.filter(x => x.sem_agua).length;
       nota = `${aprov} com plano aprovado pela coordenação técnica${seca ? ` · ${seca} sem água na seca (encaminhadas, sem kit)` : ''}.`;
     } else if (meta.fonte === 'implantacao' || meta.fonte === 'visitas') {
       const etapa = meta.fonte === 'implantacao' ? 'implantacao' : 'acompanhamento';
@@ -4553,7 +4624,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         ${ex.html}
         <div class="dx-kpis">
           ${kpi(1, d.selAprov.length, 200, 'mulheres selecionadas e aprovadas', `${d.fichas.length} ficha${d.fichas.length === 1 ? ' lançada' : 's lançadas'}${aguard ? ' · ' + aguard + ' aguardando' : ''}`)}
-          ${kpi(2, dg.length, 200, 'diagnósticos', `${dg.filter(x => x.situacao === 'aprovado').length} com plano aprovado`)}
+          ${kpi(2, dg.length, 200, 'diagnósticos', `${dg.filter(x => x.situacao === 'aprovado' && !x.sem_agua).length} com plano aprovado`)}
           ${kpi(3, impl, 200, 'quintais implantados', `${impl} ${impl === 1 ? 'quintal implantado' : 'quintais implantados'}`)}
           ${kpi(4, acomp, 400, 'visitas de acompanhamento', `${acomp} ${acomp === 1 ? 'visita realizada' : 'visitas realizadas'}`)}
         </div>
@@ -5929,6 +6000,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           if (!R.habilitado(eu)) throw new Error('Você ainda não está habilitada (FIC, FUNCERN e termo): a visita não poderia ser paga.');
           visitaId = MQ.novoId();
           await guardar('visita', { id: visitaId, ficha_id: f.id, uf: f.uf, etapa: 'diagnostico', executor_id: eu.id, data_prevista: d.data_visita, situacao: 'prevista' });
+          form.dataset.visita = visitaId;   // 14/10/2026 (E2E-2): se o diagnóstico for recusado e ela corrigir, o novo envio usa esta visita (não cria outra)
         }
         const campos = ['data_visita', 'latitude', 'longitude', 'sem_gps_motivo', 'area_m2', 'renda_familiar', 'renda_quintal', 'agua_seca', 'lote', 'mes_implantacao'];
         const reg = { id: form.dataset.id, ficha_id: f.id, visita_id: visitaId, uf: f.uf, codigo_quintal: codigoQuintal(f), sem_agua: sem, fotos: d.fotos.filter(x => x !== 'exemplo') };
@@ -12386,7 +12458,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       el.disabled = true;
       try {
         const dados = await s.api.dadosAcompanhamento(el.dataset.o);
-        if (!s.verComo) s.verComoVolta = { aba: s.aba, y: Math.round(window.scrollY || 0) };   // para voltar ao mesmo lugar
+        if (!s.verComo) { s.verComoVolta = { aba: s.aba, y: Math.round(window.scrollY || 0) }; if (U().previaNoHistorico) U().previaNoHistorico(true); }   // para voltar ao mesmo lugar (e o Voltar do navegador sair da prévia)
         if (U().fecharPainel && s.painel) U().fecharPainel({ semFoco: true, semHistorico: true });
         s.verComo = { orgao: el.dataset.o, dados }; U().render(); window.scrollTo(0, 0);
         const b = document.getElementById('ac-voltar'); if (b) b.focus({ preventScroll: true });
@@ -12418,8 +12490,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
 
   MQ.acomp = { calcular, pequeno, ORG };
-  function sairPrevia() {
+  function sairPrevia(peloNavegador) {
     const s = S(); if (!s.verComo) return; const volta = s.verComoVolta || {}; s.verComo = null; s.verComoVolta = null;
+    if (!peloNavegador && U().previaNoHistorico) U().previaNoHistorico(false);   // tira a entrada da prévia do histórico do navegador
     if (volta.aba) s.aba = volta.aba; U().render();
     window.scrollTo(0, volta.y || 0);
     const b = document.querySelector('#ac-coord [data-acao="acomp-previa"]'); if (b) b.focus({ preventScroll: true });
@@ -12726,6 +12799,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 /* ===== app.js ===== */
 /* Mulheres & Quintais — telas do sistema (cadastro da equipe) */
 (function () {
+  /* 14/10/2026 (auditoria SEG-6): o sistema não abre dentro da moldura (iframe) de outro site. O GitHub Pages não manda o
+     cabeçalho que impede isso e a meta CSP não aceita frame-ancestors: a página se esconde e tenta sair da moldura. */
+  try { if (window.top && window.top !== window.self) { let mesmo = false; try { mesmo = window.top.location.origin === window.location.origin; } catch (e) {}
+    if (!mesmo) { document.documentElement.style.visibility = 'hidden'; try { window.top.location = window.location.href; } catch (e) {} } } } catch (e) {}
   const R = MQ.regras;
   const P = MQ.PAPEIS;
   const $ = s => document.querySelector(s);
@@ -13105,7 +13182,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   /* sem coordenação técnica ativa (vaga aberta, desligada): a coordenação geral assume a vez dela
      nos contadores e listas, para nenhum pedido ficar parado sem aviso. Só vale para quem vê a equipe toda. */
   const semTecnica = () => !!(S.eu && S.eu.papel === 'coord_geral') && !(S.equipe || []).some(m => m.papel === 'coord_tecnico' && m.status === 'ativa');
-  MQ.ui = { sessaoEncerrada: () => { if (S.eu && !S.verEntrada && !saindo) sairDoSistema(AVISO_OUTRA_JANELA); }, kpi: (n, de, rot, k, op) => kpiEq(n, de, rot, k, op), vagaAberta, S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: o => render(o), renderFundo: () => renderFundo(), abrirPainel: p => abrirPainel(p), fecharPainel: o => fecharPainel(o), pedirFechar: () => pedirFechar(), painelAlterado: () => painelAlterado(),
+  MQ.ui = { previaNoHistorico: entrou => { if (!H) return; if (entrou) { try { H.pushState({ mq: 'previa' }, ''); } catch (e) {} } else if (H.state && H.state.mq === 'previa') voltarNoHistorico(); },   // 14/10/2026 (E2E-5): Voltar do navegador sai da prévia "Ver como"
+    sessaoEncerrada: () => { if (S.eu && !S.verEntrada && !saindo) sairDoSistema(AVISO_OUTRA_JANELA); }, kpi: (n, de, rot, k, op) => kpiEq(n, de, rot, k, op), vagaAberta, S, esc, semTecnica, dobra: (k, t, c, a) => dobra(k, t, c, a), nomeUF, toast: m => toast(m), render: o => render(o), renderFundo: () => renderFundo(), abrirPainel: p => abrirPainel(p), fecharPainel: o => fecharPainel(o), pedirFechar: () => pedirFechar(), painelAlterado: () => painelAlterado(),
     irParaAba: x => irParaAba(x), avisarVersaoNova: () => avisarVersaoNova(), declarados: (f, r) => declarados(f, r),
     vista: () => vistaDoPainel(), marcaAberta: (t, id) => marcaAberta(t, id), reabrirComConflito: m => reabrirComConflito(m),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), carregarDaAba: () => carregarDaAba(), sincronizar: a => sincronizar(a),
@@ -14773,9 +14851,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       else if (a === 'hist-limpar') { S.histF = { quem: '', grupo: '', busca: '' }; render(); const b = document.getElementById('hf-quem'); if (b) b.focus(); }
       else if (a === 'hist-csv') { el.disabled = true; try { await baixarHistorico(); } finally { el.disabled = false; } }
       else if (a === 'hist-mais') {
-        const ord = (S.aud || []).slice().sort((x, y) => String(y.em).localeCompare(String(x.em))); const ult = ord[ord.length - 1];
+        const ord = (S.aud || []).slice().sort((x, y) => String(y.em).localeCompare(String(x.em)) || (+y.id || 0) - (+x.id || 0)); const ult = ord[ord.length - 1];
         el.disabled = true; el.textContent = 'Carregando…';
-        try { const v = await S.api.auditoria(ult ? ult.em : null); const ja = new Set(S.aud.map(x => x.id)); const novos = (v || []).filter(x => !ja.has(x.id));
+        try { const v = await S.api.auditoria(ult ? ult.em : null, ult ? ult.id : null); const ja = new Set(S.aud.map(x => x.id)); const novos = (v || []).filter(x => !ja.has(x.id));
           S.aud = S.aud.concat(novos); if ((v || []).length < 200) S.audFim = true; (S.aberto = S.aberto || {})['hist-antigos'] = true; renderFundo(); }
         catch (e) { el.disabled = false; el.textContent = 'Carregar registros mais antigos'; toast(avisarErro(e)); }
       }
@@ -14922,6 +15000,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (painelAlterado() || $('#painel .confirma-rasc')) { try { H.pushState({ mq: 'painel' }, ''); S.painelHist = true; } catch (e) {} if (!$('#painel .confirma-rasc')) confirmarSaida(); return; }   // com uma pergunta na tela, o Voltar não fecha: a pessoa responde
       fecharPainel(); return;
     }
+    if (S.verComo && MQ.acompUI) { MQ.acompUI.sairPrevia(true); return; }   // Voltar do navegador na prévia "Ver como": sai dela, na mesma aba
     const st = ev && ev.state;
     if (st && st.mq === 'painel') { try { H.back(); } catch (e) {} return; }   // entrada de um painel que já fechou: segue em frente
     abaDoHistorico(st);

@@ -56,7 +56,8 @@ test('etapas na demonstração: implantação só com plano aprovado e com água
   await assert.rejects(() => T.api.salvarVisita(ac), /acompanhamento é feito depois da implantação/);
   const rel = 'Implantamos os canteiros e montamos o gotejamento.';
   await assert.rejects(() => T.api.salvarVisita(Object.assign({}, imp, { situacao: 'realizada', data_realizada: diaMais(-3), relato: rel })), /não pode ter data anterior à do diagnóstico/);
-  await T.api.salvarVisita(Object.assign({}, imp, { situacao: 'realizada', data_realizada: diaMais(-1), relato: rel }));
+  await assert.rejects(() => T.api.salvarVisita(Object.assign({}, imp, { situacao: 'realizada', data_realizada: diaMais(-1), relato: rel })), /pelo menos uma foto/);   // 63
+  await T.api.salvarVisita(Object.assign({}, imp, { situacao: 'realizada', data_realizada: diaMais(-1), relato: rel, fotos: ['vi1_1.jpg'] }));
   await T.api.salvarVisita(ac);   // agora o acompanhamento entra
 });
 test('etapas: registro antigo (implantação agendada sem plano aprovado) continua podendo mudar de data e ser cancelado', async () => {
@@ -240,10 +241,12 @@ test('aprovar o que foi lido: ficha ou diagnóstico alterado depois da leitura n
   const T = await montar('coord_tecnico');
   const f = T.S.fichas.find(x => x.situacao === 'aguardando' && x.uf === 'PI'); assert.ok(f, 'há ficha aguardando no exemplo');
   await assert.rejects(() => T.api.decidirFicha(f.id, 'aprovada', null, '2020-01-01T00:00:00.000Z'), /foi alterado enquanto você lia/);
-  await T.api.decidirFicha(f.id, 'devolvida', 'Falta a foto do termo.', '2020-01-01T00:00:00.000Z');   // devolver não depende da marca
-  // modo produção: a aprovação manda a marca lida; devolver não manda
+  // 14/10/2026 (auditoria BD-5): devolver também confere a marca (senão a devolução passava por cima da correção que chegou antes)
+  await assert.rejects(() => T.api.decidirFicha(f.id, 'devolvida', 'Falta a foto do termo.', '2020-01-01T00:00:00.000Z'), /foi alterado enquanto você lia/);
+  await T.api.decidirFicha(f.id, 'devolvida', 'Falta a foto do termo.', f.atualizado_em);
+  // modo produção: aprovar e devolver mandam a marca lida
   const src = fonte('api-supabase.js');
-  assert.match(src, /if \(situacao === 'aprovada' && m\) muda\.atualizado_em = m;/); assert.match(src, /if \(situacao === 'aprovado' && m\) muda\.atualizado_em = m;/);
+  assert.equal((src.match(/if \(m\) muda\.atualizado_em = m;/g) || []).length, 2);
   assert.match(src, /marcas\.fichas\[f\.id\] = f\.atualizado_em/); assert.match(src, /marcas\.diagnosticos\[d\.id\] = d\.atualizado_em/);
   assert.match(fonte('campo.js'), /decidirDiagnostico\(form\.dataset\.id, dec, obs, form\.dataset\.marca \|\| undefined\)/);
 });

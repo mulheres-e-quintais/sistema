@@ -267,7 +267,7 @@
     // marca = "atualizado_em" do registro que a coordenação leu: se a ficha mudou depois disso, o servidor recusa a aprovação
     async decidirFicha(id, situacao, obs, marca) {
       const muda = { situacao, obs_coordenacao: obs || null }; const m = marca || marcas.fichas[id];
-      if (situacao === 'aprovada' && m) muda.atualizado_em = m;
+      if (m) muda.atualizado_em = m;   // 14/10/2026 (BD-5): também na devolução, senão ela passava por cima da correção que chegou antes
       const { data, error } = await sb.from('fichas').update(muda).eq('id', id).select().single();
       if (error) throw erro(error);
       marcas.fichas[id] = data.atualizado_em;
@@ -330,7 +330,7 @@
     },
     async decidirDiagnostico(id, situacao, obs, marca) {
       const muda = { situacao, obs_coordenacao: obs || null }; const m = marca || marcas.diagnosticos[id];
-      if (situacao === 'aprovado' && m) muda.atualizado_em = m;
+      if (m) muda.atualizado_em = m;   // 14/10/2026 (BD-5): também na devolução
       const { data, error } = await sb.from('diagnosticos').update(muda).eq('id', id).select().single();
       if (error) throw erro(error); marcas.diagnosticos[id] = data.atualizado_em; return data;
     },
@@ -355,6 +355,11 @@
     async enviarPreCadastro(token, dados) {
       const { error } = await sb.rpc('enviar_pre_cadastro', { p_token: token, p_dados: dados });
       if (error) throw erro(error);
+    },
+    /* 14/10/2026 (auditoria E2E-1): a fila confere se o que ela ia mandar já está no servidor (a resposta se perdeu na queda de rede) */
+    async registroAtual(tabela, id) {
+      if (!['visitas', 'diagnosticos', 'avaliacoes', 'fichas'].includes(tabela) || !id) return null;
+      const { data, error } = await sb.from(tabela).select('*').eq('id', id).maybeSingle(); if (error) throw erro(error); return data || null;
     },
     async lerPrivado(id) {
       const { data, error } = await sb.from('equipe_privado').select('*').eq('equipe_id', id).maybeSingle();
@@ -677,9 +682,11 @@
     },
     async cancelarMatricula(id, motivo) { const { error } = await sb.rpc('cancelar_matricula_fic', { p_id: id, p_motivo: motivo }); if (error) throw erro(error); },
 
-    async auditoria(antesDe) {   // 200 por vez; "antesDe" busca os mais antigos que isso (13/10/2026: antes só os 200 últimos)
-      let q = sb.from('auditoria').select('*').order('em', { ascending: false }).limit(200);
-      if (antesDe) q = q.lt('em', antesDe);
+    async auditoria(antesDe, antesId) {   // 200 por vez; "antesDe" busca os mais antigos que isso (13/10/2026: antes só os 200 últimos)
+      // 14/10/2026 (auditoria BD-1): várias linhas da mesma transação têm o mesmo "em"; a página seguinte vai por (em, id), senão o empate da borda sumia
+      let q = sb.from('auditoria').select('*').order('em', { ascending: false }).order('id', { ascending: false }).limit(200);
+      if (antesDe && antesId != null) q = q.or(`em.lt."${antesDe}",and(em.eq."${antesDe}",id.lt.${antesId})`);
+      else if (antesDe) q = q.lt('em', antesDe);
       const { data, error } = await q;
       if (error) throw erro(error);
       return data;

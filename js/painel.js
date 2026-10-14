@@ -82,7 +82,7 @@
     } else if (meta.fonte === 'diagnostico') {
       const dg = S.diagnosticos || [];
       atual = dg.length;
-      const aprov = dg.filter(x => x.situacao === 'aprovado').length, seca = dg.filter(x => x.sem_agua).length;
+      const aprov = dg.filter(x => x.situacao === 'aprovado' && !x.sem_agua).length, seca = dg.filter(x => x.sem_agua).length;
       nota = `${aprov} com plano aprovado pela coordenação técnica${seca ? ` · ${seca} sem água na seca (encaminhadas, sem kit)` : ''}.`;
     } else if (meta.fonte === 'implantacao' || meta.fonte === 'visitas') {
       const etapa = meta.fonte === 'implantacao' ? 'implantacao' : 'acompanhamento';
@@ -504,7 +504,7 @@
         ${ex.html}
         <div class="dx-kpis">
           ${kpi(1, d.selAprov.length, 200, 'mulheres selecionadas e aprovadas', `${d.fichas.length} ficha${d.fichas.length === 1 ? ' lançada' : 's lançadas'}${aguard ? ' · ' + aguard + ' aguardando' : ''}`)}
-          ${kpi(2, dg.length, 200, 'diagnósticos', `${dg.filter(x => x.situacao === 'aprovado').length} com plano aprovado`)}
+          ${kpi(2, dg.length, 200, 'diagnósticos', `${dg.filter(x => x.situacao === 'aprovado' && !x.sem_agua).length} com plano aprovado`)}
           ${kpi(3, impl, 200, 'quintais implantados', `${impl} ${impl === 1 ? 'quintal implantado' : 'quintais implantados'}`)}
           ${kpi(4, acomp, 400, 'visitas de acompanhamento', `${acomp} ${acomp === 1 ? 'visita realizada' : 'visitas realizadas'}`)}
         </div>
