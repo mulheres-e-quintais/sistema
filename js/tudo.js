@@ -11048,7 +11048,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         ['Mandar o acesso para a pessoa', ['Abra a ficha da pessoa.', 'Toque em <b>Gerar código de acesso</b>.', 'Toque em <b>Mandar por WhatsApp</b>: a mensagem já leva endereço, e-mail e código.']],
         ['Registrar a habilitação', ['Abra a ficha da pessoa.', 'Toque em <b>Registrar passos da habilitação</b>.', 'Em cada passo feito, toque em <b>Hoje</b> (ou escolha a data).', 'Toque em <b>Salvar</b>.']],
         ['Desligar e pôr substituta', ['Abra a ficha da pessoa → <b>Desligar</b>.', 'Se ela tiver visita feita sem pedido de ajuda de custo ou pedido devolvido, peça que ela faça o pedido antes: depois de desligada, ela não entra mais. Se ela não responder, só a coordenação geral desliga assim mesmo, explicando o porquê.', 'Escolha o motivo e explique em uma frase.', 'Toque em <b>Confirmar desligamento</b> (não tem volta).', 'Na vaga que abriu, toque em <b>Cadastrar substituta</b>.']],
-        ['Liberar o acompanhamento do MDA ou do MPA (só a coordenação geral)', ['No fim da aba <b>Equipe</b>, vá até <b>Acompanhamento externo (MDA e MPA)</b>.', 'Na linha do órgão, toque em <b>Adicionar pessoa</b>, preencha nome e e-mail e toque em <b>Gravar</b>.', 'Toque no cartão da pessoa e depois em <b>Gerar código</b>; passe o código a ela.', 'Para conferir o que ela enxerga, toque em <b>Ver como o MDA vê</b> ou <b>Ver como o MPA vê</b>.']]
+        ['Liberar o acompanhamento do MDA ou do MPA (só a coordenação geral)', ['No fim da aba <b>Equipe</b>, vá até <b>Acompanhamento externo (MDA e MPA)</b>.', 'Na linha do órgão, toque em <b>Adicionar pessoa</b>, preencha nome e e-mail e toque em <b>Gravar</b>.', 'Toque no cartão da pessoa e depois em <b>Gerar código</b>; passe o código a ela.', 'Para conferir o que ela enxerga, toque em <b>Ver como o MDA vê</b> ou <b>Ver como o MPA vê</b>: a tela inteira vira a do órgão, com uma faixa amarela no alto. Nada se grava. Para sair, toque em <b>Voltar à minha visão</b> (ou aperte Esc): você volta ao mesmo ponto da aba Equipe.']]
       ],
       passos: [
         'Toque na vaga ou em <b>Cadastrar</b> e escolha: <b>Gerar link de cadastro</b> (a pessoa preenche pelo celular e você confere e aprova) ou <b>Digitar os dados agora</b> (você mesmo preenche). O link é o recomendado: menos digitação e a própria pessoa aceita o termo de dados.',
@@ -12284,12 +12284,22 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const quando = a => { const d = new Date(a.gerado_em || Date.now()); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' às ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
 
   /* ---------- tela inteira de quem acompanha (cabeçalho próprio: nada da tela da equipe aparece aqui) ---------- */
+  /* "Ver como o MDA vê" e "Ver como o MPA vê" (14/10/2026, no modelo do Saberes que Cultivam): a coordenação geral passa a ver a TELA
+     INTEIRA de quem acompanha, com os números que o servidor entrega a esse órgão (a mesma função, com o mesmo corte), e uma faixa no
+     alto para voltar. Continua com a própria conta; nada se grava nesse modo. Antes era uma janela no meio da tela. */
+  const ver = () => S().verComo || null;
+  function faixaPrevia() {
+    const v = ver(); if (!v) return ''; const o = ORG[v.orgao], outro = v.orgao === 'mda' ? 'mpa' : 'mda';
+    return `<div class="ac-faixa-previa" role="region" aria-label="Pré-visualização"><div class="ac-faixa-in">
+      <p><b>Pré-visualização.</b> É assim que o ${o.sigla} vê o sistema: só leitura, só números, sem nome nem dado pessoal e sem a equipe. Você continua com a sua conta.</p>
+      <span class="acoes"><button type="button" class="btn peq" data-acao="acomp-previa" data-o="${outro}">Ver como o ${ORG[outro].sigla} vê</button><button type="button" class="btn peq pri" data-acao="acomp-voltar" id="ac-voltar">Voltar à minha visão</button></span></div></div>`;
+  }
   function pagina() {
-    const s = S(), eu = s.eu, a = s.acomp, o = ORG[eu.orgao] || ORG.mda;
-    return `<header class="barra"><div class="barra-in"><div class="marca"><img class="emb" src="assets/isotipo.svg" alt="" width="36" height="52"><img src="assets/logo-claro.svg" alt="Mulheres &amp; Quintais" width="112" height="36"><span class="sep" aria-hidden="true"></span>
+    const s = S(), v = ver(), eu = v ? { nome: 'Prévia da coordenação', orgao: v.orgao } : s.eu, a = v ? v.dados : s.acomp, o = ORG[eu.orgao] || ORG.mda;
+    return `${faixaPrevia()}<header class="barra"><div class="barra-in"><div class="marca"><img class="emb" src="assets/isotipo.svg" alt="" width="36" height="52"><img src="assets/logo-claro.svg" alt="Mulheres &amp; Quintais" width="112" height="36"><span class="sep" aria-hidden="true"></span>
         <span class="sis"><b>Acompanhamento do projeto</b>Quintais Produtivos para Mulheres Rurais</span></div>
         <div class="quem"><span><span class="nome">${E(eu.nome)}</span><br><span class="papel">Acompanhamento · ${o.sigla}</span></span>
-        ${s.api.modo === 'supabase' ? '<button class="btn-ajuda btn-sair" data-acao="sair" title="Sair do sistema" aria-label="Sair do sistema"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h3a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-3"/><path d="M4 12h11"/><path d="M11 8l4 4-4 4"/></svg></button>' : ''}</div></div></header>
+        ${s.api.modo === 'supabase' && !v ? '<button class="btn-ajuda btn-sair" data-acao="sair" title="Sair do sistema" aria-label="Sair do sistema"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h3a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-3"/><path d="M4 12h11"/><path d="M11 8l4 4-4 4"/></svg></button>' : ''}</div></div></header>
       <main class="wrap ac" id="conteudo"><div class="cab ac-cab"><div><span class="eyebrow">${o.sigla} · ${E(o.sub)}</span><h1>${E(o.titulo)}</h1>
           <p class="ac-vivo" role="status">${a ? `<span class="ac-pulso" aria-hidden="true"></span>Dados ao vivo · atualizado em ${quando(a)}` : s.acompErro ? '' : 'Carregando os números…'}</p></div>
           <div class="acoes ac-acoes"><button class="btn" data-acao="acomp-atualizar">Atualizar agora</button><button class="btn" data-acao="acomp-imprimir">Imprimir ou salvar em PDF</button>
@@ -12366,9 +12376,21 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   async function clique(acao, el) {
     const s = S();
     const msg = e => U().toast((MQ.regras.mensagemErro ? MQ.regras.mensagemErro(e) : '') || (e && e.message) || 'Não deu certo. Tente de novo.');
-    if (acao === 'acomp-atualizar') { el.disabled = true; await carregar(); U().render(); if (!s.acompErro) U().toast('Números atualizados.'); }
+    if (acao === 'acomp-atualizar' && s.verComo) { el.disabled = true; try { s.verComo = { orgao: s.verComo.orgao, dados: await s.api.dadosAcompanhamento(s.verComo.orgao) }; U().render(); U().toast('Números atualizados.'); } catch (e) { msg(e); el.disabled = false; } }
+    else if (acao === 'acomp-atualizar') { el.disabled = true; await carregar(); U().render(); if (!s.acompErro) U().toast('Números atualizados.'); }
     else if (acao === 'acomp-imprimir') { window.print(); }
-    else if (acao === 'acomp-previa') { el.disabled = true; try { s.acompPrevia = { orgao: el.dataset.o, dados: await s.api.dadosAcompanhamento(el.dataset.o) }; U().abrirPainel({ tipo: 'acomp-previa', orgao: el.dataset.o }); } catch (e) { msg(e); } el.disabled = false; }
+    else if (acao === 'acomp-previa') {
+      if (s.eu.papel !== 'coord_geral') return;
+      el.disabled = true;
+      try {
+        const dados = await s.api.dadosAcompanhamento(el.dataset.o);
+        if (!s.verComo) s.verComoVolta = { aba: s.aba, y: Math.round(window.scrollY || 0) };   // para voltar ao mesmo lugar
+        if (U().fecharPainel && s.painel) U().fecharPainel({ semFoco: true, semHistorico: true });
+        s.verComo = { orgao: el.dataset.o, dados }; U().render(); window.scrollTo(0, 0);
+        const b = document.getElementById('ac-voltar'); if (b) b.focus({ preventScroll: true });
+      } catch (e) { msg(e); el.disabled = false; }
+    }
+    else if (acao === 'acomp-voltar') { sairPrevia(); }
     else if (acao === 'acomp-novo') { s.acompCodigo = null; s.acompConfirma = null; U().abrirPainel({ tipo: 'acomp-form', orgao: el.dataset.o }); }
     else if (acao === 'acomp-editar') { if (!(s.observadores || []).some(k => k.id === el.dataset.id)) return; s.acompCodigo = null; s.acompConfirma = null; U().abrirPainel({ tipo: 'acomp-form', id: el.dataset.id }); }
     else if (acao === 'acomp-codigo-nao') { s.acompConfirma = null; redesenhar(); }
@@ -12394,7 +12416,13 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
 
   MQ.acomp = { calcular, pequeno, ORG };
-  MQ.acompUI = { pagina, corpo, carregar, vigiar, blocoCoord, painel, clique, enviar };
+  function sairPrevia() {
+    const s = S(); if (!s.verComo) return; const volta = s.verComoVolta || {}; s.verComo = null; s.verComoVolta = null;
+    if (volta.aba) s.aba = volta.aba; U().render();
+    window.scrollTo(0, volta.y || 0);
+    const b = document.querySelector('#ac-coord [data-acao="acomp-previa"]'); if (b) b.focus({ preventScroll: true });
+  }
+  MQ.acompUI = { pagina, corpo, carregar, vigiar, blocoCoord, painel, clique, enviar, sairPrevia };
 })();
 ;
 /* ===== relatos.js ===== */
@@ -12838,7 +12866,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (modoDemoAtivo()) { S.verEntrada = true; render(); return; }   // demonstração: volta para a tela de entrada
     try { await S.api.sair(); } catch (e) { /* sem internet: a sessão já foi apagada do aparelho */ }
     S.eu = null; S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.audFim = false; S.documentos = []; S.acessos = []; S.execPlanilhas = []; S.encontros = []; S.agua = [];
-    S.acomp = null; S.acompErro = null; S.acompPrevia = null; S.acompCodigo = null; S.acompConfirma = null; S.observadores = []; S.kitItens = [];   // números do acompanhamento, código de acesso recém-gerado e listas da coordenação não ficam na memória depois de sair
+    S.acomp = null; S.acompErro = null; S.acompPrevia = null; S.verComo = null; S.verComoVolta = null; S.acompCodigo = null; S.acompConfirma = null; S.observadores = []; S.kitItens = [];   // números do acompanhamento, código de acesso recém-gerado e listas da coordenação não ficam na memória depois de sair
     S.solic = []; S.pedidos = []; S.pre = []; S.pedidosAcesso = []; S.entregas = []; S.matriculas = []; S.turmas = []; S.avaliacoes = []; S.codigos = {}; S.confirmaAcesso = null; S.painel = null; S.solicVis = {}; S.canaisVenda = []; S.orientacoesVenda = []; S.vendaFolha = null; S.ciencias = []; S.testes = []; S.saldoPed = null; S.quemConfere = null; S.filaCelular = []; S.filaCelularSemBanco = false;   // nada da pessoa anterior fica na memória
     if (MQ.convitesUI && MQ.convitesUI.limparCache) MQ.convitesUI.limparCache();
     render();
@@ -13149,9 +13177,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (location.hash === '#numeros' && MQ.vitrineUI) { app.innerHTML = barra(true) + MQ.vitrineUI.pagina() + rodape(); document.title = 'O projeto em números · Mulheres & Quintais'; return; }
     document.title = 'Mulheres & Quintais';
     const telaEntrada = (modoDemo && S.verEntrada) || (!S.eu && !modoDemo && !S.api.temSessao);
-    if (S.eu && S.eu.observador && !telaEntrada && MQ.acompUI) {   // tela própria de quem acompanha: nenhuma parte da tela da equipe é montada
+    if (S.eu && (S.eu.observador || (S.verComo && S.eu.papel === 'coord_geral')) && !telaEntrada && MQ.acompUI) {   // "Ver como o MDA/MPA vê": a coordenação vê a mesma tela, com a faixa da prévia   // tela própria de quem acompanha: nenhuma parte da tela da equipe é montada
       if (S.painel) fecharPainel({ semFoco: true, semHistorico: true });
-      app.innerHTML = (modoDemo ? faixaDemo() : '') + avisoRede() + MQ.acompUI.pagina(); document.title = 'Acompanhamento · Mulheres & Quintais';
+      app.innerHTML = (modoDemo ? faixaDemo() : '') + avisoRede() + MQ.acompUI.pagina(); document.title = (S.verComo ? 'Prévia · ' : '') + 'Acompanhamento · Mulheres & Quintais';
       rolagensNoTeclado(app); return;   // tabela que rola para o lado no celular: quem usa teclado precisa conseguir parar nela
     }
     let h = (telaEntrada ? '' : barra()) + (modoDemo ? faixaDemo() : '');
@@ -14722,7 +14750,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   document.addEventListener('keydown', ev => { if (ev.key !== 'Escape') return;
     if (desistirDeSair()) return;   // Esc na pergunta "Sair sem salvar?": continua preenchendo
     if (responderRascunho(true)) return;   // Esc na pergunta "Continuar de onde parou?": continua (nada se perde)
-    if (S.painel) pedirFechar(); else if (S.menuAberto) { S.menuAberto = false; render(); } });
+    if (S.painel) pedirFechar(); else if (S.menuAberto) { S.menuAberto = false; render(); } else if (S.verComo && MQ.acompUI) MQ.acompUI.sairPrevia(); });   // Esc também sai da prévia "Ver como"
   // foto da equipe: recorta quadrada, 320 px, JPEG (tira dados do celular, como a localização)
   function fotoQuadrada(arq, lado = 320) {
     return new Promise((res, rej) => {

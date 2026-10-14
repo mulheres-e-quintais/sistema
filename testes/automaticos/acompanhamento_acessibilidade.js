@@ -30,8 +30,10 @@ const R = []; const ok = (n, c, d = '') => { R.push(!!c); console.log((c ? 'PASS
       }
     }
     await p.evaluate(() => document.querySelector('button[data-p=coord_geral]').click()); await p.waitForTimeout(700); await p.evaluate(() => { MQ.ui.fecharPainel(); MQ.ui.S.aba = 'equipe'; MQ.ui.render(); }); await p.waitForSelector('#ac-coord');
-    await p.evaluate(async () => { const a = MQ.ui.S.api; const id = await a.salvarObservador({ nome: 'Marta Observadora', email: 'marta@mda.exemplo', orgao: 'mda', ativo: true }); await a.gerarCodigoObservador(id); await MQ.ui.carregar(); MQ.ui.render(); document.querySelector('[data-acao=acomp-previa][data-o=mpa]').click(); }); await p.waitForSelector('.ac-previa');
-    const vc = (await axe()).filter(x => /#ac-coord|\.ac-|#ac-/.test(x)); ok(`cadastro e prévia na aba Equipe (${rot}): nenhuma violação de acessibilidade no bloco`, vc.length === 0, vc.join(' ; '));
+    await p.evaluate(async () => { const a = MQ.ui.S.api; const id = await a.salvarObservador({ nome: 'Marta Observadora', email: 'marta@mda.exemplo', orgao: 'mda', ativo: true }); await a.gerarCodigoObservador(id); await MQ.ui.carregar(); MQ.ui.render(); }); await p.waitForSelector('#ac-coord');
+    const vc = (await axe()).filter(x => /#ac-coord|\.ac-|#ac-/.test(x)); ok(`cadastro na aba Equipe (${rot}): nenhuma violação de acessibilidade no bloco`, vc.length === 0, vc.join(' ; '));
+    await p.evaluate(() => document.querySelector('[data-acao=acomp-previa][data-o=mpa]').click()); await p.waitForSelector('.ac-faixa-previa');
+    const vpx = await axe(); ok(`"Ver como o MPA vê" (${rot}): nenhuma violação de acessibilidade na tela inteira, com a faixa da prévia`, vpx.length === 0, vpx.join(' ; '));
     await ctx.close();
   }
   console.log('\n' + R.filter(Boolean).length + ' passou, ' + R.filter(x => !x).length + ' falhou'); await b.close(); process.exit(R.some(x => !x) ? 1 : 0);

@@ -142,7 +142,7 @@
     if (modoDemoAtivo()) { S.verEntrada = true; render(); return; }   // demonstração: volta para a tela de entrada
     try { await S.api.sair(); } catch (e) { /* sem internet: a sessão já foi apagada do aparelho */ }
     S.eu = null; S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.audFim = false; S.documentos = []; S.acessos = []; S.execPlanilhas = []; S.encontros = []; S.agua = [];
-    S.acomp = null; S.acompErro = null; S.acompPrevia = null; S.acompCodigo = null; S.acompConfirma = null; S.observadores = []; S.kitItens = [];   // números do acompanhamento, código de acesso recém-gerado e listas da coordenação não ficam na memória depois de sair
+    S.acomp = null; S.acompErro = null; S.acompPrevia = null; S.verComo = null; S.verComoVolta = null; S.acompCodigo = null; S.acompConfirma = null; S.observadores = []; S.kitItens = [];   // números do acompanhamento, código de acesso recém-gerado e listas da coordenação não ficam na memória depois de sair
     S.solic = []; S.pedidos = []; S.pre = []; S.pedidosAcesso = []; S.entregas = []; S.matriculas = []; S.turmas = []; S.avaliacoes = []; S.codigos = {}; S.confirmaAcesso = null; S.painel = null; S.solicVis = {}; S.canaisVenda = []; S.orientacoesVenda = []; S.vendaFolha = null; S.ciencias = []; S.testes = []; S.saldoPed = null; S.quemConfere = null; S.filaCelular = []; S.filaCelularSemBanco = false;   // nada da pessoa anterior fica na memória
     if (MQ.convitesUI && MQ.convitesUI.limparCache) MQ.convitesUI.limparCache();
     render();
@@ -453,9 +453,9 @@
     if (location.hash === '#numeros' && MQ.vitrineUI) { app.innerHTML = barra(true) + MQ.vitrineUI.pagina() + rodape(); document.title = 'O projeto em números · Mulheres & Quintais'; return; }
     document.title = 'Mulheres & Quintais';
     const telaEntrada = (modoDemo && S.verEntrada) || (!S.eu && !modoDemo && !S.api.temSessao);
-    if (S.eu && S.eu.observador && !telaEntrada && MQ.acompUI) {   // tela própria de quem acompanha: nenhuma parte da tela da equipe é montada
+    if (S.eu && (S.eu.observador || (S.verComo && S.eu.papel === 'coord_geral')) && !telaEntrada && MQ.acompUI) {   // "Ver como o MDA/MPA vê": a coordenação vê a mesma tela, com a faixa da prévia   // tela própria de quem acompanha: nenhuma parte da tela da equipe é montada
       if (S.painel) fecharPainel({ semFoco: true, semHistorico: true });
-      app.innerHTML = (modoDemo ? faixaDemo() : '') + avisoRede() + MQ.acompUI.pagina(); document.title = 'Acompanhamento · Mulheres & Quintais';
+      app.innerHTML = (modoDemo ? faixaDemo() : '') + avisoRede() + MQ.acompUI.pagina(); document.title = (S.verComo ? 'Prévia · ' : '') + 'Acompanhamento · Mulheres & Quintais';
       rolagensNoTeclado(app); return;   // tabela que rola para o lado no celular: quem usa teclado precisa conseguir parar nela
     }
     let h = (telaEntrada ? '' : barra()) + (modoDemo ? faixaDemo() : '');
@@ -2026,7 +2026,7 @@
   document.addEventListener('keydown', ev => { if (ev.key !== 'Escape') return;
     if (desistirDeSair()) return;   // Esc na pergunta "Sair sem salvar?": continua preenchendo
     if (responderRascunho(true)) return;   // Esc na pergunta "Continuar de onde parou?": continua (nada se perde)
-    if (S.painel) pedirFechar(); else if (S.menuAberto) { S.menuAberto = false; render(); } });
+    if (S.painel) pedirFechar(); else if (S.menuAberto) { S.menuAberto = false; render(); } else if (S.verComo && MQ.acompUI) MQ.acompUI.sairPrevia(); });   // Esc também sai da prévia "Ver como"
   // foto da equipe: recorta quadrada, 320 px, JPEG (tira dados do celular, como a localização)
   function fotoQuadrada(arq, lado = 320) {
     return new Promise((res, rej) => {

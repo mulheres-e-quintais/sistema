@@ -204,12 +204,22 @@
   const quando = a => { const d = new Date(a.gerado_em || Date.now()); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' às ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
 
   /* ---------- tela inteira de quem acompanha (cabeçalho próprio: nada da tela da equipe aparece aqui) ---------- */
+  /* "Ver como o MDA vê" e "Ver como o MPA vê" (14/10/2026, no modelo do Saberes que Cultivam): a coordenação geral passa a ver a TELA
+     INTEIRA de quem acompanha, com os números que o servidor entrega a esse órgão (a mesma função, com o mesmo corte), e uma faixa no
+     alto para voltar. Continua com a própria conta; nada se grava nesse modo. Antes era uma janela no meio da tela. */
+  const ver = () => S().verComo || null;
+  function faixaPrevia() {
+    const v = ver(); if (!v) return ''; const o = ORG[v.orgao], outro = v.orgao === 'mda' ? 'mpa' : 'mda';
+    return `<div class="ac-faixa-previa" role="region" aria-label="Pré-visualização"><div class="ac-faixa-in">
+      <p><b>Pré-visualização.</b> É assim que o ${o.sigla} vê o sistema: só leitura, só números, sem nome nem dado pessoal e sem a equipe. Você continua com a sua conta.</p>
+      <span class="acoes"><button type="button" class="btn peq" data-acao="acomp-previa" data-o="${outro}">Ver como o ${ORG[outro].sigla} vê</button><button type="button" class="btn peq pri" data-acao="acomp-voltar" id="ac-voltar">Voltar à minha visão</button></span></div></div>`;
+  }
   function pagina() {
-    const s = S(), eu = s.eu, a = s.acomp, o = ORG[eu.orgao] || ORG.mda;
-    return `<header class="barra"><div class="barra-in"><div class="marca"><img class="emb" src="assets/isotipo.svg" alt="" width="36" height="52"><img src="assets/logo-claro.svg" alt="Mulheres &amp; Quintais" width="112" height="36"><span class="sep" aria-hidden="true"></span>
+    const s = S(), v = ver(), eu = v ? { nome: 'Prévia da coordenação', orgao: v.orgao } : s.eu, a = v ? v.dados : s.acomp, o = ORG[eu.orgao] || ORG.mda;
+    return `${faixaPrevia()}<header class="barra"><div class="barra-in"><div class="marca"><img class="emb" src="assets/isotipo.svg" alt="" width="36" height="52"><img src="assets/logo-claro.svg" alt="Mulheres &amp; Quintais" width="112" height="36"><span class="sep" aria-hidden="true"></span>
         <span class="sis"><b>Acompanhamento do projeto</b>Quintais Produtivos para Mulheres Rurais</span></div>
         <div class="quem"><span><span class="nome">${E(eu.nome)}</span><br><span class="papel">Acompanhamento · ${o.sigla}</span></span>
-        ${s.api.modo === 'supabase' ? '<button class="btn-ajuda btn-sair" data-acao="sair" title="Sair do sistema" aria-label="Sair do sistema"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h3a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-3"/><path d="M4 12h11"/><path d="M11 8l4 4-4 4"/></svg></button>' : ''}</div></div></header>
+        ${s.api.modo === 'supabase' && !v ? '<button class="btn-ajuda btn-sair" data-acao="sair" title="Sair do sistema" aria-label="Sair do sistema"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h3a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-3"/><path d="M4 12h11"/><path d="M11 8l4 4-4 4"/></svg></button>' : ''}</div></div></header>
       <main class="wrap ac" id="conteudo"><div class="cab ac-cab"><div><span class="eyebrow">${o.sigla} · ${E(o.sub)}</span><h1>${E(o.titulo)}</h1>
           <p class="ac-vivo" role="status">${a ? `<span class="ac-pulso" aria-hidden="true"></span>Dados ao vivo · atualizado em ${quando(a)}` : s.acompErro ? '' : 'Carregando os números…'}</p></div>
           <div class="acoes ac-acoes"><button class="btn" data-acao="acomp-atualizar">Atualizar agora</button><button class="btn" data-acao="acomp-imprimir">Imprimir ou salvar em PDF</button>
@@ -286,9 +296,21 @@
   async function clique(acao, el) {
     const s = S();
     const msg = e => U().toast((MQ.regras.mensagemErro ? MQ.regras.mensagemErro(e) : '') || (e && e.message) || 'Não deu certo. Tente de novo.');
-    if (acao === 'acomp-atualizar') { el.disabled = true; await carregar(); U().render(); if (!s.acompErro) U().toast('Números atualizados.'); }
+    if (acao === 'acomp-atualizar' && s.verComo) { el.disabled = true; try { s.verComo = { orgao: s.verComo.orgao, dados: await s.api.dadosAcompanhamento(s.verComo.orgao) }; U().render(); U().toast('Números atualizados.'); } catch (e) { msg(e); el.disabled = false; } }
+    else if (acao === 'acomp-atualizar') { el.disabled = true; await carregar(); U().render(); if (!s.acompErro) U().toast('Números atualizados.'); }
     else if (acao === 'acomp-imprimir') { window.print(); }
-    else if (acao === 'acomp-previa') { el.disabled = true; try { s.acompPrevia = { orgao: el.dataset.o, dados: await s.api.dadosAcompanhamento(el.dataset.o) }; U().abrirPainel({ tipo: 'acomp-previa', orgao: el.dataset.o }); } catch (e) { msg(e); } el.disabled = false; }
+    else if (acao === 'acomp-previa') {
+      if (s.eu.papel !== 'coord_geral') return;
+      el.disabled = true;
+      try {
+        const dados = await s.api.dadosAcompanhamento(el.dataset.o);
+        if (!s.verComo) s.verComoVolta = { aba: s.aba, y: Math.round(window.scrollY || 0) };   // para voltar ao mesmo lugar
+        if (U().fecharPainel && s.painel) U().fecharPainel({ semFoco: true, semHistorico: true });
+        s.verComo = { orgao: el.dataset.o, dados }; U().render(); window.scrollTo(0, 0);
+        const b = document.getElementById('ac-voltar'); if (b) b.focus({ preventScroll: true });
+      } catch (e) { msg(e); el.disabled = false; }
+    }
+    else if (acao === 'acomp-voltar') { sairPrevia(); }
     else if (acao === 'acomp-novo') { s.acompCodigo = null; s.acompConfirma = null; U().abrirPainel({ tipo: 'acomp-form', orgao: el.dataset.o }); }
     else if (acao === 'acomp-editar') { if (!(s.observadores || []).some(k => k.id === el.dataset.id)) return; s.acompCodigo = null; s.acompConfirma = null; U().abrirPainel({ tipo: 'acomp-form', id: el.dataset.id }); }
     else if (acao === 'acomp-codigo-nao') { s.acompConfirma = null; redesenhar(); }
@@ -314,5 +336,11 @@
   }
 
   MQ.acomp = { calcular, pequeno, ORG };
-  MQ.acompUI = { pagina, corpo, carregar, vigiar, blocoCoord, painel, clique, enviar };
+  function sairPrevia() {
+    const s = S(); if (!s.verComo) return; const volta = s.verComoVolta || {}; s.verComo = null; s.verComoVolta = null;
+    if (volta.aba) s.aba = volta.aba; U().render();
+    window.scrollTo(0, volta.y || 0);
+    const b = document.querySelector('#ac-coord [data-acao="acomp-previa"]'); if (b) b.focus({ preventScroll: true });
+  }
+  MQ.acompUI = { pagina, corpo, carregar, vigiar, blocoCoord, painel, clique, enviar, sairPrevia };
 })();

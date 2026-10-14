@@ -113,12 +113,14 @@ const R = []; const ok = (n, c, d = '') => { R.push(!!c); console.log((c ? 'PASS
   ok('coordenação: desativar tira o botão de código e marca a pessoa', /Desativado/.test(lm) && semCod);
   ok('coordenação: cadastro, alteração e código ficam no histórico, sem o código', await p.evaluate(() => { const a = JSON.parse(localStorage.getItem('mq-demo-v4')).auditoria.filter(x => x.tabela === 'observadores'); return ['INSERT', 'UPDATE', 'CODIGO', 'NOVO_ACESSO'].every(k => a.some(x => x.acao === k)) && !JSON.stringify(a).match(/[A-Z2-9]{4}-[A-Z2-9]{4}/); }));
   // prévia
-  await p.evaluate(() => MQ.ui.fecharPainel()); await p.click('#ac-coord [data-acao=acomp-previa][data-o=mda]'); await p.waitForSelector('#painel .ac-previa');
-  ok('coordenação: a prévia abre numa janela no meio da tela, com a tela do MDA e os números de agora', /O caminho de cada quintal/.test(await txt('.ac-previa')) && !/Estado por estado/.test(await txt('.ac-previa')) && await p.evaluate(() => { const r = document.querySelector('aside.painel.centro').getBoundingClientRect(); const w = document.documentElement.clientWidth; return Math.abs((r.left + r.right) / 2 - w / 2) < 10 && r.left >= 0 && r.right <= w; }));
-  await p.keyboard.press('Escape'); await p.waitForTimeout(300); ok('coordenação: Esc fecha a prévia', await p.locator('.ac-previa').count() === 0);
-  await p.click('#ac-coord [data-acao=acomp-previa][data-o=mpa]'); await p.waitForSelector('#painel .ac-previa');
-  ok('coordenação: e a do MPA', /Estado por estado/.test(await txt('.ac-previa')) && !/Quem são as mulheres/.test(await txt('.ac-previa')));
-  await p.click('#painel .fechar'); await p.waitForTimeout(300); ok('coordenação: fechar a prévia', await p.locator('.ac-previa').count() === 0);
+  await p.evaluate(() => MQ.ui.fecharPainel()); await p.click('#ac-coord [data-acao=acomp-previa][data-o=mda]'); await p.waitForSelector('.ac-faixa-previa');
+  ok('coordenação: "Ver como o MDA vê" troca a tela inteira pela do MDA, com a faixa da prévia e sem o botão de sair', /O caminho de cada quintal/.test(await txt('main')) && !/Estado por estado/.test(await txt('main')) && !(await p.$('#ac-coord')) && !(await p.$('.btn-sair')) && /Pré-visualização/.test(await txt('.ac-faixa-previa')));
+  ok('coordenação: o foco vai para "Voltar à minha visão"', await p.evaluate(() => document.activeElement && document.activeElement.id === 'ac-voltar'));
+  await p.click('.ac-faixa-previa [data-acao=acomp-previa][data-o=mpa]'); await p.waitForTimeout(500);
+  ok('coordenação: da faixa, troca para a do MPA', /Estado por estado/.test(await txt('main')) && !/Quem são as mulheres/.test(await txt('main')));
+  await p.keyboard.press('Escape'); await p.waitForTimeout(400); ok('coordenação: Esc volta à aba Equipe', !!(await p.$('#ac-coord')) && !(await p.$('.ac-faixa-previa')));
+  await p.click('#ac-coord [data-acao=acomp-previa][data-o=mda]'); await p.waitForSelector('.ac-faixa-previa'); await p.click('#ac-voltar'); await p.waitForTimeout(400);
+  ok('coordenação: "Voltar à minha visão" volta à aba Equipe, com o foco no botão que abriu', !!(await p.$('#ac-coord')) && await p.evaluate(() => document.activeElement && document.activeElement.dataset.acao === 'acomp-previa'));
   // outros perfis da equipe não veem o bloco nem alcançam as funções
   for (const pf of ['coord_tecnico', 'bolsista', 'agente', 'professor', 'auxiliar']) { await como(pf); await p.evaluate(() => MQ.ui.fecharPainel());
     const r = await p.evaluate(async () => { const a = MQ.ui.S.api; const t = async f => { try { await f(); return 'ACEITOU'; } catch (e) { return 'ok'; } };

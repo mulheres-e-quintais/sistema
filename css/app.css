@@ -3554,3 +3554,10 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 .exec-planilhas .secao-cab > .btn-acao { flex: 0 0 300px; margin-top: 4px; }
 .exec-planilhas > .vazio-pl { margin-top: 12px; padding: 28px 16px; text-align: center; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink-2); }
 @media (max-width: 760px) { .exec-planilhas .secao-cab { flex-direction: column; } .exec-planilhas .secao-cab > .btn-acao { flex: none; width: 100%; } }
+/* "Ver como o MDA/MPA vê" (14/10/2026): faixa da pré-visualização, presa no alto, acima da barra de quem acompanha */
+.ac-faixa-previa { position: sticky; top: 0; z-index: 60; background: var(--pend-bg); color: var(--ink); border-bottom: 1px solid color-mix(in srgb, var(--pend) 45%, transparent); padding-top: env(safe-area-inset-top); }
+.ac-faixa-in { max-width: 1200px; margin: 0 auto; padding: 10px max(16px, env(safe-area-inset-left)); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; }
+.ac-faixa-in p { margin: 0; font-size: var(--t-md); line-height: 1.45; max-width: 78ch; }
+.ac-faixa-in .acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 640px) { .ac-faixa-in .acoes { width: 100%; } .ac-faixa-in .acoes .btn { flex: 1 1 auto; } }
+@media print { .ac-faixa-previa { display: none; } }
