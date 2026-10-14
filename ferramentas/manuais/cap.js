@@ -7,6 +7,7 @@ const TELAS = [
   { id: 'topo', perfil: 'coord_geral', aba: 'visao', clip: 'y:0:225', m: [['nav.abas', 1], ['.btn-ajuda[data-acao=ajuda]', 2], ['.btn-meus', 3], ['.btn-sair', 4], ['.btn-aparencia', 5]] },
   { id: 'visao_atencao', perfil: 'coord_geral', aba: 'visao', clip: 'de:main h1:.dx-atencao', m: [['.dx-atencao h2', 1], ['.dx-conta', 2], ['.dx-atencao .dx-ir', 3]] },
   { id: 'visao_metas', perfil: 'coord_geral', aba: 'visao', clip: 'el:.dx-duas', m: [['#t-metas', 1], ['.meta-ver', 2], ['#t-marcos', 3]] },
+  { id: 'visao_cronograma', perfil: 'coord_geral', aba: 'visao', clip: 'el:.cg', m: [['#t-cg', 1], ['.cg-hoje-selo', 2], ['.cg-linha .cg-num', 3]] },
   { id: 'visao_mapa', perfil: 'coord_geral', aba: 'visao', clip: 'el:.dx-mapa', m: [['.dx-mapa .seg', 1], ['.dx-mapa .mapa-caixa, .dx-mapa svg.mapa', 2], ['t:Status das fichas', 3], ['t:Municípios com mais fichas', 4]] },
   { id: 'equipe_coord', perfil: 'coord_geral', aba: 'equipe', clip: 'de:main h1:section[aria-labelledby=t-prof]', m: [['.resumo, .kpis, .cab + div', 1], ['t:Ver detalhes', 2], ['#t-prof', 3]] },
   { id: 'equipe_estados', perfil: 'coord_geral', aba: 'equipe', clip: 'de:section[aria-labelledby=t-b]:section[aria-labelledby=t-ag]', m: [['.eq-quadro .vaga-slot .btn-acao', 1], ['.eq-quadro .vagabtn.com-foto', 2], ['.eq-quadro .plano', 3], ['.ag-acao .btn-acao', 4]] },

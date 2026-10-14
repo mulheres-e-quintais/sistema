@@ -4147,6 +4147,40 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     else st = atual >= prev ? 'andamento' : atual >= prev * 0.7 ? 'atencao' : 'atrasada';
     return { meta, atual, alvo, un, prev, nota, st, pct: atual == null ? 0 : Math.min(100, atual / alvo * 100), pctPrev: meta.fonte === 'equipe' ? null : Math.min(100, prev / alvo * 100) };
   }
+  /* cronograma físico (14/10/2026): uma linha por meta, do mês em que começa ao mês em que termina no plano de trabalho,
+     com o que já foi registrado (parte cheia da barra), o traço de hoje e o número de cada meta. Toque no nome abre a meta. */
+  function cronograma(S, d, mes) {
+    const N = MESES.length, hj = R.hoje();
+    const y = +hj.slice(0, 4), m = +hj.slice(5, 7), dia = +hj.slice(8, 10);
+    const idx = (y - 2026) * 12 + (m - 9), diasMes = new Date(y, m, 0).getDate();
+    const hojePct = Math.max(0, Math.min(100, (idx + (dia - 0.5) / diasMes) / N * 100));
+    const pct = k => (k / N * 100).toFixed(3) + '%';
+    const EXT = { 'set/26': 'setembro de 2026', 'out/26': 'outubro de 2026', 'nov/26': 'novembro de 2026', 'dez/26': 'dezembro de 2026', 'jan/27': 'janeiro de 2027', 'fev/27': 'fevereiro de 2027', 'mar/27': 'março de 2027', 'abr/27': 'abril de 2027', 'mai/27': 'maio de 2027', 'jun/27': 'junho de 2027', 'jul/27': 'julho de 2027', 'ago/27': 'agosto de 2027', 'set/27': 'setembro de 2027' };
+    const linhas = MQ.METAS.map(meta => {
+      const x = infoMeta(meta, S, d, mes);
+      const ini = meta.ini - 1, fim = meta.fim;   // colunas: do começo do mês inicial ao fim do mês final
+      const naoComecou = idx < ini, vencido = idx >= fim && x.st !== 'concluida' && x.atual != null && x.atual < x.alvo;
+      const tipo = x.st === 'concluida' ? 'ok' : vencido ? 'venc' : naoComecou ? 'futuro' : 'curso';
+      const situ = x.atual == null && !naoComecou ? 'registro fora do sistema' : { ok: 'concluída', venc: 'prazo vencido', futuro: 'não começou', curso: 'em curso' }[tipo];
+      const cheio = x.atual == null ? 0 : x.pct;
+      const per = MESES[meta.ini - 1] === MESES[meta.fim - 1] ? MESES[meta.ini - 1] : MESES[meta.ini - 1] + ' a ' + MESES[meta.fim - 1];
+      const falado = `${meta.id.replace('M', 'Meta ')}, ${meta.nome}: de ${EXT[MESES[meta.ini - 1]]} a ${EXT[MESES[meta.fim - 1]]}. ${x.atual == null ? 'Sem número no sistema' : x.atual + ' de ' + x.alvo + ' ' + x.un}, ${situ}.`;
+      return `<li class="cg-linha cg-${tipo}">
+        <button type="button" class="cg-nome" data-meta-ir="${meta.id}" aria-label="${E(falado)} Abre o detalhe da meta."><span class="cg-id">${meta.id}</span><span>${E(meta.nome)}</span></button>
+        <span class="cg-trilho" aria-hidden="true"><span class="cg-barra" style="left:${pct(ini)};width:${pct(fim - ini)}" title="${per}">${cheio ? `<i style="width:${cheio.toFixed(1)}%"></i>` : ''}</span></span>
+        <span class="cg-num" aria-hidden="true"><span class="num"><b>${x.atual == null ? '—' : x.atual}</b> de ${x.alvo}</span><small>${situ}</small></span>
+      </li>`;
+    }).join('');
+    const meses = MESES.map((l, k) => `<span class="${k === idx ? 'cg-agora' : ''}${k % 3 ? ' cg-mes-x' : ''}" style="left:${pct(k + 0.5)}">${l}</span>`).join('');
+    return `<section class="secao cg" aria-labelledby="t-cg">
+      <div class="secao-cab cg-cab"><div><h2 id="t-cg">Cronograma físico do plano de trabalho</h2><p>De ${MESES[0]} a ${MESES[N - 1]}. A parte cheia da barra é o que já foi registrado no sistema. Toque na meta para ver o detalhe.</p></div>
+        <ul class="cg-leg" aria-label="Legenda"><li><i class="lg-per"></i>período da meta</li><li><i class="lg-reg"></i>já registrado</li><li><i class="lg-fut"></i>ainda não começou</li><li><i class="lg-venc"></i>prazo vencido</li><li><i class="lg-hoje"></i>hoje</li></ul></div>
+      <div class="cg-grade" style="--cg-hoje:${hojePct.toFixed(3)}%">
+        <div class="cg-meses" aria-hidden="true"><span class="cg-meses-trilho">${meses}${idx >= 0 && idx < N ? '<b class="cg-hoje-selo">hoje</b>' : ''}</span></div>
+        <ol class="cg-lista">${linhas}</ol>
+      </div>
+    </section>`;
+  }
   function linhaMeta(meta, S, d, mes) {
     const x = infoMeta(meta, S, d, mes);
     const hoje = R.hoje(); const ms = (MQ.MARCOS || []).filter(k => k.meta === meta.id);
@@ -4569,6 +4603,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           </section>
         </div>
       </div>
+      ${cronograma(S, d, mes)}
       ${MQ.GEO ? mapa(S, d) : ''}
       ${MQ.aguaUI && /^coord/.test((S.eu || {}).papel || '') ? MQ.aguaUI.secao() : ''}
       ${perfil(S, d)}
@@ -4736,7 +4771,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const fichas = []; (municipios || []).forEach(m => { for (let i = 0; i < (m.n || 0); i++) fichas.push({ id: '', uf: m.uf, municipio: m.municipio, resultado: 'selecionada', situacao: 'aprovada' }); });
     return mapa({ mapaUF: '', mapaMun: '' }, { fichas }, { resumo: true });
   }
-  MQ.painelUI = { mapaResumo, visaoGeral, mesDoProjeto, mapaUFs, escalaRaios, espalhar, marcasTamanho, infoMeta, execucaoGeral, chipStatus, STATUS };
+  MQ.painelUI = { mapaResumo, visaoGeral, mesDoProjeto, mapaUFs, escalaRaios, espalhar, marcasTamanho, infoMeta, execucaoGeral, chipStatus, STATUS, cronograma };
 })();
 ;
 /* ===== fotodia.js ===== */
@@ -10951,6 +10986,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       passos: [
         'A linha de 13 quadradinhos mostra os meses do projeto; o quadrado colorido é o mês atual. Ao lado, quantos dias faltam para o fim da vigência.',
         '<b>Situação do campo em cada estado</b> mostra se o trabalho de campo já pode andar: equipe habilitada, fichas aprovadas, diagnósticos, visitas da semana e registros que ainda não foram enviados.', '<b>O que pede atenção</b> lista os problemas em três níveis: <b>Requer ação</b>, <b>Atenção</b> e <b>Aviso</b>. O botão <b>Resolver</b> leva direto à aba que resolve.',
+        '<b>Cronograma físico do plano de trabalho</b> mostra cada meta como uma barra, do mês em que começa ao mês em que termina. A parte verde é o que já foi registrado; o traço é hoje. Barra tracejada: ainda não começou. Barra vermelha: o prazo acabou e a meta não chegou ao número. Toque no nome da meta para abrir o detalhe.',
         'O cartão <b>Ponto de partida</b> (e, depois das avaliações, <b>hoje</b>) compara a linha de base do diagnóstico com a avaliação final (fome, renda do quintal, consumo, venda, autonomia). Só entra quem já tem as duas medidas.',
         '<b>Financeiro e entregas</b> abre o painel de recursos, rubricas e metas físicas. Só a coordenação geral vê esse botão.'
       ],
