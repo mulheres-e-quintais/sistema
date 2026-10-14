@@ -13673,7 +13673,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <div class="aviso erro" data-erro hidden></div>
           <button class="btn pri ent-btn" type="submit">${primeiro ? 'Criar senha e entrar' : 'Entrar'}<span aria-hidden="true">→</span></button>
           ${primeiro ? '' : '<button type="button" class="link ent-esqueci" data-acao="modo-login" data-m="esqueci">Esqueci a senha</button>'}
-          <button type="button" class="link ent-ajuda" data-acao="ajuda" data-k="entrada">Precisa de ajuda para entrar?</button>
+          <button type="button" class="link ent-ajuda ent-aj-b" data-acao="ajuda" data-k="entrada" aria-haspopup="dialog"><i aria-hidden="true">?</i>Precisa de ajuda para entrar?</button>
         </form>`}
       </section>
     </main>`;
