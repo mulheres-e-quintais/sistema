@@ -230,7 +230,8 @@ A(caixa('atencao', 'Essas impressões trazem nomes e, nas fichas, CPF e contato.
 A(sec('Histórico'))
 A(serve('Registra tudo o que foi feito no sistema: quem cadastrou, alterou, aprovou, devolveu e desligou, e quando.'))
 A(acesso(['Abas', 'Documentação', 'Histórico'], 'só a coordenação geral.'))
-A(tela('historico', 'Histórico de alterações', [(1, 'Últimos acessos', 'A última entrada de cada pessoa, com o aparelho e a rede.'), (2, 'Alterações', 'Os registros, do mais novo para o mais antigo.')]))
+A(tela('historico', 'Histórico de alterações', [(1, 'Últimos acessos', 'A última entrada de cada pessoa, com o aparelho e a rede.'), (2, 'Alterações', 'Os registros, do mais novo para o mais antigo, com filtro por pessoa, por assunto e por texto, "ver o que mudou" em cada alteração e a planilha do que está filtrado.')]))
+A(caixa('dica', 'Em <b>ver o que mudou</b>, CPF, NIS, CAF, conta, telefone, endereço e nascimento aparecem só como "alterado". O download da planilha do Histórico também fica registrado.'))
 A(passos('achar um registro', ['Role pelos dias.', 'No fim da lista, toque em <b class="bt">Ver registros anteriores</b>.'], 'A lista mostra os registros mais antigos.'))
 A(fimcap())
 

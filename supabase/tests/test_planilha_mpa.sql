@@ -12,6 +12,9 @@ select t('60. agente também não', :A, $q$select public.registrar_planilha('com
 select t('60. quem não entrou não chega à função', null, $q$select public.registrar_planilha('completa', 1, null)$q$, 'permission denied');
 select t('60. tipo inventado é recusado', :G, $q$select public.registrar_planilha('tudo', 1, null)$q$, 'Tipo de planilha inválido');
 select t('60. quantidade negativa é recusada', :G, $q$select public.registrar_planilha('completa', -1, null)$q$, 'Quantidade inválida');
+-- 62: a planilha do Histórico também fica registrada, só para a coordenação geral
+select t('62. a coordenação geral registra a planilha do Histórico', :G, $q$select public.registrar_planilha('historico', 8, 'assunto: Campo')$q$, 'ok');
+select t('62. a coordenação técnica não baixa o Histórico', :T, $q$select public.registrar_planilha('historico', 1, null)$q$, 'Só a coordenação geral');
 select f(:G, $q$select public.registrar_planilha('completa', 37, 'Estado PI')$q$);
 select t('60. fica no Histórico: quem, qual planilha, quantas fichas e o filtro', null, $q$do $x$ begin set local role none;
   if not exists (select 1 from public.auditoria a join public.equipe e on e.id = a.por where a.tabela = 'planilhas' and a.acao = 'PLANILHA' and e.papel = 'coord_geral'

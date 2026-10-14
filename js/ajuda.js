@@ -304,7 +304,9 @@
       t: 'Histórico',
       intro: 'Registro de tudo o que foi feito no sistema: quem cadastrou, alterou, aprovou, devolveu, desligou, gerou código de acesso, consultou conta bancária, e quando.',
       tarefas: [
-        ['Achar um registro', ['Role pelos dias (Hoje, Ontem, datas).', 'No fim da lista, toque em "Ver … registros anteriores" para ir mais para trás.']],
+        ['Achar um registro', ['Em <b>Alterações</b>, escolha <b>Quem fez</b>, o <b>Assunto</b> (equipe, seleção, campo, curso FIC, pagamentos, planilhas) ou escreva em <b>Procurar</b> e aperte Enter.', 'Com filtro, todos os registros que batem aparecem de uma vez. <b>Limpar filtros</b> volta à lista inteira.', 'Sem filtro, role pelos dias (Hoje, Ontem, datas) e, no fim, toque em "Ver … registros anteriores".']],
+        ['Ver o que mudou numa alteração', ['Toque em <b>ver o que mudou</b>, embaixo do registro.', 'Aparece cada campo com o valor de antes e o de depois. CPF, NIS, CAF, conta, telefone, endereço e nascimento aparecem só como "alterado": o valor não é mostrado.']],
+        ['Baixar o histórico em planilha', ['Aplique os filtros que quiser e toque em <b>Baixar planilha (.csv)</b>.', 'Sai só o que está filtrado: data, hora, quem fez, assunto, o que aconteceu e o que mudou.', 'O download fica registrado no próprio Histórico. A planilha traz nomes: guarde em pasta do projeto.']],
         ['Ver quem entrou no sistema', ['No alto da aba, em <b>Últimos acessos</b>, cada pessoa aparece com a última entrada, o aparelho e a rede.', 'Embaixo aparece quem ainda não entrou.', 'Toque em "Ver entradas e saídas" para ver tudo, inclusive quem saiu por 15 minutos sem uso.', 'Na ficha de cada pessoa aparece o último acesso dela.']]
       ],
       passos: [

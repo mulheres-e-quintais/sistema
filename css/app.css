@@ -3561,3 +3561,14 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 .ac-faixa-in .acoes { display: flex; flex-wrap: wrap; gap: 8px; }
 @media (max-width: 640px) { .ac-faixa-in .acoes { width: 100%; } .ac-faixa-in .acoes .btn { flex: 1 1 auto; } }
 @media print { .ac-faixa-previa { display: none; } }
+/* Histórico (14/10/2026): filtros, "ver o que mudou" e planilha */
+.hist-filtros { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 12px 16px; align-items: end; margin: 4px 0 8px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.hist-filtros .campo { margin: 0; }
+.hf-acoes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+@media (max-width: 900px) { .hist-filtros { grid-template-columns: 1fr 1fr; } .hf-busca, .hf-acoes { grid-column: 1 / -1; } .hf-acoes { justify-content: flex-start; } }
+@media (max-width: 520px) { .hist-filtros { grid-template-columns: 1fr; } .hf-acoes .btn { flex: 1 1 auto; } }
+.hist-mudou { margin-top: 4px; font-size: var(--t-sm); }
+.hist-mudou summary { cursor: pointer; color: var(--accent); width: fit-content; border-radius: 4px; }
+.hist-mudou summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.hist-mudou ul { margin: 6px 0 2px; padding-left: 18px; color: var(--ink-2); }
+.hist-mudou li { display: list-item; padding: 1px 0; border: 0; }

@@ -81,6 +81,13 @@ const R = []; const ok = (n, c, d = '') => R.push([c ? 'PASSOU' : 'FALHOU', n, d
   // outra pessoa no mesmo aparelho não herda o lugar
   await p.evaluate(() => document.querySelector('[data-aba="documentos"]').click()); await p.waitForTimeout(300);
   await p.evaluate(() => MQ.ui.sair()); await p.waitForTimeout(400);
+  // 14/10/2026: aba que carrega depois (Documentos, Histórico): o foco fica no botão da aba e o Tab segue para a próxima
+  await entrar('coord_geral'); await p.evaluate(() => MQ.ui.fecharPainel && MQ.ui.fecharPainel());
+  await p.focus('nav.abas [data-aba=documentos]'); await p.keyboard.press('Enter'); await p.waitForTimeout(1200);
+  ok('Documentos pelo teclado: o foco continua no botão da aba depois que os documentos chegam', await p.evaluate(() => document.activeElement && document.activeElement.dataset.aba === 'documentos'));
+  await p.keyboard.press('Tab'); ok('Documentos pelo teclado: o Tab vai para Histórico', await p.evaluate(() => document.activeElement && document.activeElement.dataset.aba === 'historico'));
+  await p.keyboard.press('Enter'); await p.waitForTimeout(1200);
+  ok('Histórico pelo teclado: o foco continua no botão da aba', await p.evaluate(() => document.activeElement && document.activeElement.dataset.aba === 'historico'));
   await entrar('coord_tecnico');
   ok('outra pessoa que entra começa do início', await p.evaluate(() => MQ.ui.S.aba !== 'documentos'));
   ok('sem erro de página', errs.length === 0, errs.join('|'));

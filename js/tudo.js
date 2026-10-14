@@ -1296,7 +1296,8 @@ MQ.ORCAMENTO = {
     async registrarPlanilha(tipo, qtd, filtro) {   // 60: igual ao banco
       const d = ler(); const eu = euMesmo();
       if (!eu || !['coord_geral', 'coord_tecnico'].includes(eu.papel)) throw falha('Só a coordenação baixa as planilhas das fichas.');
-      if (!['completa', 'sem_documentos', 'copia_dados'].includes(tipo)) throw falha('Tipo de planilha inválido.');
+      if (!['completa', 'sem_documentos', 'copia_dados', 'historico'].includes(tipo)) throw falha('Tipo de planilha inválido.');
+      if (tipo === 'historico' && eu.papel !== 'coord_geral') throw falha('Só a coordenação geral baixa o Histórico.');   // 62
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'planilhas', registro_id: null, acao: 'PLANILHA', por: eu.id, em: new Date().toISOString(), antes: null,
         depois: { tipo, qtd: +qtd || 0, filtro: String(filtro || '').trim().slice(0, 200) || null } });
       gravar();
@@ -11241,7 +11242,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       t: 'Histórico',
       intro: 'Registro de tudo o que foi feito no sistema: quem cadastrou, alterou, aprovou, devolveu, desligou, gerou código de acesso, consultou conta bancária, e quando.',
       tarefas: [
-        ['Achar um registro', ['Role pelos dias (Hoje, Ontem, datas).', 'No fim da lista, toque em "Ver … registros anteriores" para ir mais para trás.']],
+        ['Achar um registro', ['Em <b>Alterações</b>, escolha <b>Quem fez</b>, o <b>Assunto</b> (equipe, seleção, campo, curso FIC, pagamentos, planilhas) ou escreva em <b>Procurar</b> e aperte Enter.', 'Com filtro, todos os registros que batem aparecem de uma vez. <b>Limpar filtros</b> volta à lista inteira.', 'Sem filtro, role pelos dias (Hoje, Ontem, datas) e, no fim, toque em "Ver … registros anteriores".']],
+        ['Ver o que mudou numa alteração', ['Toque em <b>ver o que mudou</b>, embaixo do registro.', 'Aparece cada campo com o valor de antes e o de depois. CPF, NIS, CAF, conta, telefone, endereço e nascimento aparecem só como "alterado": o valor não é mostrado.']],
+        ['Baixar o histórico em planilha', ['Aplique os filtros que quiser e toque em <b>Baixar planilha (.csv)</b>.', 'Sai só o que está filtrado: data, hora, quem fez, assunto, o que aconteceu e o que mudou.', 'O download fica registrado no próprio Histórico. A planilha traz nomes: guarde em pasta do projeto.']],
         ['Ver quem entrou no sistema', ['No alto da aba, em <b>Últimos acessos</b>, cada pessoa aparece com a última entrada, o aparelho e a rede.', 'Embaixo aparece quem ainda não entrou.', 'Toque em "Ver entradas e saídas" para ver tudo, inclusive quem saiu por 15 minutos sem uso.', 'Na ficha de cada pessoa aparece o último acesso dela.']]
       ],
       passos: [
@@ -12865,7 +12868,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (modoDemoAtivo()) { S.verEntrada = true; render(); return; }   // demonstração: volta para a tela de entrada
     try { await S.api.sair(); } catch (e) { /* sem internet: a sessão já foi apagada do aparelho */ }
     S.eu = null; S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.audFim = false; S.documentos = []; S.acessos = []; S.execPlanilhas = []; S.encontros = []; S.agua = [];
-    S.acomp = null; S.acompErro = null; S.acompPrevia = null; S.verComo = null; S.verComoVolta = null; S.acompCodigo = null; S.acompConfirma = null; S.observadores = []; S.kitItens = [];   // números do acompanhamento, código de acesso recém-gerado e listas da coordenação não ficam na memória depois de sair
+    S.histF = { quem: '', grupo: '', busca: '' }; S.acomp = null; S.acompErro = null; S.acompPrevia = null; S.verComo = null; S.verComoVolta = null; S.acompCodigo = null; S.acompConfirma = null; S.observadores = []; S.kitItens = [];   // números do acompanhamento, código de acesso recém-gerado e listas da coordenação não ficam na memória depois de sair
     S.solic = []; S.pedidos = []; S.pre = []; S.pedidosAcesso = []; S.entregas = []; S.matriculas = []; S.turmas = []; S.avaliacoes = []; S.codigos = {}; S.confirmaAcesso = null; S.painel = null; S.solicVis = {}; S.canaisVenda = []; S.orientacoesVenda = []; S.vendaFolha = null; S.ciencias = []; S.testes = []; S.saldoPed = null; S.quemConfere = null; S.filaCelular = []; S.filaCelularSemBanco = false;   // nada da pessoa anterior fica na memória
     if (MQ.convitesUI && MQ.convitesUI.limparCache) MQ.convitesUI.limparCache();
     render();
@@ -13163,10 +13166,21 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function renderFundo() {
     if (!S.api) return;
     if (paginaEmUso()) { S.renderAdiado = true; atualizarAvisoRede(); return; }
+    // 14/10/2026: o desenho de fundo (ex.: os documentos acabaram de chegar) refaz a página e o botão com o foco era recriado:
+    // o foco ia para o começo e o Tab recomeçava do "Pular para o conteúdo". Agora o foco volta ao mesmo botão (ou ao equivalente).
+    const a = document.activeElement, d = a && a !== document.body && a.closest && a.closest('#app') ? descreverAbridor(a) : null;
     const y = window.scrollY; render({ fundo: true }); if (y && !S.rolarPara) window.scrollTo(0, y);
+    if (d && (!document.activeElement || document.activeElement === document.body)) { const el = acharAbridor(d); if (el) try { el.focus({ preventScroll: true }); } catch (e) {} }
   }
   document.addEventListener('focusout', () => { if (S.renderAdiado) setTimeout(() => { if (S.renderAdiado && !paginaEmUso()) renderFundo(); }, 300); }, true);
+  /* 14/10/2026: todo desenho da página preserva o foco do teclado. Um desenho pedido por algo que chegou depois (documentos, histórico,
+     relatos) recriava o botão que tinha o foco, e o Tab recomeçava do alto. Se o foco se perdeu, volta ao mesmo botão (ou ao equivalente). */
   function render(op) {
+    const a = document.activeElement, d = a && a !== document.body && a.closest && a.closest('#app') ? descreverAbridor(a) : null;
+    renderAgora(op);
+    if (d && !S.painel && (!document.activeElement || document.activeElement === document.body)) { const el = acharAbridor(d); if (el && el.closest('#app')) try { el.focus({ preventScroll: true }); } catch (e) {} }
+  }
+  function renderAgora(op) {
     const app = $('#app');
     const modoDemo = S.api.modo === 'demo';
     S.renderAdiado = false;
@@ -13529,8 +13543,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const papel = P[alvo.papel] ? P[alvo.papel].nome.toLowerCase() + (alvo.uf ? ' ' + alvo.uf : '') : '';
     if (a.tabela === 'equipe_bancario' && a.acao === 'VIEW') return `<b>${esc(quem)}</b> consultou a conta bancária de <b>${esc((porId(a.registro_id) || {}).nome || 'uma pessoa')}</b> para o cadastro no Arlo.`;
     if (a.tabela === 'planilhas' && a.acao === 'PLANILHA') { const D = a.depois || {}; const q = +D.qtd || 0;
-      const nome = { completa: 'a planilha completa das fichas (com CPF, NIS e CAF)', sem_documentos: 'a planilha das fichas sem documentos', copia_dados: 'a cópia dos dados do projeto' }[D.tipo] || 'uma planilha';
-      return `<b>${esc(quem)}</b> baixou ${nome}${D.tipo === 'copia_dados' ? ` (${q} registros)` : ` (${q} ficha${q === 1 ? '' : 's'})`}${D.filtro ? ' · filtro: ' + esc(D.filtro) : ''}.`; }
+      const nome = { completa: 'a planilha completa das fichas (com CPF, NIS e CAF)', sem_documentos: 'a planilha das fichas sem documentos', copia_dados: 'a cópia dos dados do projeto', historico: 'a planilha do Histórico' }[D.tipo] || 'uma planilha';
+      return `<b>${esc(quem)}</b> baixou ${nome}${D.tipo === 'copia_dados' || D.tipo === 'historico' ? ` (${q} registro${q === 1 ? '' : 's'})` : ` (${q} ficha${q === 1 ? '' : 's'})`}${D.filtro ? ' · filtro: ' + esc(D.filtro) : ''}.`; }
     if (a.tabela === 'equipe_bancario' && a.acao === 'EXPORT') return `<b>${esc(quem)}</b> gerou a planilha bancária para a FUNCERN.`;
     if (a.tabela === 'equipe_bancario') return `<b>${esc(quem)}</b> informou ou alterou a própria conta bancária.`;
     // 47: o login (só a senha) de quem saiu é removido pelo banco
@@ -13600,24 +13614,81 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (partes.length) return `<b>${esc(quem)}</b> registrou ${partes.join(', ')} de <b>${esc(D.nome)}</b>.`;
     return `<b>${esc(quem)}</b> atualizou o cadastro de <b>${esc(D.nome)}</b>.`;
   }
+  /* ---------- Histórico: filtros, o que mudou em cada alteração e planilha (14/10/2026) ----------
+     Mesclado com o Histórico do Saberes que Cultivam: lá cada alteração tem "ver o que mudou" (campo a campo, antes → depois).
+     Aqui também, com os campos sensíveis escondidos (CPF, NIS, CAF, conta, telefone, endereço, nascimento: só "alterado").
+     Novos nos dois: filtro por pessoa, por assunto e por texto, e a planilha do que está filtrado (fica registrada no Histórico). */
+  const GRUPO_HIST = { equipe: ['equipe', 'equipe_privado', 'equipe_bancario', 'acesso_codigos', 'observadores'],
+    selecao: ['fichas', 'apl_municipios'], campo: ['visitas', 'diagnosticos', 'avaliacoes', 'agua_situacoes', 'kit_itens', 'vitrine_fotos', 'entregas_mes'],
+    fic: ['turmas_fic', 'matriculas_fic', 'fic_encontros'], pagamentos: ['solicitacoes_pagamento', 'solicitacao_visitas', 'custos_visita', 'pedidos_apoio'],
+    planilhas: ['planilhas', 'execucao_planilhas', 'documentos_projeto'] };
+  const NOME_GRUPO_HIST = { equipe: 'Equipe e acessos', selecao: 'Seleção', campo: 'Campo', fic: 'Curso FIC', pagamentos: 'Pagamentos, viagens e eventos', planilhas: 'Planilhas e documentos', outros: 'Outros' };
+  const grupoDe = a => Object.keys(GRUPO_HIST).find(k => GRUPO_HIST[k].includes(a.tabela)) || 'outros';
+  const CAMPO_SENSIVEL = /cpf|nis|caf|rg|nascimento|telefone|celular|whats|endereco|logradouro|cep|banco|agencia|conta|pix|chave|senha|token|codigo_hash|email/i;
+  const CAMPO_FORA = /^(id|atualizado_em|criado_em|criado_por|auth_id|user_id|feito_por|ex|exemplo)$/;
+  const NOME_CAMPO = { situacao: 'situação', resultado: 'resultado', status: 'situação', nome: 'nome', papel: 'função', uf: 'estado', municipio: 'município', comunidade: 'comunidade',
+    data_prevista: 'data prevista', data_realizada: 'data em que foi feita', valor_solicitado: 'valor pedido', valor_avalizado: 'valor com aval', arlo_em: 'lançado no Arlo em',
+    termo_assinado_em: 'termo assinado em', fic_matricula: 'matrícula no FIC', data_inicio: 'início', data_fim: 'fim', motivo: 'motivo', obs: 'observação', mes: 'mês', tipo: 'tipo', etapa: 'etapa', km_conferido: 'km conferido' };
+  const valorCampo = v => v == null || v === '' ? '(vazio)' : typeof v === 'boolean' ? (v ? 'sim' : 'não') : typeof v === 'object' ? JSON.stringify(v).slice(0, 120) : String(v).slice(0, 120);
+  function oQueMudou(a) {
+    if (a.acao !== 'UPDATE' || !a.antes || !a.depois) return [];
+    return Object.keys(a.depois).filter(k => !CAMPO_FORA.test(k) && JSON.stringify(a.antes[k]) !== JSON.stringify(a.depois[k]))
+      .map(k => ({ campo: NOME_CAMPO[k] || k.replace(/_/g, ' '), antes: CAMPO_SENSIVEL.test(k) ? null : valorCampo(a.antes[k]), depois: CAMPO_SENSIVEL.test(k) ? null : valorCampo(a.depois[k]) }));
+  }
+  const semTags = h => String(h).replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  S.histF = S.histF || { quem: '', grupo: '', busca: '' };
+  function audFiltrado() {
+    const f = S.histF, q = f.busca.trim().toLowerCase();
+    return (S.aud || []).filter(a => (!f.quem || (f.quem === '_sistema' ? !a.por : a.por === f.quem)) && (!f.grupo || grupoDe(a) === f.grupo)
+      && (!q || semTags(descreverAud(a)).toLowerCase().includes(q)));
+  }
+  function filtrosHist() {
+    const f = S.histF; const quem = [...new Set((S.aud || []).map(a => a.por).filter(Boolean))].map(id => [id, nomeDe(porId(id) || { nome: 'Pessoa removida' })]).sort((x, y) => x[1].localeCompare(y[1], 'pt-BR'));
+    const grupos = [...new Set((S.aud || []).map(grupoDe))];
+    const ativo = f.quem || f.grupo || f.busca.trim();
+    return `<div class="hist-filtros" role="search" aria-label="Filtrar o histórico">
+      <div class="campo"><label for="hf-quem">Quem fez</label><select id="hf-quem" name="quem" data-hist-f="quem"><option value="">Todas as pessoas</option>${quem.map(([id, n]) => `<option value="${esc(id)}"${f.quem === id ? ' selected' : ''}>${esc(n)}</option>`).join('')}${(S.aud || []).some(a => !a.por) ? `<option value="_sistema"${f.quem === '_sistema' ? ' selected' : ''}>Sistema (automático)</option>` : ''}</select></div>
+      <div class="campo"><label for="hf-grupo">Assunto</label><select id="hf-grupo" name="grupo" data-hist-f="grupo"><option value="">Todos</option>${Object.keys(NOME_GRUPO_HIST).filter(k => grupos.includes(k)).map(k => `<option value="${k}"${f.grupo === k ? ' selected' : ''}>${NOME_GRUPO_HIST[k]}</option>`).join('')}</select></div>
+      <div class="campo hf-busca"><label for="hf-busca">Procurar</label><input id="hf-busca" name="busca" type="search" autocomplete="off" placeholder="nome, ação, planilha…" value="${esc(f.busca)}" data-hist-f="busca" enterkeyhint="search"></div>
+      <div class="hf-acoes">${ativo ? '<button type="button" class="btn peq" data-acao="hist-limpar">Limpar filtros</button>' : ''}<button type="button" class="btn peq" data-acao="hist-csv">Baixar planilha (.csv)</button></div></div>`;
+  }
+  function itemHist(a) {
+    const m = oQueMudou(a);
+    const det = m.length ? `<details class="hist-mudou"><summary>ver o que mudou</summary><ul>${m.map(x => `<li><b>${esc(x.campo)}</b>: ${x.antes == null ? 'alterado (dado protegido, o valor não aparece aqui)' : `${esc(x.antes)} <span aria-label="passou para">→</span> ${esc(x.depois)}`}</li>`).join('')}</ul></details>` : '';
+    return `<li><time datetime="${esc(a.em)}">${new Date(a.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time><span>${descreverAud(a)}${det}</span></li>`;
+  }
   function historico() {
     if (esperandoDaAba('aud')) return carregandoAba();
     if (!S.aud.length) return `<div class="vazio-hist"><p><b>Nada registrado ainda.</b></p>
       <p class="small muted">Aqui aparece, com data, hora e autor, tudo o que muda na equipe: cadastros, códigos de acesso, habilitação (FIC, Arlo e termo), consultas à conta bancária, desligamentos e o primeiro acesso de cada pessoa.</p></div>`;
-    const fmtH = t => new Date(t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const dia = t => { const d = new Date(t), h = new Date(); const ontem = new Date(h); ontem.setDate(h.getDate() - 1);
       const k = x => x.toLocaleDateString('pt-BR'); return k(d) === k(h) ? 'Hoje' : k(d) === k(ontem) ? 'Ontem' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }); };
-    const lista = arr => { let ult = ''; return arr.map(a => { const d = dia(a.em); const cab = d !== ult ? `<li class="hist-dia">${esc(d)}</li>` : ''; ult = d;
-      return cab + `<li><time datetime="${esc(a.em)}">${fmtH(a.em)}</time><span>${descreverAud(a)}</span></li>`; }).join(''); };
+    const lista = arr => { let ult = ''; return arr.map(a => { const d = dia(a.em); const cab = d !== ult ? `<li class="hist-dia">${esc(d)}</li>` : ''; ult = d; return cab + itemHist(a); }).join(''); };
     const semana = S.aud.filter(a => Date.now() - new Date(a.em) < 7 * 864e5).length;
-    const ord = S.aud.slice().sort((x, y) => String(y.em).localeCompare(String(x.em)));
-    const N = 12, rec = ord.slice(0, N), resto = ord.slice(N);
+    const f = S.histF, filtrando = !!(f.quem || f.grupo || f.busca.trim());
+    const ord = audFiltrado().sort((x, y) => String(y.em).localeCompare(String(x.em)));
+    const N = 12, rec = filtrando ? ord : ord.slice(0, N), resto = filtrando ? [] : ord.slice(N);
     // 13/10/2026 (auditoria): o histórico inteiro, 200 por vez (antes só os 200 últimos; os downloads de planilha sumiam em dias)
     const mais = S.audFim ? '' : (S.aud.length >= 200 ? '<p><button type="button" class="btn peq" data-acao="hist-mais">Carregar registros mais antigos</button></p>' : '');
-    return `<p class="small muted">${S.aud.length} registro${S.aud.length > 1 ? 's' : ''} carregado${S.aud.length > 1 ? 's' : ''} · ${semana} nos últimos 7 dias</p>
-      <ul class="linha-tempo lt-hora">${lista(rec)}</ul>
+    return `${filtrosHist()}
+      <p class="small muted" role="status">${filtrando ? `${ord.length} de ${S.aud.length} registro${S.aud.length > 1 ? 's' : ''} carregado${S.aud.length > 1 ? 's' : ''} com este filtro` : `${S.aud.length} registro${S.aud.length > 1 ? 's' : ''} carregado${S.aud.length > 1 ? 's' : ''} · ${semana} nos últimos 7 dias`}</p>
+      ${ord.length ? `<ul class="linha-tempo lt-hora">${lista(rec)}</ul>` : '<p class="vazio-hist">Nenhum registro com este filtro. Toque em <b>Limpar filtros</b>.</p>'}
       ${resto.length ? dobra('hist-antigos', `Ver ${resto.length} registro${resto.length > 1 ? 's' : ''} anterior${resto.length > 1 ? 'es' : ''}`, `<ul class="linha-tempo lt-hora">${lista(resto)}</ul>${mais}`) : mais}`;
   }
+  /* planilha do que está filtrado: data, hora, quem, assunto, o que aconteceu (frase) e os campos que mudaram (sem os protegidos) */
+  async function baixarHistorico() {
+    const l = audFiltrado().sort((x, y) => String(y.em).localeCompare(String(x.em)));
+    const cel = x => { let t = String(x == null ? '' : x); if (/^[=+\-@\t\r]/.test(t)) t = "'" + t; return '"' + t.replace(/"/g, '""') + '"'; };
+    const linhas = [['Data', 'Hora', 'Quem fez', 'Assunto', 'O que aconteceu', 'O que mudou'].map(cel).join(';')].concat(l.map(a => { const d = new Date(a.em);
+      return [d.toLocaleDateString('pt-BR'), d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), a.por ? nomeDe(porId(a.por) || { nome: 'Pessoa removida' }) : 'Sistema', NOME_GRUPO_HIST[grupoDe(a)],
+        semTags(descreverAud(a)), oQueMudou(a).map(x => x.campo + (x.antes == null ? ': alterado' : ': ' + x.antes + ' → ' + x.depois)).join(' | ')].map(cel).join(';'); }));
+    const f = S.histF, filtro = [f.quem && ('quem: ' + (f.quem === '_sistema' ? 'Sistema' : nomeDe(porId(f.quem) || {}))), f.grupo && ('assunto: ' + NOME_GRUPO_HIST[f.grupo]), f.busca.trim() && ('texto: ' + f.busca.trim())].filter(Boolean).join(' · ');
+    try { await S.api.registrarPlanilha('historico', l.length, filtro); } catch (e) { toast('O download não ficou registrado no Histórico (rode o 62_historico.sql no Supabase). A planilha sai assim mesmo.'); }
+    const blob = new Blob(['﻿' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const u = URL.createObjectURL(blob), x = document.createElement('a'); x.href = u; x.download = 'historico-mulheres-e-quintais-' + R.hoje() + '.csv'; document.body.appendChild(x); x.click(); x.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000);
+    S.aud = S.aud || []; if (DA_ABA.aud && DA_ABA.aud.busca) DA_ABA.aud.busca().then(v => { DA_ABA.aud.poe(v); renderFundo(); }).catch(() => {});
+  }
+  document.addEventListener('change', ev => { const t = ev.target; if (!t.dataset || !t.dataset.histF) return; S.histF[t.dataset.histF] = t.value; render(); });
 
   /* ---------- Últimos acessos (só a coordenação geral; 30_ultimos_acessos.sql) ---------- */
   const TIPO_ACESSO = { entrada: 'entrou', primeiro_acesso: 'entrou pela primeira vez', abriu: 'abriu o sistema (já estava logada)',
@@ -13647,6 +13718,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const pessoas = (S.equipe || []).filter(m => m.status === 'ativa' && m.id !== S.eu.id);
     const com = pessoas.map(m => [m, ultimoAcessoDe(m.id)]).filter(([, a]) => a).sort((x, y) => String(y[1].em).localeCompare(String(x[1].em)));
     const nunca = pessoas.filter(m => !m.user_id && !ultimoAcessoDe(m.id)), semReg = pessoas.filter(m => m.user_id && !ultimoAcessoDe(m.id));
+    const parados = com.filter(([, a]) => Date.now() - new Date(a.em) > 30 * 864e5).map(([m]) => m);   // do Saberes que Cultivam: quem sumiu há mais de um mês
     const semana = new Set(acessos.filter(a => Date.now() - new Date(a.em) < 7 * 864e5 && a.equipe_id !== S.eu.id).map(a => a.equipe_id)).size;
     const detalhe = a => [a.aparelho, ipCurto(a.ip) && 'rede ' + ipCurto(a.ip)].filter(Boolean).map(esc).join(' · ');
     const papelDe = m => esc(P[m.papel] ? P[m.papel].nome : m.papel) + (m.uf ? ' · ' + esc(m.uf) : '');
@@ -13658,6 +13730,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <p class="small muted">${semana} de ${pessoas.length} pessoa${pessoas.length === 1 ? '' : 's'} da equipe entr${semana === 1 ? 'ou' : 'aram'} nos últimos 7 dias.</p>
       ${com.length ? `<ul class="linha-tempo lt-acesso" id="lista-acessos">${com.map(itemPessoa).join('')}</ul>` : '<p class="small muted">Ninguém da equipe entrou desde que o registro começou.</p>'}
       ${nunca.length ? `<p class="small"><b>Ainda não entraram (${nunca.length}):</b> ${nomes(nunca)}. Na ficha de cada uma está o código de acesso.</p>` : ''}
+      ${parados.length ? `<p class="small"><b>Sem entrar há mais de 30 dias (${parados.length}):</b> ${nomes(parados)}.</p>` : ''}
       ${semReg.length ? `<p class="small muted">Sem registro de entrada nos últimos 6 meses (${semReg.length}): ${nomes(semReg)}.</p>` : ''}
       ${acessos.length ? dobra('acessos-todos', `Ver entradas e saídas (${acessos.length})`, `<ul class="linha-tempo lt-acesso">${acessos.slice(0, 300).map(itemReg).join('')}</ul>`) : ''}
     </section>`;
@@ -14697,6 +14770,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         }
       }
       else if (a === 'ajuda') { if (S.menuAberto) { S.menuAberto = false; render(); } S.voltarFoco = el; abrirPainel({ tipo: 'ajuda', k: el.dataset.k }); }
+      else if (a === 'hist-limpar') { S.histF = { quem: '', grupo: '', busca: '' }; render(); const b = document.getElementById('hf-quem'); if (b) b.focus(); }
+      else if (a === 'hist-csv') { el.disabled = true; try { await baixarHistorico(); } finally { el.disabled = false; } }
       else if (a === 'hist-mais') {
         const ord = (S.aud || []).slice().sort((x, y) => String(y.em).localeCompare(String(x.em))); const ult = ord[ord.length - 1];
         el.disabled = true; el.textContent = 'Carregando…';

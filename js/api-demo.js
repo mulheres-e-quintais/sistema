@@ -281,7 +281,8 @@
     async registrarPlanilha(tipo, qtd, filtro) {   // 60: igual ao banco
       const d = ler(); const eu = euMesmo();
       if (!eu || !['coord_geral', 'coord_tecnico'].includes(eu.papel)) throw falha('Só a coordenação baixa as planilhas das fichas.');
-      if (!['completa', 'sem_documentos', 'copia_dados'].includes(tipo)) throw falha('Tipo de planilha inválido.');
+      if (!['completa', 'sem_documentos', 'copia_dados', 'historico'].includes(tipo)) throw falha('Tipo de planilha inválido.');
+      if (tipo === 'historico' && eu.papel !== 'coord_geral') throw falha('Só a coordenação geral baixa o Histórico.');   // 62
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'planilhas', registro_id: null, acao: 'PLANILHA', por: eu.id, em: new Date().toISOString(), antes: null,
         depois: { tipo, qtd: +qtd || 0, filtro: String(filtro || '').trim().slice(0, 200) || null } });
       gravar();
