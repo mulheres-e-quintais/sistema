@@ -195,8 +195,9 @@ const TEMAS = { claro: { tema: 'claro', sol: false }, escuro: { tema: 'escuro', 
     ok('C', 'ficha vazia: cada campo com erro aponta (aria-describedby) para a mensagem (3.3.1)', er.inv > 0 && er.ligados === er.inv, `${er.ligados}/${er.inv}`);
     ok('C', 'ficha vazia: foco vai para o primeiro erro ou para o resumo de erros', er.focoInv, 'foco=' + er.foco + ' primeiro=' + er.primeiro);
     const obrig = await p.evaluate(() => { const f = document.querySelector('form[data-form=ficha]'); const n = (((f.querySelector('[data-erro]') || {}).textContent || '').match(/Faltam (\d+)/) || [])[1];
-      const marcados = [...f.querySelectorAll('input,select,textarea')].filter(i => i.required || i.getAttribute('aria-required') === 'true').map(i => i.name);
-      const asterisco = [...f.querySelectorAll('label,legend')].filter(l => /\*|\(obrigat/i.test(l.textContent)).length; return { exigidos: +n || 0, marcados: [...new Set(marcados)], asterisco }; });
+      // v272: grupos de opção marcam aria-required no radiogroup (o atributo não vale no radio isolado, pela ARIA)
+      const marcados = [...f.querySelectorAll('input,select,textarea')].filter(i => i.required || i.getAttribute('aria-required') === 'true' || (i.closest('[role=radiogroup]') && i.closest('[role=radiogroup]').getAttribute('aria-required') === 'true')).map(i => i.name);
+      const asterisco = [...f.querySelectorAll('label,legend,.criterio > span:first-child')].filter(l => /\*|\(obrigat/i.test(l.textContent)).length; return { exigidos: +n || 0, marcados: [...new Set(marcados)], asterisco }; });
     ok('C', `ficha: campos exigidos na validação estão marcados antes do envio (required/aria-required e indicação visível) (3.3.2) — exigidos ${obrig.exigidos}, marcados ${obrig.marcados.length}, rótulos com indicação ${obrig.asterisco}`, obrig.marcados.length >= obrig.exigidos - 2 && obrig.asterisco >= obrig.exigidos - 2, JSON.stringify(obrig));
     ok('C', 'ficha vazia: resumo de erros anunciado (role=alert ou aria-live)', !!(er.box && (er.box.role === 'alert' || er.box.live)), JSON.stringify(er.box));
     await p.evaluate(() => MQ.ui.fecharPainel({}));

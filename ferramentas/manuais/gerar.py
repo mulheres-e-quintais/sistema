@@ -185,7 +185,7 @@ A(acesso(['Abas', 'Financeiro', 'Pagamentos'], 'coordenação técnica (ajuda de
 A(fluxo('Todo pagamento passa por três mãos antes da FUNCERN', [('Quem vai receber', 'Pede o pagamento', False), ('Coordenação', 'Dá o aval', False), ('Auxiliar adm.', 'Lança no Arlo', False), ('FUNCERN', 'Paga', True)], linhas=1, laco=(1, 0, 'devolve para corrigir')))
 A(tela('pagamentos', 'Solicitações de pagamento', [
     (1, 'Resumo', 'Quantos pedidos esperam aval, quantos faltam lançar e o total já lançado.'), (2, 'Esperando o seu aval', 'Pedidos que dependem de você.'), (3, 'Com aval, falta lançar', 'Pedidos que agora dependem do auxiliar.'), (4, 'Lançadas no Arlo', 'Histórico do que já foi lançado.')]))
-A(passos('dar o aval', ['Em Esperando o seu aval, abra o pedido.', 'Confira as visitas e o km (ajuda de custo) ou o relatório e as entregas do mês (bolsa).', 'Toque em <b class="bt">Dar aval</b>. Ou escreva o que corrigir e toque em <b class="bt">Devolver para correção</b>.'], 'O pedido segue para o auxiliar lançar no Arlo. O devolvido volta para quem pediu.'))
+A(passos('dar o aval', ['Em Esperando o seu aval, abra o pedido.', 'Confira as visitas e o km (ajuda de custo) ou o relatório e as entregas do mês (bolsa).', 'Toque em <b class="bt">Aprovar (dar aval)</b>. Ou escreva o que corrigir e toque em <b class="bt">Devolver para correção</b>.'], 'O pedido segue para o auxiliar lançar no Arlo. O devolvido volta para quem pediu.'))
 
 A(sec('Custos'))
 A(serve('Calcula a ajuda de custo de cada visita e mostra se o trabalho de campo cabe no orçamento.'))

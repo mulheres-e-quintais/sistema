@@ -237,7 +237,7 @@
           <div class="campos"><div class="campo"><label for="pa-val">Valor com aval (R$)</label><input id="pa-val" name="valor" inputmode="decimal" value="${val != null ? String((conf != null ? conf : val).toFixed(2)).replace('.', ',') : ''}"></div>
           <div class="campo inteiro"><label for="pa-obs">Observação (obrigatória para devolver)</label><textarea id="pa-obs" name="obs" placeholder="Ex.: falta a foto da implantação de 12/10; conferir o km de Pio IX."></textarea></div></div>
           <div class="aviso erro" data-erro hidden></div>
-          <div class="acoes"><button class="btn pri" type="submit" name="ok" value="1">Dar aval</button><button class="btn perigo" type="submit" name="ok" value="0">Devolver para correção</button></div></form>` : ''}
+          <div class="acoes"><button class="btn pri" type="submit" name="ok" value="1">Aprovar (dar aval)</button><button class="btn perigo" type="submit" name="ok" value="0">Devolver para correção</button></div></form>` : ''}
         ${podeArlo ? `${MQ.bancoUI ? MQ.bancoUI.blocoContaArlo(pe) : ''}<form class="bloco" data-form="pag-arlo" data-id="${E(s.id)}" novalidate><h3>Lançar no Arlo</h3>
           <p class="small muted">Lance <b>${brl(val)}</b> no Arlo para ${E(nomeDe(pe))} (${TIPO[s.tipo].toLowerCase()} de ${nomeMes(s.mes)}) e registre aqui.</p>
           <div class="campo"><label for="pr-prot">Número do protocolo no Arlo <span class="muted">(se houver)</span></label><input id="pr-prot" name="protocolo" autocomplete="off"></div>

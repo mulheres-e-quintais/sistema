@@ -125,7 +125,49 @@ window.MQ = window.MQ || {};
       if (!el.hasAttribute('aria-label') && !el.hasAttribute('aria-labelledby')) el.setAttribute('aria-label', nomeDoQuadro(el));
       k++;
     });
+    rotularGrupos(r); marcarObrigatorios(r);
     return k;
+  }
+  /* 14/10/2026 (auditoria ACE-1): grupo de Sim/Não (e de outras opções) ganha a pergunta como nome. O leitor de tela lia só
+     "Sim, botão de opção, 1 de 2", sem dizer de que pergunta era. A pergunta é o texto que vem logo antes do grupo. */
+  function rotularGrupos(r) {
+    r.querySelectorAll('.sn-par:not([role])').forEach(g => {
+      if (!g.querySelector('input[type=radio]')) return;
+      let t = g.previousElementSibling;
+      if (!t || !/^(SPAN|LABEL|P|B|STRONG|LEGEND|H3|H4)$/.test(t.tagName) || t.querySelector('input, select, textarea')) return;
+      if (!t.id) t.id = 'tq-' + (++n);
+      g.setAttribute('role', 'radiogroup'); g.setAttribute('aria-labelledby', t.id);
+    });
+  }
+  /* (ACE-2) campos que a validação exige, marcados ANTES do envio: asterisco no rótulo e aria-required no campo */
+  const OBRIG = {
+    ficha: () => ['nome', 'cpf', 'data_nascimento', 'municipio', 'comunidade', 'endereco', 'data_ficha', 'consent_dados', 'resultado', 'foto_termo', 'foto_ficha'].concat((MQ.CRITERIOS || []).map(c => c[0])),
+    diag: () => ['data_visita', 'familia', 'agua_seca', 'fontes_agua', 'fotos', 'objetivos', 'kit']
+  };
+  function rotuloDe(form, nome) {
+    const w = form.querySelector('#w-' + nome); const c = form.querySelector('[name="' + nome + '"]');
+    if (c && c.id) { const l = form.querySelector('label[for="' + c.id + '"]'); if (l) return [l, c]; }
+    if (c && (c.type === 'radio' || c.type === 'checkbox')) { const g = c.closest('.sn-par, .chips-sel'); const t = g && g.previousElementSibling; if (t && !t.querySelector('input')) return [t, g]; }
+    if (w) { const t = w.querySelector(':scope > legend, :scope > label, :scope > span:first-child, :scope > h3, :scope > b') || (w.previousElementSibling && /^(LEGEND|LABEL|H3)$/.test(w.previousElementSibling.tagName) ? w.previousElementSibling : null); if (t) return [t, c || w]; }
+    if (c) { const cp = c.closest('.campo'); const l = cp && cp.querySelector(':scope > label'); if (l) return [l, c]; }
+    return [null, c];
+  }
+  function marcarObrigatorios(r) {
+    // qualquer formulário dos painéis: campo com required ganha o asterisco no rótulo (ex.: as senhas em Meus dados)
+    r.querySelectorAll('#painel form [required]').forEach(c => {
+      const l = (c.id && document.querySelector('label[for="' + c.id + '"]')) || (c.closest('.campo') && c.closest('.campo').querySelector(':scope > label'));
+      if (l && !l.querySelector('.obr') && !/obrigat/i.test(l.textContent)) l.insertAdjacentHTML('beforeend', '<span class="obr" aria-hidden="true"> *</span>');
+    });
+    r.querySelectorAll('form[data-form="ficha"], form[data-form="diag"]').forEach(form => {
+      if (form.dataset.obrMarcado) return; form.dataset.obrMarcado = '1';
+      OBRIG[form.dataset.form]().forEach(nome => {
+        const [rot, alvo] = rotuloDe(form, nome);
+        if (rot && !rot.querySelector('.obr')) rot.insertAdjacentHTML('beforeend', '<span class="obr" aria-hidden="true"> *</span>');
+        if (alvo && alvo.setAttribute && /^(INPUT|SELECT|TEXTAREA)$/.test(alvo.tagName) && !(alvo.type === 'radio' || alvo.type === 'checkbox' || alvo.type === 'file')) alvo.setAttribute('aria-required', 'true');   // só onde a ARIA aceita
+        const g = alvo && alvo.closest && alvo.closest('.sn-par'); if (g) g.setAttribute('aria-required', 'true');
+      });
+      if (!form.querySelector('.obr-legenda')) form.insertAdjacentHTML('afterbegin', '<p class="obr-legenda small muted"><span aria-hidden="true">*</span> Obrigatório: o sistema só grava com estes itens preenchidos.</p>');
+    });
   }
   let pendente = false;
   function agendar() {
@@ -3664,7 +3706,7 @@ MQ.ORCAMENTO = {
         <tbody>${MQ.UFS.map(u => linha(u.uf, u.nome)).join('')}
         <tr><td class="uf"><b>Total</b></td><td class="num"><b>${tot.total}</b></td><td class="num sep"><b>${tot.aprovadas}</b> de ${MQ.VAGAS_UF * 5}</td><td class="num sep">${tot.espera}</td><td class="num">${tot.sem_agua}</td><td class="num">${tot.nao_atende}</td><td class="num sep"><b>${tot.aguardando}</b></td><td class="num">${tot.devolvidas}</td></tr>
         </tbody></table></div><p class="dica-cols">No celular aparecem só as colunas principais. A tabela completa aparece no computador ou com o celular deitado.</p>
-      ${aguardando.length ? `<div class="bloco${MQ.sit(souTec ? 1 : 0)}"><h3>${souTec ? 'Para você aprovar' : 'Aguardando a coordenação técnica'} (${aguardando.length})</h3>
+      ${aguardando.length ? `<div class="bloco${MQ.sit(souTec ? 1 : 0)}"><h2>${souTec ? 'Para você aprovar' : 'Aguardando a coordenação técnica'} (${aguardando.length})</h2>
         <div class="lista-fichas">${aguardando.slice(0, 30).map(f => linhaFicha(f, true)).join('')}</div></div>` : ''}
       <details class="hist" data-lembrar="fichas-coord" ${(U().S.aberto || {})['fichas-coord'] || filtro.uf || filtro.situacao || filtro.busca ? 'open' : ''}><summary>Todas as fichas (${conta})</summary><div style="padding:0 18px 16px;display:grid;gap:12px">
         <div class="campos" style="grid-template-columns:repeat(3,minmax(0,1fr))">
@@ -5409,7 +5451,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       ${blocoKitPar()}
       ${S().verKitItens ? blocoKitItens() : ''}
       ${MQ.impactoUI ? MQ.impactoUI.secaoCoord() : ''}
-      ${aguard.length ? `<div class="bloco${MQ.sit(souTec ? 1 : 0)}"><h3>${souTec ? 'Planos para você aprovar' : 'Planos aguardando a coordenação técnica'} (${aguard.length})</h3><div class="lista-fichas">
+      ${aguard.length ? `<div class="bloco${MQ.sit(souTec ? 1 : 0)}"><h2>${souTec ? 'Planos para você aprovar' : 'Planos aguardando a coordenação técnica'} (${aguard.length})</h2><div class="lista-fichas">
         ${aguard.map(d => { const f = ficha(d.ficha_id) || {}; return `<button class="vagabtn ficha-linha" data-acao="campo-diag-ver" data-ficha="${E(d.ficha_id)}"><span class="nm">${E(f.nome || '—')}</span>
           <span style="display:flex;gap:6px;flex-wrap:wrap">${chipLocal(localDiag(d, f))}${d.sem_agua ? '<span class="chip crit">Sem água: sem plano</span>' : `<span class="chip pend">Lote ${d.lote}</span>`}<span class="chip off">${E((d.dados && d.dados.kit || []).filter(k => k.item).length)} itens no kit${totalKit(comRef(d.dados && d.dados.kit)) ? ' · ' + brl(totalKit(comRef(d.dados && d.dados.kit))) : ''}</span></span>
           <span class="sub">${E(d.uf)} · ${E(f.municipio || '')} · visita em ${R.fmtData(d.data_visita)} por ${E((pessoa(d.executor_id) || {}).nome || '—')}</span></button>`; }).join('')}</div></div>` : ''}
@@ -5469,7 +5511,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   /* coordenação: valor do kit por quintal e o total projetado pelos planos */
   function blocoKitPar() {
     const lim = +((S().kitPar || {}).valor_quintal) || 0; const nQ = MQ.VAGAS_UF * MQ.UFS.length;
-    const cab = `<div class="bloco kit-par"><div><h3>Investimento nos quintais (kits)</h3>
+    const cab = `<div class="bloco kit-par"><div><h2 class="bloco-t">Investimento nos quintais (kits)</h2>
         <p class="kit-valor"><span class="small muted">Valor do kit por quintal</span><b class="num">${brl(lim)}</b><span class="small muted">definido no plano de trabalho · ${brl(lim * nQ)} para os ${nQ} quintais</span></p>`;
     if (!vePreco()) return cab + '<p class="small muted">A compra dos kits é feita por empresa contratada. Os preços de referência e a projeção de cada plano aparecem só para a coordenação geral.</p></div></div>';
     const planos = diagnosticos().filter(d => !d.sem_agua && d.situacao !== 'devolvido');
@@ -6883,7 +6925,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const ufs = MQ.UFS.filter(u => sem.some(m => m.uf === u.uf));
     const nome = m => `${E(nomeDe(m))} <span class="muted small">(${E(P[m.papel].curto)})</span>`;
     const semUF = sem.filter(m => !m.uf);   // coordenação técnica
-    return `<div class="bloco fic-sem"><h3>Ainda sem matrícula no FIC (${sem.length})</h3>
+    return `<div class="bloco fic-sem"><h2>Ainda sem matrícula no FIC (${sem.length})</h2>
       <div class="fic-ufs">${semUF.length ? `<div><span class="sigla">5 UF</span><span>${semUF.map(nome).join(' · ')}</span></div>` : ''}${ufs.map(u => `<div><span class="sigla">${u.uf}</span><span>${sem.filter(m => m.uf === u.uf).map(nome).join(' · ')}</span></div>`).join('')}</div></div>`;
   }
 
@@ -7804,7 +7846,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <div class="campos"><div class="campo"><label for="pa-val">Valor com aval (R$)</label><input id="pa-val" name="valor" inputmode="decimal" value="${val != null ? String((conf != null ? conf : val).toFixed(2)).replace('.', ',') : ''}"></div>
           <div class="campo inteiro"><label for="pa-obs">Observação (obrigatória para devolver)</label><textarea id="pa-obs" name="obs" placeholder="Ex.: falta a foto da implantação de 12/10; conferir o km de Pio IX."></textarea></div></div>
           <div class="aviso erro" data-erro hidden></div>
-          <div class="acoes"><button class="btn pri" type="submit" name="ok" value="1">Dar aval</button><button class="btn perigo" type="submit" name="ok" value="0">Devolver para correção</button></div></form>` : ''}
+          <div class="acoes"><button class="btn pri" type="submit" name="ok" value="1">Aprovar (dar aval)</button><button class="btn perigo" type="submit" name="ok" value="0">Devolver para correção</button></div></form>` : ''}
         ${podeArlo ? `${MQ.bancoUI ? MQ.bancoUI.blocoContaArlo(pe) : ''}<form class="bloco" data-form="pag-arlo" data-id="${E(s.id)}" novalidate><h3>Lançar no Arlo</h3>
           <p class="small muted">Lance <b>${brl(val)}</b> no Arlo para ${E(nomeDe(pe))} (${TIPO[s.tipo].toLowerCase()} de ${nomeMes(s.mes)}) e registre aqui.</p>
           <div class="campo"><label for="pr-prot">Número do protocolo no Arlo <span class="muted">(se houver)</span></label><input id="pr-prot" name="protocolo" autocomplete="off"></div>
@@ -11209,11 +11251,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       t: 'Pagamentos',
       intro: 'Pedidos de ajuda de custo (visitas de campo) e de bolsa mensal. O caminho é sempre: a pessoa pede → a coordenação dá o aval → o auxiliar lança no Arlo (FUNCERN).',
       tarefas: [
-        ['Dar o aval', ['Em <b>Esperando o seu aval</b>, abra o pedido.', 'Confira as visitas e o km (ajuda de custo) ou o relatório e as entregas do mês (bolsa).', 'Toque em <b>Dar aval</b>, ou escreva o que corrigir e toque em <b>Devolver para correção</b>.']]
+        ['Dar o aval', ['Em <b>Esperando o seu aval</b>, abra o pedido.', 'Confira as visitas e o km (ajuda de custo) ou o relatório e as entregas do mês (bolsa).', 'Toque em <b>Aprovar (dar aval)</b>, ou escreva o que corrigir e toque em <b>Devolver para correção</b>.']]
       ],
       passos: [
         'Em <b>Esperando o seu aval</b>, abra o pedido e confira: na ajuda de custo, as visitas e o km; na bolsa, o relatório e as <b>entregas do mês</b> (fotos, lista de presença, fichas, AVA e metas).',
-        'Toque em <b>Dar aval</b> ou <b>Devolver</b>, dizendo o que corrigir.',
+        'Toque em <b>Aprovar (dar aval)</b> ou <b>Devolver</b>, dizendo o que corrigir.',
         'Quem dá o aval: a coordenação técnica, para ajuda de custo e bolsa das bolsistas; a coordenação geral, para a bolsa da coordenação técnica, dos professores e do auxiliar.',
         'Com o aval, o pedido vai para o auxiliar, que lança no Arlo e registra o protocolo.'
       ],
@@ -13256,6 +13298,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function render(op) {
     const a = document.activeElement, d = a && a !== document.body && a.closest && a.closest('#app') ? descreverAbridor(a) : null;
     renderAgora(op);
+    // (ACE-7) o título da janela diz em que tela a pessoa está (leitor de tela e abas do navegador)
+    if (document.title === 'Mulheres & Quintais') { const h1 = document.querySelector('main h1'); const t = h1 && h1.textContent.replace(/\s+/g, ' ').trim(); if (t) document.title = t.slice(0, 60) + ' · Mulheres & Quintais'; }
     if (d && !S.painel && (!document.activeElement || document.activeElement === document.body)) { const el = acharAbridor(d); if (el && el.closest('#app')) try { el.focus({ preventScroll: true }); } catch (e) {} }
   }
   function renderAgora(op) {
@@ -13266,7 +13310,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if ((conv || location.hash === '#numeros') && (S.painel || $('#painel'))) fecharPainel({ semFoco: true, semHistorico: true });
     if (conv && MQ.convitesUI) { app.innerHTML = barra(true, true) + MQ.convitesUI.pagina(conv[1]) + rodape(); document.title = 'Cadastro · Mulheres & Quintais'; return; }
     if (location.hash === '#numeros' && MQ.vitrineUI) { app.innerHTML = barra(true) + MQ.vitrineUI.pagina() + rodape(); document.title = 'O projeto em números · Mulheres & Quintais'; return; }
-    document.title = 'Mulheres & Quintais';
+    document.title = 'Mulheres & Quintais';   // 14/10/2026 (ACE-7): o nome da aba entra no título no fim do desenho (tituloDaAba)
     const telaEntrada = (modoDemo && S.verEntrada) || (!S.eu && !modoDemo && !S.api.temSessao);
     if (S.eu && (S.eu.observador || (S.verComo && S.eu.papel === 'coord_geral')) && !telaEntrada && MQ.acompUI) {   // "Ver como o MDA/MPA vê": a coordenação vê a mesma tela, com a faixa da prévia   // tela própria de quem acompanha: nenhuma parte da tela da equipe é montada
       if (S.painel) fecharPainel({ semFoco: true, semHistorico: true });

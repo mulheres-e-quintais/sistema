@@ -457,6 +457,8 @@
   function render(op) {
     const a = document.activeElement, d = a && a !== document.body && a.closest && a.closest('#app') ? descreverAbridor(a) : null;
     renderAgora(op);
+    // (ACE-7) o título da janela diz em que tela a pessoa está (leitor de tela e abas do navegador)
+    if (document.title === 'Mulheres & Quintais') { const h1 = document.querySelector('main h1'); const t = h1 && h1.textContent.replace(/\s+/g, ' ').trim(); if (t) document.title = t.slice(0, 60) + ' · Mulheres & Quintais'; }
     if (d && !S.painel && (!document.activeElement || document.activeElement === document.body)) { const el = acharAbridor(d); if (el && el.closest('#app')) try { el.focus({ preventScroll: true }); } catch (e) {} }
   }
   function renderAgora(op) {
@@ -467,7 +469,7 @@
     if ((conv || location.hash === '#numeros') && (S.painel || $('#painel'))) fecharPainel({ semFoco: true, semHistorico: true });
     if (conv && MQ.convitesUI) { app.innerHTML = barra(true, true) + MQ.convitesUI.pagina(conv[1]) + rodape(); document.title = 'Cadastro · Mulheres & Quintais'; return; }
     if (location.hash === '#numeros' && MQ.vitrineUI) { app.innerHTML = barra(true) + MQ.vitrineUI.pagina() + rodape(); document.title = 'O projeto em números · Mulheres & Quintais'; return; }
-    document.title = 'Mulheres & Quintais';
+    document.title = 'Mulheres & Quintais';   // 14/10/2026 (ACE-7): o nome da aba entra no título no fim do desenho (tituloDaAba)
     const telaEntrada = (modoDemo && S.verEntrada) || (!S.eu && !modoDemo && !S.api.temSessao);
     if (S.eu && (S.eu.observador || (S.verComo && S.eu.papel === 'coord_geral')) && !telaEntrada && MQ.acompUI) {   // "Ver como o MDA/MPA vê": a coordenação vê a mesma tela, com a faixa da prévia   // tela própria de quem acompanha: nenhuma parte da tela da equipe é montada
       if (S.painel) fecharPainel({ semFoco: true, semHistorico: true });

@@ -55,7 +55,7 @@
     const ufs = MQ.UFS.filter(u => sem.some(m => m.uf === u.uf));
     const nome = m => `${E(nomeDe(m))} <span class="muted small">(${E(P[m.papel].curto)})</span>`;
     const semUF = sem.filter(m => !m.uf);   // coordenação técnica
-    return `<div class="bloco fic-sem"><h3>Ainda sem matrícula no FIC (${sem.length})</h3>
+    return `<div class="bloco fic-sem"><h2>Ainda sem matrícula no FIC (${sem.length})</h2>
       <div class="fic-ufs">${semUF.length ? `<div><span class="sigla">5 UF</span><span>${semUF.map(nome).join(' · ')}</span></div>` : ''}${ufs.map(u => `<div><span class="sigla">${u.uf}</span><span>${sem.filter(m => m.uf === u.uf).map(nome).join(' · ')}</span></div>`).join('')}</div></div>`;
   }
 

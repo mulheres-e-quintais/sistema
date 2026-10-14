@@ -199,11 +199,11 @@
       t: 'Pagamentos',
       intro: 'Pedidos de ajuda de custo (visitas de campo) e de bolsa mensal. O caminho é sempre: a pessoa pede → a coordenação dá o aval → o auxiliar lança no Arlo (FUNCERN).',
       tarefas: [
-        ['Dar o aval', ['Em <b>Esperando o seu aval</b>, abra o pedido.', 'Confira as visitas e o km (ajuda de custo) ou o relatório e as entregas do mês (bolsa).', 'Toque em <b>Dar aval</b>, ou escreva o que corrigir e toque em <b>Devolver para correção</b>.']]
+        ['Dar o aval', ['Em <b>Esperando o seu aval</b>, abra o pedido.', 'Confira as visitas e o km (ajuda de custo) ou o relatório e as entregas do mês (bolsa).', 'Toque em <b>Aprovar (dar aval)</b>, ou escreva o que corrigir e toque em <b>Devolver para correção</b>.']]
       ],
       passos: [
         'Em <b>Esperando o seu aval</b>, abra o pedido e confira: na ajuda de custo, as visitas e o km; na bolsa, o relatório e as <b>entregas do mês</b> (fotos, lista de presença, fichas, AVA e metas).',
-        'Toque em <b>Dar aval</b> ou <b>Devolver</b>, dizendo o que corrigir.',
+        'Toque em <b>Aprovar (dar aval)</b> ou <b>Devolver</b>, dizendo o que corrigir.',
         'Quem dá o aval: a coordenação técnica, para ajuda de custo e bolsa das bolsistas; a coordenação geral, para a bolsa da coordenação técnica, dos professores e do auxiliar.',
         'Com o aval, o pedido vai para o auxiliar, que lança no Arlo e registra o protocolo.'
       ],

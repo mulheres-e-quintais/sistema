@@ -44,7 +44,49 @@ window.MQ = window.MQ || {};
       if (!el.hasAttribute('aria-label') && !el.hasAttribute('aria-labelledby')) el.setAttribute('aria-label', nomeDoQuadro(el));
       k++;
     });
+    rotularGrupos(r); marcarObrigatorios(r);
     return k;
+  }
+  /* 14/10/2026 (auditoria ACE-1): grupo de Sim/Não (e de outras opções) ganha a pergunta como nome. O leitor de tela lia só
+     "Sim, botão de opção, 1 de 2", sem dizer de que pergunta era. A pergunta é o texto que vem logo antes do grupo. */
+  function rotularGrupos(r) {
+    r.querySelectorAll('.sn-par:not([role])').forEach(g => {
+      if (!g.querySelector('input[type=radio]')) return;
+      let t = g.previousElementSibling;
+      if (!t || !/^(SPAN|LABEL|P|B|STRONG|LEGEND|H3|H4)$/.test(t.tagName) || t.querySelector('input, select, textarea')) return;
+      if (!t.id) t.id = 'tq-' + (++n);
+      g.setAttribute('role', 'radiogroup'); g.setAttribute('aria-labelledby', t.id);
+    });
+  }
+  /* (ACE-2) campos que a validação exige, marcados ANTES do envio: asterisco no rótulo e aria-required no campo */
+  const OBRIG = {
+    ficha: () => ['nome', 'cpf', 'data_nascimento', 'municipio', 'comunidade', 'endereco', 'data_ficha', 'consent_dados', 'resultado', 'foto_termo', 'foto_ficha'].concat((MQ.CRITERIOS || []).map(c => c[0])),
+    diag: () => ['data_visita', 'familia', 'agua_seca', 'fontes_agua', 'fotos', 'objetivos', 'kit']
+  };
+  function rotuloDe(form, nome) {
+    const w = form.querySelector('#w-' + nome); const c = form.querySelector('[name="' + nome + '"]');
+    if (c && c.id) { const l = form.querySelector('label[for="' + c.id + '"]'); if (l) return [l, c]; }
+    if (c && (c.type === 'radio' || c.type === 'checkbox')) { const g = c.closest('.sn-par, .chips-sel'); const t = g && g.previousElementSibling; if (t && !t.querySelector('input')) return [t, g]; }
+    if (w) { const t = w.querySelector(':scope > legend, :scope > label, :scope > span:first-child, :scope > h3, :scope > b') || (w.previousElementSibling && /^(LEGEND|LABEL|H3)$/.test(w.previousElementSibling.tagName) ? w.previousElementSibling : null); if (t) return [t, c || w]; }
+    if (c) { const cp = c.closest('.campo'); const l = cp && cp.querySelector(':scope > label'); if (l) return [l, c]; }
+    return [null, c];
+  }
+  function marcarObrigatorios(r) {
+    // qualquer formulário dos painéis: campo com required ganha o asterisco no rótulo (ex.: as senhas em Meus dados)
+    r.querySelectorAll('#painel form [required]').forEach(c => {
+      const l = (c.id && document.querySelector('label[for="' + c.id + '"]')) || (c.closest('.campo') && c.closest('.campo').querySelector(':scope > label'));
+      if (l && !l.querySelector('.obr') && !/obrigat/i.test(l.textContent)) l.insertAdjacentHTML('beforeend', '<span class="obr" aria-hidden="true"> *</span>');
+    });
+    r.querySelectorAll('form[data-form="ficha"], form[data-form="diag"]').forEach(form => {
+      if (form.dataset.obrMarcado) return; form.dataset.obrMarcado = '1';
+      OBRIG[form.dataset.form]().forEach(nome => {
+        const [rot, alvo] = rotuloDe(form, nome);
+        if (rot && !rot.querySelector('.obr')) rot.insertAdjacentHTML('beforeend', '<span class="obr" aria-hidden="true"> *</span>');
+        if (alvo && alvo.setAttribute && /^(INPUT|SELECT|TEXTAREA)$/.test(alvo.tagName) && !(alvo.type === 'radio' || alvo.type === 'checkbox' || alvo.type === 'file')) alvo.setAttribute('aria-required', 'true');   // só onde a ARIA aceita
+        const g = alvo && alvo.closest && alvo.closest('.sn-par'); if (g) g.setAttribute('aria-required', 'true');
+      });
+      if (!form.querySelector('.obr-legenda')) form.insertAdjacentHTML('afterbegin', '<p class="obr-legenda small muted"><span aria-hidden="true">*</span> Obrigatório: o sistema só grava com estes itens preenchidos.</p>');
+    });
   }
   let pendente = false;
   function agendar() {

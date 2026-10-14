@@ -300,7 +300,7 @@
       ${blocoKitPar()}
       ${S().verKitItens ? blocoKitItens() : ''}
       ${MQ.impactoUI ? MQ.impactoUI.secaoCoord() : ''}
-      ${aguard.length ? `<div class="bloco${MQ.sit(souTec ? 1 : 0)}"><h3>${souTec ? 'Planos para você aprovar' : 'Planos aguardando a coordenação técnica'} (${aguard.length})</h3><div class="lista-fichas">
+      ${aguard.length ? `<div class="bloco${MQ.sit(souTec ? 1 : 0)}"><h2>${souTec ? 'Planos para você aprovar' : 'Planos aguardando a coordenação técnica'} (${aguard.length})</h2><div class="lista-fichas">
         ${aguard.map(d => { const f = ficha(d.ficha_id) || {}; return `<button class="vagabtn ficha-linha" data-acao="campo-diag-ver" data-ficha="${E(d.ficha_id)}"><span class="nm">${E(f.nome || '—')}</span>
           <span style="display:flex;gap:6px;flex-wrap:wrap">${chipLocal(localDiag(d, f))}${d.sem_agua ? '<span class="chip crit">Sem água: sem plano</span>' : `<span class="chip pend">Lote ${d.lote}</span>`}<span class="chip off">${E((d.dados && d.dados.kit || []).filter(k => k.item).length)} itens no kit${totalKit(comRef(d.dados && d.dados.kit)) ? ' · ' + brl(totalKit(comRef(d.dados && d.dados.kit))) : ''}</span></span>
           <span class="sub">${E(d.uf)} · ${E(f.municipio || '')} · visita em ${R.fmtData(d.data_visita)} por ${E((pessoa(d.executor_id) || {}).nome || '—')}</span></button>`; }).join('')}</div></div>` : ''}
@@ -360,7 +360,7 @@
   /* coordenação: valor do kit por quintal e o total projetado pelos planos */
   function blocoKitPar() {
     const lim = +((S().kitPar || {}).valor_quintal) || 0; const nQ = MQ.VAGAS_UF * MQ.UFS.length;
-    const cab = `<div class="bloco kit-par"><div><h3>Investimento nos quintais (kits)</h3>
+    const cab = `<div class="bloco kit-par"><div><h2 class="bloco-t">Investimento nos quintais (kits)</h2>
         <p class="kit-valor"><span class="small muted">Valor do kit por quintal</span><b class="num">${brl(lim)}</b><span class="small muted">definido no plano de trabalho · ${brl(lim * nQ)} para os ${nQ} quintais</span></p>`;
     if (!vePreco()) return cab + '<p class="small muted">A compra dos kits é feita por empresa contratada. Os preços de referência e a projeção de cada plano aparecem só para a coordenação geral.</p></div></div>';
     const planos = diagnosticos().filter(d => !d.sem_agua && d.situacao !== 'devolvido');

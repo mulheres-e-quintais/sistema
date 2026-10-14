@@ -1072,6 +1072,10 @@ input.invalido { border-color: var(--crit) !important; box-shadow: 0 0 0 3px col
 /* formulários: campos da mesma linha alinhados e com a mesma altura */
 .campo input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]), .campo select { height: 46px; }
 .campo input[type=date] { line-height: 1.2; }
+/* (ACE-5) o foco no ícone do calendário dentro do campo de data aparece em todos os temas */
+.campo input[type=date]:focus, .campo input[type=date]:focus-within { outline: 3px solid var(--focus); outline-offset: 2px; }
+:root[data-theme="dark"] .campo input[type=date] { color-scheme: dark; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]):not([data-sol]) .campo input[type=date] { color-scheme: dark; } }
 .campo select { padding-right: 32px; }
 @supports (grid-template-rows: subgrid) {
   .campos { row-gap: 0; }
@@ -1709,8 +1713,8 @@ table.fin tbody.realce tr { animation: exr-realce 1.8s ease-out; }
 .aba-btns { display: flex; gap: 2px 18px; flex-wrap: wrap; }
 .abas-m-grade .aba-g { grid-column: 1 / -1; margin-top: 10px; }
 .abas-m-grade .aba-g:first-child { margin-top: 0; }
-.abas.abas-grupos { flex-wrap: nowrap; gap: 0 18px; }
-.abas-grupos .aba-btns { gap: 0; flex-wrap: nowrap; }
+.abas.abas-grupos { flex-wrap: wrap; gap: 4px 18px; }   /* 14/10/2026 (ACE-3): com texto maior (1.4.12), o grupo desce de linha em vez de sair da tela */
+.abas-grupos .aba-btns { gap: 0; flex-wrap: wrap; }
 .abas-grupos button { padding: 8px 8px 10px; font-size: var(--t-md); }
 .abas-grupos .aba-grupo + .aba-grupo { padding-left: 18px; border-left: 1px solid var(--line); }
 @media (max-width: 1180px) { .abas.abas-grupos { gap: 0 10px; } .abas-grupos .aba-grupo + .aba-grupo { padding-left: 10px; } .abas-grupos button { padding: 8px 6px 10px; } }
@@ -2090,7 +2094,7 @@ table.fin .fin-detalhe > td { padding-left: 28px; }
 /* --- 1. cartões: um raio, uma borda, sem sombra --- */
 .bloco, details.hist, .quadro-scroll, .pessoa, .cartao, .vd-previa, .fic-turma { border-radius: 14px; }
 .bloco { padding: 18px 20px; gap: 12px; }
-.bloco > h2, .bloco > h3, .bloco > .ft-cab h3, form.bloco > h2 { font: 600 var(--t-lg)/1.25 var(--serif); letter-spacing: -.005em; color: var(--ink); margin: 0; }
+.bloco > h2, .bloco > h3, .bloco > .ft-cab h3, form.bloco > h2, .bloco h2.bloco-t { font: 600 var(--t-lg)/1.25 var(--serif); letter-spacing: -.005em; color: var(--ink); margin: 0; }
 details.hist > summary { padding: 14px 20px; align-items: baseline; }
 details.hist > summary::after { font-weight: 500; }
 .dobra-in { padding: 0 20px 16px; }
@@ -2452,8 +2456,8 @@ p.carregando:has(.carregando-t) { flex-direction: column; gap: 12px; }
 .dx-ct-crit { background: var(--crit-bg); color: var(--crit); } .dx-ct-pend { background: var(--pend-bg); color: var(--pend); }
 .dx-atencao .dx-tab { border-top: 0; gap: 8px; }
 .dx-atencao .dx-tr.dx-th { padding: 0 16px 2px 20px; border: 0; background: transparent; }
-.dx-atencao .dx-tr:not(.dx-th) { padding: 14px 16px 14px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); position: relative; overflow: hidden; transition: border-color .15s, background .15s; }
-.dx-atencao .dx-tr:not(.dx-th)::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--pend); }
+.dx-atencao .dx-tr:not(.dx-th) { padding: 14px 16px 14px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); position: relative; transition: border-color .15s, background .15s; }   /* (ACE-4) sem overflow:hidden: com texto maior, o botão Resolver não é cortado */
+.dx-atencao .dx-tr:not(.dx-th)::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--pend); border-radius: 12px 0 0 12px; }
 .dx-atencao .dx-tr.dx-n-crit::before { background: var(--crit); }
 .dx-atencao .dx-tr.dx-n-crit { background: color-mix(in srgb, var(--crit-bg) 45%, var(--surface)); border-color: color-mix(in srgb, var(--crit) 22%, var(--line)); }
 .dx-atencao .dx-tr:not(.dx-th):hover { border-color: var(--line-2); }
@@ -3572,3 +3576,6 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 .hist-mudou summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .hist-mudou ul { margin: 6px 0 2px; padding-left: 18px; color: var(--ink-2); }
 .hist-mudou li { display: list-item; padding: 1px 0; border: 0; }
+/* 14/10/2026 (auditoria ACE-2): marca de obrigatório nos rótulos da ficha e do diagnóstico */
+.obr { color: var(--crit); font-weight: 700; }
+.obr-legenda { margin: 0 0 12px; }
