@@ -318,29 +318,32 @@ MQ.ORCAMENTO = {
   /* ritmo mensal do gasto: Plano_de_desembolso_TED_quintais_produtivos.xlsx (set/2026 a set/2027). A planilha soma
      R$ 1.970.308,00 (não R$ 2 milhões); o gráfico usa só o formato mês a mês, ajustado ao total do orçamento. */
   cronograma: { inicio: '2026-09', meses: [110000, 54392.31, 333192.31, 253192.31, 64792.31, 53192.31, 67992.31, 453192.31, 361992.31, 53192.31, 53192.31, 58792.31, 53192.31] },
+  /* meta: a meta do plano de trabalho a que o item serve (14/10/2026, "Por meta" na aba Execução). Bolsas: M1 (equipe e
+     coordenação). Ajuda de custo das visitas: dividida pelas 800 visitas do cálculo (200 diagnósticos = M2, 200 implantações = M3,
+     400 acompanhamentos = M4). Sem meta (apoio, combustível, notebook, taxa da FUNCERN): servem a todas e ficam em "Comum a todas as metas". */
   rubricas: [
     { id: 'r1', nome: 'Auxílio financeiro a pesquisador (bolsas)', itens: [
-      { id: 'bolsa_coord_geral', nome: 'Coordenador geral', calc: '1 × 14 meses × R$ 5.000', total: 70000 },
-      { id: 'bolsa_professor', nome: 'Professores do curso FIC', calc: '2 × 12 meses × R$ 2.200', total: 52800, auto: { bolsa: 'professor_fic' } },
-      { id: 'bolsa_auxiliar', nome: 'Auxiliar administrativo', calc: '1 × 14 meses × R$ 1.200', total: 16800, auto: { bolsa: 'auxiliar_adm' } },
-      { id: 'bolsa_secretaria', nome: 'Secretária acadêmica', calc: '1 × 12 meses × R$ 1.000', total: 12000 },
-      { id: 'bolsa_coord_pedagogico', nome: 'Coordenador pedagógico', calc: '1 × 12 meses × R$ 1.000', total: 12000 }] },
+      { id: 'bolsa_coord_geral', meta: 'M1', nome: 'Coordenador geral', calc: '1 × 14 meses × R$ 5.000', total: 70000 },
+      { id: 'bolsa_professor', meta: 'M1', nome: 'Professores do curso FIC', calc: '2 × 12 meses × R$ 2.200', total: 52800, auto: { bolsa: 'professor_fic' } },
+      { id: 'bolsa_auxiliar', meta: 'M1', nome: 'Auxiliar administrativo', calc: '1 × 14 meses × R$ 1.200', total: 16800, auto: { bolsa: 'auxiliar_adm' } },
+      { id: 'bolsa_secretaria', meta: 'M1', nome: 'Secretária acadêmica', calc: '1 × 12 meses × R$ 1.000', total: 12000 },
+      { id: 'bolsa_coord_pedagogico', meta: 'M1', nome: 'Coordenador pedagógico', calc: '1 × 12 meses × R$ 1.000', total: 12000 }] },
     { id: 'r2', nome: 'Auxílio financeiro a estudantes (bolsas)', itens: [
-      { id: 'bolsa_coord_tecnico', nome: 'Coordenador técnico', calc: '1 × 12 meses × R$ 4.700', total: 56400, auto: { bolsa: 'coord_tecnico' } },
-      { id: 'bolsa_articulacao', nome: 'Articulação estadual (5)', calc: '5 × 12 meses × R$ 2.200', total: 132000, auto: { bolsa: 'articulacao' } },
-      { id: 'bolsa_apoio', nome: 'Apoio estadual (5)', calc: '5 × 12 meses × R$ 1.600', total: 96000, auto: { bolsa: 'apoio' } }] },
+      { id: 'bolsa_coord_tecnico', meta: 'M1', nome: 'Coordenador técnico', calc: '1 × 12 meses × R$ 4.700', total: 56400, auto: { bolsa: 'coord_tecnico' } },
+      { id: 'bolsa_articulacao', meta: 'M1', nome: 'Articulação estadual (5)', calc: '5 × 12 meses × R$ 2.200', total: 132000, auto: { bolsa: 'articulacao' } },
+      { id: 'bolsa_apoio', meta: 'M1', nome: 'Apoio estadual (5)', calc: '5 × 12 meses × R$ 1.600', total: 96000, auto: { bolsa: 'apoio' } }] },
     { id: 'r4', nome: 'Diárias', itens: [
-      { id: 'diarias', nome: 'Diárias (meta 7)', calc: '28 × R$ 400', total: 11200 }] },
+      { id: 'diarias', meta: 'M7', nome: 'Diárias (meta 7)', calc: '28 × R$ 400', total: 11200 }] },
     { id: 'r5', nome: 'Ajuda de custo (pessoa física)', itens: [
-      { id: 'ajuda_visitas', nome: 'Equipe técnica: diagnóstico, implantação e acompanhamento', calc: '800 visitas × R$ 225 (200 + 200 + 400)', total: 180000, auto: { ajuda: true }, unitario: 225 },
+      { id: 'ajuda_visitas', meta: { M2: 0.25, M3: 0.25, M4: 0.5 }, nome: 'Equipe técnica: diagnóstico, implantação e acompanhamento', calc: '800 visitas × R$ 225 (200 + 200 + 400)', total: 180000, auto: { ajuda: true }, unitario: 225 },
       { id: 'ajuda_apoio', nome: 'Apoio à execução das atividades', calc: '50 × R$ 225', total: 11250 }] },
     { id: 'r6', nome: 'Passagens e locomoção', itens: [
-      { id: 'passagem_intercambio', nome: 'Passagens aéreas: intercâmbio (meta 6)', calc: '25 × R$ 2.800', total: 70000, auto: { passagem: 'intercambio' } },
-      { id: 'passagem_pedagogico', nome: 'Passagens aéreas: acompanhamento pedagógico (meta 7)', calc: '8 × R$ 2.800', total: 22400, auto: { passagem: 'pedagogico' } },
-      { id: 'locacao_veiculo', nome: 'Locação de veículo (meta 7)', calc: '28 × R$ 350', total: 9800 }] },
+      { id: 'passagem_intercambio', meta: 'M6', nome: 'Passagens aéreas: intercâmbio (meta 6)', calc: '25 × R$ 2.800', total: 70000, auto: { passagem: 'intercambio' } },
+      { id: 'passagem_pedagogico', meta: 'M7', nome: 'Passagens aéreas: acompanhamento pedagógico (meta 7)', calc: '8 × R$ 2.800', total: 22400, auto: { passagem: 'pedagogico' } },
+      { id: 'locacao_veiculo', meta: 'M7', nome: 'Locação de veículo (meta 7)', calc: '28 × R$ 350', total: 9800 }] },
     { id: 'r7', nome: 'Serviços de terceiros (pessoa jurídica)', itens: [
-      { id: 'eventos', nome: 'Infraestrutura dos eventos (meta 5)', calc: '5 × R$ 6.000', total: 30000, auto: { evento: true } },
-      { id: 'quintais', nome: 'Implantação dos quintais produtivos (meta 3)', calc: '200 × R$ 5.000', total: 1000000 }] },
+      { id: 'eventos', meta: 'M5', nome: 'Infraestrutura dos eventos (meta 5)', calc: '5 × R$ 6.000', total: 30000, auto: { evento: true } },
+      { id: 'quintais', meta: 'M3', nome: 'Implantação dos quintais produtivos (meta 3)', calc: '200 × R$ 5.000', total: 1000000 }] },
     { id: 'r9', nome: 'Material de consumo', itens: [
       { id: 'combustivel', nome: 'Combustível', calc: 'verba', total: 7350 }] },
     { id: 'r10', nome: 'Máquinas e equipamentos', itens: [

@@ -101,3 +101,19 @@ test('vale a última planilha ENVIADA, mesmo que corrija uma data anterior', asy
                        { id: 'b', posicao_em: '2026-09-20', enviado_em: '2026-09-30T10:00:00Z', total_gasto: 500, linhas: [], arquivo_nome: 'b.xlsx' }];
   assert.equal(t.MQ.execUI.vigente().id, 'b');
 });
+
+/* 14/10/2026: "Por meta do plano de trabalho" */
+test('por meta: a soma das metas fecha com o total do orçamento e com o executado', async () => {
+  const t = await montar('coord_geral');
+  const n = t.MQ.execUI.numeros(); const gs = t.MQ.execUI.porMeta(n);
+  const soma = k => Math.round(gs.reduce((a, g) => a + g[k], 0) * 100) / 100;
+  assert.equal(soma('previsto'), t.MQ.ORCAMENTO.total);
+  assert.equal(soma('exec'), Math.round(n.exec * 100) / 100);
+  assert.equal(soma('comp'), Math.round(n.comp * 100) / 100);
+  const g = id => gs.find(x => x.id === id);
+  assert.equal(g('M2').previsto, 45000); assert.equal(g('M4').previsto, 90000); assert.equal(g('M3').previsto, 1045000);
+  assert.ok(g('_comum').itens.some(y => y.i.id === 'doa'));
+  const h = t.aba('execucao');
+  assert.match(h, /Por meta do plano de trabalho/); assert.match(h, /no plano de trabalho: R\$\s?50\.000,00/);
+  assert.ok(h.indexOf('id="t-exl"') > h.indexOf('id="t-exm"'), 'o envio fica no fim da página');
+});

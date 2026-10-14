@@ -262,11 +262,12 @@
       t: 'Execução',
       intro: 'Previsto × executado de cada rubrica do TED, com gráficos. O executado vem da planilha de gastos que você envia pelo menos uma vez por mês; o comprometido, do que o sistema já sabe e a planilha ainda não trouxe. Só a coordenação geral vê esta aba.',
       tarefas: [
-        ['Enviar a planilha do mês', ['Toque em <b>Enviar planilha de gastos</b> e escolha o arquivo (.xlsx ou .csv).', 'Toque em <b>Ler a planilha</b> e confira a prévia: total, rubricas e linhas fora do orçamento.', 'Confira a data <b>Gastos até</b> e toque em <b>Enviar e usar esta planilha</b>.']],
+        ['Enviar a planilha do mês', ['Role até o fim da página, em <b>Planilhas enviadas</b> (se faltar a planilha ou ela tiver mais de 35 dias, o botão aparece também no alto). Toque em <b>Enviar planilha de gastos</b> e escolha o arquivo (.xlsx ou .csv).', 'Toque em <b>Ler a planilha</b> e confira a prévia: total, rubricas e linhas fora do orçamento.', 'Confira a data <b>Gastos até</b> e toque em <b>Enviar e usar esta planilha</b>.']],
         ['Preparar a planilha', ['Em <b>Enviar planilha de gastos</b>, toque em <b>Baixar o modelo</b> (abaixo do campo do arquivo).', 'Uma linha por pagamento (e por repasse do MDA), com o item escolhido na lista.', 'A planilha é o retrato completo: todos os gastos desde o início, não só os do mês. Não escreva linhas de total.']],
         ['Ler os gráficos', ['<b>Ritmo do gasto</b>: passe o mouse ou toque num mês para ver previsto, executado e recebido até ali.', '<b>Uso de cada rubrica</b>: a barra cheia é o executado; a clara, o comprometido; o traço vertical, o tempo de vigência já passado. Toque numa rubrica para ver os itens na tabela.']]
       ],
       passos: [
+        '<b>Por meta do plano de trabalho</b> mostra o mesmo gasto pelas metas: bolsas na Meta 1; a ajuda de custo das visitas dividida entre diagnóstico (M2, 25%), implantação (M3, 25%) e acompanhamento (M4, 50%); taxa da FUNCERN, combustível, notebook e apoio em <b>Comum a todas as metas</b>. Quando o valor do plano de trabalho é diferente da soma dos itens, a meta mostra os dois.',
         '<b>Executado</b> é o que está na planilha mais recente. As anteriores ficam guardadas em <b>Planilhas enviadas</b>, marcadas como substituídas.',
         '<b>Comprometido</b> é o que já foi decidido e ainda não aparece na planilha: bolsa ou ajuda de custo com aval, ou lançada no Arlo depois da data da planilha; passagem e evento autorizados depois dessa data.',
         'O sistema entende planilhas de fora (da FUNCERN, por exemplo) se tiverem as colunas Item (ou Rubrica) e Valor. Linhas de total são ignoradas para não contar duas vezes.'

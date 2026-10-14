@@ -210,10 +210,13 @@ A(sec('Execução do orçamento'))
 A(serve('Compara o previsto com o executado em cada rubrica do TED. O executado vem da planilha de gastos enviada pela coordenação.'))
 A(acesso(['Abas', 'Execução', 'Execução'], 'só a coordenação geral.'))
 A(tela('execucao', 'Execução do orçamento', [
-    (1, 'Enviar planilha de gastos', 'Envia a planilha do mês.'), (2, 'Execução financeira', 'Total previsto, executado, comprometido e saldo livre.'), (3, 'Gráficos', 'Ritmo do gasto no tempo e uso de cada rubrica.'), (4, 'Rubrica', 'Toque para abrir os itens da rubrica.')]))
-A(passos('enviar a planilha do mês', ['Toque em ' + b('Enviar planilha de gastos', 'enviar') + ' e escolha o arquivo (.xlsx ou .csv).', 'Toque em <b class="bt">Ler a planilha</b> e confira a prévia.', 'Confira a data <b>Gastos até</b> e toque em <b class="bt">Enviar e usar esta planilha</b>.'], 'Os números de executado, saldo e gráficos passam a refletir a planilha nova.'))
+    (1, 'Enviar planilha de gastos', 'Fica no fim da página, em Planilhas enviadas. Aparece também no alto quando falta a planilha ou ela tem mais de 35 dias.'), (2, 'Execução financeira', 'Total previsto, executado, comprometido e saldo livre.'), (3, 'Gráficos', 'Ritmo do gasto no tempo e uso de cada rubrica.'), (4, 'Rubrica', 'Toque para abrir os itens da rubrica.')]))
+A(passos('enviar a planilha do mês', ['Role até <b>Planilhas enviadas</b>, no fim da página.', 'Toque em ' + b('Enviar planilha de gastos', 'enviar') + ' e escolha o arquivo (.xlsx ou .csv).', 'Toque em <b class="bt">Ler a planilha</b> e confira a prévia.', 'Confira a data <b>Gastos até</b> e toque em <b class="bt">Enviar e usar esta planilha</b>.'], 'Os números de executado, saldo e gráficos passam a refletir a planilha nova.'))
 A(caixa('dica', 'A planilha é o retrato completo: todos os gastos desde o início, uma linha por pagamento, sem linhas de total. Para montar, use <b>Baixar o modelo</b>.'))
 A(caixa('exemplo', '<b>Executado</b> é o que a planilha trouxe. <b>Comprometido</b> é o que o sistema já sabe (aval, Arlo, autorização) e a planilha ainda não trouxe. <b>Saldo</b> é o previsto menos os dois.'))
+A(tela('execucao_meta', 'Execução: o gasto por meta do plano de trabalho', [
+    (1, 'Por meta do plano de trabalho', 'O mesmo previsto, executado, comprometido e saldo das rubricas, separados pelas metas.'), (2, 'Meta', 'Toque para ver os itens do orçamento ligados a ela.'), (3, 'No plano de trabalho', 'Aparece quando o valor pactuado da meta é diferente da soma dos itens do orçamento.')]))
+A(caixa('dica', 'Bolsas entram na Meta 1. A ajuda de custo das visitas é dividida pelas 800 visitas do orçamento: 25% diagnóstico (M2), 25% implantação (M3) e 50% acompanhamento (M4). Taxa da FUNCERN, combustível, notebook e apoio ficam em <b>Comum a todas as metas</b>.'))
 
 A(sec('Documentos'))
 A(serve('É a pasta de documentos do projeto (atas, ofícios, listas de presença) e o lugar de gerar o relatório da ação.'))

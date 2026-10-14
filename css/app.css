@@ -3540,3 +3540,15 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
     background: repeating-linear-gradient(to right, color-mix(in srgb, var(--line) 70%, transparent) 0 1px, transparent 1px calc(100% / 13 * 3)); }
 }
 :root[data-sol] .cg-barra, :root[data-sol] .cg-leg .lg-per { border-color: #000; }
+/* "Por meta do plano de trabalho" na aba Execução (14/10/2026): mesma tabela de "Por rubrica" */
+.fin-meta-id { display: inline-block; margin-right: 4px; padding: 2px 7px; border-radius: 6px; background: var(--surface-2); color: var(--ink-2); font: 600 var(--t-xs)/1.4 var(--sans); vertical-align: 1px; }
+.fin-parte { display: inline-block; margin-left: 6px; font-size: var(--t-xs); color: var(--muted); font-weight: 400; }
+.fin-nota-meta { margin-top: 10px; max-width: 80ch; }
+.exec-meta .fin-rub { flex-wrap: wrap; }
+.fin-plano { flex-basis: 100%; order: 9; font-size: var(--t-xs); font-weight: 400; color: var(--muted); }
+.exec-chamada { margin: 4px 0 12px; }
+.exec-planilhas .secao-cab { align-items: flex-start; flex-wrap: nowrap; gap: 16px 32px; }
+.exec-planilhas .secao-cab > div { flex: 1 1 auto; max-width: 72ch; }
+.exec-planilhas .secao-cab > .btn-acao { flex: 0 0 300px; margin-top: 4px; }
+.exec-planilhas > .vazio-pl { margin-top: 12px; padding: 28px 16px; text-align: center; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink-2); }
+@media (max-width: 760px) { .exec-planilhas .secao-cab { flex-direction: column; } .exec-planilhas .secao-cab > .btn-acao { flex: none; width: 100%; } }

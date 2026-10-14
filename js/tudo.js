@@ -468,29 +468,32 @@ MQ.ORCAMENTO = {
   /* ritmo mensal do gasto: Plano_de_desembolso_TED_quintais_produtivos.xlsx (set/2026 a set/2027). A planilha soma
      R$ 1.970.308,00 (não R$ 2 milhões); o gráfico usa só o formato mês a mês, ajustado ao total do orçamento. */
   cronograma: { inicio: '2026-09', meses: [110000, 54392.31, 333192.31, 253192.31, 64792.31, 53192.31, 67992.31, 453192.31, 361992.31, 53192.31, 53192.31, 58792.31, 53192.31] },
+  /* meta: a meta do plano de trabalho a que o item serve (14/10/2026, "Por meta" na aba Execução). Bolsas: M1 (equipe e
+     coordenação). Ajuda de custo das visitas: dividida pelas 800 visitas do cálculo (200 diagnósticos = M2, 200 implantações = M3,
+     400 acompanhamentos = M4). Sem meta (apoio, combustível, notebook, taxa da FUNCERN): servem a todas e ficam em "Comum a todas as metas". */
   rubricas: [
     { id: 'r1', nome: 'Auxílio financeiro a pesquisador (bolsas)', itens: [
-      { id: 'bolsa_coord_geral', nome: 'Coordenador geral', calc: '1 × 14 meses × R$ 5.000', total: 70000 },
-      { id: 'bolsa_professor', nome: 'Professores do curso FIC', calc: '2 × 12 meses × R$ 2.200', total: 52800, auto: { bolsa: 'professor_fic' } },
-      { id: 'bolsa_auxiliar', nome: 'Auxiliar administrativo', calc: '1 × 14 meses × R$ 1.200', total: 16800, auto: { bolsa: 'auxiliar_adm' } },
-      { id: 'bolsa_secretaria', nome: 'Secretária acadêmica', calc: '1 × 12 meses × R$ 1.000', total: 12000 },
-      { id: 'bolsa_coord_pedagogico', nome: 'Coordenador pedagógico', calc: '1 × 12 meses × R$ 1.000', total: 12000 }] },
+      { id: 'bolsa_coord_geral', meta: 'M1', nome: 'Coordenador geral', calc: '1 × 14 meses × R$ 5.000', total: 70000 },
+      { id: 'bolsa_professor', meta: 'M1', nome: 'Professores do curso FIC', calc: '2 × 12 meses × R$ 2.200', total: 52800, auto: { bolsa: 'professor_fic' } },
+      { id: 'bolsa_auxiliar', meta: 'M1', nome: 'Auxiliar administrativo', calc: '1 × 14 meses × R$ 1.200', total: 16800, auto: { bolsa: 'auxiliar_adm' } },
+      { id: 'bolsa_secretaria', meta: 'M1', nome: 'Secretária acadêmica', calc: '1 × 12 meses × R$ 1.000', total: 12000 },
+      { id: 'bolsa_coord_pedagogico', meta: 'M1', nome: 'Coordenador pedagógico', calc: '1 × 12 meses × R$ 1.000', total: 12000 }] },
     { id: 'r2', nome: 'Auxílio financeiro a estudantes (bolsas)', itens: [
-      { id: 'bolsa_coord_tecnico', nome: 'Coordenador técnico', calc: '1 × 12 meses × R$ 4.700', total: 56400, auto: { bolsa: 'coord_tecnico' } },
-      { id: 'bolsa_articulacao', nome: 'Articulação estadual (5)', calc: '5 × 12 meses × R$ 2.200', total: 132000, auto: { bolsa: 'articulacao' } },
-      { id: 'bolsa_apoio', nome: 'Apoio estadual (5)', calc: '5 × 12 meses × R$ 1.600', total: 96000, auto: { bolsa: 'apoio' } }] },
+      { id: 'bolsa_coord_tecnico', meta: 'M1', nome: 'Coordenador técnico', calc: '1 × 12 meses × R$ 4.700', total: 56400, auto: { bolsa: 'coord_tecnico' } },
+      { id: 'bolsa_articulacao', meta: 'M1', nome: 'Articulação estadual (5)', calc: '5 × 12 meses × R$ 2.200', total: 132000, auto: { bolsa: 'articulacao' } },
+      { id: 'bolsa_apoio', meta: 'M1', nome: 'Apoio estadual (5)', calc: '5 × 12 meses × R$ 1.600', total: 96000, auto: { bolsa: 'apoio' } }] },
     { id: 'r4', nome: 'Diárias', itens: [
-      { id: 'diarias', nome: 'Diárias (meta 7)', calc: '28 × R$ 400', total: 11200 }] },
+      { id: 'diarias', meta: 'M7', nome: 'Diárias (meta 7)', calc: '28 × R$ 400', total: 11200 }] },
     { id: 'r5', nome: 'Ajuda de custo (pessoa física)', itens: [
-      { id: 'ajuda_visitas', nome: 'Equipe técnica: diagnóstico, implantação e acompanhamento', calc: '800 visitas × R$ 225 (200 + 200 + 400)', total: 180000, auto: { ajuda: true }, unitario: 225 },
+      { id: 'ajuda_visitas', meta: { M2: 0.25, M3: 0.25, M4: 0.5 }, nome: 'Equipe técnica: diagnóstico, implantação e acompanhamento', calc: '800 visitas × R$ 225 (200 + 200 + 400)', total: 180000, auto: { ajuda: true }, unitario: 225 },
       { id: 'ajuda_apoio', nome: 'Apoio à execução das atividades', calc: '50 × R$ 225', total: 11250 }] },
     { id: 'r6', nome: 'Passagens e locomoção', itens: [
-      { id: 'passagem_intercambio', nome: 'Passagens aéreas: intercâmbio (meta 6)', calc: '25 × R$ 2.800', total: 70000, auto: { passagem: 'intercambio' } },
-      { id: 'passagem_pedagogico', nome: 'Passagens aéreas: acompanhamento pedagógico (meta 7)', calc: '8 × R$ 2.800', total: 22400, auto: { passagem: 'pedagogico' } },
-      { id: 'locacao_veiculo', nome: 'Locação de veículo (meta 7)', calc: '28 × R$ 350', total: 9800 }] },
+      { id: 'passagem_intercambio', meta: 'M6', nome: 'Passagens aéreas: intercâmbio (meta 6)', calc: '25 × R$ 2.800', total: 70000, auto: { passagem: 'intercambio' } },
+      { id: 'passagem_pedagogico', meta: 'M7', nome: 'Passagens aéreas: acompanhamento pedagógico (meta 7)', calc: '8 × R$ 2.800', total: 22400, auto: { passagem: 'pedagogico' } },
+      { id: 'locacao_veiculo', meta: 'M7', nome: 'Locação de veículo (meta 7)', calc: '28 × R$ 350', total: 9800 }] },
     { id: 'r7', nome: 'Serviços de terceiros (pessoa jurídica)', itens: [
-      { id: 'eventos', nome: 'Infraestrutura dos eventos (meta 5)', calc: '5 × R$ 6.000', total: 30000, auto: { evento: true } },
-      { id: 'quintais', nome: 'Implantação dos quintais produtivos (meta 3)', calc: '200 × R$ 5.000', total: 1000000 }] },
+      { id: 'eventos', meta: 'M5', nome: 'Infraestrutura dos eventos (meta 5)', calc: '5 × R$ 6.000', total: 30000, auto: { evento: true } },
+      { id: 'quintais', meta: 'M3', nome: 'Implantação dos quintais produtivos (meta 3)', calc: '200 × R$ 5.000', total: 1000000 }] },
     { id: 'r9', nome: 'Material de consumo', itens: [
       { id: 'combustivel', nome: 'Combustível', calc: 'verba', total: 7350 }] },
     { id: 'r10', nome: 'Máquinas e equipamentos', itens: [
@@ -8954,6 +8957,38 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return { pl, porItem, rub, exec, comp, recebido, naoClass, tempo, idade, livre: O().total - exec - comp, caixa: recebido - exec };
   }
 
+  /* ---------- por meta do plano de trabalho (14/10/2026) ----------
+     O previsto de cada meta é a soma dos itens do orçamento ligados a ela (MQ.ORCAMENTO, campo meta), para o pago, o comprometido e o
+     saldo fecharem com as rubricas. Item dividido entre metas (ajuda de custo das visitas): previsto, executado e comprometido entram na
+     mesma proporção, porque a planilha de gastos não diz a etapa de cada visita. */
+  const partes = i => !i.meta ? { _comum: 1 } : typeof i.meta === 'string' ? { [i.meta]: 1 } : i.meta;
+  function porMeta(n) {
+    const grupos = MQ.METAS.map(m => ({ id: m.id, nome: m.nome, plano: m.valor || 0, itens: [] })).concat([{ id: '_comum', nome: 'Comum a todas as metas', itens: [] }]);
+    const G = Object.fromEntries(grupos.map(g => [g.id, g]));
+    itens().forEach(i => { const x = n.porItem[i.id]; Object.entries(partes(i)).forEach(([k, f]) => { if (G[k]) G[k].itens.push({ i, f, previsto: i.total * f, exec: x.exec * f, comp: x.comp * f }); }); });
+    // o que a planilha trouxe sem item conhecido (só a rubrica, ou fora do orçamento) não tem meta: entra no comum, para o total fechar
+    const semItem = n.rub.reduce((t, x) => t + x.semItem, 0) + n.naoClass;
+    if (semItem) G._comum.itens.push({ i: { id: '_sem', nome: 'Gastos sem item definido na planilha' }, f: 1, previsto: 0, exec: semItem, comp: 0 });
+    grupos.forEach(g => ['previsto', 'exec', 'comp'].forEach(k => { g[k] = Math.round(g.itens.reduce((t, y) => t + y[k], 0) * 100) / 100; }));
+    return grupos.filter(g => g.itens.length);
+  }
+  const metaAbertas = new Set();
+  function secaoMetas(n) {
+    const gs = porMeta(n);
+    const fr = f => f === 1 ? '' : ` <span class="fin-parte">${Math.round(f * 100)}% do item</span>`;
+    return `<section class="secao" aria-labelledby="t-exm"><div class="secao-cab"><div><h2 id="t-exm">Por meta do plano de trabalho</h2><p>O mesmo gasto, visto pelas metas do plano pactuado com o MDA. Toque na meta para ver os itens do orçamento ligados a ela.</p></div>
+        <button type="button" class="btn peq" data-acao="exec-abrir-metas">${metaAbertas.size ? 'Fechar todas' : 'Abrir todas'}</button></div>
+      <div class="fin-wrap"><table class="fin exec-fin exec-meta"><thead><tr><th scope="col">Meta</th><th scope="col">Previsto</th><th scope="col">Executado</th><th scope="col">Comprometido</th><th scope="col">Saldo</th><th scope="col">Execução</th></tr></thead>
+        ${gs.map(g => { const ab = metaAbertas.has(g.id); const nIt = g.itens.length; const dif = g.plano && Math.abs(g.plano - g.previsto) >= 1;
+          return `<tbody id="exm-${g.id}" class="fin-rubrica${ab ? ' aberta' : ''}"><tr class="fin-grupo"><th scope="rowgroup"><button type="button" class="fin-rub" data-acao="exec-abrir-meta" data-id="${g.id}" aria-expanded="${ab}">
+              <span class="fin-rub-n">${g.id === '_comum' ? '' : `<span class="fin-meta-id">${g.id}</span> `}${E(g.nome)}</span><small>${nIt} ${nIt === 1 ? 'item' : 'itens'}</small>${dif ? `<span class="fin-plano">no plano de trabalho: ${brl(g.plano)}</span>` : ''}</button></th>
+            <td class="num" data-rot="Previsto">${g.previsto ? brl(g.previsto) : zero}</td><td class="num" data-rot="Executado">${vExec(g.exec)}</td><td class="num" data-rot="Comprometido">${vComp(g.comp)}</td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(g.previsto - g.exec - g.comp)}</b></td><td data-rot="Execução">${celExec(g.exec, g.previsto)}</td></tr>
+            ${g.itens.map(y => `<tr class="fin-item"><th scope="row"><span class="fin-nome sem">${E(y.i.nome)}${fr(y.f)}</span></th><td class="num" data-rot="Previsto">${y.previsto ? brl(y.previsto) : zero}</td><td class="num" data-rot="Executado">${vExec(y.exec)}</td><td class="num" data-rot="Comprometido">${vComp(y.comp)}</td><td class="num fin-saldo" data-rot="Saldo">${y.previsto ? brl(y.previsto - y.exec - y.comp) : zero}</td><td data-rot="Execução">${y.previsto ? celExec(y.exec, y.previsto) : ''}</td></tr>`).join('')}</tbody>`; }).join('')}
+        <tfoot><tr class="fin-tot"><th scope="row">Total do projeto</th><td class="num" data-rot="Previsto"><b>${brl(O().total)}</b></td><td class="num" data-rot="Executado">${vExec(n.exec)}</td><td class="num" data-rot="Comprometido">${vComp(n.comp)}</td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(n.livre)}</b></td><td data-rot="Execução">${celExec(n.exec, O().total)}</td></tr></tfoot>
+      </table></div>
+      <p class="small muted fin-nota-meta">Bolsas entram na Meta 1 (equipe e coordenação). A ajuda de custo das visitas é dividida pelas 800 visitas do orçamento: 25% diagnósticos (M2), 25% implantação (M3) e 50% acompanhamento (M4). Quando o valor do plano de trabalho é diferente da soma dos itens, a meta mostra “no plano”.</p></section>`;
+  }
+
   /* ---------- gráficos (SVG/HTML próprios: funcionam sem internet) ---------- */
   const MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
   const somaMes = (ym, n) => { const [a, m] = ym.split('-').map(Number); const d = new Date(a, m - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
@@ -9074,10 +9109,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <div><dt>Executado</dt><dd class="num">${brl(x.exec)}</dd></div><div><dt>Comprometido</dt><dd class="num">${brl(x.comp)}</dd></div><div><dt>Saldo</dt><dd class="num"><b>${brl(x.saldo)}</b></dd></div></dl></td></tr>`; };
     const semItem = x => x.semItem ? `<tr class="fin-item"><th scope="row"><span class="fin-nome sem">Sem item definido na planilha</span><span class="small muted">a planilha disse só a rubrica ou um item que não está no orçamento</span></th><td class="num" data-rot="Previsto">—</td><td class="num" data-rot="Executado">${vExec(x.semItem)}</td><td class="num" data-rot="Comprometido">—</td><td class="num" data-rot="Saldo">—</td><td></td></tr>` : '';
     return `<div class="cab"><div><span class="eyebrow">Execução</span><h1>Execução do orçamento</h1>
-        <p>Previsto × executado de cada rubrica do TED (R$ ${(T / 1e6).toLocaleString('pt-BR')} milhões). O executado vem da <b>planilha de gastos</b> mais recente; o comprometido, do que o sistema já sabe e a planilha ainda não trouxe. Só você vê esta aba.</p>
-        <p class="small muted">Base do previsto: ${E(O().fonte)}, com o remanejamento aprovado pelo MDA.</p></div></div>
-      <div class="acoes-pag">${MQ.acaoComDica({ acao: 'exec-enviar', icone: 'enviar', texto: 'Enviar planilha de gastos', curto: 'Enviar planilha' }, 'Pelo menos uma vez por mês. Retrato completo desde o início: a mais nova substitui as anteriores.')}</div>
-      <p class="small ${n.pl ? 'muted' : ''}">${n.pl ? `Planilha vigente: <b>${E(n.pl.arquivo_nome)}</b>, gastos até ${R.fmtData(n.pl.posicao_em)} (enviada em ${R.fmtData(n.pl.enviado_em)}).` : '<b>Nenhuma planilha enviada ainda.</b>'}</p>
+        <p>Previsto × executado do TED (R$ ${(T / 1e6).toLocaleString('pt-BR')} milhões), por rubrica e por meta. O executado vem da <b>planilha de gastos</b> mais recente; o comprometido, do que o sistema já sabe e a planilha ainda não trouxe. Só você vê esta aba.</p></div></div>
+      ${/* 14/10/2026: o envio da planilha (uma vez por mês) foi para o fim da página, junto das planilhas enviadas; aqui em cima só volta
+         como chamada quando falta a planilha ou ela está velha */ ''}
+      ${!n.pl || n.idade > 35 ? `<div class="exec-chamada">${MQ.acaoComDica({ acao: 'exec-enviar', icone: 'enviar', texto: 'Enviar planilha de gastos', curto: 'Enviar planilha' }, n.pl ? `A planilha vigente tem ${n.idade} dias. Pelo menos uma vez por mês: retrato completo desde o início.` : 'Sem ela, o executado fica zerado. Retrato completo desde o início: a mais nova substitui as anteriores.')}</div>` : ''}
+      <p class="small ${n.pl ? 'muted' : ''}">${n.pl ? `Planilha vigente: <b>${E(n.pl.arquivo_nome)}</b>, gastos até ${R.fmtData(n.pl.posicao_em)} (enviada em ${R.fmtData(n.pl.enviado_em)}). O envio da próxima fica no fim da página.` : ''}</p>
       <section class="fin-resumo dx-topo fin-topo" aria-label="Execução financeira">
         <div class="dx-exec"><span class="dx-rot">Execução financeira</span>
           <div class="dx-exec-num"><b class="num">${pctBR(usoPct)}%</b></div>
@@ -9103,8 +9139,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           ${n.naoClass ? `<tbody><tr class="fin-grupo"><th scope="rowgroup">Fora do orçamento (não classificado)</th><td class="num" data-rot="Previsto">—</td><td class="num" data-rot="Executado">${vExec(n.naoClass)}</td><td class="num" data-rot="Comprometido">—</td><td class="num" data-rot="Saldo">—</td><td></td></tr></tbody>` : ''}
           <tfoot><tr class="fin-tot"><th scope="row">Total do projeto</th><td class="num" data-rot="Previsto"><b>${brl(T)}</b></td><td class="num" data-rot="Executado">${vExec(n.exec)}</td><td class="num" data-rot="Comprometido">${vComp(n.comp)}</td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(n.livre)}</b></td><td data-rot="Execução">${celExec(n.exec, T)}</td></tr></tfoot>
         </table></div></section>
-      <section class="secao" aria-labelledby="t-exl"><div class="secao-cab"><h2 id="t-exl">Planilhas enviadas <span class="conta-t${planilhas().length ? '' : ' zero'}">${planilhas().length}</span></h2></div>
-        ${planilhas().length ? `<div class="pag-lista">${planilhas().map((pl, k) => linhaPlanilha(pl, k === 0)).join('')}</div>` : '<p class="muted">Nenhuma ainda.</p>'}</section>`;
+      ${secaoMetas(n)}
+      <section class="secao exec-planilhas" aria-labelledby="t-exl"><div class="secao-cab"><div><h2 id="t-exl">Planilhas enviadas <span class="conta-t${planilhas().length ? '' : ' zero'}">${planilhas().length}</span></h2>
+          <p>Pelo menos uma vez por mês, envie a planilha de gastos da FUNCERN. Ela é o retrato completo desde o início: a mais nova substitui as anteriores, que ficam guardadas aqui. O sistema mostra a prévia antes de gravar.</p>
+          <p class="small muted">Base do previsto: ${E(O().fonte)}, com o remanejamento aprovado pelo MDA.</p></div>
+          ${MQ.botaoAcao({ acao: 'exec-enviar', icone: 'enviar', texto: 'Enviar planilha de gastos', curto: 'Enviar planilha' })}</div>
+        ${planilhas().length ? `<div class="pag-lista">${planilhas().map((pl, k) => linhaPlanilha(pl, k === 0)).join('')}</div>` : '<p class="vazio-pl">Nenhuma planilha enviada ainda. Use “Enviar planilha de gastos”.</p>'}</section>`;
   }
   function linhaPlanilha(pl, vale) {
     const nao = (pl.linhas || []).filter(l => l.item !== 'repasse_mda' && !l.rubrica);
@@ -9160,7 +9200,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     else if (a === 'exec-comp') { const tr = document.getElementById('exc-' + el.dataset.id); if (tr) { tr.hidden = !tr.hidden; el.setAttribute('aria-expanded', String(!tr.hidden)); } }
     else if (a === 'exec-abrir') { const tb = document.getElementById('exr-' + el.dataset.id); if (tb) { const ab = !tb.classList.contains('aberta'); tb.classList.toggle('aberta', ab); el.setAttribute('aria-expanded', String(ab)); if (ab) rubAbertas.add(el.dataset.id); else rubAbertas.delete(el.dataset.id);
       const bt = document.querySelector('[data-acao="exec-abrir-tudo"]'); if (bt) bt.textContent = rubAbertas.size ? 'Fechar todas' : 'Abrir todas'; } }
-    else if (a === 'exec-abrir-tudo') { const abrir = !rubAbertas.size; document.querySelectorAll('.exec-fin tbody.fin-rubrica').forEach(tb => { const id = tb.id.slice(4); tb.classList.toggle('aberta', abrir); const b = tb.querySelector('.fin-rub'); if (b) b.setAttribute('aria-expanded', String(abrir)); if (abrir) rubAbertas.add(id); else rubAbertas.delete(id); }); el.textContent = abrir ? 'Fechar todas' : 'Abrir todas'; }
+    else if (a === 'exec-abrir-meta') { const tb = document.getElementById('exm-' + el.dataset.id); if (tb) { const ab = !tb.classList.contains('aberta'); tb.classList.toggle('aberta', ab); el.setAttribute('aria-expanded', String(ab)); if (ab) metaAbertas.add(el.dataset.id); else metaAbertas.delete(el.dataset.id);
+      const bt = document.querySelector('[data-acao="exec-abrir-metas"]'); if (bt) bt.textContent = metaAbertas.size ? 'Fechar todas' : 'Abrir todas'; } }
+    else if (a === 'exec-abrir-metas') { const abrir = !metaAbertas.size; document.querySelectorAll('.exec-meta tbody.fin-rubrica').forEach(tb => { const id = tb.id.slice(4); tb.classList.toggle('aberta', abrir); const b = tb.querySelector('.fin-rub'); if (b) b.setAttribute('aria-expanded', String(abrir)); if (abrir) metaAbertas.add(id); else metaAbertas.delete(id); }); el.textContent = abrir ? 'Fechar todas' : 'Abrir todas'; }
+    else if (a === 'exec-abrir-tudo') { const abrir = !rubAbertas.size; document.querySelectorAll('.exec-fin:not(.exec-meta) tbody.fin-rubrica').forEach(tb => { const id = tb.id.slice(4); tb.classList.toggle('aberta', abrir); const b = tb.querySelector('.fin-rub'); if (b) b.setAttribute('aria-expanded', String(abrir)); if (abrir) rubAbertas.add(id); else rubAbertas.delete(id); }); el.textContent = abrir ? 'Fechar todas' : 'Abrir todas'; }
     else if (a === 'exec-rub') { const tb = document.getElementById('exr-' + el.dataset.id); if (tb) { tb.classList.add('aberta'); rubAbertas.add(el.dataset.id); const bb = tb.querySelector('.fin-rub'); if (bb) bb.setAttribute('aria-expanded', 'true'); tb.scrollIntoView({ behavior: 'smooth', block: 'start' }); tb.classList.remove('realce'); void tb.offsetWidth; tb.classList.add('realce'); } }
   }
   async function preparar(arquivo) {   // lê e interpreta; devolve a prévia (também usado nos testes)
@@ -9189,7 +9232,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       });
     }
   }
-  MQ.execUI = { aba, painel, clique, enviar, numeros, serie, preparar, vigente };
+  MQ.execUI = { aba, painel, clique, enviar, numeros, serie, preparar, vigente, porMeta };
 })();
 ;
 /* ===== entregas.js ===== */
@@ -11157,11 +11200,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       t: 'Execução',
       intro: 'Previsto × executado de cada rubrica do TED, com gráficos. O executado vem da planilha de gastos que você envia pelo menos uma vez por mês; o comprometido, do que o sistema já sabe e a planilha ainda não trouxe. Só a coordenação geral vê esta aba.',
       tarefas: [
-        ['Enviar a planilha do mês', ['Toque em <b>Enviar planilha de gastos</b> e escolha o arquivo (.xlsx ou .csv).', 'Toque em <b>Ler a planilha</b> e confira a prévia: total, rubricas e linhas fora do orçamento.', 'Confira a data <b>Gastos até</b> e toque em <b>Enviar e usar esta planilha</b>.']],
+        ['Enviar a planilha do mês', ['Role até o fim da página, em <b>Planilhas enviadas</b> (se faltar a planilha ou ela tiver mais de 35 dias, o botão aparece também no alto). Toque em <b>Enviar planilha de gastos</b> e escolha o arquivo (.xlsx ou .csv).', 'Toque em <b>Ler a planilha</b> e confira a prévia: total, rubricas e linhas fora do orçamento.', 'Confira a data <b>Gastos até</b> e toque em <b>Enviar e usar esta planilha</b>.']],
         ['Preparar a planilha', ['Em <b>Enviar planilha de gastos</b>, toque em <b>Baixar o modelo</b> (abaixo do campo do arquivo).', 'Uma linha por pagamento (e por repasse do MDA), com o item escolhido na lista.', 'A planilha é o retrato completo: todos os gastos desde o início, não só os do mês. Não escreva linhas de total.']],
         ['Ler os gráficos', ['<b>Ritmo do gasto</b>: passe o mouse ou toque num mês para ver previsto, executado e recebido até ali.', '<b>Uso de cada rubrica</b>: a barra cheia é o executado; a clara, o comprometido; o traço vertical, o tempo de vigência já passado. Toque numa rubrica para ver os itens na tabela.']]
       ],
       passos: [
+        '<b>Por meta do plano de trabalho</b> mostra o mesmo gasto pelas metas: bolsas na Meta 1; a ajuda de custo das visitas dividida entre diagnóstico (M2, 25%), implantação (M3, 25%) e acompanhamento (M4, 50%); taxa da FUNCERN, combustível, notebook e apoio em <b>Comum a todas as metas</b>. Quando o valor do plano de trabalho é diferente da soma dos itens, a meta mostra os dois.',
         '<b>Executado</b> é o que está na planilha mais recente. As anteriores ficam guardadas em <b>Planilhas enviadas</b>, marcadas como substituídas.',
         '<b>Comprometido</b> é o que já foi decidido e ainda não aparece na planilha: bolsa ou ajuda de custo com aval, ou lançada no Arlo depois da data da planilha; passagem e evento autorizados depois dessa data.',
         'O sistema entende planilhas de fora (da FUNCERN, por exemplo) se tiverem as colunas Item (ou Rubrica) e Valor. Linhas de total são ignoradas para não contar duas vezes.'
