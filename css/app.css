@@ -1713,13 +1713,15 @@ table.fin tbody.realce tr { animation: exr-realce 1.8s ease-out; }
 .aba-btns { display: flex; gap: 2px 18px; flex-wrap: wrap; }
 .abas-m-grade .aba-g { grid-column: 1 / -1; margin-top: 10px; }
 .abas-m-grade .aba-g:first-child { margin-top: 0; }
-.abas.abas-grupos { flex-wrap: wrap; gap: 4px 18px; }   /* 14/10/2026 (ACE-3): com texto maior (1.4.12), o grupo desce de linha em vez de sair da tela */
+/* 15/10/2026: espaçamento compacto em toda largura, para os 4 grupos caberem numa linha só (com o Financeiro em 4 abas, o espaço largo
+   jogava "Documentação" para baixo). Se ainda assim descer de linha (texto aumentado, 1.4.12), o divisor do 1º grupo da linha fica fora (recortado). */
+.abas.abas-grupos { flex-wrap: wrap; gap: 6px 12px; clip-path: inset(-6px -6px -6px 0); }
 .abas-grupos .aba-btns { gap: 0; flex-wrap: wrap; }
-.abas-grupos button { padding: 8px 8px 10px; font-size: var(--t-md); }
-.abas-grupos .aba-grupo + .aba-grupo { padding-left: 18px; border-left: 1px solid var(--line); }
-@media (max-width: 1180px) { .abas.abas-grupos { gap: 0 10px; } .abas-grupos .aba-grupo + .aba-grupo { padding-left: 10px; } .abas-grupos button { padding: 8px 6px 10px; } }
+.abas-grupos button { padding: 8px 5px 10px; font-size: var(--t-md); }
+.abas-grupos .conta { padding: 0 6px; margin-left: -1px; }
+.abas-grupos .aba-grupo { position: relative; }
+.abas-grupos .aba-grupo + .aba-grupo::before { content: ''; position: absolute; left: -7px; top: 4px; bottom: 6px; border-left: 1px solid var(--line); }
 @media (max-width: 1000px) { .abas.abas-grupos { display: none; } }
-@media (max-width: 1180px) { .abas.abas-grupos { flex-wrap: wrap; row-gap: 6px; } }
 
 /* ======================================================================
    01/10/2026 — versão 2.0 (2º briefing): login mais leve, vitrine com o mapa em destaque, página pública com narrativa
