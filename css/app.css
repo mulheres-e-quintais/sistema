@@ -3744,3 +3744,8 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 .vd2-mun .vd-lista > li.vd2-c { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; text-align: left; padding: 10px 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; }
 .vd2-mun .vd-lista > li.vd2-c:first-child { border-top: 0; padding-top: 2px; }
 .vd2-c-txt { justify-items: start; } .vd2-c-txt .link { justify-self: start; padding: 2px 0; }
+/* 15/10/2026: painéis lado a lado ficam com a mesma altura (Quem é a equipe, Quem são as mulheres, Ponto de partida) */
+.duas-col.perfil-cols { align-items: stretch; }
+.duas-col.perfil-cols > .bloco { height: 100%; box-sizing: border-box; margin: 0; }
+.duas-col.perfil-cols > .bloco > .nota:last-child { margin-top: auto; }
+.duas-col.perfil-cols > .bloco { display: flex; flex-direction: column; }

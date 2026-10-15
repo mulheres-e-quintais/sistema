@@ -549,14 +549,16 @@
     async dadosAcompanhamento(orgao) {
       const { data, error } = await sb.rpc('acompanhamento_dados', { p_orgao: orgao || null }); if (error) throw erro(error);
       // 60: na tela do MPA, equipe habilitada e diagnósticos esperando, por estado (sem o script, a tela segue sem esses números)
-      if (data && data.orgao === 'mpa') {   // 61: formação sem matrículas e encontros cancelados
+      if (data) {   // 61: formação sem matrículas e encontros cancelados (65: os dois órgãos)
         try { const f = await sb.rpc('acompanhamento_formacao', { p_orgao: orgao || null }); if (!f.error && f.data) data.formacao = f.data; } catch (e) {}
       }
-      if (data && data.orgao === 'mpa' && Array.isArray(data.por_uf)) {
+      if (data && Array.isArray(data.por_uf)) {
         try { const r = await sb.rpc('acompanhamento_equipe_uf', { p_orgao: orgao || null });
           if (!r.error && Array.isArray(r.data)) r.data.forEach(x => { const u = data.por_uf.find(y => y.uf === x.uf); if (u) Object.assign(u, { equipe_campo: x.equipe_campo, habilitadas: x.habilitadas, diag_aguardando: x.diag_aguardando, diag_devolvidos: x.diag_devolvidos }); });
         } catch (e) {}
       }
+      // 65: atividades (eventos, intercâmbio, missões), canais de venda, água, curso FIC, documentos e, para o MDA, o resumo financeiro
+      if (data) { try { const x = await sb.rpc('acompanhamento_extra', { p_orgao: orgao || null }); if (!x.error && x.data) data.extra = x.data; else data.extraSemBanco = true; } catch (e) { data.extraSemBanco = true; } }
       return data;
     },
     // 60: planilha das fichas ou cópia dos dados baixada → Histórico

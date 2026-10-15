@@ -51,7 +51,7 @@
       x[['diagnostico', 'implantacao', 'acompanhamento'].includes(v.etapa) ? v.etapa : 'avaliacao']++; });
     const mensal = Object.values(mm).sort((a, b) => a.mes.localeCompare(b.mes));
     const r = { orgao, gerado_em: new Date().toISOString(), hoje, por_uf, municipios, mensal };
-    if (orgao === 'mda') {
+    {   // 65: os dois órgãos recebem perfil, impacto e formação
       const c = k => pequeno(sel.filter(x => x[k]).length);
       const idade = f => { const [a, m, dd] = String(f.data_nascimento || '').split('-').map(Number), [ha, hm, hd] = hoje.split('-').map(Number); return a ? ha - a - (hm < m || (hm === m && hd < dd) ? 1 : 0) : null; };
       const ids = sel.map(idade).filter(x => x != null);
@@ -62,8 +62,35 @@
       r.impacto = { base_n: dgc.length, renda_quintal_media: comRenda.length >= 5 ? Math.round(comRenda.reduce((t, x) => t + (+x.renda_quintal || 0), 0) / comRenda.length * 100) / 100 : null,
         final_n: av.length, produz: { sim: q(av, x => x.quintal_produz === 'sim'), em_parte: q(av, x => x.quintal_produz === 'em_parte'), nao: q(av, x => x.quintal_produz === 'nao') },
         ebia_final: { seguranca: q(av, x => x.ebia_nivel === 'seguranca'), leve: q(av, x => x.ebia_nivel === 'leve'), moderada: q(av, x => x.ebia_nivel === 'moderada'), grave: q(av, x => x.ebia_nivel === 'grave') } };
-    } else {
+    }
+    {
       r.formacao = { turmas: (d.turmas || []).length, matriculas: (d.matriculas || []).filter(x => !x.cancelada_em).length, encontros: (d.encontros || d.ficEncontros || []).filter(x => !x.cancelado_em).length };   // 13/10/2026: sem as canceladas
+    }
+    return r;
+  }
+  /* 65: a mesma conta da função acompanhamento_extra (modo demonstração e testes) */
+  function calcularExtra(d, orgao, previa, hoje) {
+    const p = d.pedidos || [], pend = x => ['enviado', 'conferido', 'devolvido'].includes(x.situacao), ped = x => (x.dados || {}).finalidade === 'pedagogico';
+    const cont = (l, k) => l.reduce((o, x) => { o[x[k]] = (o[x[k]] || 0) + 1; return o; }, {});
+    const c = (d.canaisVenda || []).filter(x => x.ativo !== false);
+    const ult = {}; (d.aguaSituacoes || []).forEach(x => { if (!ult[x.ficha_id] || String(x.registrado_em) > String(ult[x.ficha_id].registrado_em)) ult[x.ficha_id] = x; });
+    const en = (d.ficEncontros || d.encontros || []).filter(x => !x.cancelado_em), ids = new Set(en.map(x => x.id)), pr = (d.ficPresencas || []).filter(x => ids.has(x.encontro_id));
+    const dc = (d.documentos || []).filter(x => !x.arquivado_em);
+    const r = { orgao,
+      atividades: { eventos: { autorizados: p.filter(x => x.tipo === 'evento' && x.situacao === 'autorizado').length, pedidos: p.filter(x => x.tipo === 'evento' && pend(x)).length, realizados: p.filter(x => x.tipo === 'evento' && x.situacao === 'autorizado' && String(x.data_ref) < hoje).length },
+        intercambio: { autorizados: p.filter(x => x.tipo === 'passagem' && x.situacao === 'autorizado' && !ped(x)).length, pedidos: p.filter(x => x.tipo === 'passagem' && pend(x) && !ped(x)).length },
+        pedagogico: { autorizados: p.filter(x => x.tipo === 'passagem' && x.situacao === 'autorizado' && ped(x)).length, pedidos: p.filter(x => x.tipo === 'passagem' && pend(x) && ped(x)).length } },
+      canais: { por_tipo: cont(c, 'tipo'), municipios: new Set(c.map(x => x.uf + '|' + semAcento(x.municipio))).size },
+      agua: cont(Object.values(ult), 'situacao'),
+      fic: { encontros: en.length, horas: en.reduce((t, x) => t + (+x.carga_horaria || 0), 0), feitos: en.filter(x => String(x.data) <= hoje).length, presencas: pr.filter(x => x.presente).length, marcacoes: pr.length },
+      documentos: { por_tipo: cont(dc, 'tipo'), ultimos: dc.filter(x => ['ata', 'relatorio', 'plano', 'oficio', 'contrato'].includes(x.tipo)).sort((a, b) => String(b.data_documento).localeCompare(String(a.data_documento))).slice(0, 10).map(x => ({ tipo: x.tipo, titulo: x.titulo, data: x.data_documento, uf: x.uf || null })) } };
+    if (orgao === 'mda' && previa) {   // na demonstração, o padrão do banco: o resumo financeiro aparece só na prévia
+      const pl = (d.execPlanilhas || []).slice().sort((a, b) => String(b.posicao_em).localeCompare(String(a.posicao_em)))[0];
+      if (!pl) r.financeiro = { liberado: 'previa', sem_planilha: true };
+      else { const pi = {}, pm = {}; (pl.linhas || []).forEach(l => { const k = l.item + '|' + (l.rubrica || ''); pi[k] = (pi[k] || 0) + (+l.valor || 0);
+          const m = l.data ? String(l.data).slice(0, 7) : String(pl.posicao_em).slice(0, 7); pm[m] = pm[m] || { mes: m, gasto: 0, recebido: 0 }; pm[m][l.item === 'repasse_mda' ? 'recebido' : 'gasto'] += +l.valor || 0; });
+        r.financeiro = { liberado: 'previa', posicao_em: pl.posicao_em, enviado_em: pl.enviado_em, por_item: Object.entries(pi).map(([k, v]) => ({ item: k.split('|')[0], rubrica: k.split('|')[1] || null, valor: Math.round(v * 100) / 100 })),
+          por_mes: Object.values(pm).sort((a, b) => a.mes.localeCompare(b.mes)) }; }
     }
     return r;
   }
@@ -335,7 +362,7 @@
     await U().ocupado(form, async () => { await S().api.salvarObservador(x); S().observadores = await S().api.listarObservadores(); S().acompCodigo = null; U().fecharPainel(); U().render(); U().toast('Cadastro de acompanhamento gravado.'); });
   }
 
-  MQ.acomp = { calcular, pequeno, ORG };
+  MQ.acomp = { calcular, calcularExtra, pequeno, ORG };
   function sairPrevia(peloNavegador) {
     const s = S(); if (!s.verComo) return; const volta = s.verComoVolta || {}; s.verComo = null; s.verComoVolta = null;
     if (!peloNavegador && U().previaNoHistorico) U().previaNoHistorico(false);   // tira a entrada da prévia do histórico do navegador

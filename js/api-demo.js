@@ -291,7 +291,9 @@
     async dadosAcompanhamento(orgao) {
       const d = ler(); const eu = euMesmo(); let org = eu && eu.observador ? eu.orgao : null;
       if (!org) { if (eu && ['coord_geral', 'coord_tecnico'].includes(eu.papel) && ['mda', 'mpa'].includes(orgao)) org = orgao; else throw falha('Acesso restrito ao acompanhamento do projeto.'); }
-      return copia(MQ.acomp.calcular({ fichas: d.fichas, visitas: d.visitas, diagnosticos: d.diagnosticos, avaliacoes: d.avaliacoes, equipe: d.equipe, turmas: d.turmas, matriculas: d.matriculas, encontros: d.ficEncontros || d.encontros }, org, R.hoje()));
+      const r = MQ.acomp.calcular({ fichas: d.fichas, visitas: d.visitas, diagnosticos: d.diagnosticos, avaliacoes: d.avaliacoes, equipe: d.equipe, turmas: d.turmas, matriculas: d.matriculas, encontros: d.ficEncontros || d.encontros }, org, R.hoje());
+      if (MQ.acomp.calcularExtra) r.extra = MQ.acomp.calcularExtra(d, org, !(eu && eu.observador), R.hoje());   // 65
+      return copia(r);
     },
     /* relatar problema (55): quem relata é a equipe; a coordenação geral lê tudo e resolve; cada pessoa lê os seus */
     async relatarProblema(x) {
