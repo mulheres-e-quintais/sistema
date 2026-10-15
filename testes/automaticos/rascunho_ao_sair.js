@@ -6,7 +6,7 @@ const MIN = 60000;
   await ctx.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: "window.MQ=window.MQ||{};MQ.CONFIG={supabaseUrl:'',supabaseAnonKey:'',semServiceWorker:true};" }));
   await ctx.route('**/cdn.jsdelivr.net/**', r => r.abort()); await ctx.route('**/fonts.g*/**', r => r.abort());
   await p.clock.install();
-  await p.goto('http://localhost:8766/'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector('.resumo');
+  await p.goto('http://localhost:8766/'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector('.resumo, .dx-topo');
   await p.evaluate(() => { MQ.ui.fecharPainel(); document.querySelector('button[data-p=bolsista]').click(); }); await p.clock.runFor(800); await p.evaluate(() => MQ.ui.fecharPainel());
   await p.evaluate(() => document.querySelector('[data-acao=ficha-nova]').click()); await p.clock.runFor(300);
   await p.fill('#fi-nome', 'Maria Rascunho da Silva'); await p.fill('#fi-cpf', '529.982.247-25'); await p.fill('#fi-pess', '4');

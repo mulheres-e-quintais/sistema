@@ -7,7 +7,7 @@ const MIN = 60000;
     await ctx.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: "window.MQ=window.MQ||{};MQ.CONFIG={supabaseUrl:'',supabaseAnonKey:'',semServiceWorker:true};" }));
     await ctx.route('**/cdn.jsdelivr.net/**', r => r.abort()); await ctx.route('**/fonts.g*/**', r => r.abort());
     await p.clock.install();
-    await p.goto('http://localhost:8766/'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector('.resumo');
+    await p.goto('http://localhost:8766/'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector('.resumo, .dx-topo');
     await p.evaluate(pf => { document.querySelector(`button[data-p=${pf}]`).click(); }, perfil); await p.clock.runFor(800); await p.evaluate(() => MQ.ui.fecharPainel());
     await ctx.setOffline(true);
     await p.clock.runFor(14 * MIN);

@@ -7,7 +7,7 @@ const dia = n => { const d = new Date(Date.now() + n * 864e5 - new Date().getTim
   const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
   await ctx.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: "window.MQ=window.MQ||{};MQ.CONFIG={supabaseUrl:'',supabaseAnonKey:'',semServiceWorker:true};" }));
   await ctx.route('**/cdn.jsdelivr.net/**', r => r.abort()); await ctx.route('**/fonts.g*/**', r => r.abort());
-  await p.goto('http://localhost:8766/'); await p.evaluate(() => { localStorage.clear(); sessionStorage.clear(); }); await p.reload(); await p.waitForSelector('.resumo');
+  await p.goto('http://localhost:8766/'); await p.evaluate(() => { localStorage.clear(); sessionStorage.clear(); }); await p.reload(); await p.waitForSelector('.resumo, .dx-topo');
   const como = async papel => { await p.click(`button[data-p=${papel}]`); await p.waitForTimeout(400); await p.evaluate(() => MQ.ui.fecharPainel && MQ.ui.fecharPainel()); await p.waitForTimeout(150); };
   const aba = async a => { await p.evaluate(a => { const b = document.querySelector(`[data-acao=aba][data-aba=${a}]`); b && b.click(); }, a); await p.waitForTimeout(300); };
   const toast = () => p.$eval('#toast', t => t.textContent).catch(() => '');

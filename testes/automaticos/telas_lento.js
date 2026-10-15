@@ -4,7 +4,7 @@ const { chromium } = require(process.argv[2]);
   await ctx.route('**/cdn.jsdelivr.net/**', r => r.abort()); await ctx.route('**/fonts.g*/**', r => r.abort());
   await p.addInitScript(() => { const t = setInterval(() => { if (window.MQ && MQ.ui && MQ.ui.S && MQ.ui.S.api) { const api = MQ.ui.S.api; if (!api || api.__lento) return; api.__lento = 1;
     for (const f of ['lerParametros', 'listarCustos']) { const o = api[f].bind(api); api[f] = async (...a) => { window.__lentas = (window.__lentas || 0) + 1; await new Promise(r => setTimeout(r, 1500)); return o(...a); }; } clearInterval(t); } }, 5); });
-  await p.goto('http://localhost:8766/'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector('.resumo');
+  await p.goto('http://localhost:8766/'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector('.resumo, .dx-topo');
   await p.click('button[data-p=coord_geral]'); await p.waitForTimeout(100); await p.evaluate(() => MQ.ui.fecharPainel && MQ.ui.fecharPainel());
   for (const cenario of ['logo depois de entrar', 'depois do carregamento']) {
     if (cenario === 'depois do carregamento') { await p.evaluate(() => document.querySelector('[data-aba=visao]').click()); await p.waitForTimeout(2000); }

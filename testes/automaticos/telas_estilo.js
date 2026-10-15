@@ -3,7 +3,7 @@ const W = +process.argv[3] || 1280;
 (async () => { const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: W, height: 900 }, isMobile: W < 700, hasTouch: W < 700 }); const p = await ctx.newPage();
   await ctx.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: "window.MQ=window.MQ||{};MQ.CONFIG={supabaseUrl:'',supabaseAnonKey:'',semServiceWorker:true};" }));
   await ctx.route('**/cdn.jsdelivr.net/**', r => r.abort()); await ctx.route('**/fonts.g*/**', r => r.abort());
-  await p.goto('http://localhost:8766/'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector('.resumo');
+  await p.goto('http://localhost:8766/'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector('.resumo, .dx-topo');
   const tab = {};  // chave de estilo -> telas
   const add = (k, v, tela) => { tab[k] = tab[k] || {}; (tab[k][v] = tab[k][v] || new Set()).add(tela); };
   for (const pf of ['coord_geral', 'coord_tecnico', 'bolsista', 'agente', 'professor', 'auxiliar']) {

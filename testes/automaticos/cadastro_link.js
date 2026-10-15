@@ -10,7 +10,7 @@ const R = []; const ok = (n, c, d='') => R.push([c ? 'PASSOU' : 'FALHOU', n, d])
     if (cep === '64600000') return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ cep: '64600-000', logradouro: '', bairro: '', localidade: 'Picos', uf: 'PI' }) });
     if (cep === '64600001') return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ erro: true }) });
     return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ cep, logradouro: 'Rua das Flores', bairro: 'Centro', localidade: 'Picos', uf: 'PI' }) }); });
-  await p.goto('http://localhost:8766/'); await p.evaluate(() => { localStorage.clear(); sessionStorage.clear(); }); await p.reload(); await p.waitForSelector('.resumo');
+  await p.goto('http://localhost:8766/'); await p.evaluate(() => { localStorage.clear(); sessionStorage.clear(); }); await p.reload(); await p.waitForSelector('.resumo, .dx-topo');
   await p.click('button[data-p=coord_tecnico]'); await p.waitForTimeout(400); await p.evaluate(() => MQ.ui.fecharPainel && MQ.ui.fecharPainel());
   const tk = await p.evaluate(() => MQ.convitesUI.gerarLink({ papel: 'agente', uf: 'PI' }));
   const tkApoio = await p.evaluate(() => MQ.convitesUI.gerarLink({ papel: 'apoio', uf: 'BA' }));

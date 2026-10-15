@@ -8,7 +8,7 @@ const GIF = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
 (async () => { const b = await chromium.launch();
   const novo = async (vp) => { const ctx = await b.newContext({ viewport: vp, bypassCSP: true }); const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => { errs.push('DIALOGO: ' + d.message()); d.dismiss(); });
     await ctx.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: CFG })); await ctx.route('**/fonts.g*/**', r => r.abort());
-    await p.goto('http://localhost:8766/'); await p.waitForSelector('.resumo'); await p.evaluate(async () => { await MQ.apiDemo.recomecar(); }); await p.reload(); await p.waitForSelector('.resumo');
+    await p.goto('http://localhost:8766/'); await p.waitForSelector('.resumo, .dx-topo'); await p.evaluate(async () => { await MQ.apiDemo.recomecar(); }); await p.reload(); await p.waitForSelector('.resumo, .dx-topo');
     const como = async pf => { await p.evaluate(pf => { MQ.ui.fecharPainel(); document.querySelector(`button[data-p=${pf}]`).click(); }, pf); await p.waitForTimeout(500); await p.evaluate(() => MQ.ui.fecharPainel()); };
     return { ctx, p, errs, como, txt: sel => p.evaluate(sel => (document.querySelector(sel) || { textContent: '' }).textContent.replace(/\s+/g, ' '), sel) }; };
 
@@ -107,7 +107,7 @@ const GIF = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
   ok('erro inesperado na lista: a tela abre e avisa que parte não carregou', await p.evaluate(() => (MQ.ui.S.cargaParcial || []).includes('itens do kit')));
 
   // ---------- 7. cópia no aparelho para uso sem internet ----------
-  await p.evaluate(async () => { await MQ.apiDemo.recomecar(); }); await p.reload(); await p.waitForSelector('.resumo'); await como('bolsista');
+  await p.evaluate(async () => { await MQ.apiDemo.recomecar(); }); await p.reload(); await p.waitForSelector('.resumo, .dx-topo'); await como('bolsista');
   await p.waitForFunction(() => { const k = 'mq-cache-' + MQ.ui.S.eu.id; const c = k && JSON.parse(localStorage.getItem(k)); return c && (c.kitItens || []).length >= 9; }, null, { timeout: 4000 }).catch(() => {});   // a cópia é gravada no fim da carga
   const cache = await p.evaluate(() => { const k = 'mq-cache-' + MQ.ui.S.eu.id; const c = k && JSON.parse(localStorage.getItem(k)); return c && Array.isArray(c.kitItens) ? c.kitItens.length : -1; });
   ok('a lista de itens fica guardada no aparelho da bolsista', cache >= 9, cache);
@@ -115,7 +115,7 @@ const GIF = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
   ok('sem internet: a lista volta da cópia do aparelho', await p.evaluate(() => MQ.ui.S.semRede === true && (MQ.ui.S.kitItens || []).length >= 9));
 
   // ---------- 8. perfis que não usam o campo ----------
-  await p.evaluate(async () => { await MQ.apiDemo.recomecar(); }); await p.reload(); await p.waitForSelector('.resumo');
+  await p.evaluate(async () => { await MQ.apiDemo.recomecar(); }); await p.reload(); await p.waitForSelector('.resumo, .dx-topo');
   for (const pf of ['professor', 'auxiliar', 'agente', 'coord_geral']) {
     const tem = await p.evaluate(pf => !!document.querySelector(`button[data-p=${pf}]`), pf); if (!tem) { ok('perfil ' + pf + ' existe no modo demonstração', false); continue; }
     await como(pf); ok('perfil ' + pf + ': a tela abre sem carga parcial', await p.evaluate(() => !MQ.ui.S.cargaParcial && !!document.querySelector('main, #app, body').textContent.length));

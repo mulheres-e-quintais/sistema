@@ -7,7 +7,7 @@ const SRC = fs.readdirSync('/home/claude/sistema/js').filter(f => f.endsWith('.j
   const ctx = await b.newContext({ viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true, locale: 'pt-BR' }); const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
   await ctx.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: "window.MQ=window.MQ||{};MQ.CONFIG={supabaseUrl:'',supabaseAnonKey:'',semServiceWorker:true};" }));
   await ctx.route('**/cdn.jsdelivr.net/**', r => r.abort()); await ctx.route('**/fonts.g*/**', r => r.abort());
-  const t0 = Date.now(); await p.goto('http://localhost:8766/'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector('.resumo');
+  const t0 = Date.now(); await p.goto('http://localhost:8766/'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector('.resumo, .dx-topo');
   ok('Lentidão', 'Sistema abre em menos de 3 s', Date.now() - t0 < 3000, (Date.now() - t0) + ' ms');
   const como = async pf => { const t = Date.now(); await p.click(`button[data-acao=perfil][data-p=${pf}]`); await p.waitForFunction(() => document.querySelector('main h1')); const ms = Date.now() - t; await p.waitForTimeout(700); await p.evaluate(() => MQ.ui.fecharPainel && MQ.ui.fecharPainel()); await p.waitForTimeout(120); return ms; };
 

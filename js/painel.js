@@ -456,7 +456,8 @@
     const habil = ativos.filter(m => R.habilitado(m)).length;
     const perfis = new Map((S.perfisEquipe || []).filter(x => x.perfil).map(x => [x.equipe_id, x.perfil]));
     const resp = campo.filter(m => perfis.has(m.id)).map(m => perfis.get(m.id));
-    const pc = (fn) => { const v = resp.filter(p => fn(p) != null); return v.length ? Math.round(v.filter(p => fn(p) === true).length / v.length * 100) + '%' : '—'; };
+    // 15/10/2026: mesmo desenho do "Quem são as mulheres": percentual em destaque, barra embaixo e "x de y" miúdo
+    const pc = (fn) => { const v = resp.filter(p => fn(p) != null); return v.length ? { n: v.filter(p => fn(p) === true).length, de: v.length } : null; };
     const leram = ativos.filter(m => ['articulacao', 'apoio', 'agente'].includes(m.papel));
     const nLeram = leram.filter(m => (S.ciencias || []).some(c => c.equipe_id === m.id)).length;
     const linhas = [
@@ -464,27 +465,41 @@
       ['Atuam junto às mulheres rurais do território', pc(p => p.atua_mulheres)],
       ['Moram na zona rural', pc(p => p.mora_rural)],
       ['Mais de 5 anos com agricultura familiar ou agroecologia', pc(p => p.experiencia ? p.experiencia === 'mais5' : null)],
-      ['Têm celular com internet', pc(p => p.internet)],
-      ['Já recebem outra bolsa (conferir acúmulo)', pc(p => p.outra_bolsa)]
+      ['Têm celular com internet', pc(p => p.internet)]
     ];
+    const outraBolsa = pc(p => p.outra_bolsa);
+    const barraPf = (t, x) => { if (!x) return `<li><span class="pf2-rot">${E(t)}</span><b class="num pf2-pc">—</b><span class="pf2-n">ninguém respondeu</span></li>`;
+      const pct = Math.round(x.n / x.de * 100);
+      return `<li><span class="pf2-rot">${E(t)}</span><b class="num pf2-pc">${pct}%</b><span class="pf2-bar" aria-hidden="true"><i style="width:${pct}%"></i></span><span class="pf2-n">${x.n} de ${x.de} pessoa${x.de === 1 ? '' : 's'}</span></li>`; };
+    // composição: "x de y" com barra onde a função tem número de vagas; agentes não têm limite
+    const vaga = (t, n, de, sub) => { const pct = de ? Math.min(100, Math.round(n / de * 100)) : 0, ok = de && n >= de;
+      return `<li><span class="ex2-rot">${E(t)}</span><span class="ex2-v"><b class="num">${n}</b>${de ? ` de ${de}` : ''}</span>`
+        + (de ? `<span class="ex2-bar" aria-hidden="true"><i class="${ok ? 'cheio' : ''}" style="width:${pct}%"></i></span>` : '')
+        + (sub ? `<span class="ex2-sub">${sub}</span>` : '') + '</li>'; };
+    const pcHab = ativos.length ? Math.round(habil / ativos.length * 100) : 0;
     return `<section class="secao" aria-labelledby="t-exec">
       <div class="secao-cab"><div><h2 id="t-exec">Quem é a equipe de execução</h2><p>Pessoas ativas no projeto, sem a coordenação geral. O perfil no campo vem do cadastro (coordenação técnica, bolsistas e agentes).</p></div></div>
       <div class="duas-col perfil-cols">
-        <div class="bloco"><h3>Composição</h3>
-          <div class="resumo r2">
-            <div><span class="v num">${ativos.length}</span><span class="l">pessoas na equipe</span></div>
-            <div><span class="v num">${habil}<small> de ${ativos.length}</small></span><span class="l">habilitadas (todas as funções, com agentes e professores)</span></div></div>
-          <ul class="pp">
-            <li><span>Coordenação técnica</span><b class="num">${conta('coord_tecnico')}</b></li>
-            <li><span>Bolsistas (articulação e apoio estadual)</span><b class="num">${bols}<small class="muted"> de 10</small></b></li>
-            <li><span>Agentes de campo</span><b class="num">${conta('agente')}</b></li>
-            <li><span>Professores do curso FIC</span><b class="num">${conta('professor_fic')}</b></li>
-            <li><span>Auxiliar administrativo</span><b class="num">${conta('auxiliar_adm')}</b></li>
-            ${leram.length ? `<li><span>Bolsistas e agentes que leram o guia</span><b class="num">${nLeram}<small class="muted"> de ${leram.length}</small></b></li>` : ''}
-          </ul></div>
+        <div class="bloco pp2"><h3>Composição</h3>
+          <div class="pp2-kpis">
+            <div class="pp2-kpi"><span class="pp2-k-rot">Pessoas na equipe</span><span class="pp2-k-val"><b class="num">${ativos.length}</b></span><span class="pp2-k-sub">ativas, de todas as funções</span></div>
+            <div class="pp2-kpi"><span class="pp2-k-rot">Habilitadas</span><span class="pp2-k-val"><b class="num">${habil}</b><span class="pp2-antes-n">de ${ativos.length}</span></span>
+              <span class="ex2-bar" aria-hidden="true"><i class="${ativos.length && habil >= ativos.length ? 'cheio' : ''}" style="width:${pcHab}%"></i></span>
+              <span class="pp2-k-sub">${habil >= ativos.length ? 'todas prontas para trabalhar e receber' : (ativos.length - habil) + ' ainda sem habilitação completa'}</span></div></div>
+          <ul class="ex2">
+            ${vaga('Bolsistas (articulação e apoio estadual)', bols, 10, '2 por estado')}
+            ${vaga('Coordenação técnica', conta('coord_tecnico'), 1)}
+            ${vaga('Professores do curso FIC', conta('professor_fic'), R.MAX_PROFESSORES || 2)}
+            ${vaga('Auxiliar administrativo', conta('auxiliar_adm'), 1)}
+            ${vaga('Agentes de campo', conta('agente'), 0, 'sem limite por estado')}
+          </ul>
+          ${leram.length ? (nLeram >= leram.length
+            ? `<p class="ex2-guia ok"><b>Todas leram o guia</b> (${leram.length} bolsistas e agentes).</p>`
+            : `<p class="ex2-guia"><b>${leram.length - nLeram} de ${leram.length}</b> bolsistas e agentes ainda não marcaram que leram o guia.</p>`) : ''}</div>
         <div class="bloco"><h3>Ponto de partida da equipe</h3>
-          ${resp.length ? `<ul class="pp">${linhas.map(([t, v]) => `<li><span>${E(t)}</span><b class="num">${v}</b></li>`).join('')}</ul>
-            <p class="nota">Entre ${resp.length} de ${campo.length} pessoa${campo.length > 1 ? 's' : ''} que responderam o perfil no campo. O Guia pede bolsistas mulheres, de preferência agricultoras ou com atuação junto às mulheres do território.</p>`
+          ${resp.length ? `<ul class="perfil2">${linhas.map(([t, x]) => barraPf(t, x)).join('')}</ul>
+            ${outraBolsa && outraBolsa.n ? `<p class="pp2-agua"><b>${outraBolsa.n} pessoa${outraBolsa.n > 1 ? 's' : ''}</b> já recebe${outraBolsa.n > 1 ? 'm' : ''} outra bolsa: confira se pode acumular antes de pagar.</p>` : ''}
+            <p class="nota">${resp.length} de ${campo.length} pessoa${campo.length > 1 ? 's' : ''} da equipe de campo responderam o perfil${outraBolsa && !outraBolsa.n ? '; nenhuma recebe outra bolsa' : ''}. O Guia pede bolsistas mulheres, de preferência agricultoras ou com atuação junto às mulheres do território.</p>`
             : `<p class="small muted">${S.perfisSemBanco ? 'O perfil no campo ainda não está instalado no servidor (rode o 19_entregas_do_mes.sql).' : 'Aparece quando a coordenação técnica, as bolsistas e as agentes responderem o perfil no campo no cadastro (pelo link é obrigatório).'}</p>`}</div>
       </div></section>`;
   }

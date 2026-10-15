@@ -8,7 +8,7 @@ const R = []; const ok = (n, c, d = '') => { R.push(!!c); console.log((c ? 'PASS
   for (const [esquema, vp] of [['light', { width: 1280, height: 900 }], ['dark', { width: 1280, height: 900 }], ['light', { width: 390, height: 780 }]]) {
     const ctx = await b.newContext({ viewport: vp, bypassCSP: true, colorScheme: esquema }); const p = await ctx.newPage();
     await ctx.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: CFG })); await ctx.route('**/fonts.g*/**', r => r.abort());
-    await p.goto('http://localhost:8766/'); await p.waitForSelector('.resumo'); await p.evaluate(async () => { await MQ.apiDemo.recomecar(); }); await p.reload(); await p.waitForSelector('.resumo'); await p.addScriptTag({ content: AXE });
+    await p.goto('http://localhost:8766/'); await p.waitForSelector('.resumo, .dx-topo'); await p.evaluate(async () => { await MQ.apiDemo.recomecar(); }); await p.reload(); await p.waitForSelector('.resumo, .dx-topo'); await p.addScriptTag({ content: AXE });
     const axe = () => p.evaluate(async () => { const x = await axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] } }); return x.violations.map(v => v.id + ' (' + v.impact + ', ' + v.nodes.length + '): ' + (v.nodes[0] && v.nodes[0].target.join(' '))); });
     const rot = (esquema === 'dark' ? 'tema escuro' : 'tema claro') + ', ' + vp.width + ' px';
     for (const [pf, sigla] of [['obs_mda', 'MDA'], ['obs_mpa', 'MPA']]) {

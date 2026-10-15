@@ -7,7 +7,7 @@ const MIN = 60000;
     await ctx.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: "window.MQ=window.MQ||{};MQ.CONFIG={supabaseUrl:'',supabaseAnonKey:'',semServiceWorker:true};" }));
     await ctx.route('**/cdn.jsdelivr.net/**', r => r.abort()); await ctx.route('**/fonts.g*/**', r => r.abort());
     await p.clock.install();
-    await p.goto('http://localhost:8766/'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector('.resumo');
+    await p.goto('http://localhost:8766/'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector('.resumo, .dx-topo');
     await p.click(`button[data-p=${perfil}]`); await p.clock.runFor(800); await p.evaluate(() => MQ.ui.fecharPainel && MQ.ui.fecharPainel());
     await p.clock.runFor(12 * MIN);
     ok(`${perfil}: aos 12 min ainda sem aviso`, !(await p.$('.sessao-aviso')));

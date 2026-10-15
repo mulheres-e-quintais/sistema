@@ -10,7 +10,7 @@ const MSG = /alterado por outra pessoa enquanto você editava/;
   const ctx = await b.newContext({ viewport: { width: 1200, height: 900 } }); const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
   await ctx.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: "window.MQ=window.MQ||{};MQ.CONFIG={supabaseUrl:'',supabaseAnonKey:'',semServiceWorker:true};" }));
   await ctx.route('**/cdn.jsdelivr.net/**', r => r.abort()); await ctx.route('**/fonts.g*/**', r => r.abort());
-  await p.goto('http://localhost:8766/'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector('.resumo');
+  await p.goto('http://localhost:8766/'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector('.resumo, .dx-topo');
   await p.evaluate(() => { MQ.ui.fecharPainel(); document.querySelector('button[data-p=bolsista]').click(); }); await p.waitForTimeout(900); await p.evaluate(() => MQ.ui.fecharPainel());
   const espera = ms => p.waitForTimeout(ms);
   const enviar = async sel => { await p.evaluate(s => document.querySelector(s).requestSubmit(), sel); await espera(700); };

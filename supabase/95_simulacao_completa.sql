@@ -440,6 +440,16 @@ begin
   returning id into mid;
   insert into public.exemplo values ('pre_cadastros', mid);
 
+  -- ---------- leitura do guia (bolsistas: guia da bolsista; agentes: guia da agente), dois dias depois de entrar ----------
+  if to_regclass('public.ciencias') is not null then
+    alter table public.ciencias disable trigger user;   -- o gatilho põe a data de hoje; aqui vale a data da simulação
+    insert into public.ciencias (equipe_id, documento, em)
+    select e.id, case when e.papel = 'agente' then 'guia_agente' else 'guia_bolsista' end, (e.data_inicio + 2)::timestamp + interval '10 hours'
+      from public.equipe e where e.id in (select id from _eq) and e.papel in ('articulacao', 'apoio', 'agente') and e.status = 'ativa'
+    on conflict do nothing;
+    alter table public.ciencias enable trigger user;
+  end if;
+
   -- ---------- histórico: o rastro de cada ação (as regras estavam desligadas na carga, então ele é escrito aqui) ----------
   insert into public.auditoria (tabela, registro_id, acao, por, em, antes, depois)
   select 'equipe', e.id, 'INSERT', cg, q.criado_em, null::jsonb, jsonb_build_object('nome', q.nome, 'papel', q.papel, 'uf', q.uf, 'status', 'ativa') from _eq e join public.equipe q on q.id = e.id

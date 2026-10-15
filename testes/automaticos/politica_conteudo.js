@@ -10,7 +10,7 @@ const R = []; const ok = (n, c, d = '') => { R.push([c ? 'PASSOU' : 'FALHOU', n,
   ctx.on('page', escuta); const p = await ctx.newPage();
   await ctx.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: CFG }));
   await ctx.route('https://fonts.googleapis.com/**', r => r.fulfill({ contentType: 'text/css', body: '/* fontes */' }));
-  await p.goto('http://localhost:8766/'); await p.waitForSelector('.resumo');
+  await p.goto('http://localhost:8766/'); await p.waitForSelector('.resumo, .dx-topo');
   const pol = await p.evaluate(() => (document.querySelector('meta[http-equiv=Content-Security-Policy]') || {}).content || '');
   ok('a página declara a política de conteúdo', /script-src 'self'/.test(pol) && /object-src 'none'/.test(pol));
   ok('a política não libera código embutido nem eval', !/script-src[^;]*unsafe-inline|unsafe-eval/.test(pol));

@@ -8,10 +8,10 @@ const R = []; const ok = (n, c, d = '') => { R.push([c ? 'PASSOU' : 'FALHOU', n,
 (async () => { const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1280, height: 900 }, bypassCSP: true });   // o roteiro monta funções dentro da página (a política de conteúdo tem roteiro próprio)
    const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
   await ctx.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: CFG })); await ctx.route('**/fonts.g*/**', r => r.abort());
-  await p.goto('http://localhost:8766/'); await p.waitForSelector('.resumo'); await p.evaluate(async () => { await MQ.apiDemo.recomecar(); }); await p.reload(); await p.waitForSelector('.resumo');
+  await p.goto('http://localhost:8766/'); await p.waitForSelector('.resumo, .dx-topo'); await p.evaluate(async () => { await MQ.apiDemo.recomecar(); }); await p.reload(); await p.waitForSelector('.resumo, .dx-topo');
   const como = async pf => { await p.evaluate(pf => { MQ.ui.fecharPainel(); document.querySelector(`button[data-p=${pf}]`).click(); }, pf); await p.waitForTimeout(500); await p.evaluate(() => MQ.ui.fecharPainel()); };
   // mexe direto nos dados de demonstração e recarrega (como o volume.js)
-  const dados = async fn => { await p.evaluate(fn => { const d = JSON.parse(localStorage.getItem('mq-demo-v4')); (new Function('d', 'MQ', fn))(d, MQ); localStorage.setItem('mq-demo-v4', JSON.stringify(d)); }, '(' + fn.toString() + ')(d, MQ)'); await p.reload(); await p.waitForSelector('.resumo'); };
+  const dados = async fn => { await p.evaluate(fn => { const d = JSON.parse(localStorage.getItem('mq-demo-v4')); (new Function('d', 'MQ', fn))(d, MQ); localStorage.setItem('mq-demo-v4', JSON.stringify(d)); }, '(' + fn.toString() + ')(d, MQ)'); await p.reload(); await p.waitForSelector('.resumo, .dx-topo'); };
   const tenta = (fn, arg) => p.evaluate(async ({ fn, arg }) => { try { await (new Function('MQ', 'arg', 'return (' + fn + ')(MQ, arg)'))(MQ, arg); return ''; } catch (e) { return MQ.regras.mensagemErro(e) || String(e.message || e); } }, { fn: fn.toString(), arg });
   const recusa = async (nome, re, fn, arg) => { const m = await tenta(fn, arg); ok(nome, re.test(m), m || 'ACEITOU'); };
 
@@ -48,7 +48,7 @@ const R = []; const ok = (n, c, d = '') => { R.push([c ? 'PASSOU' : 'FALHOU', n,
   await recusa('200 dias de campo por estado: a visita 201 é recusada', /200 dias/, (MQ) => { const S = MQ.ui.S; const f = S.fichas.find(x => x.uf === S.eu.uf && x.situacao === 'aprovada' && x.resultado === 'selecionada'); return S.api.salvarVisita({ id: crypto.randomUUID(), ficha_id: f.id, uf: S.eu.uf, etapa: 'diagnostico', executor_id: S.eu.id, data_prevista: MQ.regras.somaDias(MQ.regras.hoje(), 5), situacao: 'prevista' }); });
 
   // ---------- 4. pagamentos: uma bolsa por mês e ajuda de custo só de visita feita ----------
-  await p.evaluate(async () => { await MQ.apiDemo.recomecar(); }); await p.reload(); await p.waitForSelector('.resumo'); await como('bolsista');
+  await p.evaluate(async () => { await MQ.apiDemo.recomecar(); }); await p.reload(); await p.waitForSelector('.resumo, .dx-topo'); await como('bolsista');
   const mes = await p.evaluate(() => MQ.regras.hoje().slice(0, 7) + '-01');
   const prim = await tenta((MQ, mes) => MQ.ui.S.api.solicitarPagamento('bolsa', mes, MQ.PAPEIS[MQ.ui.S.eu.papel].bolsa, 'Relatório do mês: comunidades mobilizadas, fichas lançadas e visitas acompanhadas.', null, null), mes);
   await recusa('uma bolsa por mês: o segundo pedido do mesmo mês é recusado', /já solicitou este mês/i, (MQ, mes) => MQ.ui.S.api.solicitarPagamento('bolsa', mes, MQ.PAPEIS[MQ.ui.S.eu.papel].bolsa, 'Relatório do mês: comunidades mobilizadas, fichas lançadas e visitas acompanhadas.', null, null), mes);
