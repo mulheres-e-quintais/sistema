@@ -2553,7 +2553,7 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 
 /* --- ROTEIRO DE CAMPO no celular: um cartão por visita (02/10/2026) ---
    data e situação no topo, a mulher em destaque, etapa e quem visita lado a lado, ação em largura inteira */
-@media (max-width: 720px) {
+@media (max-width: 960px) {
   .quadro-scroll:has(> .tab-rot) { border: 0; background: transparent; overflow: visible; }
   table.quadro.tab-rot, table.quadro.tab-rot tbody { display: block; min-width: 0; width: 100%; }
   table.quadro.tab-rot thead { display: none; }
@@ -2576,7 +2576,7 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
   table.quadro.tab-rot .rot-acoes .btn { width: 100%; min-height: 44px; justify-content: center; }
   table.quadro.tab-rot .rot-acoes .link { justify-self: center; min-height: 40px; }
 }
-.rt-ufm { display: none; } @media (max-width: 720px) { .rt-ufm { display: inline; } }
+.rt-ufm { display: none; } @media (max-width: 960px) { .rt-ufm { display: inline; } }
 
 /* --- TABELAS POR ESTADO (Seleção e Campo) com o mesmo realce do quadro de metas (02/10/2026):
    cartão claro com sombra leve, sigla do estado em selo, barra mais cheia e linha que acende ao passar --- */
@@ -2605,7 +2605,7 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
   .quadro-sel .uf .sigla, .tab-campo-uf .uf .sigla { width: 38px; height: 38px; min-width: 38px; margin-right: 8px; } .quadro-sel .uf .nomeuf, .tab-campo-uf .uf .nomeuf { font-size: var(--t-sm); } }
 @media (min-width: 1100px) { .tab-campo-uf tr > :nth-child(2) { width: 33%; } .tab-campo-uf .dias-cel .small { font-size: var(--t-xs); } }
 /* roteiro em cartões: letra maior no que importa e sem o fundo que acendia célula por célula ao passar o dedo ou o mouse */
-@media (max-width: 720px) {
+@media (max-width: 960px) {
   table.quadro.tab-rot tbody tr:hover td { background: transparent; border-radius: 0; }
   table.quadro.tab-rot tbody tr:hover { border-color: var(--line-2); }
   table.quadro.tab-rot tr { padding: 16px; gap: 12px 14px; }
@@ -2746,7 +2746,7 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 @media (max-width: 900px) { .fin-wrap:has(> .exec-fin) { padding: 4px 10px 10px; } }
 
 /* --- Campo, "Roteiro de campo" em telas largas (03/10/2026): cabeçalho em faixa, UF em selo, data compacta, nomes em destaque --- */
-@media (min-width: 721px) {
+@media (min-width: 961px) {
   .quadro-scroll:has(> .tab-rot) { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); overflow: hidden; overflow-x: auto; }
   table.quadro.tab-rot { border-collapse: collapse; width: 100%; }
   table.quadro.tab-rot thead th { background: var(--surface-2); color: var(--ink); font-weight: 700; text-align: center; padding: 13px 14px; border: 0; border-bottom: 1px solid var(--line); }
@@ -2815,7 +2815,7 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 @media (max-width: 380px) { table.quadro.tab-campo-uf tr { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* --- Roteiro de campo em cartões (03/10/2026): faixa de cor pela situação, data em destaque no topo, nome em serifa, etapa e quem visita em quadros --- */
-@media (max-width: 720px) {
+@media (max-width: 960px) {
   table.quadro.tab-rot tr { position: relative; overflow: hidden; padding: 0 16px 16px 20px; gap: 12px 12px; border-radius: 16px; box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 6px 16px rgba(69, 43, 26, .06); }
   table.quadro.tab-rot tr::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--pend); }
   table.quadro.tab-rot tr.rt-s-ok::before { background: var(--st-ok); } table.quadro.tab-rot tr.rt-s-crit::before { background: var(--crit); }
@@ -3677,3 +3677,16 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 .pp2-antes-n { font-size: var(--t-md); color: var(--ink-2); }
 .ex2-guia { margin: 16px 0 0; padding: 8px 12px; border-radius: 10px; font-size: var(--t-sm); color: var(--ink); background: color-mix(in srgb, var(--st-aten) 14%, transparent); }
 .ex2-guia.ok { background: color-mix(in srgb, var(--st-ok) 12%, transparent); }
+/* 15/10/2026: iPad em pé (até 960 px): nenhuma tabela rola para o lado.
+   Roteiro de campo vira cartões (antes só até 720 px) em 2 colunas; Seleção sem a sigla e com colunas justas; tabelas do MDA/MPA encolhem */
+@media (min-width: 601px) and (max-width: 960px) {
+  table.quadro.tab-rot tbody { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .quadro-sel td.uf, .quadro-sel thead th:first-child, .tab-campo-uf td.uf, .tab-campo-uf thead th:first-child { width: 112px; min-width: 0; }
+  .quadro-sel .uf .sigla, .tab-campo-uf .uf .sigla { display: none; }
+  .quadro-sel th, .quadro-sel td { padding-left: 6px; padding-right: 6px; }
+  .quadro-sel thead th { font-size: var(--t-2xs, 11px); letter-spacing: .03em; }
+  .quadro-sel .bar { min-width: 0; }
+  table.quadro.quadro-sel, table.quadro.ac-tab, .ac-duo table.quadro.ac-tab { min-width: 0 !important; }
+  .ac-tab th, .ac-tab td { padding-left: 6px; padding-right: 6px; }
+  .ac-duo { grid-template-columns: minmax(0, 1fr) !important; }
+}
