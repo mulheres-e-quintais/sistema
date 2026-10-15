@@ -83,8 +83,8 @@ describe('o que cada órgão recebe', () => {
     const d = { pedidos: [{ tipo: 'evento', situacao: 'autorizado', data_ref: '2026-01-01', dados: { nome_contato: 'Fulana Secreta' } }], canaisVenda: [{ tipo: 'feira', uf: 'PI', municipio: 'Picos', ativo: true, contato: 'Oculta 8999990000' }],
       documentos: [{ tipo: 'ata', titulo: 'Ata da seleção', data_documento: '2026-10-20', arquivo_path: 'docs/segredo.pdf' }], execPlanilhas: [{ posicao_em: '2026-12-31', linhas: [{ item: 'repasse_mda', valor: 10 }, { item: 'bolsa_apoio', rubrica: 'r2', valor: 4, descricao: 'Pix para Oculto' }] }] };
     const m = MQ.acomp.calcularExtra(d, 'mda', true, HOJE), p = MQ.acomp.calcularExtra(d, 'mpa', true, HOJE), mo = MQ.acomp.calcularExtra(d, 'mda', false, HOJE);
-    const t = JSON.stringify([m, p]); for (const x of ['Secreta', 'Oculta', '8999990000', 'segredo.pdf', 'Oculto']) assert.ok(!t.includes(x), 'saiu ' + x);
-    assert.equal(m.atividades.eventos.autorizados, 1); assert.equal(m.canais.por_tipo.feira, 1); assert.equal(m.documentos.ultimos[0].titulo, 'Ata da seleção');
+    const t = JSON.stringify([m, p]); for (const x of ['Secreta', 'Oculta', '8999990000', 'segredo.pdf', 'Oculto', 'Ata da seleção']) assert.ok(!t.includes(x), 'saiu ' + x);
+    assert.equal(m.atividades.eventos.autorizados, 1); assert.equal(m.canais.por_tipo.feira, 1); assert.equal(m.documentos.por_tipo.ata, 1); assert.equal(m.documentos.ultima_data.ata, '2026-10-20'); assert.ok(!JSON.stringify(m).includes('Ata da seleção'), '66: sem título');
     assert.ok(m.financeiro && m.financeiro.por_item.length === 2); assert.equal(p.financeiro, undefined); assert.equal(mo.financeiro, undefined);
   });
   test('nenhum dos dois recebe nome, CPF, e-mail, endereço, celular nem comunidade', () => {

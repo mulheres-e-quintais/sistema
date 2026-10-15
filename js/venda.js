@@ -109,27 +109,40 @@
     outro: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2"/>'
   };
   const icone = (t, tam) => `<svg viewBox="0 0 24 24" width="${tam || 22}" height="${tam || 22}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${IC[t] || IC.outro}</svg>`;
-  const DIAS = [['seg', 'Seg', /segunda/], ['ter', 'Ter', /terca/], ['qua', 'Qua', /quarta/], ['qui', 'Qui', /quinta/], ['sex', 'Sex', /sexta/], ['sab', 'Sáb', /sabado/], ['dom', 'Dom', /domingo/]];
+  /* 66: dia da semana lido só do DETALHE do canal, palavra inteira ("quinta" não casa com "Quintais"; "São Domingos" não é domingo),
+     com abreviações (seg, ter, qua, qui, sex, sáb, dom, 2ª) e intervalo ("segunda a sexta", "seg-sex"). "segunda quinzena" não conta. */
+  const DIAS = [['seg', 'Seg', /\b(segundas?(-feiras?)?|seg|2a(-feira)?)\b(?!\s+quinzena)/], ['ter', 'Ter', /\b(tercas?(-feiras?)?|ter|3a(-feira)?)\b/], ['qua', 'Qua', /\b(quartas?(-feiras?)?|qua|4a(-feira)?)\b/],
+    ['qui', 'Qui', /\b(quintas?(-feiras?)?|qui|5a(-feira)?)\b/], ['sex', 'Sex', /\b(sextas?(-feiras?)?|sex|6a(-feira)?)\b/], ['sab', 'Sáb', /\b(sabados?|sab)\b/], ['dom', 'Dom', /(?<!sao )\b(domingos?|dom)\b/]];
+  function diasDe(texto) {
+    const t = norm(texto).replace(/[ºª°]/g, 'a').replace(/\s+/g, ' ');
+    const marc = DIAS.map(([, , re]) => re.test(t));
+    // intervalo: "segunda a sexta", "seg-sex", "de terça até sábado"
+    const nomes = DIAS.map(([, , re]) => new RegExp(re.source));
+    const m = t.match(/[a-z0-9]+(?:-feiras?)?(?:\s+(?:ate|a)\s+|\s*-\s*(?!feira))[a-z0-9]+/g) || [];
+    m.forEach(par => { const [a, b] = par.split(/\s+(?:ate|a)\s+|\s*-\s*(?!feira)/); const ia = nomes.findIndex(r => r.test(a || '')), ib = nomes.findIndex(r => r.test(b || ''));
+      if (ia >= 0 && ib > ia) for (let i = ia; i <= ib; i++) marc[i] = true; });
+    return marc;
+  }
   function secaoCanais(ufFixo) {
     if (S().vendaSemBanco) return `<section class="secao" aria-labelledby="t-venda"><h2 id="t-venda">Onde vender</h2>
       <p class="aviso">A orientação de venda ainda não está instalada no servidor. A coordenação geral roda o arquivo <b>44_venda.sql</b> no Supabase.</p></section>`;
     const l = canais().filter(c => !ufFixo || c.uf === ufFixo); const porMun = {};
-    l.forEach(c => { const k = c.uf + '|' + c.municipio; (porMun[k] = porMun[k] || []).push(c); });
+    l.forEach(c => { const k = c.uf + '|' + norm(c.municipio); (porMun[k] = porMun[k] || []).push(c); });
     const chaves = Object.keys(porMun).sort((a, b) => a.localeCompare(b));
-    const ativos = l.filter(c => c.ativo);
+    const ativos = l.filter(c => c.ativo); const munAtivos = new Set(ativos.map(c => c.uf + '|' + norm(c.municipio))).size;
     // 1. tipos de canal, com ícone e contagem (feira, merenda e PAA aparecem mesmo zerados: são os caminhos principais)
     const cont = {}; ativos.forEach(c => { cont[c.tipo] = (cont[c.tipo] || 0) + 1; });
     const tipos = TIPOS.filter(([k]) => cont[k] || ['feira', 'merenda', 'paa'].includes(k));
     const blocoTipos = `<ul class="vd2-tipos">${tipos.map(([k, t]) => `<li class="vd2-t t-${k}${cont[k] ? '' : ' zero'}"><span class="vd2-ic">${icone(k)}</span><b class="num">${cont[k] || 0}</b><span>${E(t)}</span></li>`).join('')}</ul>`;
     // 2. semana das feiras: em que dia há feira (lido do detalhe: "Sábados, 5h às 11h")
-    const feiras = ativos.filter(c => c.tipo === 'feira'); const porDia = DIAS.map(([k, , re]) => feiras.filter(c => re.test(norm(c.detalhe + ' ' + c.nome))).length);
-    const semDia = feiras.filter(c => !DIAS.some(([, , re]) => re.test(norm(c.detalhe + ' ' + c.nome)))).length;
+    const feiras = ativos.filter(c => c.tipo === 'feira'); const dd = feiras.map(c => diasDe(c.detalhe || ''));
+    const porDia = DIAS.map((_, i) => dd.filter(x => x[i]).length), semDia = dd.filter(x => !x.some(Boolean)).length;
     const maxDia = Math.max(1, ...porDia);
     const blocoSemana = feiras.length ? `<div class="vd2-semana"><h3>Semana das feiras</h3><ol class="vd2-dias">${DIAS.map(([k, nm], i) => `<li class="${porDia[i] ? 'tem' : ''}" style="--n:${(porDia[i] / maxDia).toFixed(2)}"><span class="vd2-bola num" aria-hidden="true">${porDia[i] || ''}</span><span class="vd2-dia">${nm}</span><span class="so-leitor">: ${porDia[i]} feira${porDia[i] === 1 ? '' : 's'}</span></li>`).join('')}</ol>
       ${semDia ? `<p class="small muted">${semDia} feira${semDia === 1 ? '' : 's'} sem o dia no detalhe: escreva o dia (ex.: "Sábados, 5h às 11h") para aparecer aqui.</p>` : ''}</div>` : '';
     // 3. cobertura: municípios com mulher selecionada × municípios com canal ativo
     const comCanal = new Set(ativos.map(c => c.uf + '|' + norm(c.municipio)));
-    const munSel = {}; (S().fichas || []).filter(f => f.resultado === 'selecionada' && (!ufFixo || f.uf === ufFixo)).forEach(f => { const k = f.uf + '|' + norm(f.municipio); munSel[k] = munSel[k] || { uf: f.uf, nome: f.municipio, n: 0 }; munSel[k].n++; });
+    const munSel = {}; (S().fichas || []).filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada' && (!ufFixo || f.uf === ufFixo)).forEach(f => { const k = f.uf + '|' + norm(f.municipio); munSel[k] = munSel[k] || { uf: f.uf, nome: f.municipio, n: 0 }; munSel[k].n++; });
     const listaSel = Object.entries(munSel); const semCanal = listaSel.filter(([k]) => !comCanal.has(k)).map(([, v]) => v).sort((a, b) => b.n - a.n);
     const cob = listaSel.length ? Math.round((listaSel.length - semCanal.length) / listaSel.length * 100) : 0;
     const blocoCob = listaSel.length ? `<div class="vd2-cob"><h3>Municípios com canal de venda</h3>
@@ -138,7 +151,7 @@
       ${semCanal.length ? `<p class="small">Sem canal ainda:</p><ul class="vd2-falta">${semCanal.slice(0, 12).map(m => `<li>${E(m.nome)}${ufFixo ? '' : '/' + E(m.uf)} <span class="muted">· ${m.n}</span></li>`).join('')}${semCanal.length > 12 ? `<li class="muted">e mais ${semCanal.length - 12}</li>` : ''}</ul>`
         : '<p class="vd2-ok small">Todo município com mulher selecionada tem pelo menos um canal.</p>'}</div>` : '';
     const conteudo = `${podeCanal() ? `<div class="acoes"><button type="button" class="btn pri peq" data-acao="venda-canal-novo"${ufFixo ? ` data-uf="${E(ufFixo)}"` : ''}>+ Cadastrar canal</button></div>` : ''}
-      ${chaves.length ? `<div class="vd2-muns">${chaves.map(k => { const [uf, mun] = k.split('|'); return `<div class="vd-mun vd2-mun"><h3><span class="etq etq-uf">${E(uf)}</span> ${E(mun)}</h3>
+      ${chaves.length ? `<div class="vd2-muns">${chaves.map(k => { const uf = k.split('|')[0], mun = porMun[k][0].municipio; return `<div class="vd-mun vd2-mun"><h3><span class="etq etq-uf">${E(uf)}</span> ${E(mun)}</h3>
         <ul class="vd-lista">${porMun[k].sort((a, b) => a.tipo.localeCompare(b.tipo) || a.nome.localeCompare(b.nome)).map(c => `<li class="vd2-c t-${E(c.tipo)}${c.ativo ? '' : ' inativo'}"><span class="vd2-ic peq" title="${E(nomeTipo(c.tipo))}">${icone(c.tipo, 18)}</span><span class="vd2-c-txt">
           <span class="vd-l1"><b>${E(c.nome)}</b> <span class="etq">${E(nomeTipo(c.tipo))}</span>${c.ativo ? '' : ' <span class="etq">Desativado</span>'}</span>
           ${c.detalhe ? `<span class="small">${E(c.detalhe)}</span>` : ''}${c.contato ? `<span class="small muted">Contato: ${E(c.contato)}</span>` : ''}
@@ -148,7 +161,7 @@
     return `<section class="secao vd2" aria-labelledby="t-venda"><div class="secao-cab"><div><h2 id="t-venda">Onde vender${ufFixo ? ' · ' + E(U().nomeUF(ufFixo)) : ''}</h2>
       <p>Canais de venda de cada município. Entram na folha de orientação que a mulher recebe na visita.</p></div></div>
       ${ativos.length || listaSel.length ? `<div class="vd2-painel">${blocoTipos}<div class="vd2-duas">${blocoSemana}${blocoCob}</div></div>` : ''}
-      ${U().dobra('venda-canais', `<span><b>${ativos.length} cana${ativos.length === 1 ? 'l' : 'is'} em ${chaves.length} município${chaves.length === 1 ? '' : 's'}</b> <span class="small muted">· ver e cadastrar</span></span>`, conteudo)}</section>`;
+      ${U().dobra('venda-canais', `<span><b>${ativos.length} cana${ativos.length === 1 ? 'l' : 'is'} em ${munAtivos} município${munAtivos === 1 ? '' : 's'}</b> <span class="small muted">· ver e cadastrar</span></span>`, conteudo)}</section>`;
   }
   const botaoOrientar = fid => S().vendaSemBanco ? '' : `<button type="button" class="btn peq" data-acao="venda-orientar" data-ficha="${E(fid)}">Orientação de venda</button>`;
 
@@ -239,5 +252,5 @@
       await U().ocupado(form, async () => { await gravar(); U().abrirPainel({ tipo: 'venda-folha' }); });
     }
   }
-  MQ.vendaUI = { orientar, folhaHTML, folhaTexto, secaoCanais, botaoOrientar, painel, clique, enviar, TIPOS, REVISADO };
+  MQ.vendaUI = { orientar, folhaHTML, folhaTexto, secaoCanais, botaoOrientar, painel, clique, enviar, TIPOS, REVISADO, diasDe };
 })();

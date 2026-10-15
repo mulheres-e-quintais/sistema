@@ -1363,7 +1363,7 @@ MQ.ORCAMENTO = {
     },
     async dadosAcompanhamento(orgao) {
       const d = ler(); const eu = euMesmo(); let org = eu && eu.observador ? eu.orgao : null;
-      if (!org) { if (eu && ['coord_geral', 'coord_tecnico'].includes(eu.papel) && ['mda', 'mpa'].includes(orgao)) org = orgao; else throw falha('Acesso restrito ao acompanhamento do projeto.'); }
+      if (!org) { if (eu && eu.papel === 'coord_geral' && ['mda', 'mpa'].includes(orgao)) org = orgao; else throw falha('Acesso restrito ao acompanhamento do projeto.'); }   // 66: a prévia é só da coordenação geral
       const r = MQ.acomp.calcular({ fichas: d.fichas, visitas: d.visitas, diagnosticos: d.diagnosticos, avaliacoes: d.avaliacoes, equipe: d.equipe, turmas: d.turmas, matriculas: d.matriculas, encontros: d.ficEncontros || d.encontros }, org, R.hoje());
       if (MQ.acomp.calcularExtra) r.extra = MQ.acomp.calcularExtra(d, org, !(eu && eu.observador), R.hoje());   // 65
       return copia(r);
@@ -4514,6 +4514,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <circle cx="${mx}" cy="${my}" r="${e2 * 3.4}" class="ml-pt" stroke-width="${e2 * 1}"/></svg>
         <figcaption>${E(nomeMun)} · ${foco}</figcaption></figure>`; })();
     const onde = focoMun ? E(nomeMun) + '/' + foco : foco ? E(U.nomeUF(foco)) : 'nos 5 estados';
+    // 66: no município, a lista das mulheres (com a situação) faz o mesmo que tocar no alfinete: dá para abrir a ficha pelo teclado e o leitor de tela lê
+    const fichasMun = focoMun && pts.length ? `<div class="mun-lista q-lista"><h3 class="mapa-h3">Mulheres neste município</h3>
+        ${pts.slice().sort((a, b) => String(a.f.nome || '').localeCompare(String(b.f.nome || ''), 'pt-BR')).map(({ f, cat, p }) => { const k = CATS.find(x => x.id === cat);
+          return `<button type="button" class="link" data-acao="mapa-info" data-id="${E(f.id)}" data-exato="${p.exato ? '1' : ''}"><span class="lg-pt" style="background:${k.cor}" aria-hidden="true"></span><span>${E(f.nome_social || f.nome || 'Ficha')}<small class="muted"> · ${E(k.nome)}${p.exato ? '' : ' · posição aproximada'}</small></span></button>`; }).join('')}</div>` : '';
     const munLista = !focoMun && lista.length ? `<div class="mun-lista"><h3 class="mapa-h3">${foco ? 'Municípios' : 'Municípios com mais fichas'}</h3>
         ${lista.slice(0, foco ? 20 : 8).map(g => `<button type="button" class="link" data-acao="mapa-mun" data-uf="${g.uf}" data-mun="${E(g.k)}"><span>${E(baseDe(g).nome)}${foco ? '' : '/' + g.uf}</span><i class="pontilhado" aria-hidden="true"></i><b class="num">${g.itens.length}</b></button>`).join('')}</div>` : '';
     if (RES) return `<div class="mapa-caixa mapa-resumo"><svg class="mapa" viewBox="${vb.join(' ')}" role="img" aria-label="Mapa com ${pts.length} mulheres selecionadas em ${lista.length} municípios de ${nUF} estados" preserveAspectRatio="xMidYMid meet">${estados}${rotulos}${marcas}${tamanhos}</svg></div>${tamanhos ? '<p class="mapa-tam-nota">Cada círculo é um município; o número e o tamanho mostram quantas mulheres foram selecionadas ali.</p>' : ''}`;
@@ -4539,7 +4543,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <ul class="legenda">${CATS.map(k => `<li>${focoMun ? iconeAlfinete(k.cor, true) : `<span class="lg-pt" style="background:${k.cor}"></span>`}${E(k.nome)} <b class="num">${cont[k.id] || 0}</b></li>`).join('')}
           ${focoMun ? `<li>${iconeAlfinete('var(--ink-2)', false)}Alfinete vazado: posição aproximada (sem GPS)</li>` : ''}
           ${naoAtende ? `<li class="muted">${naoAtende} que não atende${naoAtende > 1 ? 'm' : ''} aos critérios fica${naoAtende > 1 ? 'm' : ''} fora do mapa</li>` : ''}</ul>
-        ${munLista}</div>
+        ${munLista}${fichasMun}</div>
       </div>
       ${tamanhos ? '<p class="mapa-tam-nota">Cada círculo representa um município. O tamanho indica o número de fichas/mulheres (exemplos no canto do mapa: ' + marcasTamanho(nMaior).join(', ').replace(/, ([^,]*)$/, ' e $1') + '). Com muitas fichas, os círculos diminuem juntos; município vizinho de outro é afastado e ligado ao seu lugar por um traço.</p>' : ''}
       <p class="nota">O mapa mostra onde moram as mulheres: use só dentro do sistema. Em relatórios e divulgação, mostre números por município.</p>
@@ -4570,11 +4574,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const avs = S.avaliacoes || [];
     const pares = avs.map(a => { const dg = MQ.porCampo(S.diagnosticos, 'ficha_id').get(a.ficha_id); const i0 = dg && dg.dados && dg.dados.impacto, i1 = a.dados && a.dados.impacto;
       return i0 && i1 && i0.ebia_nivel && i1.ebia_nivel ? [i0, i1] : null; }).filter(Boolean);
-    const temDepois = pares.length > 0;
+    const temDepois = pares.length >= 5;   // 66: o "hoje" aparece a partir de 5 mulheres avaliadas (com 1 a 4, o percentual engana e pode identificar)
     const imps = temDepois ? pares.map(x => x[0]) : (S.diagnosticos || []).map(x => x.dados && x.dados.impacto).filter(x => x && x.ebia_nivel);
     const impsD = pares.map(x => x[1]);
     const nImp = imps.length, nAv = pares.length;
-    const pc = (l, fn) => l.length ? Math.round(l.filter(fn).length / l.length * 100) : null;
+    const pc = (l, fn) => l.length ? Math.round(l.filter(fn).length / l.length * 100) : null;   // 66: lista vazia (ninguém vende, por exemplo) dá "—", não 0%
     const md = (l, k) => { const v = l.map(x => x[k]).filter(x => x != null); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10 : null; };
     const avPar = avs.filter(a => MQ.porCampo(S.diagnosticos, 'ficha_id', 'renda', x => x.renda_quintal != null).has(a.ficha_id) && a.dados && a.dados.renda_quintal != null);
     const mqD = avPar.length ? mediana(avPar.map(a => a.dados.renda_quintal)) : null;
@@ -4585,17 +4589,17 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     // [indicador, início, hoje, unidade, "melhor quando sobe"]
     const linhasPP = nImp ? [
       ['Em insegurança alimentar (EBIA)', pc(imps, x => x.ebia_nivel !== 'seguranca'), pc(impsD, x => x.ebia_nivel !== 'seguranca'), '%', false],
-      ['Passando fome (insegurança moderada ou grave)', pc(imps, x => ['moderada', 'grave'].includes(x.ebia_nivel)), pc(impsD, x => ['moderada', 'grave'].includes(x.ebia_nivel)), '%', false],
+      ['Insegurança moderada ou grave', pc(imps, x => ['moderada', 'grave'].includes(x.ebia_nivel)), pc(impsD, x => ['moderada', 'grave'].includes(x.ebia_nivel)), '%', false],
       ['Dias por semana comendo do quintal', md(imps, 'dias_consumo'), md(impsD, 'dias_consumo'), 'd', true],
       ['Vendem ou trocam o que produzem', pc(imps, x => x.vende), pc(impsD, x => x.vende), '%', true],
-      ['Decidem sobre o dinheiro da venda', pc(imps, x => ['ela', 'ela_e_outro'].includes(x.decide)), pc(impsD, x => ['ela', 'ela_e_outro'].includes(x.decide)), '%', true]
+      ['Decidem sobre o dinheiro da venda (entre as que vendem)', pc(imps.filter(x => x.vende), x => ['ela', 'ela_e_outro'].includes(x.decide)), pc(impsD.filter(x => x.vende), x => ['ela', 'ela_e_outro'].includes(x.decide)), '%', true]
     ] : [];
     const fmtV = (v, u) => v == null ? '—' : u === '%' ? v + '%' : v.toLocaleString('pt-BR') + (u === 'd' ? (v === 1 ? ' dia' : ' dias') : '');
     const mudanca = (a, b, u, sobe) => { if (a == null || b == null) return '<span class="pp2-chip">—</span>'; const dlt = Math.round((b - a) * 10) / 10;
       if (!dlt) return '<span class="pp2-chip">igual</span>';
       const bom = sobe ? dlt > 0 : dlt < 0, txt = (dlt > 0 ? '+' : '−') + Math.abs(dlt).toLocaleString('pt-BR') + (u === '%' ? ' p.p.' : u === 'd' ? (Math.abs(dlt) === 1 ? ' dia' : ' dias') : '');
       return `<span class="pp2-chip ${bom ? 'bom' : 'ruim'}"><span aria-hidden="true">${dlt > 0 ? '▲' : '▼'}</span> ${txt}<span class="so-leitor"> (${bom ? 'melhorou' : 'piorou'})</span></span>`; };
-    const brl = v => R.fmtBRL(v || 0).replace(',00', '');
+    const brl = v => v == null ? '—' : R.fmtBRL(v).replace(',00', '');
     const kpiQ = mqD != null
       ? `<div class="pp2-kpi"><span class="pp2-k-rot">Renda com o quintal</span><span class="pp2-k-val"><span class="pp2-antes">${brl(mqA)}</span><span class="pp2-seta" aria-hidden="true">→</span><b class="num">${brl(mqD)}</b></span><span class="pp2-k-sub">mediana por mês, ${avPar.length === 1 ? 'no quintal avaliado' : 'nos ' + avPar.length + ' quintais avaliados'} (antes → hoje)</span></div>`
       : `<div class="pp2-kpi"><span class="pp2-k-rot">Renda com o quintal</span><span class="pp2-k-val"><b class="num">${brl(mq)}</b></span><span class="pp2-k-sub">mediana por mês, no diagnóstico</span></div>`;
@@ -4654,7 +4658,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
             <div class="pp2-kpi"><span class="pp2-k-rot">Pessoas na equipe</span><span class="pp2-k-val"><b class="num">${ativos.length}</b></span><span class="pp2-k-sub">ativas, de todas as funções</span></div>
             <div class="pp2-kpi"><span class="pp2-k-rot">Habilitadas</span><span class="pp2-k-val"><b class="num">${habil}</b><span class="pp2-antes-n">de ${ativos.length}</span></span>
               <span class="ex2-bar" aria-hidden="true"><i class="${ativos.length && habil >= ativos.length ? 'cheio' : ''}" style="width:${pcHab}%"></i></span>
-              <span class="pp2-k-sub">${habil >= ativos.length ? 'todas prontas para trabalhar e receber' : (ativos.length - habil) + ' ainda sem habilitação completa'}</span></div></div>
+              <span class="pp2-k-sub">${!ativos.length ? 'ninguém cadastrado ainda' : habil >= ativos.length ? 'todas prontas para trabalhar e receber' : (ativos.length - habil) + ' ainda sem habilitação completa'}</span></div></div>
           <ul class="ex2">
             ${vaga('Bolsistas (articulação e apoio estadual)', bols, 10, '2 por estado')}
             ${vaga('Coordenação técnica', conta('coord_tecnico'), 1)}
@@ -4920,7 +4924,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const fichas = []; (municipios || []).forEach(m => { for (let i = 0; i < (m.n || 0); i++) fichas.push({ id: '', uf: m.uf, municipio: m.municipio, resultado: 'selecionada', situacao: 'aprovada' }); });
     return mapa({ mapaUF: '', mapaMun: '' }, { fichas }, { resumo: true });
   }
-  MQ.painelUI = { LEG_META, LEG_RETRATO, mapaResumo, visaoGeral, mesDoProjeto, mapaUFs, escalaRaios, espalhar, marcasTamanho, infoMeta, execucaoGeral, chipStatus, STATUS, cronograma };
+  MQ.painelUI = { previsto, LEG_META, LEG_RETRATO, mapaResumo, visaoGeral, mesDoProjeto, mapaUFs, escalaRaios, espalhar, marcasTamanho, infoMeta, execucaoGeral, chipStatus, STATUS, cronograma };
 })();
 ;
 /* ===== fotodia.js ===== */
@@ -6939,8 +6943,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         ${podeCriarTurma() ? '<button class="btn pri" data-acao="fic-turma-nova">+ Nova turma</button>' : ''}</div>
       <div class="eq-kpis" aria-label="Resumo do curso FIC">
         ${U().kpi(turmas().length, null, 'turma' + (turmas().length === 1 ? '' : 's'), 1, { sem: true, enxuto: true, nota: turmas().length ? 'criada' + (turmas().length === 1 ? '' : 's') + ' pelos professores' : 'nenhuma ainda', notaTom: turmas().length ? 'tom-neutro' : 'tom-aviso' })}
-        ${U().kpi(comMat.length, pessoas.length, 'matriculadas (coordenação técnica, bolsistas e agentes)', 2, { enxuto: true, nota: comMat.length >= pessoas.length && pessoas.length ? 'completo' : (pessoas.length - comMat.length) + ' faltando', notaTom: comMat.length >= pessoas.length && pessoas.length ? '' : 'tom-aviso' })}
-        ${U().kpi(sem.length, null, 'ainda sem matrícula', 3, { sem: true, enxuto: true, crit: sem.length > 0, nota: sem.length ? 'matricule em uma turma' : 'ninguém de fora', notaTom: sem.length ? 'tom-crit' : '' })}
+        ${U().kpi(comMat.length, pessoas.length, 'matriculadas (coordenação técnica, bolsistas e agentes)', 2, { enxuto: true, nota: !pessoas.length ? 'ninguém para matricular ainda' : comMat.length >= pessoas.length ? 'completo' : (pessoas.length - comMat.length) + ' faltando', notaTom: !pessoas.length ? 'tom-neutro' : comMat.length >= pessoas.length ? '' : 'tom-aviso' })}
+        ${U().kpi(sem.length, null, 'ainda sem matrícula', 3, { sem: true, enxuto: true, crit: sem.length > 0, nota: sem.length ? 'matricule em uma turma' : pessoas.length ? 'todas matriculadas' : '—', notaTom: sem.length ? 'tom-crit' : '' })}
         ${U().kpi(professores().length, MQ.regras.MAX_PROFESSORES, 'professor' + (professores().length === 1 ? '' : 'es') + ' do FIC', 4, { enxuto: true, nota: professores().length >= MQ.regras.MAX_PROFESSORES ? 'completo' : 'vaga aberta', notaTom: professores().length >= MQ.regras.MAX_PROFESSORES ? '' : 'tom-aviso' })}
       </div>
       ${sem.length ? blocoSem(sem) : pessoas.length ? '<div class="aviso ok-aviso">Todas as pessoas que fazem o curso (coordenação técnica, bolsistas e agentes) estão matriculadas no FIC.</div>' : ''}
@@ -7539,27 +7543,40 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     outro: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2"/>'
   };
   const icone = (t, tam) => `<svg viewBox="0 0 24 24" width="${tam || 22}" height="${tam || 22}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${IC[t] || IC.outro}</svg>`;
-  const DIAS = [['seg', 'Seg', /segunda/], ['ter', 'Ter', /terca/], ['qua', 'Qua', /quarta/], ['qui', 'Qui', /quinta/], ['sex', 'Sex', /sexta/], ['sab', 'Sáb', /sabado/], ['dom', 'Dom', /domingo/]];
+  /* 66: dia da semana lido só do DETALHE do canal, palavra inteira ("quinta" não casa com "Quintais"; "São Domingos" não é domingo),
+     com abreviações (seg, ter, qua, qui, sex, sáb, dom, 2ª) e intervalo ("segunda a sexta", "seg-sex"). "segunda quinzena" não conta. */
+  const DIAS = [['seg', 'Seg', /\b(segundas?(-feiras?)?|seg|2a(-feira)?)\b(?!\s+quinzena)/], ['ter', 'Ter', /\b(tercas?(-feiras?)?|ter|3a(-feira)?)\b/], ['qua', 'Qua', /\b(quartas?(-feiras?)?|qua|4a(-feira)?)\b/],
+    ['qui', 'Qui', /\b(quintas?(-feiras?)?|qui|5a(-feira)?)\b/], ['sex', 'Sex', /\b(sextas?(-feiras?)?|sex|6a(-feira)?)\b/], ['sab', 'Sáb', /\b(sabados?|sab)\b/], ['dom', 'Dom', /(?<!sao )\b(domingos?|dom)\b/]];
+  function diasDe(texto) {
+    const t = norm(texto).replace(/[ºª°]/g, 'a').replace(/\s+/g, ' ');
+    const marc = DIAS.map(([, , re]) => re.test(t));
+    // intervalo: "segunda a sexta", "seg-sex", "de terça até sábado"
+    const nomes = DIAS.map(([, , re]) => new RegExp(re.source));
+    const m = t.match(/[a-z0-9]+(?:-feiras?)?(?:\s+(?:ate|a)\s+|\s*-\s*(?!feira))[a-z0-9]+/g) || [];
+    m.forEach(par => { const [a, b] = par.split(/\s+(?:ate|a)\s+|\s*-\s*(?!feira)/); const ia = nomes.findIndex(r => r.test(a || '')), ib = nomes.findIndex(r => r.test(b || ''));
+      if (ia >= 0 && ib > ia) for (let i = ia; i <= ib; i++) marc[i] = true; });
+    return marc;
+  }
   function secaoCanais(ufFixo) {
     if (S().vendaSemBanco) return `<section class="secao" aria-labelledby="t-venda"><h2 id="t-venda">Onde vender</h2>
       <p class="aviso">A orientação de venda ainda não está instalada no servidor. A coordenação geral roda o arquivo <b>44_venda.sql</b> no Supabase.</p></section>`;
     const l = canais().filter(c => !ufFixo || c.uf === ufFixo); const porMun = {};
-    l.forEach(c => { const k = c.uf + '|' + c.municipio; (porMun[k] = porMun[k] || []).push(c); });
+    l.forEach(c => { const k = c.uf + '|' + norm(c.municipio); (porMun[k] = porMun[k] || []).push(c); });
     const chaves = Object.keys(porMun).sort((a, b) => a.localeCompare(b));
-    const ativos = l.filter(c => c.ativo);
+    const ativos = l.filter(c => c.ativo); const munAtivos = new Set(ativos.map(c => c.uf + '|' + norm(c.municipio))).size;
     // 1. tipos de canal, com ícone e contagem (feira, merenda e PAA aparecem mesmo zerados: são os caminhos principais)
     const cont = {}; ativos.forEach(c => { cont[c.tipo] = (cont[c.tipo] || 0) + 1; });
     const tipos = TIPOS.filter(([k]) => cont[k] || ['feira', 'merenda', 'paa'].includes(k));
     const blocoTipos = `<ul class="vd2-tipos">${tipos.map(([k, t]) => `<li class="vd2-t t-${k}${cont[k] ? '' : ' zero'}"><span class="vd2-ic">${icone(k)}</span><b class="num">${cont[k] || 0}</b><span>${E(t)}</span></li>`).join('')}</ul>`;
     // 2. semana das feiras: em que dia há feira (lido do detalhe: "Sábados, 5h às 11h")
-    const feiras = ativos.filter(c => c.tipo === 'feira'); const porDia = DIAS.map(([k, , re]) => feiras.filter(c => re.test(norm(c.detalhe + ' ' + c.nome))).length);
-    const semDia = feiras.filter(c => !DIAS.some(([, , re]) => re.test(norm(c.detalhe + ' ' + c.nome)))).length;
+    const feiras = ativos.filter(c => c.tipo === 'feira'); const dd = feiras.map(c => diasDe(c.detalhe || ''));
+    const porDia = DIAS.map((_, i) => dd.filter(x => x[i]).length), semDia = dd.filter(x => !x.some(Boolean)).length;
     const maxDia = Math.max(1, ...porDia);
     const blocoSemana = feiras.length ? `<div class="vd2-semana"><h3>Semana das feiras</h3><ol class="vd2-dias">${DIAS.map(([k, nm], i) => `<li class="${porDia[i] ? 'tem' : ''}" style="--n:${(porDia[i] / maxDia).toFixed(2)}"><span class="vd2-bola num" aria-hidden="true">${porDia[i] || ''}</span><span class="vd2-dia">${nm}</span><span class="so-leitor">: ${porDia[i]} feira${porDia[i] === 1 ? '' : 's'}</span></li>`).join('')}</ol>
       ${semDia ? `<p class="small muted">${semDia} feira${semDia === 1 ? '' : 's'} sem o dia no detalhe: escreva o dia (ex.: "Sábados, 5h às 11h") para aparecer aqui.</p>` : ''}</div>` : '';
     // 3. cobertura: municípios com mulher selecionada × municípios com canal ativo
     const comCanal = new Set(ativos.map(c => c.uf + '|' + norm(c.municipio)));
-    const munSel = {}; (S().fichas || []).filter(f => f.resultado === 'selecionada' && (!ufFixo || f.uf === ufFixo)).forEach(f => { const k = f.uf + '|' + norm(f.municipio); munSel[k] = munSel[k] || { uf: f.uf, nome: f.municipio, n: 0 }; munSel[k].n++; });
+    const munSel = {}; (S().fichas || []).filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada' && (!ufFixo || f.uf === ufFixo)).forEach(f => { const k = f.uf + '|' + norm(f.municipio); munSel[k] = munSel[k] || { uf: f.uf, nome: f.municipio, n: 0 }; munSel[k].n++; });
     const listaSel = Object.entries(munSel); const semCanal = listaSel.filter(([k]) => !comCanal.has(k)).map(([, v]) => v).sort((a, b) => b.n - a.n);
     const cob = listaSel.length ? Math.round((listaSel.length - semCanal.length) / listaSel.length * 100) : 0;
     const blocoCob = listaSel.length ? `<div class="vd2-cob"><h3>Municípios com canal de venda</h3>
@@ -7568,7 +7585,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       ${semCanal.length ? `<p class="small">Sem canal ainda:</p><ul class="vd2-falta">${semCanal.slice(0, 12).map(m => `<li>${E(m.nome)}${ufFixo ? '' : '/' + E(m.uf)} <span class="muted">· ${m.n}</span></li>`).join('')}${semCanal.length > 12 ? `<li class="muted">e mais ${semCanal.length - 12}</li>` : ''}</ul>`
         : '<p class="vd2-ok small">Todo município com mulher selecionada tem pelo menos um canal.</p>'}</div>` : '';
     const conteudo = `${podeCanal() ? `<div class="acoes"><button type="button" class="btn pri peq" data-acao="venda-canal-novo"${ufFixo ? ` data-uf="${E(ufFixo)}"` : ''}>+ Cadastrar canal</button></div>` : ''}
-      ${chaves.length ? `<div class="vd2-muns">${chaves.map(k => { const [uf, mun] = k.split('|'); return `<div class="vd-mun vd2-mun"><h3><span class="etq etq-uf">${E(uf)}</span> ${E(mun)}</h3>
+      ${chaves.length ? `<div class="vd2-muns">${chaves.map(k => { const uf = k.split('|')[0], mun = porMun[k][0].municipio; return `<div class="vd-mun vd2-mun"><h3><span class="etq etq-uf">${E(uf)}</span> ${E(mun)}</h3>
         <ul class="vd-lista">${porMun[k].sort((a, b) => a.tipo.localeCompare(b.tipo) || a.nome.localeCompare(b.nome)).map(c => `<li class="vd2-c t-${E(c.tipo)}${c.ativo ? '' : ' inativo'}"><span class="vd2-ic peq" title="${E(nomeTipo(c.tipo))}">${icone(c.tipo, 18)}</span><span class="vd2-c-txt">
           <span class="vd-l1"><b>${E(c.nome)}</b> <span class="etq">${E(nomeTipo(c.tipo))}</span>${c.ativo ? '' : ' <span class="etq">Desativado</span>'}</span>
           ${c.detalhe ? `<span class="small">${E(c.detalhe)}</span>` : ''}${c.contato ? `<span class="small muted">Contato: ${E(c.contato)}</span>` : ''}
@@ -7578,7 +7595,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `<section class="secao vd2" aria-labelledby="t-venda"><div class="secao-cab"><div><h2 id="t-venda">Onde vender${ufFixo ? ' · ' + E(U().nomeUF(ufFixo)) : ''}</h2>
       <p>Canais de venda de cada município. Entram na folha de orientação que a mulher recebe na visita.</p></div></div>
       ${ativos.length || listaSel.length ? `<div class="vd2-painel">${blocoTipos}<div class="vd2-duas">${blocoSemana}${blocoCob}</div></div>` : ''}
-      ${U().dobra('venda-canais', `<span><b>${ativos.length} cana${ativos.length === 1 ? 'l' : 'is'} em ${chaves.length} município${chaves.length === 1 ? '' : 's'}</b> <span class="small muted">· ver e cadastrar</span></span>`, conteudo)}</section>`;
+      ${U().dobra('venda-canais', `<span><b>${ativos.length} cana${ativos.length === 1 ? 'l' : 'is'} em ${munAtivos} município${munAtivos === 1 ? '' : 's'}</b> <span class="small muted">· ver e cadastrar</span></span>`, conteudo)}</section>`;
   }
   const botaoOrientar = fid => S().vendaSemBanco ? '' : `<button type="button" class="btn peq" data-acao="venda-orientar" data-ficha="${E(fid)}">Orientação de venda</button>`;
 
@@ -7669,7 +7686,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       await U().ocupado(form, async () => { await gravar(); U().abrirPainel({ tipo: 'venda-folha' }); });
     }
   }
-  MQ.vendaUI = { orientar, folhaHTML, folhaTexto, secaoCanais, botaoOrientar, painel, clique, enviar, TIPOS, REVISADO };
+  MQ.vendaUI = { orientar, folhaHTML, folhaTexto, secaoCanais, botaoOrientar, painel, clique, enviar, TIPOS, REVISADO, diasDe };
 })();
 ;
 /* ===== pagamentos.js ===== */
@@ -12342,18 +12359,20 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const dc = (d.documentos || []).filter(x => !x.arquivado_em);
     const r = { orgao,
       atividades: { eventos: { autorizados: p.filter(x => x.tipo === 'evento' && x.situacao === 'autorizado').length, pedidos: p.filter(x => x.tipo === 'evento' && pend(x)).length, realizados: p.filter(x => x.tipo === 'evento' && x.situacao === 'autorizado' && String(x.data_ref) < hoje).length },
-        intercambio: { autorizados: p.filter(x => x.tipo === 'passagem' && x.situacao === 'autorizado' && !ped(x)).length, pedidos: p.filter(x => x.tipo === 'passagem' && pend(x) && !ped(x)).length },
-        pedagogico: { autorizados: p.filter(x => x.tipo === 'passagem' && x.situacao === 'autorizado' && ped(x)).length, pedidos: p.filter(x => x.tipo === 'passagem' && pend(x) && ped(x)).length } },
+        intercambio: { autorizados: p.filter(x => x.tipo === 'passagem' && x.situacao === 'autorizado' && !ped(x)).length, pedidos: p.filter(x => x.tipo === 'passagem' && pend(x) && !ped(x)).length,
+          viagens_feitas: new Set(p.filter(x => x.tipo === 'passagem' && x.situacao === 'autorizado' && !ped(x) && String(x.data_ref) < hoje).map(x => x.data_ref)).size },
+        pedagogico: { autorizados: p.filter(x => x.tipo === 'passagem' && x.situacao === 'autorizado' && ped(x)).length, pedidos: p.filter(x => x.tipo === 'passagem' && pend(x) && ped(x)).length,
+          viagens_feitas: new Set(p.filter(x => x.tipo === 'passagem' && x.situacao === 'autorizado' && ped(x) && String(x.data_ref) < hoje).map(x => x.data_ref)).size } },
       canais: { por_tipo: cont(c, 'tipo'), municipios: new Set(c.map(x => x.uf + '|' + semAcento(x.municipio))).size },
       agua: cont(Object.values(ult), 'situacao'),
-      fic: { encontros: en.length, horas: en.reduce((t, x) => t + (+x.carga_horaria || 0), 0), feitos: en.filter(x => String(x.data) <= hoje).length, presencas: pr.filter(x => x.presente).length, marcacoes: pr.length },
-      documentos: { por_tipo: cont(dc, 'tipo'), ultimos: dc.filter(x => ['ata', 'relatorio', 'plano', 'oficio', 'contrato'].includes(x.tipo)).sort((a, b) => String(b.data_documento).localeCompare(String(a.data_documento))).slice(0, 10).map(x => ({ tipo: x.tipo, titulo: x.titulo, data: x.data_documento, uf: x.uf || null })) } };
+      fic: { encontros: en.length, horas: en.reduce((t, x) => t + (+x.carga_horaria || 0), 0), horas_feitas: en.filter(x => String(x.data) <= hoje).reduce((t, x) => t + (+x.carga_horaria || 0), 0), feitos: en.filter(x => String(x.data) <= hoje).length, presencas: pr.filter(x => x.presente).length, marcacoes: pr.length },
+      documentos: { por_tipo: cont(dc, 'tipo'), ultima_data: dc.reduce((o, x) => { if (!o[x.tipo] || String(x.data_documento) > o[x.tipo]) o[x.tipo] = String(x.data_documento); return o; }, {}) } };
     if (orgao === 'mda' && previa) {   // na demonstração, o padrão do banco: o resumo financeiro aparece só na prévia
       const pl = (d.execPlanilhas || []).slice().sort((a, b) => String(b.posicao_em).localeCompare(String(a.posicao_em)))[0];
       if (!pl) r.financeiro = { liberado: 'previa', sem_planilha: true };
-      else { const pi = {}, pm = {}; (pl.linhas || []).forEach(l => { const k = l.item + '|' + (l.rubrica || ''); pi[k] = (pi[k] || 0) + (+l.valor || 0);
-          const m = l.data ? String(l.data).slice(0, 7) : String(pl.posicao_em).slice(0, 7); pm[m] = pm[m] || { mes: m, gasto: 0, recebido: 0 }; pm[m][l.item === 'repasse_mda' ? 'recebido' : 'gasto'] += +l.valor || 0; });
-        r.financeiro = { liberado: 'previa', posicao_em: pl.posicao_em, enviado_em: pl.enviado_em, por_item: Object.entries(pi).map(([k, v]) => ({ item: k.split('|')[0], rubrica: k.split('|')[1] || null, valor: Math.round(v * 100) / 100 })),
+      else { const pi = {}, pm = {}; (pl.linhas || []).forEach(l => { const k = (l.item || '') + '|' + (l.rubrica || ''); const vl = typeof l.valor === 'number' ? l.valor : 0; pi[k] = (pi[k] || 0) + vl;
+          const m = /^\d{4}-\d{2}/.test(String(l.data || '')) ? String(l.data).slice(0, 7) : String(pl.posicao_em).slice(0, 7); pm[m] = pm[m] || { mes: m, gasto: 0, recebido: 0 }; pm[m][l.item === 'repasse_mda' ? 'recebido' : 'gasto'] += vl; });
+        r.financeiro = { liberado: 'previa', posicao_em: pl.posicao_em, enviado_em: pl.enviado_em, por_item: Object.entries(pi).map(([k, v]) => ({ item: k.split('|')[0] || null, rubrica: k.split('|')[1] || null, valor: Math.round(v * 100) / 100 })),
           por_mes: Object.values(pm).sort((a, b) => a.mes.localeCompare(b.mes)) }; }
     }
     return r;
@@ -12362,25 +12381,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   /* ---------- peças de tela ---------- */
   const numeroGrande = (v, rot, sub) => `<div class="ac-kpi"><b class="num">${v}</b><span class="l">${E(rot)}</span>${sub ? `<small>${E(sub)}</small>` : ''}</div>`;
-  // barra de progresso com o número ao lado (o valor nunca depende só da cor)
-  function barra(rot, feito, alvo, nota) {
-    const p = alvo ? Math.min(100, feito / alvo * 100) : 0;
-    return `<div class="ac-barra"><div class="ac-barra-t"><span>${E(rot)}</span><b class="num">${n(feito)}${alvo ? `<small> de ${n(alvo)}</small>` : ''}</b></div>
-      <span class="medidor" role="img" aria-label="${E(rot)}: ${n(feito)}${alvo ? ' de ' + n(alvo) + ' (' + Math.round(p) + '%)' : ''}"><i style="width:${p.toFixed(1)}%"></i></span>${nota ? `<small class="muted">${E(nota)}</small>` : ''}</div>`;
-  }
-  /* metas físicas: a mesma conta e a mesma situação que a coordenação vê na Visão geral */
-  function metas(a) {
-    if (!MQ.painelUI || !MQ.painelUI.infoMeta) return '';
-    const feitas = (k, etapa) => Array.from({ length: total(a, k) }, () => ({ etapa, situacao: 'realizada' }));
-    const falso = { diagnosticos: Array.from({ length: total(a, 'diagnosticos') }, (_, i) => ({ situacao: i < total(a, 'planos') ? 'aprovado' : 'aguardando' })),
-      visitas: feitas('implantados', 'implantacao').concat(feitas('acompanhamentos', 'acompanhamento')) };
-    const mes = MQ.painelUI.mesDoProjeto(new Date(String(a.hoje || MQ.regras.hoje()) + 'T12:00:00'));
-    return MQ.METAS.filter(m => ['diagnostico', 'implantacao', 'visitas'].includes(m.fonte)).map(m => { const i = MQ.painelUI.infoMeta(m, falso, { aptas: [], pagaveis: [] }, mes);
-      return `<div class="ac-meta"><div class="ac-meta-t"><span class="eyebrow">Meta ${E(m.id.slice(1))}</span><b>${E(m.nome)}</b>${MQ.painelUI.chipStatus(i.st)}</div>
-        <div class="ac-meta-n"><b class="num">${n(i.atual)}</b><span> de ${n(i.alvo)} ${E(i.un)}</span></div>
-        <span class="medidor" role="img" aria-label="${Math.round(i.pct)}% da meta"><i class="${MQ.painelUI.STATUS[i.st] ? MQ.painelUI.STATUS[i.st].cls : ''}" style="width:${i.pct.toFixed(1)}%"></i></span>
-        <small class="muted">Previsto no plano de trabalho: do mês ${m.ini} ao mês ${m.fim} do projeto.</small></div>`; }).join('');
-  }
+
   /* evolução por mês: colunas com o total em cima; a tabela ao lado traz cada etapa (leitor de tela lê a tabela) */
   function evolucao(a) {
     const l = a.mensal || []; if (!l.length) return '<p class="muted">As visitas feitas aparecem aqui, mês a mês, assim que forem registradas.</p>';
@@ -12439,20 +12440,6 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <p class="small muted">Situação alimentar pela Escala Brasileira de Insegurança Alimentar (EBIA).</p>`
           : '<p class="muted">A avaliação final é a 5ª visita a cada quintal. Os resultados aparecem aqui quando as primeiras forem feitas.</p>'}</div></div>`;
   }
-  function funil(a) {
-    return `<div class="ac-funil">${barra('Mulheres indicadas pelas comunidades', total(a, 'indicadas'), 0)}${barra('Selecionadas e aprovadas', total(a, 'selecionadas'), ALVO.selecionadas)}
-      ${barra('Diagnósticos feitos', total(a, 'diagnosticos'), ALVO.diagnosticos)}${barra('Planos de quintal aprovados', total(a, 'planos'), ALVO.diagnosticos)}
-      ${barra('Quintais implantados', total(a, 'implantados'), ALVO.implantados)}${barra('Visitas de acompanhamento', total(a, 'acompanhamentos'), ALVO.acompanhamentos)}${barra('Avaliações finais', total(a, 'avaliacoes'), ALVO.avaliacoes)}</div>`;
-  }
-  function estados(a) {
-    return `<div class="ac-ufs">${a.por_uf.map(u => `<section class="bloco ac-uf" aria-label="${E(U().nomeUF ? U().nomeUF(u.uf) : u.uf)}"><h3>${E(U().nomeUF ? U().nomeUF(u.uf) : u.uf)}${u.atrasadas ? ` <span class="chip crit">${n(u.atrasadas)} visita${u.atrasadas > 1 ? 's' : ''} atrasada${u.atrasadas > 1 ? 's' : ''}</span>` : ' <span class="chip ok">Visitas em dia</span>'}</h3>
-        ${barra('Selecionadas', u.selecionadas, ALVO_UF.selecionadas)}${barra('Diagnósticos', u.diagnosticos, ALVO_UF.diagnosticos)}${barra('Quintais implantados', u.implantados, ALVO_UF.implantados)}${barra('Acompanhamentos', u.acompanhamentos, ALVO_UF.acompanhamentos)}
-        <dl class="dl ac-dl"><dt>Equipe no estado</dt><dd>${n(u.bolsistas)} bolsista${u.bolsistas === 1 ? '' : 's'} e ${n(u.agentes)} agente${u.agentes === 1 ? '' : 's'} de campo</dd>
-          ${u.habilitadas != null ? `<dt>Prontas para trabalhar</dt><dd>${n(u.habilitadas)} de ${n(u.equipe_campo)} com a habilitação completa${u.equipe_campo && u.habilitadas < u.equipe_campo ? ' <span class="chip pend">falta habilitar ' + n(u.equipe_campo - u.habilitadas) + '</span>' : ''}</dd>` : ''}
-          ${u.diag_aguardando != null ? `<dt>Diagnósticos esperando</dt><dd>${n(u.diag_aguardando)} aguardando a coordenação${u.diag_devolvidos ? ' · ' + n(u.diag_devolvidos) + ' devolvido' + (u.diag_devolvidos > 1 ? 's' : '') + ' para correção' : ''}</dd>` : ''}
-          <dt>Comunidades</dt><dd>${n(u.comunidades)} em ${n(u.municipios)} município${u.municipios === 1 ? '' : 's'}</dd><dt>Visitas agendadas</dt><dd>${n(u.agendadas)}</dd>
-          <dt>Lista de espera</dt><dd>${n(u.espera)}</dd><dt>Sem água na seca</dt><dd>${n(u.sem_agua + u.diag_sem_agua)}</dd></dl></section>`).join('')}</div>`;
-  }
   function parados(a) {
     const atr = total(a, 'atrasadas'), agua = total(a, 'sem_agua') + total(a, 'diag_sem_agua'), esp = total(a, 'espera');
     const semEq = a.por_uf.filter(u => u.bolsistas < 2).map(u => u.uf);
@@ -12490,27 +12477,43 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function abaResumo(a) {
     const x = a.extra || {};
     return `<div class="ac2-kpis">${destaque(total(a, 'selecionadas'), 'mulheres selecionadas', 'em ' + n(total(a, 'municipios')) + ' ' + pl(total(a, 'municipios'), 'município', 'municípios'), ALVO.selecionadas)}${destaque(total(a, 'implantados'), 'quintais implantados', '', ALVO.implantados)}
-        ${destaque(total(a, 'visitas_feitas'), 'visitas de campo feitas', '', 1000)}${destaque(total(a, 'pessoas'), 'pessoas nas famílias', 'alcançadas pelos quintais')}</div>
+        ${destaque(total(a, 'visitas_feitas'), 'visitas de campo feitas', '', 1000)}${destaque(total(a, 'pessoas'), 'pessoas nas famílias', 'das mulheres selecionadas')}</div>
       ${cartao('O caminho de cada quintal', caminho(a) + '<p class="ac2-nota">Da indicação pela comunidade até a avaliação final: cada etapa é registrada no sistema, com data, local e foto.</p>')}
       ${cartao('O que pede atenção', parados(a))}${cartao('Visitas feitas por mês', evolucao(a))}`;
   }
   /* metas e cronograma: cada meta com o número, a barra e a faixa do período no ano do projeto */
+  /* 66: a situação de cada meta usa a mesma regra da coordenação (MQ.painelUI.infoMeta / previsto): o MDA e a coordenação veem o mesmo */
+  function situacaoMetas(a) {
+    const x = a.extra || {}, at = x.atividades || {}, P = MQ.painelUI || {};
+    const mes = P.mesDoProjeto ? P.mesDoProjeto(new Date(String(a.hoje || MQ.regras.hoje()) + 'T12:00:00')) : 1;
+    const feitas = (k, etapa) => Array.from({ length: total(a, k) }, () => ({ etapa, situacao: 'realizada' }));
+    const falso = { diagnosticos: Array.from({ length: total(a, 'diagnosticos') }, (_, i) => ({ situacao: i < total(a, 'planos') ? 'aprovado' : 'aguardando' })),
+      visitas: feitas('implantados', 'implantacao').concat(feitas('acompanhamentos', 'acompanhamento')) };
+    const regra = (m, v, alvo) => { const prev = P.previsto ? Math.round(P.previsto(m, mes) * alvo / m.alvo) : 0, antes = mes - 1 < m.ini, depois = mes - 1 >= m.fim;
+      return v >= alvo ? 'concluida' : antes ? (v > 0 ? 'andamento' : 'nao') : depois ? 'atrasada' : v >= prev ? 'andamento' : v >= prev * 0.7 ? 'atencao' : 'atrasada'; };
+    return { mes, metas: MQ.METAS.map(m => {
+      if (['diagnostico', 'implantacao', 'visitas'].includes(m.fonte) && P.infoMeta) { const i = P.infoMeta(m, falso, { aptas: [], pagaveis: [] }, mes); return { m, v: i.atual, alvo: i.alvo, un: i.un, st: i.st }; }
+      if (m.id === 'M1') {   // equipe: as 10 bolsistas cadastradas; nunca "concluída" antes do fim do projeto (a meta é ter equipe os 12 meses)
+        const v = total(a, 'bolsistas'); const st = v >= 10 ? (mes >= 13 ? 'concluida' : 'andamento') : (MQ.regras.diasAte(MQ.PROJETO.prazoIndicacao) < 0 ? 'atrasada' : 'atencao');
+        return { m, v, alvo: 10, un: 'bolsistas no projeto (meta: equipe ativa os 12 meses)', st }; }
+      if (m.id === 'M5') { const v = +(at.eventos || {}).realizados || 0; return { m, v, alvo: 5, un: 'eventos feitos', sub: n((at.eventos || {}).autorizados) + ' autorizados', st: regra(m, v, 5) }; }
+      if (m.id === 'M6') { const viag = +(at.intercambio || {}).viagens_feitas || 0, v = Math.min(1, viag); return { m, v, alvo: 1, un: 'intercâmbio feito', sub: n((at.intercambio || {}).autorizados) + ' passagens autorizadas', st: regra(m, v, 1) }; }
+      if (m.id === 'M7') { const v = +(at.pedagogico || {}).viagens_feitas || 0; return { m, v, alvo: 8, un: 'missões feitas', sub: n((at.pedagogico || {}).autorizados) + ' passagens autorizadas', st: regra(m, v, 8) }; }
+      return { m, v: null, alvo: m.alvo, un: m.un, sub: 'registrado fora do sistema', st: mes - 1 < m.ini ? 'nao' : 'fora' };
+    }) };
+  }
+  const ST_TXT = { concluida: ['ok', 'Concluída'], andamento: ['and', 'Em andamento'], atencao: ['aten', 'Atenção'], atrasada: ['crit', 'Atrasada'], nao: ['nao', 'Não iniciada'], fora: ['nao', 'Fora do sistema'] };
   function abaMetas(a) {
-    const x = a.extra || {}, at = x.atividades || {}, f = a.formacao || {};
-    const mes = MQ.painelUI && MQ.painelUI.mesDoProjeto ? MQ.painelUI.mesDoProjeto(new Date(String(a.hoje || MQ.regras.hoje()) + 'T12:00:00')) : 1;
-    const hab = total(a, 'habilitadas'), eqc = total(a, 'equipe_campo');
-    const valor = { M1: [hab, eqc || 20, 'pessoas da equipe de campo habilitadas'], M2: [total(a, 'diagnosticos'), 200, 'diagnósticos'], M3: [total(a, 'implantados'), 200, 'quintais implantados'],
-      M4: [total(a, 'acompanhamentos'), 400, 'visitas de acompanhamento'], M5: [(at.eventos || {}).autorizados, 5, 'eventos autorizados'], M6: [(at.intercambio || {}).autorizados, 1, 'intercâmbio com passagens autorizadas'],
-      M7: [(at.pedagogico || {}).autorizados, 8, 'missões pedagógicas autorizadas'], M8: [((x.documentos || {}).por_tipo || {}).relatorio ? 0 : 0, 1, 'relatório final'] };
+    const { mes, metas } = situacaoMetas(a);
     const meses = 13, MES = ['set', 'out', 'nov', 'dez', 'jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set'];
-    const linhas = MQ.METAS.map(m => { const [v, de, un] = valor[m.id] || [0, m.alvo, m.un]; const p = pc(+v || 0, de); const fim = mes > m.fim, comeca = mes < m.ini;
-      const st = v >= de ? ['ok', 'Concluída'] : comeca ? ['nao', 'Começa no mês ' + m.ini] : fim ? ['crit', 'Prazo passou'] : ['and', 'Em andamento'];
-      return `<li class="ac2-meta"><div class="ac2-meta-t"><span class="ac2-mid">${m.id}</span><b>${E(m.nome)}</b><span class="ac2-st ${st[0]}">${st[1]}</span></div>
-        <div class="ac2-meta-n"><b class="num">${v == null ? '—' : n(v)}</b> de ${n(de)} <span>${E(un)}</span></div>
-        <div class="ac2-gantt" aria-hidden="true">${Array.from({ length: meses }, (_, i) => `<i class="${i + 1 >= m.ini && i + 1 <= m.fim ? 'per' : ''}${i + 1 === mes ? ' hoje' : ''}"></i>`).join('')}<span class="ac2-gantt-p" style="left:${((m.ini - 1) / meses * 100).toFixed(1)}%;width:${(((m.fim - m.ini + 1) / meses) * 100 * p / 100).toFixed(1)}%"></span></div></li>`; }).join('');
-    const marcos = (MQ.MARCOS || []).filter(k => k.d >= String(a.hoje || '')).slice(0, 4);
-    return `${cartao('As 8 metas do plano de trabalho', `<div class="ac2-gantt-cab" aria-hidden="true"><span></span>${MES.map((t, i) => `<span class="${i + 1 === mes ? 'hoje' : ''}">${t}</span>`).join('')}</div><ol class="ac2-metas">${linhas}</ol>
-        <p class="ac2-nota">A faixa clara é o período previsto de cada meta (set/2026 a set/2027); a parte escura é o que já foi feito; a coluna marcada é o mês atual (mês ${mes} de 13).</p>`)}
+    const linhas = metas.map(({ m, v, alvo, un, sub, st }) => { const p = v == null ? 0 : pc(v, alvo); const [cls, txt] = ST_TXT[st] || ST_TXT.nao;
+      return `<li class="ac2-meta"><div class="ac2-meta-t"><span class="ac2-mid">${m.id}</span><b>${E(m.nome)}</b><span class="ac2-st ${cls}">${txt}</span></div>
+        <div class="ac2-meta-n">${v == null ? '<b class="num">—</b>' : `<b class="num">${n(v)}</b> de ${n(alvo)}`} <span>${E(un)}</span>${sub ? ` <small>· ${E(sub)}</small>` : ''}</div>
+        <div class="ac2-gantt" aria-hidden="true">${Array.from({ length: meses }, (_, i) => `<i class="${i + 1 >= m.ini && i + 1 <= m.fim ? 'per' : ''}${i + 1 === mes ? ' hoje' : ''}"></i>`).join('')}<span class="ac2-gantt-p" style="left:${((m.ini - 1) / meses * 100).toFixed(1)}%;width:${(((m.fim - m.ini + 1) / meses) * p).toFixed(1)}%"></span></div></li>`; }).join('');
+    const feito = { equipe: total(a, 'bolsistas') >= 10, diagnostico_inicio: total(a, 'diagnosticos') > 0, M2: total(a, 'diagnosticos') >= 200 };
+    const marcos = (MQ.MARCOS || []).filter(k => k.d >= String(a.hoje || '') && !(k.feito && feito[k.feito])).slice(0, 4);
+    return `${cartao('As 8 metas do plano de trabalho', `<div class="ac2-gantt-cab" aria-hidden="true"><span></span>${MES.map((t, i) => `<span class="${i + 1 === mes ? 'hoje' : ''}" data-m="${t[0]}">${t}</span>`).join('')}</div><ol class="ac2-metas">${linhas}</ol>
+        <p class="ac2-nota">A faixa clara é o período previsto de cada meta (set/2026 a set/2027); a parte escura é o que já foi feito; a coluna marcada é o mês atual (mês ${mes} de 13). A situação segue a mesma regra que a coordenação usa: compara o feito com o previsto até o mês passado.</p>`)}
       ${marcos.length ? cartao('Próximos marcos', `<ol class="ac2-marcos">${marcos.map(k => `<li><b class="num">${MQ.regras.fmtData(k.d)}</b><span>${E(k.t)}</span>${k.meta ? `<small>${k.meta}</small>` : ''}</li>`).join('')}</ol>`) : ''}`;
   }
   /* recursos: só para o MDA, e só quando o parâmetro libera (padrão: só na prévia da coordenação) */
@@ -12521,11 +12524,21 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const O = MQ.ORCAMENTO; const it = fx.por_item || [];
     const recebido = it.filter(l => l.item === 'repasse_mda').reduce((t, l) => t + +l.valor, 0), gasto = it.filter(l => l.item !== 'repasse_mda').reduce((t, l) => t + +l.valor, 0);
     const V = MQ.PROJETO.vigencia, dia = d => new Date(String(d).slice(0, 10) + 'T12:00:00').getTime(), tempo = pc(dia(a.hoje || MQ.regras.hoje()) - dia(V.inicio), dia(V.fim) - dia(V.inicio));
-    const porRub = O.rubricas.map(r => { const ids = new Set(r.itens.map(i => i.id)); const ex = it.filter(l => l.item !== 'repasse_mda' && (ids.has(l.item) || (!l.item && l.rubrica === r.id) || (l.rubrica === r.id && !O.rubricas.some(q => q.itens.some(i => i.id === l.item))))).reduce((t, l) => t + +l.valor, 0);
+    const conhecido = new Set(O.rubricas.flatMap(r => r.itens.map(i => i.id))), rubIds = new Set(O.rubricas.map(r => r.id));
+    const gastoL = it.filter(l => l.item !== 'repasse_mda');
+    const porRub = O.rubricas.map(r => { const ids = new Set(r.itens.map(i => i.id)); const ex = gastoL.filter(l => ids.has(l.item) || (!conhecido.has(l.item) && l.rubrica === r.id)).reduce((t, l) => t + +l.valor, 0);
       return { nome: r.nome, prev: r.itens.reduce((t, i) => t + i.total, 0), ex }; });
-    const porMeta = MQ.METAS.filter(m => m.valor).map(m => { let ex = 0; O.rubricas.forEach(r => r.itens.forEach(i => { const f = !i.meta ? 0 : typeof i.meta === 'string' ? (i.meta === m.id ? 1 : 0) : (i.meta[m.id] || 0); if (f) ex += it.filter(l => l.item === i.id).reduce((t, l) => t + +l.valor, 0) * f; })); return { nome: m.id + ' · ' + m.nome, prev: m.valor, ex }; });
+    const naoClass = gastoL.filter(l => !conhecido.has(l.item) && !rubIds.has(l.rubrica)).reduce((t, l) => t + +l.valor, 0);
+    if (naoClass) porRub.push({ nome: 'Não classificado (linha sem item nem rubrica do orçamento)', prev: 0, ex: naoClass });
+    // por meta: a mesma divisão da aba Financeiro da coordenação (item com meta; ajuda de custo dividida 25/25/50; o resto em "comum")
+    const partes = i => !i.meta ? { _comum: 1 } : typeof i.meta === 'string' ? { [i.meta]: 1 } : i.meta;
+    const G = {}; MQ.METAS.forEach(m => { G[m.id] = { nome: m.id + ' · ' + m.nome, prev: 0, ex: 0 }; }); G._comum = { nome: 'Comum a todas as metas', prev: 0, ex: 0 };
+    O.rubricas.forEach(r => r.itens.forEach(i => { const ex = gastoL.filter(l => l.item === i.id).reduce((t, l) => t + +l.valor, 0);
+      Object.entries(partes(i)).forEach(([k, f]) => { if (G[k]) { G[k].prev += i.total * f; G[k].ex += ex * f; } }); }));
+    G._comum.ex += gastoL.filter(l => !conhecido.has(l.item)).reduce((t, l) => t + +l.valor, 0);
+    const porMeta = Object.values(G).filter(g => g.prev || g.ex);
     const bar = (rot, ex, prev) => `<div class="ac2-linha"><div class="ac2-linha-t"><span>${E(rot)}</span><b class="num">${brl(ex)}<small> de ${brl(prev)}</small></b></div><span class="ac2-barra" aria-hidden="true"><i style="width:${pc(ex, prev).toFixed(1)}%"></i></span></div>`;
-    return `${aviso}<div class="ac2-kpis">${kpiTxt(brl(O.total), 'valor do projeto (TED)')}${kpiTxt(brl(recebido), 'recebido do MDA')}${kpiTxt(brl(gasto), 'executado', Math.round(pc(gasto, O.total)) + '% do projeto')}${kpiTxt(brl(recebido - gasto), 'em caixa')}</div>
+    return `${aviso}<div class="ac2-kpis">${kpiTxt(brl(O.total), 'valor do projeto (TED)')}${kpiTxt(brl(recebido), 'recebido do MDA')}${kpiTxt(brl(gasto), 'executado', Math.round(pc(gasto, O.total)) + '% do projeto')}${kpiTxt(recebido ? brl(recebido - gasto) : '—', 'em caixa', recebido ? '' : 'sem repasse na planilha')}</div>
       ${cartao('Execução e tempo', `<div class="ac2-tempo">${linhaMeta('Recursos executados', Math.round(pc(gasto, O.total)), 100).replace(/<small> de 100<\/small>/, '%')}${linhaMeta('Tempo do projeto já passado', Math.round(tempo), 100).replace(/<small> de 100<\/small>/, '%')}</div><p class="ac2-nota">Posição da planilha de gastos de ${MQ.regras.fmtData(fx.posicao_em)}. Somas por item do orçamento: nenhuma despesa individual nem favorecido aparece aqui.</p>`)}
       <div class="ac2-duas">${cartao('Por meta', porMeta.map(x => bar(x.nome, x.ex, x.prev)).join(''))}${cartao('Por rubrica', porRub.map(x => bar(x.nome, x.ex, x.prev)).join(''))}</div>`;
   }
@@ -12543,21 +12556,21 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function abaMulheres(a) { return `${cartao('Quem são as mulheres', perfil(a) || '<p class="muted">Aparece quando houver mulheres selecionadas.</p>')}${cartao('O que muda na vida das famílias', impacto(a) || '<p class="muted">Aparece com os primeiros diagnósticos.</p>')}`; }
   function abaEquipe(a) {
     const x = a.extra || {}, f = x.fic || {}, fo = a.formacao || {}, d = x.documentos || {};
-    const TD = { ata: 'Ata', relatorio: 'Relatório', plano: 'Plano', oficio: 'Ofício', contrato: 'Contrato' };
+    const TDP = { ata: ['ata', 'atas'], relatorio: ['relatório', 'relatórios'], plano: ['plano', 'planos'], oficio: ['ofício', 'ofícios'], contrato: ['contrato ou termo', 'contratos ou termos'], lista_presenca: ['lista de presença', 'listas de presença'], foto: ['foto', 'fotos'], outro: ['outro', 'outros'] };
     const pres = f.marcacoes ? Math.round(f.presencas / f.marcacoes * 100) : null;
     return `${cartao('Equipe de campo por estado', `<div class="ac2-ufs">${(a.por_uf || []).map(u => `<div class="ac2-uf"><div class="ac2-uf-t"><span class="ac2-sigla">${u.uf}</span><b>${E(U().nomeUF ? U().nomeUF(u.uf) : u.uf)}</b></div>
         ${linhaMeta('Bolsistas', u.bolsistas, 2)}<p class="ac2-mini"><b class="num">${n(u.agentes)}</b> agente${u.agentes === 1 ? '' : 's'} de campo</p>${u.habilitadas != null ? linhaMeta('Habilitadas para o campo', u.habilitadas, u.equipe_campo || 0) : ''}</div>`).join('')}</div>`)}
-      ${cartao('Curso de formação (FIC)', `<div class="ac2-kpis peq">${destaque(fo.turmas || 0, pl(fo.turmas, 'turma', 'turmas'))}${destaque(fo.matriculas || 0, pl(fo.matriculas, 'pessoa matriculada', 'pessoas matriculadas'))}${destaque(f.feitos || 0, pl(f.feitos, 'encontro feito', 'encontros feitos'), 'de ' + n(f.encontros || fo.encontros || 0) + ' marcados')}${destaque(Math.round(f.horas || 0), 'horas de curso', 'somando os encontros')}</div>
+      ${cartao('Curso de formação (FIC)', `<div class="ac2-kpis peq">${destaque(fo.turmas || 0, pl(fo.turmas, 'turma', 'turmas'))}${destaque(fo.matriculas || 0, pl(fo.matriculas, 'pessoa matriculada', 'pessoas matriculadas'))}${destaque(f.feitos || 0, pl(f.feitos, 'encontro feito', 'encontros feitos'), 'de ' + n(f.encontros || fo.encontros || 0) + ' marcados')}${destaque(Math.round(f.horas_feitas != null ? f.horas_feitas : f.horas || 0), 'horas de curso já dadas', 'de ' + n(Math.round(f.horas || 0)) + ' programadas')}</div>
         ${pres != null ? linhaMeta('Presença nos encontros', pres, 100).replace(/<small> de 100<\/small>/, '%') : ''}`)}
-      ${cartao('Documentos do projeto', (d.ultimos || []).length ? `<ul class="ac2-docs">${d.ultimos.map(k => `<li><span class="ac2-doc-t">${E(TD[k.tipo] || k.tipo)}</span><b>${E(k.titulo)}</b><small class="num">${MQ.regras.fmtData(k.data)}${k.uf ? ' · ' + E(k.uf) : ''}</small></li>`).join('')}</ul><p class="ac2-nota">Atas, relatórios, planos, ofícios e contratos registrados. Os arquivos ficam com a coordenação.</p>` : '<p class="muted">Nenhum documento registrado ainda.</p>')}`;
+      ${cartao('Documentos do projeto', Object.keys(d.por_tipo || {}).length ? `<ul class="ac2-chips">${Object.entries(d.por_tipo).sort((x, y) => y[1] - x[1]).map(([k, q]) => `<li><b class="num">${n(q)}</b> ${E(TDP[k] ? (q === 1 ? TDP[k][0] : TDP[k][1]) : k)}${(d.ultima_data || {})[k] ? ` <small>· último em ${MQ.regras.fmtData((d.ultima_data || {})[k])}</small>` : ''}</li>`).join('')}</ul><p class="ac2-nota">Atas, relatórios, planos, ofícios, contratos e outros registros do projeto. Os arquivos e os títulos ficam com a coordenação.</p>` : '<p class="muted">Nenhum documento registrado ainda.</p>')}`;
   }
   function corpo(a) {
     const s = S(); const temFin = !!(a.extra && a.extra.financeiro);
     const abas = ABAS.filter(([k]) => k !== 'recursos' || temFin);
     let at = s.acAba && abas.some(([k]) => k === s.acAba) ? s.acAba : 'resumo';
     const conteudo = { resumo: abaResumo, metas: abaMetas, recursos: abaRecursos, territorio: abaTerritorio, mulheres: abaMulheres, equipe: abaEquipe }[at](a);
-    return `<nav class="ac2-abas" role="tablist" aria-label="Partes do painel">${abas.map(([k, t]) => `<button type="button" role="tab" id="ac2-t-${k}" aria-selected="${k === at}" aria-controls="ac2-p" data-acao="acomp-aba" data-a="${k}">${t}</button>`).join('')}</nav>
-      <div class="ac2-painel" id="ac2-p" role="tabpanel" aria-labelledby="ac2-t-${at}" tabindex="0">${conteudo}${MQ.painelUI && MQ.painelUI.LEG_META ? MQ.painelUI.LEG_META : ''}</div>
+    return `<nav class="ac2-abas" role="tablist" aria-label="Partes do painel">${abas.map(([k, t]) => `<button type="button" role="tab" id="ac2-t-${k}" aria-selected="${k === at}" aria-controls="ac2-p" tabindex="${k === at ? 0 : -1}" data-acao="acomp-aba" data-a="${k}">${t}</button>`).join('')}</nav>
+      <div class="ac2-painel" id="ac2-p" role="tabpanel" aria-labelledby="ac2-t-${at}" tabindex="0">${conteudo}${['resumo', 'metas', 'territorio', 'equipe'].includes(at) ? '<p class="leg-cores"><i class="lc-ok" aria-hidden="true"></i>verde: meta cumprida <i class="lc-falta" aria-hidden="true"></i>cinza: ainda falta · as situações "Atrasada" e "Atenção" comparam o feito com o previsto até o mês passado</p>' : ''}</div>
       ${a.extraSemBanco ? '<p class="ac-nota small muted">Parte dos números (eventos, canais de venda, água, curso e documentos) aparece quando a coordenação rodar o arquivo 65 no banco.</p>' : ''}
       <p class="ac-nota small muted">Números ao vivo, tirados dos registros feitos pela equipe do projeto. Esta área é só de leitura e mostra apenas contagens: não traz nome, CPF, endereço, foto nem dado bancário de ninguém.</p>`;
   }
@@ -12659,7 +12672,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (acao === 'acomp-atualizar' && s.verComo) { el.disabled = true; try { s.verComo = { orgao: s.verComo.orgao, dados: await s.api.dadosAcompanhamento(s.verComo.orgao) }; U().render(); U().toast('Números atualizados.'); } catch (e) { msg(e); el.disabled = false; } }
     else if (acao === 'acomp-atualizar') { el.disabled = true; await carregar(); U().render(); if (!s.acompErro) U().toast('Números atualizados.'); }
     else if (acao === 'acomp-imprimir') { window.print(); }
-    else if (acao === 'acomp-aba') { s.acAba = el.dataset.a; U().render(); const b = document.getElementById('ac2-t-' + el.dataset.a); if (b) b.focus({ preventScroll: true }); }
+    else if (acao === 'acomp-aba') { s.acAba = el.dataset.a; U().render(); const b = document.getElementById('ac2-t-' + el.dataset.a); if (b) { b.focus({ preventScroll: true }); if (b.scrollIntoView) b.scrollIntoView({ inline: 'nearest', block: 'nearest' }); } }
     else if (acao === 'acomp-previa') {
       if (s.eu.papel !== 'coord_geral') return;
       el.disabled = true;
@@ -12703,7 +12716,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     i = ev.key === 'Home' ? 0 : ev.key === 'End' ? l.length - 1 : (i + (ev.key === 'ArrowRight' ? 1 : -1) + l.length) % l.length;
     ev.preventDefault(); l[i].click();
   });
-  MQ.acomp = { calcular, calcularExtra, pequeno, ORG };
+  MQ.acomp = { calcular, calcularExtra, pequeno, ORG, situacaoMetas, corpo };
   function sairPrevia(peloNavegador) {
     const s = S(); if (!s.verComo) return; const volta = s.verComoVolta || {}; s.verComo = null; s.verComoVolta = null;
     if (!peloNavegador && U().previaNoHistorico) U().previaNoHistorico(false);   // tira a entrada da prévia do histórico do navegador
@@ -12912,7 +12925,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       + (sub ? `<span class="pr-sub${tom ? ' ' + tom : ''}">${sub}</span>` : '') + '</div>'; };
   function celulas(u) {
     const d = porUF(u.uf);
-    const dgsAprov = (S().diagnosticos || []).filter(x => x.uf === u.uf && x.situacao === 'aprovado').length;
+    const dgsAprov = (S().diagnosticos || []).filter(x => x.uf === u.uf && x.situacao === 'aprovado' && !x.sem_agua).length;   // 66: sem água não tem plano
     return {
       eq: d.eq ? barra(d.hab, d.eq, d.hab === 1 && d.eq === 1 ? 'habilitada' : 'habilitadas', 'Equipe de campo habilitada',
                        d.entraram >= d.eq ? 'Todas já entraram no sistema' : `${d.entraram} de ${d.eq} já entr${d.entraram === 1 ? 'ou' : 'aram'} no sistema`,

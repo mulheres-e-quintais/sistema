@@ -336,7 +336,7 @@ fieldset > .fixo { margin: 0; }
 .crit-txt { color: var(--crit); }
 
 /* ---------- mapa dos quintais ---------- */
-:root { --m-ok: #2E7D43; --m-espera: #3478B9; --m-aguarda: #D39116; --m-agua: #B83A32; --m-uf: #EDE5D8; --m-uf-viz: #F7F0E8; --m-borda: #CDBDA8; --m-fundo: #FAF7F1; --m-sigla: #6B594A; --m-texto: #4A3022; }
+:root { --m-ok: #2E7D43; --m-espera: #3478B9; --m-aguarda: #B07800; --m-agua: #B83A32; --m-uf: #EDE5D8; --m-uf-viz: #F7F0E8; --m-borda: #CDBDA8; --m-fundo: #FAF7F1; --m-sigla: #6B594A; --m-texto: #4A3022; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --m-ok: #3F9A44; --m-espera: #4A8FD6; --m-aguarda: #C08410; --m-agua: #E0607A; --m-uf: #2E2520; --m-uf-viz: #1B1512; --m-borda: #54453B; --m-fundo: var(--surface); --m-sigla: #BCA99A; --m-texto: var(--ink); } }
 :root[data-theme="dark"] { --m-ok: #3F9A44; --m-espera: #4A8FD6; --m-aguarda: #C08410; --m-agua: #E0607A; --m-uf: #2E2520; --m-uf-viz: #1B1512; --m-borda: #54453B; --m-fundo: var(--surface); --m-sigla: #BCA99A; --m-texto: var(--ink); }
 .mapa-caixa { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 16px; align-items: start; }
@@ -3597,7 +3597,7 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 .pr-alarme small { font-weight: 600; }
 
 /* 15/10/2026: "Quem são as mulheres" e "Ponto de partida e hoje" — percentual em destaque, barras alinhadas, início × hoje com a mudança colorida */
-.perfil2 { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px 28px; }
+.perfil2 { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr)); gap: 16px 28px; }
 .perfil2 li { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 5px; align-items: baseline; }
 .pf2-rot { font-size: var(--t-md); color: var(--ink); line-height: 1.3; }
 .pf2-pc { font: 600 var(--t-xl)/1 var(--serif, inherit); color: var(--ink); }
@@ -3710,7 +3710,7 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 /* 15/10/2026: "Onde vender" visual — ícone por tipo, semana das feiras e cobertura dos municípios */
 .vd2 { --t-feira: var(--accent); --t-merenda: var(--st-ok); --t-paa: var(--st-and); --t-grupo: var(--m-espera, #3478B9); --t-comprador: var(--verde-2); --t-outro: var(--muted); }
 .vd2-painel { display: grid; gap: 14px; margin-bottom: 14px; }
-.vd2-tipos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.vd2-tipos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 10px; }
 .vd2-t { --c: var(--t-outro); display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 10px; align-items: center; padding: 12px 14px; border-radius: 14px;
   background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--c); }
 .vd2-t .vd2-ic { grid-row: 1 / span 2; }
@@ -3720,7 +3720,7 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 .vd2-ic { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; color: var(--c, var(--ink-2)); background: color-mix(in srgb, var(--c, var(--ink-2)) 13%, transparent); }
 .vd2-ic.peq { width: 32px; height: 32px; border-radius: 10px; flex: none; }
 .t-feira { --c: var(--t-feira); } .t-merenda { --c: var(--t-merenda); } .t-paa { --c: var(--t-paa); } .t-grupo { --c: var(--t-grupo); } .t-comprador { --c: var(--t-comprador); } .t-outro { --c: var(--t-outro); }
-.vd2-duas { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.vd2-duas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 14px; }
 .vd2-semana, .vd2-cob { padding: 14px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
 .vd2-semana h3, .vd2-cob h3 { margin: 0 0 10px; font-size: var(--t-md); }
 .vd2-dias { list-style: none; margin: 0 0 6px; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; text-align: center; }
@@ -3734,7 +3734,7 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 .vd2-falta { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .vd2-falta li { padding: 3px 10px; border-radius: 999px; font-size: var(--t-xs); background: color-mix(in srgb, var(--st-aten) 12%, transparent); color: var(--ink); }
 .vd2-ok { color: var(--st-ok); font-weight: 600; margin: 0; }
-.vd2-muns { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.vd2-muns { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 12px; }
 .vd2-mun { padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); }
 .vd2-mun h3 { margin: 0 0 8px; font-size: var(--t-md); }
 .vd2-mun .vd-lista { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
@@ -3760,9 +3760,9 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 .ac2-painel { display: grid; gap: 18px; border-radius: 12px; } .ac2-painel:focus { outline: none; } .ac2-painel:focus-visible { outline: 2px solid var(--focus); outline-offset: 6px; }
 .ac2-cartao { padding: 22px 24px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 1px 2px rgba(69, 43, 26, .03), 0 10px 30px rgba(69, 43, 26, .05); min-width: 0; }
 .ac2-cartao > h2 { margin: 0 0 16px; font: 600 var(--t-lg)/1.25 var(--serif, inherit); color: var(--ink); }
-.ac2-duas { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; align-items: stretch; }
+.ac2-duas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 18px; align-items: stretch; }
 .ac2-nota { margin: 14px 0 0; font-size: var(--t-xs); color: var(--ink-2); line-height: 1.5; }
-.ac2-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+.ac2-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); gap: 14px; }
 .ac2-kpis.peq { margin-bottom: 16px; }
 .ac2-kpi { display: flex; align-items: center; gap: 14px; padding: 18px 20px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); min-width: 0; }
 .ac2-kpis.peq .ac2-kpi { background: var(--bg); padding: 14px 16px; }
@@ -3827,7 +3827,7 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 .ac2-marcos li { display: grid; grid-template-columns: 96px 1fr auto; gap: 12px; align-items: baseline; }
 .ac2-marcos b { font-size: var(--t-sm); color: var(--accent); } .ac2-marcos small { font: 700 var(--t-xs) var(--sans); color: var(--ink-2); }
 /* estados em cartões */
-.ac2-ufs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+.ac2-ufs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr)); gap: 14px; }
 .ac2-uf { padding: 16px; border-radius: 16px; background: var(--bg); border: 1px solid var(--line); display: grid; gap: 4px; align-content: start; }
 .ac2-uf-t { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; margin-bottom: 8px; }
 .ac2-uf-t small { grid-column: 2; font-size: var(--t-xs); color: var(--ink-2); }
@@ -3860,3 +3860,24 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 .duas-col.perfil-cols > .bloco > .leg-cores { margin-top: auto; padding-top: 10px; }
 .duas-col.perfil-cols > .bloco > .nota:last-child, .duas-col.perfil-cols > .bloco > .nota + .leg-cores { margin-top: 10px; }
 .ac2-atr { justify-self: start; margin: -2px 0 6px; }
+/* 15/10/2026 (auditoria): contraste e teclado */
+.q-lista .link { justify-content: flex-start; align-items: baseline; gap: 8px; padding: 6px 0; min-height: 32px; }
+.q-lista .link .lg-pt { flex: none; transform: translateY(1px); }
+.q-lista .link small { font-size: var(--t-xs); }
+.vd2-t.zero { opacity: 1; } .vd2-t.zero b, .vd2-t.zero > span:last-child { color: #7A6B60; } .vd2-t.zero .vd2-ic { opacity: .6; }
+.eq-ok.tom-aviso { color: #A4521C; }
+:root[data-theme="dark"] .eq-ok.tom-aviso { color: var(--st-aten); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .eq-ok.tom-aviso { color: var(--st-aten); } :root:not([data-theme="light"]) .vd2-t.zero b, :root:not([data-theme="light"]) .vd2-t.zero > span:last-child { color: var(--ink-2); } }
+:root[data-theme="dark"] .vd2-t.zero b, :root[data-theme="dark"] .vd2-t.zero > span:last-child { color: var(--ink-2); }
+.vd2-mun .muted, .vd2-falta .muted { color: var(--ink-2); }
+:root[data-theme="dark"] .vd2 .muted { color: #b3a091; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .vd2 .muted { color: #b3a091; } }
+.vd2-dias li.tem .vd2-bola { background: var(--t-feira); color: var(--accent-ink, #fff); transform: scale(calc(.8 + var(--n) * .2)); }
+:root:not([data-theme="dark"]) .vd2-dias li.tem .vd2-bola { color: #fff; }
+.pr-cel .bar i, .ex2-bar i, .ac2-barra i, .eq-kpi.enxuto .medidor.fino i, .lc-falta { background: color-mix(in srgb, var(--ink-2) 72%, transparent); }
+.ft-cancelar:focus-visible { border-radius: 999px; }
+@media (max-width: 640px) { .ft-cancelar { min-width: 44px; min-height: 44px; justify-content: center; } }
+@media (max-width: 480px) { .ac2-gantt-cab span { font-size: 0; } .ac2-gantt-cab span::before { content: attr(data-m); font-size: 10px; text-transform: uppercase; } }
+.ac2-st.aten { background: color-mix(in srgb, var(--st-aten) 16%, transparent); color: var(--ink); }
+.dobra-in { grid-template-columns: minmax(0, 1fr); }   /* 66: o conteúdo da dobra nunca alarga a coluna além da tela (320 px / zoom 400%) */
+.vd2-c-txt { overflow-wrap: anywhere; }

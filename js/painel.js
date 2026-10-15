@@ -348,6 +348,10 @@
           <circle cx="${mx}" cy="${my}" r="${e2 * 3.4}" class="ml-pt" stroke-width="${e2 * 1}"/></svg>
         <figcaption>${E(nomeMun)} · ${foco}</figcaption></figure>`; })();
     const onde = focoMun ? E(nomeMun) + '/' + foco : foco ? E(U.nomeUF(foco)) : 'nos 5 estados';
+    // 66: no município, a lista das mulheres (com a situação) faz o mesmo que tocar no alfinete: dá para abrir a ficha pelo teclado e o leitor de tela lê
+    const fichasMun = focoMun && pts.length ? `<div class="mun-lista q-lista"><h3 class="mapa-h3">Mulheres neste município</h3>
+        ${pts.slice().sort((a, b) => String(a.f.nome || '').localeCompare(String(b.f.nome || ''), 'pt-BR')).map(({ f, cat, p }) => { const k = CATS.find(x => x.id === cat);
+          return `<button type="button" class="link" data-acao="mapa-info" data-id="${E(f.id)}" data-exato="${p.exato ? '1' : ''}"><span class="lg-pt" style="background:${k.cor}" aria-hidden="true"></span><span>${E(f.nome_social || f.nome || 'Ficha')}<small class="muted"> · ${E(k.nome)}${p.exato ? '' : ' · posição aproximada'}</small></span></button>`; }).join('')}</div>` : '';
     const munLista = !focoMun && lista.length ? `<div class="mun-lista"><h3 class="mapa-h3">${foco ? 'Municípios' : 'Municípios com mais fichas'}</h3>
         ${lista.slice(0, foco ? 20 : 8).map(g => `<button type="button" class="link" data-acao="mapa-mun" data-uf="${g.uf}" data-mun="${E(g.k)}"><span>${E(baseDe(g).nome)}${foco ? '' : '/' + g.uf}</span><i class="pontilhado" aria-hidden="true"></i><b class="num">${g.itens.length}</b></button>`).join('')}</div>` : '';
     if (RES) return `<div class="mapa-caixa mapa-resumo"><svg class="mapa" viewBox="${vb.join(' ')}" role="img" aria-label="Mapa com ${pts.length} mulheres selecionadas em ${lista.length} municípios de ${nUF} estados" preserveAspectRatio="xMidYMid meet">${estados}${rotulos}${marcas}${tamanhos}</svg></div>${tamanhos ? '<p class="mapa-tam-nota">Cada círculo é um município; o número e o tamanho mostram quantas mulheres foram selecionadas ali.</p>' : ''}`;
@@ -373,7 +377,7 @@
         <ul class="legenda">${CATS.map(k => `<li>${focoMun ? iconeAlfinete(k.cor, true) : `<span class="lg-pt" style="background:${k.cor}"></span>`}${E(k.nome)} <b class="num">${cont[k.id] || 0}</b></li>`).join('')}
           ${focoMun ? `<li>${iconeAlfinete('var(--ink-2)', false)}Alfinete vazado: posição aproximada (sem GPS)</li>` : ''}
           ${naoAtende ? `<li class="muted">${naoAtende} que não atende${naoAtende > 1 ? 'm' : ''} aos critérios fica${naoAtende > 1 ? 'm' : ''} fora do mapa</li>` : ''}</ul>
-        ${munLista}</div>
+        ${munLista}${fichasMun}</div>
       </div>
       ${tamanhos ? '<p class="mapa-tam-nota">Cada círculo representa um município. O tamanho indica o número de fichas/mulheres (exemplos no canto do mapa: ' + marcasTamanho(nMaior).join(', ').replace(/, ([^,]*)$/, ' e $1') + '). Com muitas fichas, os círculos diminuem juntos; município vizinho de outro é afastado e ligado ao seu lugar por um traço.</p>' : ''}
       <p class="nota">O mapa mostra onde moram as mulheres: use só dentro do sistema. Em relatórios e divulgação, mostre números por município.</p>
@@ -404,11 +408,11 @@
     const avs = S.avaliacoes || [];
     const pares = avs.map(a => { const dg = MQ.porCampo(S.diagnosticos, 'ficha_id').get(a.ficha_id); const i0 = dg && dg.dados && dg.dados.impacto, i1 = a.dados && a.dados.impacto;
       return i0 && i1 && i0.ebia_nivel && i1.ebia_nivel ? [i0, i1] : null; }).filter(Boolean);
-    const temDepois = pares.length > 0;
+    const temDepois = pares.length >= 5;   // 66: o "hoje" aparece a partir de 5 mulheres avaliadas (com 1 a 4, o percentual engana e pode identificar)
     const imps = temDepois ? pares.map(x => x[0]) : (S.diagnosticos || []).map(x => x.dados && x.dados.impacto).filter(x => x && x.ebia_nivel);
     const impsD = pares.map(x => x[1]);
     const nImp = imps.length, nAv = pares.length;
-    const pc = (l, fn) => l.length ? Math.round(l.filter(fn).length / l.length * 100) : null;
+    const pc = (l, fn) => l.length ? Math.round(l.filter(fn).length / l.length * 100) : null;   // 66: lista vazia (ninguém vende, por exemplo) dá "—", não 0%
     const md = (l, k) => { const v = l.map(x => x[k]).filter(x => x != null); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10 : null; };
     const avPar = avs.filter(a => MQ.porCampo(S.diagnosticos, 'ficha_id', 'renda', x => x.renda_quintal != null).has(a.ficha_id) && a.dados && a.dados.renda_quintal != null);
     const mqD = avPar.length ? mediana(avPar.map(a => a.dados.renda_quintal)) : null;
@@ -419,17 +423,17 @@
     // [indicador, início, hoje, unidade, "melhor quando sobe"]
     const linhasPP = nImp ? [
       ['Em insegurança alimentar (EBIA)', pc(imps, x => x.ebia_nivel !== 'seguranca'), pc(impsD, x => x.ebia_nivel !== 'seguranca'), '%', false],
-      ['Passando fome (insegurança moderada ou grave)', pc(imps, x => ['moderada', 'grave'].includes(x.ebia_nivel)), pc(impsD, x => ['moderada', 'grave'].includes(x.ebia_nivel)), '%', false],
+      ['Insegurança moderada ou grave', pc(imps, x => ['moderada', 'grave'].includes(x.ebia_nivel)), pc(impsD, x => ['moderada', 'grave'].includes(x.ebia_nivel)), '%', false],
       ['Dias por semana comendo do quintal', md(imps, 'dias_consumo'), md(impsD, 'dias_consumo'), 'd', true],
       ['Vendem ou trocam o que produzem', pc(imps, x => x.vende), pc(impsD, x => x.vende), '%', true],
-      ['Decidem sobre o dinheiro da venda', pc(imps, x => ['ela', 'ela_e_outro'].includes(x.decide)), pc(impsD, x => ['ela', 'ela_e_outro'].includes(x.decide)), '%', true]
+      ['Decidem sobre o dinheiro da venda (entre as que vendem)', pc(imps.filter(x => x.vende), x => ['ela', 'ela_e_outro'].includes(x.decide)), pc(impsD.filter(x => x.vende), x => ['ela', 'ela_e_outro'].includes(x.decide)), '%', true]
     ] : [];
     const fmtV = (v, u) => v == null ? '—' : u === '%' ? v + '%' : v.toLocaleString('pt-BR') + (u === 'd' ? (v === 1 ? ' dia' : ' dias') : '');
     const mudanca = (a, b, u, sobe) => { if (a == null || b == null) return '<span class="pp2-chip">—</span>'; const dlt = Math.round((b - a) * 10) / 10;
       if (!dlt) return '<span class="pp2-chip">igual</span>';
       const bom = sobe ? dlt > 0 : dlt < 0, txt = (dlt > 0 ? '+' : '−') + Math.abs(dlt).toLocaleString('pt-BR') + (u === '%' ? ' p.p.' : u === 'd' ? (Math.abs(dlt) === 1 ? ' dia' : ' dias') : '');
       return `<span class="pp2-chip ${bom ? 'bom' : 'ruim'}"><span aria-hidden="true">${dlt > 0 ? '▲' : '▼'}</span> ${txt}<span class="so-leitor"> (${bom ? 'melhorou' : 'piorou'})</span></span>`; };
-    const brl = v => R.fmtBRL(v || 0).replace(',00', '');
+    const brl = v => v == null ? '—' : R.fmtBRL(v).replace(',00', '');
     const kpiQ = mqD != null
       ? `<div class="pp2-kpi"><span class="pp2-k-rot">Renda com o quintal</span><span class="pp2-k-val"><span class="pp2-antes">${brl(mqA)}</span><span class="pp2-seta" aria-hidden="true">→</span><b class="num">${brl(mqD)}</b></span><span class="pp2-k-sub">mediana por mês, ${avPar.length === 1 ? 'no quintal avaliado' : 'nos ' + avPar.length + ' quintais avaliados'} (antes → hoje)</span></div>`
       : `<div class="pp2-kpi"><span class="pp2-k-rot">Renda com o quintal</span><span class="pp2-k-val"><b class="num">${brl(mq)}</b></span><span class="pp2-k-sub">mediana por mês, no diagnóstico</span></div>`;
@@ -488,7 +492,7 @@
             <div class="pp2-kpi"><span class="pp2-k-rot">Pessoas na equipe</span><span class="pp2-k-val"><b class="num">${ativos.length}</b></span><span class="pp2-k-sub">ativas, de todas as funções</span></div>
             <div class="pp2-kpi"><span class="pp2-k-rot">Habilitadas</span><span class="pp2-k-val"><b class="num">${habil}</b><span class="pp2-antes-n">de ${ativos.length}</span></span>
               <span class="ex2-bar" aria-hidden="true"><i class="${ativos.length && habil >= ativos.length ? 'cheio' : ''}" style="width:${pcHab}%"></i></span>
-              <span class="pp2-k-sub">${habil >= ativos.length ? 'todas prontas para trabalhar e receber' : (ativos.length - habil) + ' ainda sem habilitação completa'}</span></div></div>
+              <span class="pp2-k-sub">${!ativos.length ? 'ninguém cadastrado ainda' : habil >= ativos.length ? 'todas prontas para trabalhar e receber' : (ativos.length - habil) + ' ainda sem habilitação completa'}</span></div></div>
           <ul class="ex2">
             ${vaga('Bolsistas (articulação e apoio estadual)', bols, 10, '2 por estado')}
             ${vaga('Coordenação técnica', conta('coord_tecnico'), 1)}
@@ -754,5 +758,5 @@
     const fichas = []; (municipios || []).forEach(m => { for (let i = 0; i < (m.n || 0); i++) fichas.push({ id: '', uf: m.uf, municipio: m.municipio, resultado: 'selecionada', situacao: 'aprovada' }); });
     return mapa({ mapaUF: '', mapaMun: '' }, { fichas }, { resumo: true });
   }
-  MQ.painelUI = { LEG_META, LEG_RETRATO, mapaResumo, visaoGeral, mesDoProjeto, mapaUFs, escalaRaios, espalhar, marcasTamanho, infoMeta, execucaoGeral, chipStatus, STATUS, cronograma };
+  MQ.painelUI = { previsto, LEG_META, LEG_RETRATO, mapaResumo, visaoGeral, mesDoProjeto, mapaUFs, escalaRaios, espalhar, marcasTamanho, infoMeta, execucaoGeral, chipStatus, STATUS, cronograma };
 })();

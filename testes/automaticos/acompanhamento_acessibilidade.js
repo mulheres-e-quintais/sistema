@@ -21,12 +21,13 @@ const R = []; const ok = (n, c, d = '') => { R.push(!!c); console.log((c ? 'PASS
       ok(`${sigla} (${rot}): títulos em ordem (um h1, sem pular nível)`, h.filter(x => x === 1).length === 1 && h.every((x, i) => i === 0 || x - h[i - 1] <= 1), h.join(''));
       if (vp.width > 1000 && esquema === 'light') {
         // só teclado: Tab chega a todos os controles, com foco visível
-        const alvos = await p.evaluate(() => [...document.querySelectorAll('main button, main a[href]')].filter(e => e.offsetParent).length);
+        const alvos = await p.evaluate(() => [...document.querySelectorAll('main button, main a[href]')].filter(e => e.offsetParent && !(e.getAttribute('role') === 'tab' && e.tabIndex < 0)).length);   // 66: abas com tabindex móvel: o Tab para só na aba ativa; as outras se alcançam pelas setas
         await p.evaluate(() => { document.activeElement && document.activeElement.blur(); window.scrollTo(0, 0); });
         const vistos = new Set(); let semFoco = 0;
         for (let i = 0; i < 60; i++) { await p.keyboard.press('Tab'); const r = await p.evaluate(() => { const e = document.activeElement; if (!e || e === document.body) return null; const s = getComputedStyle(e); return { k: (e.dataset.acao || e.getAttribute('href') || e.tagName) + '|' + e.textContent.trim().slice(0, 20), dentro: !!e.closest('main'), foco: s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) >= 2 }; });
           if (r && r.dentro) { vistos.add(r.k); if (!r.foco) semFoco++; } }
-        ok(`${sigla}: o teclado alcança todos os controles da tela, com foco visível`, vistos.size >= alvos && semFoco === 0, `alcançados ${vistos.size} de ${alvos}; sem foco visível ${semFoco}`);
+        const setas = await p.evaluate(() => { const a = document.querySelector('.ac2-abas [aria-selected=true]'); if (!a) return true; a.focus(); a.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); const b = document.activeElement; const ok = b && b.getAttribute('role') === 'tab' && b !== a && b.getAttribute('aria-selected') === 'true'; b.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true })); return ok; });
+        ok(`${sigla}: o teclado alcança todos os controles da tela (as abas pelas setas), com foco visível`, vistos.size >= alvos && semFoco === 0 && setas, `alcançados ${vistos.size} de ${alvos}; sem foco visível ${semFoco}`);
       }
     }
     await p.evaluate(() => document.querySelector('button[data-p=coord_geral]').click()); await p.waitForTimeout(700); await p.evaluate(() => { MQ.ui.fecharPainel(); MQ.ui.S.aba = 'equipe'; MQ.ui.render(); }); await p.waitForSelector('#ac-coord');

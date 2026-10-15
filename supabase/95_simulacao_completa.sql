@@ -56,6 +56,14 @@ begin
   if exists (select 1 from public.fichas where id not in (select id from public.exemplo)) then
     raise exception 'Já há fichas de verdade: a simulação NÃO foi colocada (nada mudou). Use um projeto Supabase de teste.';
   end if;
+  -- 66: produção ainda no começo (sem fichas) também é protegida: documentos, planilhas, acompanhamento, canais ou pedidos de verdade param a simulação
+  if exists (select 1 from public.documentos_projeto where id not in (select id from public.exemplo))
+     or exists (select 1 from public.execucao_planilhas where id not in (select id from public.exemplo))
+     or exists (select 1 from public.observadores where id not in (select id from public.exemplo))
+     or exists (select 1 from public.canais_venda where id not in (select id from public.exemplo))
+     or exists (select 1 from public.pedidos_apoio where id not in (select id from public.exemplo)) then
+    raise exception 'Este banco já tem registros de verdade (documentos, planilhas, acompanhamento, canais ou pedidos): a simulação NÃO foi colocada (nada mudou). Use um projeto Supabase de teste.';
+  end if;
   if exists (select 1 from public.exemplo) then
     raise exception 'Já há dados de exemplo no banco. Rode antes o 96_apagar_simulacao.sql (nada mudou).';
   end if;

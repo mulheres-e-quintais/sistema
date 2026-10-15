@@ -118,7 +118,7 @@ select est_lista('funções internas que NINGUÉM chama pelo app (nem quem entro
   $q$select p.proname::text from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prorettype <> 'trigger'::regtype
       and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
       and not has_function_privilege('authenticated', p.oid, 'EXECUTE')$q$,
-  array['acomp_n','codigo_coordenacao_geral','cpf_valido','fic_matriculados_em','fic_mes_fechado','novo_codigo_acesso','pendencias_pagamento','sem_acento','trava_aviso','visita_etapa_motivo']);   -- 57: pendencias_pagamento (gatilho do desligamento)
+  array['acomp_n','codigo_coordenacao_geral','cpf_valido','exemplo_fora','fic_matriculados_em','fic_mes_fechado','novo_codigo_acesso','pendencias_pagamento','sem_acento','trava_aviso','visita_etapa_motivo']);   -- 57: pendencias_pagamento (gatilho do desligamento); 66: exemplo_fora (só as funções de acompanhamento usam)
 select est_caso('o único SQL montado em tempo de execução (EXECUTE) é o de vitrine_municipios, que não recebe parâmetro',
   $q$select p.oid::regprocedure::text from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prolang = (select oid from pg_language where lanname = 'plpgsql')
       and (p.prosecdef or p.prorettype = 'trigger'::regtype or has_function_privilege('anon', p.oid, 'EXECUTE') is false)   -- funções do sistema (as de apoio dos testes ficam de fora)

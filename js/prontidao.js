@@ -89,7 +89,7 @@
       + (sub ? `<span class="pr-sub${tom ? ' ' + tom : ''}">${sub}</span>` : '') + '</div>'; };
   function celulas(u) {
     const d = porUF(u.uf);
-    const dgsAprov = (S().diagnosticos || []).filter(x => x.uf === u.uf && x.situacao === 'aprovado').length;
+    const dgsAprov = (S().diagnosticos || []).filter(x => x.uf === u.uf && x.situacao === 'aprovado' && !x.sem_agua).length;   // 66: sem água não tem plano
     return {
       eq: d.eq ? barra(d.hab, d.eq, d.hab === 1 && d.eq === 1 ? 'habilitada' : 'habilitadas', 'Equipe de campo habilitada',
                        d.entraram >= d.eq ? 'Todas já entraram no sistema' : `${d.entraram} de ${d.eq} já entr${d.entraram === 1 ? 'ou' : 'aram'} no sistema`,

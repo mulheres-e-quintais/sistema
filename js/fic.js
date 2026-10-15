@@ -37,8 +37,8 @@
         ${podeCriarTurma() ? '<button class="btn pri" data-acao="fic-turma-nova">+ Nova turma</button>' : ''}</div>
       <div class="eq-kpis" aria-label="Resumo do curso FIC">
         ${U().kpi(turmas().length, null, 'turma' + (turmas().length === 1 ? '' : 's'), 1, { sem: true, enxuto: true, nota: turmas().length ? 'criada' + (turmas().length === 1 ? '' : 's') + ' pelos professores' : 'nenhuma ainda', notaTom: turmas().length ? 'tom-neutro' : 'tom-aviso' })}
-        ${U().kpi(comMat.length, pessoas.length, 'matriculadas (coordenação técnica, bolsistas e agentes)', 2, { enxuto: true, nota: comMat.length >= pessoas.length && pessoas.length ? 'completo' : (pessoas.length - comMat.length) + ' faltando', notaTom: comMat.length >= pessoas.length && pessoas.length ? '' : 'tom-aviso' })}
-        ${U().kpi(sem.length, null, 'ainda sem matrícula', 3, { sem: true, enxuto: true, crit: sem.length > 0, nota: sem.length ? 'matricule em uma turma' : 'ninguém de fora', notaTom: sem.length ? 'tom-crit' : '' })}
+        ${U().kpi(comMat.length, pessoas.length, 'matriculadas (coordenação técnica, bolsistas e agentes)', 2, { enxuto: true, nota: !pessoas.length ? 'ninguém para matricular ainda' : comMat.length >= pessoas.length ? 'completo' : (pessoas.length - comMat.length) + ' faltando', notaTom: !pessoas.length ? 'tom-neutro' : comMat.length >= pessoas.length ? '' : 'tom-aviso' })}
+        ${U().kpi(sem.length, null, 'ainda sem matrícula', 3, { sem: true, enxuto: true, crit: sem.length > 0, nota: sem.length ? 'matricule em uma turma' : pessoas.length ? 'todas matriculadas' : '—', notaTom: sem.length ? 'tom-crit' : '' })}
         ${U().kpi(professores().length, MQ.regras.MAX_PROFESSORES, 'professor' + (professores().length === 1 ? '' : 'es') + ' do FIC', 4, { enxuto: true, nota: professores().length >= MQ.regras.MAX_PROFESSORES ? 'completo' : 'vaga aberta', notaTom: professores().length >= MQ.regras.MAX_PROFESSORES ? '' : 'tom-aviso' })}
       </div>
       ${sem.length ? blocoSem(sem) : pessoas.length ? '<div class="aviso ok-aviso">Todas as pessoas que fazem o curso (coordenação técnica, bolsistas e agentes) estão matriculadas no FIC.</div>' : ''}
