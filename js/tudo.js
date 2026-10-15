@@ -4405,6 +4405,19 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `<path d="M${p.x + dx / d * r},${p.y + dy / d * r}L${p.x0},${p.y0}" class="q-fio" stroke-width="${esc * 0.14}"/><circle cx="${p.x0}" cy="${p.y0}" r="${esc * 0.3}" class="q-fio-pt"/>`; };
   /* valores "redondos" para a legenda de tamanho, conforme o maior círculo do mapa */
   const redondo = v => { const p = Math.pow(10, Math.floor(Math.log10(Math.max(1, v)))); const m = v / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; };
+  /* alfinete com broto (quintal): ponta em (x, y), cabeça de raio a */
+  function alfinete(x, y, a, cor, cheio) {
+    // 6 casas: no município o mapa inteiro mede ~0,3 grau (2 casas apagavam o desenho)
+    const f = n => +n.toFixed(6), cy = y - 1.75 * a, lx = x - 0.82 * a, rx = x + 0.82 * a, py = cy + 0.57 * a;
+    const pino = `<path d="M${f(x)},${f(y)}L${f(lx)},${f(py)}A${f(a)},${f(a)} 0 1 1 ${f(rx)},${f(py)}Z" fill="${cheio ? cor : 'var(--surface)'}" stroke="${cheio ? 'var(--surface)' : cor}" stroke-width="${f(a * (cheio ? 0.16 : 0.24))}" stroke-linejoin="round" class="q-pino"/>`;
+    const tinta = cheio ? '#fff' : cor, s = a * 0.62;
+    const broto = `<g fill="${tinta}" stroke="${tinta}" stroke-width="${f(a * 0.1)}" stroke-linecap="round" stroke-linejoin="round">`
+      + `<path d="M${f(x)},${f(cy + 0.55 * s)}V${f(cy - 0.05 * s)}" fill="none" stroke-width="${f(a * 0.14)}"/>`
+      + `<path d="M${f(x)},${f(cy + 0.05 * s)}Q${f(x - 0.95 * s)},${f(cy + 0.05 * s)} ${f(x - 0.9 * s)},${f(cy - 0.75 * s)}Q${f(x - 0.1 * s)},${f(cy - 0.7 * s)} ${f(x)},${f(cy + 0.05 * s)}Z"/>`
+      + `<path d="M${f(x)},${f(cy - 0.12 * s)}Q${f(x + 0.95 * s)},${f(cy - 0.2 * s)} ${f(x + 0.95 * s)},${f(cy - 1 * s)}Q${f(x + 0.1 * s)},${f(cy - 0.95 * s)} ${f(x)},${f(cy - 0.12 * s)}Z"/></g>`;
+    return pino + broto;
+  }
+  const iconeAlfinete = (cor, cheio) => `<svg class="lg-alf" viewBox="-7 -16 14 17" width="14" height="17" aria-hidden="true" focusable="false">${alfinete(0, 0, 5.4, cor, cheio)}</svg>`;
   const marcasTamanho = nMax => nMax <= 30 ? [5, 10, 20] : [...new Set([redondo(nMax / 10), redondo(nMax / 3), redondo(nMax)])];
   function mapa(S, d, op) {
     const RES = !!(op && op.resumo);   // resumo: o mesmo desenho, só com totais por município e sem clique (tela de quem acompanha de fora)
@@ -4468,13 +4481,13 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       }).join('');
     } else {
       const r = esc * 1.4;
-      marcas = pts.map(({ f, cat, p }) => {
+      // 15/10/2026: cada quintal é um alfinete com um broto dentro. A ponta marca o lugar; a cor é a situação da ficha;
+      // cheio = GPS do quintal, vazado = posição aproximada. Os de baixo são desenhados por último (a ponta não fica escondida).
+      marcas = pts.slice().sort((a, b) => a.p.xy[1] - b.p.xy[1]).map(({ f, cat, p }) => {
         const c = CATS.find(k => k.id === cat).cor; const [x, y] = p.xy;
         const txt = `${f.municipio}/${f.uf} · ${(MQ.RESULTADOS[f.resultado] || {}).nome}${f.situacao !== 'aprovada' ? ' (' + (MQ.SITUACOES[f.situacao] || {}).nome + ')' : ''}${p.exato ? '' : ' · posição aproximada'} · clique para abrir a ficha`;
-        const alvo = `<circle cx="${x}" cy="${y}" r="${r * 3.2}" fill="transparent" class="q-alvo"/>`;   // área de toque maior que o ponto
-        return `<g class="q-pt" data-acao="mapa-info" data-id="${E(f.id)}" data-exato="${p.exato ? '1' : ''}" data-dica="${E(txt)}">${alvo}${p.exato
-          ? `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="var(--surface)" stroke-width="${r * 0.45}"/>`
-          : `<circle cx="${x}" cy="${y}" r="${r * 0.85}" fill="var(--surface)" stroke="${c}" stroke-width="${r * 0.55}"/>`}<title>${E(txt)}</title></g>`;
+        const alvo = `<circle cx="${x}" cy="${y - r * 2}" r="${r * 3.2}" fill="transparent" class="q-alvo"/>`;   // área de toque maior que o alfinete
+        return `<g class="q-pt" data-acao="mapa-info" data-id="${E(f.id)}" data-exato="${p.exato ? '1' : ''}" data-dica="${E(txt)}">${alvo}${alfinete(x, y, r * 1.3, c, p.exato)}<title>${E(txt)}</title></g>`;
       }).join('');
     }
     const cont = {}; pts.forEach(x => { cont[x.cat] = (cont[x.cat] || 0) + 1; });
@@ -4518,8 +4531,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         ${localizador}
         ${pts.length ? `<div class="mapa-destaque"><b class="num">${pts.length}</b><span>mulher${pts.length > 1 ? 'es' : ''}</span><small>${foco ? 'com ficha em ' + onde : 'com ficha válida · ' + nUF + ' estado' + (nUF === 1 ? '' : 's') + ' do Nordeste'}</small></div>` : ''}
         <h3 class="mapa-h3">Status das fichas</h3>
-        <ul class="legenda">${CATS.map(k => `<li><span class="lg-pt" style="background:${k.cor}"></span>${E(k.nome)} <b class="num">${cont[k.id] || 0}</b></li>`).join('')}
-          ${focoMun ? '<li><span class="lg-pt oco"></span>Contorno vazio: posição aproximada (sem GPS)</li>' : ''}
+        <ul class="legenda">${CATS.map(k => `<li>${focoMun ? iconeAlfinete(k.cor, true) : `<span class="lg-pt" style="background:${k.cor}"></span>`}${E(k.nome)} <b class="num">${cont[k.id] || 0}</b></li>`).join('')}
+          ${focoMun ? `<li>${iconeAlfinete('var(--ink-2)', false)}Alfinete vazado: posição aproximada (sem GPS)</li>` : ''}
           ${naoAtende ? `<li class="muted">${naoAtende} que não atende${naoAtende > 1 ? 'm' : ''} aos critérios fica${naoAtende > 1 ? 'm' : ''} fora do mapa</li>` : ''}</ul>
         ${munLista}</div>
       </div>
@@ -11140,6 +11153,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         'A linha de 13 quadradinhos mostra os meses do projeto; o quadrado colorido é o mês atual. Ao lado, quantos dias faltam para o fim da vigência.',
         '<b>Situação do campo em cada estado</b> mostra se o trabalho de campo já pode andar: equipe habilitada, fichas aprovadas, diagnósticos, mulheres sem água na seca (elas não recebem kit; acima de 30% das fichas o número fica vermelho: reveja a seleção do estado), visitas da semana e registros que ainda não foram enviados.', '<b>O que pede atenção</b> lista os problemas em três níveis: <b>Requer ação</b>, <b>Atenção</b> e <b>Aviso</b>. O botão <b>Resolver</b> leva direto à aba que resolve.',
         '<b>Cronograma físico do plano de trabalho</b> mostra cada meta como uma barra, do mês em que começa ao mês em que termina. A parte verde é o que já foi registrado; o traço é hoje. Barra tracejada: ainda não começou. Barra vermelha: o prazo acabou e a meta não chegou ao número. Toque no nome da meta para abrir o detalhe.',
+        'No mapa, ao abrir um município, cada mulher é um <b>alfinete com broto</b> na cor da situação da ficha: cheio é o ponto do GPS, vazado é posição aproximada.',
         'O cartão <b>Ponto de partida</b> (e, depois das avaliações, <b>hoje</b>) compara a linha de base do diagnóstico com a avaliação final (fome, renda do quintal, consumo, venda, autonomia). Só entra quem já tem as duas medidas. A coluna <b>Mudança</b> fica verde quando melhorou e vermelha quando piorou (menos fome é melhora; mais venda também).',
         '<b>Financeiro e entregas</b> abre o painel de recursos, rubricas e metas físicas. Só a coordenação geral vê esse botão.'
       ],

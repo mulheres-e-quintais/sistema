@@ -3630,3 +3630,6 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
   .pp2-kpis { grid-template-columns: 1fr; }
   .pp2-tab.com-hoje thead th:nth-child(2), .pp2-tab.com-hoje tbody td:nth-of-type(1) { display: none; }   /* no celular: indicador, hoje e mudança */
 }
+/* 15/10/2026: no município, cada quintal é um alfinete com broto (também na legenda) */
+.lg-alf { flex: none; vertical-align: -3px; margin-right: 6px; overflow: visible; }
+.q-pt .q-pino { filter: drop-shadow(0 1px 1px rgba(69, 43, 26, .28)); }
