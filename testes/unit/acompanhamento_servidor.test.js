@@ -58,8 +58,8 @@ describe('chamadas ao banco', () => {
   test('os números: quem acompanha não manda órgão; a coordenação manda o órgão da prévia', async () => {
     const { api, chamadas } = montar({ acompanhamento_eu: OBS, acompanhamento_dados: { data: { orgao: 'mda', por_uf: [] }, error: null } });
     await api.iniciar();
-    assert.equal((await api.dadosAcompanhamento()).orgao, 'mda'); assert.equal(chamadas.at(-1)[0], 'acompanhamento_dados'); assert.equal(chamadas.at(-1)[1].p_orgao, null);
-    await api.dadosAcompanhamento('mpa'); assert.equal(chamadas.at(-1)[1].p_orgao, 'mpa');
+    assert.equal((await api.dadosAcompanhamento()).orgao, 'mda'); const cd = chamadas.filter(c => c[0] === 'acompanhamento_dados'); assert.equal(cd.at(-1)[1].p_orgao, null); assert.ok(chamadas.some(c => c[0] === 'acompanhamento_extra'), '65: pede também o extra');
+    await api.dadosAcompanhamento('mpa'); assert.equal(chamadas.filter(c => c[0] === 'acompanhamento_dados').at(-1)[1].p_orgao, 'mpa');
   });
   test('recusa do banco vira erro com a mensagem do sistema', async () => {
     const { api } = montar({ acompanhamento_eu: OBS, acompanhamento_dados: { data: null, error: { message: 'Acesso restrito ao acompanhamento do projeto.' } } });

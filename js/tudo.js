@@ -4546,6 +4546,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     </section>`;
   }
 
+  // 15/10/2026: a regra das cores das barras, dita na própria tela (linha miúda embaixo de cada painel)
+  const LEG_META = '<p class="leg-cores"><i class="lc-ok" aria-hidden="true"></i>verde: meta cumprida <i class="lc-falta" aria-hidden="true"></i>cinza: ainda falta</p>';
+  const LEG_RETRATO = '<p class="leg-cores"><i class="lc-ret" aria-hidden="true"></i>marrom: parte do grupo (retrato, não é meta)</p>';
   /* ---------- perfil das mulheres (recorte) e linha de base de renda ---------- */
   function perfil(S, d) {
     const base = d.selAprov.length ? d.selAprov : d.fichas.filter(f => f.resultado === 'selecionada');
@@ -4603,7 +4606,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <div class="secao-cab"><div><h2 id="t-perfil">Quem são as mulheres</h2><p>${base.length ? 'Percentual ' + rotBase + ', pelos critérios de prioridade da ficha.' : 'Aparece quando houver mulheres selecionadas.'}</p></div></div>
       <div class="duas-col perfil-cols">
         <div class="bloco">${base.length ? `<ul class="perfil2">${barras}</ul>
-          <p class="nota">"Negra, indígena, quilombola ou de comunidade tradicional" é uma única pergunta na ficha: não dá para separar quilombolas.</p>` : '<p class="muted">Sem dados ainda.</p>'}</div>
+          <p class="nota">"Negra, indígena, quilombola ou de comunidade tradicional" é uma única pergunta na ficha: não dá para separar quilombolas.</p>${LEG_RETRATO}` : '<p class="muted">Sem dados ainda.</p>'}</div>
         <div class="bloco pp2"><h3>Ponto de partida${temDepois ? ' e hoje' : ''}</h3>
           ${diags.length ? `<div class="pp2-kpis">${kpiQ}${kpiF}</div>${tabPP}
             ${nSemAgua ? `<p class="pp2-agua"><b>${nSemAgua}</b> diagnóstico${nSemAgua > 1 ? 's' : ''} sem água que dure na seca: não recebe${nSemAgua > 1 ? 'm' : ''} kit e precisa${nSemAgua > 1 ? 'm' : ''} de cisterna.</p>` : ''}
@@ -4661,11 +4664,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           </ul>
           ${leram.length ? (nLeram >= leram.length
             ? `<p class="ex2-guia ok"><b>Todas leram o guia</b> (${leram.length} bolsistas e agentes).</p>`
-            : `<p class="ex2-guia"><b>${leram.length - nLeram} de ${leram.length}</b> bolsistas e agentes ainda não marcaram que leram o guia.</p>`) : ''}</div>
+            : `<p class="ex2-guia"><b>${leram.length - nLeram} de ${leram.length}</b> bolsistas e agentes ainda não marcaram que leram o guia.</p>`) : ''}${LEG_META}</div>
         <div class="bloco"><h3>Ponto de partida da equipe</h3>
           ${resp.length ? `<ul class="perfil2">${linhas.map(([t, x]) => barraPf(t, x)).join('')}</ul>
             ${outraBolsa && outraBolsa.n ? `<p class="pp2-agua"><b>${outraBolsa.n} pessoa${outraBolsa.n > 1 ? 's' : ''}</b> já recebe${outraBolsa.n > 1 ? 'm' : ''} outra bolsa: confira se pode acumular antes de pagar.</p>` : ''}
-            <p class="nota">${resp.length} de ${campo.length} pessoa${campo.length > 1 ? 's' : ''} da equipe de campo responderam o perfil${outraBolsa && !outraBolsa.n ? '; nenhuma recebe outra bolsa' : ''}. O Guia pede bolsistas mulheres, de preferência agricultoras ou com atuação junto às mulheres do território.</p>`
+            <p class="nota">${resp.length} de ${campo.length} pessoa${campo.length > 1 ? 's' : ''} da equipe de campo responderam o perfil${outraBolsa && !outraBolsa.n ? '; nenhuma recebe outra bolsa' : ''}. O Guia pede bolsistas mulheres, de preferência agricultoras ou com atuação junto às mulheres do território.</p>${LEG_RETRATO}`
             : `<p class="small muted">${S.perfisSemBanco ? 'O perfil no campo ainda não está instalado no servidor (rode o 19_entregas_do_mes.sql).' : 'Aparece quando a coordenação técnica, as bolsistas e as agentes responderem o perfil no campo no cadastro (pelo link é obrigatório).'}</p>`}</div>
       </div></section>`;
   }
@@ -4917,7 +4920,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const fichas = []; (municipios || []).forEach(m => { for (let i = 0; i < (m.n || 0); i++) fichas.push({ id: '', uf: m.uf, municipio: m.municipio, resultado: 'selecionada', situacao: 'aprovada' }); });
     return mapa({ mapaUF: '', mapaMun: '' }, { fichas }, { resumo: true });
   }
-  MQ.painelUI = { mapaResumo, visaoGeral, mesDoProjeto, mapaUFs, escalaRaios, espalhar, marcasTamanho, infoMeta, execucaoGeral, chipStatus, STATUS, cronograma };
+  MQ.painelUI = { LEG_META, LEG_RETRATO, mapaResumo, visaoGeral, mesDoProjeto, mapaUFs, escalaRaios, espalhar, marcasTamanho, infoMeta, execucaoGeral, chipStatus, STATUS, cronograma };
 })();
 ;
 /* ===== fotodia.js ===== */
@@ -11236,7 +11239,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         'Cadastros que chegam pelo link aparecem em <b>Cadastros enviados pelo link</b>. Abra, confira, complete e salve: ao salvar, o cadastro é aprovado.',
         'Na ficha da pessoa ficam a <b>habilitação</b> (FIC, Arlo e termo), a <b>leitura do guia</b> e o <b>perfil no campo</b>. O botão <b>Hoje</b> preenche a data do dia.',
         '<b>Desligar</b> não apaga o cadastro: a vaga fica livre para a substituta e o histórico guarda quem desligou, quando e por quê.',
-        '<b>Acompanhamento externo:</b> quem acompanha pelo MDA ou pelo MPA entra numa área própria, só de leitura e só com números. Não vê nome, CPF, endereço, pagamento nem a equipe. O MDA vê o projeto inteiro, sem parte financeira; o MPA vê o andamento em cada estado, inclusive quantas pessoas da equipe de campo já estão habilitadas e quantos diagnósticos esperam a aprovação da coordenação. Os números são ao vivo e não contam os dados de exemplo.'
+        '<b>Acompanhamento externo:</b> quem acompanha pelo MDA ou pelo MPA entra numa área própria, só de leitura e só com números. Não vê nome, CPF, endereço, pagamento nem a equipe. Os dois veem o projeto em abas: resumo, metas e cronograma, território, mulheres e impacto, equipe e formação. A aba <b>Recursos</b> é só do MDA e só aparece quando a coordenação liberar (parâmetro acomp_mda_financeiro no banco; até lá, só você a vê na prévia). Os números são ao vivo; os dados de exemplo só entram na sua prévia.'
       ],
       duvidas: [
         ['Quem cadastra quem?', 'A coordenação geral cadastra a coordenação técnica, os professores do curso FIC e o auxiliar, e pode cadastrar todos os outros. A coordenação técnica cadastra bolsistas e agentes.'],
@@ -12261,7 +12264,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 /* ===== acompanhamento.js ===== */
 /* Mulheres & Quintais — perfis de ACOMPANHAMENTO (52_acompanhamento.sql): quem acompanha o projeto de fora.
    mda: o ministério que financia. Vê o projeto inteiro em números (alcance, etapas, mapa, evolução, perfil das
-        beneficiárias e impacto). Nada de parte financeira.
+        beneficiárias e impacto). Recursos (65): só quando o parâmetro acomp_mda_financeiro liberar.
    mpa: o movimento parceiro. Vê o andamento no território: cada estado, equipe, formação e o que está parado.
    Só leitura e só contagens: nenhum nome, CPF, endereço, foto ou dado bancário chega a esta tela.
    No perfil e no impacto, contagem de 1 a 4 pessoas vem como -1 e aparece "menos de 5". */
@@ -12466,28 +12469,97 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return it.length ? `<ul class="ac-lista">${it.join('')}</ul>` : '<p class="muted">Nada parado no momento.</p>';
   }
 
+  /* ---------- 15/10/2026: a tela de quem acompanha em abas, leve: uma ideia por aba, números grandes, pouco texto ---------- */
+  const ABAS = [['resumo', 'Resumo'], ['metas', 'Metas e cronograma'], ['recursos', 'Recursos'], ['territorio', 'Território'], ['mulheres', 'Mulheres e impacto'], ['equipe', 'Equipe e formação']];
+  const pl = (v, um, varios) => (+v === 1 ? um : varios);
+  const pc = (v, de) => de ? Math.max(0, Math.min(100, v / de * 100)) : 0;
+  const brl = v => MQ.regras.fmtBRL ? MQ.regras.fmtBRL(+v || 0).replace(/,00$/, '') : 'R$ ' + n(v);
+  const anel = (v, de, rot) => { const p = pc(v, de), C = 2 * Math.PI * 26;
+    return `<span class="ac2-anel" role="img" aria-label="${E(rot)}: ${Math.round(p)}%"><svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false"><circle cx="32" cy="32" r="26" class="tr"/><circle cx="32" cy="32" r="26" class="pg${p >= 100 ? ' cheio' : ''}" stroke-dasharray="${(C * p / 100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 32 32)"/></svg><b class="num">${Math.round(p)}%</b></span>`; };
+  const destaque = (v, rot, sub, de) => `<div class="ac2-kpi">${de ? anel(v, de, rot) : ''}<div><span class="ac2-kv"><b class="num">${n(v)}</b>${de ? `<small> de ${n(de)}</small>` : ''}</span><span>${E(rot)}</span>${sub ? `<em>${E(sub)}</em>` : ''}</div></div>`;
+  const kpiTxt = (v, rot, sub) => `<div class="ac2-kpi"><div><b class="num">${v}</b><span>${E(rot)}</span>${sub ? `<em>${E(sub)}</em>` : ''}</div></div>`;
+  const cartao = (t, h, cls) => `<section class="ac2-cartao${cls ? ' ' + cls : ''}">${t ? `<h2>${t}</h2>` : ''}${h}</section>`;
+  const linhaMeta = (rot, v, de, sub) => { const p = pc(v, de); return `<div class="ac2-linha"><div class="ac2-linha-t"><span>${E(rot)}</span><b class="num">${v == null ? '—' : n(v)}${de ? `<small> de ${n(de)}</small>` : ''}</b></div>${de ? `<span class="ac2-barra" aria-hidden="true"><i class="${p >= 100 ? 'cheio' : ''}" style="width:${p.toFixed(1)}%"></i></span>` : ''}${sub ? `<small class="ac2-sub">${sub}</small>` : ''}</div>`; };
+
+  /* o caminho de cada quintal: uma linha de etapas, cada bolinha com o número e a parte da meta */
+  function caminho(a) {
+    const et = [['Indicadas', total(a, 'indicadas'), 0], ['Selecionadas', total(a, 'selecionadas'), ALVO.selecionadas], ['Diagnóstico', total(a, 'diagnosticos'), ALVO.diagnosticos],
+      ['Plano aprovado', total(a, 'planos'), ALVO.diagnosticos], ['Implantado', total(a, 'implantados'), ALVO.implantados], ['Acompanhamentos', total(a, 'acompanhamentos'), ALVO.acompanhamentos], ['Avaliação final', total(a, 'avaliacoes'), ALVO.avaliacoes]];
+    return `<ol class="ac2-caminho">${et.map(([t, v, de]) => { const p = pc(v, de); return `<li class="${de && v >= de ? 'ok' : v ? 'and' : ''}" style="--p:${p.toFixed(0)}"><span class="ac2-pt" aria-hidden="true"></span><b class="num">${n(v)}</b><span class="ac2-et">${t}</span>${de ? `<small>${Math.round(p)}% de ${n(de)}</small>` : '<small>pelas comunidades</small>'}</li>`; }).join('')}</ol>`;
+  }
+  function abaResumo(a) {
+    const x = a.extra || {};
+    return `<div class="ac2-kpis">${destaque(total(a, 'selecionadas'), 'mulheres selecionadas', 'em ' + n(total(a, 'municipios')) + ' ' + pl(total(a, 'municipios'), 'município', 'municípios'), ALVO.selecionadas)}${destaque(total(a, 'implantados'), 'quintais implantados', '', ALVO.implantados)}
+        ${destaque(total(a, 'visitas_feitas'), 'visitas de campo feitas', '', 1000)}${destaque(total(a, 'pessoas'), 'pessoas nas famílias', 'alcançadas pelos quintais')}</div>
+      ${cartao('O caminho de cada quintal', caminho(a) + '<p class="ac2-nota">Da indicação pela comunidade até a avaliação final: cada etapa é registrada no sistema, com data, local e foto.</p>')}
+      ${cartao('O que pede atenção', parados(a))}${cartao('Visitas feitas por mês', evolucao(a))}`;
+  }
+  /* metas e cronograma: cada meta com o número, a barra e a faixa do período no ano do projeto */
+  function abaMetas(a) {
+    const x = a.extra || {}, at = x.atividades || {}, f = a.formacao || {};
+    const mes = MQ.painelUI && MQ.painelUI.mesDoProjeto ? MQ.painelUI.mesDoProjeto(new Date(String(a.hoje || MQ.regras.hoje()) + 'T12:00:00')) : 1;
+    const hab = total(a, 'habilitadas'), eqc = total(a, 'equipe_campo');
+    const valor = { M1: [hab, eqc || 20, 'pessoas da equipe de campo habilitadas'], M2: [total(a, 'diagnosticos'), 200, 'diagnósticos'], M3: [total(a, 'implantados'), 200, 'quintais implantados'],
+      M4: [total(a, 'acompanhamentos'), 400, 'visitas de acompanhamento'], M5: [(at.eventos || {}).autorizados, 5, 'eventos autorizados'], M6: [(at.intercambio || {}).autorizados, 1, 'intercâmbio com passagens autorizadas'],
+      M7: [(at.pedagogico || {}).autorizados, 8, 'missões pedagógicas autorizadas'], M8: [((x.documentos || {}).por_tipo || {}).relatorio ? 0 : 0, 1, 'relatório final'] };
+    const meses = 13, MES = ['set', 'out', 'nov', 'dez', 'jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set'];
+    const linhas = MQ.METAS.map(m => { const [v, de, un] = valor[m.id] || [0, m.alvo, m.un]; const p = pc(+v || 0, de); const fim = mes > m.fim, comeca = mes < m.ini;
+      const st = v >= de ? ['ok', 'Concluída'] : comeca ? ['nao', 'Começa no mês ' + m.ini] : fim ? ['crit', 'Prazo passou'] : ['and', 'Em andamento'];
+      return `<li class="ac2-meta"><div class="ac2-meta-t"><span class="ac2-mid">${m.id}</span><b>${E(m.nome)}</b><span class="ac2-st ${st[0]}">${st[1]}</span></div>
+        <div class="ac2-meta-n"><b class="num">${v == null ? '—' : n(v)}</b> de ${n(de)} <span>${E(un)}</span></div>
+        <div class="ac2-gantt" aria-hidden="true">${Array.from({ length: meses }, (_, i) => `<i class="${i + 1 >= m.ini && i + 1 <= m.fim ? 'per' : ''}${i + 1 === mes ? ' hoje' : ''}"></i>`).join('')}<span class="ac2-gantt-p" style="left:${((m.ini - 1) / meses * 100).toFixed(1)}%;width:${(((m.fim - m.ini + 1) / meses) * 100 * p / 100).toFixed(1)}%"></span></div></li>`; }).join('');
+    const marcos = (MQ.MARCOS || []).filter(k => k.d >= String(a.hoje || '')).slice(0, 4);
+    return `${cartao('As 8 metas do plano de trabalho', `<div class="ac2-gantt-cab" aria-hidden="true"><span></span>${MES.map((t, i) => `<span class="${i + 1 === mes ? 'hoje' : ''}">${t}</span>`).join('')}</div><ol class="ac2-metas">${linhas}</ol>
+        <p class="ac2-nota">A faixa clara é o período previsto de cada meta (set/2026 a set/2027); a parte escura é o que já foi feito; a coluna marcada é o mês atual (mês ${mes} de 13).</p>`)}
+      ${marcos.length ? cartao('Próximos marcos', `<ol class="ac2-marcos">${marcos.map(k => `<li><b class="num">${MQ.regras.fmtData(k.d)}</b><span>${E(k.t)}</span>${k.meta ? `<small>${k.meta}</small>` : ''}</li>`).join('')}</ol>`) : ''}`;
+  }
+  /* recursos: só para o MDA, e só quando o parâmetro libera (padrão: só na prévia da coordenação) */
+  function abaRecursos(a) {
+    const fx = (a.extra || {}).financeiro; if (!fx) return '';
+    const aviso = fx.liberado !== 'sim' ? '<p class="ac2-previa">Só você vê esta aba, na prévia. O MDA de verdade ainda não vê os recursos. Para liberar, a coordenação muda o parâmetro <b>acomp_mda_financeiro</b> para "sim" (ver o arquivo 65 do banco).</p>' : '';
+    if (fx.sem_planilha) return aviso + cartao('Recursos', '<p class="muted">Os números de recursos aparecem quando a primeira planilha de gastos for enviada na aba Financeiro.</p>');
+    const O = MQ.ORCAMENTO; const it = fx.por_item || [];
+    const recebido = it.filter(l => l.item === 'repasse_mda').reduce((t, l) => t + +l.valor, 0), gasto = it.filter(l => l.item !== 'repasse_mda').reduce((t, l) => t + +l.valor, 0);
+    const V = MQ.PROJETO.vigencia, dia = d => new Date(String(d).slice(0, 10) + 'T12:00:00').getTime(), tempo = pc(dia(a.hoje || MQ.regras.hoje()) - dia(V.inicio), dia(V.fim) - dia(V.inicio));
+    const porRub = O.rubricas.map(r => { const ids = new Set(r.itens.map(i => i.id)); const ex = it.filter(l => l.item !== 'repasse_mda' && (ids.has(l.item) || (!l.item && l.rubrica === r.id) || (l.rubrica === r.id && !O.rubricas.some(q => q.itens.some(i => i.id === l.item))))).reduce((t, l) => t + +l.valor, 0);
+      return { nome: r.nome, prev: r.itens.reduce((t, i) => t + i.total, 0), ex }; });
+    const porMeta = MQ.METAS.filter(m => m.valor).map(m => { let ex = 0; O.rubricas.forEach(r => r.itens.forEach(i => { const f = !i.meta ? 0 : typeof i.meta === 'string' ? (i.meta === m.id ? 1 : 0) : (i.meta[m.id] || 0); if (f) ex += it.filter(l => l.item === i.id).reduce((t, l) => t + +l.valor, 0) * f; })); return { nome: m.id + ' · ' + m.nome, prev: m.valor, ex }; });
+    const bar = (rot, ex, prev) => `<div class="ac2-linha"><div class="ac2-linha-t"><span>${E(rot)}</span><b class="num">${brl(ex)}<small> de ${brl(prev)}</small></b></div><span class="ac2-barra" aria-hidden="true"><i style="width:${pc(ex, prev).toFixed(1)}%"></i></span></div>`;
+    return `${aviso}<div class="ac2-kpis">${kpiTxt(brl(O.total), 'valor do projeto (TED)')}${kpiTxt(brl(recebido), 'recebido do MDA')}${kpiTxt(brl(gasto), 'executado', Math.round(pc(gasto, O.total)) + '% do projeto')}${kpiTxt(brl(recebido - gasto), 'em caixa')}</div>
+      ${cartao('Execução e tempo', `<div class="ac2-tempo">${linhaMeta('Recursos executados', Math.round(pc(gasto, O.total)), 100).replace(/<small> de 100<\/small>/, '%')}${linhaMeta('Tempo do projeto já passado', Math.round(tempo), 100).replace(/<small> de 100<\/small>/, '%')}</div><p class="ac2-nota">Posição da planilha de gastos de ${MQ.regras.fmtData(fx.posicao_em)}. Somas por item do orçamento: nenhuma despesa individual nem favorecido aparece aqui.</p>`)}
+      <div class="ac2-duas">${cartao('Por meta', porMeta.map(x => bar(x.nome, x.ex, x.prev)).join(''))}${cartao('Por rubrica', porRub.map(x => bar(x.nome, x.ex, x.prev)).join(''))}</div>`;
+  }
+  function abaTerritorio(a) {
+    const x = a.extra || {}, c = (x.canais || {}).por_tipo || {}, ag = x.agua || {};
+    const TIP = [['feira', 'feiras'], ['merenda', 'merenda escolar'], ['paa', 'PAA'], ['grupo', 'grupos e cooperativas'], ['comprador', 'compradores']];
+    const AG = [['sem_solucao', 'sem solução'], ['encaminhada', 'encaminhadas'], ['em_andamento', 'em andamento'], ['concluida', 'resolvidas']];
+    const semAgua = total(a, 'sem_agua') + total(a, 'diag_sem_agua');
+    return `${cartao('Onde o projeto está', mapa(a))}
+      ${cartao('Estado por estado', `<div class="ac2-ufs">${(a.por_uf || []).map(u => `<div class="ac2-uf"><div class="ac2-uf-t"><span class="ac2-sigla">${u.uf}</span><b>${E(U().nomeUF ? U().nomeUF(u.uf) : u.uf)}</b><small>${n(u.municipios)} ${pl(u.municipios, 'município', 'municípios')} · ${n(u.comunidades)} ${pl(u.comunidades, 'comunidade', 'comunidades')}</small></div>${u.atrasadas ? `<span class="ac2-st crit ac2-atr">${n(u.atrasadas)} ${pl(u.atrasadas, 'visita atrasada', 'visitas atrasadas')}</span>` : ''}
+          ${linhaMeta('Selecionadas', u.selecionadas, ALVO_UF.selecionadas)}${linhaMeta('Diagnósticos', u.diagnosticos, ALVO_UF.diagnosticos)}${linhaMeta('Implantados', u.implantados, ALVO_UF.implantados)}${linhaMeta('Acompanhamentos', u.acompanhamentos, ALVO_UF.acompanhamentos)}</div>`).join('')}</div>`)}
+      <div class="ac2-duas">${cartao('Onde vender', x.canais ? `<ul class="ac2-chips">${TIP.filter(([k]) => c[k]).map(([k, t]) => `<li><b class="num">${n(c[k])}</b> ${t}</li>`).join('') || '<li class="muted">Nenhum canal cadastrado ainda</li>'}</ul><p class="ac2-nota">${n((x.canais || {}).municipios)} ${pl((x.canais || {}).municipios, 'município', 'municípios')} com canal de venda cadastrado: feiras, merenda escolar (PNAE), PAA, grupos e compradores.</p>` : '<p class="muted">Aparece com o arquivo 65 instalado no banco.</p>')}
+        ${cartao('Água para produzir', `<p class="ac2-frase"><b class="num">${n(semAgua)}</b> ${pl(semAgua, 'mulher', 'mulheres')} sem água que dure na seca</p>${Object.keys(ag).length ? `<ul class="ac2-chips">${AG.filter(([k]) => ag[k]).map(([k, t]) => `<li class="ag-${k}"><b class="num">${n(ag[k])}</b> ${t}</li>`).join('')}</ul>` : ''}<p class="ac2-nota">Sem água garantida, o kit não é entregue: a equipe encaminha para cisterna ou outro programa.</p>`)}</div>`;
+  }
+  function abaMulheres(a) { return `${cartao('Quem são as mulheres', perfil(a) || '<p class="muted">Aparece quando houver mulheres selecionadas.</p>')}${cartao('O que muda na vida das famílias', impacto(a) || '<p class="muted">Aparece com os primeiros diagnósticos.</p>')}`; }
+  function abaEquipe(a) {
+    const x = a.extra || {}, f = x.fic || {}, fo = a.formacao || {}, d = x.documentos || {};
+    const TD = { ata: 'Ata', relatorio: 'Relatório', plano: 'Plano', oficio: 'Ofício', contrato: 'Contrato' };
+    const pres = f.marcacoes ? Math.round(f.presencas / f.marcacoes * 100) : null;
+    return `${cartao('Equipe de campo por estado', `<div class="ac2-ufs">${(a.por_uf || []).map(u => `<div class="ac2-uf"><div class="ac2-uf-t"><span class="ac2-sigla">${u.uf}</span><b>${E(U().nomeUF ? U().nomeUF(u.uf) : u.uf)}</b></div>
+        ${linhaMeta('Bolsistas', u.bolsistas, 2)}<p class="ac2-mini"><b class="num">${n(u.agentes)}</b> agente${u.agentes === 1 ? '' : 's'} de campo</p>${u.habilitadas != null ? linhaMeta('Habilitadas para o campo', u.habilitadas, u.equipe_campo || 0) : ''}</div>`).join('')}</div>`)}
+      ${cartao('Curso de formação (FIC)', `<div class="ac2-kpis peq">${destaque(fo.turmas || 0, pl(fo.turmas, 'turma', 'turmas'))}${destaque(fo.matriculas || 0, pl(fo.matriculas, 'pessoa matriculada', 'pessoas matriculadas'))}${destaque(f.feitos || 0, pl(f.feitos, 'encontro feito', 'encontros feitos'), 'de ' + n(f.encontros || fo.encontros || 0) + ' marcados')}${destaque(Math.round(f.horas || 0), 'horas de curso', 'somando os encontros')}</div>
+        ${pres != null ? linhaMeta('Presença nos encontros', pres, 100).replace(/<small> de 100<\/small>/, '%') : ''}`)}
+      ${cartao('Documentos do projeto', (d.ultimos || []).length ? `<ul class="ac2-docs">${d.ultimos.map(k => `<li><span class="ac2-doc-t">${E(TD[k.tipo] || k.tipo)}</span><b>${E(k.titulo)}</b><small class="num">${MQ.regras.fmtData(k.data)}${k.uf ? ' · ' + E(k.uf) : ''}</small></li>`).join('')}</ul><p class="ac2-nota">Atas, relatórios, planos, ofícios e contratos registrados. Os arquivos ficam com a coordenação.</p>` : '<p class="muted">Nenhum documento registrado ainda.</p>')}`;
+  }
   function corpo(a) {
-    const kp = a.orgao === 'mda'
-      ? numeroGrande(n(total(a, 'selecionadas')), 'mulheres selecionadas', 'de 200 previstas') + numeroGrande(n(total(a, 'pessoas')), 'pessoas nas famílias') + numeroGrande(n(total(a, 'implantados')), 'quintais implantados', 'de 200 previstos')
-        + numeroGrande(n(total(a, 'municipios')), 'municípios') + numeroGrande(n(total(a, 'comunidades')), 'comunidades rurais') + numeroGrande(n(total(a, 'visitas_feitas')), 'visitas de campo feitas', 'de 1.000 previstas')
-      : numeroGrande(n(total(a, 'selecionadas')), 'mulheres selecionadas', 'de 200 previstas') + numeroGrande(n(total(a, 'comunidades')), 'comunidades', 'em ' + n(total(a, 'municipios')) + ' municípios') + numeroGrande(n(total(a, 'bolsistas') + total(a, 'agentes')), 'pessoas da equipe de campo', a.por_uf.some(u => u.habilitadas != null) ? n(total(a, 'habilitadas')) + ' com a habilitação completa' : '')
-        + numeroGrande(n(total(a, 'visitas_feitas')), 'visitas feitas') + numeroGrande(n(total(a, 'agendadas')), 'visitas agendadas') + numeroGrande(n(total(a, 'atrasadas')), 'visitas atrasadas');
-    const sec = (id, t, sub, h) => `<section class="ac-sec" id="ac-${id}" aria-labelledby="ac-${id}-t"><h2 id="ac-${id}-t">${t}</h2>${sub ? `<p class="ac-sub">${sub}</p>` : ''}${h}</section>`;
-    const area = total(a, 'area_m2');
-    return `<div class="ac-kpis" aria-label="Resumo">${kp}</div>`
-      + (a.orgao === 'mda'
-        ? sec('caminho', 'O caminho de cada quintal', 'Da indicação da mulher pela comunidade até a avaliação final, cada etapa é registrada no sistema, com data, local e foto.', funil(a))
-          + sec('metas', 'Metas físicas do plano de trabalho', 'O número de cada meta vem dos próprios registros de campo.', `<div class="ac-metas">${metas(a)}</div>`)
-          + sec('mapa', 'Onde o projeto está', (() => { const m = total(a, 'municipios'), e = (a.por_uf || []).filter(u => u.selecionadas).length; return `Mulheres selecionadas em ${n(m)} município${m === 1 ? '' : 's'} de ${n(e)} estado${e === 1 ? '' : 's'} (o projeto atua em 5 estados do Nordeste)${area ? `, com ${n(area)} m² de quintais diagnosticados` : ''}.`; })(), mapa(a) + tabelaUF(a, false))
-          + sec('evolucao', 'Evolução do trabalho de campo', 'Visitas feitas em cada mês.', evolucao(a))
-          + sec('perfil', 'Quem são as mulheres', 'As prioridades de seleção do projeto, em números. Sem nome nem dado pessoal.', perfil(a))
-          + sec('impacto', 'O que muda na vida das famílias', 'As mesmas perguntas são feitas antes da implantação e na avaliação final.', impacto(a))
-        : sec('estados', 'Estado por estado', 'Metas por estado: 40 mulheres, 40 diagnósticos, 40 quintais e 80 visitas de acompanhamento.', estados(a))
-          + sec('parado', 'O que pede atenção', 'O que está atrasado ou esperando solução no território.', parados(a))
-          + sec('formacao', 'Formação da equipe', 'Curso de formação das bolsistas e agentes de campo.', `<div class="ac-kpis ac-kpis-3">${numeroGrande(n((a.formacao || {}).turmas), 'turmas')}${numeroGrande(n((a.formacao || {}).matriculas), 'matrículas')}${numeroGrande(n((a.formacao || {}).encontros), 'encontros registrados')}</div>`)
-          + sec('mapa', 'Onde o projeto está', `${n(total(a, 'comunidades'))} comunidades em ${n(total(a, 'municipios'))} municípios.`, mapa(a) + tabelaUF(a, true))
-          + sec('evolucao', 'Evolução do trabalho de campo', 'Visitas feitas em cada mês.', evolucao(a)))
-      + `<p class="ac-nota small muted">Números ao vivo, tirados dos registros feitos pela equipe do projeto. Esta área é só de leitura e mostra apenas contagens: não traz nome, CPF, endereço, foto nem dado bancário de ninguém. Dados de exemplo usados em testes ficam fora das contas.</p>`;
+    const s = S(); const temFin = !!(a.extra && a.extra.financeiro);
+    const abas = ABAS.filter(([k]) => k !== 'recursos' || temFin);
+    let at = s.acAba && abas.some(([k]) => k === s.acAba) ? s.acAba : 'resumo';
+    const conteudo = { resumo: abaResumo, metas: abaMetas, recursos: abaRecursos, territorio: abaTerritorio, mulheres: abaMulheres, equipe: abaEquipe }[at](a);
+    return `<nav class="ac2-abas" role="tablist" aria-label="Partes do painel">${abas.map(([k, t]) => `<button type="button" role="tab" id="ac2-t-${k}" aria-selected="${k === at}" aria-controls="ac2-p" data-acao="acomp-aba" data-a="${k}">${t}</button>`).join('')}</nav>
+      <div class="ac2-painel" id="ac2-p" role="tabpanel" aria-labelledby="ac2-t-${at}" tabindex="0">${conteudo}${MQ.painelUI && MQ.painelUI.LEG_META ? MQ.painelUI.LEG_META : ''}</div>
+      ${a.extraSemBanco ? '<p class="ac-nota small muted">Parte dos números (eventos, canais de venda, água, curso e documentos) aparece quando a coordenação rodar o arquivo 65 no banco.</p>' : ''}
+      <p class="ac-nota small muted">Números ao vivo, tirados dos registros feitos pela equipe do projeto. Esta área é só de leitura e mostra apenas contagens: não traz nome, CPF, endereço, foto nem dado bancário de ninguém.</p>`;
   }
   const quando = a => { const d = new Date(a.gerado_em || Date.now()); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' às ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
 
@@ -12551,7 +12623,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const s = S(); if (s.eu.papel !== 'coord_geral') return '';
     const l = s.observadores || []; const pv = s.acompPrevia;
     const abre = `<section class="secao ac-coord" id="ac-coord" aria-labelledby="t-ac"><div class="secao-cab"><div><h2 id="t-ac">Acompanhamento externo (MDA e MPA)</h2>
-      <p>Área própria, só de leitura e só com números · não vê nome, CPF, endereço, pagamento nem a equipe · o MDA vê o projeto inteiro, sem parte financeira · o MPA vê o andamento em cada estado · só você cadastra e gera o código</p></div></div>`;
+      <p>Área própria, só de leitura e só com números · não vê nome, CPF, endereço, pagamento nem a equipe · os dois veem o projeto em abas · recursos só para o MDA, quando você liberar · só você cadastra e gera o código</p></div></div>`;
     if (s.obsSemBanco) return `${abre}<div class="bloco"><p class="nota">Para liberar o acesso de quem acompanha o projeto, rode o arquivo <b>52_acompanhamento.sql</b> no Supabase.</p></div></section>`;
     const linha = o => { const g = l.filter(x => x.orgao === o), n = g.filter(x => x.status === 'ativo').length;
       return `<div class="ag-tr" role="group" aria-label="${ORG[o].sigla}: ${n} ${n === 1 ? 'pessoa' : 'pessoas'}"><div class="ag-uf"><span class="sigla ac-sigla">${ORG[o].sigla}</span><span class="ag-nome"><b>${o === 'mda' ? 'Ministério' : 'Movimento parceiro'}</b>${g.length ? `<small>${n} ${n === 1 ? 'pessoa' : 'pessoas'}</small>` : ''}</span></div>
@@ -12587,6 +12659,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (acao === 'acomp-atualizar' && s.verComo) { el.disabled = true; try { s.verComo = { orgao: s.verComo.orgao, dados: await s.api.dadosAcompanhamento(s.verComo.orgao) }; U().render(); U().toast('Números atualizados.'); } catch (e) { msg(e); el.disabled = false; } }
     else if (acao === 'acomp-atualizar') { el.disabled = true; await carregar(); U().render(); if (!s.acompErro) U().toast('Números atualizados.'); }
     else if (acao === 'acomp-imprimir') { window.print(); }
+    else if (acao === 'acomp-aba') { s.acAba = el.dataset.a; U().render(); const b = document.getElementById('ac2-t-' + el.dataset.a); if (b) b.focus({ preventScroll: true }); }
     else if (acao === 'acomp-previa') {
       if (s.eu.papel !== 'coord_geral') return;
       el.disabled = true;
@@ -12594,7 +12667,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         const dados = await s.api.dadosAcompanhamento(el.dataset.o);
         if (!s.verComo) { s.verComoVolta = { aba: s.aba, y: Math.round(window.scrollY || 0) }; if (U().previaNoHistorico) U().previaNoHistorico(true); }   // para voltar ao mesmo lugar (e o Voltar do navegador sair da prévia)
         if (U().fecharPainel && s.painel) U().fecharPainel({ semFoco: true, semHistorico: true });
-        s.verComo = { orgao: el.dataset.o, dados }; U().render(); window.scrollTo(0, 0);
+        s.verComo = { orgao: el.dataset.o, dados }; s.acAba = 'resumo'; U().render(); window.scrollTo(0, 0);
         const b = document.getElementById('ac-voltar'); if (b) b.focus({ preventScroll: true });
       } catch (e) { msg(e); el.disabled = false; }
     }
@@ -12623,6 +12696,13 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     await U().ocupado(form, async () => { await S().api.salvarObservador(x); S().observadores = await S().api.listarObservadores(); S().acompCodigo = null; U().fecharPainel(); U().render(); U().toast('Cadastro de acompanhamento gravado.'); });
   }
 
+  // abas do painel: setas esquerda/direita, Home e End trocam de aba (padrão de abas acessíveis)
+  if (typeof document !== 'undefined') document.addEventListener('keydown', ev => {
+    const t = ev.target; if (!t || !t.closest || !t.closest('.ac2-abas') || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(ev.key)) return;
+    const l = [...t.closest('.ac2-abas').querySelectorAll('[role=tab]')]; let i = l.indexOf(t);
+    i = ev.key === 'Home' ? 0 : ev.key === 'End' ? l.length - 1 : (i + (ev.key === 'ArrowRight' ? 1 : -1) + l.length) % l.length;
+    ev.preventDefault(); l[i].click();
+  });
   MQ.acomp = { calcular, calcularExtra, pequeno, ORG };
   function sairPrevia(peloNavegador) {
     const s = S(); if (!s.verComo) return; const volta = s.verComoVolta || {}; s.verComo = null; s.verComoVolta = null;
@@ -12861,6 +12941,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `<section class="secao prontidao" aria-labelledby="t-pront">
       <div class="secao-cab"><div><h2 id="t-pront">Situação do campo em cada estado</h2><p>Mostra se o trabalho de campo já pode andar em cada estado: quantas pessoas da equipe de campo estão habilitadas (prontas para trabalhar e receber) e já entraram no sistema, quantas mulheres têm a ficha aprovada, quantos diagnósticos foram feitos (meta de 40), quantas mulheres estão sem água na seca (não recebem kit: acima de 30% das fichas, reveja a seleção do estado), as visitas marcadas para os próximos 7 dias e os registros salvos sem internet que ainda não foram enviados (coluna Falta enviar).</p></div></div>
       ${tabela}${cartoes}
+      ${MQ.painelUI && MQ.painelUI.LEG_META ? MQ.painelUI.LEG_META : ''}
       ${eu.papel === 'coord_geral' ? coordenacao() : ''}
       ${blocoFila()}
     </section>`;

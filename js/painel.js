@@ -380,6 +380,9 @@
     </section>`;
   }
 
+  // 15/10/2026: a regra das cores das barras, dita na própria tela (linha miúda embaixo de cada painel)
+  const LEG_META = '<p class="leg-cores"><i class="lc-ok" aria-hidden="true"></i>verde: meta cumprida <i class="lc-falta" aria-hidden="true"></i>cinza: ainda falta</p>';
+  const LEG_RETRATO = '<p class="leg-cores"><i class="lc-ret" aria-hidden="true"></i>marrom: parte do grupo (retrato, não é meta)</p>';
   /* ---------- perfil das mulheres (recorte) e linha de base de renda ---------- */
   function perfil(S, d) {
     const base = d.selAprov.length ? d.selAprov : d.fichas.filter(f => f.resultado === 'selecionada');
@@ -437,7 +440,7 @@
       <div class="secao-cab"><div><h2 id="t-perfil">Quem são as mulheres</h2><p>${base.length ? 'Percentual ' + rotBase + ', pelos critérios de prioridade da ficha.' : 'Aparece quando houver mulheres selecionadas.'}</p></div></div>
       <div class="duas-col perfil-cols">
         <div class="bloco">${base.length ? `<ul class="perfil2">${barras}</ul>
-          <p class="nota">"Negra, indígena, quilombola ou de comunidade tradicional" é uma única pergunta na ficha: não dá para separar quilombolas.</p>` : '<p class="muted">Sem dados ainda.</p>'}</div>
+          <p class="nota">"Negra, indígena, quilombola ou de comunidade tradicional" é uma única pergunta na ficha: não dá para separar quilombolas.</p>${LEG_RETRATO}` : '<p class="muted">Sem dados ainda.</p>'}</div>
         <div class="bloco pp2"><h3>Ponto de partida${temDepois ? ' e hoje' : ''}</h3>
           ${diags.length ? `<div class="pp2-kpis">${kpiQ}${kpiF}</div>${tabPP}
             ${nSemAgua ? `<p class="pp2-agua"><b>${nSemAgua}</b> diagnóstico${nSemAgua > 1 ? 's' : ''} sem água que dure na seca: não recebe${nSemAgua > 1 ? 'm' : ''} kit e precisa${nSemAgua > 1 ? 'm' : ''} de cisterna.</p>` : ''}
@@ -495,11 +498,11 @@
           </ul>
           ${leram.length ? (nLeram >= leram.length
             ? `<p class="ex2-guia ok"><b>Todas leram o guia</b> (${leram.length} bolsistas e agentes).</p>`
-            : `<p class="ex2-guia"><b>${leram.length - nLeram} de ${leram.length}</b> bolsistas e agentes ainda não marcaram que leram o guia.</p>`) : ''}</div>
+            : `<p class="ex2-guia"><b>${leram.length - nLeram} de ${leram.length}</b> bolsistas e agentes ainda não marcaram que leram o guia.</p>`) : ''}${LEG_META}</div>
         <div class="bloco"><h3>Ponto de partida da equipe</h3>
           ${resp.length ? `<ul class="perfil2">${linhas.map(([t, x]) => barraPf(t, x)).join('')}</ul>
             ${outraBolsa && outraBolsa.n ? `<p class="pp2-agua"><b>${outraBolsa.n} pessoa${outraBolsa.n > 1 ? 's' : ''}</b> já recebe${outraBolsa.n > 1 ? 'm' : ''} outra bolsa: confira se pode acumular antes de pagar.</p>` : ''}
-            <p class="nota">${resp.length} de ${campo.length} pessoa${campo.length > 1 ? 's' : ''} da equipe de campo responderam o perfil${outraBolsa && !outraBolsa.n ? '; nenhuma recebe outra bolsa' : ''}. O Guia pede bolsistas mulheres, de preferência agricultoras ou com atuação junto às mulheres do território.</p>`
+            <p class="nota">${resp.length} de ${campo.length} pessoa${campo.length > 1 ? 's' : ''} da equipe de campo responderam o perfil${outraBolsa && !outraBolsa.n ? '; nenhuma recebe outra bolsa' : ''}. O Guia pede bolsistas mulheres, de preferência agricultoras ou com atuação junto às mulheres do território.</p>${LEG_RETRATO}`
             : `<p class="small muted">${S.perfisSemBanco ? 'O perfil no campo ainda não está instalado no servidor (rode o 19_entregas_do_mes.sql).' : 'Aparece quando a coordenação técnica, as bolsistas e as agentes responderem o perfil no campo no cadastro (pelo link é obrigatório).'}</p>`}</div>
       </div></section>`;
   }
@@ -751,5 +754,5 @@
     const fichas = []; (municipios || []).forEach(m => { for (let i = 0; i < (m.n || 0); i++) fichas.push({ id: '', uf: m.uf, municipio: m.municipio, resultado: 'selecionada', situacao: 'aprovada' }); });
     return mapa({ mapaUF: '', mapaMun: '' }, { fichas }, { resumo: true });
   }
-  MQ.painelUI = { mapaResumo, visaoGeral, mesDoProjeto, mapaUFs, escalaRaios, espalhar, marcasTamanho, infoMeta, execucaoGeral, chipStatus, STATUS, cronograma };
+  MQ.painelUI = { LEG_META, LEG_RETRATO, mapaResumo, visaoGeral, mesDoProjeto, mapaUFs, escalaRaios, espalhar, marcasTamanho, infoMeta, execucaoGeral, chipStatus, STATUS, cronograma };
 })();

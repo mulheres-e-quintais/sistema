@@ -57,10 +57,10 @@ describe('Tela do MPA', () => {
     assert.deepEqual([ba.equipe_campo, ba.habilitadas, ba.diag_aguardando, ba.diag_devolvidos], [0, 0, 0, 0]);
   });
   test('a tela do MPA mostra quem está pronta para trabalhar e o que espera a coordenação', async () => {
-    const t = await montar('obs_mpa'); t.S.acomp = await t.api.dadosAcompanhamento(); t.MQ.ui.render(); const h = texto(t.html());
+    const t = await montar('obs_mpa'); t.S.acomp = await t.api.dadosAcompanhamento(); t.S.acAba = 'equipe'; t.MQ.ui.render(); const h = texto(t.html());
     assert.match(h, /Andamento no território/);
-    assert.match(h, /pessoas da equipe de campo \d+ com a habilitação completa/);
-    assert.match(h, /Prontas para trabalhar/);
+    assert.match(h, /Habilitadas para o campo \d+ de \d+/);
+    t.S.acAba = 'resumo'; t.MQ.ui.render(); assert.match(texto(t.html()), /O que pede atenção/);
   });
 });
 

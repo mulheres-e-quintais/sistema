@@ -20,13 +20,13 @@ const R = []; const ok = (n, c, d = '') => { R.push(!!c); console.log((c ? 'PASS
   ok('há dados pessoais nos dados de exemplo para procurar', segredos.length > 20, segredos.length);
 
   for (const [pf, sigla, titulo] of [['obs_mda', 'MDA', 'O projeto em números'], ['obs_mpa', 'MPA', 'Andamento no território']]) {
-    await como(pf); await p.waitForSelector('.ac-kpis');
+    await como(pf); await p.waitForSelector('.ac2-abas');
     const html = await p.content(); const texto = await txt('body');
     ok(sigla + ': abre a tela própria, com o título certo', (await txt('main h1')).includes(titulo) && /Dados ao vivo/.test(texto));
     ok(sigla + ': nenhum dado pessoal da equipe ou das mulheres em nenhum ponto da página', segredos.every(x => !html.includes(x)), segredos.filter(x => html.includes(x)).slice(0, 3).join(' | '));
     ok(sigla + ': nenhuma parte financeira (bolsa, pagamento, orçamento, R$)', !/bolsa|pagamento|orçamento|execução financeira|saldo|ajuda de custo/i.test(texto.replace(/não traz nome, CPF, endereço, foto nem dado bancário de ninguém/, '')) && (pf === 'obs_mpa' ? !/R\$/.test(texto) : true), (texto.match(/.{0,30}(bolsa|pagamento|orçamento|saldo|ajuda de custo).{0,30}/i) || [''])[0]);
     ok(sigla + ': não há abas, menu da equipe, botão de ajuda da equipe, Meus dados nem formulário', await p.evaluate(() => !document.querySelector('.abas, [data-acao=aba], [data-acao=meus-dados], [data-acao=ajuda], form, #painel, .btn.pri, [data-acao^=ficha], [data-acao^=campo], [data-acao^=pag]')));
-    ok(sigla + ': só existem ações de leitura na tela', await p.evaluate(() => [...document.querySelectorAll('main [data-acao]')].every(e => /^acomp-(atualizar|imprimir)$/.test(e.dataset.acao))), await p.evaluate(() => [...new Set([...document.querySelectorAll('main [data-acao]')].map(e => e.dataset.acao))].join(',')));
+    ok(sigla + ': só existem ações de leitura na tela', await p.evaluate(() => [...document.querySelectorAll('main [data-acao]')].every(e => /^acomp-(atualizar|imprimir|aba)$/.test(e.dataset.acao))), await p.evaluate(() => [...new Set([...document.querySelectorAll('main [data-acao]')].map(e => e.dataset.acao))].join(',')));
     const mem = await p.evaluate(() => { const S = MQ.ui.S; return { eq: (S.equipe || []).length, fi: (S.fichas || []).length, vi: (S.visitas || []).length, dg: (S.diagnosticos || []).length, aud: (S.aud || []).length, sol: (S.solic || []).length, obs: !!S.eu.observador, papel: S.eu.papel }; });
     ok(sigla + ': o navegador não guarda equipe, fichas, visitas, diagnósticos nem histórico', mem.eq + mem.fi + mem.vi + mem.dg + mem.aud === 0 && mem.obs, JSON.stringify(mem));
     ok(sigla + ': não guarda cópia de dados da equipe no aparelho', await p.evaluate(() => !Object.keys(localStorage).some(k => /^mq-cache-obs/.test(k))));
@@ -36,10 +36,13 @@ const R = []; const ok = (n, c, d = '') => { R.push(!!c); console.log((c ? 'PASS
       r.fichas = (await a.listarFichas().catch(() => [])).length; r.equipe = (await a.listarEquipe().catch(() => [])).filter(m => m.cpf || m.pix_chave).length; return r; });
     ok(sigla + ': não cadastra, não lista colegas, não gera código, não altera preço e não troca de órgão', ['listarObservadores', 'salvarObservador', 'gerarCodigoObservador', 'salvarKitItem', 'dadosAcompanhamento(outro)'].every(k => bloqueios[k] === 'ok'), JSON.stringify(bloqueios));
     const dados = await p.evaluate(() => MQ.ui.S.acomp);
-    ok(sigla + ': os números recebidos são só contagens (nenhum texto além de estado, município e mês)', Object.keys(dados).every(k => ['orgao', 'gerado_em', 'hoje', 'por_uf', 'municipios', 'mensal', 'perfil', 'impacto', 'formacao'].includes(k)) && dados.por_uf.every(u => Object.entries(u).every(([k, v]) => k === 'uf' || typeof v === 'number')));
-    ok(sigla + ': a soma dos estados aparece nos números grandes', (await txt('.ac-kpis')).startsWith(String(dados.por_uf.reduce((t, u) => t + u.selecionadas, 0))), (await txt('.ac-kpis')).slice(0, 40));
-    ok(sigla + ': mapa, tabela por estado e evolução por mês estão na tela', await p.evaluate(() => !!document.querySelector('.ac-mapa svg') && document.querySelectorAll('#ac-mapa .ac-tab tbody tr').length >= 5 && !!document.querySelector('#ac-evolucao')));
-    ok(sigla + ': o gráfico tem descrição para leitor de tela e tabela com os mesmos números', await p.evaluate(() => { const s = document.querySelector('.ac-svg'); return !s || (s.getAttribute('role') === 'img' && /Visitas feitas por mês/.test(s.getAttribute('aria-label')) && !!document.querySelector('#ac-evolucao table')); }));
+    ok(sigla + ': os números recebidos são só contagens (nenhum texto além de estado, município e mês)', Object.keys(dados).every(k => ['orgao', 'gerado_em', 'hoje', 'por_uf', 'municipios', 'mensal', 'perfil', 'impacto', 'formacao', 'extra', 'extraSemBanco'].includes(k)) && dados.por_uf.every(u => Object.entries(u).every(([k, v]) => k === 'uf' || typeof v === 'number')));
+    ok(sigla + ': a soma dos estados aparece nos números grandes', new RegExp('(^|\\D)' + dados.por_uf.reduce((t, u) => t + u.selecionadas, 0) + ' de 200\\s*mulheres selecionadas').test(await txt('.ac2-kpis')), (await txt('.ac2-kpis')).slice(0, 60));
+    ok(sigla + ': 65: tela em abas (Resumo, Metas, Território, Mulheres, Equipe) e sem a aba Recursos para quem acompanha', await p.evaluate(() => { const l = [...document.querySelectorAll('.ac2-abas [role=tab]')].map(b => b.dataset.a); return ['resumo', 'metas', 'territorio', 'mulheres', 'equipe'].every(k => l.includes(k)) && !l.includes('recursos'); }));
+    ok(sigla + ': o gráfico de visitas por mês tem descrição para leitor de tela e tabela com os mesmos números', await p.evaluate(() => { const s = document.querySelector('.ac-evo svg'); return !s || (s.getAttribute('role') === 'img' && /Visitas feitas por mês/.test(s.getAttribute('aria-label')) && !!document.querySelector('.ac-evo table')); }));
+    await p.click('.ac2-abas [data-a=territorio]'); await p.waitForTimeout(300);
+    ok(sigla + ': Território: mapa e um cartão por estado', await p.evaluate(() => !!document.querySelector('.ac-mapa svg') && document.querySelectorAll('.ac2-uf').length === 5));
+    await p.click('.ac2-abas [data-a=resumo]'); await p.waitForTimeout(300);
     ok(sigla + ': toda barra de progresso diz o valor em texto', await p.evaluate(() => [...document.querySelectorAll('main .medidor')].every(m => m.getAttribute('aria-hidden') === 'true' || (m.getAttribute('role') === 'img' && /\d/.test(m.getAttribute('aria-label') || '')))));
     ok(sigla + ': há link para o guia do perfil', await p.locator(`a[href="manuais/guia-${pf.slice(4)}.pdf"]`).count() === 1);
     // atualizar agora
@@ -49,29 +52,33 @@ const R = []; const ok = (n, c, d = '') => { R.push(!!c); console.log((c ? 'PASS
     ok(sigla + ': Imprimir chama a impressão do navegador', await p.evaluate(async () => { let n = 0; const o = window.print; window.print = () => { n++; }; document.querySelector('[data-acao=acomp-imprimir]').click(); await new Promise(r => setTimeout(r, 200)); window.print = o; return n === 1; }));
     // erro de rede
     await p.evaluate(async () => { const S = MQ.ui.S; S._orig = S.api.dadosAcompanhamento; S.api.dadosAcompanhamento = async () => { const e = new Error('sem internet'); e.semRede = true; throw e; }; document.querySelector('[data-acao=acomp-atualizar]').click(); await new Promise(r => setTimeout(r, 500)); });
-    ok(sigla + ': sem internet, avisa e mantém os últimos números na tela', /Sem internet/.test(await txt('main')) && await p.locator('.ac-kpis').count() >= 1 && await p.locator('.ac-sec').count() >= 5);
+    ok(sigla + ': sem internet, avisa e mantém os últimos números na tela', /Sem internet/.test(await txt('main')) && await p.locator('.ac2-kpis').count() >= 1 && await p.locator('.ac2-cartao').count() >= 3);
     await p.evaluate(async () => { const S = MQ.ui.S; S.api.dadosAcompanhamento = S._orig; document.querySelector('[data-acao=acomp-atualizar]').click(); await new Promise(r => setTimeout(r, 500)); });
     ok(sigla + ': com a internet de volta, o aviso some', !/Não foi possível carregar/.test(await txt('main')));
     if (pf === 'obs_mda') {
-      ok('MDA: tem caminho do quintal, metas, perfil e impacto; não tem formação nem equipe por estado', await p.evaluate(() => ['caminho', 'metas', 'perfil', 'impacto'].every(k => document.querySelector('#ac-' + k)) && !document.querySelector('#ac-formacao, #ac-estados, #ac-parado')));
-      ok('MDA: as 3 metas físicas aparecem com situação escrita', await p.locator('.ac-meta .st-chip').count() === 3);
-      ok('MDA: com menos de 5 selecionadas o perfil não aparece', /menos de 5 mulheres selecionadas/.test(await txt('#ac-perfil')) || await p.evaluate(() => MQ.ui.S.acomp.perfil.base >= 5));
+      ok('MDA: o Resumo tem o caminho do quintal e o que pede atenção', !!(await p.$('.ac2-caminho')) && /O que pede atenção/.test(await txt('.ac2-painel')));
+      await p.click('.ac2-abas [data-a=metas]'); await p.waitForTimeout(300);
+      ok('MDA: as 8 metas aparecem com situação escrita e o período', await p.locator('.ac2-meta .ac2-st').count() === 8 && await p.locator('.ac2-gantt').count() === 8);
+      await p.click('.ac2-abas [data-a=mulheres]'); await p.waitForTimeout(300);
+      ok('MDA: com menos de 5 selecionadas o perfil não aparece', /menos de 5 mulheres selecionadas/.test(await txt('.ac2-painel')) || await p.evaluate(() => MQ.ui.S.acomp.perfil.base >= 5));
+      await p.click('.ac2-abas [data-a=resumo]'); await p.waitForTimeout(300);
     } else {
-      ok('MPA: tem estado por estado, o que pede atenção e formação; não tem perfil nem impacto', await p.evaluate(() => ['estados', 'parado', 'formacao'].every(k => document.querySelector('#ac-' + k)) && !document.querySelector('#ac-perfil, #ac-impacto, #ac-metas')));
-      ok('MPA: um cartão por estado, com equipe e comunidades', await p.locator('.ac-uf').count() === 5 && /bolsista/.test(await txt('.ac-ufs')));
+      await p.click('.ac2-abas [data-a=equipe]'); await p.waitForTimeout(300);
+      ok('MPA: Equipe e formação: um cartão por estado com bolsistas e agentes, e o curso FIC', await p.locator('.ac2-uf').count() === 5 && /Bolsistas/.test(await txt('.ac2-painel')) && /Curso de formação/.test(await txt('.ac2-painel')));
+      await p.click('.ac2-abas [data-a=resumo]'); await p.waitForTimeout(300);
     }
   }
   // perfil com mais gente: aparece em percentuais, com grupo pequeno escondido
-  await como('obs_mda'); await p.waitForSelector('.ac-kpis');
+  await como('obs_mda'); await p.waitForSelector('.ac2-abas');
   await p.evaluate(() => { const a = JSON.parse(JSON.stringify(MQ.ui.S.acomp)); a.perfil = { base: 40, sustento: 30, cadunico: 22, sem_ater: 12, raca_povo: -1, jovem: 0, grupo: 9, caf: 40, faixas: { '18 a 29': -1, '30 a 44': 20, '45 a 59': 15, '60 ou mais': 5 } };
     a.impacto = { base_n: 40, renda_quintal_media: 132.5, final_n: 12, produz: { sim: 9, em_parte: -1, nao: 0 }, ebia_final: { seguranca: 6, leve: 5, moderada: -1, grave: 0 } }; MQ.ui.S.acomp = a; MQ.ui.render(); });
-  const perf = await txt('#ac-perfil'), imp = await txt('#ac-impacto');
+  await p.evaluate(() => { MQ.ui.S.acAba = 'mulheres'; MQ.ui.render(); }); const perf = await txt('.ac2-cartao:nth-child(1)'), imp = await txt('.ac2-cartao:nth-child(2)');
   ok('MDA: perfil mostra número e percentual (30 de 40 = 75%)', /Responsáveis pelo sustento da família\s*30 · 75%/.test(perf), perf.slice(0, 160));
   ok('MDA: grupo de 1 a 4 mulheres aparece como "menos de 5", sem número', /povo tradicional\s*menos de 5/.test(perf) && /18 a 29 anos\s*menos de 5/.test(perf) && !/-1/.test(perf));
   ok('MDA: impacto mostra a linha de base e a avaliação final, com grupo pequeno escondido', /40 famílias com diagnóstico/.test(imp) && /132,50/.test(imp) && /12 quintais já avaliados/.test(imp) && /Produzindo em parte\s*menos de 5/.test(imp) && !/-1/.test(imp), imp.slice(0, 200));
   // trocar para um perfil da equipe e voltar não deixa resto
-  await como('bolsista'); ok('voltar a um perfil da equipe traz a tela normal', await p.evaluate(() => !document.querySelector('.ac-kpis') && MQ.ui.S.fichas.length > 0 && !MQ.ui.S.eu.observador));
-  await como('obs_mpa'); await p.waitForSelector('.ac-kpis'); ok('e voltar ao acompanhamento limpa de novo os dados da equipe', await p.evaluate(() => MQ.ui.S.fichas.length + MQ.ui.S.equipe.length === 0));
+  await como('bolsista'); ok('voltar a um perfil da equipe traz a tela normal', await p.evaluate(() => !document.querySelector('.ac2-kpis') && MQ.ui.S.fichas.length > 0 && !MQ.ui.S.eu.observador));
+  await como('obs_mpa'); await p.waitForSelector('.ac2-abas'); ok('e voltar ao acompanhamento limpa de novo os dados da equipe', await p.evaluate(() => MQ.ui.S.fichas.length + MQ.ui.S.equipe.length === 0));
 
   // ---------- coordenação geral: cadastro, código e prévia ----------
   await como('coord_geral'); await p.evaluate(() => { MQ.ui.fecharPainel(); MQ.ui.S.aba = 'equipe'; MQ.ui.render(); }); await p.waitForSelector('#ac-coord');
@@ -114,10 +121,10 @@ const R = []; const ok = (n, c, d = '') => { R.push(!!c); console.log((c ? 'PASS
   ok('coordenação: cadastro, alteração e código ficam no histórico, sem o código', await p.evaluate(() => { const a = JSON.parse(localStorage.getItem('mq-demo-v4')).auditoria.filter(x => x.tabela === 'observadores'); return ['INSERT', 'UPDATE', 'CODIGO', 'NOVO_ACESSO'].every(k => a.some(x => x.acao === k)) && !JSON.stringify(a).match(/[A-Z2-9]{4}-[A-Z2-9]{4}/); }));
   // prévia
   await p.evaluate(() => MQ.ui.fecharPainel()); await p.click('#ac-coord [data-acao=acomp-previa][data-o=mda]'); await p.waitForSelector('.ac-faixa-previa');
-  ok('coordenação: "Ver como o MDA vê" troca a tela inteira pela do MDA, com a faixa da prévia e sem o botão de sair', /O caminho de cada quintal/.test(await txt('main')) && !/Estado por estado/.test(await txt('main')) && !(await p.$('#ac-coord')) && !(await p.$('.btn-sair')) && /Pré-visualização/.test(await txt('.ac-faixa-previa')));
+  ok('coordenação: "Ver como o MDA vê" troca a tela inteira pela do MDA (com a aba Recursos, só na prévia), com a faixa da prévia e sem o botão de sair', /O caminho de cada quintal/.test(await txt('main')) && !!(await p.$('.ac2-abas [data-a=recursos]')) && !(await p.$('#ac-coord')) && !(await p.$('.btn-sair')) && /Pré-visualização/.test(await txt('.ac-faixa-previa')));
   ok('coordenação: o foco vai para "Voltar à minha visão"', await p.evaluate(() => document.activeElement && document.activeElement.id === 'ac-voltar'));
   await p.click('.ac-faixa-previa [data-acao=acomp-previa][data-o=mpa]'); await p.waitForTimeout(500);
-  ok('coordenação: da faixa, troca para a do MPA', /Estado por estado/.test(await txt('main')) && !/Quem são as mulheres/.test(await txt('main')));
+  ok('coordenação: da faixa, troca para a do MPA (sem a aba Recursos, que é só do MDA)', /Andamento no território/.test(await txt('main h1')) && !(await p.$('.ac2-abas [data-a=recursos]')));
   await p.keyboard.press('Escape'); await p.waitForTimeout(400); ok('coordenação: Esc volta à aba Equipe', !!(await p.$('#ac-coord')) && !(await p.$('.ac-faixa-previa')));
   await p.click('#ac-coord [data-acao=acomp-previa][data-o=mda]'); await p.waitForSelector('.ac-faixa-previa'); await p.click('#ac-voltar'); await p.waitForTimeout(400);
   ok('coordenação: "Voltar à minha visão" volta à aba Equipe, com o foco no botão que abriu', !!(await p.$('#ac-coord')) && await p.evaluate(() => document.activeElement && document.activeElement.dataset.acao === 'acomp-previa'));
@@ -132,7 +139,7 @@ const R = []; const ok = (n, c, d = '') => { R.push(!!c); console.log((c ? 'PASS
 
   // ---------- celular ----------
   for (const larg of [320, 390]) { ({ ctx, p, errs, como, txt } = await novo({ width: larg, height: 780 }));
-    for (const pf of ['obs_mda', 'obs_mpa']) { await como(pf); await p.waitForSelector('.ac-kpis');
+    for (const pf of ['obs_mda', 'obs_mpa']) { await como(pf); await p.waitForSelector('.ac2-abas');
       const c = await p.evaluate(() => { const de = document.documentElement; const bt = [...document.querySelectorAll('main .btn, main a.btn')].filter(e => e.offsetParent);
         const fonte = Math.min(...[...document.querySelectorAll('main *')].filter(e => e.offsetParent && [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())).map(e => parseFloat(getComputedStyle(e).fontSize)));
         return { rolagem: de.scrollWidth - de.clientWidth, baixos: bt.filter(e => e.getBoundingClientRect().height < 39.5).length, fonte }; });

@@ -318,23 +318,26 @@ A(serve('Mostra a execução do projeto em números, ao vivo. Não permite alter
 A(acesso(['Entrar no sistema'], 'pessoas cadastradas pela coordenação geral como acompanhamento do MDA ou do MPA.'))
 A(passos('entrar pela primeira vez', ['Abra o endereço do sistema.', 'Toque em <b class="bt">Primeiro acesso</b>.', 'Digite o seu e-mail e o código de 8 letras e números que a coordenação geral enviou.', 'Crie a senha e entre.'], 'A área de acompanhamento do seu órgão abre direto. Nas próximas vezes, entre com o e-mail e a senha.'))
 A(passos('atualizar e guardar os números', ['Os números se atualizam sozinhos a cada 5 minutos.', 'Para buscar na hora, toque em <b class="bt">Atualizar agora</b>.', 'Para guardar ou enviar, toque em <b class="bt">Imprimir ou salvar em PDF</b>.'], 'A data e a hora da última atualização aparecem no alto da tela.'))
-A(caixa('importante', 'Os números são ao vivo: mostram o que a equipe registrou até agora, inclusive visitas atrasadas. Dados de exemplo usados em testes ficam fora das contas. Grupo com 1 a 4 mulheres aparece como "menos de 5", para ninguém ser identificada.'))
+A(caixa('importante', 'Os números são ao vivo: mostram o que a equipe registrou até agora, inclusive visitas atrasadas. Dados de exemplo usados em testes ficam fora das contas (só a coordenação, na prévia, vê a conta com eles). Grupo com 1 a 4 mulheres aparece como "menos de 5", para ninguém ser identificada.'))
 A(sec('A tela do MDA'))
-A(serve('O projeto inteiro em números, sem parte financeira: alcance, etapas, metas físicas, mapa, evolução, perfil das beneficiárias e impacto.'))
-A(tela('acomp_mda', 'Acompanhamento: tela do MDA', [(1, 'Atualizar agora', 'Busca os números de novo.'), (2, 'Números do alto', 'Mulheres selecionadas, pessoas nas famílias, quintais implantados, municípios, comunidades e visitas feitas.'), (3, 'O caminho de cada quintal', 'Da indicação à avaliação final, com o previsto de cada etapa.'), (4, 'Metas físicas', 'As metas do plano de trabalho, com a situação de cada uma.')]))
-A(tabela(['Parte da tela', 'O que mostra'], [
-    ['Onde o projeto está', 'Mapa dos 5 estados, municípios com mais quintais e tabela por estado'],
-    ['Evolução do trabalho de campo', 'Visitas feitas em cada mês, por etapa'],
-    ['Quem são as mulheres', 'Prioridades de seleção e idade, em número e percentual. Aparece a partir de 5 mulheres selecionadas'],
-    ['O que muda na vida das famílias', 'Linha de base (diagnóstico) e avaliação final: produção do quintal e situação alimentar'],
+A(serve('O projeto inteiro em números, organizado em abas: resumo, metas e cronograma, território, mulheres e impacto, equipe e formação. A parte de recursos só aparece quando a coordenação liberar.'))
+A(tela('acomp_mda', 'Acompanhamento: tela do MDA', [(1, 'Atualizar agora', 'Busca os números de novo.'), (2, 'Abas', 'Cada aba mostra uma parte do projeto. Use as setas do teclado ou toque no nome.'), (3, 'Números do alto', 'Mulheres selecionadas, quintais implantados, visitas feitas e pessoas nas famílias, com a parte da meta já alcançada.'), (4, 'O caminho de cada quintal', 'Da indicação à avaliação final, com o número e a parte da meta de cada etapa.')]))
+A(tabela(['Aba', 'O que mostra'], [
+    ['Resumo', 'Os números principais, o caminho de cada quintal, o que pede atenção e as visitas feitas em cada mês'],
+    ['Metas e cronograma', 'As 8 metas do plano de trabalho, cada uma com o número, a situação e a faixa do período no ano do projeto; e os próximos marcos'],
+    ['Recursos', 'Só aparece se a coordenação liberar: valor do projeto, recebido, executado, em caixa, execução por meta e por rubrica (somas, sem nenhuma despesa individual)'],
+    ['Território', 'Mapa, um cartão por estado, canais de venda (feiras, merenda escolar, PAA) e acesso à água'],
+    ['Mulheres e impacto', 'Prioridades de seleção e idade (a partir de 5 mulheres) e o antes e depois: produção do quintal e situação alimentar'],
+    ['Equipe e formação', 'Bolsistas, agentes e quem está habilitada em cada estado; curso FIC (turmas, matrículas, encontros, horas e presença); documentos do projeto'],
 ]))
+A(caixa('dica', 'Nas barras, verde é meta cumprida e cinza é o que ainda falta.'))
 A(sec('A tela do MPA'))
-A(serve('O andamento no território: cada estado, a equipe de campo, a formação e o que pede atenção.'))
-A(tela('acomp_mpa', 'Acompanhamento: tela do MPA', [(1, 'Atualizar agora', 'Busca os números de novo.'), (2, 'Números do alto', 'Selecionadas, comunidades, equipe de campo (e quantas já estão habilitadas) e visitas feitas, agendadas e atrasadas.'), (3, 'Estado por estado', 'Um cartão por estado, com as metas do estado, a equipe, quantas pessoas estão prontas para trabalhar, os diagnósticos esperando e as comunidades.'), (4, 'O que pede atenção', 'Visitas com a data vencida, equipe incompleta ou sem habilitação completa, diagnósticos esperando aprovação ou devolvidos, casos sem água e lista de espera.')]))
-A(tabela(['Parte da tela', 'O que mostra'], [
-    ['Formação da equipe', 'Turmas, matrículas e encontros registrados no curso de formação'],
-    ['Onde o projeto está', 'Mapa, municípios com mais quintais e tabela por estado, com bolsistas e agentes'],
-    ['Evolução do trabalho de campo', 'Visitas feitas em cada mês, por etapa'],
+A(serve('As mesmas abas do MDA, sem a de recursos: o andamento em cada estado, a equipe de campo, a formação, as mulheres e o que pede atenção.'))
+A(tela('acomp_mpa', 'Acompanhamento: tela do MPA', [(1, 'Atualizar agora', 'Busca os números de novo.'), (2, 'Abas', 'Resumo, metas e cronograma, território, mulheres e impacto, equipe e formação.'), (3, 'Números do alto', 'Mulheres selecionadas, quintais implantados, visitas feitas e pessoas nas famílias.'), (4, 'O caminho de cada quintal', 'Da indicação à avaliação final, com o número e a parte da meta de cada etapa.')]))
+A(tabela(['Onde procurar', 'O que mostra'], [
+    ['Resumo › O que pede atenção', 'Visitas com a data vencida, equipe incompleta ou sem habilitação, diagnósticos esperando ou devolvidos, casos sem água e lista de espera'],
+    ['Território', 'Um cartão por estado, com as metas do estado e as visitas atrasadas; canais de venda e acesso à água'],
+    ['Equipe e formação', 'Bolsistas, agentes e habilitação por estado; curso FIC com encontros, horas e presença; documentos do projeto'],
 ]))
 A(fimcap())
 

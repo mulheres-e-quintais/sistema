@@ -44,25 +44,25 @@ const FALSO = () => {
   const primeiro = async (email, cod, senha) => { await p.click('[data-acao=modo-login][data-m=primeiro]'); await p.waitForSelector('#l-cod'); await p.fill('#l-email', email); await p.fill('#l-cod', cod); await p.fill('#l-senha', senha); await p.fill('[name=senha2]', senha);
     await p.click('form[data-form=login] button[type=submit]'); await p.waitForTimeout(1200); };
   await primeiro('marta@mda.exemplo', 'ZZZZ-9999', 'Senha12345');
-  ok('primeiro acesso com código errado: recusa com mensagem clara e não entra', /confira o e-mail e o código/i.test(await txt('#app')) && await p.locator('.ac-kpis').count() === 0, (await txt('form[data-form=login]')).slice(0, 160));
+  ok('primeiro acesso com código errado: recusa com mensagem clara e não entra', /confira o e-mail e o código/i.test(await txt('#app')) && await p.locator('.ac2-kpis').count() === 0, (await txt('form[data-form=login]')).slice(0, 160));
   await primeiro('estranho@fora.exemplo', 'ABCD-2345', 'Senha12345');
-  ok('e-mail que não é de ninguém: recusa e não entra', await p.locator('.ac-kpis').count() === 0 && await p.locator('#l-email').count() === 1);
+  ok('e-mail que não é de ninguém: recusa e não entra', await p.locator('.ac2-kpis').count() === 0 && await p.locator('#l-email').count() === 1);
   await limpar(); await primeiro('marta@mda.exemplo', 'abcd 2345', 'Senha12345');
-  await p.waitForSelector('.ac-kpis', { timeout: 5000 }).catch(() => {});
+  await p.waitForSelector('.ac2-kpis', { timeout: 5000 }).catch(() => {});
   ok('primeiro acesso com o código certo (em minúsculas e com espaço): entra direto na área do MDA', /O projeto em números/.test(await txt('main h1')) && /Acompanhamento · MDA/.test(await txt('header')), (await txt('#app')).slice(0, 160));
   let ped = await pedidos();
   ok('na entrada, o app não pede NENHUMA tabela nem arquivo ao servidor', !ped.some(x => /^(tabela|arquivos):/.test(x)), ped.filter(x => /^(tabela|arquivos):/.test(x)).join(','));
-  ok('só chama as funções da entrada e dos números', ped.filter(x => /^rpc:/.test(x)).every(x => ['rpc:vincular_conta', 'rpc:acompanhamento_eu', 'rpc:acompanhamento_dados', 'rpc:registrar_acesso', 'rpc:vitrine', 'rpc:vitrine_municipios'].includes(x))   /* vitrine: os números públicos da tela de entrada, abertos a qualquer visitante */ && ped.includes('rpc:acompanhamento_dados'), [...new Set(ped)].join(','));
-  ok('os números do servidor aparecem na tela (160 selecionadas, 215 visitas)', /^160mulheres selecionadas/.test((await txt('.ac-kpis')).replace(/\s/g, '').replace('mulheresselecionadas', 'mulheres selecionadas')) || /160/.test(await txt('.ac-kpis')) && /215/.test(await txt('.ac-kpis')), (await txt('.ac-kpis')).slice(0, 120));
-  ok('perfil das beneficiárias aparece em percentuais (120 de 160 = 75%)', /Inscritas no CadÚnico\s*120 · 75%/.test(await txt('#ac-perfil')));
+  ok('só chama as funções da entrada e dos números', ped.filter(x => /^rpc:/.test(x)).every(x => ['rpc:vincular_conta', 'rpc:acompanhamento_eu', 'rpc:acompanhamento_dados', 'rpc:acompanhamento_formacao', 'rpc:acompanhamento_equipe_uf', 'rpc:acompanhamento_extra', 'rpc:registrar_acesso', 'rpc:vitrine', 'rpc:vitrine_municipios'].includes(x))   /* vitrine: os números públicos da tela de entrada, abertos a qualquer visitante */ && ped.includes('rpc:acompanhamento_dados'), [...new Set(ped)].join(','));
+  ok('os números do servidor aparecem na tela (160 selecionadas, 215 visitas)', /^160mulheres selecionadas/.test((await txt('.ac2-kpis')).replace(/\s/g, '').replace('mulheresselecionadas', 'mulheres selecionadas')) || /160/.test(await txt('.ac2-kpis')) && /215/.test(await txt('.ac2-kpis')), (await txt('.ac2-kpis')).slice(0, 120));
+  ok('perfil das beneficiárias aparece em percentuais (120 de 160 = 75%)', await p.evaluate(() => { MQ.ui.S.acAba = 'mulheres'; MQ.ui.render(); }) === undefined && /Inscritas no CadÚnico\s*120 · 75%/.test(await txt('.ac2-painel')) && await p.evaluate(() => { MQ.ui.S.acAba = 'resumo'; MQ.ui.render(); return true; }));
   ok('há botão Sair no modo produção e nenhum botão de Meus dados ou de ajuda da equipe', await p.locator('[data-acao=sair]').count() === 1 && await p.locator('[data-acao=meus-dados], [data-acao=ajuda]').count() === 0);
   ok('nada da equipe fica guardado no aparelho (só o perfil de quem entrou)', await p.evaluate(() => { const eu = JSON.parse(localStorage.getItem('mq-eu') || 'null'); return !!eu && eu.observador === true && !eu.cpf && !Object.keys(localStorage).some(k => /^mq-cache-/.test(k)); }));
   // recarregar a página: continua dentro, de novo sem pedir tabela
-  await limpar(); await p.reload(); await p.waitForSelector('.ac-kpis'); ped = await pedidos();
+  await limpar(); await p.reload(); await p.waitForSelector('.ac2-kpis'); ped = await pedidos();
   ok('recarregar a página: continua na área de acompanhamento, sem pedir tabela', !ped.some(x => /^(tabela|arquivos):/.test(x)) && /O projeto em números/.test(await txt('main h1')), [...new Set(ped)].join(','));
   // tentar abrir as telas da equipe por dentro
-  const forca = await p.evaluate(async () => { const S = MQ.ui.S; const r = {}; S.aba = 'pagamentos'; MQ.ui.render(); r.aba = !!document.querySelector('.ac-kpis') && !document.querySelector('.abas');
-    try { MQ.ui.abrirPainel({ tipo: 'meus-dados' }); } catch (e) {} await new Promise(x => setTimeout(x, 300)); MQ.ui.render(); r.painel = !document.querySelector('#painel'); location.hash = '#x'; await new Promise(x => setTimeout(x, 200)); r.tela = !!document.querySelector('.ac-kpis'); return r; });
+  const forca = await p.evaluate(async () => { const S = MQ.ui.S; const r = {}; S.aba = 'pagamentos'; MQ.ui.render(); r.aba = !!document.querySelector('.ac2-kpis') && !document.querySelector('.abas');
+    try { MQ.ui.abrirPainel({ tipo: 'meus-dados' }); } catch (e) {} await new Promise(x => setTimeout(x, 300)); MQ.ui.render(); r.painel = !document.querySelector('#painel'); location.hash = '#x'; await new Promise(x => setTimeout(x, 200)); r.tela = !!document.querySelector('.ac2-kpis'); return r; });
   ok('forçar outra aba ou painel não mostra tela da equipe', forca.aba && forca.painel && forca.tela, JSON.stringify(forca));
   // sair
   await limpar(); await p.click('[data-acao=sair]'); await p.waitForSelector('#l-email', { timeout: 6000 }).catch(() => {});
@@ -70,20 +70,20 @@ const FALSO = () => {
   ok('depois de sair, os números não ficam na memória da página', await p.evaluate(() => !MQ.ui.S.eu && !(document.body.textContent || '').includes('160')));
   // entrar com senha
   const entrar = async (email, senha) => { if (await p.locator('[data-acao=modo-login][data-m=entrar]').count()) await p.click('[data-acao=modo-login][data-m=entrar]'); await p.fill('#l-email', email); await p.fill('#l-senha', senha); await p.click('form[data-form=login] button[type=submit]'); await p.waitForTimeout(1200); };
-  await entrar('marta@mda.exemplo', 'SenhaErrada1'); ok('senha errada: não entra', await p.locator('.ac-kpis').count() === 0 && /incorretos/.test(await txt('#app')));
-  await entrar('marta@mda.exemplo', 'Senha12345'); await p.waitForSelector('.ac-kpis', { timeout: 5000 }).catch(() => {}); ok('senha certa: entra na área do MDA', /O projeto em números/.test(await txt('main h1')));
+  await entrar('marta@mda.exemplo', 'SenhaErrada1'); ok('senha errada: não entra', await p.locator('.ac2-kpis').count() === 0 && /incorretos/.test(await txt('#app')));
+  await entrar('marta@mda.exemplo', 'Senha12345'); await p.waitForSelector('.ac2-kpis', { timeout: 5000 }).catch(() => {}); ok('senha certa: entra na área do MDA', /O projeto em números/.test(await txt('main h1')));
   ok('o código de primeiro acesso não serve de novo', await p.evaluate(() => window.__srv.obs['marta@mda.exemplo'].codigo === null));
   // cadastro desativado pela coordenação com a pessoa dentro
   await p.evaluate(() => { window.__srv.obs['marta@mda.exemplo'].ativo = false; sessionStorage.setItem('srv', JSON.stringify({ contas: window.__srv.contas, sessao: window.__srv.sessao, obs: window.__srv.obs, pedidos: [] })); });
   await p.click('[data-acao=acomp-atualizar]'); await p.waitForTimeout(800);
   ok('acesso desativado com a pessoa dentro: Atualizar mostra a recusa', /Acesso restrito/.test(await txt('main')));
   await p.reload(); await p.waitForTimeout(1500);
-  ok('e ao reabrir, não entra mais na área de acompanhamento', await p.locator('.ac-kpis').count() === 0 && !/O projeto em números/.test(await txt('#app')), (await txt('#app')).slice(0, 140));
+  ok('e ao reabrir, não entra mais na área de acompanhamento', await p.locator('.ac2-kpis').count() === 0 && !/O projeto em números/.test(await txt('#app')), (await txt('#app')).slice(0, 140));
   // MPA
   await p.evaluate(() => { sessionStorage.clear(); localStorage.clear(); delete window.__srv; }); await p.reload(); await p.waitForSelector('#l-email');
-  await primeiro('paulo@mpa.exemplo', 'WXYZ-6789', 'Senha12345'); await p.waitForSelector('.ac-kpis', { timeout: 5000 }).catch(() => {});
-  ok('MPA: primeiro acesso entra na área do território, com 5 estados e a formação', /Andamento no território/.test(await txt('main h1')) && await p.locator('.ac-uf').count() === 5 && /22\s*matrículas/.test(await txt('#ac-formacao')));
-  ok('MPA: o estado com visitas atrasadas aparece marcado', /3 visitas atrasadas/.test(await txt('.ac-ufs')) && /3 visitas com a data vencida/.test(await txt('#ac-parado')));
+  await primeiro('paulo@mpa.exemplo', 'WXYZ-6789', 'Senha12345'); await p.waitForSelector('.ac2-kpis', { timeout: 5000 }).catch(() => {});
+  ok('MPA: primeiro acesso entra na área do território, com 5 estados e a formação', /Andamento no território/.test(await txt('main h1')) && await p.evaluate(() => { MQ.ui.S.acAba = 'equipe'; MQ.ui.render(); return true; }) && await p.locator('.ac2-uf').count() === 5 && /22\s*pessoas matriculadas/.test(await txt('.ac2-painel')));
+  ok('MPA: o estado com visitas atrasadas aparece marcado', await p.evaluate(() => { MQ.ui.S.acAba = 'territorio'; MQ.ui.render(); return true; }) && /3 visitas atrasadas/.test(await txt('.ac2-ufs')) && await p.evaluate(() => { MQ.ui.S.acAba = 'resumo'; MQ.ui.render(); return true; }) && /3 visitas com a data vencida/.test(await txt('.ac2-painel')));
   ped = await pedidos(); ok('MPA: também não pede nenhuma tabela', !ped.some(x => /^(tabela|arquivos):/.test(x)), ped.filter(x => /^(tabela|arquivos):/.test(x)).join(','));
   ok('nenhum erro de página nem bloqueio da política de conteúdo', errs.length === 0, errs.join(' | '));
   console.log('\n' + R.filter(Boolean).length + ' passou, ' + R.filter(x => !x).length + ' falhou'); await b.close(); process.exit(R.some(x => !x) ? 1 : 0);

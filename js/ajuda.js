@@ -121,7 +121,7 @@
         'Cadastros que chegam pelo link aparecem em <b>Cadastros enviados pelo link</b>. Abra, confira, complete e salve: ao salvar, o cadastro é aprovado.',
         'Na ficha da pessoa ficam a <b>habilitação</b> (FIC, Arlo e termo), a <b>leitura do guia</b> e o <b>perfil no campo</b>. O botão <b>Hoje</b> preenche a data do dia.',
         '<b>Desligar</b> não apaga o cadastro: a vaga fica livre para a substituta e o histórico guarda quem desligou, quando e por quê.',
-        '<b>Acompanhamento externo:</b> quem acompanha pelo MDA ou pelo MPA entra numa área própria, só de leitura e só com números. Não vê nome, CPF, endereço, pagamento nem a equipe. O MDA vê o projeto inteiro, sem parte financeira; o MPA vê o andamento em cada estado, inclusive quantas pessoas da equipe de campo já estão habilitadas e quantos diagnósticos esperam a aprovação da coordenação. Os números são ao vivo e não contam os dados de exemplo.'
+        '<b>Acompanhamento externo:</b> quem acompanha pelo MDA ou pelo MPA entra numa área própria, só de leitura e só com números. Não vê nome, CPF, endereço, pagamento nem a equipe. Os dois veem o projeto em abas: resumo, metas e cronograma, território, mulheres e impacto, equipe e formação. A aba <b>Recursos</b> é só do MDA e só aparece quando a coordenação liberar (parâmetro acomp_mda_financeiro no banco; até lá, só você a vê na prévia). Os números são ao vivo; os dados de exemplo só entram na sua prévia.'
       ],
       duvidas: [
         ['Quem cadastra quem?', 'A coordenação geral cadastra a coordenação técnica, os professores do curso FIC e o auxiliar, e pode cadastrar todos os outros. A coordenação técnica cadastra bolsistas e agentes.'],

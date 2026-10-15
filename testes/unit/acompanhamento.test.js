@@ -75,13 +75,17 @@ describe('números do acompanhamento', () => {
 });
 
 describe('o que cada órgão recebe', () => {
-  test('MDA recebe perfil e impacto, e não recebe formação', () => {
-    const a = MQ.acomp.calcular(base(), 'mda', HOJE);
-    assert.ok(a.perfil && a.impacto); assert.equal(a.formacao, undefined);
+  test('65: MDA e MPA recebem perfil, impacto e formação (a tela em abas mostra tudo aos dois)', () => {
+    for (const o of ['mda', 'mpa']) { const a = MQ.acomp.calcular(base(), o, HOJE);
+      assert.ok(a.perfil && a.impacto, o); assert.equal(a.formacao.turmas, 1, o); assert.equal(a.formacao.matriculas, 2, o); }
   });
-  test('MPA recebe formação, e não recebe perfil nem impacto', () => {
-    const a = MQ.acomp.calcular(base(), 'mpa', HOJE);
-    assert.equal(a.formacao.turmas, 1); assert.equal(a.formacao.matriculas, 2); assert.equal(a.perfil, undefined); assert.equal(a.impacto, undefined);
+  test('65: o extra (eventos, canais, água, curso, documentos) não traz nome nem arquivo; o financeiro só sai para o MDA na prévia', () => {
+    const d = { pedidos: [{ tipo: 'evento', situacao: 'autorizado', data_ref: '2026-01-01', dados: { nome_contato: 'Fulana Secreta' } }], canaisVenda: [{ tipo: 'feira', uf: 'PI', municipio: 'Picos', ativo: true, contato: 'Oculta 8999990000' }],
+      documentos: [{ tipo: 'ata', titulo: 'Ata da seleção', data_documento: '2026-10-20', arquivo_path: 'docs/segredo.pdf' }], execPlanilhas: [{ posicao_em: '2026-12-31', linhas: [{ item: 'repasse_mda', valor: 10 }, { item: 'bolsa_apoio', rubrica: 'r2', valor: 4, descricao: 'Pix para Oculto' }] }] };
+    const m = MQ.acomp.calcularExtra(d, 'mda', true, HOJE), p = MQ.acomp.calcularExtra(d, 'mpa', true, HOJE), mo = MQ.acomp.calcularExtra(d, 'mda', false, HOJE);
+    const t = JSON.stringify([m, p]); for (const x of ['Secreta', 'Oculta', '8999990000', 'segredo.pdf', 'Oculto']) assert.ok(!t.includes(x), 'saiu ' + x);
+    assert.equal(m.atividades.eventos.autorizados, 1); assert.equal(m.canais.por_tipo.feira, 1); assert.equal(m.documentos.ultimos[0].titulo, 'Ata da seleção');
+    assert.ok(m.financeiro && m.financeiro.por_item.length === 2); assert.equal(p.financeiro, undefined); assert.equal(mo.financeiro, undefined);
   });
   test('nenhum dos dois recebe nome, CPF, e-mail, endereço, celular nem comunidade', () => {
     for (const o of ['mda', 'mpa']) { const t = JSON.stringify(MQ.acomp.calcular(base(), o, HOJE));
@@ -158,8 +162,8 @@ describe('teste por sorteio (300 bancos inventados)', () => {
           assert.ok(todos.every(v => v === -1 || v === 0 || v >= 5), ctx + ' apareceu contagem de 1 a 4: ' + todos.join(','));
           assert.ok(todos.every(v => v <= Math.max(p.base, a.impacto.final_n)), ctx + ' parcela maior que o todo');
           const fx = Object.values(p.faixas); if (fx.every(v => v >= 0)) assert.equal(fx.reduce((t, v) => t + v, 0), p.base, ctx + ' faixas de idade somam a base');
-          assert.equal(a.formacao, undefined, ctx);
-        } else { assert.equal(a.perfil, undefined, ctx); assert.equal(a.impacto, undefined, ctx); }
+          assert.ok(a.formacao, ctx);
+        } else { assert.ok(a.perfil && a.impacto, ctx); }
       }
     }
   });

@@ -12,7 +12,7 @@ const R = []; const ok = (n, c, d = '') => { R.push(!!c); console.log((c ? 'PASS
     const axe = () => p.evaluate(async () => { const x = await axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] } }); return x.violations.map(v => v.id + ' (' + v.impact + ', ' + v.nodes.length + '): ' + (v.nodes[0] && v.nodes[0].target.join(' '))); });
     const rot = (esquema === 'dark' ? 'tema escuro' : 'tema claro') + ', ' + vp.width + ' px';
     for (const [pf, sigla] of [['obs_mda', 'MDA'], ['obs_mpa', 'MPA']]) {
-      await p.evaluate(pf => document.querySelector(`button[data-p=${pf}]`).click(), pf); await p.waitForSelector('.ac-kpis'); await p.waitForTimeout(400);
+      await p.evaluate(pf => document.querySelector(`button[data-p=${pf}]`).click(), pf); await p.waitForSelector('.ac2-kpis'); await p.waitForTimeout(400);
       if (pf === 'obs_mda') await p.evaluate(() => { const a = JSON.parse(JSON.stringify(MQ.ui.S.acomp)); a.perfil = { base: 40, sustento: 30, cadunico: 22, sem_ater: 12, raca_povo: -1, jovem: 0, grupo: 9, caf: 40, faixas: { '18 a 29': -1, '30 a 44': 20, '45 a 59': 15, '60 ou mais': 5 } };
         a.impacto = { base_n: 40, renda_quintal_media: 132.5, final_n: 12, produz: { sim: 9, em_parte: -1, nao: 0 }, ebia_final: { seguranca: 6, leve: 5, moderada: -1, grave: 0 } };
         a.mensal = [{ mes: '2026-10', diagnostico: 12, implantacao: 0, acompanhamento: 0, avaliacao: 0 }, { mes: '2026-11', diagnostico: 30, implantacao: 8, acompanhamento: 0, avaliacao: 0 }, { mes: '2026-12', diagnostico: 20, implantacao: 25, acompanhamento: 9, avaliacao: 0 }]; MQ.ui.S.acomp = a; MQ.ui.render(); });

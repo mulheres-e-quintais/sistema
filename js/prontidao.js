@@ -118,6 +118,7 @@
     return `<section class="secao prontidao" aria-labelledby="t-pront">
       <div class="secao-cab"><div><h2 id="t-pront">Situação do campo em cada estado</h2><p>Mostra se o trabalho de campo já pode andar em cada estado: quantas pessoas da equipe de campo estão habilitadas (prontas para trabalhar e receber) e já entraram no sistema, quantas mulheres têm a ficha aprovada, quantos diagnósticos foram feitos (meta de 40), quantas mulheres estão sem água na seca (não recebem kit: acima de 30% das fichas, reveja a seleção do estado), as visitas marcadas para os próximos 7 dias e os registros salvos sem internet que ainda não foram enviados (coluna Falta enviar).</p></div></div>
       ${tabela}${cartoes}
+      ${MQ.painelUI && MQ.painelUI.LEG_META ? MQ.painelUI.LEG_META : ''}
       ${eu.papel === 'coord_geral' ? coordenacao() : ''}
       ${blocoFila()}
     </section>`;

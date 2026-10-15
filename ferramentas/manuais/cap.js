@@ -30,8 +30,8 @@ const TELAS = [
   { id: 'agente', perfil: 'agente', clip: 'main', m: [['t:Minhas próximas visitas', 1], ['t:Registrar diagnóstico', 2], ['t:Pedir ajuda de custo', 3]] },
   { id: 'professor', perfil: 'professor', clip: 'main', m: [['t:Matricular alunas', 1], ['t:Registrar encontro e presença', 2], ['t:Confirmar acesso ao AVA', 3], ['t:Pedir a minha bolsa', 4], ['t:+ Nova turma', 5]] },
   { id: 'auxiliar', perfil: 'auxiliar', clip: 'main', m: [['t:Cadastrar no Arlo', 1], ['t:Lançar pagamentos no Arlo', 2], ['#t-arlo', 3], ['t:No Arlo, falta registrar o termo', 4]] },
-  { id: 'acomp_mda', perfil: 'obs_mda', clip: 'de:main h1:#ac-metas', m: [['t:Atualizar agora', 1], ['.ac-kpis', 2], ['#ac-caminho', 3], ['#ac-metas', 4]] },
-  { id: 'acomp_mpa', perfil: 'obs_mpa', clip: 'de:main h1:#ac-parado', m: [['t:Atualizar agora', 1], ['.ac-kpis', 2], ['#ac-estados', 3], ['#ac-parado', 4]] },
+  { id: 'acomp_mda', perfil: 'obs_mda', clip: 'de:main h1:.ac2-caminho', m: [['t:Atualizar agora', 1], ['.ac2-abas', 2], ['.ac2-kpis', 3], ['.ac2-caminho', 4]] },
+  { id: 'acomp_mpa', perfil: 'obs_mpa', clip: 'de:main h1:.ac2-caminho', m: [['t:Atualizar agora', 1], ['.ac2-abas', 2], ['.ac2-kpis', 3], ['.ac2-caminho', 4]] },
   { id: 'acomp_coord', perfil: 'coord_geral', aba: 'equipe', clip: 'el:#ac-coord', m: [['t:Adicionar pessoa', 1], ['#ac-coord .ag-uf', 2], ['t:Ver como o MDA vê', 3]] },
   { id: 'meus_dados', perfil: 'bolsista', clique: '.btn-meus', clip: 'el:aside.painel', m: [['p:Trocar foto', 1], ['aside.painel dl', 2], ['p:Termo de compromisso', 3], ['p:Gerar o termo preenchido', 4]] },
   { id: 'ficha_nova', perfil: 'bolsista', clique: '[data-acao=ficha-nova]', clip: 'el:aside.painel', m: [['p:Imprimir em branco', 1], ['aside.painel input', 2], ['p:Salvar', 3]] },
@@ -40,7 +40,7 @@ const TELAS = [
   await ctx.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: "window.MQ=window.MQ||{};MQ.CONFIG={supabaseUrl:'',supabaseAnonKey:'',semServiceWorker:true};" }));
   await ctx.route('https://fonts.googleapis.com/**', r => r.fulfill({ contentType: 'text/css', body: CSSF }));
   await ctx.route('https://fonts.gstatic.com/**', r => { const k = r.request().url().split('/').pop().replace('.woff2', ''); r.fulfill({ contentType: 'font/woff2', body: F[k], headers: { 'access-control-allow-origin': '*' } }); });
-  await p.goto('http://localhost:8766/'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector('.resumo');
+  await p.goto('http://localhost:8766/'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector('.resumo, .dx-topo');
   await p.addStyleTag({ content: '.demo,.aviso-ex,.toast{display:none!important}.mq-m{position:absolute;z-index:99999;width:26px;height:26px;border-radius:50%;background:#A44934;color:#fff;font:800 14px/22px Manrope,sans-serif;text-align:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);box-sizing:border-box}.mq-a{position:absolute;z-index:99998;border:2px solid #A44934;border-radius:10px;pointer-events:none;box-sizing:border-box}' });
   const res = {}; const so = process.argv[2];
   for (const t of TELAS) { if (so && t.id !== so) continue; if (CEL && !/^(bolsista|agente|ficha_nova)/.test(t.id)) continue;
