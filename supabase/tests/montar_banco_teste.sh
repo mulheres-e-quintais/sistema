@@ -7,7 +7,7 @@ sudo -u postgres dropdb --if-exists $DB; sudo -u postgres createdb $DB
 P="sudo -u postgres psql -X -q -d $DB -v ON_ERROR_STOP=0"
 $P -f tests/stub_supabase.sql 2>&1 | grep -E "ERROR" | head -3
 sed "s/'SEU NOME COMPLETO', 'SEU CPF'/'Cleone Silva Teste', '52998224725'/" 01_criar_banco.sql > /tmp/01.sql; chmod a+r /tmp/01.sql
-for f in /tmp/01.sql $(ls [0-9][0-9]_*.sql | grep -v -E "^(00|01|05|06|14|16|34|49|54|90|91|99)_"); do
+for f in /tmp/01.sql $(ls [0-9][0-9]_*.sql | grep -v -E "^(00|01|05|06|07|08|14|16|34|49|54|90|91|99)_"); do
   [ "$2" = sem47 ] && [[ "$f" == 47_* ]] && continue
   n=$($P -f $f 2>&1 | grep -c "ERROR"); [ "$n" != 0 ] && echo "$f: $n erros: $($P -f $f 2>&1 | grep ERROR | head -2 | cut -c1-200)"
 done

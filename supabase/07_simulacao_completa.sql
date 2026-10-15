@@ -24,64 +24,6 @@
 --      dado de teste nunca vai para quem acompanha de fora). Num projeto Supabase SÓ DE TESTE, se quiser ver essas telas cheias,
 --      rode depois:  delete from public.exemplo;   (aí o 08 não consegue mais apagar a simulação: descarte o projeto de teste).
 -- =====================================================================
-begin;
-
-do $$ begin
-  if to_regclass('public.exemplo') is null or to_regclass('public.avaliacoes') is null or to_regclass('public.relatos_problema') is null
-     or not exists (select 1 from pg_proc where proname = 'campo_arquivo_livre') then
-    raise exception 'Falta instalar etapas anteriores (até o 63_auditoria_1410.sql). Nada mudou.';
-  end if;
-  if exists (select 1 from public.equipe where papel <> 'coord_geral' and id not in (select id from public.exemplo)) then
-    raise exception 'Já há equipe cadastrada de verdade: a simulação NÃO foi colocada (nada mudou). Use um projeto Supabase de teste.';
-  end if;
-  if exists (select 1 from public.fichas where id not in (select id from public.exemplo)) then
-    raise exception 'Já há fichas de verdade: a simulação NÃO foi colocada (nada mudou). Use um projeto Supabase de teste.';
-  end if;
-  if exists (select 1 from public.exemplo) then
-    raise exception 'Já há dados de exemplo no banco. Rode antes o 08_apagar_simulacao.sql (nada mudou).';
-  end if;
-  if not exists (select 1 from public.equipe where papel = 'coord_geral' and status = 'ativa') then
-    raise exception 'Cadastre antes a coordenação geral (01_criar_banco.sql). Nada mudou.';
-  end if;
-end $$;
-
--- as regras do sistema (gatilhos) ficam desligadas só durante a carga: as datas vão até 2027 e as aprovações entram prontas
-alter table public.equipe disable trigger user;            alter table public.equipe_privado disable trigger user;
-alter table public.equipe_bancario disable trigger user;   alter table public.fichas disable trigger user;
-alter table public.visitas disable trigger user;           alter table public.diagnosticos disable trigger user;
-alter table public.avaliacoes disable trigger user;        alter table public.custos_visita disable trigger user;
-alter table public.solicitacoes_pagamento disable trigger user; alter table public.solicitacao_visitas disable trigger user;
-alter table public.entregas_mes disable trigger user;      alter table public.turmas_fic disable trigger user;
-alter table public.matriculas_fic disable trigger user;    alter table public.fic_encontros disable trigger user;
-alter table public.fic_presencas disable trigger user;     alter table public.pedidos_apoio disable trigger user;
-alter table public.documentos_projeto disable trigger user; alter table public.execucao_planilhas disable trigger user;
-alter table public.agua_situacoes disable trigger user;    alter table public.canais_venda disable trigger user;
-alter table public.orientacoes_venda disable trigger user; alter table public.observadores disable trigger user;
-alter table public.relatos_problema disable trigger user;  alter table public.convites disable trigger user;
-alter table public.pre_cadastros disable trigger user;     alter table public.vitrine_fotos disable trigger user;
-alter table public.auditoria disable trigger user;         alter table public.acessos disable trigger user;
-
-create temp table _mun (uf text, nome text, lon numeric, lat numeric) on commit drop;
-insert into _mun values
-('AL', 'Estrela de Alagoas', -36.7644, -9.3909), ('AL', 'Cacimbinhas', -36.9911, -9.4012), ('AL', 'Palmeira dos Índios', -36.6328, -9.4057),
-('BA', 'Juazeiro', -40.5008, -9.4167), ('BA', 'Remanso', -42.0848, -9.6219), ('BA', 'Pilão Arcado', -42.4936, -10.0051), ('BA', 'Sento Sé', -41.8786, -9.7419),
-('BA', 'Casa Nova', -40.9739, -9.1621), ('BA', 'Campo Alegre de Lourdes', -43.0126, -9.5222), ('BA', 'Uauá', -39.4790, -9.8414), ('BA', 'Curaçá', -39.9097, -8.9846),
-('PE', 'Ouricuri', -40.0816, -7.8792), ('PE', 'Araripina', -40.4983, -7.5707), ('PE', 'Exu', -39.7243, -7.5125), ('PE', 'Bodocó', -39.9333, -7.7783), ('PE', 'Trindade', -40.2647, -7.7590),
-('PI', 'Picos', -41.4669, -7.0769), ('PI', 'São Raimundo Nonato', -42.6997, -9.0154), ('PI', 'Paulistana', -41.1431, -8.1343), ('PI', 'Simões', -40.8137, -7.5986),
-('PI', 'Pio IX', -40.6083, -6.8366), ('PI', 'Fronteiras', -40.6146, -7.0817), ('PI', 'Jaicós', -41.1371, -7.3623), ('PI', 'Oeiras', -42.1286, -7.0191),
-('PI', 'Itainópolis', -41.4687, -7.4433), ('PI', 'Massapê do Piauí', -41.1103, -7.4747),
-('SE', 'Poço Redondo', -37.6833, -9.8061), ('SE', 'Porto da Folha', -37.2775, -9.9172), ('SE', 'Canindé de São Francisco', -37.7897, -9.6422);
--- (se o nome de algum município do mapa mudar em js/geo.js, a ficha só deixa de aparecer como ponto no mapa)
-
-create or replace function pg_temp.pick(a text[]) returns text language sql volatile as $f$ select a[1 + floor(random() * array_length(a, 1))::int] $f$;
-create or replace function pg_temp.entre(a date, b date) returns date language sql volatile as $f$ select case when b <= a then a else a + floor(random() * (b - a + 1))::int end $f$;
-create or replace function pg_temp.cpf(n bigint) returns text language sql immutable as $f$
-  with a as (select substr(lpad(n::text, 11, '0'), 1, 3) || substr(lpad(n::text, 11, '0'), 6, 6) as b),
-       b as (select b || ((((select sum(substr(b, i, 1)::int * (11 - i)) from generate_series(1, 9) i) * 10) % 11) % 10)::text as c from a)
-  select c || ((((select sum(substr(c, i, 1)::int * (12 - i)) from generate_series(1, 10) i) * 10) % 11) % 10)::text from b $f$;
-create or replace function pg_temp.ebia(p int, menor boolean) returns text language sql immutable as $f$
-  select case when p = 0 then 'seguranca' when p <= case when menor then 5 else 3 end then 'leve'
-              when p <= case when menor then 9 else 5 end then 'moderada' else 'grave' end $f$;
 
 do $sim$
 declare
@@ -105,6 +47,61 @@ declare
   art uuid; apo uuid; ag1 uuid; ag2 uuid; campo uuid[]; quem uuid; nm text; nasc date; df date; menor boolean; pb int; pf int; mes date;
   bolsistas uuid[] := '{}'; todos_campo uuid[] := '{}'; ncpf bigint := 61000000000; fcpf bigint := 62000000000;
 begin
+  if to_regclass('public.exemplo') is null or to_regclass('public.avaliacoes') is null or to_regclass('public.relatos_problema') is null
+     or not exists (select 1 from pg_proc where proname = 'campo_arquivo_livre') then
+    raise exception 'Falta instalar etapas anteriores (até o 63_auditoria_1410.sql). Nada mudou.';
+  end if;
+  if exists (select 1 from public.equipe where papel <> 'coord_geral' and id not in (select id from public.exemplo)) then
+    raise exception 'Já há equipe cadastrada de verdade: a simulação NÃO foi colocada (nada mudou). Use um projeto Supabase de teste.';
+  end if;
+  if exists (select 1 from public.fichas where id not in (select id from public.exemplo)) then
+    raise exception 'Já há fichas de verdade: a simulação NÃO foi colocada (nada mudou). Use um projeto Supabase de teste.';
+  end if;
+  if exists (select 1 from public.exemplo) then
+    raise exception 'Já há dados de exemplo no banco. Rode antes o 08_apagar_simulacao.sql (nada mudou).';
+  end if;
+  if not exists (select 1 from public.equipe where papel = 'coord_geral' and status = 'ativa') then
+    raise exception 'Cadastre antes a coordenação geral (01_criar_banco.sql). Nada mudou.';
+  end if;
+
+  -- as regras do sistema (gatilhos) ficam desligadas só durante a carga: as datas vão até 2027 e as aprovações entram prontas
+  alter table public.equipe disable trigger user;            alter table public.equipe_privado disable trigger user;
+  alter table public.equipe_bancario disable trigger user;   alter table public.fichas disable trigger user;
+  alter table public.visitas disable trigger user;           alter table public.diagnosticos disable trigger user;
+  alter table public.avaliacoes disable trigger user;        alter table public.custos_visita disable trigger user;
+  alter table public.solicitacoes_pagamento disable trigger user; alter table public.solicitacao_visitas disable trigger user;
+  alter table public.entregas_mes disable trigger user;      alter table public.turmas_fic disable trigger user;
+  alter table public.matriculas_fic disable trigger user;    alter table public.fic_encontros disable trigger user;
+  alter table public.fic_presencas disable trigger user;     alter table public.pedidos_apoio disable trigger user;
+  alter table public.documentos_projeto disable trigger user; alter table public.execucao_planilhas disable trigger user;
+  alter table public.agua_situacoes disable trigger user;    alter table public.canais_venda disable trigger user;
+  alter table public.orientacoes_venda disable trigger user; alter table public.observadores disable trigger user;
+  alter table public.relatos_problema disable trigger user;  alter table public.convites disable trigger user;
+  alter table public.pre_cadastros disable trigger user;     alter table public.vitrine_fotos disable trigger user;
+  alter table public.auditoria disable trigger user;         alter table public.acessos disable trigger user;
+
+  create temp table _mun (uf text, nome text, lon numeric, lat numeric) on commit drop;
+  insert into _mun values
+  ('AL', 'Estrela de Alagoas', -36.7644, -9.3909), ('AL', 'Cacimbinhas', -36.9911, -9.4012), ('AL', 'Palmeira dos Índios', -36.6328, -9.4057),
+  ('BA', 'Juazeiro', -40.5008, -9.4167), ('BA', 'Remanso', -42.0848, -9.6219), ('BA', 'Pilão Arcado', -42.4936, -10.0051), ('BA', 'Sento Sé', -41.8786, -9.7419),
+  ('BA', 'Casa Nova', -40.9739, -9.1621), ('BA', 'Campo Alegre de Lourdes', -43.0126, -9.5222), ('BA', 'Uauá', -39.4790, -9.8414), ('BA', 'Curaçá', -39.9097, -8.9846),
+  ('PE', 'Ouricuri', -40.0816, -7.8792), ('PE', 'Araripina', -40.4983, -7.5707), ('PE', 'Exu', -39.7243, -7.5125), ('PE', 'Bodocó', -39.9333, -7.7783), ('PE', 'Trindade', -40.2647, -7.7590),
+  ('PI', 'Picos', -41.4669, -7.0769), ('PI', 'São Raimundo Nonato', -42.6997, -9.0154), ('PI', 'Paulistana', -41.1431, -8.1343), ('PI', 'Simões', -40.8137, -7.5986),
+  ('PI', 'Pio IX', -40.6083, -6.8366), ('PI', 'Fronteiras', -40.6146, -7.0817), ('PI', 'Jaicós', -41.1371, -7.3623), ('PI', 'Oeiras', -42.1286, -7.0191),
+  ('PI', 'Itainópolis', -41.4687, -7.4433), ('PI', 'Massapê do Piauí', -41.1103, -7.4747),
+  ('SE', 'Poço Redondo', -37.6833, -9.8061), ('SE', 'Porto da Folha', -37.2775, -9.9172), ('SE', 'Canindé de São Francisco', -37.7897, -9.6422);
+  -- (se o nome de algum município do mapa mudar em js/geo.js, a ficha só deixa de aparecer como ponto no mapa)
+
+  create or replace function pg_temp.pick(a text[]) returns text language sql volatile as $f$ select a[1 + floor(random() * array_length(a, 1))::int] $f$;
+  create or replace function pg_temp.entre(a date, b date) returns date language sql volatile as $f$ select case when b <= a then a else a + floor(random() * (b - a + 1))::int end $f$;
+  create or replace function pg_temp.cpf(n bigint) returns text language sql immutable as $f$
+    with a as (select substr(lpad(n::text, 11, '0'), 1, 3) || substr(lpad(n::text, 11, '0'), 6, 6) as b),
+         b as (select b || ((((select sum(substr(b, i, 1)::int * (11 - i)) from generate_series(1, 9) i) * 10) % 11) % 10)::text as c from a)
+    select c || ((((select sum(substr(c, i, 1)::int * (12 - i)) from generate_series(1, 10) i) * 10) % 11) % 10)::text from b $f$;
+  create or replace function pg_temp.ebia(p int, menor boolean) returns text language sql immutable as $f$
+    select case when p = 0 then 'seguranca' when p <= case when menor then 5 else 3 end then 'leve'
+                when p <= case when menor then 9 else 5 end then 'moderada' else 'grave' end $f$;
+
   perform setseed(0.2610);
 
   -- ---------- equipe ----------
@@ -462,23 +459,24 @@ begin
   union all select 'solicitacoes_pagamento', s.id, 'UPDATE', s.arlo_por, s.arlo_em, jsonb_build_object('situacao', 'avalizada'), jsonb_build_object('situacao', 'lancada', 'arlo_protocolo', s.arlo_protocolo)
     from public.solicitacoes_pagamento s where s.id in (select id from _s) and s.arlo_em is not null
   union all select 'planilhas', null, 'PLANILHA', cg, timestamptz '2027-09-20 11:00-03', null, jsonb_build_object('tipo', 'sem_documentos', 'qtd', 300, 'filtro', null);
-end $sim$;
 
-alter table public.equipe enable trigger user;            alter table public.equipe_privado enable trigger user;
-alter table public.equipe_bancario enable trigger user;   alter table public.fichas enable trigger user;
-alter table public.visitas enable trigger user;           alter table public.diagnosticos enable trigger user;
-alter table public.avaliacoes enable trigger user;        alter table public.custos_visita enable trigger user;
-alter table public.solicitacoes_pagamento enable trigger user; alter table public.solicitacao_visitas enable trigger user;
-alter table public.entregas_mes enable trigger user;      alter table public.turmas_fic enable trigger user;
-alter table public.matriculas_fic enable trigger user;    alter table public.fic_encontros enable trigger user;
-alter table public.fic_presencas enable trigger user;     alter table public.pedidos_apoio enable trigger user;
-alter table public.documentos_projeto enable trigger user; alter table public.execucao_planilhas enable trigger user;
-alter table public.agua_situacoes enable trigger user;    alter table public.canais_venda enable trigger user;
-alter table public.orientacoes_venda enable trigger user; alter table public.observadores enable trigger user;
-alter table public.relatos_problema enable trigger user;  alter table public.convites enable trigger user;
-alter table public.pre_cadastros enable trigger user;     alter table public.vitrine_fotos enable trigger user;
-alter table public.auditoria enable trigger user;         alter table public.acessos enable trigger user;
-commit;
+  alter table public.equipe enable trigger user;            alter table public.equipe_privado enable trigger user;
+  alter table public.equipe_bancario enable trigger user;   alter table public.fichas enable trigger user;
+  alter table public.visitas enable trigger user;           alter table public.diagnosticos enable trigger user;
+  alter table public.avaliacoes enable trigger user;        alter table public.custos_visita enable trigger user;
+  alter table public.solicitacoes_pagamento enable trigger user; alter table public.solicitacao_visitas enable trigger user;
+  alter table public.entregas_mes enable trigger user;      alter table public.turmas_fic enable trigger user;
+  alter table public.matriculas_fic enable trigger user;    alter table public.fic_encontros enable trigger user;
+  alter table public.fic_presencas enable trigger user;     alter table public.pedidos_apoio enable trigger user;
+  alter table public.documentos_projeto enable trigger user; alter table public.execucao_planilhas enable trigger user;
+  alter table public.agua_situacoes enable trigger user;    alter table public.canais_venda enable trigger user;
+  alter table public.orientacoes_venda enable trigger user; alter table public.observadores enable trigger user;
+  alter table public.relatos_problema enable trigger user;  alter table public.convites enable trigger user;
+  alter table public.pre_cadastros enable trigger user;     alter table public.vitrine_fotos enable trigger user;
+  alter table public.auditoria enable trigger user;         alter table public.acessos enable trigger user;
+
+  drop function pg_temp.pick(text[]), pg_temp.entre(date, date), pg_temp.cpf(bigint), pg_temp.ebia(int, boolean);
+end $sim$;
 
 select 'Simulação do projeto completo colocada' as resultado,
   (select count(*) from public.exemplo where tabela = 'equipe') as equipe,
