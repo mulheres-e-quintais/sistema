@@ -1,5 +1,5 @@
 -- =====================================================================
--- Mulheres & Quintais — 07: SIMULAÇÃO DO PROJETO COMPLETO (dados FICTÍCIOS em todas as abas, no limite do plano)
+-- Mulheres & Quintais — 95: SIMULAÇÃO DO PROJETO COMPLETO (dados FICTÍCIOS em todas as abas, no limite do plano)
 -- Supabase > SQL Editor > New query > cole este arquivo inteiro > Run. Rode depois do 63.
 --
 -- PARA QUE SERVE: ver e testar o sistema como ele fica no FIM do projeto (setembro de 2027), com todas as abas cheias:
@@ -14,15 +14,14 @@
 -- ATENÇÃO, LEIA ANTES:
 --   1. O IDEAL é rodar num projeto Supabase SEPARADO, de teste (cópia com 01 a 63), e não no projeto em uso.
 --   2. Por segurança, o script PARA (sem mudar nada) se já houver equipe ou fichas de verdade, ou dados de exemplo.
---      Se você rodou o 05_dados_exemplo.sql, rode antes o 08_apagar_simulacao.sql.
+--      Se você rodou o 05_dados_exemplo.sql, rode antes o 96_apagar_simulacao.sql.
 --   3. As datas vão até setembro de 2027 (o fim do projeto). Como hoje ainda é 2026, telas que comparam com "hoje"
 --      (prazos, "atrasada", cronograma) vão mostrar visitas e pagamentos "no futuro". É uma simulação de volume e de tela.
 --   4. Ninguém da equipe fictícia consegue entrar (e-mails @exemplo.invalid, sem login). Você vê tudo como coordenação
 --      geral e usa "Ver como o MDA vê / o MPA vê". Fotos e arquivos não existem de verdade: miniaturas e downloads falham.
---   5. Tudo fica anotado na tabela public.exemplo: some da vitrine pública e sai inteiro com o 08_apagar_simulacao.sql.
---   6. Por ser exemplo, a tela do MDA e do MPA ("Ver como o MDA vê") e a vitrine pública NÃO contam esses dados (de propósito:
---      dado de teste nunca vai para quem acompanha de fora). Num projeto Supabase SÓ DE TESTE, se quiser ver essas telas cheias,
---      rode depois:  delete from public.exemplo;   (aí o 08 não consegue mais apagar a simulação: descarte o projeto de teste).
+--   5. Tudo fica anotado na tabela public.exemplo: some da vitrine pública e sai inteiro com o 96_apagar_simulacao.sql.
+--   6. A vitrine pública e quem acompanha DE VERDADE (MDA, MPA) não contam dados de exemplo. Na sua prévia
+--      "Ver como o MDA vê / o MPA vê" eles entram (com o 64_previa_com_simulacao.sql instalado).
 -- =====================================================================
 
 do $sim$
@@ -58,7 +57,7 @@ begin
     raise exception 'Já há fichas de verdade: a simulação NÃO foi colocada (nada mudou). Use um projeto Supabase de teste.';
   end if;
   if exists (select 1 from public.exemplo) then
-    raise exception 'Já há dados de exemplo no banco. Rode antes o 08_apagar_simulacao.sql (nada mudou).';
+    raise exception 'Já há dados de exemplo no banco. Rode antes o 96_apagar_simulacao.sql (nada mudou).';
   end if;
   if not exists (select 1 from public.equipe where papel = 'coord_geral' and status = 'ativa') then
     raise exception 'Cadastre antes a coordenação geral (01_criar_banco.sql). Nada mudou.';

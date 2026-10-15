@@ -12458,7 +12458,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function painel(p) {
     if (p.tipo === 'acomp-previa') { const pv = S().acompPrevia || {}, sg = (ORG[pv.orgao] || {}).sigla || '';
       return `<div class="painel-cab"><div class="t"><span class="eyebrow">Prévia · só você vê esta janela</span><h2 id="painel-t">Como o ${sg} vê o projeto</h2></div><button class="fechar" data-acao="fechar" aria-label="Fechar" autofocus>×</button></div>
-        <div class="painel-corpo"><div class="ac ac-previa"><p class="nota">É isto que o ${sg} vê, com os números de agora. Dados de exemplo não entram na conta de quem acompanha.</p>${pv.dados ? corpo(pv.dados) : ''}</div></div>`; }
+        <div class="painel-corpo"><div class="ac ac-previa"><p class="nota">É isto que o ${sg} vê, com os números de agora. Aqui na prévia entram também os dados de exemplo e de simulação; o ${sg} de verdade não os vê.</p>${pv.dados ? corpo(pv.dados) : ''}</div></div>`; }
     const x = p.id ? (S().observadores || []).find(k => k.id === p.id) : null; const o = x ? x.orgao : (p.orgao || '');
     const obr = '<span class="ac-obr" aria-hidden="true">*</span>'; const st = x ? situacaoDe(x) : null;
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">${x ? 'Alterar cadastro' : 'Novo cadastro'}</span><h2 id="painel-t">Acompanhamento externo${ORG[o] ? ' · ' + ORG[o].sigla : ''}</h2>${st ? `<span><span class="chip ${st[0]}">${st[1]}</span></span>` : ''}</div>

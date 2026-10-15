@@ -1,7 +1,7 @@
 -- =====================================================================
--- Mulheres & Quintais — 08: APAGAR A SIMULAÇÃO (e os dados de exemplo do 05)
+-- Mulheres & Quintais — 96: APAGAR A SIMULAÇÃO (e os dados de exemplo do 05)
 -- Supabase > SQL Editor > New query > cole este arquivo inteiro > Run. Pode rodar de novo.
--- Apaga SÓ o que está anotado na tabela public.exemplo (colocado pelo 05_dados_exemplo.sql ou pelo 07_simulacao_completa.sql),
+-- Apaga SÓ o que está anotado na tabela public.exemplo (colocado pelo 05_dados_exemplo.sql ou pelo 95_simulacao_completa.sql),
 -- e o que depende disso (km das visitas, pagamentos, presença no FIC, dados pessoais e bancários da equipe fictícia, acessos,
 -- histórico). Nada cadastrado de verdade é apagado: referências de registros reais a pessoas fictícias viram vazias.
 -- Faz o trabalho do 06_apagar_exemplo.sql e mais: cobre todas as tabelas.
