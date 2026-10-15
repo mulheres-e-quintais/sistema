@@ -3633,3 +3633,26 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 /* 15/10/2026: no município, cada quintal é um alfinete com broto (também na legenda) */
 .lg-alf { flex: none; vertical-align: -3px; margin-right: 6px; overflow: visible; }
 .q-pt .q-pino { filter: drop-shadow(0 1px 1px rgba(69, 43, 26, .28)); }
+
+/* 15/10/2026: tablet em pé (iPad, 601 a 960 px). Os cartões por estado (Situação do campo, Bolsistas por estado, Agentes de campo)
+   ficam em 2 colunas em vez de um cartão de celular esticado na largura toda (barras de 650 px, rótulo longe do número). */
+@media (min-width: 601px) and (max-width: 960px) {
+  .cartoes.eq-cartoes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .eq-cartoes .cartao { border-top: 1px solid var(--line); padding: 16px 18px; align-content: start; }
+  .eq-cartoes .cartao:nth-child(-n+2) { border-top: 0; }
+  .eq-cartoes .cartao:nth-child(even) { border-left: 1px solid var(--line); }
+  .eq-cartoes .cartao .cab-uf { margin-bottom: 2px; }
+  .pr-cartoes .pr-par { grid-template-columns: 1fr 1fr; gap: 10px; }
+}
+/* tablet deitado (961 a 1100 px): a coluna Estado não aperta o nome (Pernambuco encostava na coluna ao lado) */
+@media (min-width: 961px) and (max-width: 1100px) {
+  .eq-quadro td.uf .ag-uf .sigla { display: none; }   /* o nome do estado já diz qual é; a sigla tirava o espaço do nome */
+  .eq-quadro td.uf { padding-left: 16px; }
+}
+/* mesmo para "Agentes de campo" e "Acompanhamento externo" (ag-quadro): 2 colunas no tablet em pé; o 1º filho é o cabeçalho escondido */
+@media (min-width: 601px) and (max-width: 960px) {
+  .ag-quadro { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ag-quadro .ag-tr { align-content: start; }
+  .ag-quadro .ag-tr:nth-child(3) { border-top: 0; }
+  .ag-quadro .ag-tr:nth-child(odd) { border-left: 1px solid var(--line); }
+}

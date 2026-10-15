@@ -171,6 +171,7 @@
   }
 
   /* ---------- mapa dos quintais (SVG próprio: funciona sem internet e sem serviço de mapas) ---------- */
+  // as cores vão sempre em style="fill:…" (CSS): o Safari do iPad não aceita var(--…) no atributo fill/stroke e pintava tudo de uma cor só
   const CATS = [
     { id: 'aprovada', nome: 'Selecionada e aprovada', cor: 'var(--m-ok)' },
     { id: 'espera', nome: 'Lista de espera', cor: 'var(--m-espera)' },
@@ -247,9 +248,9 @@
   function alfinete(x, y, a, cor, cheio) {
     // 6 casas: no município o mapa inteiro mede ~0,3 grau (2 casas apagavam o desenho)
     const f = n => +n.toFixed(6), cy = y - 1.75 * a, lx = x - 0.82 * a, rx = x + 0.82 * a, py = cy + 0.57 * a;
-    const pino = `<path d="M${f(x)},${f(y)}L${f(lx)},${f(py)}A${f(a)},${f(a)} 0 1 1 ${f(rx)},${f(py)}Z" fill="${cheio ? cor : 'var(--surface)'}" stroke="${cheio ? 'var(--surface)' : cor}" stroke-width="${f(a * (cheio ? 0.16 : 0.24))}" stroke-linejoin="round" class="q-pino"/>`;
+    const pino = `<path d="M${f(x)},${f(y)}L${f(lx)},${f(py)}A${f(a)},${f(a)} 0 1 1 ${f(rx)},${f(py)}Z" style="fill:${cheio ? cor : 'var(--surface)'};stroke:${cheio ? 'var(--surface)' : cor}" stroke-width="${f(a * (cheio ? 0.16 : 0.24))}" stroke-linejoin="round" class="q-pino"/>`;
     const tinta = cheio ? '#fff' : cor, s = a * 0.62;
-    const broto = `<g fill="${tinta}" stroke="${tinta}" stroke-width="${f(a * 0.1)}" stroke-linecap="round" stroke-linejoin="round">`
+    const broto = `<g style="fill:${tinta};stroke:${tinta}" stroke-width="${f(a * 0.1)}" stroke-linecap="round" stroke-linejoin="round">`
       + `<path d="M${f(x)},${f(cy + 0.55 * s)}V${f(cy - 0.05 * s)}" fill="none" stroke-width="${f(a * 0.14)}"/>`
       + `<path d="M${f(x)},${f(cy + 0.05 * s)}Q${f(x - 0.95 * s)},${f(cy + 0.05 * s)} ${f(x - 0.9 * s)},${f(cy - 0.75 * s)}Q${f(x - 0.1 * s)},${f(cy - 0.7 * s)} ${f(x)},${f(cy + 0.05 * s)}Z"/>`
       + `<path d="M${f(x)},${f(cy - 0.12 * s)}Q${f(x + 0.95 * s)},${f(cy - 0.2 * s)} ${f(x + 0.95 * s)},${f(cy - 1 * s)}Q${f(x + 0.1 * s)},${f(cy - 0.95 * s)} ${f(x)},${f(cy - 0.12 * s)}Z"/></g>`;
@@ -306,10 +307,10 @@
         if (!RES) ULTIMO.geo[g.k] = { cx, cy, R };
         const por = resumo(g);
         let ang = -Math.PI / 2; const fatias = por.length === 1
-          ? `<circle cx="${cx}" cy="${cy}" r="${R}" fill="${CATS.find(k => k.id === por[0][0]).cor}"/>`
+          ? `<circle cx="${cx}" cy="${cy}" r="${R}" style="fill:${CATS.find(k => k.id === por[0][0]).cor}"/>`
           : por.map(([id, q]) => { const a0 = ang, a1 = ang + 2 * Math.PI * q / n; ang = a1;
               const p0 = [cx + R * Math.cos(a0), cy + R * Math.sin(a0)], p1 = [cx + R * Math.cos(a1), cy + R * Math.sin(a1)];
-              return `<path d="M${cx},${cy}L${p0[0]},${p0[1]}A${R},${R} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${p1[0]},${p1[1]}Z" fill="${CATS.find(k => k.id === id).cor}"/>`; }).join('');
+              return `<path d="M${cx},${cy}L${p0[0]},${p0[1]}A${R},${R} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${p1[0]},${p1[1]}Z" style="fill:${CATS.find(k => k.id === id).cor}"/>`; }).join('');
         const txt = `${nome}/${g.uf} · ${n} mulher${n > 1 ? 'es' : ''} com ficha: ${por.map(([id, q]) => q + ' ' + CATS.find(k => k.id === id).nome.toLowerCase()).join(', ')} · clique para ver ${foco ? 'cada quintal' : 'o estado'}`;
         // área de toque invisível maior que o círculo: no celular o dedo acerta mesmo em município pequeno
         if (RES) { const t2 = `${nome}/${g.uf}: ${n} mulher${n > 1 ? 'es' : ''} selecionada${n > 1 ? 's' : ''}`;
