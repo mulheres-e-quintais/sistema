@@ -164,6 +164,7 @@
         'Em <b>Planos para você aprovar</b>, abra o diagnóstico, confira as fotos, o croqui, os itens do kit e o cronograma, e <b>aprove</b> ou <b>devolva</b>. <b>Imprimir o plano</b> gera a folha com o kit, o cronograma e o croqui (para a coordenação geral, também com os preços de referência e a projeção).',
         'O diagnóstico usa uma lista fixa de itens do kit. Quem preenche informa só a quantidade; o preço de referência de cada item aparece apenas para a coordenação geral, na projeção do plano. A compra é feita por empresa contratada.',
         '<b>Investimento nos quintais</b> mostra o valor do kit por quintal (R$ 5.000,00, fixado no plano de trabalho) e, para a coordenação geral, a soma projetada pelos planos.',
+        'Em <b>Onde vender</b>, os números por tipo de canal (feira, merenda, PAA...), a <b>semana das feiras</b> (que dia tem feira, lido do detalhe do canal: escreva "Sábados, 5h às 11h") e os municípios com mulher selecionada que ainda não têm canal de venda.',
         'O <b>roteiro</b> lista cada visita: data, quem vai e a situação, com o botão do que fazer. Visitas vencidas aparecem como atrasadas.',
         '<b>Impacto: antes × depois</b> compara o diagnóstico com a avaliação final de cada quintal.'
       ],

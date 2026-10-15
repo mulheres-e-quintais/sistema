@@ -3707,3 +3707,40 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 .ft-cancelar:hover, .ft-cancelar:focus-visible { text-decoration: none; color: var(--crit); border-color: color-mix(in srgb, var(--crit) 55%, var(--line)); background: color-mix(in srgb, var(--crit) 7%, var(--surface)); }
 @media (max-width: 640px) { .ft-cancelar { min-height: 40px; padding: 8px 12px; margin: 0; } .ft-cancelar span { display: none; } .ft-cancelar svg { opacity: 1; } }
 .ft-linha { grid-template-columns: 30px minmax(0, 1fr) auto auto; }
+/* 15/10/2026: "Onde vender" visual — ícone por tipo, semana das feiras e cobertura dos municípios */
+.vd2 { --t-feira: var(--accent); --t-merenda: var(--st-ok); --t-paa: var(--st-and); --t-grupo: var(--m-espera, #3478B9); --t-comprador: var(--verde-2); --t-outro: var(--muted); }
+.vd2-painel { display: grid; gap: 14px; margin-bottom: 14px; }
+.vd2-tipos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.vd2-t { --c: var(--t-outro); display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 10px; align-items: center; padding: 12px 14px; border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--c); }
+.vd2-t .vd2-ic { grid-row: 1 / span 2; }
+.vd2-t b { font: 600 var(--t-2xl)/1 var(--serif, inherit); color: var(--ink); }
+.vd2-t > span:last-child { font-size: var(--t-xs); color: var(--ink-2); line-height: 1.25; }
+.vd2-t.zero { opacity: .62; } .vd2-t.zero b { color: var(--ink-2); }
+.vd2-ic { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; color: var(--c, var(--ink-2)); background: color-mix(in srgb, var(--c, var(--ink-2)) 13%, transparent); }
+.vd2-ic.peq { width: 32px; height: 32px; border-radius: 10px; flex: none; }
+.t-feira { --c: var(--t-feira); } .t-merenda { --c: var(--t-merenda); } .t-paa { --c: var(--t-paa); } .t-grupo { --c: var(--t-grupo); } .t-comprador { --c: var(--t-comprador); } .t-outro { --c: var(--t-outro); }
+.vd2-duas { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.vd2-semana, .vd2-cob { padding: 14px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.vd2-semana h3, .vd2-cob h3 { margin: 0 0 10px; font-size: var(--t-md); }
+.vd2-dias { list-style: none; margin: 0 0 6px; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; text-align: center; }
+.vd2-dias li { display: grid; justify-items: center; gap: 4px; }
+.vd2-bola { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; font: 700 var(--t-sm)/1 var(--sans); color: var(--ink-2); background: var(--surface-2); border: 1px dashed var(--line-2, var(--line)); }
+.vd2-dias li.tem .vd2-bola { border: 0; color: #fff; background: color-mix(in srgb, var(--t-feira) calc(45% + var(--n) * 55%), var(--surface-2)); }
+.vd2-dia { font-size: var(--t-xs); color: var(--ink-2); font-weight: 600; }
+.vd2-cob-n { margin: 0 0 6px; font-size: var(--t-sm); color: var(--ink-2); } .vd2-cob-n b { font: 600 var(--t-xl)/1 var(--serif, inherit); color: var(--ink); margin-right: 2px; }
+.vd2-barra { display: block; height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--line) 70%, transparent); overflow: hidden; margin-bottom: 10px; }
+.vd2-barra i { display: block; height: 100%; border-radius: 4px; background: color-mix(in srgb, var(--ink-2) 55%, transparent); } .vd2-barra i.cheio { background: var(--st-ok); }
+.vd2-falta { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.vd2-falta li { padding: 3px 10px; border-radius: 999px; font-size: var(--t-xs); background: color-mix(in srgb, var(--st-aten) 12%, transparent); color: var(--ink); }
+.vd2-ok { color: var(--st-ok); font-weight: 600; margin: 0; }
+.vd2-muns { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.vd2-mun { padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); }
+.vd2-mun h3 { margin: 0 0 8px; font-size: var(--t-md); }
+.vd2-mun .vd-lista { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.vd2-c { display: flex; gap: 10px; align-items: flex-start; }
+.vd2-c-txt { display: grid; gap: 2px; min-width: 0; }
+.vd2-c.inativo { opacity: .55; }
+.vd2-mun .vd-lista > li.vd2-c { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; text-align: left; padding: 10px 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; }
+.vd2-mun .vd-lista > li.vd2-c:first-child { border-top: 0; padding-top: 2px; }
+.vd2-c-txt { justify-items: start; } .vd2-c-txt .link { justify-self: start; padding: 2px 0; }
