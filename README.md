@@ -62,6 +62,8 @@ supabase/12_pagamentos.sql       etapa 12: visita feita (implantação/acompanha
 supabase/13_avaliacao.sql        etapa 13: visita de avaliação (5ª visita, 200 dias de campo por estado) e medidas de impacto antes × depois
 supabase/48_termo_pela_pessoa.sql Etapa 48: a própria pessoa anexa o termo de compromisso; a data só entra com o termo anexado (decisão de 02/10/2026)
 supabase/06_apagar_exemplo.sql   apaga os dados inventados
+supabase/07_simulacao_completa.sql  simulação do projeto COMPLETO, todas as abas cheias (só em projeto de teste)
+supabase/08_apagar_simulacao.sql    apaga a simulação e os dados de exemplo (todas as tabelas)
 supabase/00_verificar.sql        só lê: mostra quais etapas já estão instaladas e quantos registros há
 supabase/15_coord_geral_total.sql etapa 15: coordenação geral com todos os acessos (decisão de 28/09/2026)
 supabase/17_corrige_link_cadastro.sql correção: "Gerar link de cadastro" (erro gen_random_bytes)
