@@ -689,7 +689,14 @@
     op = op || {};
     const pc = op.pct != null ? Math.max(0, Math.min(100, op.pct)) : de ? Math.max(0, Math.min(100, n / de * 100)) : 0, pr = Math.round(pc), C = 2 * Math.PI * 18;
     const num = op.valor != null ? op.valor : `<b${op.crit ? ' style="color:var(--crit)"' : ''}>${n}</b>${op.sem ? '' : `<small> de ${de}</small>`}`;
-    const anel = op.sem ? '' : `<span class="dx-anel" aria-hidden="true"><svg viewBox="0 0 44 44" width="52" height="52" focusable="false"><circle cx="22" cy="22" r="18" class="tr"/><circle cx="22" cy="22" r="18" class="pg${pc > 0 ? '' : ' vazio'}" stroke-dasharray="${(C * pc / 100).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 22 22)"/></svg><b class="num">${pr}%</b></span>`;
+    const anel = op.sem || op.enxuto ? '' : `<span class="dx-anel" aria-hidden="true"><svg viewBox="0 0 44 44" width="52" height="52" focusable="false"><circle cx="22" cy="22" r="18" class="tr"/><circle cx="22" cy="22" r="18" class="pg${pc > 0 ? '' : ' vazio'}" stroke-dasharray="${(C * pc / 100).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 22 22)"/></svg><b class="num">${pr}%</b></span>`;
+    // op.enxuto (15/10/2026): sem o anel e sem o "x% concluído" (o "x de y" e a barra já dizem); os cartões sem total ganham a mesma
+    // barra, invisível, e uma linha de situação (op.nota), para os quatro ficarem alinhados
+    if (op.enxuto) {
+      const nota = op.nota ? `<span class="eq-ok${op.notaTom ? ' ' + op.notaTom : ''}">${op.nota}</span>` : (!op.sem && de && n >= de ? '<span class="eq-ok">completo</span>' : '');
+      return `<div class="eq-kpi dx-kpi enxuto k${k || 1}${op.sem ? ' sem-total' : ''}${op.cls ? ' ' + op.cls : ''}"><div class="dx-kpi-topo"><span class="eq-n num">${num}</span></div><span class="eq-l">${rot}</span>
+        <span class="medidor fino${op.sem ? ' so-espaco' : ''}" aria-hidden="true"><i style="width:${op.sem ? 0 : pc}%"></i></span>${nota}</div>`;
+    }
     return `<div class="eq-kpi dx-kpi k${k || 1}${op.sem ? ' sem-total' : ''}${op.cls ? ' ' + op.cls : ''}"><div class="dx-kpi-topo">${anel}<span class="eq-n num">${num}</span></div><span class="eq-l">${rot}</span>
       ${op.sem ? '' : `<span class="medidor fino" aria-hidden="true"><i style="width:${pc}%"></i></span><span class="dx-kpi-p"><b class="num">${pr}%</b> ${op.fim || 'concluído'}</span>`}${!op.sem && op.valor == null && de && n >= de ? '<span class="eq-ok">completo</span>' : ''}</div>`;
   }

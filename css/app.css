@@ -3690,3 +3690,20 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
   .ac-tab th, .ac-tab td { padding-left: 6px; padding-right: 6px; }
   .ac-duo { grid-template-columns: minmax(0, 1fr) !important; }
 }
+/* 15/10/2026: cartões de número "enxutos" (Curso FIC): mesma altura e mesma ordem nos quatro — número, rótulo, barra, situação */
+.eq-kpi.enxuto { display: grid; grid-template-rows: auto 1fr auto auto; gap: 8px; align-content: start; }
+.eq-kpi.enxuto .eq-l { align-self: start; }
+.eq-kpi.enxuto .medidor.fino { margin-top: 4px; }
+.eq-kpi.enxuto .medidor.fino i { background: color-mix(in srgb, var(--ink-2) 55%, transparent); }
+.eq-kpi.enxuto .medidor.fino i[style*="width:100%"] { background: var(--st-ok); }
+.eq-kpi.enxuto .medidor.so-espaco { visibility: hidden; }
+.eq-ok.tom-neutro { color: var(--ink-2); } .eq-ok.tom-neutro::before { background: var(--muted); }
+.eq-ok.tom-aviso { color: var(--st-aten); } .eq-ok.tom-aviso::before { background: var(--st-aten); }
+.eq-ok.tom-crit { color: var(--crit); } .eq-ok.tom-crit::before { background: var(--crit); }
+/* 15/10/2026: "Cancelar matrícula" como botão discreto (contorno e ícone), que só fica vermelho ao passar o mouse ou focar */
+.ft-cancelar { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 6px 12px; margin: 0; border: 1px solid var(--line-2, var(--line)); border-radius: 999px;
+  background: var(--surface); color: var(--ink-2); font: 600 var(--t-xs)/1 var(--sans); letter-spacing: .01em; white-space: nowrap; transition: color .15s, border-color .15s, background-color .15s; }
+.ft-cancelar svg { flex: none; opacity: .8; }
+.ft-cancelar:hover, .ft-cancelar:focus-visible { text-decoration: none; color: var(--crit); border-color: color-mix(in srgb, var(--crit) 55%, var(--line)); background: color-mix(in srgb, var(--crit) 7%, var(--surface)); }
+@media (max-width: 640px) { .ft-cancelar { min-height: 40px; padding: 8px 12px; margin: 0; } .ft-cancelar span { display: none; } .ft-cancelar svg { opacity: 1; } }
+.ft-linha { grid-template-columns: 30px minmax(0, 1fr) auto auto; }

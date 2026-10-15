@@ -6931,10 +6931,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <p>${souProf() ? 'Crie a sua turma e matricule a coordenação técnica, as bolsistas e as agentes de campo. Você também pode matricular nas turmas do outro professor.' : (S().eu.papel === 'coord_geral' ? 'Os professores do curso FIC criam as turmas e matriculam; a coordenação geral também pode fazer isso aqui.' : 'Só os professores do curso FIC criam turmas e matriculam a coordenação técnica, as bolsistas e as agentes de campo; aqui a coordenação acompanha.')} A matrícula registrada aqui conta como o passo <b>matrícula no FIC</b> da habilitação: sem ela, a pessoa não recebe bolsa nem faz visita paga.</p></div>
         ${podeCriarTurma() ? '<button class="btn pri" data-acao="fic-turma-nova">+ Nova turma</button>' : ''}</div>
       <div class="eq-kpis" aria-label="Resumo do curso FIC">
-        ${U().kpi(turmas().length, null, 'turma' + (turmas().length === 1 ? '' : 's'), 1, { sem: true })}
-        ${U().kpi(comMat.length, pessoas.length, 'matriculadas (coordenação técnica, bolsistas e agentes)', 2)}
-        ${U().kpi(sem.length, null, 'ainda sem matrícula', 3, { sem: true, crit: sem.length > 0 })}
-        ${U().kpi(professores().length, MQ.regras.MAX_PROFESSORES, 'professor' + (professores().length === 1 ? '' : 'es') + ' do FIC', 4)}
+        ${U().kpi(turmas().length, null, 'turma' + (turmas().length === 1 ? '' : 's'), 1, { sem: true, enxuto: true, nota: turmas().length ? 'criada' + (turmas().length === 1 ? '' : 's') + ' pelos professores' : 'nenhuma ainda', notaTom: turmas().length ? 'tom-neutro' : 'tom-aviso' })}
+        ${U().kpi(comMat.length, pessoas.length, 'matriculadas (coordenação técnica, bolsistas e agentes)', 2, { enxuto: true, nota: comMat.length >= pessoas.length && pessoas.length ? 'completo' : (pessoas.length - comMat.length) + ' faltando', notaTom: comMat.length >= pessoas.length && pessoas.length ? '' : 'tom-aviso' })}
+        ${U().kpi(sem.length, null, 'ainda sem matrícula', 3, { sem: true, enxuto: true, crit: sem.length > 0, nota: sem.length ? 'matricule em uma turma' : 'ninguém de fora', notaTom: sem.length ? 'tom-crit' : '' })}
+        ${U().kpi(professores().length, MQ.regras.MAX_PROFESSORES, 'professor' + (professores().length === 1 ? '' : 'es') + ' do FIC', 4, { enxuto: true, nota: professores().length >= MQ.regras.MAX_PROFESSORES ? 'completo' : 'vaga aberta', notaTom: professores().length >= MQ.regras.MAX_PROFESSORES ? '' : 'tom-aviso' })}
       </div>
       ${sem.length ? blocoSem(sem) : pessoas.length ? '<div class="aviso ok-aviso">Todas as pessoas que fazem o curso (coordenação técnica, bolsistas e agentes) estão matriculadas no FIC.</div>' : ''}
       <section class="secao"><div class="secao-cab"><h2 id="t-turmas">${souProf() ? 'Suas turmas' : 'Turmas'}</h2></div>
@@ -6975,7 +6975,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <span class="ft-pes"><span class="ft-nome">${E(nomeDe(m))}</span>
             <span class="ft-sub"><span class="etq">${E(P[m.papel] ? P[m.papel].nome : m.papel)}</span>${m.uf ? `<span class="etq etq-uf">${E(m.uf)}</span>` : ''}${m.municipio ? `<span class="ft-mun">${E(m.municipio)}</span>` : ''}</span></span>
           <span class="ft-mat"><span class="num">Nº ${E(x.numero)}</span><span class="ft-data num">${R.fmtData(x.matriculado_em)}</span></span>
-          ${pode ? `<button class="ft-cancelar" data-acao="fic-cancelar" data-id="${E(x.id)}" aria-label="Cancelar a matrícula de ${E(nomeDe(m))}">Cancelar</button>` : '<span></span>'}</li>`).join('')}</ul>`
+          ${pode ? `<button class="ft-cancelar" data-acao="fic-cancelar" data-id="${E(x.id)}" aria-label="Cancelar a matrícula de ${E(nomeDe(m))}"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><path d="M4.5 4.5l7 7m0-7l-7 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Cancelar matrícula</span></button>` : '<span></span>'}</li>`).join('')}</ul>`
         : '<p class="ft-vazio small muted">Ninguém matriculado nesta turma ainda.</p>'}
     </section>`;
   }
@@ -13567,7 +13567,14 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     op = op || {};
     const pc = op.pct != null ? Math.max(0, Math.min(100, op.pct)) : de ? Math.max(0, Math.min(100, n / de * 100)) : 0, pr = Math.round(pc), C = 2 * Math.PI * 18;
     const num = op.valor != null ? op.valor : `<b${op.crit ? ' style="color:var(--crit)"' : ''}>${n}</b>${op.sem ? '' : `<small> de ${de}</small>`}`;
-    const anel = op.sem ? '' : `<span class="dx-anel" aria-hidden="true"><svg viewBox="0 0 44 44" width="52" height="52" focusable="false"><circle cx="22" cy="22" r="18" class="tr"/><circle cx="22" cy="22" r="18" class="pg${pc > 0 ? '' : ' vazio'}" stroke-dasharray="${(C * pc / 100).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 22 22)"/></svg><b class="num">${pr}%</b></span>`;
+    const anel = op.sem || op.enxuto ? '' : `<span class="dx-anel" aria-hidden="true"><svg viewBox="0 0 44 44" width="52" height="52" focusable="false"><circle cx="22" cy="22" r="18" class="tr"/><circle cx="22" cy="22" r="18" class="pg${pc > 0 ? '' : ' vazio'}" stroke-dasharray="${(C * pc / 100).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 22 22)"/></svg><b class="num">${pr}%</b></span>`;
+    // op.enxuto (15/10/2026): sem o anel e sem o "x% concluído" (o "x de y" e a barra já dizem); os cartões sem total ganham a mesma
+    // barra, invisível, e uma linha de situação (op.nota), para os quatro ficarem alinhados
+    if (op.enxuto) {
+      const nota = op.nota ? `<span class="eq-ok${op.notaTom ? ' ' + op.notaTom : ''}">${op.nota}</span>` : (!op.sem && de && n >= de ? '<span class="eq-ok">completo</span>' : '');
+      return `<div class="eq-kpi dx-kpi enxuto k${k || 1}${op.sem ? ' sem-total' : ''}${op.cls ? ' ' + op.cls : ''}"><div class="dx-kpi-topo"><span class="eq-n num">${num}</span></div><span class="eq-l">${rot}</span>
+        <span class="medidor fino${op.sem ? ' so-espaco' : ''}" aria-hidden="true"><i style="width:${op.sem ? 0 : pc}%"></i></span>${nota}</div>`;
+    }
     return `<div class="eq-kpi dx-kpi k${k || 1}${op.sem ? ' sem-total' : ''}${op.cls ? ' ' + op.cls : ''}"><div class="dx-kpi-topo">${anel}<span class="eq-n num">${num}</span></div><span class="eq-l">${rot}</span>
       ${op.sem ? '' : `<span class="medidor fino" aria-hidden="true"><i style="width:${pc}%"></i></span><span class="dx-kpi-p"><b class="num">${pr}%</b> ${op.fim || 'concluído'}</span>`}${!op.sem && op.valor == null && de && n >= de ? '<span class="eq-ok">completo</span>' : ''}</div>`;
   }
