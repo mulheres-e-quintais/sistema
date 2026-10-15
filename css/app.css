@@ -3249,6 +3249,17 @@ small { font-size: max(12px, .85em); }
 .pr-vazio { font-size: var(--t-sm); color: var(--muted); font-style: italic; }
 .pr-par { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; } .pr-par .fn { display: block; margin-bottom: 4px; }
 .prontidao .pront-coord { margin: 10px 2px 0; }
+/* 15/10/2026: célula que se explica sozinha: "4 de 4 habilitadas", barra (verde só quando completa) e uma linha com cor própria */
+.pr-cel { display: grid; gap: 7px; min-width: 0; }
+.pr-topo { font-size: var(--t-sm); color: var(--ink-2); line-height: 1.25; }
+.pr-topo b { font: 600 var(--t-xl)/1 var(--serif, inherit); color: var(--ink); margin-right: 2px; }
+.pr-cel .bar { height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--line) 70%, transparent); }
+.pr-cel .bar i { background: color-mix(in srgb, var(--ink-2) 55%, transparent); border-radius: 4px; }
+.pr-cel .bar i.cheio { background: var(--ok); }
+.pr-sub { display: flex; align-items: baseline; gap: 6px; font-size: var(--t-xs); color: var(--ink-2); line-height: 1.3; }
+.pr-sub::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); transform: translateY(-1px); }
+.pr-sub.ok::before { background: var(--st-ok); }
+.pr-sub.alerta { color: var(--ink); font-weight: 600; } .pr-sub.alerta::before { background: var(--st-aten); }
 .fila-cel { margin-top: 12px; display: grid; gap: 12px; }
 .fc-cab { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .fc-cab .fc-tit { flex: 1 1 220px; min-width: 0; }
@@ -3584,3 +3595,38 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 /* 15/10/2026: "Sem água na seca" na Situação do campo — acima de 30% das fichas, o número fica vermelho (alarme da seleção) */
 .pr-alarme b, .pr-alarme small { color: var(--crit); }
 .pr-alarme small { font-weight: 600; }
+
+/* 15/10/2026: "Quem são as mulheres" e "Ponto de partida e hoje" — percentual em destaque, barras alinhadas, início × hoje com a mudança colorida */
+.perfil2 { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px 28px; }
+.perfil2 li { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 5px; align-items: baseline; }
+.pf2-rot { font-size: var(--t-md); color: var(--ink); line-height: 1.3; }
+.pf2-pc { font: 600 var(--t-xl)/1 var(--serif, inherit); color: var(--ink); }
+.pf2-bar { grid-column: 1 / -1; height: 10px; border-radius: 5px; background: color-mix(in srgb, var(--line) 70%, transparent); overflow: hidden; }
+.pf2-bar i { display: block; height: 100%; border-radius: 5px; background: var(--verde-2); }
+.pf2-n { grid-column: 1 / -1; font-size: var(--t-xs); color: var(--ink-2); }
+.pp2 h3 { margin-bottom: 12px; }
+.pp2-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.pp2-kpi { display: grid; gap: 4px; align-content: start; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); }
+.pp2-k-rot { font-size: var(--t-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+.pp2-k-val { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; }
+.pp2-k-val b { font: 600 var(--t-2xl)/1.1 var(--serif, inherit); color: var(--ink); }
+.pp2-antes { font-size: var(--t-md); color: var(--ink-2); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--ink-2) 50%, transparent); }
+.pp2-seta { color: var(--st-ok); font-weight: 700; }
+.pp2-k-sub { font-size: var(--t-xs); color: var(--ink-2); line-height: 1.35; }
+.pp2-tab { width: 100%; border-collapse: collapse; font-size: var(--t-sm); }
+.pp2-tab thead th { font-size: var(--t-2xs, 11px); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); text-align: right; padding: 0 6px 6px; border-bottom: 1px solid var(--line-2, var(--line)); }
+.pp2-tab thead th:first-child { text-align: left; padding-left: 0; }
+.pp2-tab tbody th { text-align: left; font-weight: 400; color: var(--ink); padding: 9px 6px 9px 0; line-height: 1.3; }
+.pp2-tab td { text-align: right; padding: 9px 6px; white-space: nowrap; color: var(--ink-2); }
+.pp2-tab td b { color: var(--ink); font-size: var(--t-md); }
+.pp2-tab td:last-child { padding-right: 0; }
+.pp2-tab tbody tr + tr > * { border-top: 1px solid var(--line); }
+.pp2-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: var(--t-xs); font-weight: 600; background: var(--surface-2); color: var(--ink-2); }
+.pp2-chip.bom { background: color-mix(in srgb, var(--st-ok) 14%, transparent); color: var(--st-ok); }
+.pp2-chip.ruim { background: color-mix(in srgb, var(--st-atr) 14%, transparent); color: var(--st-atr); }
+.pp2-chip span[aria-hidden] { font-size: 9px; }
+.pp2-agua { margin: 12px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--st-atr-bg, var(--surface-2)); font-size: var(--t-sm); color: var(--ink); }
+@media (max-width: 520px) {
+  .pp2-kpis { grid-template-columns: 1fr; }
+  .pp2-tab.com-hoje thead th:nth-child(2), .pp2-tab.com-hoje tbody td:nth-of-type(1) { display: none; }   /* no celular: indicador, hoje e mudança */
+}

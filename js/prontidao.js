@@ -81,16 +81,22 @@
     return `<p class="small pront-coord"><b>Coordenação técnica:</b> ${st(tec)} · <b>Auxiliar:</b> ${st(aux)} · <b>Professores do curso FIC:</b> ${profs.length ? profsHab + ' de ' + profs.length + ' habilitado' + (profs.length > 1 ? 's' : '') : 'nenhum cadastrado (sem professor habilitado, ninguém da equipe de campo pode ser cadastrado)'}</p>`;
   }
   /* mesma cara do quadro "Bolsistas por estado" da aba Equipe: tabela no computador, cartões no celular */
-  const barra = (n, de, sub, rot) => { const pc = de ? Math.min(100, Math.round(n / de * 100)) : 0;
-    return `<div class="plano"><div class="ln" style="grid-template-columns:minmax(0,1fr) 64px"><span class="bar" role="img" aria-label="${E(rot)}: ${n} de ${de}"><i class="${de && n >= de ? 'cheio' : ''}" style="width:${pc}%"></i></span><span class="num"><b>${n}</b><small class="muted"> / ${de}</small></span></div>${sub ? `<span>${sub}</span>` : ''}</div>`; };
+  /* 15/10/2026: cada número diz o que conta ("4 de 4 habilitadas"), a barra só enche de verde quando chega no total,
+     e a linha de baixo tem a sua própria cor (ex.: habilitadas, mas ninguém entrou ainda = aviso) */
+  const barra = (n, de, unidade, rot, sub, tom) => { const pc = de ? Math.min(100, Math.round(n / de * 100)) : 0;
+    return `<div class="pr-cel"><span class="pr-topo"><b class="num">${n}</b> de ${de} ${E(unidade)}</span>`
+      + `<span class="bar" role="img" aria-label="${E(rot)}: ${n} de ${de}"><i class="${de && n >= de ? 'cheio' : ''}" style="width:${pc}%"></i></span>`
+      + (sub ? `<span class="pr-sub${tom ? ' ' + tom : ''}">${sub}</span>` : '') + '</div>'; };
   function celulas(u) {
     const d = porUF(u.uf);
     const dgsAprov = (S().diagnosticos || []).filter(x => x.uf === u.uf && x.situacao === 'aprovado').length;
     return {
-      eq: d.eq ? barra(d.hab, d.eq, `${d.entraram} já entr${d.entraram === 1 ? 'ou' : 'aram'} no sistema`, 'Equipe de campo habilitada') : '<span class="pr-vazio">Ninguém cadastrado</span>',
-      fichas: barra(d.fichas, MQ.VAGAS_UF, '', 'Fichas aprovadas'),
-      dgs: barra(d.dgs, MQ.META_UF.diagnosticos, dgsAprov ? `${dgsAprov} com plano aprovado` : '', 'Diagnósticos'),
-      prox: `<span class="pr-n"><b class="num">${d.prox}</b><small>agendada${d.prox === 1 ? '' : 's'}</small></span>`,
+      eq: d.eq ? barra(d.hab, d.eq, d.hab === 1 && d.eq === 1 ? 'habilitada' : 'habilitadas', 'Equipe de campo habilitada',
+                       d.entraram >= d.eq ? 'Todas já entraram no sistema' : `${d.entraram} de ${d.eq} já entr${d.entraram === 1 ? 'ou' : 'aram'} no sistema`,
+                       d.entraram >= d.eq ? 'ok' : 'alerta') : '<span class="pr-vazio">Ninguém cadastrado</span>',
+      fichas: barra(d.fichas, MQ.VAGAS_UF, 'vagas preenchidas', 'Fichas aprovadas'),
+      dgs: barra(d.dgs, MQ.META_UF.diagnosticos, 'feitos', 'Diagnósticos', dgsAprov ? `${dgsAprov} com plano aprovado` : 'Nenhum plano aprovado ainda', dgsAprov >= MQ.META_UF.diagnosticos ? 'ok' : ''),
+      prox: `<span class="pr-n"><b class="num">${d.prox}</b><small>visita${d.prox === 1 ? '' : 's'} agendada${d.prox === 1 ? '' : 's'}</small></span>`,
       agua: !d.nFichas ? '<span class="pr-vazio">Sem fichas</span>' : (() => { const pc = Math.round(d.semAgua / d.nFichas * 100);
         return `<span class="pr-n${pc > 30 ? ' pr-alarme' : ''}"><b class="num">${d.semAgua}</b><small>de ${d.nFichas} ficha${d.nFichas === 1 ? '' : 's'} · ${pc}%${pc > 30 ? ' · reveja a seleção' : ''}</small></span>`; })(),
       fila: d.fila ? `<span class="pr-falta"><span class="fc-chip crit">${d.fila} registro${d.fila > 1 ? 's' : ''}</span><small>só no celular</small></span>` : '<span class="fc-chip ok">Nada</span>'

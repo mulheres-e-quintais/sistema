@@ -29,7 +29,7 @@ test('visão geral: cabeçalho, indicadores, pendências com problema, prazo e a
   assert.match(h, /role="columnheader">Problema/); assert.match(h, /role="columnheader">Prazo/); assert.match(x, /Resolver/);
   assert.match(x, /09\/10\/2026/, 'a vaga da equipe traz o prazo de indicação do MPA');
   const nFichas = t.S.fichas.length; assert.match(x, new RegExp(`com ficha válida em \\d+ estados? do Nordeste · ${nFichas} fichas lançadas`));
-  assert.match(x, /Acesso à água/); assert.match(x, /mulheres? · \d+%|mulher · \d+%/, 'quem são as mulheres: número e percentual');
+  assert.match(x, /Acesso à água/); assert.match(x, /\d+% \d+ de \d+ mulheres/, 'quem são as mulheres: número e percentual');
 });
 test('menu agrupado: Gestão, Execução, Financeiro, Documentação', async () => {
   const t = await montar('coord_geral'); const h = t.aba('visao');

@@ -4537,10 +4537,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       ['p_grupo', 'Participa de grupo, associação ou MPA'], ['p_raca_povo', 'Negra, indígena, quilombola ou de comunidade tradicional'],
       ['p_caf', 'Com CAF'], ['p_jovem', 'Jovem de 18 a 29 anos']
     ];
-    const barras = base.length ? itens.map(([k, t]) => {
-      const n = base.filter(f => f[k]).length, pct = Math.round(n / base.length * 100);
-      return `<li><span class="pf-rot">${E(t)}</span><span class="pf-bar"><i style="width:${pct}%"></i></span><span class="num pf-v"><b>${n}</b> mulher${n === 1 ? '' : 'es'} <span class="muted">· ${pct}%</span></span></li>`;
-    }).join('') : '';
+    // 15/10/2026: do maior para o menor; o percentual em destaque à direita, a barra embaixo do nome (todas alinhadas) e a contagem miúda
+    const barras = base.length ? itens.map(([k, t]) => { const n = base.filter(f => f[k]).length; return [t, n, Math.round(n / base.length * 100)]; })
+      .sort((a, b) => b[1] - a[1]).map(([t, n, pct]) =>
+        `<li><span class="pf2-rot">${E(t)}</span><b class="num pf2-pc">${pct}%</b><span class="pf2-bar" aria-hidden="true"><i style="width:${pct}%"></i></span><span class="pf2-n">${n} de ${base.length} mulheres</span></li>`).join('') : '';
     const diags = (S.diagnosticos || []).filter(x => x.renda_quintal != null || x.renda_familiar != null);
     const mediana = arr => { const a = arr.filter(v => v != null && !isNaN(v)).map(Number).sort((x, y) => x - y); if (!a.length) return null; const m = Math.floor(a.length / 2); return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; };
     const mq = mediana(diags.map(x => x.renda_quintal)), mf = mediana(diags.map(x => x.renda_familiar));
@@ -4553,33 +4553,43 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const imps = temDepois ? pares.map(x => x[0]) : (S.diagnosticos || []).map(x => x.dados && x.dados.impacto).filter(x => x && x.ebia_nivel);
     const impsD = pares.map(x => x[1]);
     const nImp = imps.length, nAv = pares.length;
-    const pc = (l, fn) => l.length ? Math.round(l.filter(fn).length / l.length * 100) + '%' : null;
-    const md = (l, k) => { const v = l.map(x => x[k]).filter(x => x != null); return v.length ? (Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10).toLocaleString('pt-BR') : null; };
+    const pc = (l, fn) => l.length ? Math.round(l.filter(fn).length / l.length * 100) : null;
+    const md = (l, k) => { const v = l.map(x => x[k]).filter(x => x != null); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10 : null; };
     const avPar = avs.filter(a => MQ.porCampo(S.diagnosticos, 'ficha_id', 'renda', x => x.renda_quintal != null).has(a.ficha_id) && a.dados && a.dados.renda_quintal != null);
     const mqD = avPar.length ? mediana(avPar.map(a => a.dados.renda_quintal)) : null;
     const mqA = avPar.length ? mediana(avPar.map(a => (MQ.porCampo(S.diagnosticos, 'ficha_id').get(a.ficha_id) || {}).renda_quintal)) : null;
     const razoes = diags.filter(x => +x.renda_familiar > 0 && x.renda_quintal != null).map(x => x.renda_quintal / x.renda_familiar);
     const pesoQ = razoes.length ? Math.round(mediana(razoes) * 100) : null;
-    const semAgua = (S.diagnosticos || []).length ? Math.round((S.diagnosticos || []).filter(x => x.sem_agua).length / S.diagnosticos.length * 100) + '%' : null;
-    const linhasPP = [
-      nImp ? ['Em insegurança alimentar (EBIA)', pc(imps, x => x.ebia_nivel !== 'seguranca'), pc(impsD, x => x.ebia_nivel !== 'seguranca')] : null,
-      nImp ? ['Com fome (insegurança moderada ou grave)', pc(imps, x => ['moderada', 'grave'].includes(x.ebia_nivel)), pc(impsD, x => ['moderada', 'grave'].includes(x.ebia_nivel))] : null,
-      nImp ? ['Dias por semana comendo do quintal', md(imps, 'dias_consumo'), md(impsD, 'dias_consumo')] : null,
-      nImp ? ['Vendem ou trocam o que produzem', pc(imps, x => x.vende), pc(impsD, x => x.vende)] : null,
-      nImp ? ['Decidem sobre o dinheiro da venda', pc(imps, x => ['ela', 'ela_e_outro'].includes(x.decide)), pc(impsD, x => ['ela', 'ela_e_outro'].includes(x.decide))] : null,
-      semAgua ? ['Sem água que dure na seca (demanda de cisterna)', semAgua, null] : null
-    ].filter(Boolean);
+    const nSemAgua = (S.diagnosticos || []).filter(x => x.sem_agua).length;
+    // [indicador, início, hoje, unidade, "melhor quando sobe"]
+    const linhasPP = nImp ? [
+      ['Em insegurança alimentar (EBIA)', pc(imps, x => x.ebia_nivel !== 'seguranca'), pc(impsD, x => x.ebia_nivel !== 'seguranca'), '%', false],
+      ['Passando fome (insegurança moderada ou grave)', pc(imps, x => ['moderada', 'grave'].includes(x.ebia_nivel)), pc(impsD, x => ['moderada', 'grave'].includes(x.ebia_nivel)), '%', false],
+      ['Dias por semana comendo do quintal', md(imps, 'dias_consumo'), md(impsD, 'dias_consumo'), 'd', true],
+      ['Vendem ou trocam o que produzem', pc(imps, x => x.vende), pc(impsD, x => x.vende), '%', true],
+      ['Decidem sobre o dinheiro da venda', pc(imps, x => ['ela', 'ela_e_outro'].includes(x.decide)), pc(impsD, x => ['ela', 'ela_e_outro'].includes(x.decide)), '%', true]
+    ] : [];
+    const fmtV = (v, u) => v == null ? '—' : u === '%' ? v + '%' : v.toLocaleString('pt-BR') + (u === 'd' ? (v === 1 ? ' dia' : ' dias') : '');
+    const mudanca = (a, b, u, sobe) => { if (a == null || b == null) return '<span class="pp2-chip">—</span>'; const dlt = Math.round((b - a) * 10) / 10;
+      if (!dlt) return '<span class="pp2-chip">igual</span>';
+      const bom = sobe ? dlt > 0 : dlt < 0, txt = (dlt > 0 ? '+' : '−') + Math.abs(dlt).toLocaleString('pt-BR') + (u === '%' ? ' p.p.' : u === 'd' ? (Math.abs(dlt) === 1 ? ' dia' : ' dias') : '');
+      return `<span class="pp2-chip ${bom ? 'bom' : 'ruim'}"><span aria-hidden="true">${dlt > 0 ? '▲' : '▼'}</span> ${txt}<span class="so-leitor"> (${bom ? 'melhorou' : 'piorou'})</span></span>`; };
+    const brl = v => R.fmtBRL(v || 0).replace(',00', '');
+    const kpiQ = mqD != null
+      ? `<div class="pp2-kpi"><span class="pp2-k-rot">Renda com o quintal</span><span class="pp2-k-val"><span class="pp2-antes">${brl(mqA)}</span><span class="pp2-seta" aria-hidden="true">→</span><b class="num">${brl(mqD)}</b></span><span class="pp2-k-sub">mediana por mês, ${avPar.length === 1 ? 'no quintal avaliado' : 'nos ' + avPar.length + ' quintais avaliados'} (antes → hoje)</span></div>`
+      : `<div class="pp2-kpi"><span class="pp2-k-rot">Renda com o quintal</span><span class="pp2-k-val"><b class="num">${brl(mq)}</b></span><span class="pp2-k-sub">mediana por mês, no diagnóstico</span></div>`;
+    const kpiF = `<div class="pp2-kpi"><span class="pp2-k-rot">Renda da família</span><span class="pp2-k-val"><b class="num">${brl(mf)}</b></span><span class="pp2-k-sub">mediana por mês${pesoQ != null ? ` · o quintal é <b>${pesoQ}%</b> dela` : ''}</span></div>`;
+    const tabPP = linhasPP.length ? `<table class="pp2-tab${temDepois ? ' com-hoje' : ''}"><thead><tr><th scope="col">Indicador</th><th scope="col">No início</th>${temDepois ? '<th scope="col">Hoje</th><th scope="col">Mudança</th>' : ''}</tr></thead><tbody>
+      ${linhasPP.map(([t, a1, d1, u, sobe]) => `<tr><th scope="row">${E(t)}</th><td class="num">${fmtV(a1, u)}</td>${temDepois ? `<td class="num"><b>${fmtV(d1, u)}</b></td><td>${mudanca(a1, d1, u, sobe)}</td>` : ''}</tr>`).join('')}</tbody></table>` : '';
     return `<section class="secao" aria-labelledby="t-perfil">
       <div class="secao-cab"><div><h2 id="t-perfil">Quem são as mulheres</h2><p>${base.length ? 'Percentual ' + rotBase + ', pelos critérios de prioridade da ficha.' : 'Aparece quando houver mulheres selecionadas.'}</p></div></div>
       <div class="duas-col perfil-cols">
-        <div class="bloco">${base.length ? `<ul class="perfil">${barras}</ul>
+        <div class="bloco">${base.length ? `<ul class="perfil2">${barras}</ul>
           <p class="nota">"Negra, indígena, quilombola ou de comunidade tradicional" é uma única pergunta na ficha: não dá para separar quilombolas.</p>` : '<p class="muted">Sem dados ainda.</p>'}</div>
-        <div class="bloco"><h3>Ponto de partida${temDepois ? ' e hoje' : ''}</h3>
-          ${diags.length ? `<div class="resumo r2">
-              <div><span class="v num">${R.fmtBRL(mq || 0).replace(',00', '')}</span><span class="l">mediana por mês com vendas do quintal${mqD != null ? ` · nos ${avPar.length} avaliados: ${R.fmtBRL(mqA || 0).replace(',00', '')} → <b>${R.fmtBRL(mqD).replace(',00', '')}</b>` : ''}</span></div>
-              <div><span class="v num">${R.fmtBRL(mf || 0).replace(',00', '')}</span><span class="l">mediana da renda familiar por mês${pesoQ != null ? ` · o quintal é ${pesoQ}% dela` : ''}</span></div></div>
-            <ul class="pp">${linhasPP.map(([t, a1, d1]) => `<li><span>${E(t)}</span><b class="num">${a1}</b>${temDepois ? `<span class="num pp-d">${d1 == null ? '—' : '→ ' + d1}</span>` : ''}</li>`).join('')}</ul>
-            <p class="nota">${temDepois ? `Início → hoje nos ${nAv} quinta${nAv > 1 ? 'is' : 'l'} já avaliado${nAv > 1 ? 's' : ''} (os mesmos nas duas colunas). Detalhe por estado na aba Campo.`
+        <div class="bloco pp2"><h3>Ponto de partida${temDepois ? ' e hoje' : ''}</h3>
+          ${diags.length ? `<div class="pp2-kpis">${kpiQ}${kpiF}</div>${tabPP}
+            ${nSemAgua ? `<p class="pp2-agua"><b>${nSemAgua}</b> diagnóstico${nSemAgua > 1 ? 's' : ''} sem água que dure na seca: não recebe${nSemAgua > 1 ? 'm' : ''} kit e precisa${nSemAgua > 1 ? 'm' : ''} de cisterna.</p>` : ''}
+            <p class="nota">${temDepois ? `Início e hoje medidos ${nAv === 1 ? 'na mesma mulher' : 'nas mesmas ' + nAv + ' mulheres'} (as que já tiveram a avaliação final). Verde = melhorou; vermelho = piorou (a seta mostra se o número subiu ou desceu). Detalhe por estado na aba Campo.`
               : nImp ? `Linha de base de ${nImp} diagnóstico${nImp > 1 ? 's' : ''}. O "hoje" aparece quando as avaliações finais (5ª visita) forem registradas.` : 'As medidas de fome, consumo e autonomia aparecem quando os diagnósticos tiverem o bloco "4b".'}</p>`
             : '<p class="small muted">Vem do diagnóstico (1ª visita): renda, fome (EBIA), consumo do quintal, venda e água. Aparece quando os diagnósticos forem registrados.</p>'}</div>
       </div></section>`;
@@ -11130,7 +11140,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         'A linha de 13 quadradinhos mostra os meses do projeto; o quadrado colorido é o mês atual. Ao lado, quantos dias faltam para o fim da vigência.',
         '<b>Situação do campo em cada estado</b> mostra se o trabalho de campo já pode andar: equipe habilitada, fichas aprovadas, diagnósticos, mulheres sem água na seca (elas não recebem kit; acima de 30% das fichas o número fica vermelho: reveja a seleção do estado), visitas da semana e registros que ainda não foram enviados.', '<b>O que pede atenção</b> lista os problemas em três níveis: <b>Requer ação</b>, <b>Atenção</b> e <b>Aviso</b>. O botão <b>Resolver</b> leva direto à aba que resolve.',
         '<b>Cronograma físico do plano de trabalho</b> mostra cada meta como uma barra, do mês em que começa ao mês em que termina. A parte verde é o que já foi registrado; o traço é hoje. Barra tracejada: ainda não começou. Barra vermelha: o prazo acabou e a meta não chegou ao número. Toque no nome da meta para abrir o detalhe.',
-        'O cartão <b>Ponto de partida</b> (e, depois das avaliações, <b>hoje</b>) compara a linha de base do diagnóstico com a avaliação final (fome, renda do quintal, consumo, venda, autonomia). Só entra quem já tem as duas medidas.',
+        'O cartão <b>Ponto de partida</b> (e, depois das avaliações, <b>hoje</b>) compara a linha de base do diagnóstico com a avaliação final (fome, renda do quintal, consumo, venda, autonomia). Só entra quem já tem as duas medidas. A coluna <b>Mudança</b> fica verde quando melhorou e vermelha quando piorou (menos fome é melhora; mais venda também).',
         '<b>Financeiro e entregas</b> abre o painel de recursos, rubricas e metas físicas. Só a coordenação geral vê esse botão.'
       ],
       duvidas: [
@@ -12718,16 +12728,22 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return `<p class="small pront-coord"><b>Coordenação técnica:</b> ${st(tec)} · <b>Auxiliar:</b> ${st(aux)} · <b>Professores do curso FIC:</b> ${profs.length ? profsHab + ' de ' + profs.length + ' habilitado' + (profs.length > 1 ? 's' : '') : 'nenhum cadastrado (sem professor habilitado, ninguém da equipe de campo pode ser cadastrado)'}</p>`;
   }
   /* mesma cara do quadro "Bolsistas por estado" da aba Equipe: tabela no computador, cartões no celular */
-  const barra = (n, de, sub, rot) => { const pc = de ? Math.min(100, Math.round(n / de * 100)) : 0;
-    return `<div class="plano"><div class="ln" style="grid-template-columns:minmax(0,1fr) 64px"><span class="bar" role="img" aria-label="${E(rot)}: ${n} de ${de}"><i class="${de && n >= de ? 'cheio' : ''}" style="width:${pc}%"></i></span><span class="num"><b>${n}</b><small class="muted"> / ${de}</small></span></div>${sub ? `<span>${sub}</span>` : ''}</div>`; };
+  /* 15/10/2026: cada número diz o que conta ("4 de 4 habilitadas"), a barra só enche de verde quando chega no total,
+     e a linha de baixo tem a sua própria cor (ex.: habilitadas, mas ninguém entrou ainda = aviso) */
+  const barra = (n, de, unidade, rot, sub, tom) => { const pc = de ? Math.min(100, Math.round(n / de * 100)) : 0;
+    return `<div class="pr-cel"><span class="pr-topo"><b class="num">${n}</b> de ${de} ${E(unidade)}</span>`
+      + `<span class="bar" role="img" aria-label="${E(rot)}: ${n} de ${de}"><i class="${de && n >= de ? 'cheio' : ''}" style="width:${pc}%"></i></span>`
+      + (sub ? `<span class="pr-sub${tom ? ' ' + tom : ''}">${sub}</span>` : '') + '</div>'; };
   function celulas(u) {
     const d = porUF(u.uf);
     const dgsAprov = (S().diagnosticos || []).filter(x => x.uf === u.uf && x.situacao === 'aprovado').length;
     return {
-      eq: d.eq ? barra(d.hab, d.eq, `${d.entraram} já entr${d.entraram === 1 ? 'ou' : 'aram'} no sistema`, 'Equipe de campo habilitada') : '<span class="pr-vazio">Ninguém cadastrado</span>',
-      fichas: barra(d.fichas, MQ.VAGAS_UF, '', 'Fichas aprovadas'),
-      dgs: barra(d.dgs, MQ.META_UF.diagnosticos, dgsAprov ? `${dgsAprov} com plano aprovado` : '', 'Diagnósticos'),
-      prox: `<span class="pr-n"><b class="num">${d.prox}</b><small>agendada${d.prox === 1 ? '' : 's'}</small></span>`,
+      eq: d.eq ? barra(d.hab, d.eq, d.hab === 1 && d.eq === 1 ? 'habilitada' : 'habilitadas', 'Equipe de campo habilitada',
+                       d.entraram >= d.eq ? 'Todas já entraram no sistema' : `${d.entraram} de ${d.eq} já entr${d.entraram === 1 ? 'ou' : 'aram'} no sistema`,
+                       d.entraram >= d.eq ? 'ok' : 'alerta') : '<span class="pr-vazio">Ninguém cadastrado</span>',
+      fichas: barra(d.fichas, MQ.VAGAS_UF, 'vagas preenchidas', 'Fichas aprovadas'),
+      dgs: barra(d.dgs, MQ.META_UF.diagnosticos, 'feitos', 'Diagnósticos', dgsAprov ? `${dgsAprov} com plano aprovado` : 'Nenhum plano aprovado ainda', dgsAprov >= MQ.META_UF.diagnosticos ? 'ok' : ''),
+      prox: `<span class="pr-n"><b class="num">${d.prox}</b><small>visita${d.prox === 1 ? '' : 's'} agendada${d.prox === 1 ? '' : 's'}</small></span>`,
       agua: !d.nFichas ? '<span class="pr-vazio">Sem fichas</span>' : (() => { const pc = Math.round(d.semAgua / d.nFichas * 100);
         return `<span class="pr-n${pc > 30 ? ' pr-alarme' : ''}"><b class="num">${d.semAgua}</b><small>de ${d.nFichas} ficha${d.nFichas === 1 ? '' : 's'} · ${pc}%${pc > 30 ? ' · reveja a seleção' : ''}</small></span>`; })(),
       fila: d.fila ? `<span class="pr-falta"><span class="fc-chip crit">${d.fila} registro${d.fila > 1 ? 's' : ''}</span><small>só no celular</small></span>` : '<span class="fc-chip ok">Nada</span>'

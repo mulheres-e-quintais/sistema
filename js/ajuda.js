@@ -92,7 +92,7 @@
         'A linha de 13 quadradinhos mostra os meses do projeto; o quadrado colorido é o mês atual. Ao lado, quantos dias faltam para o fim da vigência.',
         '<b>Situação do campo em cada estado</b> mostra se o trabalho de campo já pode andar: equipe habilitada, fichas aprovadas, diagnósticos, mulheres sem água na seca (elas não recebem kit; acima de 30% das fichas o número fica vermelho: reveja a seleção do estado), visitas da semana e registros que ainda não foram enviados.', '<b>O que pede atenção</b> lista os problemas em três níveis: <b>Requer ação</b>, <b>Atenção</b> e <b>Aviso</b>. O botão <b>Resolver</b> leva direto à aba que resolve.',
         '<b>Cronograma físico do plano de trabalho</b> mostra cada meta como uma barra, do mês em que começa ao mês em que termina. A parte verde é o que já foi registrado; o traço é hoje. Barra tracejada: ainda não começou. Barra vermelha: o prazo acabou e a meta não chegou ao número. Toque no nome da meta para abrir o detalhe.',
-        'O cartão <b>Ponto de partida</b> (e, depois das avaliações, <b>hoje</b>) compara a linha de base do diagnóstico com a avaliação final (fome, renda do quintal, consumo, venda, autonomia). Só entra quem já tem as duas medidas.',
+        'O cartão <b>Ponto de partida</b> (e, depois das avaliações, <b>hoje</b>) compara a linha de base do diagnóstico com a avaliação final (fome, renda do quintal, consumo, venda, autonomia). Só entra quem já tem as duas medidas. A coluna <b>Mudança</b> fica verde quando melhorou e vermelha quando piorou (menos fome é melhora; mais venda também).',
         '<b>Financeiro e entregas</b> abre o painel de recursos, rubricas e metas físicas. Só a coordenação geral vê esse botão.'
       ],
       duvidas: [
