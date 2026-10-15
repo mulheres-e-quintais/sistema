@@ -541,21 +541,7 @@
                 ${m.meta && MQ.METAS.some(x => x.id === m.meta) ? `<button type="button" class="marco-meta" data-meta-ir="${m.meta}" aria-label="Ver a meta ${m.meta.slice(1)}: ${E((MQ.METAS.find(x => x.id === m.meta) || {}).nome || '')}">Meta ${m.meta.slice(1)} · ${E((MQ.METAS.find(x => x.id === m.meta) || {}).nome || '')}</button>` : ''}
                 <span class="marco-prazo">${dd < 0 ? 'passou há ' + (-dd) + ' dia' + (dd === -1 ? '' : 's') : dd === 0 ? 'hoje' : 'em ' + dd + ' dia' + (dd === 1 ? '' : 's')}</span></span></li>`; }).join('')}</ol>
           </section>
-          <section class="secao" aria-labelledby="t-uf">
-            <h2 id="t-uf">Por estado</h2>
-            <table class="tab-uf dx-uf"><thead><tr><th scope="col">UF</th><th scope="col">Equipe</th><th scope="col">Selecionadas</th><th scope="col">Sem água</th></tr></thead><tbody>
-              ${MQ.UFS.map(u => {
-                const eq = d.bols.filter(m => m.uf === u.uf);
-                const fs = d.fichas.filter(f => f.uf === u.uf);
-                const sel = fs.filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada').length;
-                const sa = fs.filter(f => f.resultado === 'sem_agua').length;
-                const pSa = fs.length ? Math.round(sa / fs.length * 100) : null;
-                return `<tr><th scope="row">${u.uf}</th>
-                  <td>${chipStatus(eq.length >= 2 ? 'concluida' : eq.length ? 'atencao' : 'atrasada', eq.length + ' de 2')}</td>
-                  <td><div class="mini"><span class="medidor fino"><i class="${sel >= MQ.VAGAS_UF ? 'st-ok' : 'st-and'}" style="width:${Math.min(100, sel / MQ.VAGAS_UF * 100)}%"></i></span><span class="num">${sel}/${MQ.VAGAS_UF}</span></div></td>
-                  <td class="num">${pSa == null ? '<span class="muted">—</span>' : pSa > 30 ? `<b class="crit-txt">${sa} · ${pSa}%</b>` : `${sa} <span class="muted">· ${pSa}%</span>`}</td></tr>`;
-              }).join('')}</tbody></table>
-          </section>
+          ${/* 15/10/2026: o quadro "Por estado" saiu (repetia a "Situação do campo em cada estado"); a coluna "Sem água" foi para lá */ ''}
         </div>
       </div>
       ${cronograma(S, d, mes)}

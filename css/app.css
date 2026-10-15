@@ -3579,3 +3579,6 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 /* 14/10/2026 (auditoria ACE-2): marca de obrigatório nos rótulos da ficha e do diagnóstico */
 .obr { color: var(--crit); font-weight: 700; }
 .obr-legenda { margin: 0 0 12px; }
+/* 15/10/2026: "Sem água na seca" na Situação do campo — acima de 30% das fichas, o número fica vermelho (alarme da seleção) */
+.pr-alarme b, .pr-alarme small { color: var(--crit); }
+.pr-alarme small { font-weight: 600; }

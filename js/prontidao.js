@@ -67,7 +67,10 @@
     const prox = (S().visitas || []).filter(v => v.uf === uf && v.situacao === 'prevista' && v.data_prevista >= hoje && v.data_prevista <= fim).length;
     const ids = new Set(eq.map(m => m.id));
     const fila = (S().filaCelular || []).filter(f => ids.has(f.equipe_id)).reduce((t, f) => t + (+f.qtd || 0), 0);
-    return { eq: eq.length, entraram, hab, fichas, dgs, prox, fila };
+    // sem água na seca: a ficha já veio assim ou o diagnóstico descobriu; essa mulher não recebe kit e não vira quintal implantado
+    const fUF = (S().fichas || []).filter(f => f.uf === uf);
+    const semAgua = new Set(fUF.filter(f => f.resultado === 'sem_agua').map(f => f.id).concat((S().diagnosticos || []).filter(d => d.uf === uf && d.sem_agua).map(d => d.ficha_id))).size;
+    return { eq: eq.length, entraram, hab, fichas, dgs, prox, fila, semAgua, nFichas: fUF.length };
   }
   function coordenacao() {   // quem não é de um estado: só para a coordenação geral
     const eq = (S().equipe || []).filter(m => m.status === 'ativa');
@@ -88,24 +91,26 @@
       fichas: barra(d.fichas, MQ.VAGAS_UF, '', 'Fichas aprovadas'),
       dgs: barra(d.dgs, MQ.META_UF.diagnosticos, dgsAprov ? `${dgsAprov} com plano aprovado` : '', 'Diagnósticos'),
       prox: `<span class="pr-n"><b class="num">${d.prox}</b><small>agendada${d.prox === 1 ? '' : 's'}</small></span>`,
+      agua: !d.nFichas ? '<span class="pr-vazio">Sem fichas</span>' : (() => { const pc = Math.round(d.semAgua / d.nFichas * 100);
+        return `<span class="pr-n${pc > 30 ? ' pr-alarme' : ''}"><b class="num">${d.semAgua}</b><small>de ${d.nFichas} ficha${d.nFichas === 1 ? '' : 's'} · ${pc}%${pc > 30 ? ' · reveja a seleção' : ''}</small></span>`; })(),
       fila: d.fila ? `<span class="pr-falta"><span class="fc-chip crit">${d.fila} registro${d.fila > 1 ? 's' : ''}</span><small>só no celular</small></span>` : '<span class="fc-chip ok">Nada</span>'
     };
   }
   function secao() {
     const eu = S().eu || {}; if (!/^coord/.test(eu.papel)) return '';
     const sub = u => { const d = porUF(u.uf); return d.eq ? `${d.eq} na equipe de campo` : ''; };
-    const tabela = `<div class="quadro-scroll eq-cx"><table class="quadro eq-quadro pr-quadro"><colgroup><col class="c-uf"><col class="c-eq"><col class="c-b"><col class="c-b"><col class="c-n"><col class="c-n"></colgroup>
-      <thead><tr><th scope="col">Estado</th><th scope="col">Equipe de campo habilitada</th><th scope="col">Fichas aprovadas</th><th scope="col">Diagnósticos</th><th scope="col">Próximos 7 dias</th><th scope="col">Falta enviar</th></tr></thead><tbody>
+    const tabela = `<div class="quadro-scroll eq-cx"><table class="quadro eq-quadro pr-quadro"><colgroup><col class="c-uf"><col class="c-eq"><col class="c-b"><col class="c-b"><col class="c-n"><col class="c-n"><col class="c-n"></colgroup>
+      <thead><tr><th scope="col">Estado</th><th scope="col">Equipe de campo habilitada</th><th scope="col">Fichas aprovadas</th><th scope="col">Diagnósticos</th><th scope="col">Sem água na seca</th><th scope="col">Próximos 7 dias</th><th scope="col">Falta enviar</th></tr></thead><tbody>
       ${MQ.UFS.map(u => { const c = celulas(u);
         return `<tr><td class="uf"><span class="ag-uf"><span class="sigla">${u.uf}</span><span class="ag-nome"><b>${E(u.nome)}</b>${sub(u) ? `<small>${sub(u)}</small>` : ''}</span></span></td>
-          <td>${c.eq}</td><td>${c.fichas}</td><td>${c.dgs}</td><td>${c.prox}</td><td>${c.fila}</td></tr>`; }).join('')}
+          <td>${c.eq}</td><td>${c.fichas}</td><td>${c.dgs}</td><td>${c.agua}</td><td>${c.prox}</td><td>${c.fila}</td></tr>`; }).join('')}
       </tbody></table></div>`;
     const cartoes = `<div class="cartoes eq-cartoes pr-cartoes">${MQ.UFS.map(u => { const c = celulas(u);
       return `<div class="cartao"><div class="cab-uf"><span class="uf"><span class="sigla">${u.uf}</span></span><span class="nomeuf muted">${E(u.nome)}</span></div>
-        <span class="fn">Equipe de campo habilitada</span>${c.eq}<span class="fn">Fichas aprovadas</span>${c.fichas}<span class="fn">Diagnósticos</span>${c.dgs}
+        <span class="fn">Equipe de campo habilitada</span>${c.eq}<span class="fn">Fichas aprovadas</span>${c.fichas}<span class="fn">Diagnósticos</span>${c.dgs}<span class="fn">Sem água na seca</span>${c.agua}
         <div class="pr-par"><div><span class="fn">Próximos 7 dias</span>${c.prox}</div><div><span class="fn">Falta enviar (salvo só no celular)</span>${c.fila}</div></div></div>`; }).join('')}</div>`;
     return `<section class="secao prontidao" aria-labelledby="t-pront">
-      <div class="secao-cab"><div><h2 id="t-pront">Situação do campo em cada estado</h2><p>Mostra se o trabalho de campo já pode andar em cada estado: quantas pessoas da equipe de campo estão habilitadas (prontas para trabalhar e receber) e já entraram no sistema, quantas mulheres têm a ficha aprovada, quantos diagnósticos foram feitos (meta de 40), as visitas marcadas para os próximos 7 dias e os registros salvos sem internet que ainda não foram enviados (coluna Falta enviar).</p></div></div>
+      <div class="secao-cab"><div><h2 id="t-pront">Situação do campo em cada estado</h2><p>Mostra se o trabalho de campo já pode andar em cada estado: quantas pessoas da equipe de campo estão habilitadas (prontas para trabalhar e receber) e já entraram no sistema, quantas mulheres têm a ficha aprovada, quantos diagnósticos foram feitos (meta de 40), quantas mulheres estão sem água na seca (não recebem kit: acima de 30% das fichas, reveja a seleção do estado), as visitas marcadas para os próximos 7 dias e os registros salvos sem internet que ainda não foram enviados (coluna Falta enviar).</p></div></div>
       ${tabela}${cartoes}
       ${eu.papel === 'coord_geral' ? coordenacao() : ''}
       ${blocoFila()}

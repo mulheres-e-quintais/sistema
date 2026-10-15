@@ -4703,21 +4703,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
                 ${m.meta && MQ.METAS.some(x => x.id === m.meta) ? `<button type="button" class="marco-meta" data-meta-ir="${m.meta}" aria-label="Ver a meta ${m.meta.slice(1)}: ${E((MQ.METAS.find(x => x.id === m.meta) || {}).nome || '')}">Meta ${m.meta.slice(1)} · ${E((MQ.METAS.find(x => x.id === m.meta) || {}).nome || '')}</button>` : ''}
                 <span class="marco-prazo">${dd < 0 ? 'passou há ' + (-dd) + ' dia' + (dd === -1 ? '' : 's') : dd === 0 ? 'hoje' : 'em ' + dd + ' dia' + (dd === 1 ? '' : 's')}</span></span></li>`; }).join('')}</ol>
           </section>
-          <section class="secao" aria-labelledby="t-uf">
-            <h2 id="t-uf">Por estado</h2>
-            <table class="tab-uf dx-uf"><thead><tr><th scope="col">UF</th><th scope="col">Equipe</th><th scope="col">Selecionadas</th><th scope="col">Sem água</th></tr></thead><tbody>
-              ${MQ.UFS.map(u => {
-                const eq = d.bols.filter(m => m.uf === u.uf);
-                const fs = d.fichas.filter(f => f.uf === u.uf);
-                const sel = fs.filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada').length;
-                const sa = fs.filter(f => f.resultado === 'sem_agua').length;
-                const pSa = fs.length ? Math.round(sa / fs.length * 100) : null;
-                return `<tr><th scope="row">${u.uf}</th>
-                  <td>${chipStatus(eq.length >= 2 ? 'concluida' : eq.length ? 'atencao' : 'atrasada', eq.length + ' de 2')}</td>
-                  <td><div class="mini"><span class="medidor fino"><i class="${sel >= MQ.VAGAS_UF ? 'st-ok' : 'st-and'}" style="width:${Math.min(100, sel / MQ.VAGAS_UF * 100)}%"></i></span><span class="num">${sel}/${MQ.VAGAS_UF}</span></div></td>
-                  <td class="num">${pSa == null ? '<span class="muted">—</span>' : pSa > 30 ? `<b class="crit-txt">${sa} · ${pSa}%</b>` : `${sa} <span class="muted">· ${pSa}%</span>`}</td></tr>`;
-              }).join('')}</tbody></table>
-          </section>
+          ${/* 15/10/2026: o quadro "Por estado" saiu (repetia a "Situação do campo em cada estado"); a coluna "Sem água" foi para lá */ ''}
         </div>
       </div>
       ${cronograma(S, d, mes)}
@@ -11142,7 +11128,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       ],
       passos: [
         'A linha de 13 quadradinhos mostra os meses do projeto; o quadrado colorido é o mês atual. Ao lado, quantos dias faltam para o fim da vigência.',
-        '<b>Situação do campo em cada estado</b> mostra se o trabalho de campo já pode andar: equipe habilitada, fichas aprovadas, diagnósticos, visitas da semana e registros que ainda não foram enviados.', '<b>O que pede atenção</b> lista os problemas em três níveis: <b>Requer ação</b>, <b>Atenção</b> e <b>Aviso</b>. O botão <b>Resolver</b> leva direto à aba que resolve.',
+        '<b>Situação do campo em cada estado</b> mostra se o trabalho de campo já pode andar: equipe habilitada, fichas aprovadas, diagnósticos, mulheres sem água na seca (elas não recebem kit; acima de 30% das fichas o número fica vermelho: reveja a seleção do estado), visitas da semana e registros que ainda não foram enviados.', '<b>O que pede atenção</b> lista os problemas em três níveis: <b>Requer ação</b>, <b>Atenção</b> e <b>Aviso</b>. O botão <b>Resolver</b> leva direto à aba que resolve.',
         '<b>Cronograma físico do plano de trabalho</b> mostra cada meta como uma barra, do mês em que começa ao mês em que termina. A parte verde é o que já foi registrado; o traço é hoje. Barra tracejada: ainda não começou. Barra vermelha: o prazo acabou e a meta não chegou ao número. Toque no nome da meta para abrir o detalhe.',
         'O cartão <b>Ponto de partida</b> (e, depois das avaliações, <b>hoje</b>) compara a linha de base do diagnóstico com a avaliação final (fome, renda do quintal, consumo, venda, autonomia). Só entra quem já tem as duas medidas.',
         '<b>Financeiro e entregas</b> abre o painel de recursos, rubricas e metas físicas. Só a coordenação geral vê esse botão.'
@@ -12718,7 +12704,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const prox = (S().visitas || []).filter(v => v.uf === uf && v.situacao === 'prevista' && v.data_prevista >= hoje && v.data_prevista <= fim).length;
     const ids = new Set(eq.map(m => m.id));
     const fila = (S().filaCelular || []).filter(f => ids.has(f.equipe_id)).reduce((t, f) => t + (+f.qtd || 0), 0);
-    return { eq: eq.length, entraram, hab, fichas, dgs, prox, fila };
+    // sem água na seca: a ficha já veio assim ou o diagnóstico descobriu; essa mulher não recebe kit e não vira quintal implantado
+    const fUF = (S().fichas || []).filter(f => f.uf === uf);
+    const semAgua = new Set(fUF.filter(f => f.resultado === 'sem_agua').map(f => f.id).concat((S().diagnosticos || []).filter(d => d.uf === uf && d.sem_agua).map(d => d.ficha_id))).size;
+    return { eq: eq.length, entraram, hab, fichas, dgs, prox, fila, semAgua, nFichas: fUF.length };
   }
   function coordenacao() {   // quem não é de um estado: só para a coordenação geral
     const eq = (S().equipe || []).filter(m => m.status === 'ativa');
@@ -12739,24 +12728,26 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       fichas: barra(d.fichas, MQ.VAGAS_UF, '', 'Fichas aprovadas'),
       dgs: barra(d.dgs, MQ.META_UF.diagnosticos, dgsAprov ? `${dgsAprov} com plano aprovado` : '', 'Diagnósticos'),
       prox: `<span class="pr-n"><b class="num">${d.prox}</b><small>agendada${d.prox === 1 ? '' : 's'}</small></span>`,
+      agua: !d.nFichas ? '<span class="pr-vazio">Sem fichas</span>' : (() => { const pc = Math.round(d.semAgua / d.nFichas * 100);
+        return `<span class="pr-n${pc > 30 ? ' pr-alarme' : ''}"><b class="num">${d.semAgua}</b><small>de ${d.nFichas} ficha${d.nFichas === 1 ? '' : 's'} · ${pc}%${pc > 30 ? ' · reveja a seleção' : ''}</small></span>`; })(),
       fila: d.fila ? `<span class="pr-falta"><span class="fc-chip crit">${d.fila} registro${d.fila > 1 ? 's' : ''}</span><small>só no celular</small></span>` : '<span class="fc-chip ok">Nada</span>'
     };
   }
   function secao() {
     const eu = S().eu || {}; if (!/^coord/.test(eu.papel)) return '';
     const sub = u => { const d = porUF(u.uf); return d.eq ? `${d.eq} na equipe de campo` : ''; };
-    const tabela = `<div class="quadro-scroll eq-cx"><table class="quadro eq-quadro pr-quadro"><colgroup><col class="c-uf"><col class="c-eq"><col class="c-b"><col class="c-b"><col class="c-n"><col class="c-n"></colgroup>
-      <thead><tr><th scope="col">Estado</th><th scope="col">Equipe de campo habilitada</th><th scope="col">Fichas aprovadas</th><th scope="col">Diagnósticos</th><th scope="col">Próximos 7 dias</th><th scope="col">Falta enviar</th></tr></thead><tbody>
+    const tabela = `<div class="quadro-scroll eq-cx"><table class="quadro eq-quadro pr-quadro"><colgroup><col class="c-uf"><col class="c-eq"><col class="c-b"><col class="c-b"><col class="c-n"><col class="c-n"><col class="c-n"></colgroup>
+      <thead><tr><th scope="col">Estado</th><th scope="col">Equipe de campo habilitada</th><th scope="col">Fichas aprovadas</th><th scope="col">Diagnósticos</th><th scope="col">Sem água na seca</th><th scope="col">Próximos 7 dias</th><th scope="col">Falta enviar</th></tr></thead><tbody>
       ${MQ.UFS.map(u => { const c = celulas(u);
         return `<tr><td class="uf"><span class="ag-uf"><span class="sigla">${u.uf}</span><span class="ag-nome"><b>${E(u.nome)}</b>${sub(u) ? `<small>${sub(u)}</small>` : ''}</span></span></td>
-          <td>${c.eq}</td><td>${c.fichas}</td><td>${c.dgs}</td><td>${c.prox}</td><td>${c.fila}</td></tr>`; }).join('')}
+          <td>${c.eq}</td><td>${c.fichas}</td><td>${c.dgs}</td><td>${c.agua}</td><td>${c.prox}</td><td>${c.fila}</td></tr>`; }).join('')}
       </tbody></table></div>`;
     const cartoes = `<div class="cartoes eq-cartoes pr-cartoes">${MQ.UFS.map(u => { const c = celulas(u);
       return `<div class="cartao"><div class="cab-uf"><span class="uf"><span class="sigla">${u.uf}</span></span><span class="nomeuf muted">${E(u.nome)}</span></div>
-        <span class="fn">Equipe de campo habilitada</span>${c.eq}<span class="fn">Fichas aprovadas</span>${c.fichas}<span class="fn">Diagnósticos</span>${c.dgs}
+        <span class="fn">Equipe de campo habilitada</span>${c.eq}<span class="fn">Fichas aprovadas</span>${c.fichas}<span class="fn">Diagnósticos</span>${c.dgs}<span class="fn">Sem água na seca</span>${c.agua}
         <div class="pr-par"><div><span class="fn">Próximos 7 dias</span>${c.prox}</div><div><span class="fn">Falta enviar (salvo só no celular)</span>${c.fila}</div></div></div>`; }).join('')}</div>`;
     return `<section class="secao prontidao" aria-labelledby="t-pront">
-      <div class="secao-cab"><div><h2 id="t-pront">Situação do campo em cada estado</h2><p>Mostra se o trabalho de campo já pode andar em cada estado: quantas pessoas da equipe de campo estão habilitadas (prontas para trabalhar e receber) e já entraram no sistema, quantas mulheres têm a ficha aprovada, quantos diagnósticos foram feitos (meta de 40), as visitas marcadas para os próximos 7 dias e os registros salvos sem internet que ainda não foram enviados (coluna Falta enviar).</p></div></div>
+      <div class="secao-cab"><div><h2 id="t-pront">Situação do campo em cada estado</h2><p>Mostra se o trabalho de campo já pode andar em cada estado: quantas pessoas da equipe de campo estão habilitadas (prontas para trabalhar e receber) e já entraram no sistema, quantas mulheres têm a ficha aprovada, quantos diagnósticos foram feitos (meta de 40), quantas mulheres estão sem água na seca (não recebem kit: acima de 30% das fichas, reveja a seleção do estado), as visitas marcadas para os próximos 7 dias e os registros salvos sem internet que ainda não foram enviados (coluna Falta enviar).</p></div></div>
       ${tabela}${cartoes}
       ${eu.papel === 'coord_geral' ? coordenacao() : ''}
       ${blocoFila()}

@@ -14,7 +14,7 @@ describe('Visão geral', () => {
   test('coordenação geral: tem a aba e vê avisos, equipe de execução, metas e estados', async () => {
     const t = await montar('coord_geral'); const h = t.aba('visao');
     assert.ok(abasDe(h).includes('visao'));
-    ['O que pede atenção', 'Quem é a equipe de execução', 'Metas do plano de trabalho', 'Por estado'].forEach(x => assert.ok(texto(h).includes(x), x));
+    ['O que pede atenção', 'Quem é a equipe de execução', 'Metas do plano de trabalho', 'Sem água na seca'].forEach(x => assert.ok(texto(h).includes(x), x));
   });
   test('coordenação geral: a equipe de execução conta a coordenação técnica e as bolsistas ativas', async () => {
     const t = await montar('coord_geral'); const h = texto(t.aba('visao'));
