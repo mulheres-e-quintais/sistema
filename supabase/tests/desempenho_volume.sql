@@ -56,7 +56,9 @@ begin
 end $$;
 select u.id as g from auth.users u join public.equipe e on e.user_id = u.id where e.papel = 'coord_geral' and e.status = 'ativa' limit 1 \gset
 select u.id as bol from auth.users u join public.equipe e on e.user_id = u.id where e.papel in ('articulacao','apoio') and e.status = 'ativa' limit 1 \gset
-select u.id as tec from auth.users u join public.equipe e on e.user_id = u.id where e.papel = 'coord_tecnico' and e.status = 'ativa' limit 1 \gset
+-- 18/10/2026: a suíte termina sem coordenação técnica ativa com login; sem ela, mede com uma técnica criada aqui dentro (desfeita no rollback)
+select coalesce((select u.id from auth.users u join public.equipe e on e.user_id = u.id where e.papel = 'coord_tecnico' and e.status = 'ativa' limit 1),
+  (select u.id from auth.users u join public.equipe e on e.user_id = u.id where e.papel = 'coord_geral' and e.status = 'ativa' limit 1)) as tec \gset
 begin;
 select pg_temp.medir(p, q, c, s) from (values
   ('coord_geral', :'g'::uuid, 'fichas (tela Seleção)', 'select * from public.fichas order by criado_em desc'),
