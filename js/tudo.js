@@ -1235,7 +1235,10 @@ MQ.ORCAMENTO = {
    as mesmas regras do banco. Os dados são de exemplo. */
 (function () {
   const R = MQ.regras;
-  const CHAVE = 'mq-demo-v4';
+  // 18/10/2026: página simulacao.html (projeto concluído): dados de MQ.SIM_FIM, só na memória (3 MB não cabem no navegador);
+  // guarda só o perfil escolhido. O que se mexer some ao recarregar, de propósito: é para ver como o sistema fica.
+  const SIM = () => !!(MQ.SIM_FIM && MQ.CONFIG && MQ.CONFIG.cenario === 'fim');
+  const CHAVE = 'mq-demo-v4', CHAVE_SIM = 'mq-sim-fim-perfil';
   let mem = null;
 
   function gerarCPF(seed) {
@@ -1351,7 +1354,8 @@ MQ.ORCAMENTO = {
 
   function ler() {
     if (mem) return mem;
-    try { const s = localStorage.getItem(CHAVE); if (s) mem = JSON.parse(s); } catch (e) { /* sem armazenamento */ }
+    if (SIM()) { mem = JSON.parse(JSON.stringify(MQ.SIM_FIM)); try { const p = localStorage.getItem(CHAVE_SIM); if (p) mem.perfil = p; } catch (e) { /* sem armazenamento */ } }
+    else try { const s = localStorage.getItem(CHAVE); if (s) mem = JSON.parse(s); } catch (e) { /* sem armazenamento */ }
     if (!mem) mem = semente();
     if (!mem.fotosEx) {   // ilustrações de pessoas para a equipe de exemplo (não são fotos de gente de verdade)
       const homens = /^(José|Antônio|Francisco|João|Raimundo|Pedro|Luiz|Manoel|Cícero|Sebastião|Geraldo)\b/;
@@ -1412,7 +1416,7 @@ MQ.ORCAMENTO = {
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
   }
   const bancoMem = {};   // demonstração: dados bancários só na memória (somem ao recarregar), como exemplo de cuidado
-  function gravar() { try { localStorage.setItem(CHAVE, JSON.stringify(mem)); } catch (e) { /* segue só em memória */ } }
+  function gravar() { try { if (SIM()) localStorage.setItem(CHAVE_SIM, mem.perfil); else localStorage.setItem(CHAVE, JSON.stringify(mem)); } catch (e) { /* segue só em memória */ } }
   const copia = o => JSON.parse(JSON.stringify(o));
   const falha = msg => { const e = new Error(msg); e.regra = true; return e; };
 
@@ -1459,7 +1463,8 @@ MQ.ORCAMENTO = {
     },
     async trocarPerfil(p) { const d = ler(); d.perfil = p; this.perfisDemo(); gravar(); return euMesmo(); },
     async reler() { mem = null; ler(); return euMesmo(); },   // lê de novo o que está guardado no aparelho (outra aba mudou; testes)
-    async recomecar() { mem = null; try { localStorage.removeItem(CHAVE); } catch (e) {} ler(); gravar(); return euMesmo(); },
+    async recomecar() { mem = null; try { localStorage.removeItem(SIM() ? CHAVE_SIM : CHAVE); } catch (e) {} ler(); gravar(); return euMesmo(); },
+    simulacao: () => SIM(),
 
     /* ---------- Execução: planilha de gastos do mês (mesmas regras do 37_execucao_planilhas.sql): só a coordenação geral; nada se altera nem se apaga ---------- */
     /* ---------- acesso à água (mesmas regras do 39_agua.sql): coordenação registra cada mudança; nada se altera nem se apaga ---------- */
@@ -11300,6 +11305,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   /* 3) um número real do projeto, quando não há prazo nem data */
   function numero(eu) {
     const s = S(); const apr = (s.diagnosticos || []).filter(d => d.situacao === 'aprovado');
+    // 18/10/2026: a agente só recebe os diagnósticos que ela fez (regra de acesso); antes o número dela aparecia como se fosse o do estado
+    if (eu.papel === 'agente') { const n = apr.filter(d => d.executor_id === eu.id).length;
+      return n ? `<b>${n}</b> ${n === 1 ? 'diagnóstico seu já foi aprovado' : 'diagnósticos seus já foram aprovados'} pela coordenação.` : ''; }
     if (R.ehCampo(eu.papel) && eu.uf) { const n = apr.filter(d => d.uf === eu.uf).length; const nome = MQ.ui.nomeUF ? MQ.ui.nomeUF(eu.uf) : eu.uf;
       return n ? `${nome}: <b>${n}</b> ${n === 1 ? 'quintal já tem' : 'quintais já têm'} diagnóstico aprovado, de ${MQ.META_UF.diagnosticos} previstos no estado.` : ''; }
     if (R.decideCampo(eu.papel)) { const n = apr.length; return n ? `<b>${n}</b> ${n === 1 ? 'quintal já tem' : 'quintais já têm'} diagnóstico aprovado, de ${MQ.META_UF.diagnosticos * MQ.UFS.length} no projeto.` : ''; }
@@ -13794,10 +13802,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function faixaDemo() {
     const p = S.api.perfisDemo();
     const b = (id, t) => `<button type="button" data-acao="perfil" data-p="${id}" aria-pressed="${S.verEntrada ? id === 'entrada' : p === id}">${t}</button>`;
-    return `<div class="demo"><div class="demo-in"><span class="demo-selo"><span aria-hidden="true">⚠</span> <b>Ambiente de demonstração</b> · os dados exibidos são fictícios</span>
+    const sim = S.api.simulacao && S.api.simulacao();   // simulacao.html: o projeto concluído
+    return `<div class="demo${sim ? ' demo-sim' : ''}"><div class="demo-in"><span class="demo-selo"><span aria-hidden="true">⚠</span> ${sim ? '<b>Simulação do projeto concluído</b> · como o sistema fica em 30/09/2027 · dados inventados' : '<b>Ambiente de demonstração</b> · os dados exibidos são fictícios'}</span>
       <span class="demo-ver">Ver como: <span class="seg" role="group" aria-label="Perfil">${b('coord_geral', 'Coord. geral')}${b('coord_tecnico', 'Coord. técnica')}${b('bolsista', 'Bolsista')}${b('agente', 'Agente')}${b('professor', 'Professor do curso FIC')}${b('auxiliar', 'Auxiliar adm.')}${b('obs_mda', 'MDA')}${b('obs_mpa', 'MPA')}${b('entrada', 'Tela de entrada')}</span></span>
-      <details class="demo-mais"><summary>Ver detalhes</summary><p>Os dados ficam gravados só neste navegador e servem para testar. Nada aqui vai para o servidor nem para a vitrine pública.</p>
-        <button class="link" data-acao="recomecar">Recomeçar demonstração</button></details></div></div>`;
+      <details class="demo-mais"><summary>Ver detalhes</summary>${sim ? '<p>Esta página mostra o sistema cheio, como no fim do projeto: 200 quintais, 1.000 visitas, 12 meses de bolsas, curso FIC, passagens, documentos. Tudo é inventado e nada vai para o servidor. Pode mexer à vontade: o que você mudar some ao recarregar a página.</p>'
+        : '<p>Os dados ficam gravados só neste navegador e servem para testar. Nada aqui vai para o servidor nem para a vitrine pública.</p>'}
+        <button class="link" data-acao="recomecar">${sim ? 'Voltar a simulação ao início' : 'Recomeçar demonstração'}</button></details></div></div>`;
   }
 
   function prazoChip() {

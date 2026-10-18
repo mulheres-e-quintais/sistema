@@ -2,7 +2,10 @@
    as mesmas regras do banco. Os dados são de exemplo. */
 (function () {
   const R = MQ.regras;
-  const CHAVE = 'mq-demo-v4';
+  // 18/10/2026: página simulacao.html (projeto concluído): dados de MQ.SIM_FIM, só na memória (3 MB não cabem no navegador);
+  // guarda só o perfil escolhido. O que se mexer some ao recarregar, de propósito: é para ver como o sistema fica.
+  const SIM = () => !!(MQ.SIM_FIM && MQ.CONFIG && MQ.CONFIG.cenario === 'fim');
+  const CHAVE = 'mq-demo-v4', CHAVE_SIM = 'mq-sim-fim-perfil';
   let mem = null;
 
   function gerarCPF(seed) {
@@ -118,7 +121,8 @@
 
   function ler() {
     if (mem) return mem;
-    try { const s = localStorage.getItem(CHAVE); if (s) mem = JSON.parse(s); } catch (e) { /* sem armazenamento */ }
+    if (SIM()) { mem = JSON.parse(JSON.stringify(MQ.SIM_FIM)); try { const p = localStorage.getItem(CHAVE_SIM); if (p) mem.perfil = p; } catch (e) { /* sem armazenamento */ } }
+    else try { const s = localStorage.getItem(CHAVE); if (s) mem = JSON.parse(s); } catch (e) { /* sem armazenamento */ }
     if (!mem) mem = semente();
     if (!mem.fotosEx) {   // ilustrações de pessoas para a equipe de exemplo (não são fotos de gente de verdade)
       const homens = /^(José|Antônio|Francisco|João|Raimundo|Pedro|Luiz|Manoel|Cícero|Sebastião|Geraldo)\b/;
@@ -179,7 +183,7 @@
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
   }
   const bancoMem = {};   // demonstração: dados bancários só na memória (somem ao recarregar), como exemplo de cuidado
-  function gravar() { try { localStorage.setItem(CHAVE, JSON.stringify(mem)); } catch (e) { /* segue só em memória */ } }
+  function gravar() { try { if (SIM()) localStorage.setItem(CHAVE_SIM, mem.perfil); else localStorage.setItem(CHAVE, JSON.stringify(mem)); } catch (e) { /* segue só em memória */ } }
   const copia = o => JSON.parse(JSON.stringify(o));
   const falha = msg => { const e = new Error(msg); e.regra = true; return e; };
 
@@ -226,7 +230,8 @@
     },
     async trocarPerfil(p) { const d = ler(); d.perfil = p; this.perfisDemo(); gravar(); return euMesmo(); },
     async reler() { mem = null; ler(); return euMesmo(); },   // lê de novo o que está guardado no aparelho (outra aba mudou; testes)
-    async recomecar() { mem = null; try { localStorage.removeItem(CHAVE); } catch (e) {} ler(); gravar(); return euMesmo(); },
+    async recomecar() { mem = null; try { localStorage.removeItem(SIM() ? CHAVE_SIM : CHAVE); } catch (e) {} ler(); gravar(); return euMesmo(); },
+    simulacao: () => SIM(),
 
     /* ---------- Execução: planilha de gastos do mês (mesmas regras do 37_execucao_planilhas.sql): só a coordenação geral; nada se altera nem se apaga ---------- */
     /* ---------- acesso à água (mesmas regras do 39_agua.sql): coordenação registra cada mudança; nada se altera nem se apaga ---------- */

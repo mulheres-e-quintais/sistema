@@ -77,6 +77,9 @@
   /* 3) um número real do projeto, quando não há prazo nem data */
   function numero(eu) {
     const s = S(); const apr = (s.diagnosticos || []).filter(d => d.situacao === 'aprovado');
+    // 18/10/2026: a agente só recebe os diagnósticos que ela fez (regra de acesso); antes o número dela aparecia como se fosse o do estado
+    if (eu.papel === 'agente') { const n = apr.filter(d => d.executor_id === eu.id).length;
+      return n ? `<b>${n}</b> ${n === 1 ? 'diagnóstico seu já foi aprovado' : 'diagnósticos seus já foram aprovados'} pela coordenação.` : ''; }
     if (R.ehCampo(eu.papel) && eu.uf) { const n = apr.filter(d => d.uf === eu.uf).length; const nome = MQ.ui.nomeUF ? MQ.ui.nomeUF(eu.uf) : eu.uf;
       return n ? `${nome}: <b>${n}</b> ${n === 1 ? 'quintal já tem' : 'quintais já têm'} diagnóstico aprovado, de ${MQ.META_UF.diagnosticos} previstos no estado.` : ''; }
     if (R.decideCampo(eu.papel)) { const n = apr.length; return n ? `<b>${n}</b> ${n === 1 ? 'quintal já tem' : 'quintais já têm'} diagnóstico aprovado, de ${MQ.META_UF.diagnosticos * MQ.UFS.length} no projeto.` : ''; }

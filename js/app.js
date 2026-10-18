@@ -543,10 +543,12 @@
   function faixaDemo() {
     const p = S.api.perfisDemo();
     const b = (id, t) => `<button type="button" data-acao="perfil" data-p="${id}" aria-pressed="${S.verEntrada ? id === 'entrada' : p === id}">${t}</button>`;
-    return `<div class="demo"><div class="demo-in"><span class="demo-selo"><span aria-hidden="true">⚠</span> <b>Ambiente de demonstração</b> · os dados exibidos são fictícios</span>
+    const sim = S.api.simulacao && S.api.simulacao();   // simulacao.html: o projeto concluído
+    return `<div class="demo${sim ? ' demo-sim' : ''}"><div class="demo-in"><span class="demo-selo"><span aria-hidden="true">⚠</span> ${sim ? '<b>Simulação do projeto concluído</b> · como o sistema fica em 30/09/2027 · dados inventados' : '<b>Ambiente de demonstração</b> · os dados exibidos são fictícios'}</span>
       <span class="demo-ver">Ver como: <span class="seg" role="group" aria-label="Perfil">${b('coord_geral', 'Coord. geral')}${b('coord_tecnico', 'Coord. técnica')}${b('bolsista', 'Bolsista')}${b('agente', 'Agente')}${b('professor', 'Professor do curso FIC')}${b('auxiliar', 'Auxiliar adm.')}${b('obs_mda', 'MDA')}${b('obs_mpa', 'MPA')}${b('entrada', 'Tela de entrada')}</span></span>
-      <details class="demo-mais"><summary>Ver detalhes</summary><p>Os dados ficam gravados só neste navegador e servem para testar. Nada aqui vai para o servidor nem para a vitrine pública.</p>
-        <button class="link" data-acao="recomecar">Recomeçar demonstração</button></details></div></div>`;
+      <details class="demo-mais"><summary>Ver detalhes</summary>${sim ? '<p>Esta página mostra o sistema cheio, como no fim do projeto: 200 quintais, 1.000 visitas, 12 meses de bolsas, curso FIC, passagens, documentos. Tudo é inventado e nada vai para o servidor. Pode mexer à vontade: o que você mudar some ao recarregar a página.</p>'
+        : '<p>Os dados ficam gravados só neste navegador e servem para testar. Nada aqui vai para o servidor nem para a vitrine pública.</p>'}
+        <button class="link" data-acao="recomecar">${sim ? 'Voltar a simulação ao início' : 'Recomeçar demonstração'}</button></details></div></div>`;
   }
 
   function prazoChip() {
