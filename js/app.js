@@ -668,7 +668,9 @@
   }
   const podeTrocarFoto = m => m.status === 'ativa' && (S.eu.id === m.id || (/^coord/.test(S.eu.papel) && R.podeEditarDados(S.eu.papel, m.papel)));
   /* foto da pessoa: tirar na hora (câmera do celular ou do computador) ou escolher uma que já está no aparelho */
-  const botaoFoto = m => podeTrocarFoto(m) ? `<span class="foto-acoes"><button type="button" class="btn peq foto-btn" data-acao="foto-camera" data-id="${m.id}">Tirar foto</button><input type="file" accept="image/*" capture="user" data-foto-equipe="${m.id}" data-foto-cam hidden><label class="btn peq foto-btn">${m.foto_url ? 'Trocar foto' : 'Adicionar foto'}<input type="file" accept="image/*" data-foto-equipe="${m.id}" hidden></label></span>` : '';
+  // 18/10/2026: os dois botões com ícone (câmera e galeria), no mesmo desenho do botão Imprimir de Documentos
+  const icF = n => (MQ.ICONES || {})[n] || '';
+  const botaoFoto = m => podeTrocarFoto(m) ? `<span class="foto-acoes"><button type="button" class="btn peq foto-btn" data-acao="foto-camera" data-id="${m.id}">${icF('camera')}<span>Tirar foto</span></button><input type="file" accept="image/*" capture="user" data-foto-equipe="${m.id}" data-foto-cam hidden><label class="btn peq foto-btn">${icF('galeria')}<span>${m.foto_url ? 'Trocar foto' : 'Adicionar foto'}</span><input type="file" accept="image/*" data-foto-equipe="${m.id}" hidden></label></span>` : '';
 
   function cartaoPessoa(m) {
     const s = R.situacao(m);

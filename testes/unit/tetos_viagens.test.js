@@ -59,7 +59,7 @@ test('gastos separados: evento autorizado não entra no gasto de passagens (e vi
   assert.ok(/Piauí\s*R\$\s?[\d.,]+\s*R\$\s?2\.500,00/.test(Ev), 'evento no estado dele (teto, depois autorizado)');
   assert.ok(!/3\.800/.test(Ev), 'a passagem não aparece nos eventos');
   assert.ok(/Total\s*R\$\s?30\.000,00\s*R\$\s?2\.500,00/.test(Ev), 'total: teto e autorizado');
-  const r = texto(h.slice(h.indexOf('class="resumo"'), h.indexOf('</div></div>', h.indexOf('class="resumo"'))));
+  const r = texto(h.slice(h.indexOf('class="resumo'), h.indexOf('</div></div>', h.indexOf('class="resumo'))));
   assert.ok(/R\$\s?3\.800,00\s*gasto com passagens/.test(r) && /R\$\s?2\.500,00\s*gasto com eventos/.test(r), r);
   // a bolsista vê os dois pedidos em listas separadas, cada uma com o seu saldo
   await t.trocar('bolsista'); const b = texto(t.aba());

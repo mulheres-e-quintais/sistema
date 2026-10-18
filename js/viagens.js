@@ -113,13 +113,19 @@
   }
   const medidor = g => `<span class="medidor" title="autorizado e em análise"><i style="width:${Math.min(100, (g.usado + g.analise) / g.teto * 100)}%;opacity:.35"></i><i style="width:${Math.min(100, g.usado / g.teto * 100)}%"></i></span>`;
   const usoTeto = g => { const p = g.teto ? Math.round(g.usado / g.teto * 1000) / 10 : 0; return `<span class="fin-exe"><span class="medidor fino" aria-hidden="true"><i class="${g.usado > 0 ? 'st-ok' : ''}" style="width:${Math.min(100, p)}%"></i></span><b class="num">${p.toLocaleString('pt-BR')}%</b></span>`; };
-  function cartaoGasto(g, rot) {
+  function cartaoGasto(g, rot, rodape, longo) {
+    const pc = g.teto ? Math.round(g.usado / g.teto * 1000) / 10 : 0;
     return `<div class="viag-gasto">
-      <div class="vg-lin"><span>${rot}</span><b class="num">${brl(g.usado)}<small class="muted"> de ${brl(g.teto)}</small></b></div>
+      <div class="vg-cab"><span class="vg-rot">${rot}</span><span class="vg-pc num">${pc.toLocaleString('pt-BR')}%</span></div>
+      <div class="vg-valor"><span class="vg-sub" aria-hidden="true">Autorizado</span><span class="sr">${longo} </span><b class="num">${brl(g.usado)}</b><small class="muted"> de ${brl(g.teto)}</small></div>
       ${medidor(g)}
       <div class="vg-lin small"><span class="muted">Em análise (valor estimado): ${brl(g.analise)}</span><span>Saldo <b class="num">${brl(g.livre)}</b></span></div>
-      ${g.estoura ? '<p class="small" style="color:var(--crit);margin:4px 0 0">Autorizado + em análise passa do teto: nem todos os pedidos cabem.</p>' : ''}</div>`;
+      ${g.estoura ? '<p class="vg-alerta small">Autorizado + em análise passa do teto: nem todos os pedidos cabem.</p>' : ''}
+      ${rodape || ''}</div>`;
   }
+  const IC = n => (MQ.ICONES || {})[n] || '';
+  // lista vazia no mesmo padrão das outras abas (ícone + frase), em vez de texto solto
+  const vazioVg = t => `<p class="vg-vazio"><span class="vg-vazio-ic" aria-hidden="true">${IC('check')}</span>${t}</p>`;
 
   /* ---------- coordenação: aba Viagens e eventos ---------- */
   function abaCoord() {
@@ -132,7 +138,7 @@
     const ufsEvento = new Set(aut.filter(p => p.tipo === 'evento').map(p => p.uf));
     const tituloVez = souGeral ? (conf() === 'coord_geral' ? 'Esperando você (conferir ou autorizar)' : 'Esperando a sua autorização') : 'Esperando a sua conferência';
     const bloco = (t, xs, vazio) => `<div class="viag-bloco"><h3>${t} <span class="conta-t${xs.length ? '' : ' zero'}">${xs.length}</span></h3>
-      ${xs.length ? `<div class="pag-lista">${xs.map(p => linha(p, true)).join('')}</div>` : `<p class="muted small">${vazio}</p>`}</div>`;
+      ${xs.length ? `<div class="pag-lista">${xs.map(p => linha(p, true)).join('')}</div>` : vazioVg(vazio)}</div>`;
     const listas = tipo => { const t = l.filter(p => p.tipo === tipo);
       const vez = t.filter(minhaVez), outros = t.filter(p => ['enviado', 'conferido'].includes(p.situacao) && !minhaVez(p));
       const dev = t.filter(p => p.situacao === 'devolvido'), au = t.filter(p => p.situacao === 'autorizado'), fim = t.filter(p => ['recusado', 'cancelado'].includes(p.situacao));
@@ -145,27 +151,35 @@
     const ge = MQ.UFS.map(u => Object.assign({ uf: u.uf, nome: u.nome }, gastos('evento', u.uf)));
     const somaE = k => ge.reduce((t, g) => t + g[k], 0);
     const nVez = tipo => vezTodos.filter(p => p.tipo === tipo).length;
+    // 18/10/2026: aba redesenhada (caminho do pedido em passos, prazos em destaque, indicadores com ícone, atalhos com contagem)
+    const passo = (n, quem, oque, ic) => `<li><span class="vf-ic" aria-hidden="true">${IC(ic)}</span><span class="vf-t"><b>${quem}</b><span>${oque}</span></span></li>`;
+    const quemConfere = conf() === 'coord_geral' ? 'Você' : souGeral ? (conf() === 'auxiliar_adm' ? 'Auxiliar adm.' : 'Coord. técnica') : 'Você';
+    const quemAutoriza = souGeral ? 'Você' : 'Coord. geral';
     return `<div class="cab"><div><span class="eyebrow">Viagens e eventos</span><h1>Passagens e eventos</h1>
         <p>A bolsista de articulação estadual pede; ${souGeral ? (conf() === 'coord_geral' ? 'você confere e autoriza' : nomeConf() + ' confere; você autoriza') + ' e manda para a FUNCERN, que compra ou contrata.' : 'você confere e manda para a coordenação geral, que autoriza e manda para a FUNCERN.'}
-        Prazos: passagem ${PRAZO.passagem} dias antes da viagem (a FUNCERN exige 30); evento ${PRAZO.evento} dias antes. <b>Os gastos são separados:</b> passagens têm um teto para cada finalidade (intercâmbio e acompanhamento pedagógico), no projeto todo; eventos, um teto por estado.</p></div></div>
-      <div class="resumo">
-        <div><span class="v num" ${vezTodos.length ? 'style="color:var(--crit)"' : ''}>${vezTodos.length}</span><span class="l">esperando você</span></div>
-        <div><span class="v num">${brl(gp.usado + gpp.usado)}</span><span class="l">gasto com passagens</span></div>
-        <div><span class="v num">${brl(somaE('usado'))}</span><span class="l">gasto com eventos</span></div></div>
-      <nav class="viag-ir small" aria-label="Ir para"><a href="#viag-passagens">Passagens aéreas${nVez('passagem') ? ` (${nVez('passagem')} esperando)` : ''}</a><a href="#viag-eventos">Eventos${nVez('evento') ? ` (${nVez('evento')} esperando)` : ''}</a></nav>
+        <b>Os gastos são separados:</b> passagens têm um teto para cada finalidade (intercâmbio e acompanhamento pedagógico), no projeto todo; eventos, um teto por estado.</p></div></div>
+      <div class="viag-fluxo">
+        <ol class="vf-passos" aria-label="Caminho de cada pedido">${passo(1, 'Bolsista', 'pede', 'enviar')}${passo(2, quemConfere, 'confere', 'ver')}${passo(3, quemAutoriza, 'autoriza', 'check')}${passo(4, 'FUNCERN', 'compra ou contrata', 'pasta')}</ol>
+        <div class="vf-prazos" aria-label="Prazos"><span class="vf-prazo">${IC('aviao')}<span><b>${PRAZO.passagem} dias</b> antes da viagem <small>(a FUNCERN exige 30)</small></span></span><span class="vf-prazo">${IC('tenda')}<span><b>${PRAZO.evento} dias</b> antes do evento</span></span></div>
+      </div>
+      <div class="resumo vg-resumo">
+        <div class="${vezTodos.length ? 'vg-k-vez' : ''}"><span class="vg-k-ic" aria-hidden="true">${IC('relogio')}</span><span class="v num">${vezTodos.length}</span><span class="l">esperando você</span></div>
+        <div><span class="vg-k-ic" aria-hidden="true">${IC('aviao')}</span><span class="v num">${brl(gp.usado + gpp.usado)}</span><span class="l">gasto com passagens</span></div>
+        <div><span class="vg-k-ic" aria-hidden="true">${IC('tenda')}</span><span class="v num">${brl(somaE('usado'))}</span><span class="l">gasto com eventos</span></div></div>
+      <nav class="viag-ir" aria-label="Ir para"><a href="#viag-passagens"><span class="vi-ic" aria-hidden="true">${IC('aviao')}</span><span class="vi-t">Passagens aéreas</span>${nVez('passagem') ? `<span class="vi-n">${nVez('passagem')} esperando</span>` : ''}</a><a href="#viag-eventos"><span class="vi-ic" aria-hidden="true">${IC('tenda')}</span><span class="vi-t">Eventos</span>${nVez('evento') ? `<span class="vi-n">${nVez('evento')} esperando</span>` : ''}</a></nav>
       ${souGeral && conf() === 'auxiliar_adm' ? '<div class="aviso">Sem coordenação técnica ativa: quem confere os pedidos é o auxiliar administrativo; você autoriza. Assim cada pedido passa por duas pessoas. Quando a técnica for cadastrada, ela volta a conferir.</div>' : ''}
       ${souGeral && conf() === 'coord_geral' && !legado() ? '<div class="aviso erro">Sem coordenação técnica e sem auxiliar administrativo: você confere e autoriza sozinho (fica registrado). Cadastre a técnica ou o auxiliar para voltar a ter duas pessoas em cada pedido.</div>' : ''}
-      <section class="secao viag-tipo" id="viag-passagens" aria-labelledby="t-vp"><div class="secao-cab"><div><h2 id="t-vp">Passagens aéreas</h2>
+      <section class="secao viag-tipo" id="viag-passagens" aria-labelledby="t-vp"><div class="secao-cab vt-cab"><span class="vt-ic" aria-hidden="true">${IC('aviao')}</span><div><h2 id="t-vp">Passagens aéreas</h2>
           <p class="small muted">Dois tetos para o projeto todo, somando os 5 estados: ${brl(MQ.tetoPassagem('intercambio'))} para o intercâmbio e ${brl(MQ.tetoPassagem('pedagogico'))} para o acompanhamento pedagógico (um não cobre o outro). Passagens contadas por pessoa (ida e volta). ${souGeral ? 'O pedido de acompanhamento pedagógico é conferido e autorizado só por você.' : 'O pedido de acompanhamento pedagógico é conferido só pela coordenação geral.'}</p></div></div>
-        <div class="bloco viag-tetos"><h3>Tetos de gasto · passagens</h3>${cartaoGasto(gp, 'Autorizado em passagens de intercâmbio')}${cartaoGasto(gpp, 'Autorizado em passagens de acompanhamento pedagógico')}
-          <ul class="pp"><li><span>Intercâmbio entre as beneficiárias</span><b class="num">${usados('intercambio')}<small class="muted"> de ${PREVISTO.intercambio} passagens</small></b></li>
-            <li><span>Acompanhamento pedagógico</span><b class="num">${usados('pedagogico')}<small class="muted"> de ${PREVISTO.pedagogico} passagens</small></b></li></ul></div>
+        <div class="viag-tetos vt-pass"><h3>Tetos de gasto · passagens</h3><div class="vt-duas">
+          ${cartaoGasto(gp, 'Intercâmbio', `<div class="vg-cont"><span>Intercâmbio entre as beneficiárias</span><b class="num">${usados('intercambio')}<small class="muted"> de ${PREVISTO.intercambio} passagens</small></b></div>`, 'Autorizado em passagens de intercâmbio')}
+          ${cartaoGasto(gpp, 'Acompanhamento pedagógico', `<div class="vg-cont"><span>Acompanhamento pedagógico</span><b class="num">${usados('pedagogico')}<small class="muted"> de ${PREVISTO.pedagogico} passagens</small></b></div>`, 'Autorizado em passagens de acompanhamento pedagógico')}</div></div>
         ${listas('passagem')}</section>
-      <section class="secao viag-tipo" id="viag-eventos" aria-labelledby="t-ve"><div class="secao-cab"><div><h2 id="t-ve">Eventos</h2>
+      <section class="secao viag-tipo" id="viag-eventos" aria-labelledby="t-ve"><div class="secao-cab vt-cab"><span class="vt-ic" aria-hidden="true">${IC('tenda')}</span><div><h2 id="t-ve">Eventos</h2>
           <p class="small muted">Teto de ${brl(MQ.TETOS.evento)} por estado (o saldo de um estado não passa para outro). ${ufsEvento.size} de ${PREVISTO.evento} estados com evento autorizado.</p></div></div>
-        <div class="bloco viag-tetos"><h3>Tetos de gasto · eventos</h3>
+        <div class="bloco viag-tetos vt-ev"><h3>Tetos de gasto · eventos</h3>
           <div class="fin-wrap"><table class="fin viag-fin"><thead><tr><th scope="col">Estado</th><th scope="col">Teto</th><th scope="col">Autorizado</th><th scope="col">Em análise</th><th scope="col">Saldo</th><th scope="col">Uso do teto</th></tr></thead><tbody>
-            ${ge.map(g => `<tr class="fin-item"><th scope="row"><span class="fin-nome sem">${E(g.nome)}</span></th><td class="num" data-rot="Teto">${brl(g.teto)}</td><td class="num" data-rot="Autorizado"><span class="${g.usado > 0 ? 'fin-exec' : 'fin-zero'}">${brl(g.usado)}</span></td><td class="num" data-rot="Em análise"><span class="${g.analise > 0 ? 'fin-comp' : 'fin-zero'}">${brl(g.analise)}</span></td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(g.livre)}</b>${g.estoura ? ' <span class="crit-txt" title="autorizado + em análise passa do teto">!</span>' : ''}</td><td data-rot="Uso do teto">${usoTeto(g)}</td></tr>`).join('')}</tbody>
+            ${ge.map(g => `<tr class="fin-item"><th scope="row"><span class="vg-uf"><span class="sigla">${E(g.uf)}</span><span class="fin-nome sem">${E(g.nome)}</span></span></th><td class="num" data-rot="Teto">${brl(g.teto)}</td><td class="num" data-rot="Autorizado"><span class="${g.usado > 0 ? 'fin-exec' : 'fin-zero'}">${brl(g.usado)}</span></td><td class="num" data-rot="Em análise"><span class="${g.analise > 0 ? 'fin-comp' : 'fin-zero'}">${brl(g.analise)}</span></td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(g.livre)}</b>${g.estoura ? ' <span class="crit-txt" title="autorizado + em análise passa do teto">!</span>' : ''}</td><td data-rot="Uso do teto">${usoTeto(g)}</td></tr>`).join('')}</tbody>
             <tfoot><tr class="fin-tot"><th scope="row">Total</th><td class="num" data-rot="Teto"><b>${brl(MQ.TETOS.evento * MQ.UFS.length)}</b></td><td class="num" data-rot="Autorizado">${brl(somaE('usado'))}</td><td class="num" data-rot="Em análise">${brl(somaE('analise'))}</td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(somaE('livre'))}</b></td><td data-rot="Uso do teto">${usoTeto({ teto: MQ.TETOS.evento * MQ.UFS.length, usado: somaE('usado'), analise: somaE('analise') })}</td></tr></tfoot>
           </table></div></div>
         ${listas('evento')}</section>`;
