@@ -101,7 +101,7 @@ A(passos('relatar um problema', ['No fim de qualquer tela, toque em <b class="bt
 A(sec('Usar no celular e sem internet'))
 A(serve('No campo nem sempre há sinal. O sistema guarda o que você preenche e envia quando a conexão volta.'))
 A(passos('instalar como aplicativo', ['Com o sistema aberto, toque no menu do navegador.', 'Toque em <b class="bt">Adicionar à tela inicial</b>.', 'Abra pelo ícone que apareceu.'], 'O sistema abre como aplicativo e funciona também sem internet.'))
-A('<ul class="lst"><li>Fichas, diagnósticos, visitas feitas e avaliações podem ser preenchidos sem sinal.</li><li>Antes de ir a campo, abra o sistema com internet para atualizar a lista de visitas.</li><li>Com o sinal de volta, o envio é automático. Se preferir, toque em <b>Enviar agora</b>.</li></ul>')
+A('<ul class="lst"><li>Fichas, diagnósticos, visitas feitas e avaliações podem ser preenchidos sem sinal.</li><li>Antes de ir a campo, abra o sistema com internet para atualizar a lista de visitas.</li><li>Com o sinal de volta, o envio é automático. Se preferir, toque em <b>Enviar agora</b>.</li><li>Se o servidor não aceitar um registro (por exemplo, a visita foi cancelada enquanto você estava sem sinal), ele aparece com o motivo e dois botões: <b>Abrir e corrigir</b> ou <b>Descartar</b>, quando ele não vale mais.</li></ul>')
 A(caixa('atencao', 'Não apague os dados do navegador nem desinstale o aplicativo com registros pendentes: eles se perdem.'))
 A(passos('ler a tela no sol: modo sol', ['Toque no botão do <b>sol</b>, no alto da tela. Na tela de entrada, é o botão <b class="bt">Modo sol</b>, no cartão de acesso.', 'Em <b>Aparência da tela</b>, ligue a chave <b class="bt">Modo sol</b>.', 'Deixe também o brilho do celular no máximo.'], 'A tela fica com letra preta em fundo branco, bordas escuras e letra maior. A escolha fica guardada no aparelho, inclusive depois de sair do sistema. Para desligar, faça o mesmo caminho.'))
 A(caixa('dica', 'Em <b>Aparência da tela</b> também se escolhe o tema: <b>Automático</b> (segue o celular), <b>Claro</b> ou <b>Escuro</b>. O escuro é bom à noite e gasta menos bateria em alguns celulares, mas no sol é difícil de ler: no campo, use o modo sol.'))
@@ -354,7 +354,8 @@ prob = [
     ('O botão de cadastrar professor sumiu.', 'As 2 vagas de professor do curso FIC estão ocupadas. Desligue um para cadastrar outro.'),
     ('Aparece “Este registro foi alterado por outra pessoa enquanto você editava”.', 'Alguém salvou o mesmo registro antes de você. Feche, abra de novo e refaça a alteração.'),
     ('O sistema saiu sozinho.', 'Foram 15 minutos sem uso. Entre de novo: o formulário que estava pela metade volta, neste aparelho, por até 24 horas.'),
-    ('Preenchi sem internet e não subiu.', 'Abra o sistema com sinal e toque em <b>Enviar agora</b>.'),
+    ('Preenchi sem internet e não subiu.', 'Abra o sistema com sinal e toque em <b>Enviar agora</b>. Se aparecer “Não foi aceito”, leia o motivo e toque em <b>Abrir e corrigir</b>, ou em <b>Descartar</b> se o registro não vale mais.'),
+    ('Preciso corrigir o e-mail de alguém.', 'O e-mail é o login. De quem ainda não entrou, quem cadastrou corrige. De quem já entrou, só a coordenação geral troca, porque a troca apaga a senha: depois, gere um novo código de acesso.'),
     ('Não consigo salvar o cadastro.', 'Veja a mensagem em vermelho no formulário: ela diz o campo. Confira CPF, e-mail, celular com DDD e a ciência sobre o uso dos dados.'),
 ]
 A(''.join('<div class="prob"><p><span class="pl">Problema</span><span>%s</span></p><p><span class="pl v">O que verificar</span><span>%s</span></p></div>' % x for x in prob))

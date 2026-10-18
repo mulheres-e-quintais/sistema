@@ -329,7 +329,9 @@
   // a fila rodou mais uma volta sozinha (registro salvo enquanto outro subia): atualiza a tela e avisa
   if (MQ.fila) MQ.fila.aoEnviarDepois = r => { informarFila(); carregar().then(() => renderFundo()).catch(() => {}); toast(r.enviados + (r.enviados > 1 ? ' registros enviados.' : ' registro enviado.')); };
   async function sincronizar(avisar) {
-    if (!S.eu || !R.ehCampo(S.eu.papel) || !navigator.onLine) return;
+    // 18/10/2026 (auditoria independente): a coordenação também grava visitas pela fila (Roteiro: mudar data, cancelar, visita feita);
+    // antes a fila só era enviada para bolsistas e agentes, e o que a coordenação mudava ficava preso no aparelho
+    if (!S.eu || !(R.ehCampo(S.eu.papel) || R.decideCampo(S.eu.papel)) || !navigator.onLine) return;
     const antes = (await MQ.fila.listar(S.eu.id)).length; if (!antes) { informarFila(); return; }
     const r = await MQ.fila.sincronizar(S.api, S.eu.id);
     informarFila();
@@ -1816,8 +1818,11 @@
           <div class="campo"><label for="c-cpf">CPF</label><input id="c-cpf" name="cpf" inputmode="numeric" value="${esc(R.fmtCPF(m.cpf || ''))}" ${edit ? 'readonly' : ''} placeholder="000.000.000-00" required>
             ${edit ? '<span class="dica">CPF não muda. Se estiver errado, desligue e cadastre de novo.</span>' : ''}</div>
           <div class="campo"><label for="c-fone">Celular com WhatsApp</label><input id="c-fone" name="telefone" inputmode="tel" autocomplete="tel" value="${esc(MQ.mascaras ? MQ.mascaras.fmtTel(String(m.telefone || '').replace(/\D/g, '')) : (m.telefone || ''))}" placeholder="(89) 90000-0000" required></div>
-          <div class="campo inteiro"><label for="c-email">E-mail</label><input id="c-email" name="email" type="email" autocomplete="email" value="${v('email')}" maxlength="254" required>
-            <span class="dica">É o login no sistema. Nenhum e-mail é enviado: depois de salvar, mande para ela o aviso de acesso (aparece na ficha dela).</span></div>
+          ${(() => { const entrou = edit && !!m.user_id, geral = S.eu && S.eu.papel === 'coord_geral';   // 68: trocar o e-mail de quem já entrou apaga a senha
+            return `<div class="campo inteiro"><label for="c-email">E-mail</label><input id="c-email" name="email" type="email" autocomplete="email" value="${v('email')}" maxlength="254" ${entrou && !geral ? 'readonly' : ''} required>
+            <span class="dica">${entrou ? (geral ? '<b>Esta pessoa já entrou no sistema.</b> Trocar o e-mail apaga a senha dela: depois de salvar, gere um novo código de primeiro acesso e mande para ela.'
+              : 'Esta pessoa já entrou no sistema: o e-mail é o login dela e trocar apaga a senha. Só a coordenação geral faz essa troca.')
+              : 'É o login no sistema. Nenhum e-mail é enviado: depois de salvar, mande para ela o aviso de acesso (aparece na ficha dela).'}</span></div>`; })()}
           ${MQ.convitesUI && priv !== undefined ? '' : `<div class="campo"><label for="c-mun">Município onde mora</label><input id="c-mun" name="municipio" value="${v('municipio')}" maxlength="120" ${bols ? 'list="lista-mun"' : 'placeholder="Município/UF"'}>
             ${bols ? `<datalist id="lista-mun">${munis.map(x => `<option value="${esc(x)}">`).join('')}</datalist><span class="dica">A lista traz os municípios do projeto técnico em ${esc(m.uf)}.</span>` : ''}</div>`}
           <div class="campo"><label for="c-siape">Matrícula SIAPE <span class="muted">(só se for servidor(a) público(a) federal)</span></label><input id="c-siape" name="siape" inputmode="numeric" value="${v('siape')}" placeholder="Deixe vazio se não for"></div>
@@ -2068,7 +2073,7 @@
       else if (a === 'cad-modo') {
         const p = Object.assign({}, S.painel, { modo: el.dataset.m || undefined }); abrirPainel(p);
         if (p.modo === 'link' && MQ.convitesUI) {   // o link sai pronto, sem outro clique
-          try { await MQ.convitesUI.gerarLink(p); } catch (e) { toast(avisarErro(e)); abrirPainel(Object.assign({}, p, { modo: undefined })); return; }
+          try { await MQ.convitesUI.gerarLink(p, true); } catch (e) { toast(avisarErro(e)); abrirPainel(Object.assign({}, p, { modo: undefined })); return; }
           if (S.painel && S.painel.tipo === 'cadastro' && S.painel.modo === 'link') abrirPainel(S.painel);
         }
       }

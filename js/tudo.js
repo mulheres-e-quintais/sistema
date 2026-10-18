@@ -2770,6 +2770,9 @@ MQ.ORCAMENTO = {
     const { data: up, error: e1 } = await sb.from(tabela).update(muda).eq('id', reg.id).select();
     if (e1) throw erro(e1);
     if (up && up.length) return up[0];
+    // 18/10/2026 (auditoria independente): com marca, o registro existia quando a pessoa leu. Se o UPDATE não achou a linha, ele saiu do
+    // alcance dela (visita passada para outra pessoa, quintal fora da lista): antes tentava incluir e a mensagem era "sem permissão"
+    if (marca) throw erro({ code: 'P0001', message: 'Este registro não está mais com você: foi passado para outra pessoa ou saiu da sua lista. Fale com a bolsista do estado ou com a coordenação.' });
     const { data, error } = await sb.from(tabela).insert(reg).select().single();
     if (error) throw erro(error);
     return data;
@@ -3474,7 +3477,7 @@ MQ.ORCAMENTO = {
 /* Fila de envio: guarda no aparelho o que foi preenchido sem internet e envia depois.
    Usa IndexedDB (aguenta fotos); se o navegador não permitir, guarda só na memória. */
 (function () {
-  const BANCO = 'mulheres-quintais', LOJA = 'fila';
+  const BANCO = (MQ.CONFIG && MQ.CONFIG.cenario === 'fim' ? 'sim-' : '') + 'mulheres-quintais', LOJA = 'fila';   // simulacao.html: banco do aparelho separado do sistema real
   let dbp = null, memoria = new Map();
 
   function abrir() {
@@ -3581,6 +3584,11 @@ MQ.ORCAMENTO = {
     /* Envia o que estiver pendente. Erros de regra ficam marcados no item para a bolsista corrigir;
        falta de rede só deixa para depois. */
     enviando: false,
+    /* 18/10/2026 (auditoria independente): com internet e outro envio em andamento (fotos no 3G), o registro novo sobe na volta seguinte;
+       antes a mensagem dizia "Será enviada quando houver internet", com a internet ligada */
+    espera(o) { return (typeof navigator !== 'undefined' && navigator.onLine !== false && (F.enviando || F.denovo))
+      ? 'Está na fila de envio, logo atrás dos registros que já estavam subindo: o aviso de enviado aparece em seguida.'
+      : 'Será ' + (o ? 'enviado' : 'enviada') + ' quando houver internet.'; },
     async sincronizar(api, dono) {
       // 13/10/2026 (auditoria): registro salvo enquanto outro sobe não fica parado: no fim desta volta, roda mais uma
       if (F.enviando) { F.denovo = { api, dono }; return { enviados: 0 }; }
@@ -4184,7 +4192,7 @@ MQ.ORCAMENTO = {
         U().fecharPainel(); U().render();
         if (navigator.onLine) await U().sincronizar(false);
         const ainda = S.fila.find(i => i.id === f.id);
-        U().toast(ainda ? (ainda.erro ? 'Ficha guardada, mas não enviada: ' + ainda.erro : 'Ficha guardada no aparelho. Será enviada quando houver internet.') : 'Ficha enviada para aprovação da coordenação técnica.');
+        U().toast(ainda ? (ainda.erro ? 'Ficha guardada, mas não enviada: ' + ainda.erro : 'Ficha guardada no aparelho. ' + MQ.fila.espera()) : 'Ficha enviada para aprovação da coordenação técnica.');
       });
     }
     if (tipo === 'ficha-decisao') {
@@ -5275,7 +5283,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function marcarDias(tipo, dados, fd) { const k = chaveDoRegistro(tipo, dados || {}); if (k) dias[k] = Object.assign({}, fd || {}); }
 
   /* cópia no aparelho (IndexedDB "mq-fotos-rascunho"): sem IndexedDB (navegação privada antiga) segue sem cópia */
-  const BD = 'mq-fotos-rascunho', LOJA = 'fotos', VALIDADE = 3 * 24 * 60 * 60 * 1000;
+  const BD = (MQ.CONFIG && MQ.CONFIG.cenario === 'fim' ? 'sim-' : '') + 'mq-fotos-rascunho', LOJA = 'fotos', VALIDADE = 3 * 24 * 60 * 60 * 1000;
   let bdP = null;
   function abrirBD() {
     if (bdP) return bdP;
@@ -5503,6 +5511,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   /* ---------- roteiro do mês (é o pedido de ajuda de custo) ---------- */
   function roteiro(uf, podeMudar) {
+    // 18/10/2026 (auditoria independente): a coordenação técnica agenda, muda e marca visita feita, mas o banco não deixa ela registrar
+    // diagnóstico nem avaliação (políticas diag_incluir e aval_incluir): o botão aparecia e a gravação era recusada
+    const podeRegistrar = podeMudar && S().eu && S().eu.papel !== 'coord_tecnico';
     const m = mesRoteiro || mesAtual();
     const vs = visitas().filter(v => (!uf || v.uf === uf) && v.situacao !== 'cancelada' && String(v.situacao === 'realizada' ? v.data_realizada : v.data_prevista).slice(0, 7) === m)
       .sort((a, b) => String(a.data_realizada || a.data_prevista).localeCompare(String(b.data_realizada || b.data_prevista)));
@@ -5518,8 +5529,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           const feita = v.situacao === 'realizada'; const temDg = dgFichas.has(v.ficha_id);
           const b = (acao, txt, pri, extra) => `<button class="btn peq${pri ? ' pri' : ''}" data-acao="${acao}" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}" data-id="${E(v.id)}"${extra || ''}>${txt}</button>`;
           const acoes = v._fila ? '<span class="small muted">Aguardando internet</span>'
-            : v.etapa === 'avaliacao' ? (feita ? b('aval-ver', 'Ver avaliação') : podeMudar ? b('aval-novo', 'Registrar avaliação', true) : '')
-            : v.etapa === 'diagnostico' ? (temDg ? b('campo-diag-ver', 'Ver diagnóstico') : podeMudar ? b('campo-diag-novo', 'Registrar diagnóstico', true) : '')
+            : v.etapa === 'avaliacao' ? (feita ? b('aval-ver', 'Ver avaliação') : podeRegistrar ? b('aval-novo', 'Registrar avaliação', true) : '')
+            : v.etapa === 'diagnostico' ? (temDg ? b('campo-diag-ver', 'Ver diagnóstico') : podeRegistrar ? b('campo-diag-novo', 'Registrar diagnóstico', true) : '')
             : feita ? (v.relato ? `<span class="small muted" title="${E(v.relato)}">${E(String(v.relato).slice(0, 60))}${String(v.relato).length > 60 ? '…' : ''}</span>` : '')
             : podeMudar ? botaoFeita(v) : '';
           return `<tr class="rt-s-${feita ? 'ok' : v._fila ? 'pend' : v.data_prevista < hoje ? 'crit' : 'pend'}"><td class="num rt-data">${R.fmtData(v.data_realizada || v.data_prevista)}</td>${uf ? '' : `<td class="rt-uf">${E(v.uf)}</td>`}<td class="rt-mulher">${E(f.nome || '—')}<br><span class="small muted">${E(f.municipio || '')}${uf ? '' : `<span class="rt-ufm"> · ${E(v.uf)}</span>`}</span></td>
@@ -5597,11 +5608,15 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function avisoFila(pend) {
     const l = (pend || []).filter(i => !i.conflito); if (!l.length) return '';
     const erro = l.filter(i => i.erro), tentando = l.filter(i => !i.erro && i.tentativas);
-    const quem = it => { const d = it.dados || {}; const f = ficha(d.ficha_id) || {}; return E(f.nome || 'Quintal') + (d.data_realizada || d.data_visita ? ' · ' + R.fmtData(d.data_realizada || d.data_visita) : ''); };
+    const quem = it => { const d = it.dados || {}; const f = ficha(d.ficha_id) || {}; return E(f.nome || 'Quintal que não está mais na sua lista') + (d.data_realizada || d.data_visita ? ' · ' + R.fmtData(d.data_realizada || d.data_visita) : ''); };
+    // 18/10/2026 (auditoria independente): registro recusado pelo servidor (visita cancelada, quintal que já tem diagnóstico...) ficava
+    // preso para sempre: o aviso mandava abrir, mas não havia botão, nem jeito de descartar o que não vale mais
+    const botoes = it => it.erro ? `<span class="fila-acoes"><button type="button" class="btn peq pri" data-acao="campo-conferir" data-id="${E(it.id)}">Abrir e corrigir</button>
+      <button type="button" class="btn peq" data-acao="campo-descartar" data-id="${E(it.id)}">Descartar</button></span>` : '';
     const linha = it => `<li><b>${NOME_TIPO[it.tipo] || 'Registro'}</b> · ${quem(it)}<br><span class="small">${it.erro ? '<b>Não foi aceito:</b> ' + E(it.erro)
-      : it.tentativas ? 'Tentando enviar de novo (' + it.tentativas + (it.tentativas > 1 ? ' tentativas' : ' tentativa') + '). Último motivo: ' + E(it.ultimaFalha || 'falha na conexão') : 'Esperando internet para enviar.'}</span></li>`;
+      : it.tentativas ? 'Tentando enviar de novo (' + it.tentativas + (it.tentativas > 1 ? ' tentativas' : ' tentativa') + '). Último motivo: ' + E(it.ultimaFalha || 'falha na conexão') : 'Esperando internet para enviar.'}</span>${botoes(it)}</li>`;
     return `<div class="aviso${erro.length ? ' erro' : ''} fila-campo" role="status"><b>${l.length} registro${l.length > 1 ? 's' : ''} de campo guardado${l.length > 1 ? 's' : ''} neste aparelho, ainda não ${l.length > 1 ? 'chegaram' : 'chegou'} ao servidor.</b>
-      ${erro.length ? ' Abra o registro, corrija o que o motivo diz e salve de novo; ou toque em Enviar agora para tentar outra vez.' : tentando.length ? ' O sistema tenta de novo sozinho.' : ''}
+      ${erro.length ? ' Toque em Abrir e corrigir, acerte o que o motivo diz e salve de novo. Se o registro não vale mais (por exemplo, a visita foi cancelada), toque em Descartar.' : tentando.length ? ' O sistema tenta de novo sozinho.' : ''}
       <ul class="fila-lista">${l.map(linha).join('')}</ul>
       ${navigator.onLine ? '<button class="btn peq" data-acao="ficha-enviar">Enviar agora</button>' : '<span class="small">Sem internet agora: o envio é automático quando ela voltar.</span>'}</div>`;
   }
@@ -6122,6 +6137,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (a === 'campo-conferir') {
       const it = (S().fila || []).find(i => i.id === el.dataset.id); if (!it) return;
       const d = it.dados || {};
+      // o quintal saiu da lista desta pessoa (visita cancelada ou passada para outra): não há o que abrir; diz por quê
+      if (d.ficha_id && !ficha(d.ficha_id)) { U().toast('Este quintal não está mais na sua lista: a visita foi cancelada ou passada para outra pessoa. Se o registro não vale mais, toque em Descartar; se vale, fale com a bolsista do estado.'); return; }
       if (it.tipo === 'visita' && d.situacao === 'realizada') { Object.keys(fotosVis).forEach(k => delete fotosVis[k]); Object.assign(fotosVis, it.fotos || {}); diasFila(it); U().abrirPainel({ tipo: 'visita-feita', id: it.id }); }
       else if (it.tipo === 'visita') U().abrirPainel({ tipo: 'visita-form', id: it.id });
       else if (it.tipo === 'diagnostico') { Object.keys(fotosTemp).forEach(k => delete fotosTemp[k]); Object.assign(fotosTemp, it.fotos || {}); diasFila(it);
@@ -6129,7 +6146,16 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       else if (it.tipo === 'avaliacao' && MQ.impactoUI) MQ.impactoUI.conferir(it);
       const p = document.getElementById('painel'), f0 = p && p.querySelector('form[data-form]');
       if (f0 && !p.querySelector('.rascunho-volta')) { const n = document.createElement('p'); n.className = 'aviso rascunho-volta'; n.setAttribute('role', 'status');
-        n.textContent = R.MSG_CONFLITO + ' Já mostramos o registro como está agora, com o que você tinha preenchido por cima: confira e salve de novo.'; f0.prepend(n); }
+        n.textContent = it.conflito ? R.MSG_CONFLITO + ' Já mostramos o registro como está agora, com o que você tinha preenchido por cima: confira e salve de novo.'
+          : 'Este registro não foi aceito: ' + (it.erro || 'motivo não informado') + ' Corrija e salve de novo, ou feche e descarte.'; f0.prepend(n); }
+    }
+    else if (a === 'campo-descartar') {   // tira da fila deste aparelho um registro recusado que não vale mais (pede um segundo toque)
+      const it = (S().fila || []).find(i => i.id === el.dataset.id); if (!it) return;
+      if (!el.dataset.confirmar) { el.dataset.confirmar = '1'; el.dataset.confEm = Date.now(); el.textContent = 'Toque de novo para descartar';
+        setTimeout(() => { if (el.isConnected && el.dataset.confirmar) { delete el.dataset.confirmar; el.textContent = 'Descartar'; } }, 6000); return; }
+      if (Date.now() - (+el.dataset.confEm || 0) < 450) return;   // toque duplo não confirma
+      await MQ.fila.remover(it.id); if (MQ.fotoDia && it.fotos) { try { MQ.fotoDia.limparRegistro(it.tipo, it.dados || {}); } catch (e) { /* segue */ } }
+      S().fila = await MQ.fila.listar(eu.id); U().render(); U().toast('Registro descartado deste aparelho.');
     }
     else if (a === 'campo-visita-nova') U().abrirPainel({ tipo: 'visita-form', uf: eu.uf });
     else if (a === 'campo-visita-editar') U().abrirPainel({ tipo: 'visita-form', id: el.dataset.id });
@@ -6240,7 +6266,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       await U().ocupado(form, async () => {
         const enviado = await guardar('visita', v);
         U().fecharPainel(); U().render();
-        U().toast(enviado ? (v0 ? 'Visita atualizada.' : 'Visita agendada no roteiro.') : 'Visita guardada no aparelho. Será enviada quando houver internet.');
+        U().toast(enviado ? (v0 ? 'Visita atualizada.' : 'Visita agendada no roteiro.') : 'Visita guardada no aparelho. ' + MQ.fila.espera());
       });
     }
     if (tipo === 'diag') {
@@ -6275,7 +6301,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         const enviado = await guardar('diagnostico', reg, fotos);
         Object.keys(fotosTemp).forEach(k => delete fotosTemp[k]);
         U().fecharPainel(); U().render();
-        U().toast(enviado ? (sem ? 'Diagnóstico enviado. Sem água: a coordenação técnica foi avisada.' : 'Diagnóstico enviado. O plano vai para aprovação da coordenação técnica.') : 'Diagnóstico guardado no aparelho. Será enviado quando houver internet.');
+        U().toast(enviado ? (sem ? 'Diagnóstico enviado. Sem água: a coordenação técnica foi avisada.' : 'Diagnóstico enviado. O plano vai para aprovação da coordenação técnica.') : 'Diagnóstico guardado no aparelho. ' + MQ.fila.espera(true));
       });
     }
     if (tipo === 'visita-feita') {
@@ -6293,7 +6319,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         const enviado = await guardar('visita', v, Object.assign({}, fotosVis));
         Object.keys(fotosVis).forEach(k => delete fotosVis[k]);
         U().fecharPainel(); U().render();
-        U().toast(enviado ? 'Visita registrada como feita. Já pode entrar na solicitação de ajuda de custo do mês.' : 'Visita guardada no aparelho. Será enviada quando houver internet.');
+        U().toast(enviado ? 'Visita registrada como feita. Já pode entrar na solicitação de ajuda de custo do mês.' : 'Visita guardada no aparelho. ' + MQ.fila.espera());
       });
     }
     if (tipo === 'diag-kit-item') {
@@ -10319,7 +10345,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const enviado = await MQ.campoUI.guardar('avaliacao', reg, Object.assign({}, fotosAv));
       Object.keys(fotosAv).forEach(k => delete fotosAv[k]);
       U().fecharPainel(); U().render();
-      U().toast(enviado ? 'Avaliação registrada. A visita conta como feita e pode entrar na ajuda de custo.' : 'Avaliação guardada no aparelho. Será enviada quando houver internet.');
+      U().toast(enviado ? 'Avaliação registrada. A visita conta como feita e pode entrar na ajuda de custo.' : 'Avaliação guardada no aparelho. ' + MQ.fila.espera());
     });
   }
   function conferir(it) { Object.keys(fotosAv).forEach(k => delete fotosAv[k]); Object.assign(fotosAv, it.fotos || {}); if (MQ.fotoDia) MQ.fotoDia.marcarDias('avaliacao', it.dados || {}, it.fotosDias); U().abrirPainel({ tipo: 'aval-form', ficha: it.dados.ficha_id, visita: it.dados.visita_id || '' }); }
@@ -10422,7 +10448,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <div class="campo" data-arlo-opc ${arlo ? 'hidden' : ''}><label for="dp-uf">Estado</label><select id="dp-uf" name="uf_end">${op(['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE', 'Outro'], en.uf)}</select></div>
       </div></fieldset>
       <fieldset data-arlo-opc ${arlo ? 'hidden' : ''}><legend>Questionário socioeconômico (opcional)</legend>
-        <label class="check"><input type="checkbox" name="tem_socio" ${se ? 'checked' : ''} data-socio> <span>Responder. Os dados servem só para o perfil da equipe nos relatórios, sem nome.</span></label>
+        <label class="check"><input type="checkbox" name="tem_socio" ${se ? 'checked' : ''} data-socio> <span>Responder. As respostas servem só para o perfil da equipe nos relatórios, que mostram os números sem nome. Quem vê as respostas com o nome: a coordenação do projeto e o auxiliar administrativo.</span></label>
         <div class="campos" data-socio-campos ${se ? '' : 'hidden'}>
           <div class="campo"><label for="dp-esc">Escolaridade</label><select id="dp-esc" name="escolaridade">${op(ESCOLARIDADE, se && se.escolaridade)}</select></div>
           <div class="campo"><label for="dp-raca">Raça/cor</label><select id="dp-raca" name="raca_etnia">${op(RACA, se && se.raca_etnia)}</select></div>
@@ -10502,8 +10528,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   /* ---------- no formulário de cadastro: o link, gerado ao escolher "Gerar link" ---------- */
   const chaveLink = p => [p.papel, p.uf || '', p.subst || ''].join('|');
-  async function gerarLink(p) {
-    const k = chaveLink(p); if (C.links[k]) return C.links[k];
+  // 18/10/2026 (auditoria independente): novo = true ao escolher "Gerar link". Antes o link ficava guardado até recarregar a página e a
+  // segunda agente (ou a vaga reaberta depois de um cadastro recusado) recebia o link já usado. O guardado serve só ao painel aberto.
+  async function gerarLink(p, novo) {
+    const k = chaveLink(p); if (novo) delete C.links[k]; if (C.links[k]) return C.links[k];
     C.links[k] = await S().api.criarConvite(p.papel, p.uf || null, p.subst || null);
     return C.links[k];
   }
@@ -11422,7 +11450,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           'O sistema envia junto a tela, a versão e o tipo de aparelho. Não vai foto da tela; não escreva nome, CPF nem telefone de beneficiária.',
           'Sem internet, o relato fica guardado no aparelho e sobe quando o sinal voltar. A coordenação geral recebe e marca quando resolver.']],
         ['Sem internet', [
-          'Fichas, diagnósticos, visitas feitas e avaliações podem ser preenchidos sem sinal. Ficam guardados no celular, com as fotos, e sobem sozinhos quando a internet voltar (ou em <b>Enviar agora</b>).',
+          'Fichas, diagnósticos, visitas feitas e avaliações podem ser preenchidos sem sinal. Ficam guardados no celular, com as fotos, e sobem sozinhos quando a internet voltar (ou em <b>Enviar agora</b>). Se o servidor não aceitar um registro, ele aparece com o motivo: toque em <b>Abrir e corrigir</b>, ou em <b>Descartar</b> se ele não vale mais (por exemplo, a visita foi cancelada).',
           'Antes de ir a campo, abra o sistema com internet para atualizar a lista de visitas.',
           'Depois de 15 minutos sem uso o sistema sai sozinho, em todos os perfis (aos 13 minutos aparece um aviso: toque em <b>Continuar usando</b>). Sem internet ele não sai (para entrar de novo é preciso conexão); quando o sinal volta, se você continuar parada há 15 minutos, aí ele sai.',
           'Se o sistema sair com um formulário pela metade, o que foi digitado volta quando você entrar e abrir o mesmo formulário (fica guardado só neste aparelho, por 24 horas). O que já estava guardado para enviar também não se perde.',
@@ -11481,6 +11509,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         ['A pessoa perdeu o código ou ele venceu.', 'Abra a ficha dela e gere outro. O anterior deixa de valer na hora.'],
         ['A pessoa esqueceu a senha.', 'Quando ela toca em "Esqueci a senha" na entrada, o pedido aparece na aba <b>Equipe</b> (com número na aba), em "Pedidos de novo acesso". Só a coordenação geral resolve: abra a ficha, toque em "Liberar novo primeiro acesso" (confirme) e mande o código pelo WhatsApp do cadastro. A senha antiga é apagada; os dados não mudam. Se a pessoa não sabe do pedido, descarte.'],
         ['Errei o CPF.', 'CPF e estado não mudam depois de salvos. Desligue o cadastro errado e faça um novo.'],
+        ['Preciso corrigir o e-mail de alguém.', 'O e-mail é o login. De quem ainda não entrou no sistema, quem cadastrou corrige à vontade. De quem já entrou, só a coordenação geral troca, porque a troca apaga a senha: depois de salvar, gere um novo código de acesso e mande para a pessoa.'],
         ['A pessoa já tem cadastro no Arlo.', 'Marque "Sim" na pergunta do Arlo: só os dados básicos são pedidos (e a cidade, para quem vai a campo).'],
         ['O CEP não preencheu a rua.', 'Em muitas cidades pequenas o CEP é um só para a cidade toda. O sistema preenche cidade e estado; digite a rua, o sítio ou a comunidade.']
       ]
@@ -13588,7 +13617,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   // a fila rodou mais uma volta sozinha (registro salvo enquanto outro subia): atualiza a tela e avisa
   if (MQ.fila) MQ.fila.aoEnviarDepois = r => { informarFila(); carregar().then(() => renderFundo()).catch(() => {}); toast(r.enviados + (r.enviados > 1 ? ' registros enviados.' : ' registro enviado.')); };
   async function sincronizar(avisar) {
-    if (!S.eu || !R.ehCampo(S.eu.papel) || !navigator.onLine) return;
+    // 18/10/2026 (auditoria independente): a coordenação também grava visitas pela fila (Roteiro: mudar data, cancelar, visita feita);
+    // antes a fila só era enviada para bolsistas e agentes, e o que a coordenação mudava ficava preso no aparelho
+    if (!S.eu || !(R.ehCampo(S.eu.papel) || R.decideCampo(S.eu.papel)) || !navigator.onLine) return;
     const antes = (await MQ.fila.listar(S.eu.id)).length; if (!antes) { informarFila(); return; }
     const r = await MQ.fila.sincronizar(S.api, S.eu.id);
     informarFila();
@@ -15075,8 +15106,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <div class="campo"><label for="c-cpf">CPF</label><input id="c-cpf" name="cpf" inputmode="numeric" value="${esc(R.fmtCPF(m.cpf || ''))}" ${edit ? 'readonly' : ''} placeholder="000.000.000-00" required>
             ${edit ? '<span class="dica">CPF não muda. Se estiver errado, desligue e cadastre de novo.</span>' : ''}</div>
           <div class="campo"><label for="c-fone">Celular com WhatsApp</label><input id="c-fone" name="telefone" inputmode="tel" autocomplete="tel" value="${esc(MQ.mascaras ? MQ.mascaras.fmtTel(String(m.telefone || '').replace(/\D/g, '')) : (m.telefone || ''))}" placeholder="(89) 90000-0000" required></div>
-          <div class="campo inteiro"><label for="c-email">E-mail</label><input id="c-email" name="email" type="email" autocomplete="email" value="${v('email')}" maxlength="254" required>
-            <span class="dica">É o login no sistema. Nenhum e-mail é enviado: depois de salvar, mande para ela o aviso de acesso (aparece na ficha dela).</span></div>
+          ${(() => { const entrou = edit && !!m.user_id, geral = S.eu && S.eu.papel === 'coord_geral';   // 68: trocar o e-mail de quem já entrou apaga a senha
+            return `<div class="campo inteiro"><label for="c-email">E-mail</label><input id="c-email" name="email" type="email" autocomplete="email" value="${v('email')}" maxlength="254" ${entrou && !geral ? 'readonly' : ''} required>
+            <span class="dica">${entrou ? (geral ? '<b>Esta pessoa já entrou no sistema.</b> Trocar o e-mail apaga a senha dela: depois de salvar, gere um novo código de primeiro acesso e mande para ela.'
+              : 'Esta pessoa já entrou no sistema: o e-mail é o login dela e trocar apaga a senha. Só a coordenação geral faz essa troca.')
+              : 'É o login no sistema. Nenhum e-mail é enviado: depois de salvar, mande para ela o aviso de acesso (aparece na ficha dela).'}</span></div>`; })()}
           ${MQ.convitesUI && priv !== undefined ? '' : `<div class="campo"><label for="c-mun">Município onde mora</label><input id="c-mun" name="municipio" value="${v('municipio')}" maxlength="120" ${bols ? 'list="lista-mun"' : 'placeholder="Município/UF"'}>
             ${bols ? `<datalist id="lista-mun">${munis.map(x => `<option value="${esc(x)}">`).join('')}</datalist><span class="dica">A lista traz os municípios do projeto técnico em ${esc(m.uf)}.</span>` : ''}</div>`}
           <div class="campo"><label for="c-siape">Matrícula SIAPE <span class="muted">(só se for servidor(a) público(a) federal)</span></label><input id="c-siape" name="siape" inputmode="numeric" value="${v('siape')}" placeholder="Deixe vazio se não for"></div>
@@ -15327,7 +15361,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       else if (a === 'cad-modo') {
         const p = Object.assign({}, S.painel, { modo: el.dataset.m || undefined }); abrirPainel(p);
         if (p.modo === 'link' && MQ.convitesUI) {   // o link sai pronto, sem outro clique
-          try { await MQ.convitesUI.gerarLink(p); } catch (e) { toast(avisarErro(e)); abrirPainel(Object.assign({}, p, { modo: undefined })); return; }
+          try { await MQ.convitesUI.gerarLink(p, true); } catch (e) { toast(avisarErro(e)); abrirPainel(Object.assign({}, p, { modo: undefined })); return; }
           if (S.painel && S.painel.tipo === 'cadastro' && S.painel.modo === 'link') abrirPainel(S.painel);
         }
       }

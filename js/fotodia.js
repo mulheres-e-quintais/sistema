@@ -167,7 +167,7 @@
   function marcarDias(tipo, dados, fd) { const k = chaveDoRegistro(tipo, dados || {}); if (k) dias[k] = Object.assign({}, fd || {}); }
 
   /* cópia no aparelho (IndexedDB "mq-fotos-rascunho"): sem IndexedDB (navegação privada antiga) segue sem cópia */
-  const BD = 'mq-fotos-rascunho', LOJA = 'fotos', VALIDADE = 3 * 24 * 60 * 60 * 1000;
+  const BD = (MQ.CONFIG && MQ.CONFIG.cenario === 'fim' ? 'sim-' : '') + 'mq-fotos-rascunho', LOJA = 'fotos', VALIDADE = 3 * 24 * 60 * 60 * 1000;
   let bdP = null;
   function abrirBD() {
     if (bdP) return bdP;

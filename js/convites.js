@@ -90,7 +90,7 @@
         <div class="campo" data-arlo-opc ${arlo ? 'hidden' : ''}><label for="dp-uf">Estado</label><select id="dp-uf" name="uf_end">${op(['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE', 'Outro'], en.uf)}</select></div>
       </div></fieldset>
       <fieldset data-arlo-opc ${arlo ? 'hidden' : ''}><legend>Questionário socioeconômico (opcional)</legend>
-        <label class="check"><input type="checkbox" name="tem_socio" ${se ? 'checked' : ''} data-socio> <span>Responder. Os dados servem só para o perfil da equipe nos relatórios, sem nome.</span></label>
+        <label class="check"><input type="checkbox" name="tem_socio" ${se ? 'checked' : ''} data-socio> <span>Responder. As respostas servem só para o perfil da equipe nos relatórios, que mostram os números sem nome. Quem vê as respostas com o nome: a coordenação do projeto e o auxiliar administrativo.</span></label>
         <div class="campos" data-socio-campos ${se ? '' : 'hidden'}>
           <div class="campo"><label for="dp-esc">Escolaridade</label><select id="dp-esc" name="escolaridade">${op(ESCOLARIDADE, se && se.escolaridade)}</select></div>
           <div class="campo"><label for="dp-raca">Raça/cor</label><select id="dp-raca" name="raca_etnia">${op(RACA, se && se.raca_etnia)}</select></div>
@@ -170,8 +170,10 @@
 
   /* ---------- no formulário de cadastro: o link, gerado ao escolher "Gerar link" ---------- */
   const chaveLink = p => [p.papel, p.uf || '', p.subst || ''].join('|');
-  async function gerarLink(p) {
-    const k = chaveLink(p); if (C.links[k]) return C.links[k];
+  // 18/10/2026 (auditoria independente): novo = true ao escolher "Gerar link". Antes o link ficava guardado até recarregar a página e a
+  // segunda agente (ou a vaga reaberta depois de um cadastro recusado) recebia o link já usado. O guardado serve só ao painel aberto.
+  async function gerarLink(p, novo) {
+    const k = chaveLink(p); if (novo) delete C.links[k]; if (C.links[k]) return C.links[k];
     C.links[k] = await S().api.criarConvite(p.papel, p.uf || null, p.subst || null);
     return C.links[k];
   }

@@ -282,7 +282,7 @@
       const enviado = await MQ.campoUI.guardar('avaliacao', reg, Object.assign({}, fotosAv));
       Object.keys(fotosAv).forEach(k => delete fotosAv[k]);
       U().fecharPainel(); U().render();
-      U().toast(enviado ? 'Avaliação registrada. A visita conta como feita e pode entrar na ajuda de custo.' : 'Avaliação guardada no aparelho. Será enviada quando houver internet.');
+      U().toast(enviado ? 'Avaliação registrada. A visita conta como feita e pode entrar na ajuda de custo.' : 'Avaliação guardada no aparelho. ' + MQ.fila.espera());
     });
   }
   function conferir(it) { Object.keys(fotosAv).forEach(k => delete fotosAv[k]); Object.assign(fotosAv, it.fotos || {}); if (MQ.fotoDia) MQ.fotoDia.marcarDias('avaliacao', it.dados || {}, it.fotosDias); U().abrirPainel({ tipo: 'aval-form', ficha: it.dados.ficha_id, visita: it.dados.visita_id || '' }); }

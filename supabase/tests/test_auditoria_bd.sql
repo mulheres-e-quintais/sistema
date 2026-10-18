@@ -270,7 +270,8 @@ select t('E. quem saiu e volta com o mesmo e-mail consegue criar a senha de novo
   insert into auth.users (id, email, raw_user_meta_data) values (gen_random_uuid(), 'b47.ag2@t.com', jsonb_build_object('codigo', cod));   -- o primeiro acesso (criar a senha)
   if (select user_id from public.equipe where id = nova) is null then raise exception 'o cadastro novo não ficou ligado ao login'; end if;
 end $x$$q$, 'ok');
-select t('E. e-mail do cadastro trocado: o login antigo é removido e fica no histórico', :T, $q$do $x$ declare u uuid; begin
+-- 68: trocar o e-mail de quem já entrou é da coordenação geral (a técnica é recusada: test_troca_email_login.sql)
+select t('E. e-mail do cadastro trocado: o login antigo é removido e fica no histórico', :G, $q$do $x$ declare u uuid; begin
   select user_id into u from public.equipe where id = 'f4700000-0000-0000-0000-000000000002';
   update public.equipe set email = 'b47.novo.email@t.com' where id = 'f4700000-0000-0000-0000-000000000002';
   perform b47_como(null);

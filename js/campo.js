@@ -138,6 +138,9 @@
 
   /* ---------- roteiro do mês (é o pedido de ajuda de custo) ---------- */
   function roteiro(uf, podeMudar) {
+    // 18/10/2026 (auditoria independente): a coordenação técnica agenda, muda e marca visita feita, mas o banco não deixa ela registrar
+    // diagnóstico nem avaliação (políticas diag_incluir e aval_incluir): o botão aparecia e a gravação era recusada
+    const podeRegistrar = podeMudar && S().eu && S().eu.papel !== 'coord_tecnico';
     const m = mesRoteiro || mesAtual();
     const vs = visitas().filter(v => (!uf || v.uf === uf) && v.situacao !== 'cancelada' && String(v.situacao === 'realizada' ? v.data_realizada : v.data_prevista).slice(0, 7) === m)
       .sort((a, b) => String(a.data_realizada || a.data_prevista).localeCompare(String(b.data_realizada || b.data_prevista)));
@@ -153,8 +156,8 @@
           const feita = v.situacao === 'realizada'; const temDg = dgFichas.has(v.ficha_id);
           const b = (acao, txt, pri, extra) => `<button class="btn peq${pri ? ' pri' : ''}" data-acao="${acao}" data-ficha="${E(v.ficha_id)}" data-visita="${E(v.id)}" data-id="${E(v.id)}"${extra || ''}>${txt}</button>`;
           const acoes = v._fila ? '<span class="small muted">Aguardando internet</span>'
-            : v.etapa === 'avaliacao' ? (feita ? b('aval-ver', 'Ver avaliação') : podeMudar ? b('aval-novo', 'Registrar avaliação', true) : '')
-            : v.etapa === 'diagnostico' ? (temDg ? b('campo-diag-ver', 'Ver diagnóstico') : podeMudar ? b('campo-diag-novo', 'Registrar diagnóstico', true) : '')
+            : v.etapa === 'avaliacao' ? (feita ? b('aval-ver', 'Ver avaliação') : podeRegistrar ? b('aval-novo', 'Registrar avaliação', true) : '')
+            : v.etapa === 'diagnostico' ? (temDg ? b('campo-diag-ver', 'Ver diagnóstico') : podeRegistrar ? b('campo-diag-novo', 'Registrar diagnóstico', true) : '')
             : feita ? (v.relato ? `<span class="small muted" title="${E(v.relato)}">${E(String(v.relato).slice(0, 60))}${String(v.relato).length > 60 ? '…' : ''}</span>` : '')
             : podeMudar ? botaoFeita(v) : '';
           return `<tr class="rt-s-${feita ? 'ok' : v._fila ? 'pend' : v.data_prevista < hoje ? 'crit' : 'pend'}"><td class="num rt-data">${R.fmtData(v.data_realizada || v.data_prevista)}</td>${uf ? '' : `<td class="rt-uf">${E(v.uf)}</td>`}<td class="rt-mulher">${E(f.nome || '—')}<br><span class="small muted">${E(f.municipio || '')}${uf ? '' : `<span class="rt-ufm"> · ${E(v.uf)}</span>`}</span></td>
@@ -232,11 +235,15 @@
   function avisoFila(pend) {
     const l = (pend || []).filter(i => !i.conflito); if (!l.length) return '';
     const erro = l.filter(i => i.erro), tentando = l.filter(i => !i.erro && i.tentativas);
-    const quem = it => { const d = it.dados || {}; const f = ficha(d.ficha_id) || {}; return E(f.nome || 'Quintal') + (d.data_realizada || d.data_visita ? ' · ' + R.fmtData(d.data_realizada || d.data_visita) : ''); };
+    const quem = it => { const d = it.dados || {}; const f = ficha(d.ficha_id) || {}; return E(f.nome || 'Quintal que não está mais na sua lista') + (d.data_realizada || d.data_visita ? ' · ' + R.fmtData(d.data_realizada || d.data_visita) : ''); };
+    // 18/10/2026 (auditoria independente): registro recusado pelo servidor (visita cancelada, quintal que já tem diagnóstico...) ficava
+    // preso para sempre: o aviso mandava abrir, mas não havia botão, nem jeito de descartar o que não vale mais
+    const botoes = it => it.erro ? `<span class="fila-acoes"><button type="button" class="btn peq pri" data-acao="campo-conferir" data-id="${E(it.id)}">Abrir e corrigir</button>
+      <button type="button" class="btn peq" data-acao="campo-descartar" data-id="${E(it.id)}">Descartar</button></span>` : '';
     const linha = it => `<li><b>${NOME_TIPO[it.tipo] || 'Registro'}</b> · ${quem(it)}<br><span class="small">${it.erro ? '<b>Não foi aceito:</b> ' + E(it.erro)
-      : it.tentativas ? 'Tentando enviar de novo (' + it.tentativas + (it.tentativas > 1 ? ' tentativas' : ' tentativa') + '). Último motivo: ' + E(it.ultimaFalha || 'falha na conexão') : 'Esperando internet para enviar.'}</span></li>`;
+      : it.tentativas ? 'Tentando enviar de novo (' + it.tentativas + (it.tentativas > 1 ? ' tentativas' : ' tentativa') + '). Último motivo: ' + E(it.ultimaFalha || 'falha na conexão') : 'Esperando internet para enviar.'}</span>${botoes(it)}</li>`;
     return `<div class="aviso${erro.length ? ' erro' : ''} fila-campo" role="status"><b>${l.length} registro${l.length > 1 ? 's' : ''} de campo guardado${l.length > 1 ? 's' : ''} neste aparelho, ainda não ${l.length > 1 ? 'chegaram' : 'chegou'} ao servidor.</b>
-      ${erro.length ? ' Abra o registro, corrija o que o motivo diz e salve de novo; ou toque em Enviar agora para tentar outra vez.' : tentando.length ? ' O sistema tenta de novo sozinho.' : ''}
+      ${erro.length ? ' Toque em Abrir e corrigir, acerte o que o motivo diz e salve de novo. Se o registro não vale mais (por exemplo, a visita foi cancelada), toque em Descartar.' : tentando.length ? ' O sistema tenta de novo sozinho.' : ''}
       <ul class="fila-lista">${l.map(linha).join('')}</ul>
       ${navigator.onLine ? '<button class="btn peq" data-acao="ficha-enviar">Enviar agora</button>' : '<span class="small">Sem internet agora: o envio é automático quando ela voltar.</span>'}</div>`;
   }
@@ -757,6 +764,8 @@
     if (a === 'campo-conferir') {
       const it = (S().fila || []).find(i => i.id === el.dataset.id); if (!it) return;
       const d = it.dados || {};
+      // o quintal saiu da lista desta pessoa (visita cancelada ou passada para outra): não há o que abrir; diz por quê
+      if (d.ficha_id && !ficha(d.ficha_id)) { U().toast('Este quintal não está mais na sua lista: a visita foi cancelada ou passada para outra pessoa. Se o registro não vale mais, toque em Descartar; se vale, fale com a bolsista do estado.'); return; }
       if (it.tipo === 'visita' && d.situacao === 'realizada') { Object.keys(fotosVis).forEach(k => delete fotosVis[k]); Object.assign(fotosVis, it.fotos || {}); diasFila(it); U().abrirPainel({ tipo: 'visita-feita', id: it.id }); }
       else if (it.tipo === 'visita') U().abrirPainel({ tipo: 'visita-form', id: it.id });
       else if (it.tipo === 'diagnostico') { Object.keys(fotosTemp).forEach(k => delete fotosTemp[k]); Object.assign(fotosTemp, it.fotos || {}); diasFila(it);
@@ -764,7 +773,16 @@
       else if (it.tipo === 'avaliacao' && MQ.impactoUI) MQ.impactoUI.conferir(it);
       const p = document.getElementById('painel'), f0 = p && p.querySelector('form[data-form]');
       if (f0 && !p.querySelector('.rascunho-volta')) { const n = document.createElement('p'); n.className = 'aviso rascunho-volta'; n.setAttribute('role', 'status');
-        n.textContent = R.MSG_CONFLITO + ' Já mostramos o registro como está agora, com o que você tinha preenchido por cima: confira e salve de novo.'; f0.prepend(n); }
+        n.textContent = it.conflito ? R.MSG_CONFLITO + ' Já mostramos o registro como está agora, com o que você tinha preenchido por cima: confira e salve de novo.'
+          : 'Este registro não foi aceito: ' + (it.erro || 'motivo não informado') + ' Corrija e salve de novo, ou feche e descarte.'; f0.prepend(n); }
+    }
+    else if (a === 'campo-descartar') {   // tira da fila deste aparelho um registro recusado que não vale mais (pede um segundo toque)
+      const it = (S().fila || []).find(i => i.id === el.dataset.id); if (!it) return;
+      if (!el.dataset.confirmar) { el.dataset.confirmar = '1'; el.dataset.confEm = Date.now(); el.textContent = 'Toque de novo para descartar';
+        setTimeout(() => { if (el.isConnected && el.dataset.confirmar) { delete el.dataset.confirmar; el.textContent = 'Descartar'; } }, 6000); return; }
+      if (Date.now() - (+el.dataset.confEm || 0) < 450) return;   // toque duplo não confirma
+      await MQ.fila.remover(it.id); if (MQ.fotoDia && it.fotos) { try { MQ.fotoDia.limparRegistro(it.tipo, it.dados || {}); } catch (e) { /* segue */ } }
+      S().fila = await MQ.fila.listar(eu.id); U().render(); U().toast('Registro descartado deste aparelho.');
     }
     else if (a === 'campo-visita-nova') U().abrirPainel({ tipo: 'visita-form', uf: eu.uf });
     else if (a === 'campo-visita-editar') U().abrirPainel({ tipo: 'visita-form', id: el.dataset.id });
@@ -875,7 +893,7 @@
       await U().ocupado(form, async () => {
         const enviado = await guardar('visita', v);
         U().fecharPainel(); U().render();
-        U().toast(enviado ? (v0 ? 'Visita atualizada.' : 'Visita agendada no roteiro.') : 'Visita guardada no aparelho. Será enviada quando houver internet.');
+        U().toast(enviado ? (v0 ? 'Visita atualizada.' : 'Visita agendada no roteiro.') : 'Visita guardada no aparelho. ' + MQ.fila.espera());
       });
     }
     if (tipo === 'diag') {
@@ -910,7 +928,7 @@
         const enviado = await guardar('diagnostico', reg, fotos);
         Object.keys(fotosTemp).forEach(k => delete fotosTemp[k]);
         U().fecharPainel(); U().render();
-        U().toast(enviado ? (sem ? 'Diagnóstico enviado. Sem água: a coordenação técnica foi avisada.' : 'Diagnóstico enviado. O plano vai para aprovação da coordenação técnica.') : 'Diagnóstico guardado no aparelho. Será enviado quando houver internet.');
+        U().toast(enviado ? (sem ? 'Diagnóstico enviado. Sem água: a coordenação técnica foi avisada.' : 'Diagnóstico enviado. O plano vai para aprovação da coordenação técnica.') : 'Diagnóstico guardado no aparelho. ' + MQ.fila.espera(true));
       });
     }
     if (tipo === 'visita-feita') {
@@ -928,7 +946,7 @@
         const enviado = await guardar('visita', v, Object.assign({}, fotosVis));
         Object.keys(fotosVis).forEach(k => delete fotosVis[k]);
         U().fecharPainel(); U().render();
-        U().toast(enviado ? 'Visita registrada como feita. Já pode entrar na solicitação de ajuda de custo do mês.' : 'Visita guardada no aparelho. Será enviada quando houver internet.');
+        U().toast(enviado ? 'Visita registrada como feita. Já pode entrar na solicitação de ajuda de custo do mês.' : 'Visita guardada no aparelho. ' + MQ.fila.espera());
       });
     }
     if (tipo === 'diag-kit-item') {

@@ -43,6 +43,9 @@
     const { data: up, error: e1 } = await sb.from(tabela).update(muda).eq('id', reg.id).select();
     if (e1) throw erro(e1);
     if (up && up.length) return up[0];
+    // 18/10/2026 (auditoria independente): com marca, o registro existia quando a pessoa leu. Se o UPDATE não achou a linha, ele saiu do
+    // alcance dela (visita passada para outra pessoa, quintal fora da lista): antes tentava incluir e a mensagem era "sem permissão"
+    if (marca) throw erro({ code: 'P0001', message: 'Este registro não está mais com você: foi passado para outra pessoa ou saiu da sua lista. Fale com a bolsista do estado ou com a coordenação.' });
     const { data, error } = await sb.from(tabela).insert(reg).select().single();
     if (error) throw erro(error);
     return data;

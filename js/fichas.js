@@ -446,7 +446,7 @@
         U().fecharPainel(); U().render();
         if (navigator.onLine) await U().sincronizar(false);
         const ainda = S.fila.find(i => i.id === f.id);
-        U().toast(ainda ? (ainda.erro ? 'Ficha guardada, mas não enviada: ' + ainda.erro : 'Ficha guardada no aparelho. Será enviada quando houver internet.') : 'Ficha enviada para aprovação da coordenação técnica.');
+        U().toast(ainda ? (ainda.erro ? 'Ficha guardada, mas não enviada: ' + ainda.erro : 'Ficha guardada no aparelho. ' + MQ.fila.espera()) : 'Ficha enviada para aprovação da coordenação técnica.');
       });
     }
     if (tipo === 'ficha-decisao') {

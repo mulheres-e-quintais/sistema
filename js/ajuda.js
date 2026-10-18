@@ -73,7 +73,7 @@
           'O sistema envia junto a tela, a versão e o tipo de aparelho. Não vai foto da tela; não escreva nome, CPF nem telefone de beneficiária.',
           'Sem internet, o relato fica guardado no aparelho e sobe quando o sinal voltar. A coordenação geral recebe e marca quando resolver.']],
         ['Sem internet', [
-          'Fichas, diagnósticos, visitas feitas e avaliações podem ser preenchidos sem sinal. Ficam guardados no celular, com as fotos, e sobem sozinhos quando a internet voltar (ou em <b>Enviar agora</b>).',
+          'Fichas, diagnósticos, visitas feitas e avaliações podem ser preenchidos sem sinal. Ficam guardados no celular, com as fotos, e sobem sozinhos quando a internet voltar (ou em <b>Enviar agora</b>). Se o servidor não aceitar um registro, ele aparece com o motivo: toque em <b>Abrir e corrigir</b>, ou em <b>Descartar</b> se ele não vale mais (por exemplo, a visita foi cancelada).',
           'Antes de ir a campo, abra o sistema com internet para atualizar a lista de visitas.',
           'Depois de 15 minutos sem uso o sistema sai sozinho, em todos os perfis (aos 13 minutos aparece um aviso: toque em <b>Continuar usando</b>). Sem internet ele não sai (para entrar de novo é preciso conexão); quando o sinal volta, se você continuar parada há 15 minutos, aí ele sai.',
           'Se o sistema sair com um formulário pela metade, o que foi digitado volta quando você entrar e abrir o mesmo formulário (fica guardado só neste aparelho, por 24 horas). O que já estava guardado para enviar também não se perde.',
@@ -132,6 +132,7 @@
         ['A pessoa perdeu o código ou ele venceu.', 'Abra a ficha dela e gere outro. O anterior deixa de valer na hora.'],
         ['A pessoa esqueceu a senha.', 'Quando ela toca em "Esqueci a senha" na entrada, o pedido aparece na aba <b>Equipe</b> (com número na aba), em "Pedidos de novo acesso". Só a coordenação geral resolve: abra a ficha, toque em "Liberar novo primeiro acesso" (confirme) e mande o código pelo WhatsApp do cadastro. A senha antiga é apagada; os dados não mudam. Se a pessoa não sabe do pedido, descarte.'],
         ['Errei o CPF.', 'CPF e estado não mudam depois de salvos. Desligue o cadastro errado e faça um novo.'],
+        ['Preciso corrigir o e-mail de alguém.', 'O e-mail é o login. De quem ainda não entrou no sistema, quem cadastrou corrige à vontade. De quem já entrou, só a coordenação geral troca, porque a troca apaga a senha: depois de salvar, gere um novo código de acesso e mande para a pessoa.'],
         ['A pessoa já tem cadastro no Arlo.', 'Marque "Sim" na pergunta do Arlo: só os dados básicos são pedidos (e a cidade, para quem vai a campo).'],
         ['O CEP não preencheu a rua.', 'Em muitas cidades pequenas o CEP é um só para a cidade toda. O sistema preenche cidade e estado; digite a rua, o sítio ou a comunidade.']
       ]

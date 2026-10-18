@@ -1,7 +1,7 @@
 /* Fila de envio: guarda no aparelho o que foi preenchido sem internet e envia depois.
    Usa IndexedDB (aguenta fotos); se o navegador não permitir, guarda só na memória. */
 (function () {
-  const BANCO = 'mulheres-quintais', LOJA = 'fila';
+  const BANCO = (MQ.CONFIG && MQ.CONFIG.cenario === 'fim' ? 'sim-' : '') + 'mulheres-quintais', LOJA = 'fila';   // simulacao.html: banco do aparelho separado do sistema real
   let dbp = null, memoria = new Map();
 
   function abrir() {
@@ -108,6 +108,11 @@
     /* Envia o que estiver pendente. Erros de regra ficam marcados no item para a bolsista corrigir;
        falta de rede só deixa para depois. */
     enviando: false,
+    /* 18/10/2026 (auditoria independente): com internet e outro envio em andamento (fotos no 3G), o registro novo sobe na volta seguinte;
+       antes a mensagem dizia "Será enviada quando houver internet", com a internet ligada */
+    espera(o) { return (typeof navigator !== 'undefined' && navigator.onLine !== false && (F.enviando || F.denovo))
+      ? 'Está na fila de envio, logo atrás dos registros que já estavam subindo: o aviso de enviado aparece em seguida.'
+      : 'Será ' + (o ? 'enviado' : 'enviada') + ' quando houver internet.'; },
     async sincronizar(api, dono) {
       // 13/10/2026 (auditoria): registro salvo enquanto outro sobe não fica parado: no fim desta volta, roda mais uma
       if (F.enviando) { F.denovo = { api, dono }; return { enviados: 0 }; }
