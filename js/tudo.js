@@ -6455,8 +6455,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const ilustracoes = () => ILUS.map(([leg, tema], i) => ({ url: desenho(i, tema), legenda: leg, uf: MQ.UFS[i % MQ.UFS.length].uf, ilustracao: true }));
 
   /* ---------- fotos ---------- */
-  // sem foto real publicada: o destaque também mostra as ilustrações (com o selo)
-  const fotosOuIlus = d => (d && (d.fotos || []).length) ? d.fotos : ilustracoes();
+  // 18/10/2026: só fotos reais. Sem nenhuma publicada, o espaço das fotos não aparece (antes mostrava desenhos com o selo
+  // "Ilustração", que não informavam nada e ocupavam quase uma tela no celular); o mosaico volta sozinho com a primeira foto.
+  const fotosOuIlus = d => (d && (d.fotos || []).length) ? d.fotos : [];
 
   /* mosaico pequeno da tela de entrada: painel fixo com 7 fotos em tamanhos diferentes; o desenho não muda,
      só as fotos trocam a cada 8 s (se houver mais de 7). Passar o mouse aproxima a foto. */
@@ -6493,8 +6494,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
      quando os números chegam, nada na tela de entrada sai do lugar */
   const esqueleto = () => `<span class="eyebrow">O projeto agora</span><h2 id="vit-t" class="serif">Mulheres &amp; Quintais em números</h2>
     <div class="vts">${'<div class="vt esq"><span class="vt-n">&nbsp;</span><span class="vt-l">&nbsp;</span></div>'.repeat(3)}</div>
-    <div class="vit-duo" aria-hidden="true"><div class="vit-mapa vit-info">${MQ.painelUI && MQ.painelUI.mapaUFs ? MQ.painelUI.mapaUFs({ entrada: true }) : ''}</div>
-      <div id="vit-foto"><div class="vit-sem-foto"><span>&nbsp;</span></div></div></div>
+    <div class="vit-duo so-mapa" aria-hidden="true"><div class="vit-mapa vit-info">${MQ.painelUI && MQ.painelUI.mapaUFs ? MQ.painelUI.mapaUFs({ entrada: true }) : ''}</div></div>
     <p class="vit-rodape vit-rodape-fim"><span>&nbsp;</span></p>`;
   /* rotas saindo de Apodi: só na primeira vez que o mapa da entrada aparece; depois voltam ao tracejado em movimento */
   function rotasSaindo() {
@@ -6503,13 +6503,13 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     return true;
   }
   function corpoEntrada(d) {
-    const t = totais(d);
+    const t = totais(d); const mos = miniMosaico(d, V.foto);
     return `<span class="eyebrow">O projeto agora</span>
       <h2 id="vit-t" class="serif">Mulheres &amp; Quintais em números</h2>
       <div class="vts">${tiles(t, true).map(tile).join('')}</div>
-      <div class="vit-duo">
+      <div class="vit-duo${mos ? '' : ' so-mapa'}">
         <div class="vit-mapa vit-info">${/* tela de entrada (02/10/2026): pontos FIXOS, um por município que terá quintais (os mesmos do mapa da Visão geral, MQ.GEO.mun), todos iguais, tenha ou não cadastro; o círculo pelo número de cadastradas fica só na página pública */ MQ.painelUI.mapaUFs({ entrada: true, animar: rotasSaindo() })}</div>
-        <div id="vit-foto">${miniMosaico(d, V.foto) || `<div class="vit-sem-foto"><span>As fotos dos quintais aparecem aqui quando a coordenação aprovar, só de quem autorizou.</span></div>`}</div>
+        ${mos ? `<div id="vit-foto">${mos}</div>` : ''}
       </div>
       <p class="vit-rodape vit-rodape-fim"><span>${quando() ? 'atualizado ' + quando() : ''}</span></p>`;
   }

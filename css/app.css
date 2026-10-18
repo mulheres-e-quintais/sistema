@@ -4100,3 +4100,6 @@ html.sem-rede #painel :is(form[data-form="ficha"], form[data-form="diag"], form[
 @media (max-width: 380px) { .dx-agua .agua-sit { grid-template-columns: 1fr; } }
 /* "Ver como" da demonstração em tela muito estreita: cantos menos redondos quando quebra em várias linhas (cortava "Coord. geral") */
 @media (max-width: 340px) { .demo-ver .seg { border-radius: 12px; } .demo-ver .seg button { border-radius: 8px; } }
+/* tela de entrada sem foto real publicada (18/10/2026): o mapa ocupa a faixa, centralizado e com largura de leitura */
+.vit-duo.so-mapa, .ent-hero .vit-duo.so-mapa { grid-template-columns: minmax(0, 1fr); }
+.vit-duo.so-mapa .vit-mapa { max-width: 760px; width: 100%; justify-self: center; }

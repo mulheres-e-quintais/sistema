@@ -40,28 +40,20 @@ const MUN = { PI: 10, BA: 8, AL: 3, PE: 5, SE: 3 };
       ok(`${w} ${raiz}: sem textos retirados`, !/Cor do estado|a partir de Apodi\/RN|municípios que receberão os quintais, a partir/.test(await p.innerText(raiz)));
     };
     await mapa('#vitrine');
-    const mos = await p.$$eval('#vit-foto .mini-mos > span:not(.mos-selo)', l => l.length);
-    ok(`${w} entrada: 1 imagem principal e 2 menores`, mos === 3, String(mos));
-    ok(`${w} entrada: ilustrações com selo (sem foto publicada)`, (await p.$$eval('#vit-foto .mos-selo', l => l.length)) === 1);
-    ok(`${w} entrada: retrato enquadrado pelo alto (não corta o rosto)`, (await p.$eval('#vit-foto .mini-mos img', i => getComputedStyle(i).objectPosition)).startsWith('50% 22%'));
+    // 18/10/2026: sem foto real publicada, não há mosaico (antes mostrava desenhos com o selo "Ilustração"); o mapa ocupa a faixa
+    ok(`${w} entrada: sem foto publicada, sem mosaico nem ilustração`, !(await p.$('#vit-foto')) && !(await p.$('#vitrine .mos-selo')));
+    ok(`${w} entrada: sem foto publicada, o mapa ocupa a faixa`, !!(await p.$('#vitrine .vit-duo.so-mapa')));
     if (w === 1280) {
-      const [hm, hf] = await p.evaluate(() => [document.querySelector('#vitrine .vit-mapa').getBoundingClientRect().height, document.getElementById('vit-foto').getBoundingClientRect().height]);
-      ok(`${w} entrada: mosaico com a mesma altura do mapa`, Math.abs(hm - hf) <= 2, hm + ' x ' + hf);
       const [xl, xh] = await p.evaluate(() => [document.querySelector('.ent-acesso').getBoundingClientRect().left, document.querySelector('.ent-t').getBoundingClientRect().right]);
       ok(`${w} entrada: login ao lado da frase`, xl > xh);
       ok(`${w} entrada: números na largura toda, abaixo do login`, await p.evaluate(() => document.querySelector('#vitrine').getBoundingClientRect().top >= document.querySelector('.ent-acesso').getBoundingClientRect().bottom - 2));
-      const q = p.locator('#vit-foto .mini-mos > span.mm-n').first(); await q.hover(); await p.waitForTimeout(500);
-      ok(`${w} entrada: zoom ao passar o mouse na foto`, /matrix\(1\.3/.test(await q.locator('img').evaluate(i => getComputedStyle(i).transform)));
-      const l1 = await p.$$eval('#vit-foto .mini-mos > span', l => l.map(e => e.className).join(','));
-      await p.waitForTimeout(8500);
-      ok(`${w} entrada: painel fixo (o desenho não muda quando as fotos trocam)`, l1 === await p.$$eval('#vit-foto .mini-mos > span', l => l.map(e => e.className).join(',')));
     }
     ok(`${w} entrada: sem rolagem para o lado`, await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     // página pública
     await p.evaluate(() => { location.hash = '#numeros'; }); await p.waitForTimeout(1200);
     await mapa('#numeros');
     ok(`${w} números: tabela por estado cabe no quadro`, await p.$eval('.pub-tab', t => t.scrollWidth <= t.parentElement.clientWidth + 1));
-    ok(`${w} números: no máximo 3 imagens (1 principal e 2 menores), o mapa é o destaque`, (await p.$$eval('.pub-fotos > *', l => l.length)) <= 3 && (await p.$$eval('.pub-fotos > *', l => l.length)) >= 1);
+    ok(`${w} números: sem foto publicada, a seção de fotos não aparece (sem ilustrações)`, !(await p.$('.pub-fotos')));
     ok(`${w} números: legenda do tamanho dos círculos`, /O tamanho indica o número de mulheres cadastradas/.test(await p.innerText('#numeros')));
     ok(`${w} números: sem rolagem para o lado`, await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     // com fotos publicadas: o mosaico vira de fotos e amplia
@@ -75,6 +67,24 @@ const MUN = { PI: 10, BA: 8, AL: 3, PE: 5, SE: 3 };
     ok(`${w} números: tocar amplia a foto`, await p.isVisible('#vit-amplia'));
     await p.keyboard.press('Escape'); await p.waitForTimeout(150);
     ok(`${w} números: Esc fecha a foto`, !(await p.isVisible('#vit-amplia')));
+    // com fotos publicadas, a tela de entrada volta a ter o mosaico: 1 principal e 2 menores, sem selo
+    await p.evaluate(() => { location.hash = ''; }); await p.waitForTimeout(400);
+    await p.evaluate(() => { localStorage.removeItem('mq-vitrine'); document.querySelector('button[data-p=entrada]').click(); }); await p.waitForTimeout(1600);
+    const mos = await p.$$eval('#vit-foto .mini-mos > span:not(.mos-selo)', l => l.length);
+    ok(`${w} entrada: com fotos publicadas, 1 imagem principal e 2 menores`, mos === 3, String(mos));
+    ok(`${w} entrada: fotos de verdade, sem selo de ilustração`, (await p.$$eval('#vit-foto .mos-selo', l => l.length)) === 0);
+    ok(`${w} entrada: retrato enquadrado pelo alto (não corta o rosto)`, (await p.$eval('#vit-foto .mini-mos img', i => getComputedStyle(i).objectPosition)).startsWith('50% 22%'));
+    if (w === 1280) {
+      const [hm, hf] = await p.evaluate(() => [document.querySelector('#vitrine .vit-mapa').getBoundingClientRect().height, document.getElementById('vit-foto').getBoundingClientRect().height]);
+      ok(`${w} entrada: mosaico com a mesma altura do mapa`, Math.abs(hm - hf) <= 2, hm + ' x ' + hf);
+      const q = p.locator('#vit-foto .mini-mos > span.mm-n').first(); await q.hover();
+      // espera a animação do zoom terminar (com a máquina carregada, 500 ms às vezes não bastavam)
+      const zoom = await q.locator('img').evaluate(i => new Promise(res => { const t0 = Date.now(); (function v() { if (/matrix\(1\.3/.test(getComputedStyle(i).transform)) return res(true); if (Date.now() - t0 > 3000) return res(false); requestAnimationFrame(v); })(); }));
+      ok(`${w} entrada: zoom ao passar o mouse na foto`, zoom);
+      const l1 = await p.$$eval('#vit-foto .mini-mos > span', l => l.map(e => e.className).join(','));
+      await p.waitForTimeout(8500);
+      ok(`${w} entrada: painel fixo (o desenho não muda quando as fotos trocam)`, l1 === await p.$$eval('#vit-foto .mini-mos > span', l => l.map(e => e.className).join(',')));
+    }
     ok(`${w}: sem erro de página`, errs.length === 0, errs.join('|'));
     await ctx.close(); }
   // 01/10/2026: paleta do infográfico (pedida pela coordenação), igual nos dois temas (quadro creme); estado pintado com 80% sobre o creme
