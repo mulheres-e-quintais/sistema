@@ -1061,7 +1061,7 @@
             <div class="aviso erro" data-erro hidden></div>
             <div class="acoes"><button class="btn pri" type="submit">Trocar senha</button></div>
           </form></details>
-        <div class="acoes meus-fim"><button class="btn" type="button" data-acao="fechar">Voltar ao sistema</button>${S.api.modo === 'supabase' ? '<button class="btn" type="button" data-acao="sair">Sair do sistema</button>' : ''}</div></div>`;
+        <div class="acoes meus-fim foto-acoes"><button class="btn peq foto-btn" type="button" data-acao="fechar">${(MQ.ICONES || {}).voltar || ''}<span>Voltar ao sistema</span></button>${S.api.modo === 'supabase' ? `<button class="btn peq foto-btn foto-sair" type="button" data-acao="sair">${(MQ.ICONES || {}).sair || ''}<span>Sair do sistema</span></button>` : ''}</div></div>`;
   }
 
   /* atalhos no topo das telas pessoais: o caminho mais curto para cada tarefa, sem rolar a página inteira no celular.

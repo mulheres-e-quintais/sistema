@@ -4184,6 +4184,8 @@ html.sem-rede #painel :is(form[data-form="ficha"], form[data-form="diag"], form[
 .vg-k-ic svg { width: 22px; height: 22px; }
 .resumo.vg-resumo .vg-k-vez .vg-k-ic { background: var(--crit-bg); color: var(--crit); }
 .resumo.vg-resumo .vg-k-vez .v { color: var(--crit); }
+@media (max-width: 520px) { .resumo.vg-resumo { grid-template-columns: minmax(0, 1fr); } .resumo.vg-resumo > div + div { border-top: 1px solid var(--line); border-left: 0 !important; } .resumo.vg-resumo > div { grid-column: auto !important; } }
+.resumo.vg-resumo .v { overflow-wrap: anywhere; min-width: 0; }
 /* atalhos para as duas seções */
 .viag-ir { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .viag-ir a { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 10px 16px 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink);
@@ -4258,3 +4260,6 @@ html.sem-rede #painel :is(form[data-form="ficha"], form[data-form="diag"], form[
 :root[data-theme="dark"] .foto-acoes .foto-btn:hover svg { color: var(--marrom); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .foto-acoes .foto-btn:hover, :root:not([data-theme="light"]) .foto-acoes .btn.peq.foto-btn:hover { background: var(--areia); border-color: var(--areia); color: var(--marrom); } :root:not([data-theme="light"]) .foto-acoes .foto-btn:hover svg { color: var(--marrom); } }
 @media (pointer: coarse) { .foto-acoes .foto-btn { min-height: var(--alvo); } }
+/* Meus dados: Voltar ao sistema e Sair do sistema no mesmo formato dos botões de foto (18/10/2026) */
+.acoes.meus-fim.foto-acoes { display: flex; width: 100%; }
+.foto-acoes .foto-btn.foto-sair:not(:hover) svg { color: var(--accent); }
