@@ -59,7 +59,7 @@ describe('Tela do MPA', () => {
   test('a tela do MPA mostra quem está pronta para trabalhar e o que espera a coordenação', async () => {
     const t = await montar('obs_mpa'); t.S.acomp = await t.api.dadosAcompanhamento(); t.S.acAba = 'equipe'; t.MQ.ui.render(); const h = texto(t.html());
     assert.match(h, /Andamento no território/);
-    assert.match(h, /Habilitadas para o campo \d+ de \d+/);
+    assert.match(h, /Bolsistas e agentes habilitadas \d+ de \d+/);
     t.S.acAba = 'resumo'; t.MQ.ui.render(); assert.match(texto(t.html()), /O que pede atenção/);
   });
 });

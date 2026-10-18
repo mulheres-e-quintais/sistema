@@ -21,7 +21,7 @@ const base = () => {
     { id: 'v8', ficha_id: 'fantasma', uf: 'PI', etapa: 'diagnostico', situacao: 'realizada', data_prevista: '2026-10-20', data_realizada: '2026-10-20' }];
   const diagnosticos = [{ ficha_id: 'f0', uf: 'PI', situacao: 'aprovado', sem_agua: false, area_m2: 300, renda_quintal: 100 }, { ficha_id: 'f1', uf: 'PI', situacao: 'aguardando', sem_agua: false, area_m2: 200, renda_quintal: 50 },
     { ficha_id: 'f5', uf: 'PI', situacao: 'aprovado', sem_agua: true, area_m2: 999 }];
-  const equipe = [{ id: 'e1', status: 'ativa', papel: 'articulacao', uf: 'PI', nome: 'Ana Oculta', email: 'ana@oculta.br', cpf: '11144477735' }, { id: 'e2', status: 'ativa', papel: 'agente', uf: 'PI', nome: 'Gil Oculto' },
+  const equipe = [{ id: 'e1', status: 'ativa', papel: 'articulacao', uf: 'PI', nome: 'Ana Oculta', email: 'ana@oculta.br', cpf: '11144477735', matricula_fic_em: '2026-10-01' }, { id: 'e2', status: 'ativa', papel: 'agente', uf: 'PI', nome: 'Gil Oculto', matricula_fic_em: '2026-10-01' },
     { id: 'e3', status: 'desligada', papel: 'apoio', uf: 'PI', nome: 'Saiu' }, { id: 'e4', status: 'ativa', papel: 'coord_tecnico', uf: null, nome: 'Tec' }];
   return { fichas, visitas, diagnosticos, avaliacoes: [], equipe, turmas: [{ id: 't' }], matriculas: [{ id: 'm1' }, { id: 'm2' }], encontros: [] };
 };
@@ -77,7 +77,7 @@ describe('números do acompanhamento', () => {
 describe('o que cada órgão recebe', () => {
   test('65: MDA e MPA recebem perfil, impacto e formação (a tela em abas mostra tudo aos dois)', () => {
     for (const o of ['mda', 'mpa']) { const a = MQ.acomp.calcular(base(), o, HOJE);
-      assert.ok(a.perfil && a.impacto, o); assert.equal(a.formacao.turmas, 1, o); assert.equal(a.formacao.matriculas, 2, o); }
+      assert.ok(a.perfil && a.impacto, o); assert.equal(a.formacao.turmas, 1, o); assert.equal(a.formacao.matriculas, 2, o); assert.ok(a.formacao.pessoas >= 2, o); }
   });
   test('65: o extra (eventos, canais, água, curso, documentos) não traz nome nem arquivo; o financeiro só sai para o MDA na prévia', () => {
     const d = { pedidos: [{ tipo: 'evento', situacao: 'autorizado', data_ref: '2026-01-01', dados: { nome_contato: 'Fulana Secreta' } }], canaisVenda: [{ tipo: 'feira', uf: 'PI', municipio: 'Picos', ativo: true, contato: 'Oculta 8999990000' }],

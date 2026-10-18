@@ -623,7 +623,7 @@
       <div class="eq-kpis" aria-label="Resumo da equipe">
         ${kpiEq(ct ? 1 : 0, 1, 'coordenação técnica cadastrada', 1)}
         ${kpiEq(bols.length, 10, 'bolsistas cadastradas', 2)}
-        ${kpiEq(aptas, pagaveis.length || 0, 'habilitadas (FIC, FUNCERN e termo)', 3)}
+        ${kpiEq(aptas, pagaveis.length || 0, 'coord. técnica e bolsistas habilitadas (FIC, FUNCERN e termo)', 3)}
         ${kpiEq((S.fichas || []).filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada').length, 200, 'mulheres selecionadas e aprovadas', 4)}
       </div>
       <section class="secao" aria-labelledby="t-ct">

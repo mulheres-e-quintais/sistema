@@ -80,7 +80,8 @@ select t('61. fila do celular: "-infinito" também', :A, $q$do $x$ begin perform
 select t('61. quem não entrou continua vendo as fotos da vitrine', null, $q$do $x$ begin set local role none;
   if not has_function_privilege('anon', 'public.vitrine_foto_publica(text)', 'EXECUTE') then raise exception 'fechou'; end if; end $x$$q$, 'ok');
 
-select t('61. formação do MPA: a coordenação vê a prévia, sem contar matrícula cancelada', :G, $q$do $x$ declare r jsonb := public.acompanhamento_formacao('mpa'); begin set local role none;
-  if (r ->> 'matriculas')::int <> (select count(*) from public.matriculas_fic where cancelada_em is null and id not in (select id from public.exemplo)) then raise exception 'contou cancelada'; end if; end $x$$q$, 'ok');
+-- 67 (18/10/2026): matriculadas = pessoas ativas com matrícula registrada, a mesma conta da coordenação (cancelar apaga matricula_fic_em)
+select t('61. formação do MPA: a coordenação vê a prévia, com as matriculadas contadas como na coordenação', :G, $q$do $x$ declare r jsonb := public.acompanhamento_formacao('mpa'); begin set local role none;
+  if (r ->> 'matriculas')::int <> (select count(*) from public.equipe x where x.status = 'ativa' and x.papel in ('coord_tecnico','articulacao','apoio','agente') and x.matricula_fic_em is not null and x.id not in (select public.exemplo_fora())) then raise exception 'conta diferente da coordenação'; end if; end $x$$q$, 'ok');
 select t('61. formação do MPA: bolsista não vê', :BB, $q$select public.acompanhamento_formacao('mpa')$q$, 'Acesso restrito');
 select n || '|' || case when ok then 'PASSOU' else 'FALHOU' end || '|' || caso || '|' || coalesce(det, '') from res order by n;

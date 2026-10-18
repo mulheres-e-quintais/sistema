@@ -133,6 +133,7 @@ chk as (
   union all select '64_previa_com_simulacao (a prévia do MDA e do MPA conta os dados de exemplo)', exists (select 1 from pg_proc where proname = 'exemplo_fora')
   union all select '65_acompanhamento_completo (tela do MDA e do MPA em abas: eventos, canais, água, curso, documentos e recursos)', exists (select 1 from pg_proc where proname = 'acompanhamento_extra')
   union all select '66_auditoria_1510 (prévia só da coordenação geral; documentos sem título para quem acompanha; recursos liberados só pela coordenação geral)', exists (select 1 from pg_proc where proname = 'acompanhamento_extra' and prosrc like '%ultima_data%') and exists (select 1 from pg_proc where proname = 'parametros_validar' and prosrc like '%acomp_mda_financeiro%')
+  union all select '67_matriculas_fic_mda (matriculadas no FIC no painel do MDA/MPA contadas como na coordenação)', exists (select 1 from pg_proc where proname = 'acompanhamento_formacao' and prosrc like '%''pessoas''%')
   union all select '61_auditoria_campo (termo conferido é o arquivo aberto; bolsa depois da saída; acompanhamento repetido; plano para a agente escalada)',
                    exists (select 1 from pg_proc where proname = 'conferir_termo') and exists (select 1 from pg_trigger where not tgisinternal and tgname = 'z_depois_da_saida')
                    and exists (select 1 from pg_policy where polname = 'diag_ler_escalada') and exists (select 1 from pg_trigger where not tgisinternal and tgname = 'z_visitas_fotos_ficam')

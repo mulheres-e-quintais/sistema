@@ -191,10 +191,13 @@ describe('demonstração espelha o banco (js/api-demo.js × supabase)', () => {
     const v = t.S.visitas.find(x => x.id === 'audimp1');
     assert.ok(await recusa(() => t.api.salvarVisita(Object.assign({}, v, { data_prevista: '2026-09-26' }))), 'a demonstração deixou a bolsista mudar visita já feita');
   });
-  test('MPA na tela/demonstração: matrícula e encontro cancelados não contam (o banco conta: ver a comparação com o banco)', () => {
+  test('MPA na tela/demonstração: matriculadas como na coordenação (matrícula registrada, só quem está ativa); encontro cancelado não conta (67)', () => {
     const MQ = base();
-    const a = MQ.acomp.calcular({ fichas: [], visitas: [], turmas: [{ id: 't' }], matriculas: [{ id: 'm1' }, { id: 'm2', cancelada_em: '2026-10-05' }], encontros: [{ id: 'e1' }, { id: 'e2', cancelado_em: '2026-10-05' }] }, 'mpa', '2026-10-14');
-    igual(a.formacao, { turmas: 1, matriculas: 1, encontros: 1 });
+    // cancelar a matrícula apaga matricula_fic_em (11_fic.sql); quem foi desligada não está ativa; o professor não faz o curso
+    const equipe = [{ id: 'p1', status: 'ativa', papel: 'articulacao', matricula_fic_em: '2026-10-01' }, { id: 'p2', status: 'ativa', papel: 'agente', matricula_fic_em: '2026-10-02' },
+      { id: 'p3', status: 'ativa', papel: 'coord_tecnico' }, { id: 'p4', status: 'desligada', papel: 'agente', matricula_fic_em: '2026-09-20' }, { id: 'p5', status: 'ativa', papel: 'professor_fic' }];
+    const a = MQ.acomp.calcular({ fichas: [], visitas: [], equipe, turmas: [{ id: 't' }], matriculas: [{ id: 'm1' }], encontros: [{ id: 'e1' }, { id: 'e2', cancelado_em: '2026-10-05' }] }, 'mpa', '2026-10-14');
+    igual(a.formacao, { turmas: 1, pessoas: 3, matriculas: 2, encontros: 1 });
   });
   test('regra presente nos dois: implantação sem plano aprovado é recusada', async () => {
     const { t, ana, outra } = await demoPreparada();

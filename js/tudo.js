@@ -12507,7 +12507,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         ebia_final: { seguranca: q(av, x => x.ebia_nivel === 'seguranca'), leve: q(av, x => x.ebia_nivel === 'leve'), moderada: q(av, x => x.ebia_nivel === 'moderada'), grave: q(av, x => x.ebia_nivel === 'grave') } };
     }
     {
-      r.formacao = { turmas: (d.turmas || []).length, matriculas: (d.matriculas || []).filter(x => !x.cancelada_em).length, encontros: (d.encontros || d.ficEncontros || []).filter(x => !x.cancelado_em).length };   // 13/10/2026: sem as canceladas
+      // 67 (18/10/2026): matriculadas = pessoas com a matrícula registrada, como na coordenação (antes contava só as feitas numa turma)
+      const fazFIC = equipe.filter(m => MQ.regras.matriculaFIC(m.papel));
+      r.formacao = { turmas: (d.turmas || []).length, pessoas: fazFIC.length, matriculas: fazFIC.filter(m => m.matricula_fic_em).length, encontros: (d.encontros || d.ficEncontros || []).filter(x => !x.cancelado_em).length };   // 13/10/2026: sem as canceladas
     }
     return r;
   }
@@ -12639,7 +12641,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function abaResumo(a) {
     const x = a.extra || {};
     return `<div class="ac2-kpis">${destaque(total(a, 'selecionadas'), 'mulheres selecionadas', 'em ' + n(total(a, 'municipios')) + ' ' + pl(total(a, 'municipios'), 'município', 'municípios'), ALVO.selecionadas)}${destaque(total(a, 'implantados'), 'quintais implantados', '', ALVO.implantados)}
-        ${destaque(total(a, 'visitas_feitas'), 'visitas de campo feitas', '', 1000)}${destaque(total(a, 'pessoas'), 'pessoas nas famílias', 'das mulheres selecionadas')}</div>
+        ${destaque(total(a, 'visitas_feitas'), pl(total(a, 'visitas_feitas'), 'visita de campo feita', 'visitas de campo feitas'), 'todas as etapas: diagnóstico, implantação, acompanhamento e avaliação')}${destaque(total(a, 'pessoas'), 'pessoas nas famílias', 'das mulheres selecionadas')}</div>
       ${cartao('O caminho de cada quintal', caminho(a) + '<p class="ac2-nota">Da indicação pela comunidade até a avaliação final: cada etapa é registrada no sistema, com data, local e foto.</p>')}
       ${cartao('O que pede atenção', parados(a))}${cartao('Visitas feitas por mês', evolucao(a))}`;
   }
@@ -12721,8 +12723,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const TDP = { ata: ['ata', 'atas'], relatorio: ['relatório', 'relatórios'], plano: ['plano', 'planos'], oficio: ['ofício', 'ofícios'], contrato: ['contrato ou termo', 'contratos ou termos'], lista_presenca: ['lista de presença', 'listas de presença'], foto: ['foto', 'fotos'], outro: ['outro', 'outros'] };
     const pres = f.marcacoes ? Math.round(f.presencas / f.marcacoes * 100) : null;
     return `${cartao('Equipe de campo por estado', `<div class="ac2-ufs">${(a.por_uf || []).map(u => `<div class="ac2-uf"><div class="ac2-uf-t"><span class="ac2-sigla">${u.uf}</span><b>${E(U().nomeUF ? U().nomeUF(u.uf) : u.uf)}</b></div>
-        ${linhaMeta('Bolsistas', u.bolsistas, 2)}<p class="ac2-mini"><b class="num">${n(u.agentes)}</b> agente${u.agentes === 1 ? '' : 's'} de campo</p>${u.habilitadas != null ? linhaMeta('Habilitadas para o campo', u.habilitadas, u.equipe_campo || 0) : ''}</div>`).join('')}</div>`)}
-      ${cartao('Curso de formação (FIC)', `<div class="ac2-kpis peq">${destaque(fo.turmas || 0, pl(fo.turmas, 'turma', 'turmas'))}${destaque(fo.matriculas || 0, pl(fo.matriculas, 'pessoa matriculada', 'pessoas matriculadas'))}${destaque(f.feitos || 0, pl(f.feitos, 'encontro feito', 'encontros feitos'), 'de ' + n(f.encontros || fo.encontros || 0) + ' marcados')}${destaque(Math.round(f.horas_feitas != null ? f.horas_feitas : f.horas || 0), 'horas de curso já dadas', 'de ' + n(Math.round(f.horas || 0)) + ' programadas')}</div>
+        ${linhaMeta('Bolsistas', u.bolsistas, 2)}<p class="ac2-mini"><b class="num">${n(u.agentes)}</b> agente${u.agentes === 1 ? '' : 's'} de campo</p>${u.habilitadas != null ? linhaMeta('Bolsistas e agentes habilitadas', u.habilitadas, u.equipe_campo || 0) : ''}</div>`).join('')}</div>`)}
+      ${cartao('Curso de formação (FIC)', `<div class="ac2-kpis peq">${destaque(fo.turmas || 0, pl(fo.turmas, 'turma', 'turmas'))}${destaque(fo.matriculas || 0, fo.pessoas != null ? 'matriculadas (coordenação técnica, bolsistas e agentes)' : pl(fo.matriculas, 'pessoa matriculada', 'pessoas matriculadas'), '', fo.pessoas || 0)}${destaque(f.feitos || 0, pl(f.feitos, 'encontro feito', 'encontros feitos'), 'de ' + n(f.encontros || fo.encontros || 0) + ' marcados')}${destaque(Math.round(f.horas_feitas != null ? f.horas_feitas : f.horas || 0), 'horas de curso já dadas', 'de ' + n(Math.round(f.horas || 0)) + ' programadas')}</div>
         ${pres != null ? linhaMeta('Presença nos encontros', pres, 100).replace(/<small> de 100<\/small>/, '%') : ''}`)}
       ${cartao('Documentos do projeto', Object.keys(d.por_tipo || {}).length ? `<ul class="ac2-chips">${Object.entries(d.por_tipo).sort((x, y) => y[1] - x[1]).map(([k, q]) => `<li><b class="num">${n(q)}</b> ${E(TDP[k] ? (q === 1 ? TDP[k][0] : TDP[k][1]) : k)}${(d.ultima_data || {})[k] ? ` <small>· último em ${MQ.regras.fmtData((d.ultima_data || {})[k])}</small>` : ''}</li>`).join('')}</ul><p class="ac2-nota">Atas, relatórios, planos, ofícios, contratos e outros registros do projeto. Os arquivos e os títulos ficam com a coordenação.</p>` : '<p class="muted">Nenhum documento registrado ainda.</p>')}`;
   }
@@ -13823,7 +13825,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <div class="eq-kpis" aria-label="Resumo da equipe">
         ${kpiEq(ct ? 1 : 0, 1, 'coordenação técnica cadastrada', 1)}
         ${kpiEq(bols.length, 10, 'bolsistas cadastradas', 2)}
-        ${kpiEq(aptas, pagaveis.length || 0, 'habilitadas (FIC, FUNCERN e termo)', 3)}
+        ${kpiEq(aptas, pagaveis.length || 0, 'coord. técnica e bolsistas habilitadas (FIC, FUNCERN e termo)', 3)}
         ${kpiEq((S.fichas || []).filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada').length, 200, 'mulheres selecionadas e aprovadas', 4)}
       </div>
       <section class="secao" aria-labelledby="t-ct">
