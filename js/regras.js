@@ -510,7 +510,11 @@
     anexo: p('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 11.5v6M9 14.5h6"/>'),
     relatorio: p('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 17v-3M12 17v-5M15 17v-2"/>'),
     aviao: p('<path d="M10.5 13.5 4 11l1.2-1.2 7.3.8 4.6-4.6c.8-.8 2.2-.9 2.9-.2.7.7.6 2.1-.2 2.9l-4.6 4.6.8 7.3L14.8 21l-2.5-6.5"/><path d="m7 17-3 .5L3.5 19 6 18.5"/>'),
-    tenda: p('<path d="M12 4 3 19h18z"/><path d="M12 4v15M12 19l-3-6M12 19l3-6"/><path d="M2 19h20"/>')
+    tenda: p('<path d="M12 4 3 19h18z"/><path d="M12 4v15M12 19l-3-6M12 19l3-6"/><path d="M2 19h20"/>'),
+    impressora: p('<path d="M7 9V4h10v5"/><rect x="3.5" y="9" width="17" height="8" rx="2"/><path d="M7 14h10v6H7z"/><path d="M17 12h.01"/>'),
+    baixar: p('<path d="M12 4v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16"/>'),
+    mapa: p('<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/>'),
+    ficha: p('<rect x="4" y="3.5" width="16" height="17" rx="2"/><circle cx="9.5" cy="10" r="2.2"/><path d="M6.5 16c.5-1.8 1.6-2.7 3-2.7s2.5.9 3 2.7"/><path d="M14 9h3.5M14 12.5h3.5"/>')
   };
   const SETA = p('<path d="M5 12h13"/><path d="m13 6.5 5.5 5.5-5.5 5.5"/>');
   MQ.ICONES = ICONES;

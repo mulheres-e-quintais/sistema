@@ -1206,7 +1206,11 @@ MQ.ORCAMENTO = {
     anexo: p('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 11.5v6M9 14.5h6"/>'),
     relatorio: p('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 17v-3M12 17v-5M15 17v-2"/>'),
     aviao: p('<path d="M10.5 13.5 4 11l1.2-1.2 7.3.8 4.6-4.6c.8-.8 2.2-.9 2.9-.2.7.7.6 2.1-.2 2.9l-4.6 4.6.8 7.3L14.8 21l-2.5-6.5"/><path d="m7 17-3 .5L3.5 19 6 18.5"/>'),
-    tenda: p('<path d="M12 4 3 19h18z"/><path d="M12 4v15M12 19l-3-6M12 19l3-6"/><path d="M2 19h20"/>')
+    tenda: p('<path d="M12 4 3 19h18z"/><path d="M12 4v15M12 19l-3-6M12 19l3-6"/><path d="M2 19h20"/>'),
+    impressora: p('<path d="M7 9V4h10v5"/><rect x="3.5" y="9" width="17" height="8" rx="2"/><path d="M7 14h10v6H7z"/><path d="M17 12h.01"/>'),
+    baixar: p('<path d="M12 4v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16"/>'),
+    mapa: p('<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/>'),
+    ficha: p('<rect x="4" y="3.5" width="16" height="17" rx="2"/><circle cx="9.5" cy="10" r="2.2"/><path d="M6.5 16c.5-1.8 1.6-2.7 3-2.7s2.5.9 3 2.7"/><path d="M14 9h3.5M14 12.5h3.5"/>')
   };
   const SETA = p('<path d="M5 12h13"/><path d="m13 6.5 5.5 5.5-5.5 5.5"/>');
   MQ.ICONES = ICONES;
@@ -8838,6 +8842,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const documentoCompleto = corpo => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório da ação do projeto</title>${MQ.FONTES_LINK || ''}<style>${CSS_REL}</style></head><body>${corpo}</body></html>`;
 
   /* ---------- impressões da coordenação geral: relatórios por tipo e fichas de cadastro ---------- */
+  /* 18/10/2026: grupo e ícone de cada impressão (a tela mostra o título sem o prefixo "Relatório:" / "Fichas de cadastro:") */
+  const IMP_GRUPO = { 'rel-equipe': ['rel', 'equipe'], 'rel-selecao': ['rel', 'pasta'], 'rel-campo': ['rel', 'mapa'], 'fic-bolsistas': ['fic', 'ficha'], 'fic-membros': ['fic', 'ficha'] };
   const IMPRESSOES = {
     'rel-equipe': ['Relatório: equipe e habilitação', 'Todas as pessoas ativas, por função e estado, com a situação do curso FIC, do Arlo e do termo.'],
     'rel-selecao': ['Relatório: seleção das mulheres', 'Totais por estado e a lista das fichas, com município, resultado e situação.'],
@@ -8910,6 +8916,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <p class="rel-nota">Gerado em ${new Date().toLocaleString('pt-BR')}${autor ? ' por ' + E(autor) : ''}, com os dados registrados no sistema Mulheres &amp; Quintais. <b>Uso interno da coordenação:</b> contém dados pessoais protegidos pela LGPD. Não traz dados bancários.</p></article>`).join('');
   }
 
+  /* cartão de ação da aba (18/10/2026): ícone, título e explicação dentro do próprio botão */
+  const IC = new Proxy({}, { get: (_, n) => (MQ.ICONES || {})[n] || '' });
+  const cartaoAcao = (acao, icone, titulo, texto, pri) => `<button type="button" class="doc-acao${pri ? ' pri' : ''}" data-acao="${acao}">
+      <span class="da-ic" aria-hidden="true">${IC[icone]}</span><span class="da-tx"><b>${titulo}</b><span>${texto}</span></span><span class="da-seta" aria-hidden="true">→</span></button>`;
   /* ---------- tela ---------- */
   function aba() {
     if (S().docSemBanco) return `<div class="cab"><div><span class="eyebrow">Documentos</span><h1>Documentos do projeto</h1></div></div>${semBanco()}`;
@@ -8920,20 +8930,21 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const porTipo = Object.keys(TIPOS).map(k => [k, ativos.filter(d => d.tipo === k).length]).filter(x => x[1]);
     return `<div class="cab"><div><span class="eyebrow">Documentos</span><h1>Documentos do projeto</h1>
         <p>Atas, ofícios, relatórios e outros documentos da ação, guardados numa pasta que só a coordenação geral acessa. E o relatório da ação do projeto, gerado com os dados do sistema.</p></div></div>
-      <div class="acoes-pag">${MQ.acaoComDica({ acao: 'doc-novo', icone: 'anexo', texto: 'Anexar documento' }, 'PDF, Word, planilha ou foto, até 20 MB. Ata, ofício, lista de presença…')}
-        ${MQ.acaoComDica({ acao: 'doc-relatorio', icone: 'relatorio', texto: 'Gerar relatório da ação', curto: 'Gerar relatório', sec: true }, 'Equipe, seleção, campo, FIC, pagamentos, viagens e documentos, por período e estado.')}
-        ${S().eu.papel === 'coord_geral' && MQ.prontidaoUI ? MQ.acaoComDica({ acao: 'doc-copia', icone: 'pasta', texto: 'Baixar cópia dos dados', curto: 'Cópia dos dados', sec: true }, 'Planilha com fichas, visitas, diagnósticos, avaliações, pagamentos, equipe e FIC, sem conta bancária. Baixe toda semana e guarde num lugar seguro: ela tem CPF e endereço.') : ''}</div>
-      <div class="resumo">
-        <div><span class="v num">${ativos.length}</span><span class="l">documentos anexados</span></div>
-        ${porTipo.slice(0, 3).map(([k, n]) => `<div><span class="v num">${n}</span><span class="l">${E(TIPOS[k].toLowerCase())}${n > 1 && !/s$/.test(TIPOS[k]) ? 's' : ''}</span></div>`).join('')}
-      </div>
-      <section class="secao" aria-labelledby="t-imp"><div class="secao-cab"><div><h2 id="t-imp">Imprimir relatórios e fichas de cadastro</h2>
+      <div class="doc-acoes">${cartaoAcao('doc-novo', 'anexo', 'Anexar documento', 'PDF, Word, planilha ou foto, até 20 MB: ata, ofício, lista de presença.', true)}
+        ${cartaoAcao('doc-relatorio', 'relatorio', 'Gerar relatório da ação', 'Equipe, seleção, campo, FIC, pagamentos, viagens e documentos, por período e estado.')}
+        ${S().eu.papel === 'coord_geral' && MQ.prontidaoUI ? cartaoAcao('doc-copia', 'baixar', 'Baixar cópia dos dados', 'Planilha com fichas, visitas, avaliações, pagamentos e equipe, sem conta bancária. Baixe toda semana e guarde num lugar seguro.') : ''}</div>
+      <section class="secao doc-imp" aria-labelledby="t-imp"><div class="secao-cab"><div><h2 id="t-imp">Imprimir relatórios e fichas de cadastro</h2>
           <p>Saem dos dados do sistema, prontos para imprimir ou salvar em PDF. Uso interno: trazem nomes e, nas fichas, CPF e contato. Nenhum traz dados bancários.</p></div>
           <label class="imp-uf"><span>Estado</span><select data-imp-uf aria-label="Estado das impressões"><option value="">Todos</option>${MQ.UFS.map(u => `<option value="${E(u.uf)}"${G.impUF === u.uf ? ' selected' : ''}>${E(u.nome)}</option>`).join('')}</select></label></div>
-        <ul class="imp-lista">${Object.keys(IMPRESSOES).map(k => `<li><div><b>${E(IMPRESSOES[k][0])}</b><span class="small muted">${E(IMPRESSOES[k][1])}</span></div><button type="button" class="btn peq" data-acao="doc-imprimir" data-t="${k}">Imprimir</button></li>`).join('')}</ul></section>
-      <section class="secao" aria-labelledby="t-docs"><div class="secao-cab"><h2 id="t-docs">Documentos <span class="conta-t${ativos.length ? '' : ' zero'}">${ativos.length}</span></h2>
+        <div class="imp-grupos">${[['rel', 'Relatórios'], ['fic', 'Fichas de cadastro']].map(([g, tit]) => `<div class="imp-grupo"><h3>${tit}</h3><ul class="imp-lista">
+          ${Object.keys(IMPRESSOES).filter(k => IMP_GRUPO[k][0] === g).map(k => `<li><span class="imp-ic" aria-hidden="true">${IC[IMP_GRUPO[k][1]] || ''}</span>
+            <div><b>${E(IMPRESSOES[k][0].replace(/^(Relatório|Fichas de cadastro): /, '').replace(/^./, c => c.toUpperCase()))}</b><span class="small muted">${E(IMPRESSOES[k][1])}</span></div>
+            <button type="button" class="btn-imp" data-acao="doc-imprimir" data-t="${k}" aria-label="Imprimir ${E(IMPRESSOES[k][0])}">${IC.impressora}<span>Imprimir</span></button></li>`).join('')}</ul></div>`).join('')}</div></section>
+      <section class="secao doc-lista" aria-labelledby="t-docs"><div class="secao-cab"><h2 id="t-docs">Documentos anexados <span class="conta-t${ativos.length ? '' : ' zero'}">${ativos.length}</span></h2>
           ${ativos.length > 5 ? '<input class="procura" type="search" placeholder="Procurar por título ou tipo" data-procura="lista-docs" aria-label="Procurar documento">' : ''}</div>
-        ${ativos.length ? `<div class="pag-lista" id="lista-docs">${ativos.map(linha).join('')}</div>` : '<p class="muted">Nenhum documento anexado ainda.</p>'}</section>
+        ${porTipo.length ? `<p class="doc-tipos">${porTipo.map(([k, n]) => `<span class="chip">${n} · ${E(TIPOS[k])}</span>`).join('')}</p>` : ''}
+        ${ativos.length ? `<div class="pag-lista" id="lista-docs">${ativos.map(linha).join('')}</div>`
+          : `<div class="doc-vazio"><span class="doc-vazio-ic" aria-hidden="true">${IC.pasta}</span><div><b>Nenhum documento anexado ainda.</b><span class="small muted">Use <b>Anexar documento</b>, no alto: atas, ofícios e listas de presença ficam aqui, numa pasta que só a coordenação geral acessa.</span></div></div>`}</section>
       ${arq.length ? `<details class="hist"><summary>Arquivados (${arq.length})</summary><div class="pag-lista" style="padding:0 18px 16px">${arq.map(linha).join('')}</div></details>` : ''}`;
   }
   const cab = (eyebrow, titulo) => `<div class="painel-cab"><div class="t"><span class="eyebrow">${eyebrow}</span><h2 id="painel-t">${titulo}</h2></div>
