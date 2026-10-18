@@ -151,9 +151,9 @@
     const fora = deCampo().filter(m => !R.cabeNaTurma(t, m) || emOutra(m.id)).length;
     return cab(E(t.nome), 'Matricular') + `<div class="painel-corpo"><form class="f" data-form="fic-matricular" data-id="${E(t.id)}" novalidate>
       <p class="small muted">Marque quem entra na turma e escreva o número da matrícula do SUAP de cada uma. Quem já está nesta turma aparece marcado: mudar o número ou a data corrige a matrícula.</p>
-      <div class="campo" style="max-width:240px"><label for="fm-data">Data da matrícula</label><input id="fm-data" name="data" type="date" value="${R.hoje()}" max="${R.hoje()}" required></div>
+      <div class="campo fm-data"><label for="fm-data">Data da matrícula</label><input id="fm-data" name="data" type="date" value="${R.hoje()}" max="${R.hoje()}" required></div>
       ${cands.length ? `<div class="fic-marcar">${cands.map(m => { const x = matDe(m.id); const num = x ? x.numero : (m.matricula_fic_numero || '');
-          return `<label class="fm-l"><input type="checkbox" name="p" value="${E(m.id)}" ${x ? 'checked' : ''}>${U().avatar(m, 32)}<span class="fp-t"><b>${E(nomeDe(m))}</b><span class="small muted">${E(P[m.papel].curto)} · ${E(m.uf)}${x ? ' · já nesta turma' : m.matricula_fic_em ? ' · matrícula sem turma' : ''}</span></span>
+          return `<label class="fm-l"><input type="checkbox" name="p" value="${E(m.id)}" ${x ? 'checked' : ''}>${U().avatar(m, 32)}<span class="fp-t"><b>${E(nomeDe(m))}</b><span class="small muted">${E(P[m.papel].curto)}${m.uf ? ' · ' + E(m.uf) : ''}${x ? ' · já nesta turma' : m.matricula_fic_em ? ' · matrícula sem turma' : ''}</span></span>
             <input class="fm-num" name="n_${E(m.id)}" value="${E(num)}" placeholder="Nº SUAP" aria-label="Número da matrícula de ${E(nomeDe(m))}" autocomplete="off"></label>`; }).join('')}</div>`
         : '<p class="muted">Ninguém disponível para esta turma.</p>'}
       ${fora ? `<p class="small muted">${fora} pessoa${fora > 1 ? 's' : ''} de outro estado ou já em outra turma não aparece${fora > 1 ? 'm' : ''} aqui.</p>` : ''}

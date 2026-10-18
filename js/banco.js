@@ -51,9 +51,9 @@
         <div class="campo" data-outro ${bancoSel === 'outro' ? '' : 'hidden'}><label for="bk-cod">Código do banco (3 números)</label><input id="bk-cod" name="banco_codigo" inputmode="numeric" maxlength="3" value="${bancoSel === 'outro' ? E(d.banco_codigo) : ''}"></div>
         <div class="campo" data-outro ${bancoSel === 'outro' ? '' : 'hidden'}><label for="bk-nome">Nome do banco</label><input id="bk-nome" name="banco_nome" value="${bancoSel === 'outro' ? E(d.banco_nome) : ''}"></div>
         <div class="campo"><label for="bk-ag">Agência (sem dígito)</label><input id="bk-ag" name="agencia" inputmode="numeric" value="${E(d.agencia || '')}"></div>
-        <div class="campo"><label for="bk-agdv">Dígito da agência <span class="muted">(se tiver)</span></label><input id="bk-agdv" name="agencia_dv" maxlength="1" value="${E(d.agencia_dv || '')}"></div>
+        <div class="campo"><label for="bk-agdv">Dígito da agência <span class="muted">(se tiver)</span></label><input id="bk-agdv" name="agencia_dv" maxlength="1" autocapitalize="characters" autocomplete="off" value="${E(d.agencia_dv || '')}"></div>
         <div class="campo"><label for="bk-ct">Conta (sem dígito)</label><input id="bk-ct" name="conta" inputmode="numeric" value="${E(d.conta || '')}"></div>
-        <div class="campo"><label for="bk-ctdv">Dígito da conta</label><input id="bk-ctdv" name="conta_dv" maxlength="2" value="${E(d.conta_dv || '')}"></div>
+        <div class="campo"><label for="bk-ctdv">Dígito da conta</label><input id="bk-ctdv" name="conta_dv" maxlength="2" autocapitalize="characters" autocomplete="off" value="${E(d.conta_dv || '')}"></div>
         <div class="campo inteiro"><label for="bk-tipo">Tipo de conta</label><select id="bk-tipo" name="tipo_conta">${op(TIPOS_CONTA, d.tipo_conta || 'corrente')}</select></div>
         <div class="campo"><label for="bk-pixt">Chave Pix <span class="muted">(opcional)</span></label><select id="bk-pixt" name="pix_tipo"><option value="">Sem Pix</option>${op(TIPOS_PIX, d.pix_tipo)}</select></div>
         <div class="campo"><label for="bk-pix">Chave</label><input id="bk-pix" name="pix_chave" value="${E(d.pix_chave || '')}"></div>

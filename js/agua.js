@@ -62,16 +62,19 @@
           <span>${E(h.obs)}<br><span class="small muted">${new Date(h.registrado_em).toLocaleDateString('pt-BR')}${pessoa(h.registrado_por) ? ' · ' + E(pessoa(h.registrado_por).nome) : ''}</span></span></li>`).join('')}</ol>`
         : '<p class="small muted">Nenhuma atualização registrada ainda.</p>'}
       <form class="f" data-form="agua-registrar" data-id="${E(x.f.id)}" novalidate><div class="campos">
-        <div class="campo inteiro"><label for="ag-sit">Nova situação</label><select id="ag-sit" name="situacao">${SIT.filter(s => s.id !== x.situacao).map(s => `<option value="${s.id}">${s.t}</option>`).join('')}</select></div>
+        <div class="campo inteiro"><label for="ag-sit">Nova situação</label><select id="ag-sit" name="situacao" required><option value="">Escolha…</option>${SIT.filter(s => s.id !== x.situacao).map(s => `<option value="${s.id}">${s.t}</option>`).join('')}</select></div>
         <div class="campo inteiro"><label for="ag-obs">O que aconteceu</label><textarea id="ag-obs" name="obs" rows="3" maxlength="500" placeholder="Ex.: cadastrada no Programa Cisternas da prefeitura; obra prevista para novembro."></textarea></div>
       </div><div class="aviso erro" data-erro hidden></div>
-      <div class="acoes"><button class="btn pri" type="submit">Registrar</button><button class="btn" type="button" data-acao="fechar">Fechar</button></div></form></div>`;
+      <div class="acoes"><button class="btn pri" type="submit">Registrar</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div></form></div>`;
   }
   async function clique(a, el) { if (a === 'agua-ver') U().abrirPainel({ tipo: 'agua-ver', id: el.dataset.id }); }
   async function enviar(tipo, form, fd) {
     if (tipo !== 'agua-registrar') return;
     const obs = String(fd.get('obs') || '').trim(); const situacao = String(fd.get('situacao') || '');
-    if (obs.length < 10) return U().mostrarErros(form, { obs: 'Escreva o que aconteceu (pelo menos 10 letras).' });
+    const err = {};
+    if (!situacao) err.situacao = 'Escolha a nova situação.';
+    if (obs.length < 10) err.obs = 'Escreva o que aconteceu (pelo menos 10 letras).';
+    if (Object.keys(err).length) return U().mostrarErros(form, err);
     await U().ocupado(form, async () => { await S().api.registrarSituacaoAgua(form.dataset.id, situacao, obs); await U().carregar(); U().fecharPainel(); U().render(); U().toast('Situação da água registrada.'); });
   }
   MQ.aguaUI = { secao, painel, clique, enviar, lista, SIT };

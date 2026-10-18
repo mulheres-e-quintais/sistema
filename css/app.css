@@ -3881,3 +3881,156 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 .ac2-st.aten { background: color-mix(in srgb, var(--st-aten) 16%, transparent); color: var(--ink); }
 .dobra-in { grid-template-columns: minmax(0, 1fr); }   /* 66: o conteúdo da dobra nunca alarga a coluna além da tela (320 px / zoom 400%) */
 .vd2-c-txt { overflow-wrap: anywhere; }
+
+/* ===================== Auditoria de UX 18/10/2026 ===================== */
+/* A. alvo de toque: um token só. 44 px (recomendação da Apple; luva, sol, mão calejada). Antes o piso era 40 px. */
+:root { --alvo: 44px; }
+@media (pointer: coarse) {
+  .btn, .btn.peq, .btn.peq.pri, button.link, .btn-voz, .seg button, .btn-acao.mini, .btn-add, a.btn-barra, .quem .btn-barra,
+  .ac2-abas button, .viag-ir a, .link.perigo, a.link:not(p a.link):not(li a.link), .ent-link, .marco-meta, .carga-parcial,
+  th > button.fin-nome, .mini-chk, .chips-sel .sn, .sn-par .sn, .imp-uf select, .rl-res input { min-height: var(--alvo); }
+  .linha-din > input, .linha-din > select, .prod-l > input, .cl-km > input, .fm-num { min-height: var(--alvo); }
+  .btn-ajuda, .btn-meus { width: var(--alvo); height: var(--alvo); min-width: var(--alvo); }
+  .linha-din .fechar, .painel-cab .fechar, .seg button[aria-label="Mês anterior"], .seg button[aria-label="Próximo mês"] { min-width: var(--alvo); min-height: var(--alvo); }
+  .campo input:not([type=checkbox]):not([type=radio]):not([type=file]), .campo select { min-height: var(--alvo); }
+  .pular:focus { min-height: var(--alvo); }
+}
+
+/* B. guia de seções dos formulários longos (js/guia.js): preso no topo do painel */
+.guia-form { position: sticky; top: -18px; z-index: 3; margin: -6px -4px 4px; padding: 10px 4px 8px; background: var(--bg); border-bottom: 1px solid var(--line); display: grid; gap: 6px; }
+@media (min-width: 1100px) { .guia-form { top: -22px; } }
+.gf-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; font-size: var(--t-sm); color: var(--ink-2); }
+.gf-pos { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 14em; }
+.gf-pos b { color: var(--ink); }
+.gf-conta { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gf-barra { height: 4px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.gf-barra > span { display: block; height: 100%; width: 0; background: var(--ok); border-radius: inherit; transition: width .25s; }
+.gf-lista { list-style: none; margin: 0; padding: 0 0 2px; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; scroll-snap-type: x proximity; }
+.gf-lista li { flex: none; scroll-snap-align: start; }
+.gf-lista button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 4px 10px 4px 4px; border: 1px solid var(--line-2); border-radius: 999px;
+  background: var(--surface); color: var(--ink-2); font: 600 var(--t-sm)/1.1 var(--sans); cursor: pointer; white-space: nowrap; }
+.gf-n { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--surface-2); color: var(--ink); font-size: var(--t-xs); font-variant-numeric: tabular-nums; }
+.gf-t { max-width: 13em; overflow: hidden; text-overflow: ellipsis; }
+.gf-e { min-width: .8em; font-weight: 800; }
+.gf-lista button[data-estado="completa"] { border-color: var(--ok); }
+.gf-lista button[data-estado="completa"] .gf-n { background: var(--ok); color: var(--surface); }
+.gf-lista button[data-estado="completa"] .gf-e { color: var(--ok); }
+.gf-lista button[data-estado="comecada"] .gf-e { color: var(--pend); }
+.gf-lista button[data-estado="erro"] { border-color: var(--crit); background: var(--crit-bg); color: var(--crit); }
+.gf-lista button[aria-current="step"] { border-color: var(--ink); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.gf-lista button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (pointer: coarse) { .gf-lista button { min-height: var(--alvo); } }
+/* painel largo (diagnóstico, ficha, avaliação em tela grande): os botões quebram em linhas, sem rolar para o lado */
+/* uma linha só em qualquer largura (com 13 seções, quebrar em 3 linhas presas no topo comia 190 px da tela) */
+/* o campo focado não fica escondido atrás do guia nem da barra de salvar */
+.painel-corpo:has(.guia-form) { scroll-padding-top: 120px; }
+.painel-corpo fieldset[id^="gf-"] { scroll-margin-top: 120px; }
+.painel-corpo fieldset[id^="gf-"]:focus { outline: none; }
+.painel-corpo fieldset[id^="gf-"]:focus-visible > legend { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* teclado do celular aberto ou celular deitado: o guia deixa de ficar preso (sobra pouca tela) */
+html.teclado-aberto .guia-form { position: static; }
+@media (orientation: landscape) and (max-height: 500px) { .guia-form { position: static; } .painel-corpo:has(.guia-form) { scroll-padding-top: 60px; } }
+@media print { .guia-form { display: none !important; } }
+
+/* C. largura do conteúdo: um token. 1120 px até 1599; 1280 a partir de 1600; 1440 a partir de 2200 (antes o monitor
+   grande deixava 58% da tela vazia). Texto corrido continua limitado pela regra de cada parágrafo. */
+:root { --wrap: 1120px; }
+@media (min-width: 1600px) { :root { --wrap: 1280px; } }
+@media (min-width: 2200px) { :root { --wrap: 1440px; } }
+.barra-in, .demo-in, .wrap, .pend-in, .rodape-in, .lembrete-in { max-width: var(--wrap); }
+
+/* D. formulário: grade de 6 colunas quando o painel é largo (diagnóstico, ficha, avaliação em tela grande).
+   Medida pelo próprio painel (container query), não pela tela: o mesmo formulário num painel estreito fica em 2 colunas.
+   Classes de largura: .mini (1/6: UF, idade, nº), .curto (2/6: data, CPF, telefone, R$, horas), .medio (3/6), .longo (4/6), .inteiro.
+   Em 2 colunas: .mini/.curto/.medio = meia linha; .longo/.inteiro = linha toda. No celular (até 520 px), tudo em uma coluna. */
+.painel-corpo { container: corpo / inline-size; }
+.campos.tres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 520px) { .campos.tres { grid-template-columns: 1fr; } }
+.campos > .longo { grid-column: 1 / -1; }
+@container corpo (min-width: 760px) {
+  .campos:not(.tres) { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .campos:not(.tres) > * { grid-column: span 3; }
+  .campos:not(.tres) > .inteiro { grid-column: 1 / -1; }
+  .campos:not(.tres) > .mini { grid-column: span 1; }
+  .campos:not(.tres) > .curto { grid-column: span 2; }
+  .campos:not(.tres) > .longo { grid-column: span 4; }
+  /* botões Sim/Não não esticam por 900 px */
+  .campos .sn-par { max-width: 520px; }
+}
+/* asterisco que antes era texto solto ("Foto *"): agora o mesmo .obr do resto, escondido do leitor de tela */
+.obr { color: var(--crit); font-weight: 700; }
+
+/* E. seções dos formulários: fio e respiro entre uma e outra em todos os painéis (antes só no diagnóstico) */
+.painel form.f > fieldset + fieldset, .painel form.f > fieldset + div > fieldset:first-child, .painel form.f > div + fieldset { margin-top: 10px; }
+.painel legend { font-size: var(--t-xs); }
+
+/* F. barra de salvar: presa embaixo em qualquer painel com altura de pelo menos 480 px (antes só a partir de 700 px)
+   e em qualquer formulário direto do painel (antes só no último). */
+@media (min-height: 480px) {
+  .painel-corpo > form.f > .acoes:last-child, .painel-corpo > div > form.f:last-child > .acoes:last-child {
+    position: sticky; bottom: calc(-28px - env(safe-area-inset-bottom, 0px)); box-shadow: 0 6px 0 var(--bg); z-index: 2; margin: 4px -4px 0;
+    padding: 12px 4px calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--bg); border-top: 1px solid var(--line); }
+}
+/* celular: Salvar e Cancelar lado a lado, mesma largura; rótulo longo quebra em duas linhas no máximo, sem cortar */
+@media (max-width: 520px) {
+  .painel-corpo form.f > .acoes:last-child { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+  .painel-corpo form.f > .acoes:last-child > .btn { line-height: 1.2; text-wrap: balance; }
+}
+/* conta bancária na tela de pendências: o "Voltar" mora dentro do formulário; o de fora só aparece sem formulário */
+.banco-painel:has(form) + .acoes { display: none; }
+
+/* G. indicadores: cor só com significado. Antes a cor vinha da posição (1º vermelho, 2º verde...): 100% aparecia em
+   vermelho e 30% em verde. Agora: marrom neutro; verde só quando chegou à meta. Traço dos resumos sem cor de posição. */
+.dx-kpi, .dx-kpi.k1, .dx-kpi.k2, .dx-kpi.k3, .dx-kpi.k4 { --kc: var(--verde-2); }
+.dx-kpi.cumprido { --kc: #2E7D43; }
+:root[data-theme="dark"] .dx-kpi.cumprido { --kc: #7CC77F; }
+.resumo:not(.bloco .resumo):not(.painel .resumo) > div::before,
+.resumo:not(.bloco .resumo):not(.painel .resumo) > div:nth-child(n)::before { background: var(--line-2); }
+
+/* H. Financeiro: nome da rubrica em até duas linhas no celular (antes cortava justo a parte que diferencia uma da outra) */
+@media (max-width: 600px) { .eg-nome { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.25; } }
+/* próximos marcos: o selo do mês cresce com o texto ("OUT 2026") em vez de vazar */
+.marco-cal { width: auto; min-width: 58px; padding-inline: 6px; box-sizing: border-box; }
+/* I. linhas com caixa de marcar: o que depende da marca só aparece (ou só fica forte) quando a linha está marcada */
+.vd-s:has(> .mini-chk input[type=checkbox]:not(:checked)) .vd-reg { display: none; }
+.fm-l:has(> input[type=checkbox]:not(:checked)) .fm-num { opacity: .55; }
+.fm-data { max-width: 260px; }
+[data-mostra-se][hidden] { display: none !important; }
+/* código do quintal no subtítulo do painel não quebra no meio ("PI-" / "87AH4") */
+.cod-q { white-space: nowrap; }
+/* J. Financeiro "Por meta": seta, nome e "N itens" na mesma linha; "no plano de trabalho" embaixo do nome
+   (antes a seta ficava sozinha numa linha e o selo descia: flex-wrap com a nota de largura 100%) */
+.exec-meta .fin-rub { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: 12px; row-gap: 2px; align-items: center; }
+.exec-meta .fin-rub::before { grid-row: 1; grid-column: 1; }
+.exec-meta .fin-rub .fin-rub-n { grid-row: 1; grid-column: 2; }
+.exec-meta .fin-rub small { grid-row: 1; grid-column: 3; margin-left: 0; }
+.exec-meta .fin-rub .fin-plano { grid-row: 2; grid-column: 2 / -1; }
+@media (min-width: 1100px) { table.exec-fin thead th:first-child { width: 34%; } }
+/* K. linha dos 13 meses: alinhada à margem quando o cabeçalho vira coluna (tablet em pé) */
+@media (max-width: 900px) { .linha-tempo-mini { align-self: start; justify-self: start; } }
+/* L. uso em campo (revisão de 18/10/2026) */
+/* alvos que ainda ficavam abaixo de 44 px no tablet */
+@media (pointer: coarse) {
+  .rodape-ajuda, button.link.small, main summary, #painel summary, summary { min-height: var(--alvo); }
+  .link.small, button.link.small { min-width: var(--alvo); }
+  .demo-mais > summary { min-height: var(--alvo); }
+  label.check, label.mini-chk { min-height: var(--alvo); display: inline-flex; align-items: center; }
+}
+/* teclado aberto: a barra de salvar deixa de ficar presa (cobria a mensagem de erro do campo focado) */
+html.teclado-aberto .painel-corpo form.f > .acoes:last-child, html.teclado-aberto .painel-corpo > div > form.f:last-child > .acoes:last-child { position: static; box-shadow: none; }
+.painel-corpo .campo, .painel-corpo .criterio, .painel-corpo [id^="w-"] { scroll-margin-bottom: 110px; scroll-margin-top: 120px; }
+.campo.tem-erro:focus, .criterio.tem-erro:focus, [id^="w-"].tem-erro:focus { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: 6px; }
+/* "Cancelar esta visita" numa linha à parte, longe do Salvar */
+.acoes > [data-acao="campo-visita-cancelar"] { flex-basis: 100%; order: 9; margin-top: 12px; }
+@media (max-width: 520px) { .painel-corpo form.f > .acoes:last-child > [data-acao="campo-visita-cancelar"] { grid-column: 1 / -1; } }
+html.sem-rede #painel :is(form[data-form="ficha"], form[data-form="diag"], form[data-form="aval"], form[data-form="visita-feita"]) > .acoes:last-child::before {
+  content: "Sem internet: ao salvar, fica guardado neste aparelho e sobe sozinho quando o sinal voltar."; flex-basis: 100%; grid-column: 1 / -1; order: -1;
+  font-size: var(--t-sm); color: var(--pend); background: var(--pend-bg); border-radius: 8px; padding: 6px 10px; }
+/* M. alvos de toque que ainda escapavam (medidos de novo em 18/10/2026): o id na frente vence as regras de cada tela */
+@media (pointer: coarse) {
+  :is(#app, #painel) :is(.btn, .btn.peq, button.link, button.link.small, .cg-nome, .ft-cancelar, summary, .rot-com-link a, .seg button) { min-height: var(--alvo); }
+  :is(#app, #painel) :is(.seg button, button.link, .link.perigo, .link.small) { min-width: var(--alvo); }
+  :is(#app, #painel) .rot-com-link a { display: inline-flex; align-items: center; }
+  .pular { min-height: var(--alvo); }
+}
+@media (pointer: coarse) { :is(#app) .abas button { min-height: var(--alvo); } }

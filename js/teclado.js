@@ -61,7 +61,8 @@ window.MQ = window.MQ || {};
   /* (ACE-2) campos que a validação exige, marcados ANTES do envio: asterisco no rótulo e aria-required no campo */
   const OBRIG = {
     ficha: () => ['nome', 'cpf', 'data_nascimento', 'municipio', 'comunidade', 'endereco', 'data_ficha', 'consent_dados', 'resultado', 'foto_termo', 'foto_ficha'].concat((MQ.CRITERIOS || []).map(c => c[0])),
-    diag: () => ['data_visita', 'familia', 'agua_seca', 'fontes_agua', 'fotos', 'objetivos', 'kit']
+    diag: () => ['data_visita', 'familia', 'agua_seca', 'fontes_agua', 'fotos', 'objetivos', 'kit'],
+    aval: () => ['data_visita', 'quintal_produz', 'renda_quintal', 'agua', 'alimentacao']   // 18/10/2026: a avaliação não marcava nada
   };
   function rotuloDe(form, nome) {
     const w = form.querySelector('#w-' + nome); const c = form.querySelector('[name="' + nome + '"]');
@@ -75,9 +76,9 @@ window.MQ = window.MQ || {};
     // qualquer formulário dos painéis: campo com required ganha o asterisco no rótulo (ex.: as senhas em Meus dados)
     r.querySelectorAll('#painel form [required]').forEach(c => {
       const l = (c.id && document.querySelector('label[for="' + c.id + '"]')) || (c.closest('.campo') && c.closest('.campo').querySelector(':scope > label'));
-      if (l && !l.querySelector('.obr') && !/obrigat/i.test(l.textContent)) l.insertAdjacentHTML('beforeend', '<span class="obr" aria-hidden="true"> *</span>');
+      if (l && !l.querySelector('.obr, .ac-obr') && !/obrigat/i.test(l.textContent)) l.insertAdjacentHTML('beforeend', '<span class="obr" aria-hidden="true"> *</span>');
     });
-    r.querySelectorAll('form[data-form="ficha"], form[data-form="diag"]').forEach(form => {
+    r.querySelectorAll('form[data-form="ficha"], form[data-form="diag"], form[data-form="aval"]').forEach(form => {
       if (form.dataset.obrMarcado) return; form.dataset.obrMarcado = '1';
       OBRIG[form.dataset.form]().forEach(nome => {
         const [rot, alvo] = rotuloDe(form, nome);

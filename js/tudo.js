@@ -142,7 +142,8 @@ window.MQ = window.MQ || {};
   /* (ACE-2) campos que a validação exige, marcados ANTES do envio: asterisco no rótulo e aria-required no campo */
   const OBRIG = {
     ficha: () => ['nome', 'cpf', 'data_nascimento', 'municipio', 'comunidade', 'endereco', 'data_ficha', 'consent_dados', 'resultado', 'foto_termo', 'foto_ficha'].concat((MQ.CRITERIOS || []).map(c => c[0])),
-    diag: () => ['data_visita', 'familia', 'agua_seca', 'fontes_agua', 'fotos', 'objetivos', 'kit']
+    diag: () => ['data_visita', 'familia', 'agua_seca', 'fontes_agua', 'fotos', 'objetivos', 'kit'],
+    aval: () => ['data_visita', 'quintal_produz', 'renda_quintal', 'agua', 'alimentacao']   // 18/10/2026: a avaliação não marcava nada
   };
   function rotuloDe(form, nome) {
     const w = form.querySelector('#w-' + nome); const c = form.querySelector('[name="' + nome + '"]');
@@ -156,9 +157,9 @@ window.MQ = window.MQ || {};
     // qualquer formulário dos painéis: campo com required ganha o asterisco no rótulo (ex.: as senhas em Meus dados)
     r.querySelectorAll('#painel form [required]').forEach(c => {
       const l = (c.id && document.querySelector('label[for="' + c.id + '"]')) || (c.closest('.campo') && c.closest('.campo').querySelector(':scope > label'));
-      if (l && !l.querySelector('.obr') && !/obrigat/i.test(l.textContent)) l.insertAdjacentHTML('beforeend', '<span class="obr" aria-hidden="true"> *</span>');
+      if (l && !l.querySelector('.obr, .ac-obr') && !/obrigat/i.test(l.textContent)) l.insertAdjacentHTML('beforeend', '<span class="obr" aria-hidden="true"> *</span>');
     });
-    r.querySelectorAll('form[data-form="ficha"], form[data-form="diag"]').forEach(form => {
+    r.querySelectorAll('form[data-form="ficha"], form[data-form="diag"], form[data-form="aval"]').forEach(form => {
       if (form.dataset.obrMarcado) return; form.dataset.obrMarcado = '1';
       OBRIG[form.dataset.form]().forEach(nome => {
         const [rot, alvo] = rotuloDe(form, nome);
@@ -187,6 +188,153 @@ window.MQ = window.MQ || {};
     m.focus(); try { m.scrollIntoView({ block: 'start' }); } catch (e) {}
   }
   MQ.teclado = { marcar, BLOCOS, pular };
+})();
+;
+/* ===== guia.js ===== */
+/* Mulheres & Quintais — guia de seções dos formulários longos (18/10/2026, auditoria de UX).
+   O diagnóstico tem 13 seções e 11 mil pixels no celular; a ficha e a avaliação também passam de 4 mil. Quem preenche no
+   quintal não sabia onde estava nem o que faltava, e voltar a uma seção era rolar no escuro.
+   Aqui, todo formulário de painel com 4 ou mais seções (fieldset com legenda) ganha no topo, preso ao rolar:
+   - "Seção 3 de 13 · O quintal e a água" (onde a pessoa está agora);
+   - uma barra com quantas seções estão completas;
+   - um botão por seção, com o estado: completa (✓), começada (•), com erro (!) ou vazia; tocar leva até ela.
+   "Completa" = tem algo preenchido e nenhum item obrigatório (marcado com * pelo teclado.js) em branco.
+   Não muda campo, regra nem gravação: só lê o formulário. Roda sozinho a cada painel aberto (MutationObserver). */
+window.MQ = window.MQ || {};
+(function () {
+  const MIN_SECOES = 4;
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  // seções = fieldsets com legenda que não estão dentro de outro fieldset (o plano do quintal fica num bloco à parte)
+  const secoesDe = form => [...form.querySelectorAll('fieldset')].filter(f => f.querySelector(':scope > legend') && !f.parentElement.closest('fieldset') && f.closest('form') === form);
+  const titulo = fs => fs.querySelector(':scope > legend').textContent.replace(/\*/g, '').replace(/\s+/g, ' ').trim();
+  const curto = t => t.replace(/^\d+[a-z]?(\s*e\s*\d+[a-z]?)?\.\s*/, '').replace(/\s*\(.*\)$/, '');   // "2. Termo de consentimento (leia…)" → "Termo de consentimento"
+
+  function preenchido(c) {
+    if (c.disabled) return false;
+    if (c.type === 'checkbox' || c.type === 'radio') return c.checked;
+    if (c.type === 'file') {   // a foto já enviada aparece só na dica do campo ("Já tem foto", "Foto pronta")
+      const d = c.id && document.getElementById(c.id + '-dica');
+      return !!(c.files && c.files.length) || !!(d && /já tem foto|foto pronta/i.test(d.textContent));
+    }
+    if (c.type === 'hidden') return false;
+    return String(c.value || '').trim() !== '';
+  }
+  function estado(fs) {
+    const vis = c => c.type !== 'hidden' && !c.closest('[hidden]');
+    const campos = [...fs.querySelectorAll('input, select, textarea')].filter(vis);
+    if (fs.querySelector('[aria-invalid="true"], .campo.erro, .erro-campo')) return 'erro';
+    // fotos e linhas dinâmicas contam como preenchimento (miniatura enviada, pessoa da família etc.)
+    const temAlgo = campos.some(preenchido) || !!fs.querySelector('img[src^="blob:"], img[src^="data:"], .foto-ok, .linha-din');
+    if (!temAlgo) return 'vazia';
+    const obrig = [...fs.querySelectorAll('[aria-required="true"]')].filter(vis);
+    const falta = obrig.some(g => {
+      if (g.matches('input, select, textarea')) return !preenchido(g);
+      return ![...g.querySelectorAll('input')].some(preenchido);   // grupo Sim/Não
+    });
+    return falta ? 'comecada' : 'completa';
+  }
+  const SIMB = { completa: '✓', comecada: '•', erro: '!', vazia: '' };
+  const TXT = { completa: 'completa', comecada: 'começada, falta item obrigatório ou opcional', erro: 'com erro para corrigir', vazia: 'ainda vazia' };
+
+  function montar(form) {
+    const secoes = secoesDe(form);
+    if (secoes.length < MIN_SECOES) return;
+    form.dataset.guia = '1';
+    secoes.forEach((fs, i) => { if (!fs.id) fs.id = 'gf-' + (form.dataset.form || 'f') + '-' + i; fs.setAttribute('tabindex', '-1'); });
+    const nav = document.createElement('nav');
+    nav.className = 'guia-form'; nav.setAttribute('aria-label', 'Seções do formulário');
+    nav.innerHTML = `<div class="gf-topo"><span class="gf-pos" aria-live="polite"></span><span class="gf-conta"></span></div>
+      <div class="gf-barra" aria-hidden="true"><span></span></div>
+      <ol class="gf-lista">${secoes.map((fs, i) => `<li><button type="button" data-gf="${i}"><span class="gf-n">${i + 1}</span><span class="gf-t">${esc(curto(titulo(fs)) || titulo(fs))}</span><span class="gf-e" aria-hidden="true"></span></button></li>`).join('')}</ol>`;
+    const legenda = form.querySelector(':scope > .obr-legenda');
+    form.insertBefore(nav, legenda ? legenda.nextSibling : form.firstChild);
+    const corpo = form.closest('.painel-corpo') || document.scrollingElement;
+    let atual = -1;
+
+    function atualizarEstados() {
+      let ok = 0;
+      secoes.forEach((fs, i) => {
+        const e = estado(fs); if (e === 'completa') ok++;
+        const b = nav.querySelector(`[data-gf="${i}"]`); b.dataset.estado = e;
+        b.querySelector('.gf-e').textContent = SIMB[e];
+        b.setAttribute('aria-label', `Seção ${i + 1}: ${titulo(fs)}, ${TXT[e]}`);
+      });
+      nav.querySelector('.gf-conta').textContent = `${ok} de ${secoes.length} completas`;
+      nav.querySelector('.gf-barra > span').style.width = Math.round(100 * ok / secoes.length) + '%';
+    }
+    function marcarAtual() {
+      const topo = corpo.getBoundingClientRect ? (corpo === document.scrollingElement ? 0 : corpo.getBoundingClientRect().top) : 0;
+      const limite = topo + nav.offsetHeight + 24;
+      let i = 0;
+      secoes.forEach((fs, k) => { if (fs.getBoundingClientRect().top <= limite) i = k; });
+      // chegou ao fim do formulário: a última seção é a atual mesmo se for curta
+      if (corpo.scrollHeight - corpo.scrollTop - corpo.clientHeight < 4) i = secoes.length - 1;
+      if (i === atual) return; atual = i;
+      nav.querySelector('.gf-pos').innerHTML = `Seção <b>${i + 1}</b> de ${secoes.length} · ${esc(curto(titulo(secoes[i])) || titulo(secoes[i]))}`;
+      nav.querySelectorAll('[data-gf]').forEach(b => b.removeAttribute('aria-current'));
+      const b = nav.querySelector(`[data-gf="${i}"]`); b.setAttribute('aria-current', 'step');
+      // mantém o botão da seção atual à vista na faixa (rola só a faixa, nunca a página)
+      const l = nav.querySelector('.gf-lista');
+      if (l.scrollWidth > l.clientWidth) { const x = b.parentElement.offsetLeft - l.clientWidth / 2 + b.parentElement.offsetWidth / 2; l.scrollTo ? l.scrollTo({ left: Math.max(0, x), behavior: 'smooth' }) : (l.scrollLeft = x); }
+    }
+    let agendado = false;
+    const tique = () => { if (agendado) return; agendado = true; requestAnimationFrame(() => { agendado = false; if (!nav.isConnected) return; marcarAtual(); }); };
+    corpo.addEventListener('scroll', tique, { passive: true });
+    let t = null; const recontar = () => { clearTimeout(t); t = setTimeout(() => nav.isConnected && atualizarEstados(), 150); };
+    form.addEventListener('input', recontar); form.addEventListener('change', recontar);
+    // erros da validação, linhas novas, fotos: o formulário muda sem 'input'
+    if (typeof MutationObserver !== 'undefined') new MutationObserver(recontar).observe(form, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-invalid', 'class', 'src', 'hidden'] });
+    nav.addEventListener('click', ev => {
+      const b = ev.target.closest('[data-gf]'); if (!b) return;
+      const fs = secoes[+b.dataset.gf];
+      const y = fs.getBoundingClientRect().top - (corpo === document.scrollingElement ? 0 : corpo.getBoundingClientRect().top) + corpo.scrollTop - nav.offsetHeight - 8;
+      const suave = !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+      corpo.scrollTo ? corpo.scrollTo({ top: y, behavior: suave ? 'smooth' : 'auto' }) : (corpo.scrollTop = y);
+      try { fs.focus({ preventScroll: true }); } catch (e) {}
+    });
+    atualizarEstados(); marcarAtual();
+  }
+  function varrer() { document.querySelectorAll('#painel form.f:not([data-guia])').forEach(montar); }
+  /* campo que só faz sentido com certa resposta: <div data-mostra-se="pergunta=valor1,valor2">. Some quando a resposta é
+     outra e o campo está vazio (nunca esconde o que já foi escrito). Ex.: "Por que não está produzindo?" na avaliação. */
+  function condicionais(form) {
+    form.querySelectorAll('[data-mostra-se]').forEach(el => {
+      const [nome, vals] = el.dataset.mostraSe.split('='); const ok = vals.split(',');
+      const marcado = form.querySelector(`[name="${nome}"]:checked`) || form.querySelector(`select[name="${nome}"]`);
+      const resp = marcado ? marcado.value : '';
+      const temTexto = [...el.querySelectorAll('input, textarea, select')].some(c => String(c.value || '').trim());
+      el.hidden = !(ok.includes(resp) || temTexto);
+    });
+  }
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('change', ev => { const f = ev.target.closest && ev.target.closest('form'); if (f && f.querySelector('[data-mostra-se]')) condicionais(f); });
+    // matrícula do FIC: escrever o número já marca a pessoa (antes dava para escrever numa linha desmarcada e o número se perdia)
+    document.addEventListener('input', ev => {
+      const n = ev.target.closest && ev.target.closest('.fm-num'); if (!n || !n.value.trim()) return;
+      const c = n.closest('.fm-l') && n.closest('.fm-l').querySelector('input[type=checkbox]'); if (c && !c.checked) { c.checked = true; c.dispatchEvent(new Event('change', { bubbles: true })); }
+    });
+  }
+  /* teclado do celular aberto: o guia deixa de ficar preso no topo (sobra pouca tela entre o teclado e o topo) */
+  function teclado() {
+    const vv = window.visualViewport; if (!vv) return;
+    document.documentElement.classList.toggle('teclado-aberto', vv.height < window.innerHeight * 0.72);
+  }
+  if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined' && document.documentElement && document.documentElement.nodeType) {
+    let p = false;
+    new MutationObserver(() => { if (p) return; p = true; requestAnimationFrame(() => { p = false; varrer(); }); }).observe(document.documentElement, { childList: true, subtree: true });
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', teclado);
+    /* sem internet: a barra de salvar dos registros de campo avisa que vai para o aparelho (antes nada mudava dentro do formulário) */
+    const rede = () => document.documentElement.classList.toggle('sem-rede', navigator.onLine === false);
+    window.addEventListener('online', rede); window.addEventListener('offline', rede); rede();
+    /* girou o aparelho no meio do formulário: o campo em que a pessoa estava volta para o meio da tela (antes ia parar a 1.500 px) */
+    let giro = null;
+    const voltarAoCampo = () => { clearTimeout(giro); giro = setTimeout(() => {
+      const a = document.activeElement; if (!a || !a.closest || !a.closest('#painel')) return;
+      const alvo = a.closest('.campo, .criterio, fieldset') || a; try { alvo.scrollIntoView({ block: 'center' }); } catch (e) {} }, 250); };
+    window.addEventListener('orientationchange', voltarAoCampo);
+    if (window.matchMedia) { const m = matchMedia('(orientation: portrait)'); m.addEventListener ? m.addEventListener('change', voltarAoCampo) : m.addListener && m.addListener(voltarAoCampo); }
+  }
+  MQ.guiaForm = { montar, estado, varrer, curto, condicionais };
 })();
 ;
 /* ===== dados.js ===== */
@@ -3713,7 +3861,7 @@ MQ.ORCAMENTO = {
       ${aguardando.length ? `<div class="bloco${MQ.sit(souTec ? 1 : 0)}"><h2>${souTec ? 'Para você aprovar' : 'Aguardando a coordenação técnica'} (${aguardando.length})</h2>
         <div class="lista-fichas">${aguardando.slice(0, 30).map(f => linhaFicha(f, true)).join('')}</div></div>` : ''}
       <details class="hist" data-lembrar="fichas-coord" ${(U().S.aberto || {})['fichas-coord'] || filtro.uf || filtro.situacao || filtro.busca ? 'open' : ''}><summary>Todas as fichas (${conta})</summary><div style="padding:0 18px 16px;display:grid;gap:12px">
-        <div class="campos" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+        <div class="campos tres">
           <div class="campo"><label for="ff-uf">Estado</label><select id="ff-uf" data-filtro="uf">${op('', 'Todos', filtro.uf)}${MQ.UFS.map(u => op(u.uf, u.nome, filtro.uf)).join('')}</select></div>
           <div class="campo"><label for="ff-sit">Situação</label><select id="ff-sit" data-filtro="situacao">${op('', 'Todas', filtro.situacao)}
             ${Object.entries(MQ.SITUACOES).map(([k, v]) => op(k, v.nome, filtro.situacao)).join('')}${Object.entries(MQ.RESULTADOS).map(([k, v]) => op(k, v.nome, filtro.situacao)).join('')}</select></div>
@@ -3751,20 +3899,20 @@ MQ.ORCAMENTO = {
         <p class="small muted">Preencha com a mulher, no papel e aqui. Sem internet, a ficha fica guardada neste aparelho e é enviada depois.</p>
 
         <fieldset><legend>1. Identificação</legend><div class="campos">
-          <div class="campo inteiro"><label for="fi-nome">Nome completo</label><input id="fi-nome" name="nome" value="${v('nome')}" autocomplete="off" required></div>
-          <div class="campo"><label for="fi-cpf">CPF</label><input id="fi-cpf" name="cpf" inputmode="numeric" value="${E(R.fmtCPF(f.cpf || ''))}" placeholder="000.000.000-00"></div>
-          <div class="campo"><label for="fi-nasc">Data de nascimento</label><input id="fi-nasc" name="data_nascimento" type="date" value="${v('data_nascimento')}" max="${R.hoje()}"></div>
-          <div class="campo"><label for="fi-cel">Celular / WhatsApp</label><input id="fi-cel" name="celular" maxlength="40" inputmode="tel" value="${v('celular')}"></div>
-          <div class="campo"><label for="fi-pess">Nº de pessoas na família</label><input id="fi-pess" name="pessoas_familia" type="number" min="1" max="30" inputmode="numeric" value="${v('pessoas_familia')}"></div>
+          <div class="campo longo"><label for="fi-nome">Nome completo</label><input id="fi-nome" name="nome" value="${v('nome')}" autocomplete="off" required></div>
+          <div class="campo curto"><label for="fi-cpf">CPF</label><input id="fi-cpf" name="cpf" inputmode="numeric" maxlength="14" value="${E(R.fmtCPF(f.cpf || ''))}" placeholder="000.000.000-00"></div>
+          <div class="campo curto"><label for="fi-nasc">Data de nascimento</label><input id="fi-nasc" name="data_nascimento" type="date" value="${v('data_nascimento')}" max="${R.hoje()}"></div>
+          <div class="campo curto"><label for="fi-cel">Celular / WhatsApp</label><input id="fi-cel" name="celular" maxlength="40" inputmode="tel" value="${v('celular')}"></div>
+          <div class="campo curto"><label for="fi-pess">Nº de pessoas na família</label><input id="fi-pess" name="pessoas_familia" type="number" min="1" max="30" inputmode="numeric" value="${v('pessoas_familia')}"></div>
           <div class="campo"><label for="fi-mun">Município</label><input id="fi-mun" name="municipio" autocomplete="off" maxlength="120" list="fi-lista-mun" value="${v('municipio')}"><datalist id="fi-lista-mun">${munis.map(m => `<option value="${E(m)}">`).join('')}</datalist></div>
           <div class="campo"><label for="fi-com">Comunidade / assentamento</label><input id="fi-com" name="comunidade" autocomplete="off" maxlength="300" value="${v('comunidade')}"></div>
           <div class="campo inteiro"><label for="fi-end">Endereço (rua, sítio, nº)</label><input id="fi-end" name="endereco" autocomplete="off" maxlength="300" value="${v('endereco')}"><span class="dica">Escreva do jeito mais completo possível: é por ele que o sistema confere se já há alguém da mesma casa.</span></div>
           <div class="campo inteiro"><label for="fi-ref">Ponto de referência</label><input id="fi-ref" name="ponto_referencia" autocomplete="off" maxlength="300" value="${v('ponto_referencia')}"></div>
-          <div class="campo"><label for="fi-nis">NIS (CadÚnico)</label><input id="fi-nis" name="nis" inputmode="numeric" value="${v('nis')}" placeholder="Se tiver"></div>
-          <div class="campo"><label for="fi-caf">CAF nº</label><input id="fi-caf" name="caf" maxlength="60" value="${v('caf')}" placeholder="Se tiver"></div>
+          <div class="campo"><label for="fi-nis">NIS (CadÚnico) <span class="muted">(opcional)</span></label><input id="fi-nis" name="nis" inputmode="numeric" value="${v('nis')}"></div>
+          <div class="campo"><label for="fi-caf">CAF nº <span class="muted">(opcional)</span></label><input id="fi-caf" name="caf" maxlength="60" value="${v('caf')}"></div>
           <div class="campo inteiro"><label for="fi-ind">Quem indicou (organização / liderança)</label><input id="fi-ind" name="indicada_por" maxlength="200" value="${v('indicada_por')}"></div>
-          <div class="campo"><label for="fi-data">Data da ficha</label><input id="fi-data" name="data_ficha" type="date" value="${v('data_ficha')}" max="${R.hoje()}"></div>
-          <div class="campo"><label>Localização</label><button type="button" class="btn peq" data-acao="ficha-gps">${f.latitude ? 'Localização registrada ✓' : 'Registrar localização'}</button>
+          <div class="campo curto"><label for="fi-data">Data da ficha</label><input id="fi-data" name="data_ficha" type="date" value="${v('data_ficha')}" max="${R.hoje()}"></div>
+          <div class="campo longo"><label>Localização</label><button type="button" class="btn peq" data-acao="ficha-gps">${f.latitude ? 'Localização registrada ✓' : 'Registrar localização'}</button>
             <input type="hidden" name="latitude" value="${v('latitude')}"><input type="hidden" name="longitude" value="${v('longitude')}"><span class="dica" id="fi-gps-dica">${f.latitude ? E(f.latitude + ', ' + f.longitude) : 'Opcional. Use na casa da mulher.'}</span></div>
           <div id="fi-conf" class="inteiro"></div>
         </div></fieldset>
@@ -3780,7 +3928,7 @@ MQ.ORCAMENTO = {
               <option value="digital" ${f.assinatura === 'digital' ? 'selected' : ''}>Impressão digital + testemunha</option></select></div>
             <div class="campo" data-so-digital><label for="fi-tn">Testemunha: nome</label><input id="fi-tn" name="testemunha_nome" maxlength="160" value="${v('testemunha_nome')}"></div>
             <div class="campo" data-so-digital><label for="fi-tc">Testemunha: CPF</label><input id="fi-tc" name="testemunha_cpf" inputmode="numeric" value="${E(R.fmtCPF(f.testemunha_cpf || ''))}"></div>
-            <div class="campo inteiro"><label for="fi-ft">Foto do termo assinado</label><input id="fi-ft" name="foto_termo" type="file" accept="image/*" capture="environment">
+            <div class="campo inteiro"><label for="fi-ft">Foto do termo assinado</label><input id="fi-ft" name="foto_termo" type="file" accept="image/*">
               <span class="dica" id="fi-ft-dica">${f.foto_termo_path ? 'Já tem foto. Envie outra só se quiser trocar.' : 'Fotografe o papel inteiro, com as assinaturas legíveis.'}</span></div>
           </div>
         </fieldset>
@@ -3802,7 +3950,7 @@ MQ.ORCAMENTO = {
             <div class="campo" data-so="lista_espera"><label for="fi-pos">Posição na lista de espera</label><input id="fi-pos" name="posicao_espera" type="number" min="1" inputmode="numeric" value="${v('posicao_espera')}"></div>
             <div class="campo inteiro" data-so="sem_agua"><label for="fi-enc">Encaminhada para (programa de cisternas / órgão)</label><input id="fi-enc" name="encaminhada_para" maxlength="300" value="${v('encaminhada_para')}"></div>
             <div class="campo inteiro"><label for="fi-just">Justificativa / observações</label><textarea id="fi-just" name="justificativa">${v('justificativa')}</textarea></div>
-            <div class="campo inteiro"><label for="fi-ff">Foto da ficha em papel assinada</label><input id="fi-ff" name="foto_ficha" type="file" accept="image/*,application/pdf" capture="environment">
+            <div class="campo inteiro"><label for="fi-ff">Foto da ficha em papel assinada</label><input id="fi-ff" name="foto_ficha" type="file" accept="image/*,application/pdf">
               <span class="dica" id="fi-ff-dica">${f.foto_ficha_path ? 'Já tem foto. Envie outra só se quiser trocar.' : 'As duas páginas, com as assinaturas da mulher e da bolsista.'}</span></div>
           </div>
         </fieldset>
@@ -5474,7 +5622,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const feitas = vs.filter(v => v.situacao === 'realizada').length; const d = dgs.filter(x => x.uf === u.uf);
       const pct = Math.min(100, vs.length / MQ.DIAS_CAMPO_UF * 100), pctF = Math.min(100, feitas / MQ.DIAS_CAMPO_UF * 100);
       return `<tr><td class="uf"><span class="sigla">${u.uf}</span><span class="nomeuf">${u.nome}</span></td>
-        <td class="cu-dias" data-rot="Dias de campo"><div class="dias-cel"><span class="num"><b>${feitas}</b> feitos <span class="muted">de ${MQ.DIAS_CAMPO_UF}</span></span>
+        <td class="cu-dias" data-rot="Dias de campo"><div class="dias-cel"><span class="num"><b>${feitas}</b> ${feitas === 1 ? 'feito' : 'feitos'} <span class="muted">de ${MQ.DIAS_CAMPO_UF}</span></span>
           <span class="medidor"><i style="width:${pct}%;opacity:.35"></i><i style="width:${pctF}%"></i></span><span class="small muted">${vs.length - feitas} previsto${vs.length - feitas === 1 ? '' : 's'} no roteiro</span></div></td>
         <td class="num c" data-rot="Diagnósticos">${d.length} <span class="muted">de 40</span></td><td class="num c" data-rot="Planos aprovados">${d.filter(x => x.situacao === 'aprovado').length}</td><td class="num c" data-rot="Sem água na seca">${(n => n ? `<b style="color:var(--crit)">${n}</b>` : 0)(d.filter(x => x.sem_agua).length)}</td>
         <td class="num c" data-rot="Agentes de campo">${pessoasCampo(u.uf).filter(p => p.papel === 'agente').length}</td></tr>`; };
@@ -5664,20 +5812,20 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       latitude: null, longitude: null, familia: [{ nome: primeiroNome(f.nome), parentesco: 'Ela mesma', ajuda: true }], kit: [{}, {}, {}], cronograma: [{}, {}] };
     const v = k => E(d[k] == null ? '' : d[k]);
     const prod = d.producao || {};
-    return `<div class="painel-cab"><div class="t"><span class="eyebrow">${atual ? 'Corrigir diagnóstico' : '1ª visita'} · ${E(f.uf)} · ${codigoQuintal(f)}</span>
+    return `<div class="painel-cab"><div class="t"><span class="eyebrow">${atual ? 'Corrigir diagnóstico' : '1ª visita'} · ${E(f.uf)} · <span class="cod-q">${codigoQuintal(f)}</span></span>
         <h2 id="painel-t">Diagnóstico e plano do quintal</h2><span class="small">${E(f.nome)} · ${E(f.municipio)} · ${E(f.comunidade)}</span>
         ${atual && atual.situacao === 'devolvido' && atual.obs_coordenacao ? `<div class="aviso erro" style="margin-top:6px"><b>Devolvido pela coordenação técnica:</b> ${E(atual.obs_coordenacao)}</div>` : ''}</div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo"><form class="f" data-form="diag" data-id="${E(d.id)}" data-ficha="${E(f.id)}" data-visita="${E(d.visita_id || '')}" novalidate>
         ${!f.consent_imagem ? '<div class="aviso"><b>Ela não autorizou uso de imagem:</b> fotografe o quintal sem que ela apareça.</div>' : ''}
         <fieldset><legend>Visita</legend><div class="campos">
-          <div class="campo"><label for="dg-data">Data da visita</label><input id="dg-data" name="data_visita" type="date" value="${v('data_visita')}" min="${R.LIM.visitaMin}" max="${R.hoje()}"></div>
-          <div class="campo"><label>Localização do quintal</label><button type="button" class="btn peq" data-acao="campo-gps">${d.latitude ? 'Localização registrada ✓' : 'Registrar localização'}</button>
-            <input type="hidden" name="latitude" value="${v('latitude')}"><input type="hidden" name="longitude" value="${v('longitude')}">
-            <input type="hidden" name="gps_precisao" value="${v('gps_precisao')}"><input type="hidden" name="gps_em" value="${v('gps_em')}">
+          <input type="hidden" name="latitude" value="${v('latitude')}"><input type="hidden" name="longitude" value="${v('longitude')}">
+          <input type="hidden" name="gps_precisao" value="${v('gps_precisao')}"><input type="hidden" name="gps_em" value="${v('gps_em')}">
+          <div class="campo curto"><label for="dg-data">Data da visita</label><input id="dg-data" name="data_visita" type="date" value="${v('data_visita')}" min="${R.LIM.visitaMin}" max="${R.hoje()}"></div>
+          <div class="campo longo"><label>Localização do quintal</label><button type="button" class="btn peq" data-acao="campo-gps">${d.latitude ? 'Localização registrada ✓' : 'Registrar localização'}</button>
             <span class="dica" id="dg-gps-dica">${d.latitude ? E(d.latitude + ', ' + d.longitude) : 'Registre em pé, no quintal, durante a visita.'}</span></div>
           ${(() => { const mt = String(d.sem_gps_motivo || ''); const tipo = MOTIVOS_SEM_GPS.find(x => mt.startsWith(x + '. ')) || ''; const det = tipo ? mt.slice(tipo.length + 2) : mt;
-            return `<div class="campo inteiro sem-gps" id="w-sem_gps_motivo"><label for="dg-semgps-tipo">Sem localização? Por quê</label>
+            return `<div class="campo inteiro sem-gps" id="w-sem_gps_motivo"${d.latitude && !mt ? ' hidden' : ''}><label for="dg-semgps-tipo">Sem localização? Por quê</label>
               <select id="dg-semgps-tipo" name="sem_gps_tipo"><option value="">Por que não registrou?</option>${MOTIVOS_SEM_GPS.map(x => `<option${x === tipo ? ' selected' : ''}>${E(x)}</option>`).join('')}</select>
               <label for="dg-semgps" class="so-leitor">Explique com suas palavras</label>
               <input id="dg-semgps" name="sem_gps_detalhe" value="${E(det)}" maxlength="500" placeholder="Onde fica e o que aconteceu">
@@ -5733,7 +5881,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <fieldset id="w-fotos"><legend>8. Fotos e croqui</legend>
           <div class="campos">${MQ.DIAG.fotos.filter(([k]) => k !== 'mulher' || f.consent_imagem).map(([k, t]) => { const tem = (d.fotos || []).some(x => new RegExp('diag_' + k).test(x)) || (atual && atual.exemplo && k !== 'mulher');
             const opc = k === 'croqui' || k === 'mulher';
-            return `<div class="campo ${opc ? 'inteiro' : ''}"><label for="dg-f-${k}">${E(t)}${opc ? '' : ' *'}</label><input id="dg-f-${k}" name="foto_${k}" data-foto="${k}" type="file" accept="image/*" capture="environment">
+            return `<div class="campo ${opc ? 'inteiro' : ''}"><label for="dg-f-${k}">${E(t)}${opc ? ' <span class="muted">(opcional)</span>' : '<span class="obr" aria-hidden="true"> *</span>'}</label><input id="dg-f-${k}" name="foto_${k}" data-foto="${k}" type="file" accept="image/*" capture="environment">
               <span class="dica" id="dg-f-${k}-dica">${tem ? 'Já tem foto. Envie outra só para trocar.' : k === 'croqui' ? 'Desenhe no papel e fotografe.' : k === 'mulher' ? 'Só se ela quiser. Foto do rosto, de frente, com o celular em pé e o quintal ao fundo. Pode ir para o mosaico da página pública, sem o nome dela.' : 'Obrigatória.'}</span></div>`; }).join('')}</div>
         </fieldset>
 
@@ -5826,7 +5974,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const dl = linhas => `<dl class="dl">${linhas.filter(l => l && l[1] != null && l[1] !== '' && !(Array.isArray(l[1]) && !l[1].length)).map(([k, v]) => `<dt>${k}</dt><dd>${E(v)}</dd>`).join('')}</dl>`;
     const sit = dg.sem_agua ? '<span class="chip crit">Sem água: encaminhar</span>' : dg.situacao === 'aprovado' ? '<span class="chip ok">Plano aprovado</span>' : dg.situacao === 'devolvido' ? '<span class="chip crit">Devolvido</span>' : '<span class="chip pend">Plano em análise</span>';
     const tab = (cab, linhas) => linhas.length ? `<div class="quadro-scroll" style="display:block"><table class="quadro"><thead><tr>${cab.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${linhas.map(l => `<tr>${l.map(c => `<td>${E(c ?? '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<p class="muted small">—</p>';
-    return `<div class="painel-cab"><div class="t"><span class="eyebrow">Diagnóstico · ${E(f.uf)} · ${codigoQuintal(f)}</span><h2 id="painel-t">${E(f.nome)}</h2>
+    return `<div class="painel-cab"><div class="t"><span class="eyebrow">Diagnóstico · ${E(f.uf)} · <span class="cod-q">${codigoQuintal(f)}</span></span><h2 id="painel-t">${E(f.nome)}</h2>
         <span style="display:flex;gap:6px;flex-wrap:wrap">${sit}${dg._fila ? '<span class="chip pend">No aparelho</span>' : ''}</span></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo">
@@ -5987,19 +6135,25 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     else if (a === 'campo-linha-rem') { const l = el.closest('.linha-din'); if (l && l.parentElement.children.length > 1) l.remove(); else if (l) l.querySelectorAll('input').forEach(i => { if (i.type === 'checkbox') i.checked = false; else i.value = ''; }); }
     else if (a === 'campo-gps') {
       const dica = $('#dg-gps-dica');
-      if (!navigator.geolocation) { dica.textContent = 'Este aparelho não informa a localização. Explique no campo abaixo.'; return; }
+      // "Sem localização? Por quê" só aparece quando a localização falta (com ela registrada, eram 150 px de campo inútil)
+      const semGps = mostrar => { const w = $('#w-sem_gps_motivo'); if (w && (mostrar || ![...w.querySelectorAll('input, select')].some(c => c.value))) w.hidden = !mostrar; };
+      if (!navigator.geolocation) { dica.textContent = 'Este aparelho não informa a localização. Explique no campo abaixo.'; semGps(true); return; }
       dica.textContent = 'Buscando localização…';
       navigator.geolocation.getCurrentPosition(pos => {
         const fm = $('form[data-form=diag]'); if (!fm) return;
         fm.latitude.value = pos.coords.latitude.toFixed(6); fm.longitude.value = pos.coords.longitude.toFixed(6);
         fm.gps_precisao.value = Math.round(pos.coords.accuracy); fm.gps_em.value = new Date().toISOString();
-        dica.textContent = fm.latitude.value + ', ' + fm.longitude.value + ' (precisão de ' + Math.round(pos.coords.accuracy) + ' m)'; el.textContent = 'Localização registrada ✓';
-      }, err => { dica.textContent = MQ.dicaGPS(err, 'Se não der, explique no campo abaixo.'); },
+        dica.textContent = fm.latitude.value + ', ' + fm.longitude.value + ' (precisão de ' + Math.round(pos.coords.accuracy) + ' m)'; el.textContent = 'Localização registrada ✓'; semGps(false);
+      }, err => { dica.textContent = MQ.dicaGPS(err, 'Se não der, explique no campo abaixo.'); semGps(true); },
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 });
     }
     else if (a === 'campo-visita-cancelar') {
       const fm = $('form[data-form=visita]'); const v = visitas().find(x => x.id === fm.dataset.id);
-      if (!fm.dataset.confirmar) { fm.dataset.confirmar = '1'; fm.dataset.confEm = String(Date.now()); el.textContent = 'Confirmar cancelamento'; return; }
+      if (!fm.dataset.confirmar) {
+        fm.dataset.confirmar = '1'; fm.dataset.confEm = String(Date.now()); const txt = el.textContent; el.textContent = 'Toque de novo para cancelar a visita';
+        // 18/10/2026: o modo armado desarma sozinho em 6 s (antes ficava armado e um toque distraído depois cancelava)
+        clearTimeout(fm._desarma); fm._desarma = setTimeout(() => { if (fm.isConnected && fm.dataset.confirmar) { delete fm.dataset.confirmar; el.textContent = txt; } }, 6000);
+        return; }
       if (Date.now() - (+fm.dataset.confEm || 0) < 450) return;   // 13/10/2026: toque duplo não confirma
       await U().ocupado(fm, async () => { await guardar('visita', Object.assign({}, v, { situacao: 'cancelada' })); U().fecharPainel(); U().render(); U().toast('Visita cancelada. O dia de campo volta para o saldo do estado.'); }, { semConferir: true });
     }
@@ -7057,9 +7211,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const fora = deCampo().filter(m => !R.cabeNaTurma(t, m) || emOutra(m.id)).length;
     return cab(E(t.nome), 'Matricular') + `<div class="painel-corpo"><form class="f" data-form="fic-matricular" data-id="${E(t.id)}" novalidate>
       <p class="small muted">Marque quem entra na turma e escreva o número da matrícula do SUAP de cada uma. Quem já está nesta turma aparece marcado: mudar o número ou a data corrige a matrícula.</p>
-      <div class="campo" style="max-width:240px"><label for="fm-data">Data da matrícula</label><input id="fm-data" name="data" type="date" value="${R.hoje()}" max="${R.hoje()}" required></div>
+      <div class="campo fm-data"><label for="fm-data">Data da matrícula</label><input id="fm-data" name="data" type="date" value="${R.hoje()}" max="${R.hoje()}" required></div>
       ${cands.length ? `<div class="fic-marcar">${cands.map(m => { const x = matDe(m.id); const num = x ? x.numero : (m.matricula_fic_numero || '');
-          return `<label class="fm-l"><input type="checkbox" name="p" value="${E(m.id)}" ${x ? 'checked' : ''}>${U().avatar(m, 32)}<span class="fp-t"><b>${E(nomeDe(m))}</b><span class="small muted">${E(P[m.papel].curto)} · ${E(m.uf)}${x ? ' · já nesta turma' : m.matricula_fic_em ? ' · matrícula sem turma' : ''}</span></span>
+          return `<label class="fm-l"><input type="checkbox" name="p" value="${E(m.id)}" ${x ? 'checked' : ''}>${U().avatar(m, 32)}<span class="fp-t"><b>${E(nomeDe(m))}</b><span class="small muted">${E(P[m.papel].curto)}${m.uf ? ' · ' + E(m.uf) : ''}${x ? ' · já nesta turma' : m.matricula_fic_em ? ' · matrícula sem turma' : ''}</span></span>
             <input class="fm-num" name="n_${E(m.id)}" value="${E(num)}" placeholder="Nº SUAP" aria-label="Número da matrícula de ${E(nomeDe(m))}" autocomplete="off"></label>`; }).join('')}</div>`
         : '<p class="muted">Ninguém disponível para esta turma.</p>'}
       ${fora ? `<p class="small muted">${fora} pessoa${fora > 1 ? 's' : ''} de outro estado ou já em outra turma não aparece${fora > 1 ? 'm' : ''} aqui.</p>` : ''}
@@ -7416,16 +7570,19 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <span>${E(h.obs)}<br><span class="small muted">${new Date(h.registrado_em).toLocaleDateString('pt-BR')}${pessoa(h.registrado_por) ? ' · ' + E(pessoa(h.registrado_por).nome) : ''}</span></span></li>`).join('')}</ol>`
         : '<p class="small muted">Nenhuma atualização registrada ainda.</p>'}
       <form class="f" data-form="agua-registrar" data-id="${E(x.f.id)}" novalidate><div class="campos">
-        <div class="campo inteiro"><label for="ag-sit">Nova situação</label><select id="ag-sit" name="situacao">${SIT.filter(s => s.id !== x.situacao).map(s => `<option value="${s.id}">${s.t}</option>`).join('')}</select></div>
+        <div class="campo inteiro"><label for="ag-sit">Nova situação</label><select id="ag-sit" name="situacao" required><option value="">Escolha…</option>${SIT.filter(s => s.id !== x.situacao).map(s => `<option value="${s.id}">${s.t}</option>`).join('')}</select></div>
         <div class="campo inteiro"><label for="ag-obs">O que aconteceu</label><textarea id="ag-obs" name="obs" rows="3" maxlength="500" placeholder="Ex.: cadastrada no Programa Cisternas da prefeitura; obra prevista para novembro."></textarea></div>
       </div><div class="aviso erro" data-erro hidden></div>
-      <div class="acoes"><button class="btn pri" type="submit">Registrar</button><button class="btn" type="button" data-acao="fechar">Fechar</button></div></form></div>`;
+      <div class="acoes"><button class="btn pri" type="submit">Registrar</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div></form></div>`;
   }
   async function clique(a, el) { if (a === 'agua-ver') U().abrirPainel({ tipo: 'agua-ver', id: el.dataset.id }); }
   async function enviar(tipo, form, fd) {
     if (tipo !== 'agua-registrar') return;
     const obs = String(fd.get('obs') || '').trim(); const situacao = String(fd.get('situacao') || '');
-    if (obs.length < 10) return U().mostrarErros(form, { obs: 'Escreva o que aconteceu (pelo menos 10 letras).' });
+    const err = {};
+    if (!situacao) err.situacao = 'Escolha a nova situação.';
+    if (obs.length < 10) err.obs = 'Escreva o que aconteceu (pelo menos 10 letras).';
+    if (Object.keys(err).length) return U().mostrarErros(form, err);
     await U().ocupado(form, async () => { await S().api.registrarSituacaoAgua(form.dataset.id, situacao, obs); await U().carregar(); U().fecharPainel(); U().render(); U().toast('Situação da água registrada.'); });
   }
   MQ.aguaUI = { secao, painel, clique, enviar, lista, SIT };
@@ -8253,7 +8410,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <fieldset><legend>Valor</legend><div class="campos"><div class="campo"><label for="vg-valor">Valor estimado (R$)</label><input id="vg-valor" name="valor_estimado" inputmode="decimal" value="${E(d.valor_estimado != null ? String(d.valor_estimado).replace('.', ',') : '')}" placeholder="Ex.: 1.800,00">
           <span class="dica">${tipo === 'passagem' ? 'Some as passagens de todas as pessoas, ida e volta (pesquise o preço no dia).' : 'Espaço, estrutura e alimentação (use o orçamento de referência, se tiver).'}</span></div></div>
           <p class="small muted">${rotSaldo(tipo, S().eu.uf)}</p></fieldset>
-        <fieldset><legend>Participantes</legend><div class="campos" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+        <fieldset><legend>Participantes</legend><div class="campos tres">
           <div class="campo"><label for="vg-pm">Mulheres</label><input id="vg-pm" name="p_mulheres" type="number" min="0" inputmode="numeric" value="${E(part.mulheres == null ? '' : part.mulheres)}"></div>
           <div class="campo"><label for="vg-pe">Equipe</label><input id="vg-pe" name="p_equipe" type="number" min="0" inputmode="numeric" value="${E(part.equipe == null ? '' : part.equipe)}"></div>
           <div class="campo"><label for="vg-pc">Convidados</label><input id="vg-pc" name="p_convidados" type="number" min="0" inputmode="numeric" value="${E(part.convidados == null ? '' : part.convidados)}"></div></div></fieldset>
@@ -9934,22 +10091,23 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const base = dg && dg.dados && dg.dados.impacto;
     const a = atual ? Object.assign({}, atual, atual.dados || {}) : { id: MQ.novoId(), data_visita: R.hoje(), latitude: dg ? dg.latitude : null, longitude: dg ? dg.longitude : null };
     const v = k => E(a[k] == null ? '' : a[k]);
-    const foto = (k, t) => `<div class="campo"><label for="av-f-${k}">${t}${k === 'geral' ? ' *' : ''}</label><input id="av-f-${k}" type="file" accept="image/*" capture="environment" data-foto-av="${k}"><span class="dica" id="av-f-${k}-dica">${fotosAv[k] ? 'Foto pronta (guardada neste aparelho).' : (a.fotos || []).some(x => new RegExp('aval_' + k).test(x)) ? 'Já tem foto. Envie outra só para trocar.' : k === 'geral' ? 'Obrigatória.' : ''}</span></div>`;
+    const foto = (k, t) => `<div class="campo"><label for="av-f-${k}">${t}${k === 'geral' ? '<span class="obr" aria-hidden="true"> *</span>' : ' <span class="muted">(opcional)</span>'}</label><input id="av-f-${k}" type="file" accept="image/*" capture="environment" data-foto-av="${k}"><span class="dica" id="av-f-${k}-dica">${fotosAv[k] ? 'Foto pronta (guardada neste aparelho).' : (a.fotos || []).some(x => new RegExp('aval_' + k).test(x)) ? 'Já tem foto. Envie outra só para trocar.' : k === 'geral' ? 'Obrigatória.' : ''}</span></div>`;
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">Avaliação final · ${E(f.uf)}</span><h2 id="painel-t">${E(f.nome)}</h2><span class="small">${E(f.municipio)} · ${E(f.comunidade || '')}</span></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo"><form class="f" data-form="aval" data-id="${E(a.id)}" data-ficha="${E(f.id)}" data-visita="${E(p.visita || a.visita_id || '')}" novalidate>
         ${base ? '' : '<div class="aviso">Este quintal não tem as medidas de linha de base no diagnóstico (feito antes desta pergunta existir): a avaliação vale, mas não entra na comparação antes × depois.</div>'}
         <fieldset><legend>Visita</legend><div class="campos">
-          <div class="campo"><label for="av-data">Data da visita</label><input id="av-data" name="data_visita" type="date" value="${v('data_visita')}" min="${R.LIM.visitaMin}" max="${R.hoje()}"></div>
-          <div class="campo"><label>Localização</label><button type="button" class="btn peq" data-acao="aval-gps">${a.latitude ? 'Localização registrada ✓' : 'Registrar localização'}</button>
-            <input type="hidden" name="latitude" value="${v('latitude')}"><input type="hidden" name="longitude" value="${v('longitude')}"><span class="dica" id="av-gps-dica">${a.latitude ? E(a.latitude + ', ' + a.longitude) : 'Registre em pé, no quintal.'}</span></div>
+          <input type="hidden" name="latitude" value="${v('latitude')}"><input type="hidden" name="longitude" value="${v('longitude')}">
+          <div class="campo curto"><label for="av-data">Data da visita</label><input id="av-data" name="data_visita" type="date" value="${v('data_visita')}" min="${R.LIM.visitaMin}" max="${R.hoje()}"></div>
+          <div class="campo longo"><label>Localização</label><button type="button" class="btn peq" data-acao="aval-gps">${a.latitude ? 'Localização registrada ✓' : 'Registrar localização'}</button>
+            <span class="dica" id="av-gps-dica">${a.latitude ? E(a.latitude + ', ' + a.longitude) : 'Registre em pé, no quintal.'}</span></div>
           <div class="campo inteiro"><label for="av-semgps">Sem localização? Explique</label><input id="av-semgps" name="sem_gps_motivo" value="${v('sem_gps_motivo')}" maxlength="500"></div>
         </div></fieldset>
         <fieldset><legend>O quintal hoje</legend><div class="campos">
           <div class="campo inteiro" id="w-quintal_produz"><label>O quintal está produzindo?</label>${rad('quintal_produz', [['sim', 'Sim'], ['em_parte', 'Em parte'], ['nao', 'Não']], a.quintal_produz)}</div>
-          <div class="campo inteiro"><label for="av-mot">Se não ou em parte: por quê?</label><input id="av-mot" name="motivo" value="${v('motivo')}" maxlength="500" placeholder="Ex.: faltou água em setembro; a tela estragou; ela adoeceu"></div>
-          <div class="campo"><label for="av-rq">Quanto ganha com vendas do quintal por mês (R$)</label><input id="av-rq" name="renda_quintal" type="number" min="0" max="${R.LIM.rendaMax}" step="10" inputmode="numeric" value="${v('renda_quintal')}"><span class="dica">A mesma pergunta do diagnóstico. Zero se não vende.</span></div>
-          <div class="campo"><label for="av-h">Horas por dia no quintal</label><input id="av-h" name="horas_dia" type="number" min="0" max="16" step="0.5" inputmode="decimal" value="${v('horas_dia')}"></div>
+          <div class="campo inteiro" data-mostra-se="quintal_produz=em_parte,nao"${a.quintal_produz === 'nao' || a.quintal_produz === 'em_parte' || a.motivo ? '' : ' hidden'}><label for="av-mot">Por que não está produzindo (ou só em parte)?</label><input id="av-mot" name="motivo" value="${v('motivo')}" maxlength="500" placeholder="Ex.: faltou água em setembro; a tela estragou; ela adoeceu"></div>
+          <div class="campo curto"><label for="av-rq">Quanto ganha com vendas do quintal por mês (R$)</label><input id="av-rq" name="renda_quintal" type="number" min="0" max="${R.LIM.rendaMax}" step="10" inputmode="numeric" value="${v('renda_quintal')}"><span class="dica">A mesma pergunta do diagnóstico. Zero se não vende.</span></div>
+          <div class="campo curto"><label for="av-h">Horas por dia no quintal</label><input id="av-h" name="horas_dia" type="number" min="0" max="16" step="0.5" inputmode="decimal" value="${v('horas_dia')}"></div>
           <div class="campo inteiro" id="w-agua"><label>A água deu para o quintal no último período seco?</label>${rad('agua', [['sim', 'Sim'], ['as_vezes', 'Às vezes'], ['nao', 'Não']], a.agua)}</div>
           <div class="campo inteiro" id="w-alimentacao"><label>Com o quintal, a alimentação da família…</label>${rad('alimentacao', [['melhorou', 'Melhorou'], ['igual', 'Ficou igual'], ['piorou', 'Piorou']], a.alimentacao)}</div>
           <div class="campo inteiro"><label>Durante o projeto, ela conseguiu</label>${chk('encaminhamentos', ENCAMINHA, a.encaminhamentos)}</div>
@@ -10540,9 +10698,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <div class="campo" data-outro ${bancoSel === 'outro' ? '' : 'hidden'}><label for="bk-cod">Código do banco (3 números)</label><input id="bk-cod" name="banco_codigo" inputmode="numeric" maxlength="3" value="${bancoSel === 'outro' ? E(d.banco_codigo) : ''}"></div>
         <div class="campo" data-outro ${bancoSel === 'outro' ? '' : 'hidden'}><label for="bk-nome">Nome do banco</label><input id="bk-nome" name="banco_nome" value="${bancoSel === 'outro' ? E(d.banco_nome) : ''}"></div>
         <div class="campo"><label for="bk-ag">Agência (sem dígito)</label><input id="bk-ag" name="agencia" inputmode="numeric" value="${E(d.agencia || '')}"></div>
-        <div class="campo"><label for="bk-agdv">Dígito da agência <span class="muted">(se tiver)</span></label><input id="bk-agdv" name="agencia_dv" maxlength="1" value="${E(d.agencia_dv || '')}"></div>
+        <div class="campo"><label for="bk-agdv">Dígito da agência <span class="muted">(se tiver)</span></label><input id="bk-agdv" name="agencia_dv" maxlength="1" autocapitalize="characters" autocomplete="off" value="${E(d.agencia_dv || '')}"></div>
         <div class="campo"><label for="bk-ct">Conta (sem dígito)</label><input id="bk-ct" name="conta" inputmode="numeric" value="${E(d.conta || '')}"></div>
-        <div class="campo"><label for="bk-ctdv">Dígito da conta</label><input id="bk-ctdv" name="conta_dv" maxlength="2" value="${E(d.conta_dv || '')}"></div>
+        <div class="campo"><label for="bk-ctdv">Dígito da conta</label><input id="bk-ctdv" name="conta_dv" maxlength="2" autocapitalize="characters" autocomplete="off" value="${E(d.conta_dv || '')}"></div>
         <div class="campo inteiro"><label for="bk-tipo">Tipo de conta</label><select id="bk-tipo" name="tipo_conta">${op(TIPOS_CONTA, d.tipo_conta || 'corrente')}</select></div>
         <div class="campo"><label for="bk-pixt">Chave Pix <span class="muted">(opcional)</span></label><select id="bk-pixt" name="pix_tipo"><option value="">Sem Pix</option>${op(TIPOS_PIX, d.pix_tipo)}</select></div>
         <div class="campo"><label for="bk-pix">Chave</label><input id="bk-pix" name="pix_chave" value="${E(d.pix_chave || '')}"></div>
@@ -11199,6 +11357,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           'Diga "vírgula", "ponto final" ou "nova linha" para pontuar.',
           'Precisa de internet. Sem sinal, use o microfone do teclado do celular.',
           'Evite dizer nomes e CPF: o sistema já sabe de quem é a visita.']],
+        ['Formulários longos', [
+          'Na ficha, no diagnóstico e na avaliação, a faixa no alto mostra em que seção você está (ex.: <b>Seção 3 de 13</b>) e quantas já estão completas.',
+          'Cada seção tem um botão: <b>✓</b> completa, <b>•</b> começada (falta algo), <b>!</b> com erro para corrigir. Toque para ir direto a ela.',
+          'Os itens com <b>*</b> são obrigatórios: sem eles o sistema não grava. O botão <b>Salvar</b> fica sempre embaixo, à mão.']],
         ['Quando algo não funcionar', [
           'No fim de toda tela há <b>Relatar problema</b> (também aparece nesta ajuda). Conte o que você fez e o que apareceu.',
           'O sistema envia junto a tela, a versão e o tipo de aparelho. Não vai foto da tela; não escreva nome, CPF nem telefone de beneficiária.',
@@ -12662,7 +12824,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <div class="campo"><label for="ac-cargo">Cargo ou função (opcional)</label><input id="ac-cargo" name="cargo" maxlength="120" autocomplete="off" value="${x ? E(x.cargo || '') : ''}"></div></div>
         <label class="check"><input type="checkbox" name="ativo"${!x || x.status === 'ativo' ? ' checked' : ''}> Acesso ativo (desmarque para tirar o acesso desta pessoa)</label>
         <div class="aviso erro" data-erro hidden></div>
-        <div class="acoes"><button class="btn pri" type="submit">Gravar</button><button class="btn" type="button" data-acao="fechar">Cancelar</button>${x && x.status === 'ativo' ? `<button class="btn" type="button" data-acao="acomp-codigo" data-id="${E(x.id)}">${x.tem_senha ? 'Novo primeiro acesso' : 'Gerar código'}</button>` : ''}</div></form></div>`;
+        <div class="acoes"><button class="btn pri" type="submit">Salvar</button><button class="btn" type="button" data-acao="fechar">Cancelar</button>${x && x.status === 'ativo' ? `<button class="btn" type="button" data-acao="acomp-codigo" data-id="${E(x.id)}">${x.tem_senha ? 'Novo primeiro acesso' : 'Gerar código'}</button>` : ''}</div></form></div>`;
   }
   // o aviso de confirmação e o código saem no bloco da aba (o painel fecha): o código fica à vista até a pessoa sair da tela
   const redesenhar = () => { if (painelAberto()) U().fecharPainel(); U().render(); const a = document.querySelector('#ac-coord > .aviso'); if (a && a.scrollIntoView) a.scrollIntoView({ block: 'center' }); };
@@ -13728,14 +13890,15 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const pc = op.pct != null ? Math.max(0, Math.min(100, op.pct)) : de ? Math.max(0, Math.min(100, n / de * 100)) : 0, pr = Math.round(pc), C = 2 * Math.PI * 18;
     const num = op.valor != null ? op.valor : `<b${op.crit ? ' style="color:var(--crit)"' : ''}>${n}</b>${op.sem ? '' : `<small> de ${de}</small>`}`;
     const anel = op.sem || op.enxuto ? '' : `<span class="dx-anel" aria-hidden="true"><svg viewBox="0 0 44 44" width="52" height="52" focusable="false"><circle cx="22" cy="22" r="18" class="tr"/><circle cx="22" cy="22" r="18" class="pg${pc > 0 ? '' : ' vazio'}" stroke-dasharray="${(C * pc / 100).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 22 22)"/></svg><b class="num">${pr}%</b></span>`;
+    const cumpriu = !op.sem && pc >= 100 ? ' cumprido' : '';   // 18/10/2026: verde só quando chegou à meta (antes a cor vinha da posição)
     // op.enxuto (15/10/2026): sem o anel e sem o "x% concluído" (o "x de y" e a barra já dizem); os cartões sem total ganham a mesma
     // barra, invisível, e uma linha de situação (op.nota), para os quatro ficarem alinhados
     if (op.enxuto) {
       const nota = op.nota ? `<span class="eq-ok${op.notaTom ? ' ' + op.notaTom : ''}">${op.nota}</span>` : (!op.sem && de && n >= de ? '<span class="eq-ok">completo</span>' : '');
-      return `<div class="eq-kpi dx-kpi enxuto k${k || 1}${op.sem ? ' sem-total' : ''}${op.cls ? ' ' + op.cls : ''}"><div class="dx-kpi-topo"><span class="eq-n num">${num}</span></div><span class="eq-l">${rot}</span>
+      return `<div class="eq-kpi dx-kpi enxuto k${k || 1}${cumpriu}${op.sem ? ' sem-total' : ''}${op.cls ? ' ' + op.cls : ''}"><div class="dx-kpi-topo"><span class="eq-n num">${num}</span></div><span class="eq-l">${rot}</span>
         <span class="medidor fino${op.sem ? ' so-espaco' : ''}" aria-hidden="true"><i style="width:${op.sem ? 0 : pc}%"></i></span>${nota}</div>`;
     }
-    return `<div class="eq-kpi dx-kpi k${k || 1}${op.sem ? ' sem-total' : ''}${op.cls ? ' ' + op.cls : ''}"><div class="dx-kpi-topo">${anel}<span class="eq-n num">${num}</span></div><span class="eq-l">${rot}</span>
+    return `<div class="eq-kpi dx-kpi k${k || 1}${cumpriu}${op.sem ? ' sem-total' : ''}${op.cls ? ' ' + op.cls : ''}"><div class="dx-kpi-topo">${anel}<span class="eq-n num">${num}</span></div><span class="eq-l">${rot}</span>
       ${op.sem ? '' : `<span class="medidor fino" aria-hidden="true"><i style="width:${pc}%"></i></span><span class="dx-kpi-p"><b class="num">${pr}%</b> ${op.fim || 'concluído'}</span>`}${!op.sem && op.valor == null && de && n >= de ? '<span class="eq-ok">completo</span>' : ''}</div>`;
   }
 
@@ -14096,7 +14259,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
             <div class="aviso erro" data-erro hidden></div>
             <div class="acoes"><button class="btn pri" type="submit">Trocar senha</button></div>
           </form></details>
-        <div class="acoes meus-fim"><button class="btn pri" type="button" data-acao="fechar">Voltar ao sistema</button>${S.api.modo === 'supabase' ? '<button class="btn" type="button" data-acao="sair">Sair do sistema</button>' : ''}</div></div>`;
+        <div class="acoes meus-fim"><button class="btn" type="button" data-acao="fechar">Voltar ao sistema</button>${S.api.modo === 'supabase' ? '<button class="btn" type="button" data-acao="sair">Sair do sistema</button>' : ''}</div></div>`;
   }
 
   /* atalhos no topo das telas pessoais: o caminho mais curto para cada tarefa, sem rolar a página inteira no celular.
@@ -14863,7 +15026,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         </div></fieldset>
         ${bols ? `<fieldset><legend>Previsão de atividades (opcional)</legend>
           <p class="small muted" style="margin-top:-6px">Item 6 do termo de compromisso. É só previsão: diagnóstico, implantação e visitas podem ser feitos por esta bolsista, pela outra do estado ou por outra pessoa, paga por ajuda de custo. O sistema registra quem fez cada atividade.</p>
-          <div class="campos" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+          <div class="campos tres">
             <div class="campo"><label for="c-md">Diagnósticos</label><input id="c-md" name="meta_diagnosticos" type="number" min="0" inputmode="numeric" value="${v('meta_diagnosticos')}"></div>
             <div class="campo"><label for="c-mq">Quintais</label><input id="c-mq" name="meta_quintais" type="number" min="0" inputmode="numeric" value="${v('meta_quintais')}"></div>
             <div class="campo"><label for="c-mv">Visitas</label><input id="c-mv" name="meta_visitas" type="number" min="0" inputmode="numeric" value="${v('meta_visitas')}"></div>
@@ -14884,7 +15047,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     m = String(m == null ? '' : m).trim();
     if (!m || /^(undefined|null|NaN|\[object [^\]]*\])$/i.test(m)) m = R.MSG_GENERICA;
     let t = $('#toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
-    t.textContent = m; t.hidden = false; clearTimeout(t._t); t._t = setTimeout(() => { t.hidden = true; }, 3600);
+    // mensagem longa fica mais tempo (ex.: "Visita guardada no aparelho. Será enviada quando houver internet.")
+    t.textContent = m; t.hidden = false; clearTimeout(t._t); t._t = setTimeout(() => { t.hidden = true; }, Math.min(8000, Math.max(3600, m.length * 70)));
   }
   /* erro apanhado numa ação: a pessoa lê a mensagem simples; o detalhe técnico vai para o console */
   function avisarErro(e) {
@@ -14997,7 +15161,16 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     }
     if (box) { box.textContent = texto; box.hidden = !texto; if (box.setAttribute) { if (texto) box.setAttribute('role', 'alert'); else box.removeAttribute('role'); } } else if (texto) toast(texto);
     const primeiro = form.querySelector('.tem-erro input, .tem-erro select, .tem-erro textarea, .check.tem-erro input');
-    if (primeiro) primeiro.focus();
+    if (!primeiro) return;
+    /* 18/10/2026 (uso em campo): no celular o teclado abre e cobria a mensagem de erro, que fica embaixo do campo.
+       O cursor continua indo para o campo; quando o teclado termina de abrir, o bloco inteiro (rótulo + campo + mensagem)
+       é trazido para a parte visível. A barra de salvar sai do caminho com o teclado aberto (css, html.teclado-aberto). */
+    const caixaErro = primeiro.closest('.tem-erro') || primeiro.closest('.campo') || primeiro;
+    primeiro.focus({ preventScroll: true });
+    if (caixaErro.scrollIntoView) caixaErro.scrollIntoView({ block: 'center' });
+    const vv = typeof window !== 'undefined' && window.visualViewport;
+    if (vv && caixaErro.scrollIntoView) { const ajusta = () => { vv.removeEventListener('resize', ajusta); try { caixaErro.scrollIntoView({ block: 'nearest' }); } catch (e) {} };
+      vv.addEventListener('resize', ajusta); setTimeout(() => vv.removeEventListener('resize', ajusta), 1500); }
   }
   /* Enquanto a gravação está em andamento, TODOS os botões de enviar do formulário (e as outras ações que gravam,
      como "Cancelar esta visita") ficam travados: toque duplo ou Enter repetido não grava duas vezes.

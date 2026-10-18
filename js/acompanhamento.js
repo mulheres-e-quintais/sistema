@@ -381,7 +381,7 @@
           <div class="campo"><label for="ac-cargo">Cargo ou função (opcional)</label><input id="ac-cargo" name="cargo" maxlength="120" autocomplete="off" value="${x ? E(x.cargo || '') : ''}"></div></div>
         <label class="check"><input type="checkbox" name="ativo"${!x || x.status === 'ativo' ? ' checked' : ''}> Acesso ativo (desmarque para tirar o acesso desta pessoa)</label>
         <div class="aviso erro" data-erro hidden></div>
-        <div class="acoes"><button class="btn pri" type="submit">Gravar</button><button class="btn" type="button" data-acao="fechar">Cancelar</button>${x && x.status === 'ativo' ? `<button class="btn" type="button" data-acao="acomp-codigo" data-id="${E(x.id)}">${x.tem_senha ? 'Novo primeiro acesso' : 'Gerar código'}</button>` : ''}</div></form></div>`;
+        <div class="acoes"><button class="btn pri" type="submit">Salvar</button><button class="btn" type="button" data-acao="fechar">Cancelar</button>${x && x.status === 'ativo' ? `<button class="btn" type="button" data-acao="acomp-codigo" data-id="${E(x.id)}">${x.tem_senha ? 'Novo primeiro acesso' : 'Gerar código'}</button>` : ''}</div></form></div>`;
   }
   // o aviso de confirmação e o código saem no bloco da aba (o painel fecha): o código fica à vista até a pessoa sair da tela
   const redesenhar = () => { if (painelAberto()) U().fecharPainel(); U().render(); const a = document.querySelector('#ac-coord > .aviso'); if (a && a.scrollIntoView) a.scrollIntoView({ block: 'center' }); };

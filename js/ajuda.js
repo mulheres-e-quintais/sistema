@@ -64,6 +64,10 @@
           'Diga "vírgula", "ponto final" ou "nova linha" para pontuar.',
           'Precisa de internet. Sem sinal, use o microfone do teclado do celular.',
           'Evite dizer nomes e CPF: o sistema já sabe de quem é a visita.']],
+        ['Formulários longos', [
+          'Na ficha, no diagnóstico e na avaliação, a faixa no alto mostra em que seção você está (ex.: <b>Seção 3 de 13</b>) e quantas já estão completas.',
+          'Cada seção tem um botão: <b>✓</b> completa, <b>•</b> começada (falta algo), <b>!</b> com erro para corrigir. Toque para ir direto a ela.',
+          'Os itens com <b>*</b> são obrigatórios: sem eles o sistema não grava. O botão <b>Salvar</b> fica sempre embaixo, à mão.']],
         ['Quando algo não funcionar', [
           'No fim de toda tela há <b>Relatar problema</b> (também aparece nesta ajuda). Conte o que você fez e o que apareceu.',
           'O sistema envia junto a tela, a versão e o tipo de aparelho. Não vai foto da tela; não escreva nome, CPF nem telefone de beneficiária.',

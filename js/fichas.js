@@ -151,7 +151,7 @@
       ${aguardando.length ? `<div class="bloco${MQ.sit(souTec ? 1 : 0)}"><h2>${souTec ? 'Para você aprovar' : 'Aguardando a coordenação técnica'} (${aguardando.length})</h2>
         <div class="lista-fichas">${aguardando.slice(0, 30).map(f => linhaFicha(f, true)).join('')}</div></div>` : ''}
       <details class="hist" data-lembrar="fichas-coord" ${(U().S.aberto || {})['fichas-coord'] || filtro.uf || filtro.situacao || filtro.busca ? 'open' : ''}><summary>Todas as fichas (${conta})</summary><div style="padding:0 18px 16px;display:grid;gap:12px">
-        <div class="campos" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+        <div class="campos tres">
           <div class="campo"><label for="ff-uf">Estado</label><select id="ff-uf" data-filtro="uf">${op('', 'Todos', filtro.uf)}${MQ.UFS.map(u => op(u.uf, u.nome, filtro.uf)).join('')}</select></div>
           <div class="campo"><label for="ff-sit">Situação</label><select id="ff-sit" data-filtro="situacao">${op('', 'Todas', filtro.situacao)}
             ${Object.entries(MQ.SITUACOES).map(([k, v]) => op(k, v.nome, filtro.situacao)).join('')}${Object.entries(MQ.RESULTADOS).map(([k, v]) => op(k, v.nome, filtro.situacao)).join('')}</select></div>
@@ -189,20 +189,20 @@
         <p class="small muted">Preencha com a mulher, no papel e aqui. Sem internet, a ficha fica guardada neste aparelho e é enviada depois.</p>
 
         <fieldset><legend>1. Identificação</legend><div class="campos">
-          <div class="campo inteiro"><label for="fi-nome">Nome completo</label><input id="fi-nome" name="nome" value="${v('nome')}" autocomplete="off" required></div>
-          <div class="campo"><label for="fi-cpf">CPF</label><input id="fi-cpf" name="cpf" inputmode="numeric" value="${E(R.fmtCPF(f.cpf || ''))}" placeholder="000.000.000-00"></div>
-          <div class="campo"><label for="fi-nasc">Data de nascimento</label><input id="fi-nasc" name="data_nascimento" type="date" value="${v('data_nascimento')}" max="${R.hoje()}"></div>
-          <div class="campo"><label for="fi-cel">Celular / WhatsApp</label><input id="fi-cel" name="celular" maxlength="40" inputmode="tel" value="${v('celular')}"></div>
-          <div class="campo"><label for="fi-pess">Nº de pessoas na família</label><input id="fi-pess" name="pessoas_familia" type="number" min="1" max="30" inputmode="numeric" value="${v('pessoas_familia')}"></div>
+          <div class="campo longo"><label for="fi-nome">Nome completo</label><input id="fi-nome" name="nome" value="${v('nome')}" autocomplete="off" required></div>
+          <div class="campo curto"><label for="fi-cpf">CPF</label><input id="fi-cpf" name="cpf" inputmode="numeric" maxlength="14" value="${E(R.fmtCPF(f.cpf || ''))}" placeholder="000.000.000-00"></div>
+          <div class="campo curto"><label for="fi-nasc">Data de nascimento</label><input id="fi-nasc" name="data_nascimento" type="date" value="${v('data_nascimento')}" max="${R.hoje()}"></div>
+          <div class="campo curto"><label for="fi-cel">Celular / WhatsApp</label><input id="fi-cel" name="celular" maxlength="40" inputmode="tel" value="${v('celular')}"></div>
+          <div class="campo curto"><label for="fi-pess">Nº de pessoas na família</label><input id="fi-pess" name="pessoas_familia" type="number" min="1" max="30" inputmode="numeric" value="${v('pessoas_familia')}"></div>
           <div class="campo"><label for="fi-mun">Município</label><input id="fi-mun" name="municipio" autocomplete="off" maxlength="120" list="fi-lista-mun" value="${v('municipio')}"><datalist id="fi-lista-mun">${munis.map(m => `<option value="${E(m)}">`).join('')}</datalist></div>
           <div class="campo"><label for="fi-com">Comunidade / assentamento</label><input id="fi-com" name="comunidade" autocomplete="off" maxlength="300" value="${v('comunidade')}"></div>
           <div class="campo inteiro"><label for="fi-end">Endereço (rua, sítio, nº)</label><input id="fi-end" name="endereco" autocomplete="off" maxlength="300" value="${v('endereco')}"><span class="dica">Escreva do jeito mais completo possível: é por ele que o sistema confere se já há alguém da mesma casa.</span></div>
           <div class="campo inteiro"><label for="fi-ref">Ponto de referência</label><input id="fi-ref" name="ponto_referencia" autocomplete="off" maxlength="300" value="${v('ponto_referencia')}"></div>
-          <div class="campo"><label for="fi-nis">NIS (CadÚnico)</label><input id="fi-nis" name="nis" inputmode="numeric" value="${v('nis')}" placeholder="Se tiver"></div>
-          <div class="campo"><label for="fi-caf">CAF nº</label><input id="fi-caf" name="caf" maxlength="60" value="${v('caf')}" placeholder="Se tiver"></div>
+          <div class="campo"><label for="fi-nis">NIS (CadÚnico) <span class="muted">(opcional)</span></label><input id="fi-nis" name="nis" inputmode="numeric" value="${v('nis')}"></div>
+          <div class="campo"><label for="fi-caf">CAF nº <span class="muted">(opcional)</span></label><input id="fi-caf" name="caf" maxlength="60" value="${v('caf')}"></div>
           <div class="campo inteiro"><label for="fi-ind">Quem indicou (organização / liderança)</label><input id="fi-ind" name="indicada_por" maxlength="200" value="${v('indicada_por')}"></div>
-          <div class="campo"><label for="fi-data">Data da ficha</label><input id="fi-data" name="data_ficha" type="date" value="${v('data_ficha')}" max="${R.hoje()}"></div>
-          <div class="campo"><label>Localização</label><button type="button" class="btn peq" data-acao="ficha-gps">${f.latitude ? 'Localização registrada ✓' : 'Registrar localização'}</button>
+          <div class="campo curto"><label for="fi-data">Data da ficha</label><input id="fi-data" name="data_ficha" type="date" value="${v('data_ficha')}" max="${R.hoje()}"></div>
+          <div class="campo longo"><label>Localização</label><button type="button" class="btn peq" data-acao="ficha-gps">${f.latitude ? 'Localização registrada ✓' : 'Registrar localização'}</button>
             <input type="hidden" name="latitude" value="${v('latitude')}"><input type="hidden" name="longitude" value="${v('longitude')}"><span class="dica" id="fi-gps-dica">${f.latitude ? E(f.latitude + ', ' + f.longitude) : 'Opcional. Use na casa da mulher.'}</span></div>
           <div id="fi-conf" class="inteiro"></div>
         </div></fieldset>
@@ -218,7 +218,7 @@
               <option value="digital" ${f.assinatura === 'digital' ? 'selected' : ''}>Impressão digital + testemunha</option></select></div>
             <div class="campo" data-so-digital><label for="fi-tn">Testemunha: nome</label><input id="fi-tn" name="testemunha_nome" maxlength="160" value="${v('testemunha_nome')}"></div>
             <div class="campo" data-so-digital><label for="fi-tc">Testemunha: CPF</label><input id="fi-tc" name="testemunha_cpf" inputmode="numeric" value="${E(R.fmtCPF(f.testemunha_cpf || ''))}"></div>
-            <div class="campo inteiro"><label for="fi-ft">Foto do termo assinado</label><input id="fi-ft" name="foto_termo" type="file" accept="image/*" capture="environment">
+            <div class="campo inteiro"><label for="fi-ft">Foto do termo assinado</label><input id="fi-ft" name="foto_termo" type="file" accept="image/*">
               <span class="dica" id="fi-ft-dica">${f.foto_termo_path ? 'Já tem foto. Envie outra só se quiser trocar.' : 'Fotografe o papel inteiro, com as assinaturas legíveis.'}</span></div>
           </div>
         </fieldset>
@@ -240,7 +240,7 @@
             <div class="campo" data-so="lista_espera"><label for="fi-pos">Posição na lista de espera</label><input id="fi-pos" name="posicao_espera" type="number" min="1" inputmode="numeric" value="${v('posicao_espera')}"></div>
             <div class="campo inteiro" data-so="sem_agua"><label for="fi-enc">Encaminhada para (programa de cisternas / órgão)</label><input id="fi-enc" name="encaminhada_para" maxlength="300" value="${v('encaminhada_para')}"></div>
             <div class="campo inteiro"><label for="fi-just">Justificativa / observações</label><textarea id="fi-just" name="justificativa">${v('justificativa')}</textarea></div>
-            <div class="campo inteiro"><label for="fi-ff">Foto da ficha em papel assinada</label><input id="fi-ff" name="foto_ficha" type="file" accept="image/*,application/pdf" capture="environment">
+            <div class="campo inteiro"><label for="fi-ff">Foto da ficha em papel assinada</label><input id="fi-ff" name="foto_ficha" type="file" accept="image/*,application/pdf">
               <span class="dica" id="fi-ff-dica">${f.foto_ficha_path ? 'Já tem foto. Envie outra só se quiser trocar.' : 'As duas páginas, com as assinaturas da mulher e da bolsista.'}</span></div>
           </div>
         </fieldset>

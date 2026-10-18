@@ -234,7 +234,7 @@
         <fieldset><legend>Valor</legend><div class="campos"><div class="campo"><label for="vg-valor">Valor estimado (R$)</label><input id="vg-valor" name="valor_estimado" inputmode="decimal" value="${E(d.valor_estimado != null ? String(d.valor_estimado).replace('.', ',') : '')}" placeholder="Ex.: 1.800,00">
           <span class="dica">${tipo === 'passagem' ? 'Some as passagens de todas as pessoas, ida e volta (pesquise o preço no dia).' : 'Espaço, estrutura e alimentação (use o orçamento de referência, se tiver).'}</span></div></div>
           <p class="small muted">${rotSaldo(tipo, S().eu.uf)}</p></fieldset>
-        <fieldset><legend>Participantes</legend><div class="campos" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+        <fieldset><legend>Participantes</legend><div class="campos tres">
           <div class="campo"><label for="vg-pm">Mulheres</label><input id="vg-pm" name="p_mulheres" type="number" min="0" inputmode="numeric" value="${E(part.mulheres == null ? '' : part.mulheres)}"></div>
           <div class="campo"><label for="vg-pe">Equipe</label><input id="vg-pe" name="p_equipe" type="number" min="0" inputmode="numeric" value="${E(part.equipe == null ? '' : part.equipe)}"></div>
           <div class="campo"><label for="vg-pc">Convidados</label><input id="vg-pc" name="p_convidados" type="number" min="0" inputmode="numeric" value="${E(part.convidados == null ? '' : part.convidados)}"></div></div></fieldset>

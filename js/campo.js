@@ -287,7 +287,7 @@
       const feitas = vs.filter(v => v.situacao === 'realizada').length; const d = dgs.filter(x => x.uf === u.uf);
       const pct = Math.min(100, vs.length / MQ.DIAS_CAMPO_UF * 100), pctF = Math.min(100, feitas / MQ.DIAS_CAMPO_UF * 100);
       return `<tr><td class="uf"><span class="sigla">${u.uf}</span><span class="nomeuf">${u.nome}</span></td>
-        <td class="cu-dias" data-rot="Dias de campo"><div class="dias-cel"><span class="num"><b>${feitas}</b> feitos <span class="muted">de ${MQ.DIAS_CAMPO_UF}</span></span>
+        <td class="cu-dias" data-rot="Dias de campo"><div class="dias-cel"><span class="num"><b>${feitas}</b> ${feitas === 1 ? 'feito' : 'feitos'} <span class="muted">de ${MQ.DIAS_CAMPO_UF}</span></span>
           <span class="medidor"><i style="width:${pct}%;opacity:.35"></i><i style="width:${pctF}%"></i></span><span class="small muted">${vs.length - feitas} previsto${vs.length - feitas === 1 ? '' : 's'} no roteiro</span></div></td>
         <td class="num c" data-rot="Diagnósticos">${d.length} <span class="muted">de 40</span></td><td class="num c" data-rot="Planos aprovados">${d.filter(x => x.situacao === 'aprovado').length}</td><td class="num c" data-rot="Sem água na seca">${(n => n ? `<b style="color:var(--crit)">${n}</b>` : 0)(d.filter(x => x.sem_agua).length)}</td>
         <td class="num c" data-rot="Agentes de campo">${pessoasCampo(u.uf).filter(p => p.papel === 'agente').length}</td></tr>`; };
@@ -477,20 +477,20 @@
       latitude: null, longitude: null, familia: [{ nome: primeiroNome(f.nome), parentesco: 'Ela mesma', ajuda: true }], kit: [{}, {}, {}], cronograma: [{}, {}] };
     const v = k => E(d[k] == null ? '' : d[k]);
     const prod = d.producao || {};
-    return `<div class="painel-cab"><div class="t"><span class="eyebrow">${atual ? 'Corrigir diagnóstico' : '1ª visita'} · ${E(f.uf)} · ${codigoQuintal(f)}</span>
+    return `<div class="painel-cab"><div class="t"><span class="eyebrow">${atual ? 'Corrigir diagnóstico' : '1ª visita'} · ${E(f.uf)} · <span class="cod-q">${codigoQuintal(f)}</span></span>
         <h2 id="painel-t">Diagnóstico e plano do quintal</h2><span class="small">${E(f.nome)} · ${E(f.municipio)} · ${E(f.comunidade)}</span>
         ${atual && atual.situacao === 'devolvido' && atual.obs_coordenacao ? `<div class="aviso erro" style="margin-top:6px"><b>Devolvido pela coordenação técnica:</b> ${E(atual.obs_coordenacao)}</div>` : ''}</div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo"><form class="f" data-form="diag" data-id="${E(d.id)}" data-ficha="${E(f.id)}" data-visita="${E(d.visita_id || '')}" novalidate>
         ${!f.consent_imagem ? '<div class="aviso"><b>Ela não autorizou uso de imagem:</b> fotografe o quintal sem que ela apareça.</div>' : ''}
         <fieldset><legend>Visita</legend><div class="campos">
-          <div class="campo"><label for="dg-data">Data da visita</label><input id="dg-data" name="data_visita" type="date" value="${v('data_visita')}" min="${R.LIM.visitaMin}" max="${R.hoje()}"></div>
-          <div class="campo"><label>Localização do quintal</label><button type="button" class="btn peq" data-acao="campo-gps">${d.latitude ? 'Localização registrada ✓' : 'Registrar localização'}</button>
-            <input type="hidden" name="latitude" value="${v('latitude')}"><input type="hidden" name="longitude" value="${v('longitude')}">
-            <input type="hidden" name="gps_precisao" value="${v('gps_precisao')}"><input type="hidden" name="gps_em" value="${v('gps_em')}">
+          <input type="hidden" name="latitude" value="${v('latitude')}"><input type="hidden" name="longitude" value="${v('longitude')}">
+          <input type="hidden" name="gps_precisao" value="${v('gps_precisao')}"><input type="hidden" name="gps_em" value="${v('gps_em')}">
+          <div class="campo curto"><label for="dg-data">Data da visita</label><input id="dg-data" name="data_visita" type="date" value="${v('data_visita')}" min="${R.LIM.visitaMin}" max="${R.hoje()}"></div>
+          <div class="campo longo"><label>Localização do quintal</label><button type="button" class="btn peq" data-acao="campo-gps">${d.latitude ? 'Localização registrada ✓' : 'Registrar localização'}</button>
             <span class="dica" id="dg-gps-dica">${d.latitude ? E(d.latitude + ', ' + d.longitude) : 'Registre em pé, no quintal, durante a visita.'}</span></div>
           ${(() => { const mt = String(d.sem_gps_motivo || ''); const tipo = MOTIVOS_SEM_GPS.find(x => mt.startsWith(x + '. ')) || ''; const det = tipo ? mt.slice(tipo.length + 2) : mt;
-            return `<div class="campo inteiro sem-gps" id="w-sem_gps_motivo"><label for="dg-semgps-tipo">Sem localização? Por quê</label>
+            return `<div class="campo inteiro sem-gps" id="w-sem_gps_motivo"${d.latitude && !mt ? ' hidden' : ''}><label for="dg-semgps-tipo">Sem localização? Por quê</label>
               <select id="dg-semgps-tipo" name="sem_gps_tipo"><option value="">Por que não registrou?</option>${MOTIVOS_SEM_GPS.map(x => `<option${x === tipo ? ' selected' : ''}>${E(x)}</option>`).join('')}</select>
               <label for="dg-semgps" class="so-leitor">Explique com suas palavras</label>
               <input id="dg-semgps" name="sem_gps_detalhe" value="${E(det)}" maxlength="500" placeholder="Onde fica e o que aconteceu">
@@ -546,7 +546,7 @@
         <fieldset id="w-fotos"><legend>8. Fotos e croqui</legend>
           <div class="campos">${MQ.DIAG.fotos.filter(([k]) => k !== 'mulher' || f.consent_imagem).map(([k, t]) => { const tem = (d.fotos || []).some(x => new RegExp('diag_' + k).test(x)) || (atual && atual.exemplo && k !== 'mulher');
             const opc = k === 'croqui' || k === 'mulher';
-            return `<div class="campo ${opc ? 'inteiro' : ''}"><label for="dg-f-${k}">${E(t)}${opc ? '' : ' *'}</label><input id="dg-f-${k}" name="foto_${k}" data-foto="${k}" type="file" accept="image/*" capture="environment">
+            return `<div class="campo ${opc ? 'inteiro' : ''}"><label for="dg-f-${k}">${E(t)}${opc ? ' <span class="muted">(opcional)</span>' : '<span class="obr" aria-hidden="true"> *</span>'}</label><input id="dg-f-${k}" name="foto_${k}" data-foto="${k}" type="file" accept="image/*" capture="environment">
               <span class="dica" id="dg-f-${k}-dica">${tem ? 'Já tem foto. Envie outra só para trocar.' : k === 'croqui' ? 'Desenhe no papel e fotografe.' : k === 'mulher' ? 'Só se ela quiser. Foto do rosto, de frente, com o celular em pé e o quintal ao fundo. Pode ir para o mosaico da página pública, sem o nome dela.' : 'Obrigatória.'}</span></div>`; }).join('')}</div>
         </fieldset>
 
@@ -639,7 +639,7 @@
     const dl = linhas => `<dl class="dl">${linhas.filter(l => l && l[1] != null && l[1] !== '' && !(Array.isArray(l[1]) && !l[1].length)).map(([k, v]) => `<dt>${k}</dt><dd>${E(v)}</dd>`).join('')}</dl>`;
     const sit = dg.sem_agua ? '<span class="chip crit">Sem água: encaminhar</span>' : dg.situacao === 'aprovado' ? '<span class="chip ok">Plano aprovado</span>' : dg.situacao === 'devolvido' ? '<span class="chip crit">Devolvido</span>' : '<span class="chip pend">Plano em análise</span>';
     const tab = (cab, linhas) => linhas.length ? `<div class="quadro-scroll" style="display:block"><table class="quadro"><thead><tr>${cab.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${linhas.map(l => `<tr>${l.map(c => `<td>${E(c ?? '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<p class="muted small">—</p>';
-    return `<div class="painel-cab"><div class="t"><span class="eyebrow">Diagnóstico · ${E(f.uf)} · ${codigoQuintal(f)}</span><h2 id="painel-t">${E(f.nome)}</h2>
+    return `<div class="painel-cab"><div class="t"><span class="eyebrow">Diagnóstico · ${E(f.uf)} · <span class="cod-q">${codigoQuintal(f)}</span></span><h2 id="painel-t">${E(f.nome)}</h2>
         <span style="display:flex;gap:6px;flex-wrap:wrap">${sit}${dg._fila ? '<span class="chip pend">No aparelho</span>' : ''}</span></div>
         <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
       <div class="painel-corpo">
@@ -800,19 +800,25 @@
     else if (a === 'campo-linha-rem') { const l = el.closest('.linha-din'); if (l && l.parentElement.children.length > 1) l.remove(); else if (l) l.querySelectorAll('input').forEach(i => { if (i.type === 'checkbox') i.checked = false; else i.value = ''; }); }
     else if (a === 'campo-gps') {
       const dica = $('#dg-gps-dica');
-      if (!navigator.geolocation) { dica.textContent = 'Este aparelho não informa a localização. Explique no campo abaixo.'; return; }
+      // "Sem localização? Por quê" só aparece quando a localização falta (com ela registrada, eram 150 px de campo inútil)
+      const semGps = mostrar => { const w = $('#w-sem_gps_motivo'); if (w && (mostrar || ![...w.querySelectorAll('input, select')].some(c => c.value))) w.hidden = !mostrar; };
+      if (!navigator.geolocation) { dica.textContent = 'Este aparelho não informa a localização. Explique no campo abaixo.'; semGps(true); return; }
       dica.textContent = 'Buscando localização…';
       navigator.geolocation.getCurrentPosition(pos => {
         const fm = $('form[data-form=diag]'); if (!fm) return;
         fm.latitude.value = pos.coords.latitude.toFixed(6); fm.longitude.value = pos.coords.longitude.toFixed(6);
         fm.gps_precisao.value = Math.round(pos.coords.accuracy); fm.gps_em.value = new Date().toISOString();
-        dica.textContent = fm.latitude.value + ', ' + fm.longitude.value + ' (precisão de ' + Math.round(pos.coords.accuracy) + ' m)'; el.textContent = 'Localização registrada ✓';
-      }, err => { dica.textContent = MQ.dicaGPS(err, 'Se não der, explique no campo abaixo.'); },
+        dica.textContent = fm.latitude.value + ', ' + fm.longitude.value + ' (precisão de ' + Math.round(pos.coords.accuracy) + ' m)'; el.textContent = 'Localização registrada ✓'; semGps(false);
+      }, err => { dica.textContent = MQ.dicaGPS(err, 'Se não der, explique no campo abaixo.'); semGps(true); },
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 });
     }
     else if (a === 'campo-visita-cancelar') {
       const fm = $('form[data-form=visita]'); const v = visitas().find(x => x.id === fm.dataset.id);
-      if (!fm.dataset.confirmar) { fm.dataset.confirmar = '1'; fm.dataset.confEm = String(Date.now()); el.textContent = 'Confirmar cancelamento'; return; }
+      if (!fm.dataset.confirmar) {
+        fm.dataset.confirmar = '1'; fm.dataset.confEm = String(Date.now()); const txt = el.textContent; el.textContent = 'Toque de novo para cancelar a visita';
+        // 18/10/2026: o modo armado desarma sozinho em 6 s (antes ficava armado e um toque distraído depois cancelava)
+        clearTimeout(fm._desarma); fm._desarma = setTimeout(() => { if (fm.isConnected && fm.dataset.confirmar) { delete fm.dataset.confirmar; el.textContent = txt; } }, 6000);
+        return; }
       if (Date.now() - (+fm.dataset.confEm || 0) < 450) return;   // 13/10/2026: toque duplo não confirma
       await U().ocupado(fm, async () => { await guardar('visita', Object.assign({}, v, { situacao: 'cancelada' })); U().fecharPainel(); U().render(); U().toast('Visita cancelada. O dia de campo volta para o saldo do estado.'); }, { semConferir: true });
     }

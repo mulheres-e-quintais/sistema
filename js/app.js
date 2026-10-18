@@ -690,14 +690,15 @@
     const pc = op.pct != null ? Math.max(0, Math.min(100, op.pct)) : de ? Math.max(0, Math.min(100, n / de * 100)) : 0, pr = Math.round(pc), C = 2 * Math.PI * 18;
     const num = op.valor != null ? op.valor : `<b${op.crit ? ' style="color:var(--crit)"' : ''}>${n}</b>${op.sem ? '' : `<small> de ${de}</small>`}`;
     const anel = op.sem || op.enxuto ? '' : `<span class="dx-anel" aria-hidden="true"><svg viewBox="0 0 44 44" width="52" height="52" focusable="false"><circle cx="22" cy="22" r="18" class="tr"/><circle cx="22" cy="22" r="18" class="pg${pc > 0 ? '' : ' vazio'}" stroke-dasharray="${(C * pc / 100).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 22 22)"/></svg><b class="num">${pr}%</b></span>`;
+    const cumpriu = !op.sem && pc >= 100 ? ' cumprido' : '';   // 18/10/2026: verde só quando chegou à meta (antes a cor vinha da posição)
     // op.enxuto (15/10/2026): sem o anel e sem o "x% concluído" (o "x de y" e a barra já dizem); os cartões sem total ganham a mesma
     // barra, invisível, e uma linha de situação (op.nota), para os quatro ficarem alinhados
     if (op.enxuto) {
       const nota = op.nota ? `<span class="eq-ok${op.notaTom ? ' ' + op.notaTom : ''}">${op.nota}</span>` : (!op.sem && de && n >= de ? '<span class="eq-ok">completo</span>' : '');
-      return `<div class="eq-kpi dx-kpi enxuto k${k || 1}${op.sem ? ' sem-total' : ''}${op.cls ? ' ' + op.cls : ''}"><div class="dx-kpi-topo"><span class="eq-n num">${num}</span></div><span class="eq-l">${rot}</span>
+      return `<div class="eq-kpi dx-kpi enxuto k${k || 1}${cumpriu}${op.sem ? ' sem-total' : ''}${op.cls ? ' ' + op.cls : ''}"><div class="dx-kpi-topo"><span class="eq-n num">${num}</span></div><span class="eq-l">${rot}</span>
         <span class="medidor fino${op.sem ? ' so-espaco' : ''}" aria-hidden="true"><i style="width:${op.sem ? 0 : pc}%"></i></span>${nota}</div>`;
     }
-    return `<div class="eq-kpi dx-kpi k${k || 1}${op.sem ? ' sem-total' : ''}${op.cls ? ' ' + op.cls : ''}"><div class="dx-kpi-topo">${anel}<span class="eq-n num">${num}</span></div><span class="eq-l">${rot}</span>
+    return `<div class="eq-kpi dx-kpi k${k || 1}${cumpriu}${op.sem ? ' sem-total' : ''}${op.cls ? ' ' + op.cls : ''}"><div class="dx-kpi-topo">${anel}<span class="eq-n num">${num}</span></div><span class="eq-l">${rot}</span>
       ${op.sem ? '' : `<span class="medidor fino" aria-hidden="true"><i style="width:${pc}%"></i></span><span class="dx-kpi-p"><b class="num">${pr}%</b> ${op.fim || 'concluído'}</span>`}${!op.sem && op.valor == null && de && n >= de ? '<span class="eq-ok">completo</span>' : ''}</div>`;
   }
 
@@ -1058,7 +1059,7 @@
             <div class="aviso erro" data-erro hidden></div>
             <div class="acoes"><button class="btn pri" type="submit">Trocar senha</button></div>
           </form></details>
-        <div class="acoes meus-fim"><button class="btn pri" type="button" data-acao="fechar">Voltar ao sistema</button>${S.api.modo === 'supabase' ? '<button class="btn" type="button" data-acao="sair">Sair do sistema</button>' : ''}</div></div>`;
+        <div class="acoes meus-fim"><button class="btn" type="button" data-acao="fechar">Voltar ao sistema</button>${S.api.modo === 'supabase' ? '<button class="btn" type="button" data-acao="sair">Sair do sistema</button>' : ''}</div></div>`;
   }
 
   /* atalhos no topo das telas pessoais: o caminho mais curto para cada tarefa, sem rolar a página inteira no celular.
@@ -1825,7 +1826,7 @@
         </div></fieldset>
         ${bols ? `<fieldset><legend>Previsão de atividades (opcional)</legend>
           <p class="small muted" style="margin-top:-6px">Item 6 do termo de compromisso. É só previsão: diagnóstico, implantação e visitas podem ser feitos por esta bolsista, pela outra do estado ou por outra pessoa, paga por ajuda de custo. O sistema registra quem fez cada atividade.</p>
-          <div class="campos" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+          <div class="campos tres">
             <div class="campo"><label for="c-md">Diagnósticos</label><input id="c-md" name="meta_diagnosticos" type="number" min="0" inputmode="numeric" value="${v('meta_diagnosticos')}"></div>
             <div class="campo"><label for="c-mq">Quintais</label><input id="c-mq" name="meta_quintais" type="number" min="0" inputmode="numeric" value="${v('meta_quintais')}"></div>
             <div class="campo"><label for="c-mv">Visitas</label><input id="c-mv" name="meta_visitas" type="number" min="0" inputmode="numeric" value="${v('meta_visitas')}"></div>
@@ -1846,7 +1847,8 @@
     m = String(m == null ? '' : m).trim();
     if (!m || /^(undefined|null|NaN|\[object [^\]]*\])$/i.test(m)) m = R.MSG_GENERICA;
     let t = $('#toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
-    t.textContent = m; t.hidden = false; clearTimeout(t._t); t._t = setTimeout(() => { t.hidden = true; }, 3600);
+    // mensagem longa fica mais tempo (ex.: "Visita guardada no aparelho. Será enviada quando houver internet.")
+    t.textContent = m; t.hidden = false; clearTimeout(t._t); t._t = setTimeout(() => { t.hidden = true; }, Math.min(8000, Math.max(3600, m.length * 70)));
   }
   /* erro apanhado numa ação: a pessoa lê a mensagem simples; o detalhe técnico vai para o console */
   function avisarErro(e) {
@@ -1959,7 +1961,16 @@
     }
     if (box) { box.textContent = texto; box.hidden = !texto; if (box.setAttribute) { if (texto) box.setAttribute('role', 'alert'); else box.removeAttribute('role'); } } else if (texto) toast(texto);
     const primeiro = form.querySelector('.tem-erro input, .tem-erro select, .tem-erro textarea, .check.tem-erro input');
-    if (primeiro) primeiro.focus();
+    if (!primeiro) return;
+    /* 18/10/2026 (uso em campo): no celular o teclado abre e cobria a mensagem de erro, que fica embaixo do campo.
+       O cursor continua indo para o campo; quando o teclado termina de abrir, o bloco inteiro (rótulo + campo + mensagem)
+       é trazido para a parte visível. A barra de salvar sai do caminho com o teclado aberto (css, html.teclado-aberto). */
+    const caixaErro = primeiro.closest('.tem-erro') || primeiro.closest('.campo') || primeiro;
+    primeiro.focus({ preventScroll: true });
+    if (caixaErro.scrollIntoView) caixaErro.scrollIntoView({ block: 'center' });
+    const vv = typeof window !== 'undefined' && window.visualViewport;
+    if (vv && caixaErro.scrollIntoView) { const ajusta = () => { vv.removeEventListener('resize', ajusta); try { caixaErro.scrollIntoView({ block: 'nearest' }); } catch (e) {} };
+      vv.addEventListener('resize', ajusta); setTimeout(() => vv.removeEventListener('resize', ajusta), 1500); }
   }
   /* Enquanto a gravação está em andamento, TODOS os botões de enviar do formulário (e as outras ações que gravam,
      como "Cancelar esta visita") ficam travados: toque duplo ou Enter repetido não grava duas vezes.
