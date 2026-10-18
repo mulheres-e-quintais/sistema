@@ -65,6 +65,8 @@ begin
   if to_regclass('public.fila_celular') is not null then delete from public.fila_celular where equipe_id in (select id from _eqx); end if;
   if to_regclass('public.pedidos_novo_acesso') is not null then delete from public.pedidos_novo_acesso where equipe_id in (select id from _eqx); end if;
   if to_regclass('public.testes_resultados') is not null then delete from public.testes_resultados where equipe_id in (select id from _eqx); end if;
+  if to_regclass('public.apl_municipios') is not null then   -- 95 (18/10/2026): APL anotado pelo md5 de "UF|município"
+    delete from public.apl_municipios where md5(uf || '|' || municipio)::uuid in (select id from public.exemplo where tabela = 'apl_municipios'); end if;
   delete from public.equipe where id in (select id from _eqx);
   delete from public.auditoria where registro_id in (select id from _ex)
    or (tabela = 'planilhas' and depois ->> 'qtd' = '300' and em = timestamptz '2027-09-20 11:00-03');   -- a linha de planilha que a simulação escreveu

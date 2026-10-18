@@ -8,7 +8,7 @@
 --   1.000 visitas feitas (as 200 por estado: diagnóstico, implantação, 2 acompanhamentos e avaliação de cada quintal),
 --   200 diagnósticos com plano aprovado, 200 avaliações finais, km de cada visita, bolsas e ajudas de custo de 12 meses
 --   (pedido, aval e Arlo), entregas do mês, 2 turmas do curso FIC com encontros semanais e presença, passagens e eventos,
---   documentos, planilha de gastos, acesso à água, canais de venda, acompanhamento do MDA e do MPA, acessos, relatos
+--   documentos, planilha de gastos, acesso à água, canais de venda, arranjos produtivos (APL) de cada município, acompanhamento do MDA e do MPA, acessos, relatos
 --   de problema, convites e o histórico de tudo isso.
 --
 -- ATENÇÃO, LEIA ANTES:
@@ -458,6 +458,26 @@ begin
     alter table public.ciencias enable trigger user;
   end if;
 
+  -- ---------- arranjos produtivos (APL) de cada município com quintal (18/10/2026) ----------
+  -- a tabela não tem id: a linha fica anotada em public.exemplo pelo md5 de "UF|município" (o 96 apaga do mesmo jeito);
+  -- município que já tinha APL de verdade fica como está (on conflict do nothing) e não é anotado
+  if to_regclass('public.apl_municipios') is not null then
+    alter table public.apl_municipios disable trigger user;
+    with novos as (
+      insert into public.apl_municipios (uf, municipio, apls, obs, atualizado_por, atualizado_em)
+      select m.muf, m.mnome,
+        string_to_array((array['hortaliças|feira agroecológica|galinha caipira', 'caprinocultura|apicultura|fruticultura',
+               'mandioca e derivados|feira livre|PNAE', 'apicultura|artesanato|PAA', 'galinha caipira|hortaliças|cooperativa'])[1 + (m.o % 5)::int], '|'),
+        (array['Feira agroecológica aos sábados na sede; prefeitura compra para a merenda (PNAE).', 'Cooperativa local compra mel e frutas; associação de criadoras de cabras.',
+               'Casa de farinha comunitária; feira livre às quartas.', 'PAA ativo pela Conab; grupo de artesãs na comunidade.', 'Cooperativa compra ovos e hortaliças toda semana.'])[1 + (m.o % 5)::int],
+        cg, timestamptz '2027-03-10 10:00-03' + m.o * interval '3 hours'
+      from (select x.muf, x.mnome, row_number() over (order by x.muf, x.mnome) as o from (select distinct f.uf as muf, f.mun as mnome from _f f) x) m
+      on conflict (uf, municipio) do nothing
+      returning apl_municipios.uf as nuf, apl_municipios.municipio as nmun)
+    insert into public.exemplo (tabela, id) select 'apl_municipios', md5(novos.nuf || '|' || novos.nmun)::uuid from novos on conflict do nothing;
+    alter table public.apl_municipios enable trigger user;
+  end if;
+
   -- ---------- histórico: o rastro de cada ação (as regras estavam desligadas na carga, então ele é escrito aqui) ----------
   insert into public.auditoria (tabela, registro_id, acao, por, em, antes, depois)
   select 'equipe', e.id, 'INSERT', cg, q.criado_em, null::jsonb, jsonb_build_object('nome', q.nome, 'papel', q.papel, 'uf', q.uf, 'status', 'ativa') from _eq e join public.equipe q on q.id = e.id
@@ -503,4 +523,5 @@ select 'Simulação do projeto completo colocada' as resultado,
   (select count(*) from public.exemplo where tabela = 'avaliacoes') as avaliacoes,
   (select count(*) from public.exemplo where tabela = 'solicitacoes_pagamento') as pagamentos,
   (select count(*) from public.exemplo where tabela = 'fic_encontros') as encontros_fic,
+  (select count(*) from public.exemplo where tabela = 'apl_municipios') as municipios_com_apl,
   (select count(*) from public.auditoria where registro_id in (select id from public.exemplo)) as historico;
