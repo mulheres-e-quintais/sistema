@@ -51,6 +51,12 @@ select t('coordenação geral registra no lugar do professor: o encontro fica em
   v := public.registrar_encontro_fic(null, %L, public.fic_hoje(), 2, 'ava', 'Atividade no AVA sobre compostagem', '{}');
   if (select professor_id from public.fic_encontros where id = v) <> %L then raise exception 'ficou em nome da coordenação'; end if; end $x$ $q$, :'turma', :'prof'), 'ok');
 -- mês sem encontro: só com justificativa
+-- (18/10/2026) no máximo 2 professores do FIC ativos (46): fica só o professor da turma deste teste; os outros que a suíte deixou saem
+create temp table _prof_fora as select id from public.equipe where papel = 'professor_fic' and status = 'ativa' and id <> :'prof';
+alter table public.equipe disable trigger user;
+update public.equipe set status = 'desligada', data_fim = greatest(data_inicio, current_date), motivo_desligamento = 'Teste: abre a vaga da segunda professora'
+ where id in (select id from _prof_fora);
+alter table public.equipe enable trigger user;
 insert into public.equipe (papel, nome, cpf, email, data_inicio, consentimento_lgpd, docs_funcern_em, termo_assinado_em)
   values ('professor_fic', 'Professora Sem Encontro', '95813246746', 'prof.sem.encontro@t.com', date '2026-09-01', true, public.fic_hoje(), public.fic_hoje());
 select logar('prof.sem.encontro@t.com') \gset p2_
@@ -88,6 +94,11 @@ select t('encontro cancelado fica fora do relatório da bolsa', :PR, $q$do $x$ d
   s := public.solicitar_pagamento('bolsa', date_trunc('month', public.fic_hoje())::date, 2200, 'Aulas do curso FIC no mês, com planejamento e acompanhamento das turmas.', null, '{}');
   select detalhe into d from public.solicitacoes_pagamento where id = s;
   if d::text like '%Oficina de sementes%' then raise exception 'cancelado entrou no relatório'; end if; end $x$ $q$, 'ok');
+-- (18/10/2026) devolve a equipe como estava: a professora de teste sai e os professores que saíram voltam (os testes seguintes usam :P)
+alter table public.equipe disable trigger user;
+update public.equipe set status = 'desligada', data_fim = greatest(data_inicio, current_date), motivo_desligamento = 'Teste: fim do teste de encontros' where email = 'prof.sem.encontro@t.com';
+update public.equipe set status = 'ativa', data_fim = null, motivo_desligamento = null where id in (select id from _prof_fora);
+alter table public.equipe enable trigger user;
 \pset tuples_only off
 select n, case when ok then 'PASSOU' else 'FALHOU' end as r, caso, left(det, 100) det from res order by n;
 select count(*) filter (where ok) passou, count(*) filter (where not ok) falhou from res;

@@ -371,7 +371,7 @@
             <span class="small muted">${E((MQ.PAPEIS[x.m.papel] || {}).nome)} · mora em ${E(x.m.municipio || '—')}</span>
             <span>${x.quintais} quintais · ${x.viagens} viagens · <b>${brl(x.total)}</b></span></div>`).join('')}</div>
           ${(() => { const l = Object.values(U0.longe || {}).map(x => Object.assign(x, { med: x.km / x.n })).filter(x => x.med > 50).sort((a, b) => b.med - a.med);
-              return l.length ? `<div class="aviso"><b>Onde vale ter alguém morando perto:</b> ${l.map(x => `${E(x.mun)} (${x.n} quintais, ${fmtN(x.med)} km de quem visita)`).join(' · ')}.
+              return l.length ? `<div class="aviso"><b>Onde vale ter alguém morando perto:</b> ${l.map(x => `${E(x.mun)} (${x.n} ${x.n === 1 ? 'quintal' : 'quintais'}, ${fmtN(x.med)} km de quem visita)`).join(' · ')}.
                 Cada ida e volta a mais de 50 km custa, por visita, cerca de ${brl(2 * 50 / C.par.km_por_litro * C.par.preco_litro)} ou mais só de combustível. Uma agente de campo desses municípios reduziria o custo.</div>` : ''; })()}
           <details class="hist"><summary>Ver as ${U0.viagens.length} viagens</summary><ol class="viagens">${U0.viagens.slice().sort((a, b) => a.mes - b.mes).map(v =>
             `<li><span class="small muted">${MESES_PROJ[v.mes - 1]} · ${E(MQ.ETAPAS_CUSTO[v.etapa])}</span><b>${E(v.pessoa.nome_social || v.pessoa.nome)}</b>: ${v.n} quinta${v.n > 1 ? 'is' : 'l'} (${E([...new Set(v.quintais.map(f => f.municipio))].join(', '))}) · ${fmtN(v.km)} km · ${brl(v.total)}</li>`).join('')}</ol></details>`

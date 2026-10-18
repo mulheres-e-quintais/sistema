@@ -368,7 +368,7 @@
     const f = t.form; const box = f.querySelector('[data-prazo]'); if (!box || !t.value) return;
     const tipo = f.dataset.t; const d = diasAte(t.value);
     box.className = 'aviso viag-prazo ' + (d < 30 ? 'erro' : d < PRAZO[tipo] ? 'erro' : 'ok');
-    box.innerHTML = d < PRAZO[tipo] ? `<b>Faltam ${d} dias: fora do prazo de ${PRAZO[tipo]} dias.</b> Escreva a justificativa.${tipo === 'passagem' && d < 30 ? ' Com menos de 30 dias a FUNCERN pode não conseguir comprar.' : ''}` : `Faltam ${d} dias: dentro do prazo.`;
+    box.innerHTML = d < PRAZO[tipo] ? `<b>${d === 1 ? 'Falta 1 dia' : 'Faltam ' + d + ' dias'}: fora do prazo de ${PRAZO[tipo]} dias.</b> Escreva a justificativa.${tipo === 'passagem' && d < 30 ? ' Com menos de 30 dias a FUNCERN pode não conseguir comprar.' : ''}` : `Faltam ${d} dias: dentro do prazo.`;
   });
 
   function lerForm(tipo, fd) {

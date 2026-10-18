@@ -300,8 +300,23 @@ select u.uf,
   (select count(*) from public.visitas v join f on f.id = v.ficha_id where v.uf = u.uf and v.etapa = 'acompanhamento' and v.situacao = 'realizada') acompanhamentos,
   (select count(*) from public.avaliacoes a join f on f.id = a.ficha_id where a.uf = u.uf) avaliacoes
 from (values ('AL'), ('BA'), ('PE'), ('PI'), ('SE')) u(uf);
-select set_config('request.jwt.claim.sub', :'ucg', false);
-create temp table aud_fn as select public.vitrine() vit, public.acompanhamento_dados('mda') mda, public.acompanhamento_dados('mpa') mpa, public.acompanhamento_formacao('mpa') form;   -- 61: a tela do MPA usa acompanhamento_formacao
+-- 18/10/2026: o painel é lido como o MDA e o MPA de verdade (contas de observador). Desde o 64, a coordenação geral vê a
+-- PRÉVIA, que de propósito inclui os dados de exemplo; a comparação com a vitrine e a contagem independente é a do observador.
+select gen_random_uuid() as umda \gset
+select gen_random_uuid() as umpa \gset
+-- (o banco só aceita conta de e-mail já cadastrado no projeto: primeiro o observador, depois a conta, depois o vínculo)
+insert into public.observadores (nome, email, orgao, status) values ('Observador MDA Auditoria', 'obs.mda.aud@exemplo.invalid', 'mda', 'ativo'),
+  ('Observador MPA Auditoria', 'obs.mpa.aud@exemplo.invalid', 'mpa', 'ativo');
+alter table auth.users disable trigger user;   -- a conta do observador nasce sem o fluxo do código de acesso (testado no test_acompanhamento)
+insert into auth.users (id, email) values (:'umda', 'obs.mda.aud@exemplo.invalid'), (:'umpa', 'obs.mpa.aud@exemplo.invalid');
+alter table auth.users enable trigger user;
+update public.observadores set user_id = :'umda' where email = 'obs.mda.aud@exemplo.invalid';
+update public.observadores set user_id = :'umpa' where email = 'obs.mpa.aud@exemplo.invalid';
+create temp table aud_fn as select public.vitrine() vit, null::jsonb mda, null::jsonb mpa, null::jsonb form;
+select set_config('request.jwt.claim.sub', :'umda', false);
+update aud_fn set mda = public.acompanhamento_dados('mda');
+select set_config('request.jwt.claim.sub', :'umpa', false);
+update aud_fn set mpa = public.acompanhamento_dados('mpa'), form = public.acompanhamento_formacao('mpa');   -- 61: a tela do MPA usa acompanhamento_formacao
 select set_config('request.jwt.claim.sub', '', false);
 create temp view aud_v as select (u->>'uf') uf, u from aud_fn, jsonb_array_elements(vit->'por_uf') u;
 create temp view aud_a as select (u->>'uf') uf, u from aud_fn, jsonb_array_elements(mda->'por_uf') u;
@@ -324,8 +339,9 @@ select aud_ok('IND municípios: soma dos implantados por município = implantado
 select aud_ok('IND municípios: "Picos", "Picos " e "PICOS" contam como 1 município; "Itiúba" e "Itiuba" também', (a.u->>'municipios')::int = 2 and (select (u->>'municipios')::int from aud_a where uf = 'BA') = 1, 'PI ' || (a.u->>'municipios')) from aud_a a where uf = 'PI';
 select aud_ok('IND atrasadas: diagnóstico previsto no passado conta como atrasado no PI', (a.u->>'atrasadas')::int >= 1, a.u->>'atrasadas') from aud_a a where uf = 'PI';
 select aud_ok('IND plano devolvido depois da implantação: o quintal segue em "implantados" (comportamento atual)', (select (u->>'implantados')::int from aud_a where uf = 'PI') = 3, (select u->>'implantados' from aud_a where uf = 'PI'));
-select aud_ok('IND formação (MPA, 61): matrículas sem a cancelada, como a tela', (select (form->>'matriculas')::int from aud_fn) = (select count(*) from public.matriculas_fic where cancelada_em is null and id not in (select id from public.exemplo)),
-  'SQL ' || (select form->>'matriculas' from aud_fn) || ' × ativas ' || (select count(*) from public.matriculas_fic where cancelada_em is null));
+-- 67 (18/10/2026): matriculadas = pessoas ativas com a matrícula registrada, a mesma conta da coordenação
+select aud_ok('IND formação (MPA, 67): matriculadas contadas como na coordenação', (select (form->>'matriculas')::int from aud_fn) = (select count(*) from public.equipe x where x.status = 'ativa' and x.papel in ('coord_tecnico','articulacao','apoio','agente') and x.matricula_fic_em is not null and x.id not in (select id from public.exemplo)),
+  'SQL ' || (select form->>'matriculas' from aud_fn) || ' × equipe ' || (select count(*) from public.equipe x where x.status = 'ativa' and x.papel in ('coord_tecnico','articulacao','apoio','agente') and x.matricula_fic_em is not null));
 select aud_ok('IND formação (MPA, 61): encontros sem o cancelado, como a tela', (select (form->>'encontros')::int from aud_fn) = (select count(*) from public.fic_encontros where cancelado_em is null and id not in (select id from public.exemplo)),
   'SQL ' || (select form->>'encontros' from aud_fn) || ' × válidos ' || (select count(*) from public.fic_encontros where cancelado_em is null));
 select aud_ok('IND exemplo: ficha de exemplo fora da vitrine e do MDA', (select sum((u->>'fichas')::int) from aud_v) = (select count(*) from public.fichas where id not in (select id from public.exemplo)), '');

@@ -99,9 +99,10 @@ select t('T não cadastra coord_geral', :T, ins('coord_geral','','Geral Tentativ
 
 -- ===== 3. Coordenação geral: professor e auxiliar
 select t('G cadastra professor_fic', :G, ins('professor_fic','','Paulo Professor Dias','04286505898','prof1@t.com'), 'ok');
-select f(:G, ins('professor_fic','','Paulo Professor Dias','04286505898','prof1@t.com'));
-select t('G cadastra 2o professor', :G, ins('professor_fic','','Pedro Professor Reis','34608514300','prof2@t.com'), 'ok');
 select t('professor com UF bloqueado', :G, ins('professor_fic','RN','Pedro Professor Reis','34608514300','prof2@t.com'), 'equipe_uf_check');
+select f(:G, ins('professor_fic','','Paulo Professor Dias','04286505898','prof1@t.com'));
+-- 18/10/2026: o projeto tem no máximo 2 professores do FIC ativos (regra decidida, 46). Com Zeca e Paulo, o 3º é recusado.
+select t('G NÃO cadastra o 3º professor (máximo 2 ativos)', :G, ins('professor_fic','','Pedro Professor Reis','34608514300','prof2@t.com'), 'no máximo 2 professores');
 select t('G cadastra auxiliar', :G, ins('auxiliar_adm','','Rita Auxiliar Melo','20531804470','aux@t.com'), 'ok');
 select f(:G, ins('auxiliar_adm','','Rita Auxiliar Melo','20531804470','aux@t.com'));
 select t('G: segundo auxiliar bloqueado', :G, ins('auxiliar_adm','','Rui Auxiliar Dois','34608514300','aux2@t.com'), 'equipe_um_auxiliar');
@@ -149,6 +150,11 @@ select t('professor NÃO lê dados pessoais', :P, $q$do $x$ begin if exists(sele
 select t('auxiliar lê dados pessoais (Arlo)', :X, $q$do $x$ begin if not exists(select 1 from public.equipe_privado) then raise exception 'não leu'; end if; end $x$ $q$, 'ok');
 
 -- ===== 8. Link de cadastro
+-- (18/10/2026) abre a vaga de professor: com 2 ativos, o link de um 3º é recusado; Paulo sai do projeto (Zeca, o professor habilitado de base, fica; :P não é mais usado daqui em diante)
+select t('G NÃO gera link de professor com 2 ativos', :G, $$select public.criar_convite('professor_fic')$$, 'no máximo 2 professores');
+alter table public.equipe disable trigger user;   -- sem o gatilho de desligamento: Paulo volta no fim com a mesma conta de acesso
+update public.equipe set status = 'desligada', data_fim = greatest(data_inicio, current_date), motivo_desligamento = 'Teste: abre a vaga para o link de professor' where cpf = '04286505898';
+alter table public.equipe enable trigger user;
 select t('T gera link de agente', :T, $$select public.criar_convite('agente','PI')$$, 'ok');
 select t('T gera link de apoio BA (vaga livre)', :T, $$select public.criar_convite('apoio','BA')$$, 'ok');
 select t('T: link para vaga ocupada bloqueado', :T, $$select public.criar_convite('articulacao','PI')$$, 'ocupada');
@@ -217,6 +223,11 @@ select t('T não gera código para professor', :T, $$select public.gerar_codigo_
 
 -- ===== auditoria
 select t('histórico registra os cadastros', :G, $q$do $x$ begin if (select count(*) from public.auditoria where tabela='equipe' and acao='INSERT') < 8 then raise exception 'poucos registros: %', (select count(*) from public.auditoria where tabela='equipe' and acao='INSERT'); end if; end $x$ $q$, 'ok');
+
+-- (18/10/2026) Paulo volta ao projeto: os testes seguintes da suíte (desligamento) usam o professor :P ativo
+alter table public.equipe disable trigger user;
+update public.equipe set status = 'ativa', data_fim = null, motivo_desligamento = null where cpf = '04286505898';
+alter table public.equipe enable trigger user;
 
 \pset tuples_only off
 select n, case when ok then 'PASSOU' else 'FALHOU' end as r, caso, left(det, 110) det from res order by n;

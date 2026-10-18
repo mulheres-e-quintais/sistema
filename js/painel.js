@@ -43,14 +43,16 @@
       a.push({ nivel: dias < 0 ? 'crit' : 'pend', prazo: MQ.PROJETO.prazoIndicacao, texto: `${vagas} vaga${vagas > 1 ? 's' : ''} da equipe sem pessoa cadastrada`,
         det: dias < 0 ? `O prazo de indicação do MPA venceu em ${R.fmtData(MQ.PROJETO.prazoIndicacao)}.` : `Prazo de indicação do MPA: ${R.fmtData(MQ.PROJETO.prazoIndicacao)}.`, aba: 'equipe' });
     }
-    const semHab = d.pagaveis.filter(m => R.situacao(m).cod !== 'ok');
-    if (semHab.length) a.push({ nivel: 'pend', texto: `${semHab.length} pessoa${semHab.length > 1 ? 's' : ''} ainda sem habilitação completa para a bolsa`,
+    // 18/10/2026: todas as funções que recebem bolsa (antes ficavam de fora os professores do curso FIC e o auxiliar)
+    const comBolsa = d.ativos.filter(m => m.papel === 'coord_tecnico' || R.ehBolsista(m.papel) || m.papel === 'professor_fic' || m.papel === 'auxiliar_adm');
+    const semHab = comBolsa.filter(m => R.situacao(m).cod !== 'ok');
+    if (semHab.length) a.push({ nivel: 'pend', texto: `${semHab.length} pessoa${semHab.length > 1 ? 's' : ''} com bolsa ainda sem habilitação completa`,
       det: semHab.slice(0, 4).map(m => m.nome.split(' ')[0] + ' (' + R.passosHabilitacao(m).filter(p => !p.feito).map(p => p.id === 'fic' ? 'FIC' : p.id === 'funcern' ? 'FUNCERN' : 'termo').join(', ') + ')').join(' · ') + (semHab.length > 4 ? ' …' : ''), aba: 'equipe' });
     const desde = f => f.atualizado_em || f.criado_em;   // 13/10/2026: ficha devolvida e reenviada hoje não conta como atrasada
     const velhas = d.fichas.filter(f => f.situacao === 'aguardando' && desde(f) && (Date.now() - new Date(desde(f))) > 5 * 864e5);
     if (velhas.length) a.push({ nivel: 'pend', prazo: R.somaDias(velhas.map(f => R.diaLocal(desde(f))).sort()[0], 5), texto: `${velhas.length} ficha${velhas.length > 1 ? 's' : ''} aguardando aprovação há mais de 5 dias`, det: 'A aprovação é da coordenação técnica. Sem ela, o diagnóstico não começa.', aba: 'selecao' });
     const nCasas = R.contarCasas(d.fichas); const casas = d.fichas.filter(f => { const k = R.chaveCasa(f); return k && nCasas.get(k) > 1; });
-    if (casas.length) a.push({ nivel: 'crit', prazo: 'imediato', texto: `${casas.length} fichas com o mesmo endereço de outra ficha`, det: 'Duas pessoas da mesma casa não podem ser selecionadas (risco de questionamento da seleção).', aba: 'selecao' });
+    if (casas.length) a.push({ nivel: 'crit', prazo: 'imediato', texto: `${casas.length} ${casas.length === 1 ? 'ficha' : 'fichas'} com o mesmo endereço de outra ficha`, det: 'Duas pessoas da mesma casa não podem ser selecionadas (risco de questionamento da seleção).', aba: 'selecao' });
     MQ.UFS.forEach(u => {
       const fs = d.fichas.filter(f => f.uf === u.uf);
       const semAgua = fs.filter(f => f.resultado === 'sem_agua').length;
@@ -77,7 +79,7 @@
     const prev = previsto(meta, mes);
     let atual = null, nota = '', alvo = meta.alvo, un = meta.un;
     if (meta.fonte === 'equipe') {
-      atual = d.aptas.length; alvo = 11; un = 'pessoas habilitadas';
+      atual = d.aptas.length; alvo = 11; un = 'habilitadas (coord. técnica e bolsistas)';
       nota = `${d.pagaveis.length} de 11 cadastradas (1 coordenação técnica e 10 bolsistas). Meta: ${meta.alvo} ${meta.un}.`;
     } else if (meta.fonte === 'diagnostico') {
       const dg = S.diagnosticos || [];
@@ -492,7 +494,7 @@
             <div class="pp2-kpi"><span class="pp2-k-rot">Pessoas na equipe</span><span class="pp2-k-val"><b class="num">${ativos.length}</b></span><span class="pp2-k-sub">ativas, de todas as funções</span></div>
             <div class="pp2-kpi"><span class="pp2-k-rot">Habilitadas</span><span class="pp2-k-val"><b class="num">${habil}</b><span class="pp2-antes-n">de ${ativos.length}</span></span>
               <span class="ex2-bar" aria-hidden="true"><i class="${ativos.length && habil >= ativos.length ? 'cheio' : ''}" style="width:${pcHab}%"></i></span>
-              <span class="pp2-k-sub">${!ativos.length ? 'ninguém cadastrado ainda' : habil >= ativos.length ? 'todas prontas para trabalhar e receber' : (ativos.length - habil) + ' ainda sem habilitação completa'}</span></div></div>
+              <span class="pp2-k-sub">${!ativos.length ? 'ninguém cadastrado ainda' : habil >= ativos.length ? 'todas prontas para trabalhar e receber' : (ativos.length - habil) + ' ainda sem habilitação completa (todas as funções, com as agentes)'}</span></div></div>
           <ul class="ex2">
             ${vaga('Bolsistas (articulação e apoio estadual)', bols, 10, '2 por estado')}
             ${vaga('Coordenação técnica', conta('coord_tecnico'), 1)}
@@ -638,7 +640,7 @@
       const dg = (S.diagnosticos || []).find(x => x.ficha_id === f.id);
       const vs = (S.visitas || []).filter(v => v.ficha_id === f.id && v.situacao === 'realizada').length;
       const lin = [['Situação', (MQ.RESULTADOS[f.resultado] || {}).nome + (f.situacao !== 'aprovada' ? ' · ' + (MQ.SITUACOES[f.situacao] || {}).nome : '')],
-        ['Comunidade', f.comunidade], ['Prioridade', (f.pontos ?? '—') + ' pontos'], ['Indicada por', b ? b.nome_social || b.nome : null],
+        ['Comunidade', f.comunidade], ['Prioridade', f.pontos == null ? '—' : f.pontos + (+f.pontos === 1 ? ' ponto' : ' pontos')], ['Indicada por', b ? b.nome_social || b.nome : null],
         ['Diagnóstico', dg ? (dg.situacao === 'aprovado' ? 'plano aprovado' : 'feito, ' + (dg.situacao === 'devolvido' ? 'devolvido' : 'aguardando aprovação')) : 'ainda não'],
         ['Visitas feitas', String(vs)], ['Local', el.dataset.exato ? 'GPS' : 'aproximado (sem GPS)']].filter(l => l[1]);
       html = `<div class="mc-cab"><b>Quintal em ${E(f.municipio)}/${f.uf}</b><button class="fechar" data-acao="mapa-cartao-fechar" aria-label="Fechar">×</button></div>

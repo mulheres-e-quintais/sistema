@@ -30,7 +30,9 @@
     const oQue = agente ? 'a ajuda de custo das visitas' : 'a bolsa';
 
     // o que a própria pessoa resolve aqui mesmo
-    if (!m.cadastro_arlo) {
+    // 18/10/2026: com o cadastro no Arlo já registrado na habilitação (docs_funcern_em), dados e conta já estão lá:
+    // antes a pessoa via "Habilitada" e, ao lado, "a FUNCERN não paga a sua bolsa" pedindo o que já tinha sido feito
+    if (!m.cadastro_arlo && !m.docs_funcern_em) {
       if (pv !== undefined) {
         const falta = [];
         if (!pv || !pv.data_nascimento) falta.push('data de nascimento');

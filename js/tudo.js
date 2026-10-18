@@ -1858,6 +1858,15 @@ MQ.ORCAMENTO = {
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: alvo.id, acao: s ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: null, depois: copia(alvo) });
       gravar(); return alvo.id;
     },
+    /* 61 (z_depois_da_saida), repetido na demonstração em 18/10/2026: bolsa de mês depois da saída não recebe aval nem vai ao Arlo */
+    _bolsaDepoisDaSaida(d, s) {
+      if (s.tipo !== 'bolsa') return;
+      const p = (d.equipe || []).find(x => x.id === s.equipe_id) || {};
+      if (p.status === 'desligada' && p.data_fim && String(s.mes).slice(0, 7) > String(p.data_fim).slice(0, 7)) {
+        const mm = String(s.mes).slice(5, 7) + '/' + String(s.mes).slice(0, 4), df = String(p.data_fim).slice(8, 10) + '/' + String(p.data_fim).slice(5, 7) + '/' + String(p.data_fim).slice(0, 4);
+        throw falha('Bolsa de ' + mm + ' não pode ser paga: ' + (p.nome || 'a pessoa') + ' foi desligada em ' + df + '. Devolva este pedido.');
+      }
+    },
     async avalizarPagamento(id, ok, obs, valor) {
       const d = ler(); const eu = euMesmo(); const s = (d.solicitacoes || []).find(x => x.id === id);
       if (!s) throw falha('Solicitação não encontrada.');
@@ -1876,6 +1885,7 @@ MQ.ORCAMENTO = {
       }
       if (ok && s.tipo === 'bolsa' && s.valor_solicitado != null && vAval > s.valor_solicitado) throw falha('O aval passa do valor pedido. Para pagar mais, devolva para a pessoa corrigir o valor.');
       if (ok && s.tipo === 'bolsa' && R.valorBolsa(pe.papel) != null && vAval > R.valorBolsa(pe.papel)) throw falha('O aval da bolsa não pode passar do valor da função (' + R.fmtBRL(R.valorBolsa(pe.papel)) + ').');   // 56
+      if (ok) this._bolsaDepoisDaSaida(d, s);
       const antesS = copia(s);   // 14/10/2026 (E2E-7): o histórico guarda o antes, como o gatilho do banco ("ver o que mudou")
       if (ok) Object.assign(s, { situacao: 'avalizada', valor_avalizado: vAval, aval_por: eu.id, aval_em: agora, obs_aval: obs || null });
       else {
@@ -1892,6 +1902,7 @@ MQ.ORCAMENTO = {
       if (!s) throw falha('Solicitação não encontrada.');
       if (s.situacao !== 'avalizada') throw falha('Só solicitação com aval vai para o Arlo.');
       if (s.equipe_id === eu.id) throw falha('O seu próprio pagamento é lançado pela coordenação geral.');
+      this._bolsaDepoisDaSaida(d, s);
       const agora = new Date().toISOString(); const antesS = copia(s);
       Object.assign(s, { situacao: 'lancada', arlo_por: eu.id, arlo_em: agora, arlo_protocolo: protocolo || null });
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: s.id, acao: 'UPDATE', por: eu.id, em: agora, antes: antesS, depois: copia(s) });
@@ -4361,14 +4372,16 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       a.push({ nivel: dias < 0 ? 'crit' : 'pend', prazo: MQ.PROJETO.prazoIndicacao, texto: `${vagas} vaga${vagas > 1 ? 's' : ''} da equipe sem pessoa cadastrada`,
         det: dias < 0 ? `O prazo de indicação do MPA venceu em ${R.fmtData(MQ.PROJETO.prazoIndicacao)}.` : `Prazo de indicação do MPA: ${R.fmtData(MQ.PROJETO.prazoIndicacao)}.`, aba: 'equipe' });
     }
-    const semHab = d.pagaveis.filter(m => R.situacao(m).cod !== 'ok');
-    if (semHab.length) a.push({ nivel: 'pend', texto: `${semHab.length} pessoa${semHab.length > 1 ? 's' : ''} ainda sem habilitação completa para a bolsa`,
+    // 18/10/2026: todas as funções que recebem bolsa (antes ficavam de fora os professores do curso FIC e o auxiliar)
+    const comBolsa = d.ativos.filter(m => m.papel === 'coord_tecnico' || R.ehBolsista(m.papel) || m.papel === 'professor_fic' || m.papel === 'auxiliar_adm');
+    const semHab = comBolsa.filter(m => R.situacao(m).cod !== 'ok');
+    if (semHab.length) a.push({ nivel: 'pend', texto: `${semHab.length} pessoa${semHab.length > 1 ? 's' : ''} com bolsa ainda sem habilitação completa`,
       det: semHab.slice(0, 4).map(m => m.nome.split(' ')[0] + ' (' + R.passosHabilitacao(m).filter(p => !p.feito).map(p => p.id === 'fic' ? 'FIC' : p.id === 'funcern' ? 'FUNCERN' : 'termo').join(', ') + ')').join(' · ') + (semHab.length > 4 ? ' …' : ''), aba: 'equipe' });
     const desde = f => f.atualizado_em || f.criado_em;   // 13/10/2026: ficha devolvida e reenviada hoje não conta como atrasada
     const velhas = d.fichas.filter(f => f.situacao === 'aguardando' && desde(f) && (Date.now() - new Date(desde(f))) > 5 * 864e5);
     if (velhas.length) a.push({ nivel: 'pend', prazo: R.somaDias(velhas.map(f => R.diaLocal(desde(f))).sort()[0], 5), texto: `${velhas.length} ficha${velhas.length > 1 ? 's' : ''} aguardando aprovação há mais de 5 dias`, det: 'A aprovação é da coordenação técnica. Sem ela, o diagnóstico não começa.', aba: 'selecao' });
     const nCasas = R.contarCasas(d.fichas); const casas = d.fichas.filter(f => { const k = R.chaveCasa(f); return k && nCasas.get(k) > 1; });
-    if (casas.length) a.push({ nivel: 'crit', prazo: 'imediato', texto: `${casas.length} fichas com o mesmo endereço de outra ficha`, det: 'Duas pessoas da mesma casa não podem ser selecionadas (risco de questionamento da seleção).', aba: 'selecao' });
+    if (casas.length) a.push({ nivel: 'crit', prazo: 'imediato', texto: `${casas.length} ${casas.length === 1 ? 'ficha' : 'fichas'} com o mesmo endereço de outra ficha`, det: 'Duas pessoas da mesma casa não podem ser selecionadas (risco de questionamento da seleção).', aba: 'selecao' });
     MQ.UFS.forEach(u => {
       const fs = d.fichas.filter(f => f.uf === u.uf);
       const semAgua = fs.filter(f => f.resultado === 'sem_agua').length;
@@ -4395,7 +4408,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const prev = previsto(meta, mes);
     let atual = null, nota = '', alvo = meta.alvo, un = meta.un;
     if (meta.fonte === 'equipe') {
-      atual = d.aptas.length; alvo = 11; un = 'pessoas habilitadas';
+      atual = d.aptas.length; alvo = 11; un = 'habilitadas (coord. técnica e bolsistas)';
       nota = `${d.pagaveis.length} de 11 cadastradas (1 coordenação técnica e 10 bolsistas). Meta: ${meta.alvo} ${meta.un}.`;
     } else if (meta.fonte === 'diagnostico') {
       const dg = S.diagnosticos || [];
@@ -4810,7 +4823,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
             <div class="pp2-kpi"><span class="pp2-k-rot">Pessoas na equipe</span><span class="pp2-k-val"><b class="num">${ativos.length}</b></span><span class="pp2-k-sub">ativas, de todas as funções</span></div>
             <div class="pp2-kpi"><span class="pp2-k-rot">Habilitadas</span><span class="pp2-k-val"><b class="num">${habil}</b><span class="pp2-antes-n">de ${ativos.length}</span></span>
               <span class="ex2-bar" aria-hidden="true"><i class="${ativos.length && habil >= ativos.length ? 'cheio' : ''}" style="width:${pcHab}%"></i></span>
-              <span class="pp2-k-sub">${!ativos.length ? 'ninguém cadastrado ainda' : habil >= ativos.length ? 'todas prontas para trabalhar e receber' : (ativos.length - habil) + ' ainda sem habilitação completa'}</span></div></div>
+              <span class="pp2-k-sub">${!ativos.length ? 'ninguém cadastrado ainda' : habil >= ativos.length ? 'todas prontas para trabalhar e receber' : (ativos.length - habil) + ' ainda sem habilitação completa (todas as funções, com as agentes)'}</span></div></div>
           <ul class="ex2">
             ${vaga('Bolsistas (articulação e apoio estadual)', bols, 10, '2 por estado')}
             ${vaga('Coordenação técnica', conta('coord_tecnico'), 1)}
@@ -4956,7 +4969,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const dg = (S.diagnosticos || []).find(x => x.ficha_id === f.id);
       const vs = (S.visitas || []).filter(v => v.ficha_id === f.id && v.situacao === 'realizada').length;
       const lin = [['Situação', (MQ.RESULTADOS[f.resultado] || {}).nome + (f.situacao !== 'aprovada' ? ' · ' + (MQ.SITUACOES[f.situacao] || {}).nome : '')],
-        ['Comunidade', f.comunidade], ['Prioridade', (f.pontos ?? '—') + ' pontos'], ['Indicada por', b ? b.nome_social || b.nome : null],
+        ['Comunidade', f.comunidade], ['Prioridade', f.pontos == null ? '—' : f.pontos + (+f.pontos === 1 ? ' ponto' : ' pontos')], ['Indicada por', b ? b.nome_social || b.nome : null],
         ['Diagnóstico', dg ? (dg.situacao === 'aprovado' ? 'plano aprovado' : 'feito, ' + (dg.situacao === 'devolvido' ? 'devolvido' : 'aguardando aprovação')) : 'ainda não'],
         ['Visitas feitas', String(vs)], ['Local', el.dataset.exato ? 'GPS' : 'aproximado (sem GPS)']].filter(l => l[1]);
       html = `<div class="mc-cab"><b>Quintal em ${E(f.municipio)}/${f.uf}</b><button class="fechar" data-acao="mapa-cartao-fechar" aria-label="Fechar">×</button></div>
@@ -5546,7 +5559,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <div><span class="v num">${usados}<small> de ${MQ.DIAS_CAMPO_UF}</small></span><span class="l">dias de campo usados no estado</span></div>
         <div><span class="v num">${dg.length}<small> de ${MQ.VAGAS_UF}</small></span><span class="l">diagnósticos registrados</span></div>
         <div><span class="v num">${dg.filter(d => d.situacao === 'aprovado').length}</span><span class="l">planos aprovados</span></div>
-        <div><span class="v num">${dg.filter(d => d.sem_agua).length}</span><span class="l">sem água na seca</span></div>
+        <div><span class="v num">${dg.filter(d => d.sem_agua).length}</span><span class="l">diagnósticos sem água na seca</span></div>
       </div>
       ${avisoConflitos()}
       ${avisoFila(pend)}
@@ -7005,7 +7018,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
             <span class="small muted">${E((MQ.PAPEIS[x.m.papel] || {}).nome)} · mora em ${E(x.m.municipio || '—')}</span>
             <span>${x.quintais} quintais · ${x.viagens} viagens · <b>${brl(x.total)}</b></span></div>`).join('')}</div>
           ${(() => { const l = Object.values(U0.longe || {}).map(x => Object.assign(x, { med: x.km / x.n })).filter(x => x.med > 50).sort((a, b) => b.med - a.med);
-              return l.length ? `<div class="aviso"><b>Onde vale ter alguém morando perto:</b> ${l.map(x => `${E(x.mun)} (${x.n} quintais, ${fmtN(x.med)} km de quem visita)`).join(' · ')}.
+              return l.length ? `<div class="aviso"><b>Onde vale ter alguém morando perto:</b> ${l.map(x => `${E(x.mun)} (${x.n} ${x.n === 1 ? 'quintal' : 'quintais'}, ${fmtN(x.med)} km de quem visita)`).join(' · ')}.
                 Cada ida e volta a mais de 50 km custa, por visita, cerca de ${brl(2 * 50 / C.par.km_por_litro * C.par.preco_litro)} ou mais só de combustível. Uma agente de campo desses municípios reduziria o custo.</div>` : ''; })()}
           <details class="hist"><summary>Ver as ${U0.viagens.length} viagens</summary><ol class="viagens">${U0.viagens.slice().sort((a, b) => a.mes - b.mes).map(v =>
             `<li><span class="small muted">${MESES_PROJ[v.mes - 1]} · ${E(MQ.ETAPAS_CUSTO[v.etapa])}</span><b>${E(v.pessoa.nome_social || v.pessoa.nome)}</b>: ${v.n} quinta${v.n > 1 ? 'is' : 'l'} (${E([...new Set(v.quintais.map(f => f.municipio))].join(', '))}) · ${fmtN(v.km)} km · ${brl(v.total)}</li>`).join('')}</ol></details>`
@@ -8548,7 +8561,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const f = t.form; const box = f.querySelector('[data-prazo]'); if (!box || !t.value) return;
     const tipo = f.dataset.t; const d = diasAte(t.value);
     box.className = 'aviso viag-prazo ' + (d < 30 ? 'erro' : d < PRAZO[tipo] ? 'erro' : 'ok');
-    box.innerHTML = d < PRAZO[tipo] ? `<b>Faltam ${d} dias: fora do prazo de ${PRAZO[tipo]} dias.</b> Escreva a justificativa.${tipo === 'passagem' && d < 30 ? ' Com menos de 30 dias a FUNCERN pode não conseguir comprar.' : ''}` : `Faltam ${d} dias: dentro do prazo.`;
+    box.innerHTML = d < PRAZO[tipo] ? `<b>${d === 1 ? 'Falta 1 dia' : 'Faltam ' + d + ' dias'}: fora do prazo de ${PRAZO[tipo]} dias.</b> Escreva a justificativa.${tipo === 'passagem' && d < 30 ? ' Com menos de 30 dias a FUNCERN pode não conseguir comprar.' : ''}` : `Faltam ${d} dias: dentro do prazo.`;
   });
 
   function lerForm(tipo, fd) {
@@ -10962,7 +10975,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const oQue = agente ? 'a ajuda de custo das visitas' : 'a bolsa';
 
     // o que a própria pessoa resolve aqui mesmo
-    if (!m.cadastro_arlo) {
+    // 18/10/2026: com o cadastro no Arlo já registrado na habilitação (docs_funcern_em), dados e conta já estão lá:
+    // antes a pessoa via "Habilitada" e, ao lado, "a FUNCERN não paga a sua bolsa" pedindo o que já tinha sido feito
+    if (!m.cadastro_arlo && !m.docs_funcern_em) {
       if (pv !== undefined) {
         const falta = [];
         if (!pv || !pv.data_nascimento) falta.push('data de nascimento');
@@ -12626,7 +12641,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const dgEsp = total(a, 'diag_aguardando'), dgDev = total(a, 'diag_devolvidos');
     if (dgEsp) it.push(`<li><b>${n(dgEsp)} diagnóstico${dgEsp > 1 ? 's' : ''} esperando a aprovação da coordenação</b>: o quintal só é implantado depois do plano aprovado. ${a.por_uf.filter(u => u.diag_aguardando).map(u => u.uf + ' ' + u.diag_aguardando).join(', ')}.</li>`);
     if (dgDev) it.push(`<li><b>${n(dgDev)} diagnóstico${dgDev > 1 ? 's' : ''} devolvido${dgDev > 1 ? 's' : ''} para correção</b>: ${a.por_uf.filter(u => u.diag_devolvidos).map(u => u.uf + ' ' + u.diag_devolvidos).join(', ')}.</li>`);
-    if (agua) it.push(`<li><b>${n(agua)} mulher${agua > 1 ? 'es' : ''} sem água que dure na seca</b>: não recebem o kit até haver solução (cisterna ou outro programa).</li>`);
+    if (agua) it.push(`<li><b>${n(agua)} mulher${agua > 1 ? 'es' : ''} sem água que dure na seca</b>: ${agua > 1 ? 'não recebem' : 'não recebe'} o kit até haver solução (cisterna ou outro programa).</li>`);
     if (esp) it.push(`<li><b>${n(esp)} na lista de espera</b>, para o caso de alguma vaga abrir.</li>`);
     return it.length ? `<ul class="ac-lista">${it.join('')}</ul>` : '<p class="muted">Nada parado no momento.</p>';
   }
@@ -12671,9 +12686,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (m.id === 'M1') {   // equipe: as 10 bolsistas cadastradas; nunca "concluída" antes do fim do projeto (a meta é ter equipe os 12 meses)
         const v = total(a, 'bolsistas'); const st = v >= 10 ? (mes >= 13 ? 'concluida' : 'andamento') : (MQ.regras.diasAte(MQ.PROJETO.prazoIndicacao) < 0 ? 'atrasada' : 'atencao');
         return { m, v, alvo: 10, un: 'bolsistas no projeto (meta: equipe ativa os 12 meses)', st }; }
-      if (m.id === 'M5') { const v = +(at.eventos || {}).realizados || 0; return { m, v, alvo: 5, un: 'eventos feitos', sub: n((at.eventos || {}).autorizados) + ' autorizados', st: regra(m, v, 5) }; }
-      if (m.id === 'M6') { const viag = +(at.intercambio || {}).viagens_feitas || 0, v = Math.min(1, viag); return { m, v, alvo: 1, un: 'intercâmbio feito', sub: n((at.intercambio || {}).autorizados) + ' passagens autorizadas', st: regra(m, v, 1) }; }
-      if (m.id === 'M7') { const v = +(at.pedagogico || {}).viagens_feitas || 0; return { m, v, alvo: 8, un: 'missões feitas', sub: n((at.pedagogico || {}).autorizados) + ' passagens autorizadas', st: regra(m, v, 8) }; }
+      if (m.id === 'M5') { const v = +(at.eventos || {}).realizados || 0; return { m, v, alvo: 5, un: 'eventos feitos', sub: n((at.eventos || {}).autorizados) + ' ' + pl((at.eventos || {}).autorizados, 'autorizado', 'autorizados'), st: regra(m, v, 5) }; }
+      if (m.id === 'M6') { const viag = +(at.intercambio || {}).viagens_feitas || 0, v = Math.min(1, viag); return { m, v, alvo: 1, un: 'intercâmbio feito', sub: n((at.intercambio || {}).autorizados) + ' ' + pl((at.intercambio || {}).autorizados, 'passagem autorizada', 'passagens autorizadas'), st: regra(m, v, 1) }; }
+      if (m.id === 'M7') { const v = +(at.pedagogico || {}).viagens_feitas || 0; return { m, v, alvo: 8, un: 'missões feitas', sub: n((at.pedagogico || {}).autorizados) + ' ' + pl((at.pedagogico || {}).autorizados, 'passagem autorizada', 'passagens autorizadas'), st: regra(m, v, 8) }; }
       return { m, v: null, alvo: m.alvo, un: m.un, sub: 'registrado fora do sistema', st: mes - 1 < m.ini ? 'nao' : 'fora' };
     }) };
   }
@@ -12719,14 +12734,14 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
   function abaTerritorio(a) {
     const x = a.extra || {}, c = (x.canais || {}).por_tipo || {}, ag = x.agua || {};
-    const TIP = [['feira', 'feiras'], ['merenda', 'merenda escolar'], ['paa', 'PAA'], ['grupo', 'grupos e cooperativas'], ['comprador', 'compradores']];
-    const AG = [['sem_solucao', 'sem solução'], ['encaminhada', 'encaminhadas'], ['em_andamento', 'em andamento'], ['concluida', 'resolvidas']];
+    const TIP = [['feira', 'feiras', 'feira'], ['merenda', 'merenda escolar', 'merenda escolar'], ['paa', 'PAA', 'PAA'], ['grupo', 'grupos e cooperativas', 'grupo ou cooperativa'], ['comprador', 'compradores', 'comprador']];   // [chave, plural, singular]
+    const AG = [['sem_solucao', 'sem solução', 'sem solução'], ['encaminhada', 'encaminhadas', 'encaminhada'], ['em_andamento', 'em andamento', 'em andamento'], ['concluida', 'resolvidas', 'resolvida']];
     const semAgua = total(a, 'sem_agua') + total(a, 'diag_sem_agua');
     return `${cartao('Onde o projeto está', mapa(a))}
       ${cartao('Estado por estado', `<div class="ac2-ufs">${(a.por_uf || []).map(u => `<div class="ac2-uf"><div class="ac2-uf-t"><span class="ac2-sigla">${u.uf}</span><b>${E(U().nomeUF ? U().nomeUF(u.uf) : u.uf)}</b><small>${n(u.municipios)} ${pl(u.municipios, 'município', 'municípios')} · ${n(u.comunidades)} ${pl(u.comunidades, 'comunidade', 'comunidades')}</small></div>${u.atrasadas ? `<span class="ac2-st crit ac2-atr">${n(u.atrasadas)} ${pl(u.atrasadas, 'visita atrasada', 'visitas atrasadas')}</span>` : ''}
           ${linhaMeta('Selecionadas', u.selecionadas, ALVO_UF.selecionadas)}${linhaMeta('Diagnósticos', u.diagnosticos, ALVO_UF.diagnosticos)}${linhaMeta('Implantados', u.implantados, ALVO_UF.implantados)}${linhaMeta('Acompanhamentos', u.acompanhamentos, ALVO_UF.acompanhamentos)}</div>`).join('')}</div>`)}
-      <div class="ac2-duas">${cartao('Onde vender', x.canais ? `<ul class="ac2-chips">${TIP.filter(([k]) => c[k]).map(([k, t]) => `<li><b class="num">${n(c[k])}</b> ${t}</li>`).join('') || '<li class="muted">Nenhum canal cadastrado ainda</li>'}</ul><p class="ac2-nota">${n((x.canais || {}).municipios)} ${pl((x.canais || {}).municipios, 'município', 'municípios')} com canal de venda cadastrado: feiras, merenda escolar (PNAE), PAA, grupos e compradores.</p>` : '<p class="muted">Aparece com o arquivo 65 instalado no banco.</p>')}
-        ${cartao('Água para produzir', `<p class="ac2-frase"><b class="num">${n(semAgua)}</b> ${pl(semAgua, 'mulher', 'mulheres')} sem água que dure na seca</p>${Object.keys(ag).length ? `<ul class="ac2-chips">${AG.filter(([k]) => ag[k]).map(([k, t]) => `<li class="ag-${k}"><b class="num">${n(ag[k])}</b> ${t}</li>`).join('')}</ul>` : ''}<p class="ac2-nota">Sem água garantida, o kit não é entregue: a equipe encaminha para cisterna ou outro programa.</p>`)}</div>`;
+      <div class="ac2-duas">${cartao('Onde vender', x.canais ? `<ul class="ac2-chips">${TIP.filter(([k]) => c[k]).map(([k, t, t1]) => `<li><b class="num">${n(c[k])}</b> ${pl(c[k], t1, t)}</li>`).join('') || '<li class="muted">Nenhum canal cadastrado ainda</li>'}</ul><p class="ac2-nota">${n((x.canais || {}).municipios)} ${pl((x.canais || {}).municipios, 'município', 'municípios')} com canal de venda cadastrado: feiras, merenda escolar (PNAE), PAA, grupos e compradores.</p>` : '<p class="muted">Aparece com o arquivo 65 instalado no banco.</p>')}
+        ${cartao('Água para produzir', `<p class="ac2-frase"><b class="num">${n(semAgua)}</b> ${pl(semAgua, 'mulher', 'mulheres')} sem água que dure na seca</p>${Object.keys(ag).length ? `<ul class="ac2-chips">${AG.filter(([k]) => ag[k]).map(([k, t, t1]) => `<li class="ag-${k}"><b class="num">${n(ag[k])}</b> ${pl(ag[k], t1, t)}</li>`).join('')}</ul>` : ''}<p class="ac2-nota">Sem água garantida, o kit não é entregue: a equipe encaminha para cisterna ou outro programa.</p>`)}</div>`;
   }
   function abaMulheres(a) { return `${cartao('Quem são as mulheres', perfil(a) || '<p class="muted">Aparece quando houver mulheres selecionadas.</p>')}${cartao('O que muda na vida das famílias', impacto(a) || '<p class="muted">Aparece com os primeiros diagnósticos.</p>')}`; }
   function abaEquipe(a) {
@@ -12735,7 +12750,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const pres = f.marcacoes ? Math.round(f.presencas / f.marcacoes * 100) : null;
     return `${cartao('Equipe de campo por estado', `<div class="ac2-ufs">${(a.por_uf || []).map(u => `<div class="ac2-uf"><div class="ac2-uf-t"><span class="ac2-sigla">${u.uf}</span><b>${E(U().nomeUF ? U().nomeUF(u.uf) : u.uf)}</b></div>
         ${linhaMeta('Bolsistas', u.bolsistas, 2)}<p class="ac2-mini"><b class="num">${n(u.agentes)}</b> agente${u.agentes === 1 ? '' : 's'} de campo</p>${u.habilitadas != null ? linhaMeta('Bolsistas e agentes habilitadas', u.habilitadas, u.equipe_campo || 0) : ''}</div>`).join('')}</div>`)}
-      ${cartao('Curso de formação (FIC)', `<div class="ac2-kpis peq">${destaque(fo.turmas || 0, pl(fo.turmas, 'turma', 'turmas'))}${destaque(fo.matriculas || 0, fo.pessoas != null ? 'matriculadas (coordenação técnica, bolsistas e agentes)' : pl(fo.matriculas, 'pessoa matriculada', 'pessoas matriculadas'), '', fo.pessoas || 0)}${destaque(f.feitos || 0, pl(f.feitos, 'encontro feito', 'encontros feitos'), 'de ' + n(f.encontros || fo.encontros || 0) + ' marcados')}${destaque(Math.round(f.horas_feitas != null ? f.horas_feitas : f.horas || 0), 'horas de curso já dadas', 'de ' + n(Math.round(f.horas || 0)) + ' programadas')}</div>
+      ${cartao('Curso de formação (FIC)', `<div class="ac2-kpis peq">${destaque(fo.turmas || 0, pl(fo.turmas, 'turma', 'turmas'))}${destaque(fo.matriculas || 0, fo.pessoas != null ? 'matriculadas (coordenação técnica, bolsistas e agentes)' : pl(fo.matriculas, 'pessoa matriculada', 'pessoas matriculadas'), '', fo.pessoas || 0)}${destaque(f.feitos || 0, pl(f.feitos, 'encontro feito', 'encontros feitos'), 'de ' + n(f.encontros || fo.encontros || 0) + ' ' + pl(f.encontros || fo.encontros || 0, 'marcado', 'marcados'))}${destaque(Math.round(f.horas_feitas != null ? f.horas_feitas : f.horas || 0), 'horas de curso já dadas', 'de ' + n(Math.round(f.horas || 0)) + ' programadas')}</div>
         ${pres != null ? linhaMeta('Presença nos encontros', pres, 100).replace(/<small> de 100<\/small>/, '%') : ''}`)}
       ${cartao('Documentos do projeto', Object.keys(d.por_tipo || {}).length ? `<ul class="ac2-chips">${Object.entries(d.por_tipo).sort((x, y) => y[1] - x[1]).map(([k, q]) => `<li><b class="num">${n(q)}</b> ${E(TDP[k] ? (q === 1 ? TDP[k][0] : TDP[k][1]) : k)}${(d.ultima_data || {})[k] ? ` <small>· último em ${MQ.regras.fmtData((d.ultima_data || {})[k])}</small>` : ''}</li>`).join('')}</ul><p class="ac2-nota">Atas, relatórios, planos, ofícios, contratos e outros registros do projeto. Os arquivos e os títulos ficam com a coordenação.</p>` : '<p class="muted">Nenhum documento registrado ainda.</p>')}`;
   }
@@ -14856,7 +14871,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
               const pg = (S.solic || []).filter(x => x.equipe_id === m.id && ['solicitada', 'avalizada'].includes(x.situacao));
               const pd = (S.pedidos || []).filter(x => x.solicitante_id === m.id && ['enviado', 'devolvido', 'conferido'].includes(x.situacao));
               return (ts.length ? `<div class="aviso erro"><b>Ainda não dá para desligar.</b> É professor(a) da turma em andamento ${esc(ts.map(t => t.nome).join(', '))}. Passe a turma para outro(a) professor(a) na aba Curso FIC (Editar) e desligue depois.</div>` : '')
-                + (pg.length ? `<div class="aviso"><b>${pg.length} pagamento${pg.length > 1 ? 's' : ''} em aberto</b> (${pg.map(x => (x.tipo === 'bolsa' ? 'bolsa' : 'ajuda de custo') + ' de ' + String(x.mes || '').slice(5, 7) + '/' + String(x.mes || '').slice(0, 4)).join(', ')}). O desligamento não cancela: ela tem direito a receber pelo que fez. O pedido continua até o lançamento no Arlo.</div>` : '')
+                + (pg.length ? `<div class="aviso"><b>${pg.length} pagamento${pg.length > 1 ? 's' : ''} em aberto</b> (${pg.map(x => (x.tipo === 'bolsa' ? 'bolsa' : 'ajuda de custo') + ' de ' + String(x.mes || '').slice(5, 7) + '/' + String(x.mes || '').slice(0, 4)).join(', ')}). O desligamento não cancela: ela tem direito a receber pelo que fez. O pedido continua até o lançamento no Arlo, menos bolsa de mês depois do último dia, que não pode ser paga e precisa ser devolvida.</div>` : '')
                 + (pd.length ? `<div class="aviso"><b>${pd.length} pedido${pd.length > 1 ? 's' : ''} de passagem ou evento ainda não autorizado${pd.length > 1 ? 's' : ''}</b> ser${pd.length > 1 ? 'ão' : 'á'} cancelado${pd.length > 1 ? 's' : ''} ao desligar, com o motivo registrado.</div>` : ''); })()}
           ${(() => {   // 13/10/2026: bolsa de mês já começado e sem pedido (só aviso: pode ser que o mês não tenha sido trabalhado)
               const ms = R.mesesBolsaSemPedido(m, S.solic); if (!ms.length) return '';

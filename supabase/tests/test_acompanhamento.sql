@@ -28,7 +28,7 @@ insert into res(caso, ok, det) select 'cadastro fica no histórico, sem o códig
 select t('bolsista não lista quem acompanha', :BO, $q$select public.listar_observadores()$q$, 'coordenação geral');
 select t('bolsista não lê a tabela direto', :BO, $q$select * from public.observadores$q$, 'permission denied');
 select t('coordenação geral não lê a tabela direto (só pela função)', :CG, $q$select * from public.observadores$q$, 'permission denied');
-select t('coordenação geral lista as duas pessoas, sem o código', :CG, $q$do $$ declare j jsonb := public.listar_observadores(); begin if jsonb_array_length(j) <> 2 or j::text like '%codigo_hash%' then raise exception 'lista errada: %', j; end if; end $$$q$, 'ok');
+select t('coordenação geral lista as duas pessoas, sem o código', :CG, $q$do $$ declare j jsonb := public.listar_observadores(); begin if (select count(*) from jsonb_array_elements(j) x where x->>'email' in ('marta@mda.exemplo', 'paulo@mpa.exemplo')) <> 2 or j::text like '%codigo_hash%' then raise exception 'lista errada: %', j; end if; end $$$q$, 'ok');
 select t('bolsista não gera código', :BO, format($q$select public.gerar_codigo_observador(%L)$q$, :'om'), 'coordenação geral');
 
 -- ===== primeiro acesso =====
@@ -64,10 +64,11 @@ select user_id as up from public.observadores where id = :'op' \gset
 -- ===== o que quem acompanha vê =====
 select t('MDA: o sistema reconhece quem é', :UM, $q$do $$ declare j jsonb := public.acompanhamento_eu(); begin if j->>'orgao' <> 'mda' or j->>'nome' <> 'Marta Observadora' then raise exception '%', j; end if; end $$$q$, 'ok');
 select t('pessoa da equipe não é reconhecida como acompanhamento', :BO, $q$do $$ begin if public.acompanhamento_eu() is not null then raise exception 'reconheceu'; end if; end $$$q$, 'ok');
-select t('MDA recebe os números, com perfil e impacto e sem formação', :UM, $q$do $$ declare j jsonb := public.acompanhamento_dados(); begin
-  if j->>'orgao' <> 'mda' or jsonb_array_length(j->'por_uf') <> 5 or not (j ? 'perfil') or not (j ? 'impacto') or (j ? 'formacao') then raise exception 'forma errada'; end if; end $$$q$, 'ok');
-select t('MPA recebe os números, com formação e sem perfil nem impacto', :UP, $q$do $$ declare j jsonb := public.acompanhamento_dados(); begin
-  if j->>'orgao' <> 'mpa' or jsonb_array_length(j->'por_uf') <> 5 or not (j ? 'formacao') or (j ? 'perfil') or (j ? 'impacto') then raise exception 'forma errada'; end if; end $$$q$, 'ok');
+-- 65 (15/10/2026): a tela em abas mostra tudo aos dois órgãos: MDA e MPA recebem perfil, impacto e formação
+select t('MDA recebe os números, com perfil, impacto e formação (65)', :UM, $q$do $$ declare j jsonb := public.acompanhamento_dados(); begin
+  if j->>'orgao' <> 'mda' or jsonb_array_length(j->'por_uf') <> 5 or not (j ? 'perfil') or not (j ? 'impacto') or not (j ? 'formacao') then raise exception 'forma errada'; end if; end $$$q$, 'ok');
+select t('MPA recebe os números, com perfil, impacto e formação (65)', :UP, $q$do $$ declare j jsonb := public.acompanhamento_dados(); begin
+  if j->>'orgao' <> 'mpa' or jsonb_array_length(j->'por_uf') <> 5 or not (j ? 'formacao') or not (j ? 'perfil') or not (j ? 'impacto') then raise exception 'forma errada'; end if; end $$$q$, 'ok');
 select t('MDA pedindo a visão do MPA continua recebendo a do MDA', :UM, $q$do $$ begin if public.acompanhamento_dados('mpa')->>'orgao' <> 'mda' then raise exception 'trocou'; end if; end $$$q$, 'ok');
 select t('nenhuma parte financeira nos números (nem chave, nem valor em reais)', :UM, $q$do $$ declare x text := public.acompanhamento_dados()::text; begin
   if x ~* 'bolsa|pagament|orcament|execu|saldo|pix|banco|ajuda_custo|valor_|kit_total|teto' then raise exception 'tem parte financeira'; end if; end $$$q$, 'ok');
@@ -76,8 +77,10 @@ select set_config('request.jwt.claim.sub', :UM, true); set local role authentica
 select public.acompanhamento_dados() as jm \gset
 reset role; select set_config('request.jwt.claim.sub', '', true);
 insert into res(caso, ok, det) select 'selecionadas por estado batem com a contagem direta', bool_and((u->>'selecionadas')::int = (select count(*) from public.fichas f where f.uf = u->>'uf' and f.resultado = 'selecionada' and f.situacao = 'aprovada' and f.id not in (select id from public.exemplo))), '' from jsonb_array_elements(:'jm'::jsonb->'por_uf') u;
-insert into res(caso, ok, det) select 'diagnósticos por estado batem', bool_and((u->>'diagnosticos')::int = (select count(*) from public.diagnosticos d where d.uf = u->>'uf' and d.ficha_id not in (select id from public.exemplo))), '' from jsonb_array_elements(:'jm'::jsonb->'por_uf') u;
-insert into res(caso, ok, det) select 'visitas feitas por estado batem', bool_and((u->>'visitas_feitas')::int = (select count(*) from public.visitas v where v.uf = u->>'uf' and v.situacao = 'realizada' and v.ficha_id not in (select id from public.exemplo))), '' from jsonb_array_elements(:'jm'::jsonb->'por_uf') u;
+insert into res(caso, ok, det) select 'diagnósticos por estado batem', bool_and((u->>'diagnosticos')::int = (select count(*) from public.diagnosticos d where d.uf = u->>'uf' and d.ficha_id not in (select id from public.exemplo))),
+  string_agg((u->>'uf') || ':' || (u->>'diagnosticos') || '/' || (select count(*) from public.diagnosticos d where d.uf = u->>'uf' and d.ficha_id not in (select id from public.exemplo)), ' ') from jsonb_array_elements(:'jm'::jsonb->'por_uf') u;
+insert into res(caso, ok, det) select 'visitas feitas por estado batem', bool_and((u->>'visitas_feitas')::int = (select count(*) from public.visitas v where v.uf = u->>'uf' and v.situacao = 'realizada' and v.ficha_id not in (select id from public.exemplo))),
+  string_agg((u->>'uf') || ':' || (u->>'visitas_feitas') || '/' || (select count(*) from public.visitas v where v.uf = u->>'uf' and v.situacao = 'realizada' and v.ficha_id not in (select id from public.exemplo)), ' ') from jsonb_array_elements(:'jm'::jsonb->'por_uf') u;
 insert into res(caso, ok, det) select 'a soma dos municípios é igual ao total de selecionadas', (select coalesce(sum((m->>'n')::int), 0) from jsonb_array_elements(:'jm'::jsonb->'municipios') m) = (select sum((u->>'selecionadas')::int) from jsonb_array_elements(:'jm'::jsonb->'por_uf') u), '';
 insert into res(caso, ok, det) select 'a soma dos meses é igual ao total de visitas feitas', (select coalesce(sum((m->>'diagnostico')::int + (m->>'implantacao')::int + (m->>'acompanhamento')::int + (m->>'avaliacao')::int), 0) from jsonb_array_elements(:'jm'::jsonb->'mensal') m) = (select sum((u->>'visitas_feitas')::int) from jsonb_array_elements(:'jm'::jsonb->'por_uf') u), '';
 insert into res(caso, ok, det) select 'há dados de verdade no cenário (o teste não passa por estar tudo zerado)', (select sum((u->>'indicadas')::int) from jsonb_array_elements(:'jm'::jsonb->'por_uf') u) > 0, (select sum((u->>'indicadas')::int) from jsonb_array_elements(:'jm'::jsonb->'por_uf') u)::text;

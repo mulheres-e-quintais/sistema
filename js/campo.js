@@ -207,7 +207,7 @@
         <div><span class="v num">${usados}<small> de ${MQ.DIAS_CAMPO_UF}</small></span><span class="l">dias de campo usados no estado</span></div>
         <div><span class="v num">${dg.length}<small> de ${MQ.VAGAS_UF}</small></span><span class="l">diagnósticos registrados</span></div>
         <div><span class="v num">${dg.filter(d => d.situacao === 'aprovado').length}</span><span class="l">planos aprovados</span></div>
-        <div><span class="v num">${dg.filter(d => d.sem_agua).length}</span><span class="l">sem água na seca</span></div>
+        <div><span class="v num">${dg.filter(d => d.sem_agua).length}</span><span class="l">diagnósticos sem água na seca</span></div>
       </div>
       ${avisoConflitos()}
       ${avisoFila(pend)}

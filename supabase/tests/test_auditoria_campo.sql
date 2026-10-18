@@ -85,3 +85,10 @@ select t('61. formação do MPA: a coordenação vê a prévia, com as matricula
   if (r ->> 'matriculas')::int <> (select count(*) from public.equipe x where x.status = 'ativa' and x.papel in ('coord_tecnico','articulacao','apoio','agente') and x.matricula_fic_em is not null and x.id not in (select public.exemplo_fora())) then raise exception 'conta diferente da coordenação'; end if; end $x$$q$, 'ok');
 select t('61. formação do MPA: bolsista não vê', :BB, $q$select public.acompanhamento_formacao('mpa')$q$, 'Acesso restrito');
 select n || '|' || case when ok then 'PASSOU' else 'FALHOU' end || '|' || caso || '|' || coalesce(det, '') from res order by n;
+-- (18/10/2026) limpeza: o cenário das seções 4 e 5 foi montado sem checagem de vínculo (réplica), com uma ficha que não existe.
+-- Sem apagar, o diagnóstico e a visita órfãos ficavam no banco e desencontravam as contagens dos testes seguintes.
+do $x$ begin set session_replication_role = replica;
+  delete from public.visitas where id = 'f6100000-0000-0000-0000-0000000000e1';
+  delete from public.diagnosticos where id = 'f6100000-0000-0000-0000-0000000000d1';
+  set session_replication_role = origin; end $x$;
+

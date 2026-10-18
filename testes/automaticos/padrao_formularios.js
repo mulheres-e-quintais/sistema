@@ -31,8 +31,10 @@ const CFG = "window.MQ=window.MQ||{};MQ.CONFIG={supabaseUrl:'',supabaseAnonKey:'
     const g = await p.evaluate(() => { const n = document.querySelector('#painel .guia-form'); return n && { pos: n.querySelector('.gf-pos').textContent, n: n.querySelectorAll('[data-gf]').length,
       sticky: getComputedStyle(n).position, conta: n.querySelector('.gf-conta').textContent }; });
     ok('Diagnóstico: guia com as 13 seções, preso no topo', g && g.n === 13 && g.sticky === 'sticky' && /^Seção 1 de 13/.test(g.pos), g);
-    await p.evaluate(() => document.querySelectorAll('#painel .gf-lista button')[9].click()); await p.waitForTimeout(900);
-    ok('Tocar na seção 10 leva até ela e o guia diz "Seção 10 de 13"', /^Seção 10 de 13/.test(await p.textContent('#painel .gf-pos')), await p.textContent('#painel .gf-pos'));
+    await p.evaluate(() => document.querySelectorAll('#painel .gf-lista button')[9].click());
+    // a rolagem é suave: espera até 4 s o guia chegar à seção (com a máquina carregada, 900 ms não bastavam)
+    const pos10 = await p.waitForFunction(() => /^Seção 10 de 13/.test(document.querySelector('#painel .gf-pos').textContent), null, { timeout: 4000 }).then(() => true).catch(() => false);
+    ok('Tocar na seção 10 leva até ela e o guia diz "Seção 10 de 13"', pos10, await p.textContent('#painel .gf-pos'));
     const lg = await p.evaluate(() => { const w = s => Math.round(document.querySelector(s).closest('.campo').getBoundingClientRect().width);
       return { data: w('#dg-data'), corpo: Math.round(document.querySelector('#painel .painel-corpo').clientWidth) }; });
     ok('Painel largo: data com cerca de 1/3 da linha (antes metade)', lg.data < lg.corpo * 0.4, lg);

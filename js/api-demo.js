@@ -633,6 +633,15 @@
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: alvo.id, acao: s ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: null, depois: copia(alvo) });
       gravar(); return alvo.id;
     },
+    /* 61 (z_depois_da_saida), repetido na demonstração em 18/10/2026: bolsa de mês depois da saída não recebe aval nem vai ao Arlo */
+    _bolsaDepoisDaSaida(d, s) {
+      if (s.tipo !== 'bolsa') return;
+      const p = (d.equipe || []).find(x => x.id === s.equipe_id) || {};
+      if (p.status === 'desligada' && p.data_fim && String(s.mes).slice(0, 7) > String(p.data_fim).slice(0, 7)) {
+        const mm = String(s.mes).slice(5, 7) + '/' + String(s.mes).slice(0, 4), df = String(p.data_fim).slice(8, 10) + '/' + String(p.data_fim).slice(5, 7) + '/' + String(p.data_fim).slice(0, 4);
+        throw falha('Bolsa de ' + mm + ' não pode ser paga: ' + (p.nome || 'a pessoa') + ' foi desligada em ' + df + '. Devolva este pedido.');
+      }
+    },
     async avalizarPagamento(id, ok, obs, valor) {
       const d = ler(); const eu = euMesmo(); const s = (d.solicitacoes || []).find(x => x.id === id);
       if (!s) throw falha('Solicitação não encontrada.');
@@ -651,6 +660,7 @@
       }
       if (ok && s.tipo === 'bolsa' && s.valor_solicitado != null && vAval > s.valor_solicitado) throw falha('O aval passa do valor pedido. Para pagar mais, devolva para a pessoa corrigir o valor.');
       if (ok && s.tipo === 'bolsa' && R.valorBolsa(pe.papel) != null && vAval > R.valorBolsa(pe.papel)) throw falha('O aval da bolsa não pode passar do valor da função (' + R.fmtBRL(R.valorBolsa(pe.papel)) + ').');   // 56
+      if (ok) this._bolsaDepoisDaSaida(d, s);
       const antesS = copia(s);   // 14/10/2026 (E2E-7): o histórico guarda o antes, como o gatilho do banco ("ver o que mudou")
       if (ok) Object.assign(s, { situacao: 'avalizada', valor_avalizado: vAval, aval_por: eu.id, aval_em: agora, obs_aval: obs || null });
       else {
@@ -667,6 +677,7 @@
       if (!s) throw falha('Solicitação não encontrada.');
       if (s.situacao !== 'avalizada') throw falha('Só solicitação com aval vai para o Arlo.');
       if (s.equipe_id === eu.id) throw falha('O seu próprio pagamento é lançado pela coordenação geral.');
+      this._bolsaDepoisDaSaida(d, s);
       const agora = new Date().toISOString(); const antesS = copia(s);
       Object.assign(s, { situacao: 'lancada', arlo_por: eu.id, arlo_em: agora, arlo_protocolo: protocolo || null });
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: s.id, acao: 'UPDATE', por: eu.id, em: agora, antes: antesS, depois: copia(s) });

@@ -353,9 +353,17 @@ select t('G. sem dados pessoais (cadastro no Arlo), aprova só com a pessoa e o 
 select t('G. bolsista NÃO aprova cadastro (as mesmas permissões de antes)', :BB, format($q$select public.aprovar_pre_cadastro('f4770000-0000-0000-0000-000000000001', %L, null)$q$, :'eq47'), 'não encontrado');
 select t('G. a técnica NÃO aprova cadastro de professor (é da coordenação geral)', :T, format($q$select public.aprovar_pre_cadastro('f4770000-0000-0000-0000-000000000002', %L, null)$q$,
   replace(replace(replace(replace(:'eq47', '"agente"', '"professor_fic"'), '"uf": "BA"', '"uf": null'), cpf_t(96400000201), cpf_t(96400000202)), 'B47.Link1', 'B47.Link2')), 'não encontrado');
+-- (18/10/2026) no máximo 2 professores do FIC ativos (46): os testes anteriores da suíte já deixam 2; abre a vaga só para este teste e devolve depois
+create temp table _vaga_prof as select id from public.equipe where papel = 'professor_fic' and status = 'ativa' order by criado_em offset 1;
+alter table public.equipe disable trigger user;
+update public.equipe set status = 'desligada', data_fim = greatest(data_inicio, current_date), motivo_desligamento = 'Teste: vaga temporária de professor' where id in (select id from _vaga_prof);
+alter table public.equipe enable trigger user;
 select t('G. a coordenação geral aprova o cadastro de professor', :G, format($q$do $x$ declare e public.equipe; begin
   e := public.aprovar_pre_cadastro('f4770000-0000-0000-0000-000000000002', %L, null); if e.papel <> 'professor_fic' or e.uf is not null then raise exception 'pessoa: %%', row_to_json(e); end if; end $x$$q$,
   replace(replace(replace(replace(:'eq47', '"agente"', '"professor_fic"'), '"uf": "BA"', '"uf": null'), cpf_t(96400000201), cpf_t(96400000202)), 'B47.Link1', 'B47.Link2')), 'ok');
+alter table public.equipe disable trigger user;
+update public.equipe set status = 'ativa', data_fim = null, motivo_desligamento = null where id in (select id from _vaga_prof);
+alter table public.equipe enable trigger user;
 select t('G. conta sem cadastro não aprova', gen_random_uuid(), format($q$select public.aprovar_pre_cadastro('f4770000-0000-0000-0000-000000000001', %L, null)$q$, :'eq47'), 'Entre no sistema');
 select t('G. o caminho antigo (três gravações da tela antiga) continua funcionando', :T, $q$do $x$ declare nova uuid; begin
   insert into public.equipe (papel, uf, nome, cpf, email, telefone, data_inicio, consentimento_lgpd) select papel, uf, nome, cpf, email, telefone, public.fic_hoje(), true from public.pre_cadastros where id = 'f4770000-0000-0000-0000-000000000001' returning id into nova;

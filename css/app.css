@@ -619,7 +619,7 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
   .tab-rot td:not(:first-child):not(:last-child) { grid-column: 1; }
 }
 /* ---------- curso FIC ---------- */
-.grade-prof { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.grade-prof { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 12px; }
 .fic-turma { display: grid; gap: 12px; }
 .ft-cab { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
 .ft-cab h3 { margin: 0 0 2px; }
@@ -4088,3 +4088,15 @@ html.sem-rede #painel :is(form[data-form="ficha"], form[data-form="diag"], form[
 .doc-vazio-ic { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: var(--surface-2); color: var(--verde-2); }
 @media (max-width: 520px) { .doc-vazio { grid-template-columns: auto minmax(0, 1fr); } .doc-vazio .btn { grid-column: 1 / -1; } }
 @media print { .doc-acoes, .doc-imp, .doc-vazio { display: none !important; } }
+
+/* ===== Revisão independente (18/10/2026) ===== */
+/* próximos marcos: a coluna do selo acompanha o texto ("OUT 2026"); antes a coluna tinha 62 px fixos e o selo vazava */
+.marcos li.marco { grid-template-columns: auto minmax(0, 1fr); }
+.marcos li.marco .marco-cal { min-width: 64px; }
+/* "O que pede atenção" no celular: a descrição encolhe; abaixo de 360 px o prazo e o botão vão para a linha de baixo */
+@media (max-width: 640px) { .dx-tr { grid-template-columns: minmax(0, 1fr) auto; } }
+@media (max-width: 360px) { .dx-tr { grid-template-columns: minmax(0, 1fr); } .dx-tr .dx-ir { justify-self: start; } .dx-prazo { padding-left: 0; } }
+/* Acesso à água a 320 px: uma coluna (a regra do painel, mais específica, mantinha duas e o texto vazava) */
+@media (max-width: 380px) { .dx-agua .agua-sit { grid-template-columns: 1fr; } }
+/* "Ver como" da demonstração em tela muito estreita: cantos menos redondos quando quebra em várias linhas (cortava "Coord. geral") */
+@media (max-width: 340px) { .demo-ver .seg { border-radius: 12px; } .demo-ver .seg button { border-radius: 8px; } }

@@ -10,6 +10,12 @@ do $x$ begin
    where user_id = current_setting('t.bb')::uuid;
   alter table public.equipe enable trigger user;
 end $x$;
+-- (18/10/2026) na suíte, a bolsista :BB já pediu a bolsa deste mês num teste anterior: o pedido em dobro é recusado (certo).
+-- Este teste é sobre o mês de início, então começa sem pedido do mês.
+alter table public.solicitacoes_pagamento disable trigger user;
+delete from public.solicitacoes_pagamento where tipo = 'bolsa' and mes = date_trunc('month', current_date)::date
+  and equipe_id = (select id from public.equipe where user_id = current_setting('t.bb')::uuid);
+alter table public.solicitacoes_pagamento enable trigger user;
 select t('bolsa do mês anterior ao início é recusada', :BB, $q$select public.solicitar_pagamento('bolsa', (date_trunc('month', current_date) - interval '1 month')::date, 2200, repeat('relatório do mês ', 5), null, '{}')$q$, 'começou no projeto');
 select t('bolsa do mês de início é aceita (mesmo começando no dia 4)', :BB, $q$select public.solicitar_pagamento('bolsa', date_trunc('month', current_date)::date, 2200, repeat('relatório do mês ', 5), null, '{}')$q$, 'ok');
 select t('presença do mês anterior ao início é recusada', :BB, $q$insert into public.entregas_mes (equipe_id, mes, item) select id, (date_trunc('month', current_date) - interval '1 month')::date, 'presenca' from public.equipe where user_id = current_setting('t.bb')::uuid$q$, 'começou no projeto');

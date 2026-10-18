@@ -1,7 +1,7 @@
 #!/bin/bash
 # 52_acompanhamento.sql sob concorrência: e-mail repetido, mesmo código em várias tentativas, limite de 20 ativos e leituras simultâneas.
-# Uso: bash concorrencia_acompanhamento.sh   (banco de teste "ts", com a suíte já rodada e o 52 instalado). NUNCA em produção.
-P="sudo -u postgres psql -d ts -Atq"
+# Uso: bash concorrencia_acompanhamento.sh <banco>   (padrão "ts"; com a suíte já rodada e o 52 instalado). NUNCA em produção.
+DB=${1:-ts}; P="sudo -u postgres psql -d $DB -Atq"
 CG=$($P -c "select user_id from public.equipe where papel='coord_geral' and status='ativa' and user_id is not null limit 1")
 como() { $P -c "select set_config('request.jwt.claim.sub','$CG',false); set role authenticated; $1" 2>&1; }
 # 1. o mesmo e-mail cadastrado 4 vezes ao mesmo tempo: só um entra

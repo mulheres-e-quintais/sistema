@@ -226,9 +226,10 @@ for k in 5 20; do
   corridaN "40ª ficha: aprovações simultâneas de fichas diferentes: só uma entra" ok 1 "$ap40 = 40" "já tem 40 selecionadas" $k "$T" "update public.fichas set situacao = 'aprovada' where id = ('${I}001-0000000000' || lpad('@N@', 2, '0'))::uuid"
 done
 # --- 200º/201º dia de campo (deixa o estado com 199 visitas; as candidatas viram aprovadas, como dono)
+# (18/10/2026) uma visita de enchimento por dia: desde o 61 o banco não aceita dois acompanhamentos do mesmo quintal no mesmo dia
 dono "update public.fichas set situacao = 'aprovada' where id::text like '${I}001-%';
   insert into public.visitas (id, ficha_id, uf, etapa, executor_id, data_prevista, data_realizada, situacao, relato)
-  select ('${I}003-' || lpad(j::text, 12, '0'))::uuid, '${I}005-000000000001', 'SE', 'acompanhamento', '${I}000-000000000011', date '$M1' + 1, date '$M1' + 1, 'realizada', 'Visita de enchimento para o limite de dias de campo.'
+  select ('${I}003-' || lpad(j::text, 12, '0'))::uuid, '${I}005-000000000001', 'SE', 'acompanhamento', '${I}000-000000000011', date '$M1' + 1 - j, date '$M1' + 1 - j, 'realizada', 'Visita de enchimento para o limite de dias de campo.'
     from generate_series(1, 199 - (select count(*)::int from public.visitas where uf = 'SE' and situacao <> 'cancelada')) j" >/dev/null
 vis="(select count(*) from public.visitas where uf = 'SE' and situacao <> 'cancelada')"
 VI() { echo "insert into public.visitas (id, ficha_id, uf, etapa, executor_id, data_prevista) values ('${I}00b-0000000000$1', '${I}001-0000000000$1', 'SE', 'diagnostico', '${I}000-000000000011', date '$HOJE' + 3)"; }
@@ -246,8 +247,9 @@ corrida "mesma visita em dois pedidos de ajuda de custo ao mesmo tempo: fica em 
 corridaN "mesma visita em vários pedidos ao mesmo tempo: fica em um pedido só" ok 1 "$sAG1 = 2 and (select count(*) from public.solicitacao_visitas where visita_id = '${I}006-000000000012') = 1" "já foi solicitada" 20 "$AG1" "$(AJ 12)"
 corrida "pedido normal × complementar ao mesmo tempo (visitas diferentes): os dois valem e só um é o complementar" ok 2 \
   "(select count(*) = 2 and count(*) filter (where detalhe ->> 'complementar' = 'true') = 1 from public.solicitacoes_pagamento where equipe_id = '${I}000-000000000012' and mes = '$M1')" "" "$AG2" "$(AJ 21)" "$AG2" "$(AJ 22)"
-BO="select public.solicitar_pagamento('bolsa', '$M1', 1400, 'Relatório do mês: preparação do curso, material das aulas e reuniões com a coordenação técnica do projeto.', null, '{\"justificativa_sem_encontro\": \"Mês de preparação do curso, sem encontros com a turma ainda.\"}')"
-bol="(select count(*) from public.solicitacoes_pagamento where equipe_id = '${I}000-000000000019' and tipo = 'bolsa' and mes = '$M1')"
+# (18/10/2026) mês atual: a bolsa só existe de out/2026 a set/2027; o mês passado (set/2026) era recusado por isso, não pela trava
+BO="select public.solicitar_pagamento('bolsa', '$MES', 2200, 'Relatório do mês: preparação do curso, material das aulas e reuniões com a coordenação técnica do projeto.', null, '{\"justificativa_sem_encontro\": \"Mês de preparação do curso, sem encontros com a turma ainda.\"}')"
+bol="(select count(*) from public.solicitacoes_pagamento where equipe_id = '${I}000-000000000019' and tipo = 'bolsa' and mes = '$MES')"
 corrida "duas bolsas do mesmo mês ao mesmo tempo: fica uma" ok 1 "$bol = 1" "já solicitou este mês" "$PROF2" "$BO" "$PROF2" "$BO"
 dono "delete from public.solicitacoes_pagamento where equipe_id = '${I}000-000000000019'" >/dev/null
 corridaN "bolsas do mesmo mês ao mesmo tempo: fica uma" ok 1 "$bol = 1" "já solicitou este mês" 20 "$PROF2" "$BO"
@@ -327,7 +329,7 @@ corrida "lançar no Arlo × mudar o km da visita ao mesmo tempo: pedido lançado
 corrida "pedir pagamento × a coordenação mudar a data da visita para outro mês ao mesmo tempo: o pedido não fica com visita de outro mês" ok 1 \
   "(select not exists (select 1 from public.solicitacao_visitas sv join public.solicitacoes_pagamento s on s.id = sv.solicitacao_id join public.visitas v on v.id = sv.visita_id where v.id = '${I}006-000000000016' and date_trunc('month', v.data_realizada)::date <> s.mes))" "já está numa solicitação" \
   "$AG1" "$(AJ 16)" "$T" "update public.visitas set data_realizada = '$HOJE' where id = '${I}006-000000000016'"
-BM="select public.solicitar_pagamento('bolsa', '$MES', 1400, 'Relatório do mês: preparação do curso, material das aulas e reuniões com a coordenação técnica do projeto.', null, '{\"justificativa_sem_encontro\": \"Mês de preparação do curso, sem encontros com a turma ainda.\"}')"
+BM="select public.solicitar_pagamento('bolsa', '$MES', 2200, 'Relatório do mês: preparação do curso, material das aulas e reuniões com a coordenação técnica do projeto.', null, '{\"justificativa_sem_encontro\": \"Mês de preparação do curso, sem encontros com a turma ainda.\"}')"
 corrida "bolsa do professor × encontro registrado no mesmo mês ao mesmo tempo: não sobra encontro fora do pedido da bolsa" ok 1 \
   "(select not exists (select 1 from public.solicitacoes_pagamento s join public.fic_encontros e on e.professor_id = s.equipe_id and date_trunc('month', e.data)::date = s.mes and e.cancelado_em is null where s.equipe_id = '${I}000-000000000019' and s.tipo = 'bolsa' and s.situacao = 'solicitada' and jsonb_array_length(s.detalhe -> 'fic_encontros') = 0))" "bolsa deste mês" \
   "$PROF2" "$BM" "$G" "select public.registrar_encontro_fic(null, '${I}008-000000000002', '$HOJE', 2, 'presencial', 'Encontro registrado durante o pedido da bolsa', '{}')"
