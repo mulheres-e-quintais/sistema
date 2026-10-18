@@ -112,9 +112,10 @@
           <td>${c.eq}</td><td>${c.fichas}</td><td>${c.dgs}</td><td>${c.agua}</td><td>${c.prox}</td><td>${c.fila}</td></tr>`; }).join('')}
       </tbody></table></div>`;
     const cartoes = `<div class="cartoes eq-cartoes pr-cartoes">${MQ.UFS.map(u => { const c = celulas(u);
-      return `<div class="cartao"><div class="cab-uf"><span class="uf"><span class="sigla">${u.uf}</span></span><span class="nomeuf muted">${E(u.nome)}</span></div>
-        <span class="fn">Equipe de campo habilitada</span>${c.eq}<span class="fn">Fichas aprovadas</span>${c.fichas}<span class="fn">Diagnósticos</span>${c.dgs}<span class="fn">Sem água na seca</span>${c.agua}
-        <div class="pr-par"><div><span class="fn">Próximos 7 dias</span>${c.prox}</div><div><span class="fn">Falta enviar (salvo só no celular)</span>${c.fila}</div></div></div>`; }).join('')}</div>`;
+      // 18/10/2026: um cartão por estado, separado dos outros, como na aba Campo (antes era uma caixa só, estados colados)
+      const bl = (rot, cel, cls) => `<div class="pr-bloco${cls ? ' ' + cls : ''}"><span class="fn">${rot}</span>${cel}</div>`;
+      return `<div class="cartao"><div class="cab-uf"><span class="uf"><span class="sigla">${u.uf}</span></span><span class="nomeuf">${E(u.nome)}</span>${sub(u) ? `<small class="pr-eq">${sub(u)}</small>` : ''}</div>
+        <div class="pr-blocos">${bl('Equipe de campo habilitada', c.eq, 'largo')}${bl('Fichas aprovadas', c.fichas)}${bl('Diagnósticos', c.dgs)}${bl('Sem água na seca', c.agua)}${bl('Próximos 7 dias', c.prox)}${bl('Falta enviar <span class="pr-fn-sub">(salvo só no celular)</span>', c.fila, 'largo')}</div></div>`; }).join('')}</div>`;
     return `<section class="secao prontidao" aria-labelledby="t-pront">
       <div class="secao-cab"><div><h2 id="t-pront">Situação do campo em cada estado</h2><p>Mostra se o trabalho de campo já pode andar em cada estado: quantas pessoas da equipe de campo estão habilitadas (prontas para trabalhar e receber) e já entraram no sistema, quantas mulheres têm a ficha aprovada, quantos diagnósticos foram feitos (meta de 40), quantas mulheres estão sem água na seca (não recebem kit: acima de 30% das fichas, reveja a seleção do estado), as visitas marcadas para os próximos 7 dias e os registros salvos sem internet que ainda não foram enviados (coluna Falta enviar).</p></div></div>
       ${tabela}${cartoes}

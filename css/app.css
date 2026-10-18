@@ -4103,3 +4103,47 @@ html.sem-rede #painel :is(form[data-form="ficha"], form[data-form="diag"], form[
 /* tela de entrada sem foto real publicada (18/10/2026): o mapa ocupa a faixa, centralizado e com largura de leitura */
 .vit-duo.so-mapa, .ent-hero .vit-duo.so-mapa { grid-template-columns: minmax(0, 1fr); }
 .vit-duo.so-mapa .vit-mapa { max-width: 760px; width: 100%; justify-self: center; }
+
+/* ===== Situação do campo em cada estado, celular e tablet (18/10/2026): um cartão por estado, como na aba Campo ===== */
+.cartoes.pr-cartoes { gap: 12px; border: 0; border-radius: 0; background: none; overflow: visible; }
+.pr-cartoes .cartao, .pr-cartoes .cartao:first-child, .pr-cartoes .cartao:nth-child(-n+2), .pr-cartoes .cartao:nth-child(even) {
+  border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 1px 2px rgba(69, 43, 26, .04); padding: 16px; gap: 12px; align-content: start; }
+.pr-cartoes .cab-uf { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; padding-bottom: 12px; margin: 0; border-bottom: 1px solid var(--line); }
+.pr-cartoes .cab-uf .sigla { display: inline-grid; place-items: center; min-width: 36px; height: 36px; padding: 0 6px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface)); color: var(--accent); font: 700 var(--t-sm)/1 var(--sans); letter-spacing: .04em; }
+.pr-cartoes .cab-uf .nomeuf { font: 600 var(--t-lg)/1.2 var(--serif); color: var(--ink); }
+.pr-cartoes .pr-eq { flex-basis: 100%; padding-left: 48px; margin-top: -4px; font-size: var(--t-xs); color: var(--ink-2); }
+.pr-blocos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.pr-bloco { display: grid; gap: 6px; align-content: start; min-width: 0; padding: 10px 12px; border-radius: 10px; background: var(--bg); }
+.pr-bloco.largo { grid-column: 1 / -1; }
+.pr-bloco .fn { margin: 0; font: 700 12px/1.25 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.pr-fn-sub { text-transform: none; letter-spacing: 0; font-weight: 500; }
+.pr-bloco .pr-cel { gap: 6px; }
+@media (max-width: 360px) { .pr-blocos { grid-template-columns: minmax(0, 1fr); } }
+/* tablet: dois cartões por linha, cada um com a sua borda (antes dividiam bordas como uma tabela) */
+@media (min-width: 600px) and (max-width: 960px) { .cartoes.pr-cartoes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.pr-bloco > .fc-chip, .pr-bloco > .pr-falta { justify-self: start; }
+
+/* ===== Aba Equipe no celular e no tablet (18/10/2026): o mesmo padrão das outras abas — um cartão por estado ou órgão,
+   separado dos outros (antes as seções Bolsistas por estado, Agentes de campo e Acompanhamento externo eram uma caixa só) ===== */
+@media (max-width: 960px) {
+  /* Bolsistas por estado: os cartões já existem; ganham borda própria e espaço entre eles */
+  .cartoes.eq-cartoes { gap: 12px; border: 0; border-radius: 0; background: none; overflow: visible; box-shadow: none; }
+  .eq-cartoes .cartao, .eq-cartoes .cartao:first-child, .eq-cartoes .cartao:nth-child(-n+2), .eq-cartoes .cartao:nth-child(even) {
+    border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 1px 2px rgba(69, 43, 26, .04); padding: 16px; align-content: start; }
+  .eq-cartoes .cab-uf { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; padding-bottom: 12px; margin: 0 0 2px; border-bottom: 1px solid var(--line); }
+  .eq-cartoes .cab-uf .sigla { display: inline-grid; place-items: center; min-width: 36px; height: 36px; padding: 0 6px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+    background: color-mix(in srgb, var(--accent) 9%, var(--surface)); color: var(--accent); font: 700 var(--t-sm)/1 var(--sans); letter-spacing: .04em; }
+  .eq-cartoes .cab-uf .nomeuf { font: 600 var(--t-lg)/1.2 var(--serif); color: var(--ink); }
+  /* Agentes de campo e Acompanhamento externo (ag-quadro): cada linha vira um cartão */
+  .ag-quadro { display: grid; gap: 12px; border: 0; border-radius: 0; background: none; box-shadow: none; overflow: visible; }
+  .ag-quadro .ag-tr, .ag-quadro .ag-tr + .ag-tr, .ag-quadro .ag-tr:nth-child(n) {
+    border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 1px 2px rgba(69, 43, 26, .04); padding: 16px; align-content: start; }
+  .ag-quadro .ag-tr:hover { background: var(--surface); }
+  .ag-quadro .ag-uf { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .ag-quadro .ag-uf .ag-nome b { font: 600 var(--t-lg)/1.2 var(--serif); }
+}
+/* tablet: dois cartões por linha, cada um com a sua borda */
+@media (min-width: 600px) and (max-width: 960px) {
+  .cartoes.eq-cartoes, .ag-quadro { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
