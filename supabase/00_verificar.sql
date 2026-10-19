@@ -227,40 +227,9 @@ chk as (
                    and exists (select 1 from pg_proc where proname = 'documentos_antes' and prosrc like '%já está arquivado%')
   union all select '26_conferencia_auxiliar', exists (select 1 from fn where proname = 'quem_confere_pedidos')
   union all select '22_passagens_eventos', to_regclass('public.pedidos_apoio') is not null and exists (select 1 from fn where proname = 'mover_pedido_apoio')
-  -- 18/10/2026: etapas 11 a 68 que faltavam nesta conferência (cada uma pelo que só ela cria ou pelo texto que só ela pôs na função)
-  union all select '11_fic', exists (select 1 from col where table_name = 'equipe' and column_name = 'cadastro_arlo')
-  union all select '13_avaliacao', to_regclass('public.avaliacoes') is not null
-  union all select '20_organizar_texto', to_regclass('public.ia_usos') is not null
-  union all select '29_desempenho', to_regclass('public.auditoria_em') is not null
-  union all select '31_validacao_diagnostico', exists (select 1 from col where table_name = 'diagnosticos' and column_name = 'conteudo_alterado_em')
-  union all select '35_tetos_passagens_eventos', exists (select 1 from col where table_name = 'pedidos_apoio' and column_name = 'valor_autorizado')
-  union all select '40_vitrine_municipios', exists (select 1 from fn where proname = 'vitrine_municipios')
-  union all select '41_desligamento', exists (select 1 from pg_trigger where tgname = 'equipe_desligar_regras')
-  union all select '42_revisao_seguranca', exists (select 1 from fn where proname = 'trava_limite_uf')
-  union all select '43_lgpd_equipe', to_regclass('public.contas_ja_ligadas') is not null
-  union all select '44_venda', to_regclass('public.canais_venda') is not null
-  union all select '45_auditoria_qa', exists (select 1 from fn where proname = 'fichas_conferir')
-  union all select '46_regras_decididas', exists (select 1 from fn where proname = 'auditar_sem_id')
-  union all select '47_auditoria_bd', to_regclass('public.visitas_executor') is not null
-  union all select '48_termo_pela_pessoa', exists (select 1 from fn where proname = 'enviar_meu_termo')
-  union all select '50_limite_professores', exists (select 1 from pg_trigger where tgname = 'equipe_limite_professores')
-  union all select '51_kit_itens', to_regclass('public.kit_itens') is not null
-  union all select '52_acompanhamento', exists (select 1 from fn where proname = 'acompanhamento_dados')
+  -- 18/10/2026: as duas etapas que faltavam nesta conferência (as outras já estão acima, com o nome e o que fazem)
   union all select '53_kit_precos_pesquisados (preços com fonte)', to_regclass('public.kit_itens') is not null
                    and coalesce((select count(*) >= 7 from public.kit_itens where fonte is not null), false)
-  union all select '55_relatos_problema', to_regclass('public.relatos_problema') is not null
-  union all select '56_correcoes_auditoria', exists (select 1 from fn where proname = 'valor_bolsa')
-  union all select '57_correcoes_auditoria_2', exists (select 1 from fn where proname = 'visitas_vigencia')
-  union all select '58_fila_nos_celulares', to_regclass('public.fila_celular') is not null
-  union all select '59_corrige_desligamento', exists (select 1 from pg_trigger where tgname = 'a1_desligar_pendencias')
-  union all select '60_planilha_e_mpa', exists (select 1 from fn where proname = 'registrar_planilha')
-  union all select '61_auditoria_campo', exists (select 1 from fn where proname = 'relatos_limite_dia')
-  union all select '62_historico', exists (select 1 from pg_proc where proname = 'registrar_planilha' and prosrc like '%historico%')
-  union all select '63_auditoria_1410', exists (select 1 from fn where proname = 'campo_pasta_agente')
-  union all select '64_previa_com_simulacao', exists (select 1 from fn where proname = 'exemplo_fora')
-  union all select '65_acompanhamento_completo', exists (select 1 from fn where proname = 'acompanhamento_extra')
-  union all select '66_auditoria_1510', exists (select 1 from pg_proc where proname = 'parametros_validar' and prosrc like '%decide se o MDA vê os recursos%')
-  union all select '67_matriculas_fic_mda', exists (select 1 from pg_proc where proname = 'acompanhamento_formacao' and prosrc like '%matricula_fic_em is not null%')
   union all select '68_troca_email_login', exists (select 1 from pg_proc where proname = 'equipe_login_fixo' and prosrc like '%o e-mail é o login dela%')
                    and exists (select 1 from pg_trigger t where t.tgname = 'equipe_login_fixo' and pg_get_triggerdef(t.oid) not like '%UPDATE OF%')
 )
