@@ -8143,7 +8143,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <div class="campos"><div class="campo"><label for="pa-val">Valor com aval (R$)</label><input id="pa-val" name="valor" inputmode="decimal" value="${val != null ? String((conf != null ? conf : val).toFixed(2)).replace('.', ',') : ''}"></div>
           <div class="campo inteiro"><label for="pa-obs">Observação (obrigatória para devolver)</label><textarea id="pa-obs" name="obs" placeholder="Ex.: falta a foto da implantação de 12/10; conferir o km de Pio IX."></textarea></div></div>
           <div class="aviso erro" data-erro hidden></div>
-          <div class="acoes"><button class="btn pri" type="submit" name="ok" value="1">Aprovar (dar aval)</button><button class="btn perigo" type="submit" name="ok" value="0">Devolver para correção</button></div></form>` : ''}
+          ${pe.status === 'desligada' ? `<div class="aviso">${E(nomeDe(pe))} foi desligada${pe.data_fim ? ' em ' + R.fmtData(pe.data_fim) : ''} e não entra mais no sistema: devolver não adianta, porque ninguém corrigiria o pedido. Se o valor é devido, dê o aval. Se não é, fale com a coordenação geral.</div>` : ''}
+          <div class="acoes"><button class="btn pri" type="submit" name="ok" value="1">Aprovar (dar aval)</button>${pe.status === 'desligada' ? '' : '<button class="btn perigo" type="submit" name="ok" value="0">Devolver para correção</button>'}</div></form>` : ''}
         ${podeArlo ? `${MQ.bancoUI ? MQ.bancoUI.blocoContaArlo(pe) : ''}<form class="bloco" data-form="pag-arlo" data-id="${E(s.id)}" novalidate><h3>Lançar no Arlo</h3>
           <p class="small muted">Lance <b>${brl(val)}</b> no Arlo para ${E(nomeDe(pe))} (${TIPO[s.tipo].toLowerCase()} de ${nomeMes(s.mes)}) e registre aqui.</p>
           <div class="campo"><label for="pr-prot">Número do protocolo no Arlo <span class="muted">(se houver)</span></label><input id="pr-prot" name="protocolo" autocomplete="off"></div>
@@ -8203,7 +8204,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       }
       await U().ocupado(form, async () => {
         await S().api.avalizarPagamento(form.dataset.id, ok, obs, ok ? valor : null);
-        await recarregar(); U().fecharPainel(); U().toast(ok ? 'Aval registrado. A solicitação foi para o auxiliar lançar no Arlo.' : 'Solicitação devolvida. A pessoa vê o motivo e pode corrigir.');
+        // 18/10/2026 (2ª auditoria): sem auxiliar ativo, ou na bolsa do próprio auxiliar, quem lança no Arlo é a coordenação geral
+        const quem = (() => { const x = lista().find(y => y.id === form.dataset.id); return x && (semAuxiliar() || pessoa(x.equipe_id).papel === 'auxiliar_adm') ? 'a coordenação geral' : 'o auxiliar'; })();
+        await recarregar(); U().fecharPainel(); U().toast(ok ? `Aval registrado. A solicitação foi para ${quem} lançar no Arlo.` : 'Solicitação devolvida. A pessoa vê o motivo e pode corrigir.');
       });
     }
     if (tipo === 'pag-arlo') {
