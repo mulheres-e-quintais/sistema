@@ -1216,6 +1216,7 @@ MQ.ORCAMENTO = {
     sair: p('<path d="M14 4h3a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-3"/><path d="M4 12h11"/><path d="M11 8l4 4-4 4"/>'),
     camera: p('<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.4-2h5.8l1.4 2h2.2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="13" r="3.4"/>'),
     galeria: p('<rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m4 17 5-4.5 3.5 3 3-2.5 4.5 4"/>'),
+    guia: p('<path d="M12 6.5C10 5 7.5 4.5 4 4.5v13c3.5 0 6 .5 8 2 2-1.5 4.5-2 8-2v-13c-3.5 0-6 .5-8 2z"/><path d="M12 6.5v13"/>'),
     trocar: p('<path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5"/><path d="M20 4v4.5h-4.5"/><path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.5"/><path d="M4 20v-4.5h4.5"/>'),
     lixeira: p('<path d="M5 7h14"/><path d="M9.5 7V5h5v2"/><path d="M7 7l.8 12a1.5 1.5 0 0 0 1.5 1.4h5.4a1.5 1.5 0 0 0 1.5-1.4L17 7"/><path d="M10.2 10.5v6M13.8 10.5v6"/>'),
     ficha: p('<rect x="4" y="3.5" width="16" height="17" rx="2"/><circle cx="9.5" cy="10" r="2.2"/><path d="M6.5 16c.5-1.8 1.6-2.7 3-2.7s2.5.9 3 2.7"/><path d="M14 9h3.5M14 12.5h3.5"/>')
@@ -12844,8 +12845,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         ${s.api.modo === 'supabase' && !v ? '<button class="btn-ajuda btn-sair" data-acao="sair" title="Sair do sistema" aria-label="Sair do sistema">' + (MQ.ICONES || {}).sair + '</button>' : ''}</div></div></header>
       <main class="wrap ac" id="conteudo"><div class="cab ac-cab"><div><span class="eyebrow">${o.sigla} · ${E(o.sub)}</span><h1>${E(o.titulo)}</h1>
           <p class="ac-vivo" role="status">${a ? `<span class="ac-pulso" aria-hidden="true"></span>Dados ao vivo · atualizado em ${quando(a)}` : s.acompErro ? '' : 'Carregando os números…'}</p></div>
-          <div class="acoes ac-acoes"><button class="btn" data-acao="acomp-atualizar">Atualizar agora</button><button class="btn" data-acao="acomp-imprimir">Imprimir ou salvar em PDF</button>
-            <a class="btn" href="manuais/guia-${o.manual}.pdf" target="_blank" rel="noopener">Como ler este painel</a></div></div>
+          <div class="acoes ac-acoes foto-acoes">${(() => { const I = n => (MQ.ICONES || {})[n] || '';   // 18/10/2026: mesmo formato (pílula com ícone) dos botões de Meus dados
+            return `<button class="btn foto-btn" data-acao="acomp-atualizar">${I('trocar')}<span>Atualizar agora</span></button><button class="btn foto-btn" data-acao="acomp-imprimir">${I('impressora')}<span>Imprimir ou salvar em PDF</span></button>
+            <a class="btn foto-btn" href="manuais/guia-${o.manual}.pdf" target="_blank" rel="noopener">${I('guia')}<span>Como ler este painel</span></a>`; })()}</div></div>
         ${s.acompErro ? `<div class="aviso erro" role="alert"><b>Não foi possível carregar os números.</b> ${E(s.acompErro)} <button class="link" data-acao="acomp-atualizar">Tentar de novo</button></div>` : ''}
         ${a ? corpo(a) : ''}</main>
       <footer class="rodape"><div class="rodape-in"><div class="rodape-marca"><img src="assets/isotipo.svg" alt="" width="26" height="37"><span><b>Mulheres &amp; Quintais</b><small>Quintais Produtivos para Mulheres Rurais</small></span></div>

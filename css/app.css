@@ -4265,3 +4265,7 @@ html.sem-rede #painel :is(form[data-form="ficha"], form[data-form="diag"], form[
 .foto-acoes .foto-btn.foto-sair:not(:hover) svg { color: var(--accent); }
 /* fila do aparelho: registro recusado com Abrir e corrigir / Descartar (18/10/2026) */
 .fila-campo .fila-acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+/* MDA e MPA: botões do cabeçalho no formato dos de Meus dados (18/10/2026) */
+.ac-acoes.foto-acoes { display: flex; flex-wrap: wrap; gap: 10px; }
+.ac-acoes.foto-acoes .foto-btn { text-decoration: none; }
+@media (max-width: 700px) { .ac-acoes.foto-acoes .foto-btn { justify-content: center; } }
