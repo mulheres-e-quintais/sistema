@@ -3888,7 +3888,7 @@ MQ.ORCAMENTO = {
       ${(() => { const u = MQ.UFS.find(x => contar(lista, x.uf).total); if (!u) return ''; const c = contar(lista, u.uf);
         const partes = [[c.aprovadas, 'selecionada'], [c.espera, 'na lista de espera'], [c.sem_agua, 'sem água'], [c.nao_atende, 'que não atende'], [c.aguardando, 'para aprovar'], [c.devolvidas, 'devolvida']].filter(x => x[0]).map(x => x[0] + ' ' + x[1]);
         return `<div class="aviso" style="margin:0"><b>Como ler:</b> a coluna <b>Fichas</b> é o total de mulheres indicadas no estado, e as colunas ao lado repartem esse total (cada mulher aparece numa só). As <b>${MQ.VAGAS_UF} vagas</b> são só a coluna <b>Selecionadas</b>; as outras não ocupam vaga.
-          Ex.: ${E(u.nome)} tem ${c.total} fichas = ${partes.join(' + ')}.</div>`; })()}
+          Ex.: ${E(u.nome)} tem ${c.total} ${c.total === 1 ? 'ficha' : 'fichas'} = ${partes.join(' + ')}.</div>`; })()}
       <div class="quadro-scroll" style="display:block"><table class="quadro quadro-sel" style="min-width:820px"><thead>
         <tr class="grupo"><th></th><th></th><th class="sep">Ocupam vaga</th><th colspan="3" class="sep">Não ocupam vaga</th><th colspan="2" class="sep">Sem decisão ainda</th></tr>
         <tr><th>Estado</th><th>Fichas (total)</th><th class="sep">Selecionadas (vagas)</th><th class="sep">Lista de espera</th><th>Sem água</th><th>Não atendem</th><th class="sep">Para aprovar</th><th>Devolvidas</th></tr></thead>
@@ -4392,7 +4392,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (vagas > 0) {
       const dias = R.diasAte(MQ.PROJETO.prazoIndicacao);
       a.push({ nivel: dias < 0 ? 'crit' : 'pend', prazo: MQ.PROJETO.prazoIndicacao, texto: `${vagas} vaga${vagas > 1 ? 's' : ''} da equipe sem pessoa cadastrada`,
-        det: dias < 0 ? `O prazo de indicação do MPA venceu em ${R.fmtData(MQ.PROJETO.prazoIndicacao)}.` : `Prazo de indicação do MPA: ${R.fmtData(MQ.PROJETO.prazoIndicacao)}.`, aba: 'equipe' });
+        det: dias < 0 ? `A equipe ainda não está toda cadastrada no sistema. O prazo para o MPA indicar era ${R.fmtData(MQ.PROJETO.prazoIndicacao)}, e os diagnósticos começam em ${R.fmtData(MQ.PROJETO.inicioDiagnosticos)}.` : `Prazo de indicação do MPA: ${R.fmtData(MQ.PROJETO.prazoIndicacao)}.`, aba: 'equipe' });
     }
     // 18/10/2026: todas as funções que recebem bolsa (antes ficavam de fora os professores do curso FIC e o auxiliar)
     const comBolsa = d.ativos.filter(m => m.papel === 'coord_tecnico' || R.ehBolsista(m.papel) || m.papel === 'professor_fic' || m.papel === 'auxiliar_adm');
@@ -11042,7 +11042,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         if (!pv || !pv.data_nascimento) falta.push('data de nascimento');
         if (!en.logradouro || !en.cidade) falta.push('endereço');
         if (falta.length) itens.push({ id: 'dados', seu: true, t: 'Complete os seus dados pessoais',
-          d: 'Falta: ' + falta.join(' e ') + '. ' + (m.papel === 'auxiliar_adm' ? 'A coordenação geral precisa' : 'O auxiliar administrativo precisa') + ' deles para o seu cadastro no Arlo (FUNCERN).', acao: 'pend-dados', btn: 'Completar agora' });
+          d: 'Falta: ' + falta.join(' e ') + '. ' + (m.papel === 'auxiliar_adm' || !nomeDe('auxiliar_adm') ? 'A coordenação geral precisa' : 'O auxiliar administrativo precisa') + ' deles para o seu cadastro no Arlo (FUNCERN).', acao: 'pend-dados', btn: 'Completar agora' });
       }
       const b = MQ.bancoUI ? MQ.bancoUI.estado() : { erro: 1 };
       if (b === null) carregando = true;
@@ -11055,7 +11055,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
     // o que depende de outra pessoa (a pessoa precisa cobrar)
     const aux = nomeDe('auxiliar_adm');
-    const quemHab = ['auxiliar_adm'].includes(m.papel) ? 'a coordenação geral' : 'o auxiliar administrativo' + (aux ? ' (' + aux + ')' : '');
+    const quemHab = ['auxiliar_adm'].includes(m.papel) || !aux ? 'a coordenação geral' : 'o auxiliar administrativo (' + aux + ')';   // 20/10: sem auxiliar ativo, quem faz é a coordenação geral
     R.passosHabilitacao(m).filter(p => !p.feito && p.id !== 'dados').forEach(p => {
       if (p.id === 'fic') itens.push({ id: 'fic', t: 'Matrícula no curso FIC ainda não registrada',
         d: 'Procure os professores do curso FIC para fazer a matrícula e receber o acesso ao AVA.' });
@@ -11144,7 +11144,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
 
   /* ---------- termo de compromisso: a própria pessoa anexa (48) ---------- */
-  const quemConfere = m => m && m.papel === 'auxiliar_adm' ? 'a coordenação geral' : 'o auxiliar administrativo';
+  const quemConfere = m => m && m.papel === 'auxiliar_adm' || !nomeDe('auxiliar_adm') ? 'a coordenação geral' : 'o auxiliar administrativo';
   /* link do modelo (fica ao lado do campo de anexar); sem arquivo configurado em dados.js, orienta a pedir */
   function linkModelo(m) {
     const mod = m ? R.modeloTermo(m) : null;
@@ -11491,10 +11491,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       t: 'Equipe',
       intro: 'Cadastro de todas as pessoas do projeto: coordenação técnica, auxiliar administrativo, professores do curso FIC, bolsistas por estado e agentes de campo.',
       tarefas: [
+        ['Primeiro dia: a ordem obrigatória (só a coordenação geral)', ['Comece pelo quadro <b>Primeiro passo</b>, no alto da aba Equipe: sem um professor do curso FIC habilitado, o sistema não deixa cadastrar a coordenação técnica, as bolsistas nem os agentes.', 'Toque em <b>Cadastrar professor do curso FIC</b> e salve o cadastro.', 'Toque em <b>Completar a habilitação</b>: registre a data do cadastro no Arlo e, no termo, abra <b>Recebeu o termo por fora (papel ou WhatsApp)? Anexe aqui</b>, anexe o termo assinado e então registre a data. Sem o arquivo anexado, a data do termo não é aceita.', 'Com o professor habilitado, cadastre a coordenação técnica.', 'Gere o código de acesso de cada pessoa e mande pelo WhatsApp.', 'A coordenação técnica (ou você) cadastra as bolsistas, de preferência pelo link.']],
         ['Cadastrar pelo link (recomendado)', ['Na aba <b>Equipe</b>, toque na vaga ou em <b>Cadastrar</b>.', 'Toque em <b>Gerar link de cadastro</b>.', 'Toque em <b>Enviar pelo WhatsApp</b> e escolha a pessoa.', 'Quando ela enviar, abra <b>Cadastros enviados pelo link</b>.', 'Confira os dados e toque em <b>Conferir e cadastrar</b> → <b>Cadastrar</b>.']],
         ['Cadastrar digitando', ['Toque na vaga ou em <b>Cadastrar</b> → <b>Digitar os dados agora</b>.', 'Preencha nome, CPF, celular e e-mail.', 'Responda se a pessoa já tem cadastro no Arlo e, para quem vai a campo, o perfil no campo.', 'Marque a ciência sobre o uso dos dados.', 'Toque em <b>Cadastrar</b>.']],
         ['Mandar o acesso para a pessoa', ['Abra a ficha da pessoa.', 'Toque em <b>Gerar código de acesso</b>.', 'Toque em <b>Mandar por WhatsApp</b>: a mensagem já leva endereço, e-mail e código.']],
-        ['Registrar a habilitação', ['Abra a ficha da pessoa.', 'Toque em <b>Registrar passos da habilitação</b>.', 'Em cada passo feito, toque em <b>Hoje</b> (ou escolha a data).', 'Toque em <b>Salvar</b>.']],
+        ['Registrar a habilitação', ['Abra a ficha da pessoa.', 'Toque em <b>Registrar passos da habilitação</b>.', 'Em cada passo feito, toque em <b>Hoje</b> (ou escolha a data).', 'O termo precisa do arquivo: se a pessoa não anexou pelo sistema, abra <b>Recebeu o termo por fora (papel ou WhatsApp)? Anexe aqui</b> e anexe antes de registrar a data.', 'Toque em <b>Salvar</b>.']],
         ['Desligar e pôr substituta', ['Abra a ficha da pessoa → <b>Desligar</b>.', 'Se ela tiver visita feita sem pedido de ajuda de custo ou pedido devolvido, peça que ela faça o pedido antes: depois de desligada, ela não entra mais. Se ela não responder, só a coordenação geral desliga assim mesmo, explicando o porquê.', 'Escolha o motivo e explique em uma frase.', 'Toque em <b>Confirmar desligamento</b> (não tem volta).', 'Na vaga que abriu, toque em <b>Cadastrar substituta</b>.']],
         ['Liberar o acompanhamento do MDA ou do MPA (só a coordenação geral)', ['No fim da aba <b>Equipe</b>, vá até <b>Acompanhamento externo (MDA e MPA)</b>.', 'Na linha do órgão, toque em <b>Adicionar pessoa</b>, preencha nome e e-mail e toque em <b>Gravar</b>.', 'Toque no cartão da pessoa e depois em <b>Gerar código</b>; passe o código a ela.', 'Para conferir o que ela enxerga, toque em <b>Ver como o MDA vê</b> ou <b>Ver como o MPA vê</b>: a tela inteira vira a do órgão, com uma faixa amarela no alto. Nada se grava. Para sair, toque em <b>Voltar à minha visão</b> (ou aperte Esc): você volta ao mesmo ponto da aba Equipe.']]
       ],
@@ -13920,7 +13921,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <div class="eq-kpis" aria-label="Resumo da equipe">
         ${kpiEq(ct ? 1 : 0, 1, 'coordenação técnica cadastrada', 1)}
         ${kpiEq(bols.length, 10, 'bolsistas cadastradas', 2)}
-        ${kpiEq(aptas, pagaveis.length || 0, 'coord. técnica e bolsistas habilitadas (FIC, FUNCERN e termo)', 3)}
+        ${kpiEq(aptas, 11, 'coord. técnica e bolsistas habilitadas (FIC, FUNCERN e termo)', 3)}
         ${kpiEq((S.fichas || []).filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada').length, 200, 'mulheres selecionadas e aprovadas', 4)}
       </div>
       <section class="secao" aria-labelledby="t-ct">
@@ -15040,7 +15041,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <form class="f" data-form="hab" data-id="${m.id}" style="margin-top:12px" novalidate>
       <div class="campos">
         ${!fic ? '' : `<div class="campo inteiro"><span class="dica">${turma ? `Matrícula no FIC registrada pelo professor na turma <b>${esc(turma.nome)}</b> (nº ${esc(mt.numero)}, ${R.fmtData(mt.matriculado_em)}).`
-          : m.matricula_fic_em ? `Matrícula no FIC registrada em ${R.fmtData(m.matricula_fic_em)} (nº ${esc(m.matricula_fic_numero || '')}), ainda sem turma no sistema.` : '<b>Matrícula no FIC: aguardando.</b>'} A matrícula é registrada só pelos professores do curso, na aba Curso FIC.</span></div>`}
+          : m.matricula_fic_em ? `Matrícula no FIC registrada em ${R.fmtData(m.matricula_fic_em)} (nº ${esc(m.matricula_fic_numero || '')}), ainda sem turma no sistema.` : '<b>Matrícula no FIC: aguardando.</b>'} ${S.eu && S.eu.papel === 'coord_geral' ? 'A matrícula é registrada na aba Curso FIC, pelos professores do curso ou por você.' : 'A matrícula é registrada só pelos professores do curso, na aba Curso FIC.'}</span></div>`}
         ${dataPasso('h-fun', 'docs_funcern_em', 'Cadastrado no Arlo (FUNCERN) em', m, 'Ainda não registrado. Se já aconteceu, escolha o dia no calendário ou toque em Hoje. Se não, deixe em branco.')}
         <fieldset class="campo inteiro hab-termo" id="w-termo"><legend>Termo de compromisso</legend>
           ${termo === 'falta' ? `<div class="aviso" role="status"><b>${esc(nomeDe(m).split(' ')[0])} ainda não anexou o termo.</b> Cada pessoa baixa o modelo, preenche, assina e anexa no próprio cadastro (em Pendências ou em Meus dados). A data só é registrada depois, com o termo aberto e conferido.</div>`

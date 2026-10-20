@@ -141,7 +141,7 @@
       ${(() => { const u = MQ.UFS.find(x => contar(lista, x.uf).total); if (!u) return ''; const c = contar(lista, u.uf);
         const partes = [[c.aprovadas, 'selecionada'], [c.espera, 'na lista de espera'], [c.sem_agua, 'sem água'], [c.nao_atende, 'que não atende'], [c.aguardando, 'para aprovar'], [c.devolvidas, 'devolvida']].filter(x => x[0]).map(x => x[0] + ' ' + x[1]);
         return `<div class="aviso" style="margin:0"><b>Como ler:</b> a coluna <b>Fichas</b> é o total de mulheres indicadas no estado, e as colunas ao lado repartem esse total (cada mulher aparece numa só). As <b>${MQ.VAGAS_UF} vagas</b> são só a coluna <b>Selecionadas</b>; as outras não ocupam vaga.
-          Ex.: ${E(u.nome)} tem ${c.total} fichas = ${partes.join(' + ')}.</div>`; })()}
+          Ex.: ${E(u.nome)} tem ${c.total} ${c.total === 1 ? 'ficha' : 'fichas'} = ${partes.join(' + ')}.</div>`; })()}
       <div class="quadro-scroll" style="display:block"><table class="quadro quadro-sel" style="min-width:820px"><thead>
         <tr class="grupo"><th></th><th></th><th class="sep">Ocupam vaga</th><th colspan="3" class="sep">Não ocupam vaga</th><th colspan="2" class="sep">Sem decisão ainda</th></tr>
         <tr><th>Estado</th><th>Fichas (total)</th><th class="sep">Selecionadas (vagas)</th><th class="sep">Lista de espera</th><th>Sem água</th><th>Não atendem</th><th class="sep">Para aprovar</th><th>Devolvidas</th></tr></thead>

@@ -627,7 +627,7 @@
       <div class="eq-kpis" aria-label="Resumo da equipe">
         ${kpiEq(ct ? 1 : 0, 1, 'coordenação técnica cadastrada', 1)}
         ${kpiEq(bols.length, 10, 'bolsistas cadastradas', 2)}
-        ${kpiEq(aptas, pagaveis.length || 0, 'coord. técnica e bolsistas habilitadas (FIC, FUNCERN e termo)', 3)}
+        ${kpiEq(aptas, 11, 'coord. técnica e bolsistas habilitadas (FIC, FUNCERN e termo)', 3)}
         ${kpiEq((S.fichas || []).filter(f => f.resultado === 'selecionada' && f.situacao === 'aprovada').length, 200, 'mulheres selecionadas e aprovadas', 4)}
       </div>
       <section class="secao" aria-labelledby="t-ct">
@@ -1747,7 +1747,7 @@
       <form class="f" data-form="hab" data-id="${m.id}" style="margin-top:12px" novalidate>
       <div class="campos">
         ${!fic ? '' : `<div class="campo inteiro"><span class="dica">${turma ? `Matrícula no FIC registrada pelo professor na turma <b>${esc(turma.nome)}</b> (nº ${esc(mt.numero)}, ${R.fmtData(mt.matriculado_em)}).`
-          : m.matricula_fic_em ? `Matrícula no FIC registrada em ${R.fmtData(m.matricula_fic_em)} (nº ${esc(m.matricula_fic_numero || '')}), ainda sem turma no sistema.` : '<b>Matrícula no FIC: aguardando.</b>'} A matrícula é registrada só pelos professores do curso, na aba Curso FIC.</span></div>`}
+          : m.matricula_fic_em ? `Matrícula no FIC registrada em ${R.fmtData(m.matricula_fic_em)} (nº ${esc(m.matricula_fic_numero || '')}), ainda sem turma no sistema.` : '<b>Matrícula no FIC: aguardando.</b>'} ${S.eu && S.eu.papel === 'coord_geral' ? 'A matrícula é registrada na aba Curso FIC, pelos professores do curso ou por você.' : 'A matrícula é registrada só pelos professores do curso, na aba Curso FIC.'}</span></div>`}
         ${dataPasso('h-fun', 'docs_funcern_em', 'Cadastrado no Arlo (FUNCERN) em', m, 'Ainda não registrado. Se já aconteceu, escolha o dia no calendário ou toque em Hoje. Se não, deixe em branco.')}
         <fieldset class="campo inteiro hab-termo" id="w-termo"><legend>Termo de compromisso</legend>
           ${termo === 'falta' ? `<div class="aviso" role="status"><b>${esc(nomeDe(m).split(' ')[0])} ainda não anexou o termo.</b> Cada pessoa baixa o modelo, preenche, assina e anexa no próprio cadastro (em Pendências ou em Meus dados). A data só é registrada depois, com o termo aberto e conferido.</div>`

@@ -38,7 +38,7 @@
         if (!pv || !pv.data_nascimento) falta.push('data de nascimento');
         if (!en.logradouro || !en.cidade) falta.push('endereço');
         if (falta.length) itens.push({ id: 'dados', seu: true, t: 'Complete os seus dados pessoais',
-          d: 'Falta: ' + falta.join(' e ') + '. ' + (m.papel === 'auxiliar_adm' ? 'A coordenação geral precisa' : 'O auxiliar administrativo precisa') + ' deles para o seu cadastro no Arlo (FUNCERN).', acao: 'pend-dados', btn: 'Completar agora' });
+          d: 'Falta: ' + falta.join(' e ') + '. ' + (m.papel === 'auxiliar_adm' || !nomeDe('auxiliar_adm') ? 'A coordenação geral precisa' : 'O auxiliar administrativo precisa') + ' deles para o seu cadastro no Arlo (FUNCERN).', acao: 'pend-dados', btn: 'Completar agora' });
       }
       const b = MQ.bancoUI ? MQ.bancoUI.estado() : { erro: 1 };
       if (b === null) carregando = true;
@@ -51,7 +51,7 @@
 
     // o que depende de outra pessoa (a pessoa precisa cobrar)
     const aux = nomeDe('auxiliar_adm');
-    const quemHab = ['auxiliar_adm'].includes(m.papel) ? 'a coordenação geral' : 'o auxiliar administrativo' + (aux ? ' (' + aux + ')' : '');
+    const quemHab = ['auxiliar_adm'].includes(m.papel) || !aux ? 'a coordenação geral' : 'o auxiliar administrativo (' + aux + ')';   // 20/10: sem auxiliar ativo, quem faz é a coordenação geral
     R.passosHabilitacao(m).filter(p => !p.feito && p.id !== 'dados').forEach(p => {
       if (p.id === 'fic') itens.push({ id: 'fic', t: 'Matrícula no curso FIC ainda não registrada',
         d: 'Procure os professores do curso FIC para fazer a matrícula e receber o acesso ao AVA.' });
@@ -140,7 +140,7 @@
   }
 
   /* ---------- termo de compromisso: a própria pessoa anexa (48) ---------- */
-  const quemConfere = m => m && m.papel === 'auxiliar_adm' ? 'a coordenação geral' : 'o auxiliar administrativo';
+  const quemConfere = m => m && m.papel === 'auxiliar_adm' || !nomeDe('auxiliar_adm') ? 'a coordenação geral' : 'o auxiliar administrativo';
   /* link do modelo (fica ao lado do campo de anexar); sem arquivo configurado em dados.js, orienta a pedir */
   function linkModelo(m) {
     const mod = m ? R.modeloTermo(m) : null;

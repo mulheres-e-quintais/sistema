@@ -106,6 +106,7 @@ def mensagens():
     h = sec('Mensagens do sistema e o que fazer')
     h += p('Quando o sistema recusa uma ação, ele diz o motivo. Estas são as recusas mais comuns.')
     h += tabela(['A mensagem diz', 'O que fazer'], [
+        ['Antes, cadastre e habilite um professor do curso FIC', 'A coordenação geral cadastra um professor do curso FIC e registra o cadastro no Arlo e o termo assinado (com o arquivo anexado). Depois, os outros cadastros passam'],
         ['O estado já tem 40 selecionadas aprovadas', 'Coloque a mulher na lista de espera'],
         ['Esta mulher (CPF) já tem ficha no projeto', 'Ela já foi indicada, talvez em outro estado. Fale com a coordenação técnica'],
         ['Este CPF é de uma pessoa ativa da equipe', 'Quem trabalha no projeto não entra como beneficiária. Confira o CPF'],

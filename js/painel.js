@@ -41,7 +41,7 @@
     if (vagas > 0) {
       const dias = R.diasAte(MQ.PROJETO.prazoIndicacao);
       a.push({ nivel: dias < 0 ? 'crit' : 'pend', prazo: MQ.PROJETO.prazoIndicacao, texto: `${vagas} vaga${vagas > 1 ? 's' : ''} da equipe sem pessoa cadastrada`,
-        det: dias < 0 ? `O prazo de indicação do MPA venceu em ${R.fmtData(MQ.PROJETO.prazoIndicacao)}.` : `Prazo de indicação do MPA: ${R.fmtData(MQ.PROJETO.prazoIndicacao)}.`, aba: 'equipe' });
+        det: dias < 0 ? `A equipe ainda não está toda cadastrada no sistema. O prazo para o MPA indicar era ${R.fmtData(MQ.PROJETO.prazoIndicacao)}, e os diagnósticos começam em ${R.fmtData(MQ.PROJETO.inicioDiagnosticos)}.` : `Prazo de indicação do MPA: ${R.fmtData(MQ.PROJETO.prazoIndicacao)}.`, aba: 'equipe' });
     }
     // 18/10/2026: todas as funções que recebem bolsa (antes ficavam de fora os professores do curso FIC e o auxiliar)
     const comBolsa = d.ativos.filter(m => m.papel === 'coord_tecnico' || R.ehBolsista(m.papel) || m.papel === 'professor_fic' || m.papel === 'auxiliar_adm');

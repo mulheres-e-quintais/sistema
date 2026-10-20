@@ -10,14 +10,15 @@
 --
 -- FICA:  a coordenação geral (o seu cadastro, os seus dados pessoais e o seu login); os parâmetros de custo
 --        (valor da hora, refeição, combustível); a lista de itens do kit com os preços de referência; e toda a ESTRUTURA do sistema (tabelas, regras, permissões:
---        não é preciso rodar de novo nenhum script do 01 ao 47).
+--        não é preciso rodar de novo nenhum script, do 01 ao último instalado).
 -- SAI:   TODO o resto, de todas as tabelas: equipe (coordenação técnica, auxiliar, professores, bolsistas, agentes)
 --        e os logins dela; convites e pré-cadastros; contas bancárias; fichas das mulheres; visitas; diagnósticos;
 --        avaliações; custos de visita; turmas, matrículas, encontros e presenças do FIC; pedidos de pagamento;
 --        pedidos de passagem e evento; planilhas e lançamentos de execução; documentos do projeto; arranjos
 --        produtivos (APL); canais de venda e orientações de venda; situação da água; fotos da vitrine; entregas do mês;
 --        respostas do roteiro de testes; códigos e pedidos de acesso; últimos acessos; histórico (auditoria);
---        e os dados de exemplo.
+--        relatos de problema; registros parados nos celulares; quem acompanha pelo MDA e pelo MPA (e os logins deles:
+--        precisam ser cadastrados de novo); e os dados de exemplo e de simulação.
 -- ARQUIVOS: fotos, termos e documentos já enviados continuam no Storage (o Supabase não deixa apagar arquivo
 --        pelo SQL). Para apagá-los, veja o passo no fim deste arquivo.
 -- =====================================================================
@@ -86,10 +87,15 @@ select case when (select count(*) from public.equipe) = 1 and (select count(*) f
   (select count(*) from public.fichas) as fichas,
   (select count(*) from public.visitas) as visitas,
   (select count(*) from public.auditoria) as historico,
-  (select count(*) from public.exemplo) as exemplos;
+  (select count(*) from public.exemplo) as exemplos,
+  (select coalesce(nullif(concat_ws(' e ', 'bucket equipe, pasta ' || regexp_replace(foto_path, '/[^/]*$', ''), 'bucket termos, pasta ' || regexp_replace(termo_path, '/[^/]*$', '')), ''), 'nenhum arquivo seu')
+     from public.equipe where papel = 'coord_geral' and status = 'ativa') as suas_pastas_no_storage;
 
 -- ---------------------------------------------------------------------
 -- Arquivos no Storage (fotos, termos, documentos, planilhas)
 -- O Supabase não deixa apagar arquivo pelo SQL. Vá em Storage e, em cada bucket, clique nos três pontinhos >
 -- "Empty bucket". Não apague o bucket em si, só esvazie.
+-- EXCETO nos buckets "equipe" (fotos) e "termos": neles ficam a SUA foto e o SEU termo. A coluna
+-- suas_pastas_no_storage, no resultado acima, diz o nome das suas pastas. Nesses dois buckets, apague as outras
+-- pastas uma a uma e deixe só a sua (se esvaziar tudo, a sua foto e o seu termo somem e o cadastro aponta para nada).
 -- ---------------------------------------------------------------------
