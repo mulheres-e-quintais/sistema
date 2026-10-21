@@ -100,8 +100,11 @@
     let fluxo;
     try { fluxo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1440 } }, audio: false }); }
     catch (e) { MQ.ui.toast('Não foi possível abrir a câmera. Permita o uso da câmera para este site nas configurações do navegador e tente de novo.'); return; }
-    const j = document.createElement('div'); j.className = 'cam-janela'; j.setAttribute('role', 'dialog'); j.setAttribute('aria-modal', 'true'); j.setAttribute('aria-label', 'Tirar foto do quintal');
-    j.innerHTML = '<div class="cam-caixa cam-quintal"><video autoplay playsinline muted></video><p class="small muted">Enquadre e toque em Tirar foto. A foto fica com a data e a hora de agora.</p><div class="acoes"><button type="button" class="btn pri" data-cam="tirar">Tirar foto</button><button type="button" class="btn" data-cam="cancelar">Cancelar</button></div></div>';
+    // 21/10/2026: também fotografa documento (ficha e termo), sem sair do navegador; o campo diz o rótulo e a orientação
+    const rot = inp.dataset.camRotulo || 'Tirar foto do quintal', txt = inp.dataset.camTexto || 'Enquadre e toque em Tirar foto. A foto fica com a data e a hora de agora.';
+    const j = document.createElement('div'); j.className = 'cam-janela'; j.setAttribute('role', 'dialog'); j.setAttribute('aria-modal', 'true'); j.setAttribute('aria-label', rot);
+    j.innerHTML = '<div class="cam-caixa cam-quintal"><video autoplay playsinline muted></video><p class="small muted"></p><div class="acoes"><button type="button" class="btn pri" data-cam="tirar">Tirar foto</button><button type="button" class="btn" data-cam="cancelar">Cancelar</button></div></div>';
+    j.querySelector('p').textContent = txt;
     const video = j.querySelector('video'); video.srcObject = fluxo; document.body.appendChild(j); j.querySelector('[data-cam=tirar]').focus();
     const fechar = () => { fluxo.getTracks().forEach(t => t.stop()); j.remove(); document.removeEventListener('keydown', tecla); };
     const tecla = ev => { if (ev.key === 'Escape') fechar(); }; document.addEventListener('keydown', tecla);
@@ -114,7 +117,7 @@
       c.toBlob(blob => {
         fechar(); if (!blob) { MQ.ui.toast('A foto não saiu. Tente de novo.'); return; }
         try {
-          const dt = new DataTransfer(); dt.items.add(new File([blob], 'quintal_' + Date.now() + '.jpg', { type: 'image/jpeg', lastModified: Date.now() }));
+          const dt = new DataTransfer(); dt.items.add(new File([blob], (inp.dataset.camRotulo ? 'documento_' : 'quintal_') + Date.now() + '.jpg', { type: 'image/jpeg', lastModified: Date.now() }));
           inp.files = dt.files; inp.dataset.camApp = '1';
           inp.dispatchEvent(new Event('change', { bubbles: true }));
         } catch (e) { MQ.ui.toast('Este navegador não deixa usar a foto da câmera do sistema. Atualize o navegador.'); }

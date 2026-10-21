@@ -218,7 +218,8 @@
               <option value="digital" ${f.assinatura === 'digital' ? 'selected' : ''}>Impressão digital + testemunha</option></select></div>
             <div class="campo" data-so-digital><label for="fi-tn">Testemunha: nome</label><input id="fi-tn" name="testemunha_nome" maxlength="160" value="${v('testemunha_nome')}" autocapitalize="words" autocorrect="off" spellcheck="false"></div>
             <div class="campo" data-so-digital><label for="fi-tc">Testemunha: CPF</label><input id="fi-tc" name="testemunha_cpf" inputmode="numeric" value="${E(R.fmtCPF(f.testemunha_cpf || ''))}"></div>
-            <div class="campo inteiro"><label for="fi-ft">Foto do termo assinado</label><input id="fi-ft" name="foto_termo" type="file" accept="image/*">
+            <div class="campo inteiro"><label for="fi-ft">Foto do termo assinado</label><input id="fi-ft" name="foto_termo" type="file" accept="image/*" data-cam-rotulo="Fotografar o termo assinado" data-cam-texto="Enquadre o papel inteiro, com as assinaturas legíveis, e toque em Tirar foto.">
+              <button type="button" class="btn peq foto-agora" data-acao="foto-agora" data-alvo="fi-ft">Tirar foto aqui, sem sair do sistema</button>
               <span class="dica" id="fi-ft-dica">${f.foto_termo_path ? 'Já tem foto. Envie outra só se quiser trocar.' : 'Fotografe o papel inteiro, com as assinaturas legíveis.'}</span></div>
           </div>
         </fieldset>
@@ -240,7 +241,8 @@
             <div class="campo" data-so="lista_espera"><label for="fi-pos">Posição na lista de espera</label><input id="fi-pos" name="posicao_espera" type="number" min="1" inputmode="numeric" value="${v('posicao_espera')}"></div>
             <div class="campo inteiro" data-so="sem_agua"><label for="fi-enc">Encaminhada para (programa de cisternas / órgão)</label><input id="fi-enc" name="encaminhada_para" maxlength="300" value="${v('encaminhada_para')}"></div>
             <div class="campo inteiro"><label for="fi-just">Justificativa / observações</label><textarea id="fi-just" name="justificativa">${v('justificativa')}</textarea></div>
-            <div class="campo inteiro"><label for="fi-ff">Foto da ficha em papel assinada</label><input id="fi-ff" name="foto_ficha" type="file" accept="image/*,application/pdf">
+            <div class="campo inteiro"><label for="fi-ff">Foto da ficha em papel assinada</label><input id="fi-ff" name="foto_ficha" type="file" accept="image/*,application/pdf" data-cam-rotulo="Fotografar a ficha em papel" data-cam-texto="Enquadre uma página inteira, com as assinaturas legíveis, e toque em Tirar foto.">
+              <button type="button" class="btn peq foto-agora" data-acao="foto-agora" data-alvo="fi-ff">Tirar foto aqui, sem sair do sistema</button>
               <span class="dica" id="fi-ff-dica">${f.foto_ficha_path ? 'Já tem foto. Envie outra só se quiser trocar.' : 'As duas páginas, com as assinaturas da mulher e da bolsista.'}</span></div>
           </div>
         </fieldset>
@@ -540,6 +542,18 @@
     U().toast((r.filtrado ? `Planilha gerada com ${r.n} de ${r.total} fichas (filtro da tela).` : 'Planilha gerada.') + (r.tipo === 'completa' ? ' Ela tem CPF e outros documentos: guarde em pasta restrita e não mande por WhatsApp.' : ' Ela tem nome, celular e endereço: guarde em pasta restrita.'));
   }
 
+  /* item 5 (21/10/2026): a foto pronta também fica numa cópia neste aparelho, presa ao rascunho do formulário. Se o celular
+     fechar a página (o Android faz isso quando a câmera abre por cima do navegador), ela volta com "Continuar de onde parou?". */
+  function guardarCopia(campo, blob) { try { if (MQ.ui && MQ.ui.guardarArquivoRascunho) MQ.ui.guardarArquivoRascunho(campo, blob); } catch (e) { /* sem cópia: segue */ } }
+  MQ.arqVolta = MQ.arqVolta || {};
+  MQ.arqVolta.ficha = (campo, blob, form) => {
+    if (!['ficha', 'termo'].includes(campo) || !blob) return false;
+    fotosTemp[campo] = blob;
+    const dica = form.querySelector('#fi-' + (campo === 'termo' ? 'ft' : 'ff') + '-dica');
+    if (dica) dica.textContent = (blob.type === 'application/pdf' ? 'Arquivo recuperado' : 'Foto recuperada') + ' deste aparelho (' + Math.max(1, Math.round(blob.size / 1024)) + ' KB). Confira e salve.';
+    atualizarForm(form); return true;
+  };
+
   /* reatividade do formulário e dos filtros */
   document.addEventListener('change', async ev => {
     const form = ev.target.closest('form[data-form=ficha]');
@@ -552,11 +566,12 @@
         dica.textContent = 'Preparando foto…';
         if (arq.type === 'application/pdf' || /\.pdf$/i.test(arq.name || '')) {   // ficha digitalizada em PDF: vai como está, se for PDF de verdade
           const falso = MQ.arquivoConfere ? await MQ.arquivoConfere(arq, ['pdf']) : (arq.size > 0 ? '' : 'O arquivo está vazio. Escolha outro.');
-          if (falso) { fotosTemp[campo] = null; ev.target.value = ''; dica.textContent = falso; return; }
-          fotosTemp[campo] = arq; dica.textContent = 'Arquivo pronto (' + Math.max(1, Math.round(arq.size / 1024)) + ' KB). Fica no aparelho até enviar.'; return; }
+          if (falso) { fotosTemp[campo] = null; ev.target.value = ''; dica.textContent = falso; guardarCopia(campo, null); return; }
+          fotosTemp[campo] = arq; dica.textContent = 'Arquivo pronto (' + Math.max(1, Math.round(arq.size / 1024)) + ' KB). Fica no aparelho até enviar.'; guardarCopia(campo, arq); atualizarForm(form); return; }
         try { fotosTemp[campo] = await MQ.comprimirFoto(arq, undefined, undefined, { semAviso: true }); }
-        catch (e) { fotosTemp[campo] = null; ev.target.value = ''; dica.textContent = e.message; return; }   // não é foto (txt renomeado, vazio, corrompido)
-        dica.textContent = 'Foto pronta (' + Math.round(fotosTemp[campo].size / 1024) + ' KB). Fica no aparelho até enviar.';
+        catch (e) { fotosTemp[campo] = null; ev.target.value = ''; dica.textContent = e.message; guardarCopia(campo, null); return; }   // não é foto (txt renomeado, vazio, corrompido)
+        dica.textContent = 'Foto pronta (' + Math.round(fotosTemp[campo].size / 1024) + ' KB). Fica guardada neste aparelho até enviar.';
+        guardarCopia(campo, fotosTemp[campo]);
       }
       atualizarForm(form);
       const w = ev.target.closest('.criterio, .check'); if (w) w.classList.remove('tem-erro');

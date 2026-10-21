@@ -341,7 +341,7 @@
       t: 'Sua tela (bolsista)',
       intro: 'Tudo o que você faz no estado: indicar as mulheres, registrar o trabalho de campo, acompanhar as entregas do mês e pedir os pagamentos.',
       tarefas: [
-        ['Lançar a ficha de uma mulher', ['No topo, toque em <b>+ Nova ficha de mulher</b>.', 'Preencha os dados e os critérios com a mulher.', 'Fotografe a ficha e o termo assinado.', 'Toque em <b>Registrar localização</b> e depois em <b>Salvar</b>. Sem internet, ela sobe sozinha depois.']],
+        ['Lançar a ficha de uma mulher', ['No topo, toque em <b>+ Nova ficha de mulher</b>.', 'Preencha os dados e os critérios com a mulher.', 'Fotografe a ficha e o termo assinado. Prefira <b>Tirar foto aqui, sem sair do sistema</b>: em celular mais simples, abrir a câmera do celular pode fechar o sistema.', 'Toque em <b>Registrar localização</b> e depois em <b>Salvar</b>. Sem internet, ela sobe sozinha depois.']],
         ['Registrar diagnóstico ou visita', ['No topo, toque em <b>Visitas e diagnósticos</b>.', 'Em <b>Para fazer agora</b>, toque no botão da visita (<b>Registrar diagnóstico</b>, <b>Registrar visita feita</b> ou <b>Registrar avaliação</b>).', 'Faça as fotos, registre a localização e salve.']],
         ['Marcar a lista de presença', ['No topo, toque em <b>Entregas do mês</b>.', 'Na lista de presença, toque em <b>Entreguei</b>.']],
         ['Pedir a bolsa e a ajuda de custo', ['No topo, toque em <b>Pedir pagamento</b>.', 'Na ajuda de custo, marque as visitas feitas e toque em <b>Solicitar</b>.', 'Na bolsa, escreva o relatório do mês (pode usar <b>Falar</b>) e toque em <b>Solicitar bolsa</b>.']],
@@ -359,6 +359,7 @@
       duvidas: [
         ['Posso falar em vez de digitar?', 'Sim. Nos campos de texto, toque em Falar e fale; o texto vai aparecendo. Revise antes de salvar. Evite dizer nomes e CPF. Precisa de internet.'],
         ['Prefiro aplicar no papel.', 'Abra o formulário (ficha, diagnóstico, registro de visita ou avaliação) e toque em <b>Imprimir em branco</b>, no alto. A folha sai com o símbolo do projeto e os seus dados de quem aplica já preenchidos. Depois, lance as respostas no sistema: o papel não substitui o registro.'],
+        ['O celular fechou o sistema no meio da ficha.', 'O que você digitou e as fotos já prontas ficam guardados neste aparelho por 24 horas. Ao abrir o sistema, aparece <b>Você começou uma ficha de indicação e não salvou</b>: toque em <b>Continuar</b>. Para não acontecer, fotografe com <b>Tirar foto aqui, sem sair do sistema</b>.'],
         ['Estou sem internet no campo.', 'Pode preencher fichas, diagnósticos, visitas e avaliações. Ficam guardados no celular e sobem quando a internet voltar ("Enviar agora"). Não saia do sistema (o símbolo da porta, no alto) enquanto estiver sem sinal. Sem internet o sistema não sai sozinho; ele só sai depois de 15 minutos sem uso quando o sinal voltar.'],
         ['A localização foi negada.', 'Libere a localização para o site nas permissões do navegador (cadeado ao lado do endereço) e tente de novo. Se não der, escolha o motivo e explique com suas palavras (pelo menos 15 letras).'],
         ['Posso corrigir uma ficha aprovada?', 'Não. Peça à coordenação técnica para devolvê-la.'],

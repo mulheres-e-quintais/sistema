@@ -4099,7 +4099,8 @@ MQ.ORCAMENTO = {
               <option value="digital" ${f.assinatura === 'digital' ? 'selected' : ''}>Impressão digital + testemunha</option></select></div>
             <div class="campo" data-so-digital><label for="fi-tn">Testemunha: nome</label><input id="fi-tn" name="testemunha_nome" maxlength="160" value="${v('testemunha_nome')}" autocapitalize="words" autocorrect="off" spellcheck="false"></div>
             <div class="campo" data-so-digital><label for="fi-tc">Testemunha: CPF</label><input id="fi-tc" name="testemunha_cpf" inputmode="numeric" value="${E(R.fmtCPF(f.testemunha_cpf || ''))}"></div>
-            <div class="campo inteiro"><label for="fi-ft">Foto do termo assinado</label><input id="fi-ft" name="foto_termo" type="file" accept="image/*">
+            <div class="campo inteiro"><label for="fi-ft">Foto do termo assinado</label><input id="fi-ft" name="foto_termo" type="file" accept="image/*" data-cam-rotulo="Fotografar o termo assinado" data-cam-texto="Enquadre o papel inteiro, com as assinaturas legíveis, e toque em Tirar foto.">
+              <button type="button" class="btn peq foto-agora" data-acao="foto-agora" data-alvo="fi-ft">Tirar foto aqui, sem sair do sistema</button>
               <span class="dica" id="fi-ft-dica">${f.foto_termo_path ? 'Já tem foto. Envie outra só se quiser trocar.' : 'Fotografe o papel inteiro, com as assinaturas legíveis.'}</span></div>
           </div>
         </fieldset>
@@ -4121,7 +4122,8 @@ MQ.ORCAMENTO = {
             <div class="campo" data-so="lista_espera"><label for="fi-pos">Posição na lista de espera</label><input id="fi-pos" name="posicao_espera" type="number" min="1" inputmode="numeric" value="${v('posicao_espera')}"></div>
             <div class="campo inteiro" data-so="sem_agua"><label for="fi-enc">Encaminhada para (programa de cisternas / órgão)</label><input id="fi-enc" name="encaminhada_para" maxlength="300" value="${v('encaminhada_para')}"></div>
             <div class="campo inteiro"><label for="fi-just">Justificativa / observações</label><textarea id="fi-just" name="justificativa">${v('justificativa')}</textarea></div>
-            <div class="campo inteiro"><label for="fi-ff">Foto da ficha em papel assinada</label><input id="fi-ff" name="foto_ficha" type="file" accept="image/*,application/pdf">
+            <div class="campo inteiro"><label for="fi-ff">Foto da ficha em papel assinada</label><input id="fi-ff" name="foto_ficha" type="file" accept="image/*,application/pdf" data-cam-rotulo="Fotografar a ficha em papel" data-cam-texto="Enquadre uma página inteira, com as assinaturas legíveis, e toque em Tirar foto.">
+              <button type="button" class="btn peq foto-agora" data-acao="foto-agora" data-alvo="fi-ff">Tirar foto aqui, sem sair do sistema</button>
               <span class="dica" id="fi-ff-dica">${f.foto_ficha_path ? 'Já tem foto. Envie outra só se quiser trocar.' : 'As duas páginas, com as assinaturas da mulher e da bolsista.'}</span></div>
           </div>
         </fieldset>
@@ -4421,6 +4423,18 @@ MQ.ORCAMENTO = {
     U().toast((r.filtrado ? `Planilha gerada com ${r.n} de ${r.total} fichas (filtro da tela).` : 'Planilha gerada.') + (r.tipo === 'completa' ? ' Ela tem CPF e outros documentos: guarde em pasta restrita e não mande por WhatsApp.' : ' Ela tem nome, celular e endereço: guarde em pasta restrita.'));
   }
 
+  /* item 5 (21/10/2026): a foto pronta também fica numa cópia neste aparelho, presa ao rascunho do formulário. Se o celular
+     fechar a página (o Android faz isso quando a câmera abre por cima do navegador), ela volta com "Continuar de onde parou?". */
+  function guardarCopia(campo, blob) { try { if (MQ.ui && MQ.ui.guardarArquivoRascunho) MQ.ui.guardarArquivoRascunho(campo, blob); } catch (e) { /* sem cópia: segue */ } }
+  MQ.arqVolta = MQ.arqVolta || {};
+  MQ.arqVolta.ficha = (campo, blob, form) => {
+    if (!['ficha', 'termo'].includes(campo) || !blob) return false;
+    fotosTemp[campo] = blob;
+    const dica = form.querySelector('#fi-' + (campo === 'termo' ? 'ft' : 'ff') + '-dica');
+    if (dica) dica.textContent = (blob.type === 'application/pdf' ? 'Arquivo recuperado' : 'Foto recuperada') + ' deste aparelho (' + Math.max(1, Math.round(blob.size / 1024)) + ' KB). Confira e salve.';
+    atualizarForm(form); return true;
+  };
+
   /* reatividade do formulário e dos filtros */
   document.addEventListener('change', async ev => {
     const form = ev.target.closest('form[data-form=ficha]');
@@ -4433,11 +4447,12 @@ MQ.ORCAMENTO = {
         dica.textContent = 'Preparando foto…';
         if (arq.type === 'application/pdf' || /\.pdf$/i.test(arq.name || '')) {   // ficha digitalizada em PDF: vai como está, se for PDF de verdade
           const falso = MQ.arquivoConfere ? await MQ.arquivoConfere(arq, ['pdf']) : (arq.size > 0 ? '' : 'O arquivo está vazio. Escolha outro.');
-          if (falso) { fotosTemp[campo] = null; ev.target.value = ''; dica.textContent = falso; return; }
-          fotosTemp[campo] = arq; dica.textContent = 'Arquivo pronto (' + Math.max(1, Math.round(arq.size / 1024)) + ' KB). Fica no aparelho até enviar.'; return; }
+          if (falso) { fotosTemp[campo] = null; ev.target.value = ''; dica.textContent = falso; guardarCopia(campo, null); return; }
+          fotosTemp[campo] = arq; dica.textContent = 'Arquivo pronto (' + Math.max(1, Math.round(arq.size / 1024)) + ' KB). Fica no aparelho até enviar.'; guardarCopia(campo, arq); atualizarForm(form); return; }
         try { fotosTemp[campo] = await MQ.comprimirFoto(arq, undefined, undefined, { semAviso: true }); }
-        catch (e) { fotosTemp[campo] = null; ev.target.value = ''; dica.textContent = e.message; return; }   // não é foto (txt renomeado, vazio, corrompido)
-        dica.textContent = 'Foto pronta (' + Math.round(fotosTemp[campo].size / 1024) + ' KB). Fica no aparelho até enviar.';
+        catch (e) { fotosTemp[campo] = null; ev.target.value = ''; dica.textContent = e.message; guardarCopia(campo, null); return; }   // não é foto (txt renomeado, vazio, corrompido)
+        dica.textContent = 'Foto pronta (' + Math.round(fotosTemp[campo].size / 1024) + ' KB). Fica guardada neste aparelho até enviar.';
+        guardarCopia(campo, fotosTemp[campo]);
       }
       atualizarForm(form);
       const w = ev.target.closest('.criterio, .check'); if (w) w.classList.remove('tem-erro');
@@ -5351,8 +5366,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     let fluxo;
     try { fluxo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1440 } }, audio: false }); }
     catch (e) { MQ.ui.toast('Não foi possível abrir a câmera. Permita o uso da câmera para este site nas configurações do navegador e tente de novo.'); return; }
-    const j = document.createElement('div'); j.className = 'cam-janela'; j.setAttribute('role', 'dialog'); j.setAttribute('aria-modal', 'true'); j.setAttribute('aria-label', 'Tirar foto do quintal');
-    j.innerHTML = '<div class="cam-caixa cam-quintal"><video autoplay playsinline muted></video><p class="small muted">Enquadre e toque em Tirar foto. A foto fica com a data e a hora de agora.</p><div class="acoes"><button type="button" class="btn pri" data-cam="tirar">Tirar foto</button><button type="button" class="btn" data-cam="cancelar">Cancelar</button></div></div>';
+    // 21/10/2026: também fotografa documento (ficha e termo), sem sair do navegador; o campo diz o rótulo e a orientação
+    const rot = inp.dataset.camRotulo || 'Tirar foto do quintal', txt = inp.dataset.camTexto || 'Enquadre e toque em Tirar foto. A foto fica com a data e a hora de agora.';
+    const j = document.createElement('div'); j.className = 'cam-janela'; j.setAttribute('role', 'dialog'); j.setAttribute('aria-modal', 'true'); j.setAttribute('aria-label', rot);
+    j.innerHTML = '<div class="cam-caixa cam-quintal"><video autoplay playsinline muted></video><p class="small muted"></p><div class="acoes"><button type="button" class="btn pri" data-cam="tirar">Tirar foto</button><button type="button" class="btn" data-cam="cancelar">Cancelar</button></div></div>';
+    j.querySelector('p').textContent = txt;
     const video = j.querySelector('video'); video.srcObject = fluxo; document.body.appendChild(j); j.querySelector('[data-cam=tirar]').focus();
     const fechar = () => { fluxo.getTracks().forEach(t => t.stop()); j.remove(); document.removeEventListener('keydown', tecla); };
     const tecla = ev => { if (ev.key === 'Escape') fechar(); }; document.addEventListener('keydown', tecla);
@@ -5365,7 +5383,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       c.toBlob(blob => {
         fechar(); if (!blob) { MQ.ui.toast('A foto não saiu. Tente de novo.'); return; }
         try {
-          const dt = new DataTransfer(); dt.items.add(new File([blob], 'quintal_' + Date.now() + '.jpg', { type: 'image/jpeg', lastModified: Date.now() }));
+          const dt = new DataTransfer(); dt.items.add(new File([blob], (inp.dataset.camRotulo ? 'documento_' : 'quintal_') + Date.now() + '.jpg', { type: 'image/jpeg', lastModified: Date.now() }));
           inp.files = dt.files; inp.dataset.camApp = '1';
           inp.dispatchEvent(new Event('change', { bubbles: true }));
         } catch (e) { MQ.ui.toast('Este navegador não deixa usar a foto da câmera do sistema. Atualize o navegador.'); }
@@ -11928,7 +11946,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       t: 'Sua tela (bolsista)',
       intro: 'Tudo o que você faz no estado: indicar as mulheres, registrar o trabalho de campo, acompanhar as entregas do mês e pedir os pagamentos.',
       tarefas: [
-        ['Lançar a ficha de uma mulher', ['No topo, toque em <b>+ Nova ficha de mulher</b>.', 'Preencha os dados e os critérios com a mulher.', 'Fotografe a ficha e o termo assinado.', 'Toque em <b>Registrar localização</b> e depois em <b>Salvar</b>. Sem internet, ela sobe sozinha depois.']],
+        ['Lançar a ficha de uma mulher', ['No topo, toque em <b>+ Nova ficha de mulher</b>.', 'Preencha os dados e os critérios com a mulher.', 'Fotografe a ficha e o termo assinado. Prefira <b>Tirar foto aqui, sem sair do sistema</b>: em celular mais simples, abrir a câmera do celular pode fechar o sistema.', 'Toque em <b>Registrar localização</b> e depois em <b>Salvar</b>. Sem internet, ela sobe sozinha depois.']],
         ['Registrar diagnóstico ou visita', ['No topo, toque em <b>Visitas e diagnósticos</b>.', 'Em <b>Para fazer agora</b>, toque no botão da visita (<b>Registrar diagnóstico</b>, <b>Registrar visita feita</b> ou <b>Registrar avaliação</b>).', 'Faça as fotos, registre a localização e salve.']],
         ['Marcar a lista de presença', ['No topo, toque em <b>Entregas do mês</b>.', 'Na lista de presença, toque em <b>Entreguei</b>.']],
         ['Pedir a bolsa e a ajuda de custo', ['No topo, toque em <b>Pedir pagamento</b>.', 'Na ajuda de custo, marque as visitas feitas e toque em <b>Solicitar</b>.', 'Na bolsa, escreva o relatório do mês (pode usar <b>Falar</b>) e toque em <b>Solicitar bolsa</b>.']],
@@ -11946,6 +11964,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       duvidas: [
         ['Posso falar em vez de digitar?', 'Sim. Nos campos de texto, toque em Falar e fale; o texto vai aparecendo. Revise antes de salvar. Evite dizer nomes e CPF. Precisa de internet.'],
         ['Prefiro aplicar no papel.', 'Abra o formulário (ficha, diagnóstico, registro de visita ou avaliação) e toque em <b>Imprimir em branco</b>, no alto. A folha sai com o símbolo do projeto e os seus dados de quem aplica já preenchidos. Depois, lance as respostas no sistema: o papel não substitui o registro.'],
+        ['O celular fechou o sistema no meio da ficha.', 'O que você digitou e as fotos já prontas ficam guardados neste aparelho por 24 horas. Ao abrir o sistema, aparece <b>Você começou uma ficha de indicação e não salvou</b>: toque em <b>Continuar</b>. Para não acontecer, fotografe com <b>Tirar foto aqui, sem sair do sistema</b>.'],
         ['Estou sem internet no campo.', 'Pode preencher fichas, diagnósticos, visitas e avaliações. Ficam guardados no celular e sobem quando a internet voltar ("Enviar agora"). Não saia do sistema (o símbolo da porta, no alto) enquanto estiver sem sinal. Sem internet o sistema não sai sozinho; ele só sai depois de 15 minutos sem uso quando o sinal voltar.'],
         ['A localização foi negada.', 'Libere a localização para o site nas permissões do navegador (cadeado ao lado do endereço) e tente de novo. Se não der, escolha o motivo e explique com suas palavras (pelo menos 15 letras).'],
         ['Posso corrigir uma ficha aprovada?', 'Não. Peça à coordenação técnica para devolvê-la.'],
@@ -13552,7 +13571,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (passou < ABERTURA_MIN) await new Promise(r => setTimeout(r, ABERTURA_MIN - passou));
   }
   async function boot() {
-    limparRascunhosVencidos();
+    limparRascunhosVencidos(); limparArquivosRascunho(false);
     const producao = !!(MQ.CONFIG && MQ.CONFIG.supabaseUrl);
     // Em produção nunca cai no modo demonstração: se a biblioteca não carregou, para e avisa.
     if (producao && !window.supabase) {
@@ -13640,7 +13659,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (S.eu && !S.verEntrada) await registrarAcesso(aviso ? 'saida_inatividade' : 'saida');   // antes de encerrar a sessão no servidor
     try { sessionStorage.removeItem(CHAVE_ABRIU); } catch (e) {}
     fecharPainel({ semFoco: true, manterRascunho: !!aviso });
-    if (!aviso) { try { localStorage.removeItem(chaveRasc()); } catch (e) {} if (MQ.fotoDia) MQ.fotoDia.limparAparelho(true); }   // saiu da conta por vontade própria: os rascunhos dela não ficam no aparelho (LGPD)
+    if (!aviso) { try { localStorage.removeItem(chaveRasc()); } catch (e) {} if (MQ.fotoDia) MQ.fotoDia.limparAparelho(true); limparArquivosRascunho(true); }   // saiu da conta por vontade própria: os rascunhos dela não ficam no aparelho (LGPD)
     guardarLugar();   // antes de esquecer a aba: a mesma pessoa volta para cá quando entrar de novo
     S.menuAberto = false; S.aba = null; lembrarAba(); limparHashAba(); if (MQ.bancoUI) MQ.bancoUI.limpar();
     try { Object.keys(sessionStorage).filter(k => /^mq-pend-visto-/.test(k)).forEach(k => sessionStorage.removeItem(k)); } catch (e) {}
@@ -13898,7 +13917,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     vista: () => vistaDoPainel(), marcaAberta: (t, id) => marcaAberta(t, id), reabrirComConflito: m => reabrirComConflito(m),
     mostrarErros: (...a) => mostrarErros(...a), ocupado: (...a) => ocupado(...a), carregar: () => carregar(), carregarDaAba: () => carregarDaAba(), sincronizar: a => sincronizar(a),
     recarregar: () => recarregar(), porId: id => porId(id), avatar: (m, t) => avatar(m, t), passos: m => passos(m), dadosDL: m => dadosDL(m), botaoFoto: m => botaoFoto(m), cartaoPessoa: m => cartaoPessoa(m),
-    atualizar: f => atualizarEmSegundoPlano(f), aparelho: () => aparelho(), ipCurto: ip => ipCurto(ip), sair: a => sairDoSistema(a) };
+    atualizar: f => atualizarEmSegundoPlano(f), aparelho: () => aparelho(), ipCurto: ip => ipCurto(ip), sair: a => sairDoSistema(a),
+    guardarArquivoRascunho: (c, b) => guardarArquivoRascunho(c, b), rascunhosPendentes: () => rascunhosPendentes() };
 
   /* ---------- consultas ---------- */
   const ativos = () => S.equipe.filter(m => m.status === 'ativa');
@@ -13993,6 +14013,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     else if (!S.eu) h += modoDemo ? '<main class="wrap"><p class="carregando">' + MQ.ampulheta(true) + '</p></main>' : (S.api.temSessao ? semCadastro() : login());
     else {
       if (MQ.pendUI) h += MQ.pendUI.faixa();   // pendências do próprio cadastro, em todas as telas
+      { const rp = rascunhosPendentes();   // item 5: o celular fechou a página no meio de um formulário (o Android faz isso quando a câmera abre)
+        if (rp.length) h += `<div class="pend-faixa rasc-faixa" role="status" data-rasc-pendente><div class="pend-in"><span class="pend-ic" aria-hidden="true">✎</span>
+          <span><b>Você começou ${esc(rp[0].o_que)} e não salvou.</b> O que você preencheu ficou guardado neste aparelho${rp.length > 1 ? ` (e mais ${rp.length - 1} formulário${rp.length > 2 ? 's' : ''})` : ''}.</span>
+          <button type="button" class="btn peq" data-acao="rasc-abrir" data-i="0">Continuar</button></div></div>`; }
       if (MQ.lembreteUI && (!/^coord/.test(S.eu.papel) || (abaAtual() === abasDoPapel()[0] && abaAtual() !== 'visao'))) h += MQ.lembreteUI.quadro();   // na visão geral, os prazos já estão no painel   // prazo, data com roda de conversa ou número do projeto
       if (/^coord/.test(S.eu.papel)) h += (S.eu.papel === 'coord_tecnico' && MQ.encUI && MQ.encUI.paraConfirmar().length ? `<div class="wrap">${MQ.encUI.blocoConfirmar()}</div>` : '') + telaCoordenacao();
       else if (S.eu.papel === 'agente' && MQ.campoUI) h += MQ.campoUI.telaAgente();
@@ -14889,7 +14913,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       r.dono = S.eu && S.eu.id; localStorage.setItem(chaveRasc(), JSON.stringify(r));
     } catch (e) { /* aparelho sem espaço ou navegação privada: segue sem rascunho */ }
   }
-  function removerRascunho(ch) { if (!S.eu || !ch) return; const r = lerRascunhos(); if (r.itens[ch]) { delete r.itens[ch]; gravarRascunhos(r); } else if (!Object.keys(r.itens).length) { try { localStorage.removeItem(chaveRasc()); } catch (e) {} } }
+  function removerRascunho(ch) { if (!S.eu || !ch) return; apagarArquivosRascunho(ch); const r = lerRascunhos(); if (r.itens[ch]) { delete r.itens[ch]; gravarRascunhos(r); } else if (!Object.keys(r.itens).length) { try { localStorage.removeItem(chaveRasc()); } catch (e) {} } }
   /* rascunhos com mais de 24 horas saem do aparelho, de quem for (roda ao abrir o sistema e ao entrar) */
   function limparRascunhosVencidos() {
     try { Object.keys(localStorage).filter(k => k.indexOf(RASC_PREFIXO) === 0).forEach(k => {
@@ -14897,6 +14921,75 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const datas = !r ? [] : r.v === 2 ? Object.keys(r.itens || {}).map(x => (r.itens[x] || {}).em || 0) : [r.em || 0];
       if (!datas.length || datas.every(em => Date.now() - em > RASC_VALIDADE)) localStorage.removeItem(k);
     }); } catch (e) {}
+  }
+  /* 21/10/2026 (item 5 das pendências): a foto da ficha e a do termo ficavam só na memória. Se o Android fechava a aba
+     (o que acontece quando a câmera do celular abre por cima do navegador), o texto voltava pelo rascunho e as fotos não.
+     Agora o arquivo escolhido num formulário do painel fica numa cópia NESTE aparelho (IndexedDB), presa ao rascunho:
+     volta com "Continuar de onde parou?" e sai junto com ele (ao salvar, "Sair sem salvar", "Começar de novo", Sair da
+     conta e depois de 24 horas). Cada módulo diz como devolver o arquivo ao formulário em MQ.arqVolta[nome do formulário]. */
+  const ARQ_BD = (MQ.CONFIG && MQ.CONFIG.cenario === 'fim' ? 'sim-' : '') + 'mq-arquivos-rascunho', ARQ_LOJA = 'arq';
+  const arqNoPainel = new Set();   // chaves de painel com arquivo guardado (o rascunho delas fica mesmo sem texto mudado)
+  let arqP = null;
+  function arqAbrir() {
+    if (arqP) return arqP;
+    arqP = new Promise(res => {
+      try {
+        if (typeof indexedDB === 'undefined' || !indexedDB) return res(null);
+        const r = indexedDB.open(ARQ_BD, 1);
+        r.onupgradeneeded = () => { const os = r.result.createObjectStore(ARQ_LOJA, { keyPath: 'id' }); os.createIndex('chave', 'chave'); };
+        r.onsuccess = () => res(r.result); r.onerror = () => res(null); r.onblocked = () => res(null);
+      } catch (e) { res(null); }
+    });
+    return arqP;
+  }
+  async function arqOp(modo, fn) {
+    const db = await arqAbrir(); if (!db) return null;
+    return new Promise(res => {
+      try { const t = db.transaction(ARQ_LOJA, modo); const os = t.objectStore(ARQ_LOJA); let out = null;
+        const r = fn(os); if (r) r.onsuccess = () => { out = r.result; };
+        t.oncomplete = () => res(out); t.onerror = () => res(null); t.onabort = () => res(null);
+      } catch (e) { res(null); }
+    });
+  }
+  /* o módulo avisa: o arquivo deste campo ficou pronto (ou saiu, com blob vazio) */
+  async function guardarArquivoRascunho(campo, blob) {
+    if (!S.eu || !S.painel || !campo) return;
+    const ch = chavePainel(S.painel), id = S.eu.id + '|' + ch + '|' + campo;
+    if (!blob) { await arqOp('readwrite', os => os.delete(id)); return; }
+    arqNoPainel.add(ch);
+    await arqOp('readwrite', os => os.put({ id, chave: S.eu.id + '|' + ch, campo, blob, em: Date.now() }));
+    if (S.painel && chavePainel(S.painel) === ch) guardarRascunhoPainel('auto');
+  }
+  async function arquivosDoRascunho(ch) {
+    if (!S.eu) return [];
+    const l = await arqOp('readonly', os => os.index('chave').getAll(S.eu.id + '|' + ch)) || [];
+    return l.filter(x => x && x.blob && Date.now() - x.em < RASC_VALIDADE);
+  }
+  /* uma transação só (ler e apagar juntos): o arquivo da ficha nova, aberta logo em seguida, não é apagado por engano */
+  function apagarArquivosRascunho(ch) {
+    if (!S.eu || !ch) return; arqNoPainel.delete(ch); const k = S.eu.id + '|' + ch;
+    arqOp('readwrite', os => { const r = os.index('chave').openCursor(k); r.onsuccess = () => { const c = r.result; if (!c) return; c.delete(); c.continue(); }; return null; });
+  }
+  function limparArquivosRascunho(tudo) {
+    arqNoPainel.clear();
+    return arqOp('readwrite', os => { const r = os.openCursor(); r.onsuccess = () => { const c = r.result; if (!c) return;
+      if (tudo || !c.value || Date.now() - c.value.em >= RASC_VALIDADE) c.delete(); c.continue(); }; return null; });
+  }
+  /* devolve ao formulário os arquivos guardados; quantos voltaram */
+  async function devolverArquivos(el, ch) {
+    const l = await arquivosDoRascunho(ch); if (!l.length || !el.isConnected) return 0;
+    let n = 0; const volta = MQ.arqVolta || {};
+    l.forEach(x => formsDoPainel(el).forEach(f => { const fn = volta[f.dataset.form]; try { if (fn && fn(x.campo, x.blob, f)) n++; } catch (e) {} }));
+    if (n) arqNoPainel.add(ch);
+    return n;
+  }
+  /* formulários começados e não salvos (para o aviso da tela inicial): só os que reabrem sozinhos */
+  const RASC_AVISO = { 'ficha-form': 'uma ficha de indicação', 'diag-form': 'um diagnóstico', 'aval-form': 'uma avaliação final', 'visita-feita': 'o registro de uma visita' };
+  function rascunhosPendentes() {
+    if (!S.eu) return [];
+    const r = lerRascunhos();
+    return Object.keys(r.itens).map(k => Object.assign({ chave: k }, r.itens[k])).filter(it => RASC_AVISO[it.tipo] && it.p && (!S.painel || chavePainel(S.painel) !== it.chave))
+      .sort((a, b) => b.em - a.em).map(it => ({ p: it.p, o_que: RASC_AVISO[it.tipo], em: it.em }));
   }
   /* cada campo do formulário tem um nome estável: pelo id; sem id, pelo "name" e a ordem em que aparece */
   function camposDoForm(f) {
@@ -14921,7 +15014,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     clearTimeout(rascT);
     const el = $('#painel'); if (!el || !S.eu || !S.painel || S.verEntrada || el.querySelector('.confirma-rasc')) return;
     const ch = chavePainel(S.painel); const lista = formsDoPainel(el); const mexidos = lista.filter(f => formAlterado(f));
-    if (!mexidos.length) { if (rascAtivo === ch) removerRascunho(ch); return; }   // desfez o que tinha digitado: não há o que guardar
+    if (!mexidos.length && !arqNoPainel.has(ch)) { if (rascAtivo === ch) removerRascunho(ch); return; }   // desfez o que tinha digitado: não há o que guardar
     const forms = {}, linhas = {};
     mexidos.forEach(f => { const nome = nomeForm(f, lista), mapa = camposDoForm(f), campos = {};
       // só o que a pessoa MUDOU: o que ela não tocou vem do registro como estiver no servidor ao reabrir (não se regrava dado velho por cima de dado novo)
@@ -14930,7 +15023,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         if (mudou) campos[k] = marca ? (i.checked ? '1' : '') : i.value; });
       forms[nome] = campos; const g = gruposDeLinhas(f).map(c => c.children.length); if (g.some(n => n > 1)) linhas[nome] = g; });
     const r = lerRascunhos();
-    r.itens[ch] = { tipo: S.painel.tipo, id: registroDoPainel(), forms, linhas, em: Date.now(), motivo: motivo || 'auto' };
+    // p: o endereço do painel (só valores simples), para o aviso "Continuar" da tela inicial reabrir o mesmo formulário
+    const p = {}; Object.keys(S.painel).forEach(k => { const v = S.painel[k]; if (k[0] !== '_' && v != null && /^(string|number|boolean)$/.test(typeof v)) p[k] = v; });
+    if (!p.id && registroDoPainel()) p.id = registroDoPainel();
+    r.itens[ch] = { tipo: S.painel.tipo, id: registroDoPainel(), p, forms, linhas, arquivos: arqNoPainel.has(ch), em: Date.now(), motivo: motivo || 'auto' };
     gravarRascunhos(r); rascAtivo = ch;
   }
   /* devolve ao formulário o que estava no rascunho. Devolve quantos campos não voltaram (linha que não existe mais). */
@@ -14964,7 +15060,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     todosDe(el, '.rascunho-volta').forEach(x => x.remove());
     const nota = document.createElement('p'); nota.className = 'aviso rascunho-volta'; nota.setAttribute('role', 'status');
     // fotos do quintal (diagnóstico, visita feita, avaliação) ficam guardadas e voltam sozinhas (fotodia.js); outros arquivos não
-    const outros = el.querySelector('form[data-form] input[type=file]:not([data-foto]):not([data-foto-vis]):not([data-foto-av])');
+    const volta = MQ.arqVolta || {};   // formulários cujos arquivos também ficam guardados (ficha: foto da ficha e do termo)
+    const outros = todosDe(el, 'form[data-form] input[type=file]:not([data-foto]):not([data-foto-vis]):not([data-foto-av])').find(i => !(i.form && volta[i.form.dataset.form]));
     nota.textContent = texto + (!semArquivo && outros ? ' Arquivos não ficam guardados: se já tinha escolhido, escolha o arquivo de novo.' : '')
       + (faltou ? ' Alguma linha que você tinha acrescentado pode não ter voltado: confira.' : '');
     f.prepend(nota);
@@ -14973,13 +15070,13 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (!S.eu || !S.painel) return;
     const ch = chavePainel(S.painel); if (rascAtivo === ch) return;
     const r = lerRascunhos(); const it = r.itens[ch]; if (!it) return;
-    const lista = formsDoPainel(el); if (!Object.keys(it.forms || {}).some(nome => lista.some(x => nomeForm(x, lista) === nome))) return;   // o formulário ainda não está na tela
+    const lista = formsDoPainel(el); if (!(it.arquivos ? lista.length : Object.keys(it.forms || {}).some(nome => lista.some(x => nomeForm(x, lista) === nome)))) return;   // o formulário ainda não está na tela
     if (it.motivo === 'conflito') {   // 47: outra pessoa alterou o registro: o formulário mostra o dado novo e o que foi digitado volta por cima
-      const faltou = aplicarRascunho(el, it); notaRascunho(el, R.MSG_CONFLITO + ' Já mostramos o registro como está agora, com o que você tinha digitado por cima: confira e salve de novo.', faltou, true);
+      const faltou = aplicarRascunho(el, it); devolverArquivos(el, ch); notaRascunho(el, R.MSG_CONFLITO + ' Já mostramos o registro como está agora, com o que você tinha digitado por cima: confira e salve de novo.', faltou, true);
       delete r.itens[ch]; gravarRascunhos(r); rascAtivo = ch; return;
     }
     if (it.motivo === 'inatividade') {   // o sistema saiu sozinho: o que foi digitado volta direto, com aviso
-      const faltou = aplicarRascunho(el, it); notaRascunho(el, 'Recuperamos o que você tinha digitado antes de o sistema sair sozinho. Confira e salve.', faltou);
+      const faltou = aplicarRascunho(el, it); devolverArquivos(el, ch); notaRascunho(el, 'Recuperamos o que você tinha digitado antes de o sistema sair sozinho. Confira e salve.', faltou);
       delete r.itens[ch]; gravarRascunhos(r); rascAtivo = ch; return;
     }
     // a página foi recarregada ou fechada no meio: pergunta, no padrão dos avisos do sistema
@@ -14996,8 +15093,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const ch = chavePainel(S.painel); const r = lerRascunhos(); const it = r.itens[ch];
     c.remove(); const lado = el.querySelector('aside'); if (lado) lado.removeAttribute('inert');
     rascAtivo = ch;
-    if (continuar && it) { const faltou = aplicarRascunho(el, it); notaRascunho(el, 'Pronto: o que você tinha digitado voltou. Confira e salve.', faltou); }
-    else { delete r.itens[ch]; gravarRascunhos(r); }
+    if (continuar && it) { const faltou = aplicarRascunho(el, it); devolverArquivos(el, ch); notaRascunho(el, 'Pronto: o que você tinha digitado voltou. Confira e salve.', faltou); }
+    else { delete r.itens[ch]; gravarRascunhos(r); apagarArquivosRascunho(ch); }
     const alvo = el.querySelector('.rascunho-volta') ? el.querySelector('.fechar') : (el.querySelector('[autofocus]:not([data-acao^="rasc-"])') || el.querySelector('.fechar'));
     const corpo = el.querySelector('.painel-corpo'); if (corpo) corpo.scrollTop = 0;
     focar(alvo);
@@ -15534,6 +15631,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (a === 'painel-ficar') { desistirDeSair(); return; }
       if (a === 'painel-sair') { fecharPainel(); return; }
       if (a === 'rasc-continuar' || a === 'rasc-novo') { responderRascunho(a === 'rasc-continuar'); return; }
+      if (a === 'rasc-abrir') { const it = rascunhosPendentes()[+el.dataset.i || 0]; if (it) abrirPainel(Object.assign({}, it.p)); else render(); return; }
       if (a === 'versao-nova') { if (painelAlterado() || paginaEmUso()) { toast('Salve ou feche o que você está preenchendo antes de atualizar.'); return; } location.reload(); return; }
       if (a === 'carga-tentar') { el.disabled = true; try { await carregar(); } finally { el.disabled = false; } render(); toast(S.cargaParcial ? 'Ainda não deu para carregar tudo. Tente de novo daqui a pouco.' : 'Dados carregados.'); return; }
       if (a === 'data-hoje') { const i = document.getElementById(el.dataset.alvo); if (i) { i.value = R.hoje(); i.dispatchEvent(new Event('input', { bubbles: true })); i.focus(); } return; }
