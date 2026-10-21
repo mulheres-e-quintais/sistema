@@ -4,7 +4,8 @@
    3. cada "Gerar link" dá um link novo (antes a segunda agente recebia o link já usado);
    4. registro recusado na fila tem "Abrir e corrigir" e "Descartar" (antes ficava preso para sempre);
    5. e-mail de quem já entrou: só a coordenação geral troca (aviso no formulário);
-   6. simulacao.html não usa o armazenamento do sistema real.
+   6. simulacao.html não usa o armazenamento do sistema real;
+   7. (20/10) barra de salvar no celular sem internet e na visita com Cancelar; Modo sol no tablet deitado.
    Uso: node testes/automaticos/auditoria_1810.js <caminho do playwright>   (servidor em http://localhost:8766) */
 const { chromium } = require(process.argv[2]);
 const R = []; const ok = (n, c, d = '') => R.push([c ? 'PASSOU' : 'FALHOU', n, typeof d === 'string' ? d : JSON.stringify(d)]);
@@ -83,6 +84,27 @@ const CFG = "window.MQ=window.MQ||{};MQ.CONFIG={supabaseUrl:'',supabaseAnonKey:'
       ok(`${pf}: e-mail de quem já entrou ${readonly ? 'só leitura' : 'editável'}, com o aviso de que a troca apaga a senha`, r && r.ro === readonly && /apaga a senha/.test(r.dica), r);
       await p.evaluate(() => MQ.ui.fecharPainel());
     }
+    await ctx.close(); }
+
+  /* ---------- 7 (20/10/2026, simulação em aparelhos): barra de salvar no celular com o aviso de sem internet e com "Cancelar esta visita" ---------- */
+  { const { ctx, p } = await sessao(320);
+    await perfil(p, 'bolsista'); await p.click('[data-acao=ficha-nova]'); await p.waitForTimeout(500);
+    await p.evaluate(() => document.documentElement.classList.add('sem-rede')); await p.waitForTimeout(150);
+    const f = await p.evaluate(() => [...document.querySelectorAll('form[data-form=ficha] > .acoes:last-child > .btn')].map(b => Math.round(b.getBoundingClientRect().width)));
+    ok('320 px sem internet: Salvar e Cancelar da ficha inteiros (antes ficavam espremidos ao lado do aviso)', f.length >= 2 && f.every(w => w >= 120), f);
+    await p.evaluate(() => { document.documentElement.classList.remove('sem-rede'); MQ.ui.fecharPainel(); });
+    await perfil(p, 'coord_tecnico');
+    await p.evaluate(() => { const v = MQ.ui.S.visitas.find(x => x.situacao === 'prevista'); MQ.ui.abrirPainel({ tipo: 'visita-form', id: v.id }); }); await p.waitForTimeout(500);
+    const v = await p.evaluate(() => [...document.querySelectorAll('form[data-form=visita] > .acoes > .btn')].map(b => [b.textContent.trim(), Math.round(b.getBoundingClientRect().width)]));
+    ok('320 px: Salvar e Fechar da visita inteiros, Cancelar esta visita na linha de baixo', v.length === 3 && v.every(([, w]) => w >= 120), v);
+    await ctx.close(); }
+  { const ctx = await b.newContext({ viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true });
+    await ctx.route('**/js/config.js', r => r.fulfill({ contentType: 'text/javascript', body: CFG })); await ctx.route('**/cdn.jsdelivr.net/**', r => r.abort()); await ctx.route('**/fonts.g*/**', r => r.abort());
+    const p = await ctx.newPage(); p.on('pageerror', e => errs.push(e.message));
+    await p.goto('http://localhost:8766/'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForSelector('button[data-p]');
+    await p.evaluate(() => document.querySelector('button[data-p=entrada]').click()); await p.waitForTimeout(800);
+    const h = await p.evaluate(() => { const b = document.querySelector('.ent-aparencia'); return b ? Math.round(b.getBoundingClientRect().height) : null; });
+    ok('Tablet deitado: Modo sol da tela de entrada com 44 px para o dedo', h >= 44, String(h));
     await ctx.close(); }
 
   /* ---------- 6: simulação isolada ---------- */

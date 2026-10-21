@@ -3356,6 +3356,7 @@ small { font-size: max(12px, .85em); }
 .ent-aparencia:hover { background: var(--surface-2); }
 .ent-aparencia.ligado { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 .ent-aparencia.ligado svg { color: currentColor; }
+@media (pointer: coarse) { .ent-aparencia { min-height: var(--alvo); padding-inline: 14px 12px; } }   /* 20/10: no tablet deitado o Modo sol ficava com 36 px (alvo de toque é 44) */
 @media (max-width: 900px) { .ent-aparencia { min-height: 44px; } }
 .ent-ap-ok { font-weight: 800; }
 
@@ -3973,7 +3974,7 @@ html.teclado-aberto .guia-form { position: static; }
 }
 /* celular: Salvar e Cancelar lado a lado, mesma largura; rótulo longo quebra em duas linhas no máximo, sem cortar */
 @media (max-width: 520px) {
-  .painel-corpo form.f > .acoes:last-child { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+  .painel-corpo form.f > .acoes:last-child { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); grid-auto-flow: row; }   /* 20/10: a regra antiga (form .acoes:last-child) encaixava em colunas e espremia os botões quando havia o aviso de sem internet ou o Cancelar esta visita */
   .painel-corpo form.f > .acoes:last-child > .btn { line-height: 1.2; text-wrap: balance; }
 }
 /* conta bancária na tela de pendências: o "Voltar" mora dentro do formulário; o de fora só aparece sem formulário */
@@ -4022,9 +4023,10 @@ html.teclado-aberto .painel-corpo form.f > .acoes:last-child, html.teclado-abert
 .campo.tem-erro:focus, .criterio.tem-erro:focus, [id^="w-"].tem-erro:focus { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: 6px; }
 /* "Cancelar esta visita" numa linha à parte, longe do Salvar */
 .acoes > [data-acao="campo-visita-cancelar"] { flex-basis: 100%; order: 9; margin-top: 12px; }
-@media (max-width: 520px) { .painel-corpo form.f > .acoes:last-child > [data-acao="campo-visita-cancelar"] { grid-column: 1 / -1; } }
+/* 20/10/2026 (iPhone SE): sem a linha definida, a grade punha o Cancelar primeiro e espremia Salvar e Fechar em colunas de 8 px, um por cima do outro */
+@media (max-width: 520px) { .painel-corpo form.f > .acoes:last-child > [data-acao="campo-visita-cancelar"] { grid-column: 1 / -1; grid-row: 2; } }
 html.sem-rede #painel :is(form[data-form="ficha"], form[data-form="diag"], form[data-form="aval"], form[data-form="visita-feita"]) > .acoes:last-child::before {
-  content: "Sem internet: ao salvar, fica guardado neste aparelho e sobe sozinho quando o sinal voltar."; flex-basis: 100%; grid-column: 1 / -1; order: -1;
+  content: "Sem internet: ao salvar, fica guardado neste aparelho e sobe sozinho quando o sinal voltar."; flex-basis: 100%; grid-column: 1 / -1; grid-row: 1; order: -1;   /* 20/10: grid-row fixa o aviso na 1ª linha (sem ele, Salvar e Cancelar ficavam espremidos ao lado, no celular) */
   font-size: var(--t-sm); color: var(--pend); background: var(--pend-bg); border-radius: 8px; padding: 6px 10px; }
 /* M. alvos de toque que ainda escapavam (medidos de novo em 18/10/2026): o id na frente vence as regras de cada tela */
 @media (pointer: coarse) {
