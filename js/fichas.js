@@ -189,7 +189,7 @@
         <p class="small muted">Preencha com a mulher, no papel e aqui. Sem internet, a ficha fica guardada neste aparelho e é enviada depois.</p>
 
         <fieldset><legend>1. Identificação</legend><div class="campos">
-          <div class="campo longo"><label for="fi-nome">Nome completo</label><input id="fi-nome" name="nome" value="${v('nome')}" autocomplete="off" required></div>
+          <div class="campo longo"><label for="fi-nome">Nome completo</label><input id="fi-nome" name="nome" value="${v('nome')}" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" required></div>
           <div class="campo curto"><label for="fi-cpf">CPF</label><input id="fi-cpf" name="cpf" inputmode="numeric" maxlength="14" value="${E(R.fmtCPF(f.cpf || ''))}" placeholder="000.000.000-00"></div>
           <div class="campo curto"><label for="fi-nasc">Data de nascimento</label><input id="fi-nasc" name="data_nascimento" type="date" value="${v('data_nascimento')}" max="${R.hoje()}"></div>
           <div class="campo curto"><label for="fi-cel">Celular / WhatsApp</label><input id="fi-cel" name="celular" maxlength="40" inputmode="tel" value="${v('celular')}"></div>
@@ -216,7 +216,7 @@
             <div class="campo inteiro"><label for="fi-ass">Como assinou</label><select id="fi-ass" name="assinatura">
               <option value="assinatura" ${f.assinatura !== 'digital' ? 'selected' : ''}>Assinou o nome</option>
               <option value="digital" ${f.assinatura === 'digital' ? 'selected' : ''}>Impressão digital + testemunha</option></select></div>
-            <div class="campo" data-so-digital><label for="fi-tn">Testemunha: nome</label><input id="fi-tn" name="testemunha_nome" maxlength="160" value="${v('testemunha_nome')}"></div>
+            <div class="campo" data-so-digital><label for="fi-tn">Testemunha: nome</label><input id="fi-tn" name="testemunha_nome" maxlength="160" value="${v('testemunha_nome')}" autocapitalize="words" autocorrect="off" spellcheck="false"></div>
             <div class="campo" data-so-digital><label for="fi-tc">Testemunha: CPF</label><input id="fi-tc" name="testemunha_cpf" inputmode="numeric" value="${E(R.fmtCPF(f.testemunha_cpf || ''))}"></div>
             <div class="campo inteiro"><label for="fi-ft">Foto do termo assinado</label><input id="fi-ft" name="foto_termo" type="file" accept="image/*">
               <span class="dica" id="fi-ft-dica">${f.foto_termo_path ? 'Já tem foto. Envie outra só se quiser trocar.' : 'Fotografe o papel inteiro, com as assinaturas legíveis.'}</span></div>

@@ -107,6 +107,18 @@ const CFG = "window.MQ=window.MQ||{};MQ.CONFIG={supabaseUrl:'',supabaseAnonKey:'
     ok('Tablet deitado: Modo sol da tela de entrada com 44 px para o dedo', h >= 44, String(h));
     await ctx.close(); }
 
+  /* ---------- 8 (20/10/2026, auditoria no celular): aviso rápido longo inteiro; Enter não envia o diagnóstico pela metade ---------- */
+  { const { ctx, p } = await sessao(320);
+    await p.evaluate(() => MQ.ui.toast('Ficha guardada, mas não enviada: a foto do termo ficou cortada. Fotografe de novo o papel inteiro.')); await p.waitForTimeout(200);
+    const t = await p.evaluate(() => { const e = document.querySelector('.toast'); const r = e.getBoundingClientRect(); return { w: Math.round(r.width), l: Math.round(r.left), br: parseFloat(getComputedStyle(e).borderRadius) }; });
+    ok('320 px: aviso rápido longo usa a largura da tela e não corta as linhas', t.w >= 260 && t.l >= 8 && t.br <= 20, t);
+    await perfil(p, 'agente'); await p.evaluate(() => document.querySelector('[data-acao=campo-diag-novo]').click()); await p.waitForTimeout(600);
+    const nome = await p.evaluate(() => { const i = [...document.querySelectorAll('form[data-form=diag] input')].find(x => x.type === 'number' && x.offsetParent); i.focus(); return i.name; });
+    await p.keyboard.press('Enter'); await p.waitForTimeout(300);
+    const e = await p.evaluate(() => ({ foco: document.activeElement.name || document.activeElement.id, erros: document.querySelectorAll('form[data-form=diag] .tem-erro, form[data-form=diag] [aria-invalid=true]').length, hint: (document.querySelector('form[data-form=diag] input[type=number]') || {}).getAttribute && document.querySelector('form[data-form=diag] input[type=number]').getAttribute('enterkeyhint') }));
+    ok('Celular: Enter no diagnóstico vai para o próximo campo, sem enviar pela metade (teclado mostra "Próximo")', e.foco && e.foco !== nome && e.erros === 0 && e.hint === 'next', Object.assign({ de: nome }, e));
+    await ctx.close(); }
+
   /* ---------- 6: simulação isolada ---------- */
   { const ctx = await b.newContext({ viewport: { width: 1280, height: 900 } });
     await ctx.route('**/cdn.jsdelivr.net/**', r => r.abort()); await ctx.route('**/fonts.g*/**', r => r.abort());

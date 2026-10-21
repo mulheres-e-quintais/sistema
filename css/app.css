@@ -275,7 +275,8 @@ legend { font: 600 var(--t-xs)/1.2 var(--cond); letter-spacing: .09em; text-tran
 /* login */
 .login { width: 100%; max-width: 440px; margin: 6vh auto 0; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 28px; display: grid; gap: 16px; box-shadow: var(--shadow); align-self: start; }
 
-.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: var(--t-md); z-index: 40; box-shadow: var(--shadow); max-width: calc(100% - 32px); }
+/* 20/10/2026 (auditoria no celular): com left 50% + translate, a largura ficava em meia tela e os cantos redondos cortavam a 1ª e a última linha */
+.toast { position: fixed; left: 16px; right: 16px; margin-inline: auto; width: max-content; max-width: min(560px, calc(100% - 32px)); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 14px; font-size: var(--t-md); line-height: 1.4; z-index: 40; box-shadow: var(--shadow); }
 .carregando { padding: 60px 0; text-align: center; color: var(--muted); }
 @media (prefers-reduced-motion: no-preference) {
   .painel { animation: entra .18s ease-out; }
@@ -2904,11 +2905,18 @@ details.termo-gov > p { margin: 10px 0 0; }
 
 /* foto da pessoa: tirar na hora ou escolher do aparelho; janela da webcam no computador */
 .foto-acoes { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.cam-janela { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; padding: 16px; background: rgba(40, 26, 16, .62); }
+.cam-janela { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; padding: 16px; background: rgba(40, 26, 16, .62); overflow-y: auto; overscroll-behavior: contain; }
 .cam-caixa { width: min(440px, 100%); display: grid; gap: 12px; padding: 16px; border-radius: 16px; background: var(--surface); box-shadow: 0 18px 48px rgba(0, 0, 0, .3); }
 .cam-caixa video { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; background: #1c130d; transform: scaleX(-1); }
 .cam-caixa p { margin: 0; }
 .cam-caixa.cam-quintal video { aspect-ratio: 4 / 3; transform: none; }
+/* 20/10/2026 (auditoria no celular): deitado, o vídeo empurrava Tirar foto e Cancelar para fora da tela e a janela não rolava.
+   Agora o vídeo cabe na altura da tela e, com o aparelho deitado, os botões ficam ao lado do vídeo. */
+.cam-caixa video { max-height: calc(100dvh - 190px); }
+@media (orientation: landscape) and (max-height: 520px) {
+  .cam-caixa { width: min(760px, 100%); grid-template-columns: minmax(0, 1fr) minmax(180px, 220px); align-items: center; padding: 12px; }
+  .cam-caixa video { grid-row: 1 / span 3; max-height: calc(100dvh - 56px); }
+}
 .dica .foto-agora { margin-top: 6px; display: inline-flex; }
 
 /* Meus dados: fim do painel, com a saída do painel separada da saída do sistema */

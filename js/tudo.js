@@ -294,7 +294,7 @@ window.MQ = window.MQ || {};
     });
     atualizarEstados(); marcarAtual();
   }
-  function varrer() { document.querySelectorAll('#painel form.f:not([data-guia])').forEach(montar); }
+  function varrer() { document.querySelectorAll('#painel form.f:not([data-guia])').forEach(montar); document.querySelectorAll('#painel form.f:not([data-tecla])').forEach(f => { f.dataset.tecla = '1'; teclaProximo(f); }); }
   /* campo que só faz sentido com certa resposta: <div data-mostra-se="pergunta=valor1,valor2">. Some quando a resposta é
      outra e o campo está vazio (nunca esconde o que já foi escrito). Ex.: "Por que não está produzindo?" na avaliação. */
   function condicionais(form) {
@@ -313,6 +313,27 @@ window.MQ = window.MQ || {};
       const n = ev.target.closest && ev.target.closest('.fm-num'); if (!n || !n.value.trim()) return;
       const c = n.closest('.fm-l') && n.closest('.fm-l').querySelector('input[type=checkbox]'); if (c && !c.checked) { c.checked = true; c.dispatchEvent(new Event('change', { bubbles: true })); }
     });
+  }
+  /* 20/10/2026 (auditoria no celular): a tecla Enter ("Ir" no teclado do celular) enviava o formulário pela metade: no diagnóstico,
+     "Faltam 15 itens" e a tela voltava para a seção 1. Nos formulários longos (com guia de seções) e em qualquer formulário do painel
+     num aparelho de toque, Enter num campo de uma linha leva ao próximo campo. Para enviar, a pessoa toca em Salvar. */
+  const TIPOS_LINHA = /^(text|email|tel|number|date|time|month|search|url|password|)$/;
+  const proximoCampo = (form, atual) => {
+    const l = [...form.querySelectorAll('input, select, textarea')].filter(c => c.type !== 'hidden' && !c.disabled && !c.readOnly && c.offsetParent !== null);
+    return l[l.indexOf(atual) + 1] || null; };
+  const toque = () => !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+  if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('keydown', ev => {
+    if (ev.key !== 'Enter' || ev.shiftKey || ev.ctrlKey || ev.metaKey || ev.isComposing) return;
+    const c = ev.target; if (!c || c.tagName !== 'INPUT' || !TIPOS_LINHA.test(c.type || '')) return;
+    const form = c.closest && c.closest('#painel form.f'); if (!form || !(form.dataset.guia || toque())) return;
+    ev.preventDefault();
+    const prox = proximoCampo(form, c);
+    if (prox) { prox.focus(); try { prox.scrollIntoView({ block: 'center' }); } catch (e) { /* segue */ } }
+  });
+  /* o teclado do celular mostra "Próximo" em vez de "Ir" nesses campos */
+  function teclaProximo(form) {
+    if (!(form.dataset.guia || toque())) return;
+    form.querySelectorAll('input').forEach(c => { if (TIPOS_LINHA.test(c.type || '') && !c.hasAttribute('enterkeyhint')) c.setAttribute('enterkeyhint', 'next'); });
   }
   /* teclado do celular aberto: o guia deixa de ficar preso no topo (sobra pouca tela entre o teclado e o topo) */
   function teclado() {
@@ -3936,7 +3957,7 @@ MQ.ORCAMENTO = {
         <p class="small muted">Preencha com a mulher, no papel e aqui. Sem internet, a ficha fica guardada neste aparelho e é enviada depois.</p>
 
         <fieldset><legend>1. Identificação</legend><div class="campos">
-          <div class="campo longo"><label for="fi-nome">Nome completo</label><input id="fi-nome" name="nome" value="${v('nome')}" autocomplete="off" required></div>
+          <div class="campo longo"><label for="fi-nome">Nome completo</label><input id="fi-nome" name="nome" value="${v('nome')}" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" required></div>
           <div class="campo curto"><label for="fi-cpf">CPF</label><input id="fi-cpf" name="cpf" inputmode="numeric" maxlength="14" value="${E(R.fmtCPF(f.cpf || ''))}" placeholder="000.000.000-00"></div>
           <div class="campo curto"><label for="fi-nasc">Data de nascimento</label><input id="fi-nasc" name="data_nascimento" type="date" value="${v('data_nascimento')}" max="${R.hoje()}"></div>
           <div class="campo curto"><label for="fi-cel">Celular / WhatsApp</label><input id="fi-cel" name="celular" maxlength="40" inputmode="tel" value="${v('celular')}"></div>
@@ -3963,7 +3984,7 @@ MQ.ORCAMENTO = {
             <div class="campo inteiro"><label for="fi-ass">Como assinou</label><select id="fi-ass" name="assinatura">
               <option value="assinatura" ${f.assinatura !== 'digital' ? 'selected' : ''}>Assinou o nome</option>
               <option value="digital" ${f.assinatura === 'digital' ? 'selected' : ''}>Impressão digital + testemunha</option></select></div>
-            <div class="campo" data-so-digital><label for="fi-tn">Testemunha: nome</label><input id="fi-tn" name="testemunha_nome" maxlength="160" value="${v('testemunha_nome')}"></div>
+            <div class="campo" data-so-digital><label for="fi-tn">Testemunha: nome</label><input id="fi-tn" name="testemunha_nome" maxlength="160" value="${v('testemunha_nome')}" autocapitalize="words" autocorrect="off" spellcheck="false"></div>
             <div class="campo" data-so-digital><label for="fi-tc">Testemunha: CPF</label><input id="fi-tc" name="testemunha_cpf" inputmode="numeric" value="${E(R.fmtCPF(f.testemunha_cpf || ''))}"></div>
             <div class="campo inteiro"><label for="fi-ft">Foto do termo assinado</label><input id="fi-ft" name="foto_termo" type="file" accept="image/*">
               <span class="dica" id="fi-ft-dica">${f.foto_termo_path ? 'Já tem foto. Envie outra só se quiser trocar.' : 'Fotografe o papel inteiro, com as assinaturas legíveis.'}</span></div>
@@ -15108,7 +15129,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         ${pre ? `<div class="aviso">Dados enviados por ela pelo link em ${R.fmtData(pre._pre.enviado_em)}. Confira, complete o que falta e salve: ao salvar, o cadastro é aprovado.</div>` : ''}
         ${subst ? `<div class="aviso">Substitui <b>${esc(subst.nome)}</b>, desligada em ${R.fmtData(subst.data_fim)}. O histórico liga as duas.</div>` : ''}
         <fieldset><legend>Dados pessoais</legend><div class="campos">
-          <div class="campo inteiro"><label for="c-nome">Nome completo</label><input id="c-nome" name="nome" autocomplete="name" value="${v('nome')}" maxlength="120" ${edit ? '' : 'autofocus'} required></div>
+          <div class="campo inteiro"><label for="c-nome">Nome completo</label><input id="c-nome" name="nome" autocomplete="name" autocapitalize="words" value="${v('nome')}" maxlength="120" ${edit ? '' : 'autofocus'} required></div>
           <div class="campo"><label for="c-cpf">CPF</label><input id="c-cpf" name="cpf" inputmode="numeric" value="${esc(R.fmtCPF(m.cpf || ''))}" ${edit ? 'readonly' : ''} placeholder="000.000.000-00" required>
             ${edit ? '<span class="dica">CPF não muda. Se estiver errado, desligue e cadastre de novo.</span>' : ''}</div>
           <div class="campo"><label for="c-fone">Celular com WhatsApp</label><input id="c-fone" name="telefone" inputmode="tel" autocomplete="tel" value="${esc(MQ.mascaras ? MQ.mascaras.fmtTel(String(m.telefone || '').replace(/\D/g, '')) : (m.telefone || ''))}" placeholder="(89) 90000-0000" required></div>

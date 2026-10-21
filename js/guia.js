@@ -101,7 +101,7 @@ window.MQ = window.MQ || {};
     });
     atualizarEstados(); marcarAtual();
   }
-  function varrer() { document.querySelectorAll('#painel form.f:not([data-guia])').forEach(montar); }
+  function varrer() { document.querySelectorAll('#painel form.f:not([data-guia])').forEach(montar); document.querySelectorAll('#painel form.f:not([data-tecla])').forEach(f => { f.dataset.tecla = '1'; teclaProximo(f); }); }
   /* campo que só faz sentido com certa resposta: <div data-mostra-se="pergunta=valor1,valor2">. Some quando a resposta é
      outra e o campo está vazio (nunca esconde o que já foi escrito). Ex.: "Por que não está produzindo?" na avaliação. */
   function condicionais(form) {
@@ -120,6 +120,27 @@ window.MQ = window.MQ || {};
       const n = ev.target.closest && ev.target.closest('.fm-num'); if (!n || !n.value.trim()) return;
       const c = n.closest('.fm-l') && n.closest('.fm-l').querySelector('input[type=checkbox]'); if (c && !c.checked) { c.checked = true; c.dispatchEvent(new Event('change', { bubbles: true })); }
     });
+  }
+  /* 20/10/2026 (auditoria no celular): a tecla Enter ("Ir" no teclado do celular) enviava o formulário pela metade: no diagnóstico,
+     "Faltam 15 itens" e a tela voltava para a seção 1. Nos formulários longos (com guia de seções) e em qualquer formulário do painel
+     num aparelho de toque, Enter num campo de uma linha leva ao próximo campo. Para enviar, a pessoa toca em Salvar. */
+  const TIPOS_LINHA = /^(text|email|tel|number|date|time|month|search|url|password|)$/;
+  const proximoCampo = (form, atual) => {
+    const l = [...form.querySelectorAll('input, select, textarea')].filter(c => c.type !== 'hidden' && !c.disabled && !c.readOnly && c.offsetParent !== null);
+    return l[l.indexOf(atual) + 1] || null; };
+  const toque = () => !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+  if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('keydown', ev => {
+    if (ev.key !== 'Enter' || ev.shiftKey || ev.ctrlKey || ev.metaKey || ev.isComposing) return;
+    const c = ev.target; if (!c || c.tagName !== 'INPUT' || !TIPOS_LINHA.test(c.type || '')) return;
+    const form = c.closest && c.closest('#painel form.f'); if (!form || !(form.dataset.guia || toque())) return;
+    ev.preventDefault();
+    const prox = proximoCampo(form, c);
+    if (prox) { prox.focus(); try { prox.scrollIntoView({ block: 'center' }); } catch (e) { /* segue */ } }
+  });
+  /* o teclado do celular mostra "Próximo" em vez de "Ir" nesses campos */
+  function teclaProximo(form) {
+    if (!(form.dataset.guia || toque())) return;
+    form.querySelectorAll('input').forEach(c => { if (TIPOS_LINHA.test(c.type || '') && !c.hasAttribute('enterkeyhint')) c.setAttribute('enterkeyhint', 'next'); });
   }
   /* teclado do celular aberto: o guia deixa de ficar preso no topo (sobra pouca tela entre o teclado e o topo) */
   function teclado() {

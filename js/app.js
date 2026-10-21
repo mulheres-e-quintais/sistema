@@ -1814,7 +1814,7 @@
         ${pre ? `<div class="aviso">Dados enviados por ela pelo link em ${R.fmtData(pre._pre.enviado_em)}. Confira, complete o que falta e salve: ao salvar, o cadastro é aprovado.</div>` : ''}
         ${subst ? `<div class="aviso">Substitui <b>${esc(subst.nome)}</b>, desligada em ${R.fmtData(subst.data_fim)}. O histórico liga as duas.</div>` : ''}
         <fieldset><legend>Dados pessoais</legend><div class="campos">
-          <div class="campo inteiro"><label for="c-nome">Nome completo</label><input id="c-nome" name="nome" autocomplete="name" value="${v('nome')}" maxlength="120" ${edit ? '' : 'autofocus'} required></div>
+          <div class="campo inteiro"><label for="c-nome">Nome completo</label><input id="c-nome" name="nome" autocomplete="name" autocapitalize="words" value="${v('nome')}" maxlength="120" ${edit ? '' : 'autofocus'} required></div>
           <div class="campo"><label for="c-cpf">CPF</label><input id="c-cpf" name="cpf" inputmode="numeric" value="${esc(R.fmtCPF(m.cpf || ''))}" ${edit ? 'readonly' : ''} placeholder="000.000.000-00" required>
             ${edit ? '<span class="dica">CPF não muda. Se estiver errado, desligue e cadastre de novo.</span>' : ''}</div>
           <div class="campo"><label for="c-fone">Celular com WhatsApp</label><input id="c-fone" name="telefone" inputmode="tel" autocomplete="tel" value="${esc(MQ.mascaras ? MQ.mascaras.fmtTel(String(m.telefone || '').replace(/\D/g, '')) : (m.telefone || ''))}" placeholder="(89) 90000-0000" required></div>
