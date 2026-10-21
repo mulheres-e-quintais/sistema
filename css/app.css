@@ -4287,6 +4287,7 @@ details.pag-cancelar > summary::after { content: "Abrir"; color: var(--accent); 
 details.pag-cancelar[open] > summary::after { content: "Fechar"; }
 details.pag-cancelar[open] > summary { margin-bottom: 10px; }
 details.pag-cancelar form .acoes { margin-top: 10px; }
+details.pag-cancelar form > p { margin: 0 0 12px; }
 
 /* item 5: "Tirar foto aqui, sem sair do sistema" embaixo do campo de foto da ficha e do termo */
 .campo > .foto-agora { justify-self: start; align-self: start; margin-top: 6px; width: auto; }
