@@ -68,8 +68,11 @@ describe('link de cadastro (js/convites.js)', () => {
   });
   test('lerPessoais: socioeconômico só com a caixa marcada; renda 0 é valor válido', () => {
     const C = novo();
-    assert.equal(C.lerPessoais(fd({ cadastro_arlo: 'nao', raca_etnia: 'Parda' })).socioeconomico, null);
-    const s = C.lerPessoais(fd({ cadastro_arlo: 'nao', tem_socio: 'on', raca_etnia: 'Parda', renda_familiar: '0', pessoas_casa: '4' })).socioeconomico;
+    assert.equal(C.lerPessoais(fd({ cadastro_arlo: 'nao', _socio: '1', raca_etnia: 'Parda' })).socioeconomico, null);
+    // 70: sem o questionário na tela (quem não vê as respostas), as respostas não mudam
+    assert.equal(C.lerPessoais(fd({ cadastro_arlo: 'nao', raca_etnia: 'Parda' })).socioeconomico, undefined);
+    assert.equal(C.lerPessoais(fd({ cadastro_arlo: 'sim' })).socioeconomico, undefined);
+    const s = C.lerPessoais(fd({ cadastro_arlo: 'nao', _socio: '1', tem_socio: 'on', raca_etnia: 'Parda', renda_familiar: '0', pessoas_casa: '4' })).socioeconomico;
     assert.equal(s.renda_familiar, 0); assert.equal(s.pessoas_casa, 4);
   });
   const pub = (o) => Object.assign({ _arlo_resp: 'nao', cadastro_arlo: false, data_nascimento: '1985-03-10', endereco: {}, perfil: null }, o);

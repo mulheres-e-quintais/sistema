@@ -96,6 +96,7 @@ def lgpd():
     h += tabela(['O que o sistema já faz por você', ''], [
         ['Cada perfil vê só o que é do seu trabalho', 'A bolsista não vê CPF nem e-mail das colegas; a agente vê só os quintais dela'],
         ['Conta bancária e Pix', 'Cada consulta fica registrada no histórico, com quem consultou e quando'],
+        ['Questionário socioeconômico da equipe', 'Escolaridade, raça/cor e renda: com o nome, só a própria pessoa e a coordenação geral veem'],
         ['Página pública', 'Mostra só totais; município com menos de 3 mulheres não mostra o número'],
         ['Histórico', 'Guarda quem cadastrou, alterou e aprovou cada registro'],
     ], 'curta sem-cab')

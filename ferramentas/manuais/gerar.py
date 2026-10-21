@@ -189,6 +189,8 @@ A(fluxo('Todo pagamento passa por três mãos antes da FUNCERN', [('Quem vai rec
 A(tela('pagamentos', 'Solicitações de pagamento', [
     (1, 'Resumo', 'Quantos pedidos esperam aval, quantos faltam lançar e o total já lançado.'), (2, 'Esperando o seu aval', 'Pedidos que dependem de você.'), (3, 'Com aval, falta lançar', 'Pedidos que agora dependem do auxiliar.'), (4, 'Lançadas no Arlo', 'Histórico do que já foi lançado.')]))
 A(passos('dar o aval', ['Em Esperando o seu aval, abra o pedido.', 'Confira as visitas e o km (ajuda de custo) ou o relatório e as entregas do mês (bolsa).', 'Toque em <b class="bt">Aprovar (dar aval)</b>. Ou escreva o que corrigir e toque em <b class="bt">Devolver para correção</b>.'], 'O pedido segue para o auxiliar lançar no Arlo. O devolvido volta para quem pediu.'))
+A(passos('cancelar um pedido', ['Abra o pedido.', 'No fim do painel, abra <b class="bt">Cancelar este pedido</b>.', 'Escreva o motivo (a pessoa vê) e toque em <b class="bt">Cancelar o pedido</b>.'], 'O pedido sai da fila e fica no histórico como cancelado. As visitas de uma ajuda de custo cancelada ficam livres para um pedido novo; a bolsa cancelada pode ser pedida de novo.'))
+A(caixa('importante', 'Quem cancela: a própria pessoa, enquanto o pedido não tem aval; a coordenação técnica, no mesmo ponto, nos pedidos em que ela dá o aval; a coordenação geral, também com aval, antes do Arlo. Lançado no Arlo não se cancela pelo sistema. A data de saída de quem é desligada não pode ficar antes de bolsa já aprovada.'))
 
 A(sec('Custos'))
 A(serve('Calcula a ajuda de custo de cada visita e mostra se o trabalho de campo cabe no orçamento.'))
@@ -207,6 +209,7 @@ A(tela('viagens', 'Passagens e eventos', [
     (1, 'Passagens aéreas', 'Pedidos de passagem.'), (2, 'Tetos de gasto', 'Um cartão para cada teto de passagens (intercâmbio e acompanhamento pedagógico): quanto já foi autorizado, o que está em análise, o saldo e quantas passagens foram usadas. No alto da aba ficam o caminho do pedido e os prazos.'), (3, 'Esperando a sua autorização', 'Pedidos que dependem de você.'), (4, 'Eventos', 'Pedidos de estrutura de evento.')]))
 A(passos('conferir um pedido', ['Em Esperando a sua conferência, abra o pedido.', 'Confira nomes iguais ao documento, CPF, RG, datas e quantidades.', 'Toque em <b class="bt">Conferido</b>. Ou escreva o que corrigir e toque em <b class="bt">Devolver para correção</b>.'], 'O pedido segue para a coordenação geral autorizar.'))
 A(passos('autorizar e mandar à FUNCERN (coordenação geral)', ['Em Esperando a sua autorização, abra o pedido.', 'Se já tiver, digite o protocolo da FUNCERN.', 'Toque em <b class="bt">Autorizar</b>.', 'Toque em <b class="bt">Copiar texto</b> e cole no e-mail ou no sistema da FUNCERN.'], 'O pedido fica como autorizado e entra na conta do teto.'))
+A(passos('ajustar o valor ou cancelar um pedido autorizado (coordenação geral)', ['Abra o pedido autorizado.', 'No fim do painel, abra <b class="bt">Ajustar o valor ou cancelar</b>.', 'Escreva o motivo. Para ajustar, digite o valor novo e toque em <b class="bt">Salvar o valor novo</b>; para cancelar, toque em <b class="bt">Cancelar o pedido</b>.'], 'O ajuste é conferido de novo contra o teto. O cancelado devolve o valor ao saldo. O motivo fica na observação do pedido e no histórico. Avise a FUNCERN.'))
 A(caixa('importante', 'Quem confere não autoriza o mesmo pedido.'))
 
 A(sec('Execução do orçamento'))
@@ -268,6 +271,7 @@ A(tela('bolsista_pag_cel', 'Solicitar pagamento', [(1, 'Ajuda de custo', 'Lista 
 A(passos('marcar as entregas do mês', ['Toque em <b class="bt">Entregas do mês</b>.', 'Em cada entrega feita, toque em <b class="bt">Entreguei</b>.'], 'As entregas marcadas liberam o pedido da bolsa.'))
 A(passos('pedir a ajuda de custo', ['Toque em <b class="bt">Pedir pagamento</b>.', 'Marque as visitas feitas no mês. O total acompanha o que você marca.', 'Toque em <b class="bt">Solicitar</b>.'], 'O pedido vai para a coordenação técnica dar o aval.'))
 A(passos('pedir a bolsa', ['Em Bolsa, escreva o relatório do mês.', 'Toque em <b class="bt">Solicitar bolsa</b>.'], 'O pedido vai para a coordenação. É uma bolsa por mês.'))
+A(passos('cancelar um pedido seu', ['No cartão do mês, toque em <b class="bt">Ver o pedido ou cancelar</b>.', 'No fim do painel, abra <b class="bt">Cancelar este pedido</b> e toque em <b class="bt">Cancelar o pedido</b>.'], 'Só enquanto o pedido não tem aval. As visitas voltam a ficar livres; a bolsa do mês pode ser pedida de novo.'))
 A(sec('Pedir passagem ou evento'))
 A(serve('Pede passagem aérea ou estrutura de evento para as atividades do estado.'))
 A(acesso(['Sua tela', 'Passagem ou evento'], 'só a bolsista de articulação estadual.'))
@@ -282,7 +286,7 @@ A(serve('Mostra as visitas atribuídas a você, as que já fez e o pedido da aju
 A(acesso(['Entrar no sistema'], 'agentes de campo.'))
 A(tela('agente_cel', 'Tela da agente de campo', [(1, 'Minhas próximas visitas', 'Leva às visitas que você tem a fazer.'), (2, 'Registrar diagnóstico', 'Abre o registro da visita. O nome do botão muda conforme a etapa.'), (3, 'Pedir ajuda de custo', 'Leva ao pedido do mês.')]))
 A(passos('registrar uma visita', ['Toque em <b class="bt">Minhas próximas visitas</b>.', 'Toque no botão da visita: Registrar diagnóstico, Registrar visita feita ou Registrar avaliação.', 'Faça as fotos, registre a localização e salve.'], 'A visita fica como feita. Sem internet, sobe depois.'))
-A(passos('pedir a ajuda de custo', ['Toque em <b class="bt">Pedir ajuda de custo</b>.', 'Marque as visitas feitas no mês.', 'Toque em <b class="bt">Solicitar</b>.'], 'O pedido vai para a coordenação técnica dar o aval.'))
+A(passos('pedir a ajuda de custo', ['Toque em <b class="bt">Pedir ajuda de custo</b>.', 'Marque as visitas feitas no mês.', 'Toque em <b class="bt">Solicitar</b>. Pediu errado? Enquanto não tem aval, toque em <b class="bt">Ver o pedido ou cancelar</b> e cancele.'], 'O pedido vai para a coordenação técnica dar o aval.'))
 A(caixa('importante', 'Você só vê os quintais atribuídos a você, e só depois de habilitada (FIC, Arlo e termo). Para mudar a data de uma visita, fale com a bolsista do estado.'))
 A(fimcap())
 

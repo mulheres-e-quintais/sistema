@@ -47,11 +47,11 @@ begin
 end $$;
 
 -- ===================================================================== 1. TABELAS
-select est_lista('as 41 tabelas do sistema existem (nenhuma a menos, nenhuma a mais)',   -- 55: relatos_problema; 58: fila_celular
+select est_lista('as 43 tabelas do sistema existem (nenhuma a menos, nenhuma a mais)',   -- 55: relatos_problema; 58: fila_celular; 70: equipe_socio e pre_cadastros_socio
   $q$select c.relname::text from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind = 'r' and c.relname <> 'res'$q$,
   array['acesso_codigos','acessos','agua_situacoes','apl_municipios','auditoria','avaliacoes','canais_venda','ciencias','contas_ja_ligadas','convites','custos_visita',
-        'diagnosticos','documentos_projeto','entregas_mes','equipe','equipe_bancario','equipe_privado','execucao_lancamentos','execucao_planilhas','exemplo','fic_encontros','fic_presencas',
-        'fichas','fila_celular','ia_usos','kit_itens','matriculas_fic','observadores','orientacoes_venda','parametros','pedidos_apoio','pedidos_novo_acesso','pre_cadastros','relatos_problema','solicitacao_visitas',
+        'diagnosticos','documentos_projeto','entregas_mes','equipe','equipe_bancario','equipe_privado','equipe_socio','execucao_lancamentos','execucao_planilhas','exemplo','fic_encontros','fic_presencas',
+        'fichas','fila_celular','ia_usos','kit_itens','matriculas_fic','observadores','orientacoes_venda','parametros','pedidos_apoio','pedidos_novo_acesso','pre_cadastros','pre_cadastros_socio','relatos_problema','solicitacao_visitas',
         'solicitacoes_pagamento','testes_resultados','turmas_fic','visitas','vitrine_fotos','vitrine_remover']);
 select est_caso('toda tabela tem chave primária',
   $q$select c.relname::text from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind = 'r' and c.relname <> 'res'
@@ -79,9 +79,9 @@ select est_lista('apagar (DELETE) só tem regra de acesso nas tabelas em que é 
 select est_caso('anônimo (anon) não tem privilégio em nenhuma tabela',
   $q$select table_name || ':' || string_agg(privilege_type, '/' order by privilege_type) from information_schema.role_table_grants
       where table_schema = 'public' and grantee in ('anon', 'PUBLIC') and table_name <> 'res' group by table_name$q$);
-select est_lista('quem entrou (authenticated) só apaga (DELETE) nas cinco tabelas em que é permitido de propósito',
+select est_lista('quem entrou (authenticated) só apaga (DELETE) nas seis tabelas em que é permitido de propósito (70: a pessoa apaga as próprias respostas do questionário)',
   $q$select table_name::text from information_schema.role_table_grants where table_schema = 'public' and grantee = 'authenticated' and privilege_type = 'DELETE' and table_name <> 'res'$q$,
-  array['custos_visita','entregas_mes','testes_resultados','vitrine_fotos','vitrine_remover']);
+  array['custos_visita','entregas_mes','equipe_socio','testes_resultados','vitrine_fotos','vitrine_remover']);
 select est_caso('ninguém (anon, authenticated) tem TRUNCATE, REFERENCES ou TRIGGER em tabela alguma',
   $q$select grantee || ':' || table_name || ':' || privilege_type from information_schema.role_table_grants
       where table_schema = 'public' and grantee in ('anon', 'authenticated', 'PUBLIC') and privilege_type in ('TRUNCATE', 'REFERENCES', 'TRIGGER') and table_name <> 'res'$q$);
@@ -92,7 +92,7 @@ select est_lista('tabelas sem NENHUM privilégio direto para quem entrou (só po
 select est_lista('tabelas que quem entrou só LÊ (toda gravação passa por função do banco ou não existe)',
   $q$select table_name::text from information_schema.role_table_grants where table_schema = 'public' and grantee = 'authenticated' and table_name <> 'res'
       group by table_name having string_agg(privilege_type, ',' order by privilege_type) = 'SELECT'$q$,
-  array['acessos','agua_situacoes','auditoria','canais_venda','exemplo','fic_encontros','fic_presencas','ia_usos','kit_itens','matriculas_fic','orientacoes_venda','pedidos_apoio',
+  array['acessos','agua_situacoes','auditoria','canais_venda','exemplo','fic_encontros','fic_presencas','ia_usos','kit_itens','matriculas_fic','orientacoes_venda','pedidos_apoio','pre_cadastros_socio',
         'solicitacao_visitas','solicitacoes_pagamento']);
 select est_caso('o histórico (auditoria) não pode ser gravado, alterado nem apagado por ninguém pelo app',
   $q$select grantee || ':' || privilege_type from information_schema.role_table_grants where table_schema = 'public' and table_name = 'auditoria'
@@ -142,7 +142,7 @@ select est_caso('as funções chamadas pelo app (js/api-supabase.js) existem com
                          and (e.f in ('pedir_novo_acesso', 'ver_convite', 'enviar_pre_cadastro', 'vitrine', 'vitrine_municipios') or has_function_privilege('authenticated', p.oid, 'EXECUTE')))$q$);
 
 -- ===================================================================== 5. VÍNCULOS (FK)
-select est_lista('os 74 vínculos entre tabelas (tabela.coluna > tabela de destino) existem',
+select est_lista('os 77 vínculos entre tabelas (tabela.coluna > tabela de destino) existem',
   $q$select k.conrelid::regclass::text || '.' || a.attname || '>' || k.confrelid::regclass::text from pg_constraint k
        join pg_attribute a on a.attrelid = k.conrelid and a.attnum = k.conkey[1] where k.contype = 'f' and k.connamespace = 'public'::regnamespace$q$,
   array['fila_celular.equipe_id>equipe','relatos_problema.autor_id>equipe','relatos_problema.resolvido_por>equipe','kit_itens.atualizado_por>equipe','observadores.criado_por>equipe','acesso_codigos.equipe_id>equipe','acessos.equipe_id>equipe','agua_situacoes.ficha_id>fichas','agua_situacoes.registrado_por>equipe','apl_municipios.atualizado_por>equipe',
@@ -150,21 +150,21 @@ select est_lista('os 74 vínculos entre tabelas (tabela.coluna > tabela de desti
         'ciencias.equipe_id>equipe','contas_ja_ligadas.equipe_id>equipe','convites.criado_por>equipe','convites.substitui_id>equipe','custos_visita.definido_por>equipe',
         'custos_visita.visita_id>visitas','diagnosticos.aprovado_por>equipe','diagnosticos.conteudo_alterado_por>equipe','diagnosticos.executor_id>equipe','diagnosticos.ficha_id>fichas',
         'diagnosticos.visita_id>visitas','documentos_projeto.arquivado_por>equipe','documentos_projeto.enviado_por>equipe','entregas_mes.equipe_id>equipe','equipe.criado_por>equipe',
-        'equipe.substitui_id>equipe','equipe.user_id>auth.users','equipe_bancario.equipe_id>equipe','equipe_privado.equipe_id>equipe','execucao_lancamentos.criado_por>equipe',
+        'equipe.substitui_id>equipe','equipe.user_id>auth.users','equipe_bancario.equipe_id>equipe','equipe_privado.equipe_id>equipe','equipe_socio.equipe_id>equipe','execucao_lancamentos.criado_por>equipe',
         'execucao_lancamentos.estorno_de>execucao_lancamentos','execucao_planilhas.enviado_por>equipe','fic_encontros.cancelado_por>equipe','fic_encontros.professor_id>equipe',
         'fic_encontros.turma_id>turmas_fic','fic_presencas.encontro_id>fic_encontros','fic_presencas.equipe_id>equipe','fic_presencas.marcado_por>equipe','fichas.aprovada_por>equipe',
         'fichas.bolsista_id>equipe','ia_usos.equipe_id>equipe','matriculas_fic.criado_por>equipe','matriculas_fic.equipe_id>equipe','matriculas_fic.turma_id>turmas_fic',
         'orientacoes_venda.feito_por>equipe','orientacoes_venda.ficha_id>fichas','parametros.atualizado_por>equipe','pedidos_apoio.conferido_por>equipe','pedidos_apoio.decidido_por>equipe',
         'pedidos_apoio.solicitante_id>equipe','pedidos_novo_acesso.equipe_id>equipe','pedidos_novo_acesso.resolvido_por>equipe','pre_cadastros.convite_id>convites',
         'pre_cadastros.decidido_por>equipe','pre_cadastros.equipe_id>equipe','pre_cadastros.substitui_id>equipe','solicitacao_visitas.solicitacao_id>solicitacoes_pagamento',
-        'solicitacao_visitas.visita_id>visitas','solicitacoes_pagamento.arlo_por>equipe','solicitacoes_pagamento.aval_por>equipe','solicitacoes_pagamento.equipe_id>equipe',
+        'solicitacao_visitas.visita_id>visitas','solicitacoes_pagamento.arlo_por>equipe','solicitacoes_pagamento.aval_por>equipe','solicitacoes_pagamento.cancelado_por>equipe','pre_cadastros_socio.pre_id>pre_cadastros','solicitacoes_pagamento.equipe_id>equipe',
         'testes_resultados.equipe_id>equipe','turmas_fic.criado_por>equipe','turmas_fic.professor_id>equipe','visitas.criado_por>equipe','visitas.executor_id>equipe',
         'visitas.ficha_id>fichas','vitrine_fotos.ficha_id>fichas','vitrine_fotos.publicada_por>equipe']);
 select est_caso('todo vínculo está validado (nenhum criado com NOT VALID)',
   $q$select k.conname::text from pg_constraint k where k.contype = 'f' and k.connamespace = 'public'::regnamespace and not k.convalidated$q$);
-select est_lista('apagar em cascata (ON DELETE CASCADE) só nas sete tabelas de apoio da pessoa (o sistema não apaga pessoa: é só para instalação de teste)',
+select est_lista('apagar em cascata (ON DELETE CASCADE) só nas sete tabelas de apoio da pessoa e nas respostas do cadastro pelo link (o sistema não apaga pessoa: é só para instalação de teste)',
   $q$select k.conrelid::regclass::text from pg_constraint k where k.contype = 'f' and k.connamespace = 'public'::regnamespace and k.confdeltype = 'c'$q$,
-  array['acesso_codigos','acessos','ciencias','entregas_mes','ia_usos','pedidos_novo_acesso','testes_resultados']);
+  array['acesso_codigos','acessos','ciencias','entregas_mes','ia_usos','pedidos_novo_acesso','pre_cadastros_socio','testes_resultados']);
 select est_lista('ON DELETE SET NULL só no login (equipe.user_id): apagar a conta não apaga a pessoa',
   $q$select k.conrelid::regclass::text || '.' || a.attname from pg_constraint k join pg_attribute a on a.attrelid = k.conrelid and a.attnum = k.conkey[1]
       where k.contype = 'f' and k.connamespace = 'public'::regnamespace and k.confdeltype = 'n'$q$,

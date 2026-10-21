@@ -216,7 +216,7 @@
       : { cep: R.soDigitos(t('cep')), logradouro: t('logradouro'), numero: t('numero'), complemento: t('complemento'), bairro: t('bairro'), cidade: t('cidade'), uf: t('uf_end') });
     Object.keys(en).forEach(k => { if (!en[k]) delete en[k]; });
     const d = { data_nascimento: arlo ? pv.data_nascimento || null : t('data_nascimento') || null, nis: arlo ? pv.nis || null : R.soDigitos(t('nis')) || null,
-      endereco: en, socioeconomico: pv.socioeconomico || null };
+      endereco: en };   // 70: o questionário socioeconômico não é mexido aqui
     const e = {};
     if (!arlo && !d.data_nascimento) e.data_nascimento = 'Informe a data de nascimento.';
     else if (!arlo && d.data_nascimento !== (pv.data_nascimento || null)) {   // data antiga que não mudou não trava

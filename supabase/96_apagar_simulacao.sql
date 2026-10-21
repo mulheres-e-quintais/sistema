@@ -62,6 +62,7 @@ begin
   -- tabelas que nem toda instalação tem
   if to_regclass('public.acesso_codigos') is not null then delete from public.acesso_codigos where equipe_id in (select id from _eqx); end if;
   if to_regclass('public.ciencias') is not null then delete from public.ciencias where equipe_id in (select id from _eqx); end if;
+  if to_regclass('public.equipe_socio') is not null then delete from public.equipe_socio where equipe_id in (select id from _eqx); end if;   -- 70
   if to_regclass('public.fila_celular') is not null then delete from public.fila_celular where equipe_id in (select id from _eqx); end if;
   if to_regclass('public.pedidos_novo_acesso') is not null then delete from public.pedidos_novo_acesso where equipe_id in (select id from _eqx); end if;
   if to_regclass('public.testes_resultados') is not null then delete from public.testes_resultados where equipe_id in (select id from _eqx); end if;

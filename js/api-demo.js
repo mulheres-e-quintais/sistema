@@ -186,6 +186,16 @@
   function gravar() { try { if (SIM()) localStorage.setItem(CHAVE_SIM, mem.perfil); else localStorage.setItem(CHAVE, JSON.stringify(mem)); } catch (e) { /* segue só em memória */ } }
   const copia = o => JSON.parse(JSON.stringify(o));
   const falha = msg => { const e = new Error(msg); e.regra = true; return e; };
+  /* 69 (a0b_saida_pagamentos): a data de saída não fica antes de bolsa já aprovada (com aval ou lançada no Arlo) */
+  const saidaChecaBolsas = (d, id, dataFim) => {
+    const ref = String(dataFim).slice(0, 7);
+    const l = (d.solicitacoes || []).filter(x => x.tipo === 'bolsa' && x.equipe_id === id && ['avalizada', 'lancada'].includes(x.situacao) && String(x.mes).slice(0, 7) > ref)
+      .sort((a, b) => String(a.mes).localeCompare(String(b.mes)));
+    if (!l.length) return;
+    const mm = x => String(x.mes).slice(5, 7) + '/' + String(x.mes).slice(0, 4);
+    throw falha('A data de saída (' + R.fmtData(dataFim) + ') fica antes de bolsa já aprovada: ' + l.map(x => mm(x) + (x.situacao === 'lancada' ? ' (já lançada no Arlo)' : ' (com aval)')).join(', ')
+      + '. Use uma data de saída a partir de 01/' + mm(l[0]) + '. Se essa bolsa não era devida, a coordenação geral cancela o aval antes (Pagamentos > abrir o pedido); bolsa já lançada no Arlo não se cancela pelo sistema.');
+  };
 
   // 38: quem estava matriculado na turma na data do encontro; mês com a bolsa do professor pedida (ou com aval) fica fechado
   const matriculadosEm = (d, turma, data) => (d.matriculas || []).filter(m => m.turma_id === turma && String(m.matriculado_em || '').slice(0, 10) <= data
@@ -577,6 +587,43 @@
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'pedidos_apoio', registro_id: p.id, acao: 'UPDATE', por: eu.id, em: agora, antes: null, depois: aud });
       gravar();
     },
+    /* 69 (cancelar_pedido_autorizado, ajustar_valor_pedido): pedido já autorizado, só a coordenação geral, sempre com motivo */
+    async cancelarPedidoAutorizado(id, motivo) {
+      const d = ler(); const eu = euMesmo(); const p = (d.pedidos || []).find(x => x.id === id); const mot = String(motivo || '').trim();
+      if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral cancela um pedido já autorizado.');
+      if (mot.length < 5) throw falha('Escreva o motivo do cancelamento.');
+      if (mot.length > 1000) throw falha('Texto muito longo em motivo do cancelamento (máximo 1.000 caracteres).');
+      if (!p) throw falha('Pedido não encontrado.');
+      if (p.situacao !== 'autorizado') throw falha('Só pedido autorizado é cancelado por aqui. Antes disso, use Devolver ou Recusar.');
+      const agora = new Date().toISOString();
+      Object.assign(p, { situacao: 'cancelado', decidido_por: eu.id, decidido_em: agora, obs: ((p.obs ? String(p.obs).trim() + ' · ' : '') + 'Cancelado depois de autorizado (' + R.fmtData(R.hoje()) + '): ' + mot).slice(0, 4000) });
+      const aud = Object.assign({}, p); delete aud.dados;
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'pedidos_apoio', registro_id: p.id, acao: 'UPDATE', por: eu.id, em: agora, antes: null, depois: aud });
+      gravar();
+    },
+    async ajustarValorPedido(id, valor, motivo) {
+      const d = ler(); const eu = euMesmo(); const p = (d.pedidos || []).find(x => x.id === id); const mot = String(motivo || '').trim();
+      if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral ajusta o valor de um pedido autorizado.');
+      const v = Math.round(+valor * 100) / 100;
+      if (!(v >= 0.01)) throw falha('Informe um valor maior que zero (pelo menos R$ 0,01).');
+      if (!(+valor <= 1000000)) throw falha('Valor acima do esperado (' + R.fmtBRL(+valor) + '; o máximo é R$ 1.000.000,00). Confira.');
+      if (mot.length < 5) throw falha('Escreva o motivo do ajuste (por exemplo, o valor da nota fiscal).');
+      if (mot.length > 1000) throw falha('Texto muito longo em motivo do ajuste (máximo 1.000 caracteres).');
+      if (!p) throw falha('Pedido não encontrado.');
+      if (p.situacao !== 'autorizado') throw falha('Só pedido autorizado tem o valor ajustado por aqui. Antes de autorizar, use o campo de valor da conferência.');
+      if (v === +p.valor_autorizado) throw falha('O valor é o mesmo que já está autorizado.');
+      const pedag = ehPedagogico(p);
+      const outros = p.tipo === 'evento' ? (d.pedidos || []).filter(y => y.id !== p.id && y.situacao === 'autorizado' && y.tipo === 'evento' && y.uf === p.uf).reduce((t, y) => t + (+y.valor_autorizado || 0), 0)
+        : usadoPassagem(d, pedag, p.id);
+      const teto = p.tipo === 'evento' ? MQ.TETOS.evento : MQ.tetoPassagem(pedag ? 'pedagogico' : 'intercambio');
+      if (outros + v > teto) throw falha((p.tipo === 'evento' ? 'Passa do teto de eventos de ' + p.uf + ' (R$ 6.000,00)' : pedag ? 'Passa do teto de passagens de acompanhamento pedagógico (R$ 22.400,00)' : 'Passa do teto de passagens de intercâmbio (R$ 70.000,00)') + ': já autorizado ' + R.fmtBRL(outros) + ', saldo ' + R.fmtBRL(teto - outros) + '.');
+      const agora = new Date().toISOString();
+      p.obs = ((p.obs ? String(p.obs).trim() + ' · ' : '') + 'Valor ajustado de ' + R.fmtBRL(+p.valor_autorizado) + ' para ' + R.fmtBRL(v) + ' (' + R.fmtData(R.hoje()) + '): ' + mot).slice(0, 4000);
+      p.valor_autorizado = v;
+      const aud = Object.assign({}, p); delete aud.dados;
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'pedidos_apoio', registro_id: p.id, acao: 'UPDATE', por: eu.id, em: agora, antes: null, depois: aud });
+      gravar();
+    },
 
     /* ---------- Solicitação de pagamento (mesmas regras do 12_pagamentos.sql) ---------- */
     async listarSolicitacoes() {
@@ -601,8 +648,8 @@
       //     A bolsa continua uma por mês por pessoa.
       const doMes = d.solicitacoes.filter(x => x.tipo === tipo && x.equipe_id === eu.id && x.mes === m);
       const s = tipo === 'ajuda_custo' ? doMes.filter(x => x.situacao === 'devolvida').sort((a, b) => String(b.aval_em || '').localeCompare(String(a.aval_em || '')))[0] : doMes[0];
-      if (tipo === 'bolsa' && s && s.situacao !== 'devolvida') throw falha('Você já solicitou este mês. Acompanhe a situação na lista.');
-      const complementar = tipo === 'ajuda_custo' && (s ? !!(s.detalhe || {}).complementar : doMes.some(x => x.situacao !== 'devolvida'));
+      if (tipo === 'bolsa' && s && !['devolvida', 'cancelada'].includes(s.situacao)) throw falha('Você já solicitou este mês. Acompanhe a situação na lista.');   // 69: a cancelada volta
+      const complementar = tipo === 'ajuda_custo' && (s ? !!(s.detalhe || {}).complementar : doMes.some(x => !['devolvida', 'cancelada'].includes(x.situacao)));
       if (tipo === 'ajuda_custo') {
         if (!(visitas || []).length) throw falha('Marque as visitas feitas no mês.');
         if (new Set(visitas).size !== visitas.length) throw falha('A mesma visita apareceu duas vezes no pedido. Marque cada visita uma vez só.');
@@ -632,7 +679,7 @@
             presencas: (d.ficPresencas || []).filter(p => p.encontro_id === e.id && (p.presente || matriculadosEm(d, e.turma_id, e.data).includes(p.equipe_id))).map(p => Object.assign(nomeP(p.equipe_id), { presente: p.presente, confirmado_em: p.confirmado_em })).sort((a, b) => String(a.nome).localeCompare(String(b.nome))) })) });
       }
       if (!alvo) { alvo = { id: uid(), tipo, equipe_id: eu.id, mes: m }; d.solicitacoes.push(alvo); }
-      Object.assign(alvo, { situacao: 'solicitada', valor_solicitado: valor, valor_avalizado: null, relatorio: relatorio || null, detalhe: detalhe || {}, solicitada_em: agora, aval_por: null, aval_em: null });
+      Object.assign(alvo, { situacao: 'solicitada', valor_solicitado: valor, valor_avalizado: null, relatorio: relatorio || null, detalhe: detalhe || {}, solicitada_em: agora, aval_por: null, aval_em: null, cancelado_por: null, cancelado_em: null, motivo_cancelamento: null });
       Object.keys(d.solic_visitas).forEach(k => { if (d.solic_visitas[k] === alvo.id) delete d.solic_visitas[k]; });
       (visitas || []).forEach(id => { d.solic_visitas[id] = alvo.id; });
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: alvo.id, acao: s ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: null, depois: copia(alvo) });
@@ -644,7 +691,7 @@
       const p = (d.equipe || []).find(x => x.id === s.equipe_id) || {};
       if (p.status === 'desligada' && p.data_fim && String(s.mes).slice(0, 7) > String(p.data_fim).slice(0, 7)) {
         const mm = String(s.mes).slice(5, 7) + '/' + String(s.mes).slice(0, 4), df = String(p.data_fim).slice(8, 10) + '/' + String(p.data_fim).slice(5, 7) + '/' + String(p.data_fim).slice(0, 4);
-        throw falha('Bolsa de ' + mm + ' não pode ser paga: ' + (p.nome || 'a pessoa') + ' foi desligada em ' + df + '. Devolva este pedido.');
+        throw falha('Bolsa de ' + mm + ' não pode ser paga: ' + (p.nome || 'a pessoa') + ' foi desligada em ' + df + '. Cancele este pedido, com o motivo.');
       }
     },
     async avalizarPagamento(id, ok, obs, valor) {
@@ -685,6 +732,27 @@
       this._bolsaDepoisDaSaida(d, s);
       const agora = new Date().toISOString(); const antesS = copia(s);
       Object.assign(s, { situacao: 'lancada', arlo_por: eu.id, arlo_em: agora, arlo_protocolo: protocolo || null });
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: s.id, acao: 'UPDATE', por: eu.id, em: agora, antes: antesS, depois: copia(s) });
+      gravar();
+    },
+    /* 69 (cancelar_pagamento): a própria pessoa cancela sem aval; a técnica, nos pedidos em que dá o aval, sem aval e com motivo;
+       a coordenação geral também com aval (não lançado), com motivo. Lançado no Arlo não se cancela. */
+    async cancelarPagamento(id, motivo) {
+      const d = ler(); const eu = euMesmo(); const s = (d.solicitacoes || []).find(x => x.id === id); const mot = String(motivo || '').trim();
+      if (!eu) throw falha('Entre no sistema com um cadastro ativo para cancelar.');
+      if (mot.length > 2000) throw falha('Texto muito longo em motivo do cancelamento (máximo 2.000 caracteres).');
+      if (!s) throw falha('Solicitação não encontrada.');
+      if (s.situacao === 'cancelada') throw falha('Esta solicitação já foi cancelada.');
+      if (s.situacao === 'lancada') throw falha('Esta solicitação já foi lançada no Arlo: não dá para cancelar pelo sistema. Se o pagamento não era devido, a coordenação geral trata com a FUNCERN.');
+      const pe = d.equipe.find(x => x.id === s.equipe_id) || {};
+      const quem = s.tipo === 'bolsa' && ['coord_tecnico', 'professor_fic', 'auxiliar_adm'].includes(pe.papel) ? 'coord_geral' : 'coord_tecnico';
+      const semAval = ['solicitada', 'devolvida'].includes(s.situacao);
+      if (s.equipe_id === eu.id || (eu.papel === 'coord_tecnico' && quem === 'coord_tecnico')) { if (!semAval) throw falha('Este pedido já tem o aval: agora só a coordenação geral cancela.'); }
+      else if (eu.papel !== 'coord_geral') throw falha('Quem cancela este pedido é a própria pessoa ou a coordenação.');
+      if (s.equipe_id !== eu.id && mot.length < 5) throw falha('Escreva o motivo do cancelamento (a pessoa vê o motivo).');
+      const agora = new Date().toISOString(); const antesS = copia(s);
+      Object.assign(s, { situacao: 'cancelada', cancelado_por: eu.id, cancelado_em: agora, motivo_cancelamento: mot || 'Cancelado por quem pediu.' });
+      Object.keys(d.solic_visitas || {}).forEach(k => { if (d.solic_visitas[k] === s.id) delete d.solic_visitas[k]; });   // as visitas ficam livres
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: s.id, acao: 'UPDATE', por: eu.id, em: agora, antes: antesS, depois: copia(s) });
       gravar();
     },
@@ -994,6 +1062,13 @@
         delete erros.papel;
         if (Object.keys(erros).length) { const e = falha(Object.values(erros)[0]); e.campos = erros; throw e; }
       }
+      if (depois.status === 'desligada' && depois.data_fim && (antes.status !== depois.status || antes.data_fim !== depois.data_fim)) {
+        saidaChecaBolsas(d, id, depois.data_fim);   // 69: a data de saída não fica antes de bolsa já aprovada
+        const ref = String(depois.data_fim).slice(0, 7), agora = new Date().toISOString();   // bolsa sem aval de mês depois da saída: cancelada pelo sistema
+        (d.solicitacoes || []).filter(x => x.tipo === 'bolsa' && x.equipe_id === id && ['solicitada', 'devolvida'].includes(x.situacao) && String(x.mes).slice(0, 7) > ref).forEach(x => {
+          Object.assign(x, { situacao: 'cancelada', cancelado_por: eu ? eu.id : null, cancelado_em: agora, motivo_cancelamento: 'Cancelado pelo sistema: bolsa de mês depois da saída do projeto (' + R.fmtData(depois.data_fim) + ').' });
+          Object.keys(d.solic_visitas || {}).forEach(k => { if (d.solic_visitas[k] === x.id) delete d.solic_visitas[k]; }); });
+      }
       d.equipe[i] = depois; auditar('UPDATE', antes, depois); gravar();
       return copia(depois);
     },
@@ -1290,12 +1365,17 @@
     },
     async lerPrivado(id) {
       const d = ler(); const eu = euMesmo(); if (!eu || !(eu.id === id || /^coord|auxiliar_adm/.test(eu.papel))) return null;
-      return copia((d.privado || {})[id] || null);
+      const r = copia((d.privado || {})[id] || null);
+      if (r && !(eu.id === id || eu.papel === 'coord_geral')) r.socioeconomico = null;   // 70: o questionário, só a própria pessoa e a coordenação geral
+      return r;
     },
     async salvarPrivado(id, dados) {
       const d = ler(); const eu = euMesmo(); const m = d.equipe.find(x => x.id === id);
       if (!eu || !m || !(eu.id === id || R.podeCadastrar(eu.papel, m.papel))) throw falha('Seu perfil não pode alterar estes dados.');
-      d.privado = d.privado || {}; d.privado[id] = Object.assign({ equipe_id: id }, d.privado[id] || {}, copia(dados)); gravar();
+      const novo = copia(dados);
+      // 70: quem não vê o questionário não mexe nele (undefined = a tela não mostrou)
+      if (novo.socioeconomico === undefined || !(eu.id === id || eu.papel === 'coord_geral')) delete novo.socioeconomico;
+      d.privado = d.privado || {}; d.privado[id] = Object.assign({ equipe_id: id }, d.privado[id] || {}, novo); gravar();
     },
     async meusDadosBancarios() { const eu = euMesmo(); return eu ? copia((bancoMem[eu.id]) || null) : null; },
     async salvarMeusDadosBancarios(dd) { const eu = euMesmo(); if (!eu) throw falha('Entre no sistema.'); bancoMem[eu.id] = Object.assign({}, dd, { atualizado_em: new Date().toISOString() }); },
@@ -1318,7 +1398,9 @@
     },
     async listarPreCadastros() {
       const eu = euMesmo(); if (!eu) return [];
-      return copia((ler().pre_cadastros || []).filter(x => x.situacao === 'aguardando' && R.podeCadastrar(eu.papel, x.papel)));
+      // 70: as respostas do questionário ficam só com a coordenação geral (quem confere vê só que foi respondido)
+      return copia((ler().pre_cadastros || []).filter(x => x.situacao === 'aguardando' && R.podeCadastrar(eu.papel, x.papel)))
+        .map(x => Object.assign(x, { socio_respondido: !!x.socioeconomico }, eu.papel === 'coord_geral' ? {} : { socioeconomico: null }));
     },
     /* 47 (aprovar_pre_cadastro): pessoa na equipe + dados pessoais + cadastro enviado aprovado, tudo ou nada */
     async aprovarPreCadastro(pre, m, priv) {
@@ -1329,6 +1411,7 @@
       try {
         const novo = await this.criar(m);
         if (priv) await this.salvarPrivado(novo.id, priv);
+        if (x.socioeconomico) { const dd = ler(); dd.privado = dd.privado || {}; dd.privado[novo.id] = Object.assign({ equipe_id: novo.id }, dd.privado[novo.id] || {}, { socioeconomico: copia(x.socioeconomico) }); gravar(); }   // 70: o banco copia as respostas do link
         await this.decidirPreCadastro(pre, 'aprovado', null, novo.id);
         return novo;
       } catch (e) { mem = JSON.parse(antes); gravar(); throw e; }   // falhou no meio: nada fica gravado
@@ -1426,7 +1509,9 @@
     async desligar(id, data_fim, motivo, semPedido) {
       const d = ler(); const m = d.equipe.find(x => x.id === id);
       { // 57: com pagamento a pedir não se desliga; só a coordenação geral desliga assim mesmo, justificando (fica no histórico)
-        const pe = m ? R.pendenciasPagamento(id, d.visitas, d.solic_visitas, d.solicitacoes) : { total: 0 };
+        if (m && data_fim) saidaChecaBolsas(d, id, data_fim);   // 69
+        const cancelaSaida = x => data_fim && x.tipo === 'bolsa' && x.equipe_id === id && ['solicitada', 'devolvida'].includes(x.situacao) && String(x.mes).slice(0, 7) > String(data_fim).slice(0, 7);
+        const pe = m ? R.pendenciasPagamento(id, d.visitas, d.solic_visitas, (d.solicitacoes || []).filter(x => !cancelaSaida(x))) : { total: 0 };
         var registroPend = null;   // grava no histórico só DEPOIS de desligar (antes ficava registro de desligamento recusado)
         if (semPedido != null) {   // 59: "desligar assim mesmo" só da geral, só com pendência, nunca a coordenação geral
           const eu = euMesmo();

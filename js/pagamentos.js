@@ -22,7 +22,7 @@
   const longo = n => `Texto muito longo (máximo ${n.toLocaleString('pt-BR')} caracteres).`;
 
   const TIPO = { ajuda_custo: 'Ajuda de custo', bolsa: 'Bolsa' };
-  const SIT = { solicitada: ['pend', 'Aguardando aval'], devolvida: ['crit', 'Devolvida para corrigir'], avalizada: ['ok', 'Com aval · falta lançar no Arlo'], lancada: ['ok', 'Lançada no Arlo'] };
+  const SIT = { solicitada: ['pend', 'Aguardando aval'], devolvida: ['crit', 'Devolvida para corrigir'], avalizada: ['ok', 'Com aval · falta lançar no Arlo'], lancada: ['ok', 'Lançada no Arlo'], cancelada: ['', 'Cancelada'] };
   const sit = s => SIT[s.situacao] || ['', E(s.situacao || '—')];   // situação nova no banco não derruba a tela
   const chip = s => `<span class="chip ${sit(s)[0]}">${sit(s)[1]}</span>`;
   const podeAjuda = papel => R.ehCampo(papel);
@@ -40,6 +40,15 @@
   const soGeralLanca = () => lista().filter(s => s.situacao === 'avalizada' && s.equipe_id !== (S().eu || {}).id && (semAuxiliar() || pessoa(s.equipe_id).papel === 'auxiliar_adm'));
   const quemAvaliza = (tipo, papel) => tipo === 'bolsa' && ['coord_tecnico', 'professor_fic', 'auxiliar_adm'].includes(papel) ? 'coord_geral' : 'coord_tecnico';
   const lista = () => S().solic || [];
+  /* 69: quem cancela (mesmas regras do cancelar_pagamento): a própria pessoa sem aval; a técnica, sem aval, nos pedidos em que ela dá o aval;
+     a coordenação geral também com aval, antes do Arlo. Lançado no Arlo não se cancela. */
+  function podeCancelar(s) {
+    const eu = S().eu; if (!eu || !s) return false;
+    const semAval = ['solicitada', 'devolvida'].includes(s.situacao);
+    if (s.equipe_id === eu.id) return semAval;
+    if (eu.papel === 'coord_geral') return semAval || s.situacao === 'avalizada';
+    return eu.papel === 'coord_tecnico' && semAval && quemAvaliza(s.tipo, pessoa(s.equipe_id).papel) === 'coord_tecnico';
+  }
   const vinculadas = () => S().solicVis || {};
   const pessoa = id => U().porId(id) || {};
   const nomeDe = m => (m && (m.nome_social || m.nome)) || '—';
@@ -78,6 +87,8 @@
 
   function situacaoTxt(s) {
     return `${chip(s)}${s.situacao === 'devolvida' && s.obs_aval ? `<p class="small"><b>O que corrigir:</b> ${E(s.obs_aval)}</p>` : ''}
+      ${s.situacao === 'cancelada' ? `<p class="small"><b>Motivo do cancelamento:</b> ${E(s.motivo_cancelamento || '—')}</p>` : ''}
+      ${s.equipe_id === (S().eu || {}).id && podeCancelar(s) ? `<p class="small"><button type="button" class="link" data-acao="pag-ver" data-id="${E(s.id)}">Ver o pedido ou cancelar</button></p>` : ''}
       ${s.situacao === 'lancada' ? `<p class="small muted">Lançada no Arlo em ${new Date(s.arlo_em).toLocaleDateString('pt-BR')}${s.arlo_protocolo ? ' · protocolo ' + E(s.arlo_protocolo) : ''}.</p>` : ''}`;
   }
 
@@ -99,7 +110,7 @@
   }
 
   function cartaoAjuda(eu, m, pedidos, hab) {
-    pedidos = Array.isArray(pedidos) ? pedidos : pedidos ? [pedidos] : [];
+    pedidos = (Array.isArray(pedidos) ? pedidos : pedidos ? [pedidos] : []).filter(x => x.situacao !== 'cancelada');   // 69: o cancelado fica só no histórico
     const s = pedidos.filter(x => x.situacao === 'devolvida').sort((a, b) => String(b.aval_em || '').localeCompare(String(a.aval_em || '')))[0] || null;   // o devolvido volta para corrigir
     const outros = pedidos.filter(x => x !== s);
     const jaPedidos = outros.map(x => `<div class="pag-ja"><p class="num valor-destaque">${brl(x.valor_avalizado != null ? x.valor_avalizado : x.valor_solicitado)}</p>
@@ -134,7 +145,7 @@
     const valor = P[eu.papel].bolsa;
     // 57: bolsa só nos 12 meses do plano (outubro de 2026 a setembro de 2027); pedido já feito continua aparecendo
     if (!s && !R.mesBolsaOk(m)) return `<div class="bloco pag-c"><h3>Bolsa · ${nomeMes(m)}</h3><p class="small muted">${E(R.MSG_MES_BOLSA.split(' Escolha')[0])}</p></div>`;
-    if (s && s.situacao !== 'devolvida') return `<div class="bloco pag-c"><h3>Bolsa · ${nomeMes(m)}</h3>
+    if (s && !['devolvida', 'cancelada'].includes(s.situacao)) return `<div class="bloco pag-c"><h3>Bolsa · ${nomeMes(m)}</h3>
       <p class="num valor-destaque">${valor ? brl(s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado) : 'Conforme o termo'}</p>${situacaoTxt(s)}</div>`;
     return `<form class="bloco pag-c" data-form="pag-bolsa" data-mes="${m}" novalidate><h3>Bolsa · ${nomeMes(m)}</h3>
       ${s ? situacaoTxt(s) : ''}
@@ -142,7 +153,7 @@
       ${eu.papel === 'professor_fic' && MQ.encUI && !S().encSemBanco ? MQ.encUI.blocoPedido(eu.id, m) : ''}
       <div class="campo"><label for="pb-rel-${m}">${eu.papel === 'professor_fic' ? 'Ações realizadas no mês' : 'Relatório de atividades do mês'}</label><textarea id="pb-rel-${m}" name="relatorio" rows="5" placeholder="${E(DICA_REL[eu.papel] || DICA_REL.bolsista)}">${E(s ? s.relatorio || '' : '')}</textarea></div>
       <div class="aviso erro" data-erro hidden></div>
-      <button class="btn pri" type="submit" ${hab ? '' : 'disabled'}>${s ? 'Corrigir e reenviar' : 'Solicitar bolsa de ' + nomeMes(m)}</button></form>`;
+      <button class="btn pri" type="submit" ${hab ? '' : 'disabled'}>${s && s.situacao === 'devolvida' ? 'Corrigir e reenviar' : s ? 'Pedir de novo a bolsa de ' + nomeMes(m) : 'Solicitar bolsa de ' + nomeMes(m)}</button></form>`;
   }
 
   function linha(s, comPessoa) {
@@ -160,7 +171,7 @@
     const minhaVez = s => s.situacao === 'solicitada' && s.equipe_id !== eu.id && (quemAvaliza(s.tipo, pessoa(s.equipe_id).papel) === eu.papel || (U().semTecnica && U().semTecnica()));
     const aval = lista().filter(minhaVez);
     const outrasAval = lista().filter(s => s.situacao === 'solicitada' && !minhaVez(s));
-    const arlo = lista().filter(s => s.situacao === 'avalizada'), dev = lista().filter(s => s.situacao === 'devolvida'), lanc = lista().filter(s => s.situacao === 'lancada');
+    const arlo = lista().filter(s => s.situacao === 'avalizada'), dev = lista().filter(s => s.situacao === 'devolvida'), lanc = lista().filter(s => s.situacao === 'lancada'), canc = lista().filter(s => s.situacao === 'cancelada');
     const soma = l => l.reduce((t, s) => t + (+(s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado) || 0), 0);
     const bloco = (t, l, vazio, nivel) => `<section class="secao${MQ.sit(nivel ? l.length : 0, nivel)}"><div class="secao-cab"><h2>${t} <span class="conta-t${l.length ? '' : ' zero'}">${l.length}</span></h2>${l.length ? `<span class="muted">${brl(soma(l))}</span>` : ''}</div>
       ${l.length ? `<div class="pag-lista">${l.map(s => linha(s, true)).join('')}</div>` : `<p class="muted">${vazio}</p>`}</section>`;
@@ -178,6 +189,7 @@
       ${bloco(eu.papel === 'auxiliar_adm' ? 'Com aval, falta você lançar no Arlo' : 'Com aval, falta o auxiliar lançar no Arlo', souGeral ? arlo.filter(s => !soGeralLanca().includes(s)) : arlo, 'Nenhuma.')}
       ${dev.length ? bloco('Devolvidas para corrigir', dev, '', 'crit') : ''}
       <details class="hist"><summary>Lançadas no Arlo (${lanc.length})</summary><div class="pag-lista" style="padding:0 18px 16px">${lanc.map(s => linha(s, true)).join('') || '<p class="muted">Nenhuma ainda.</p>'}</div></details>
+      ${canc.length ? `<details class="hist" data-pag-canceladas><summary>Canceladas (${canc.length})</summary><div class="pag-lista" style="padding:0 18px 16px">${canc.map(s => linha(s, true)).join('')}</div></details>` : ''}
       ${eu.papel === 'coord_tecnico' ? secaoMinha() : ''}`;
   }
 
@@ -227,6 +239,7 @@
           <dt>Enviada em</dt><dd>${new Date(s.solicitada_em).toLocaleString('pt-BR')}</dd>
           ${s.aval_em ? `<dt>${s.situacao === 'devolvida' ? 'Devolvida' : 'Aval'} em</dt><dd>${new Date(s.aval_em).toLocaleString('pt-BR')} por ${E(nomeDe(pessoa(s.aval_por)))}</dd>` : ''}
           ${s.obs_aval ? `<dt>Observação</dt><dd>${E(s.obs_aval)}</dd>` : ''}
+          ${s.situacao === 'cancelada' ? `<dt>Cancelada em</dt><dd>${s.cancelado_em ? new Date(s.cancelado_em).toLocaleString('pt-BR') : '—'}${s.cancelado_por ? ' por ' + E(nomeDe(pessoa(s.cancelado_por))) : ''}</dd><dt>Motivo</dt><dd>${E(s.motivo_cancelamento || '—')}</dd>` : ''}
           ${s.arlo_em ? `<dt>Lançada no Arlo</dt><dd>${new Date(s.arlo_em).toLocaleDateString('pt-BR')} por ${E(nomeDe(pessoa(s.arlo_por)))}${s.arlo_protocolo ? ' · protocolo ' + E(s.arlo_protocolo) : ''}</dd>` : ''}</dl></div>
         ${pe.papel === 'professor_fic' && s.tipo === 'bolsa' && MQ.encUI && (s.detalhe || {}).fic_encontros ? `<div class="bloco enc-rel-painel">${MQ.encUI.relatorioHTML(s)}
             <div class="acoes"><button type="button" class="btn" data-acao="enc-imprimir" data-id="${E(s.id)}">Imprimir</button></div></div>`
@@ -237,14 +250,28 @@
           <div class="campos"><div class="campo"><label for="pa-val">Valor com aval (R$)</label><input id="pa-val" name="valor" inputmode="decimal" value="${val != null ? String((conf != null ? conf : val).toFixed(2)).replace('.', ',') : ''}"></div>
           <div class="campo inteiro"><label for="pa-obs">Observação (obrigatória para devolver)</label><textarea id="pa-obs" name="obs" placeholder="Ex.: falta a foto da implantação de 12/10; conferir o km de Pio IX."></textarea></div></div>
           <div class="aviso erro" data-erro hidden></div>
-          ${pe.status === 'desligada' ? `<div class="aviso">${E(nomeDe(pe))} foi desligada${pe.data_fim ? ' em ' + R.fmtData(pe.data_fim) : ''} e não entra mais no sistema: devolver não adianta, porque ninguém corrigiria o pedido. Se o valor é devido, dê o aval. Se não é, fale com a coordenação geral.</div>` : ''}
+          ${pe.status === 'desligada' ? `<div class="aviso">${E(nomeDe(pe))} foi desligada${pe.data_fim ? ' em ' + R.fmtData(pe.data_fim) : ''} e não entra mais no sistema: devolver não adianta, porque ninguém corrigiria o pedido. Se o valor é devido, dê o aval. Se não é, cancele o pedido com o motivo (no fim deste painel).</div>` : ''}
           <div class="acoes"><button class="btn pri" type="submit" name="ok" value="1">Aprovar (dar aval)</button>${pe.status === 'desligada' ? '' : '<button class="btn perigo" type="submit" name="ok" value="0">Devolver para correção</button>'}</div></form>` : ''}
         ${podeArlo ? `${MQ.bancoUI ? MQ.bancoUI.blocoContaArlo(pe) : ''}<form class="bloco" data-form="pag-arlo" data-id="${E(s.id)}" novalidate><h3>Lançar no Arlo</h3>
           <p class="small muted">Lance <b>${brl(val)}</b> no Arlo para ${E(nomeDe(pe))} (${TIPO[s.tipo].toLowerCase()} de ${nomeMes(s.mes)}) e registre aqui.</p>
           <div class="campo"><label for="pr-prot">Número do protocolo no Arlo <span class="muted">(se houver)</span></label><input id="pr-prot" name="protocolo" autocomplete="off"></div>
           <div class="aviso erro" data-erro hidden></div>
           <div class="acoes"><button class="btn pri" type="submit">Registrar: lançado no Arlo</button></div></form>` : ''}
+        ${podeCancelar(s) ? formCancelar(s) : ''}
       </div>`;
+  }
+
+  /* 69: cancelar o pedido. Fica no fim do painel, fechado, para não ser confundido com o aval */
+  function formCancelar(s) {
+    const dono = s.equipe_id === S().eu.id;
+    const efeito = s.tipo === 'ajuda_custo' ? 'As visitas do pedido ficam livres para um pedido novo.' : 'A bolsa deste mês pode ser pedida de novo depois.';
+    return `<details class="bloco pag-cancelar" data-pag-cancelar><summary>Cancelar este pedido</summary>
+      <form data-form="pag-cancelar" data-id="${E(s.id)}" novalidate>
+        <p class="small muted">${s.situacao === 'avalizada' ? 'O pedido já tem o aval e ainda não foi lançado no Arlo. ' : ''}O pedido sai da fila e fica no histórico como cancelado, com o motivo. ${efeito}</p>
+        <div class="campo"><label for="pc-mot-${E(s.id)}">Motivo do cancelamento ${dono ? '<span class="muted">(opcional)</span>' : '<span class="muted">(obrigatório: a pessoa vê)</span>'}</label>
+          <textarea id="pc-mot-${E(s.id)}" name="motivo" maxlength="2000" placeholder="${dono ? 'Ex.: pedi no mês errado.' : 'Ex.: pedido em duplicidade; mês sem atividade comprovada.'}"></textarea></div>
+        <div class="aviso erro" data-erro hidden></div>
+        <div class="acoes"><button class="btn perigo" type="submit">Cancelar o pedido</button></div></form></details>`;
   }
 
   /* ---------- ações ---------- */
@@ -301,6 +328,16 @@
         // 18/10/2026 (2ª auditoria): sem auxiliar ativo, ou na bolsa do próprio auxiliar, quem lança no Arlo é a coordenação geral
         const quem = (() => { const x = lista().find(y => y.id === form.dataset.id); return x && (semAuxiliar() || pessoa(x.equipe_id).papel === 'auxiliar_adm') ? 'a coordenação geral' : 'o auxiliar'; })();
         await recarregar(); U().fecharPainel(); U().toast(ok ? `Aval registrado. A solicitação foi para ${quem} lançar no Arlo.` : 'Solicitação devolvida. A pessoa vê o motivo e pode corrigir.');
+      });
+    }
+    if (tipo === 'pag-cancelar') {
+      const s = lista().find(x => x.id === form.dataset.id) || {}; const mot = String(fd.get('motivo') || '').trim();
+      if (s.equipe_id !== S().eu.id && mot.length < 5) return U().mostrarErros(form, { motivo: 'Escreva o motivo do cancelamento (a pessoa vê o motivo).' });
+      if (mot.length > 2000) return U().mostrarErros(form, { motivo: longo(2000) });
+      await U().ocupado(form, async () => {
+        await S().api.cancelarPagamento(form.dataset.id, mot || null);
+        await recarregar(); U().fecharPainel();
+        U().toast(s.tipo === 'ajuda_custo' ? 'Pedido cancelado. As visitas ficaram livres para um pedido novo.' : 'Pedido cancelado. Fica no histórico, com o motivo.');
       });
     }
     if (tipo === 'pag-arlo') {

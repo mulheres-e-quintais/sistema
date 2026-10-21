@@ -2,7 +2,7 @@
 -- Mulheres & Quintais — VERIFICAR o banco (só lê, não muda nada)
 -- Supabase > SQL Editor > New query > cole este arquivo inteiro > Run.
 -- Mostra, etapa por etapa, o que já está instalado. Onde aparecer "FALTA", rode aquele script
--- (na ordem dos números: 01, 02, 03, 04, 07 a 13, 15, 17 a 33, 35 a 48, 50 a 53, 55 a 68; os arquivos 05, 06, 14, 16, 34, 49, 54, 90, 91, 95, 96 e 99 não são etapas).
+-- (na ordem dos números: 01, 02, 03, 04, 07 a 13, 15, 17 a 33, 35 a 48, 50 a 53, 55 a 70; os arquivos 05, 06, 14, 16, 34, 49, 54, 90, 91, 95, 96 e 99 não são etapas).
 -- Num banco que já está em uso, rode só o que aparecer como FALTA: reexecutar um script antigo pode trocar uma função já corrigida pela versão velha.
 -- =====================================================================
 with col as (select table_name, column_name from information_schema.columns where table_schema = 'public'),
@@ -232,6 +232,12 @@ chk as (
                    and coalesce((select count(*) >= 7 from public.kit_itens where fonte is not null), false)
   union all select '68_troca_email_login', exists (select 1 from pg_proc where proname = 'equipe_login_fixo' and prosrc like '%o e-mail é o login dela%')
                    and exists (select 1 from pg_trigger t where t.tgname = 'equipe_login_fixo' and pg_get_triggerdef(t.oid) not like '%UPDATE OF%')
+  union all select '69_cancelamentos (cancelar pedido de pagamento, passagem e evento autorizados)', exists (select 1 from fn where proname = 'cancelar_pagamento')
+                   and exists (select 1 from fn where proname = 'cancelar_pedido_autorizado') and exists (select 1 from fn where proname = 'ajustar_valor_pedido')
+                   and exists (select 1 from pg_trigger where tgname = 'a0b_saida_pagamentos')
+  union all select '70_socioeconomico_restrito (questionário só para a pessoa e a coordenação geral)', to_regclass('public.equipe_socio') is not null
+                   and to_regclass('public.pre_cadastros_socio') is not null and exists (select 1 from pg_trigger where tgname = 'equipe_privado_a00_socio')
+                   and not exists (select 1 from public.equipe_privado where socioeconomico is not null)
 )
 -- o SQL Editor do Supabase mostra só o último resultado: por isso vai tudo numa tabela só
 , conta as (

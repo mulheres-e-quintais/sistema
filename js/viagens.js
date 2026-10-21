@@ -336,7 +336,7 @@
       if (mesmo) acoes.push(`<div class="aviso erro">Você conferiu este pedido, então não pode autorizá-lo: cada pedido passa por duas pessoas. Devolva para ${nomeConf()} conferir.</div>` + formMover(x, 'Devolver ou recusar', [['devolver', 'Devolver para correção', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória)'));
       else acoes.push(formMover(x, 'Autorizar e mandar para a FUNCERN', [['autorizar', 'Autorizar', 'pri'], ['devolver', 'Devolver para correção', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)', true, true));
     }
-    if (papel === 'coord_geral' && x.situacao === 'autorizado') acoes.push(formMover(x, 'Protocolo da FUNCERN', [['protocolo', 'Salvar protocolo', 'pri']], null, true));
+    if (papel === 'coord_geral' && x.situacao === 'autorizado') acoes.push(formMover(x, 'Protocolo da FUNCERN', [['protocolo', 'Salvar protocolo', 'pri']], null, true), formAutorizado(x));
     const ver = x.tipo === 'passagem' ? `<div class="bloco"><h3>Viagem</h3><dl class="dl">
         <dt>Para quê</dt><dd>${E(FINALIDADE[d.finalidade] || '—')}</dd><dt>Trecho</dt><dd>${E(d.origem || '—')} → ${E(d.destino || '—')}${d.volta_para ? ' · volta para ' + E(d.volta_para) : ''}</dd>
         <dt>Volta</dt><dd>${d.volta ? R.fmtData(d.volta) : '—'}</dd><dt>Voo ou horário</dt><dd>${E(d.sugestao || '—')}</dd><dt>Bagagem</dt><dd>${E(BAGAGEM[d.bagagem] || '—')}</dd></dl></div>
@@ -364,6 +364,20 @@
       <div class="acoes">${botoes.map(([a, t, c]) => `<button class="btn ${c}" type="submit" name="acao" value="${a}">${t}</button>`).join('')}</div></form>`;
   }
 
+  /* 69: pedido já autorizado: só a coordenação geral ajusta o valor (conferido de novo contra o teto) ou cancela (o valor volta ao saldo).
+     Sempre com motivo, que fica na observação e no histórico. Fechado, para não ser clicado por engano. */
+  function formAutorizado(x) {
+    const vl = +x.valor_autorizado || '';
+    return `<details class="bloco pag-cancelar" data-viag-autorizado><summary>Ajustar o valor ou cancelar</summary>
+      <form data-form="viag-autorizado" data-id="${E(x.id)}" data-tipo="${E(x.tipo)}" data-uf="${E(x.uf)}" data-fin="${finDe(x)}" novalidate>
+        <p class="small muted">Use quando a FUNCERN comprou por outro valor ou quando ${x.tipo === 'passagem' ? 'a viagem' : 'o evento'} não vai acontecer. Cancelado, o valor volta ao saldo do teto. Avise a FUNCERN também.</p>
+        <div class="campo"><label for="va-valor-${E(x.id)}">Valor autorizado (R$)</label><input id="va-valor-${E(x.id)}" name="valor" inputmode="decimal" value="${E(vl ? String(vl).replace('.', ',') : '')}">
+          <span class="dica">${rotSaldo(x.tipo, x.uf, finDe(x))}</span></div>
+        <div class="campo"><label for="va-mot-${E(x.id)}">Motivo (obrigatório)</label><textarea id="va-mot-${E(x.id)}" name="motivo" maxlength="1000" placeholder="Ex.: valor da nota fiscal; evento adiado para 2027."></textarea></div>
+        <div class="aviso erro" data-erro hidden></div>
+        <div class="acoes"><button class="btn" type="submit" name="acao" value="ajustar">Salvar o valor novo</button><button class="btn perigo" type="submit" name="acao" value="cancelar">Cancelar o pedido</button></div></form></details>`;
+  }
+
   function painel(p) { return p.tipo === 'viag-nova' ? form(p) : painelVer(p); }
 
   /* ---------- ações ---------- */
@@ -375,7 +389,7 @@
       box.insertAdjacentHTML('beforeend', passBloco(n)); renumerar(box); const f = box.lastElementChild.querySelector('input'); if (f) f.focus(); }
     else if (a === 'viag-rem-pass') { const box = el.closest('[data-passageiros]'); el.closest('[data-pass]').remove(); renumerar(box); }
   }
-  document.addEventListener('click', ev => { const b = ev.target.closest && ev.target.closest('form[data-form=viag-mover] button[name=acao]'); if (b) b.form.dataset.acao = b.value; }, true);
+  document.addEventListener('click', ev => { const b = ev.target.closest && ev.target.closest('form[data-form=viag-mover] button[name=acao], form[data-form=viag-autorizado] button[name=acao]'); if (b) b.form.dataset.acao = b.value; }, true);
   // prazo ao escolher a data
   document.addEventListener('change', ev => {
     const t = ev.target; if (!t.matches || !t.matches('form[data-form=viag-salvar] [name=data_ref]')) return;
@@ -468,6 +482,25 @@
         await S().api.salvarPedido(form.dataset.id || null, t, titulo, data, d, just || null);
         await recarregar(); U().fecharPainel();
         U().toast((form.dataset.id ? 'Pedido reenviado' : 'Pedido enviado') + ' para ' + NOME_CONF[t === 'passagem' && d.finalidade === 'pedagogico' ? 'coord_geral' : conf()] + ' conferir.');
+      });
+    }
+    if (tipo === 'viag-autorizado') {
+      const acao = form.dataset.acao === 'cancelar' ? 'cancelar' : 'ajustar'; const mot = String(fd.get('motivo') || '').trim();
+      const x = lista().find(y => y.id === form.dataset.id) || {};
+      const valor = acao === 'ajustar' ? valorBR(fd.get('valor')) : null;
+      if (acao === 'ajustar') {
+        if (valor < 0) return U().mostrarErros(form, { valor: 'O valor não pode ser negativo.' });
+        if (!(valor > 0)) return U().mostrarErros(form, { valor: 'Informe o valor novo.' });
+        if (Math.round(valor * 100) === Math.round((+x.valor_autorizado || 0) * 100)) return U().mostrarErros(form, { valor: 'O valor é o mesmo que já está autorizado.' });
+        const sd = saldo(form.dataset.tipo, form.dataset.uf, form.dataset.id, form.dataset.fin);
+        if (valor > sd.livre) return U().mostrarErros(form, { valor: 'Passa do teto: o saldo, sem este pedido, é ' + brl(sd.livre) + '.' });
+      }
+      if (mot.length < 5) return U().mostrarErros(form, { motivo: acao === 'cancelar' ? 'Escreva o motivo do cancelamento.' : 'Escreva o motivo do ajuste (por exemplo, o valor da nota fiscal).' });
+      await U().ocupado(form, async () => {
+        if (acao === 'cancelar') await S().api.cancelarPedidoAutorizado(form.dataset.id, mot);
+        else await S().api.ajustarValorPedido(form.dataset.id, valor, mot);
+        await recarregar(); if (acao === 'cancelar') U().fecharPainel();
+        U().toast(acao === 'cancelar' ? 'Pedido cancelado. O valor voltou ao saldo do teto. Avise a FUNCERN.' : 'Valor ajustado para ' + brl(valor) + '.');
       });
     }
     if (tipo === 'viag-mover') {

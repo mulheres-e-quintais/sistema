@@ -133,6 +133,7 @@
         ['A pessoa perdeu o código ou ele venceu.', 'Abra a ficha dela e gere outro. O anterior deixa de valer na hora.'],
         ['A pessoa esqueceu a senha.', 'Quando ela toca em "Esqueci a senha" na entrada, o pedido aparece na aba <b>Equipe</b> (com número na aba), em "Pedidos de novo acesso". Só a coordenação geral resolve: abra a ficha, toque em "Liberar novo primeiro acesso" (confirme) e mande o código pelo WhatsApp do cadastro. A senha antiga é apagada; os dados não mudam. Se a pessoa não sabe do pedido, descarte.'],
         ['Errei o CPF.', 'CPF e estado não mudam depois de salvos. Desligue o cadastro errado e faça um novo.'],
+        ['Quem vê o questionário socioeconômico?', 'Com o nome, só a própria pessoa e a coordenação geral. A coordenação técnica e o auxiliar veem só se foi respondido. A pessoa responde no link de cadastro.'],
         ['Preciso corrigir o e-mail de alguém.', 'O e-mail é o login. De quem ainda não entrou no sistema, quem cadastrou corrige à vontade. De quem já entrou, só a coordenação geral troca, porque a troca apaga a senha: depois de salvar, gere um novo código de acesso e mande para a pessoa.'],
         ['A pessoa já tem cadastro no Arlo.', 'Marque "Sim" na pergunta do Arlo: só os dados básicos são pedidos (e a cidade, para quem vai a campo).'],
         ['O CEP não preencheu a rua.', 'Em muitas cidades pequenas o CEP é um só para a cidade toda. O sistema preenche cidade e estado; digite a rua, o sítio ou a comunidade.']
@@ -207,19 +208,23 @@
       t: 'Pagamentos',
       intro: 'Pedidos de ajuda de custo (visitas de campo) e de bolsa mensal. O caminho é sempre: a pessoa pede → a coordenação dá o aval → o auxiliar lança no Arlo (FUNCERN).',
       tarefas: [
-        ['Dar o aval', ['Em <b>Esperando o seu aval</b>, abra o pedido.', 'Confira as visitas e o km (ajuda de custo) ou o relatório e as entregas do mês (bolsa).', 'Toque em <b>Aprovar (dar aval)</b>, ou escreva o que corrigir e toque em <b>Devolver para correção</b>.']]
+        ['Dar o aval', ['Em <b>Esperando o seu aval</b>, abra o pedido.', 'Confira as visitas e o km (ajuda de custo) ou o relatório e as entregas do mês (bolsa).', 'Toque em <b>Aprovar (dar aval)</b>, ou escreva o que corrigir e toque em <b>Devolver para correção</b>.']],
+        ['Cancelar um pedido', ['Abra o pedido (o seu, em <b>Minhas solicitações</b> ou no cartão do mês; o de outra pessoa, na aba Pagamentos).', 'No fim do painel, abra <b>Cancelar este pedido</b>.', 'Escreva o motivo (obrigatório para a coordenação; a pessoa vê) e toque em <b>Cancelar o pedido</b>.']]
       ],
       passos: [
         'Em <b>Esperando o seu aval</b>, abra o pedido e confira: na ajuda de custo, as visitas e o km; na bolsa, o relatório e as <b>entregas do mês</b> (fotos, lista de presença, fichas, AVA e metas).',
         'Toque em <b>Aprovar (dar aval)</b> ou <b>Devolver</b>, dizendo o que corrigir.',
         'Quem dá o aval: a coordenação técnica, para ajuda de custo e bolsa das bolsistas; a coordenação geral, para a bolsa da coordenação técnica, dos professores e do auxiliar.',
-        'Com o aval, o pedido vai para o auxiliar, que lança no Arlo e registra o protocolo.'
+        'Com o aval, o pedido vai para o auxiliar, que lança no Arlo e registra o protocolo.',
+        '<b>Cancelar</b>: a própria pessoa cancela o pedido dela enquanto não tem aval. A coordenação técnica cancela, no mesmo ponto, os pedidos em que ela dá o aval. A coordenação geral cancela também o que já tem aval e ainda não foi lançado no Arlo. A coordenação sempre escreve o motivo. Lançado no Arlo não se cancela pelo sistema.'
       ],
       duvidas: [
         ['Quem começou no meio do mês recebe o mês inteiro?', 'Sim. A bolsa é pedida a partir do mês de início no projeto e, pedida no mês, vale o mês inteiro (decisão da coordenação geral). Antes do mês de início o sistema não deixa pedir.'],
         ['Uma visita pode entrar em dois pedidos?', 'Não. Depois de pedida, a visita fica travada (data, pessoa e situação) até o pedido ser devolvido. Depois que o pedido é lançado no Arlo, o km conferido da visita também não muda mais.'],
         ['A lista de presença está marcada, mas não vi o papel.', 'A marcação é a bolsista quem faz. Confira as listas assinadas antes de dar o aval.'],
         ['Quanto é a ajuda de custo?', 'É calculada na aba Custos: horas da visita, combustível pela distância e refeição.'],
+        ['Pedi errado (mês, visita a mais). Como desfaço?', 'Abra o pedido e use <b>Cancelar este pedido</b> enquanto ele não tem aval. As visitas de um pedido de ajuda de custo cancelado ficam livres para um pedido novo; a bolsa cancelada do mês pode ser pedida de novo. Depois do aval, só a coordenação geral cancela.'],
+        ['A pessoa saiu do projeto e tem bolsa aprovada de um mês depois da saída.', 'A data de saída não pode ficar antes de bolsa já aprovada: o sistema avisa. Se a bolsa era devida, use a data de saída dentro daquele mês. Se não era, a coordenação geral cancela o aval primeiro e depois desliga. Bolsa ainda sem aval de mês depois da saída é cancelada pelo sistema no desligamento, com o motivo.'],
         ['Ficou uma visita fora do pedido de ajuda de custo. E agora?', 'A pessoa faz um <b>pedido complementar</b> do mesmo mês, só com as visitas que ficaram de fora. Ele aparece na lista com a palavra "complementar" e passa pelo mesmo aval. A bolsa continua sendo um pedido só por mês.'],
       ]
     },
@@ -246,7 +251,8 @@
       intro: 'Pedidos de passagem aérea (intercâmbio e acompanhamento pedagógico) e de estrutura de evento, feitos pela bolsista de articulação estadual. A FUNCERN só compra ou contrata depois da autorização.',
       tarefas: [
         ['Conferir um pedido (coordenação técnica; sem ela, o auxiliar administrativo)', ['Em <b>Esperando a sua conferência</b>, abra o pedido.', 'Confira nomes iguais ao documento, CPF, RG, datas e quantidades.', 'Toque em <b>Conferido</b>, ou escreva o que corrigir e toque em <b>Devolver para correção</b>.']],
-        ['Autorizar e mandar à FUNCERN (coordenação geral)', ['Em <b>Esperando a sua autorização</b>, abra o pedido.', 'Se já tiver, digite o protocolo da FUNCERN.', 'Toque em <b>Autorizar</b> (ou devolva, ou recuse com o motivo).', 'Toque em <b>Copiar texto</b> e cole no e-mail ou sistema da FUNCERN.']]
+        ['Autorizar e mandar à FUNCERN (coordenação geral)', ['Em <b>Esperando a sua autorização</b>, abra o pedido.', 'Se já tiver, digite o protocolo da FUNCERN.', 'Toque em <b>Autorizar</b> (ou devolva, ou recuse com o motivo).', 'Toque em <b>Copiar texto</b> e cole no e-mail ou sistema da FUNCERN.']],
+        ['Ajustar o valor ou cancelar um pedido já autorizado (coordenação geral)', ['Abra o pedido autorizado.', 'No fim do painel, abra <b>Ajustar o valor ou cancelar</b>.', 'Para ajustar: digite o valor novo e o motivo (por exemplo, o valor da nota fiscal) e toque em <b>Salvar o valor novo</b>. O teto é conferido de novo.', 'Para cancelar: escreva o motivo e toque em <b>Cancelar o pedido</b>. O valor volta ao saldo. Avise a FUNCERN.']]
       ],
       passos: [
         'A bolsista de articulação estadual envia o pedido. Ele aparece para a <b>coordenação técnica</b> em "Esperando a sua conferência".',
@@ -256,6 +262,7 @@
         'O pedido de passagem de <b>acompanhamento pedagógico</b> é diferente: só a <b>coordenação geral</b> confere e autoriza. Para a coordenação técnica ele aparece como "aguardando a coordenação geral".',
         'As passagens têm <b>dois tetos</b>, que não se misturam: R$ 70.000,00 para o intercâmbio e R$ 22.400,00 para o acompanhamento pedagógico. Os eventos têm R$ 6.000,00 por estado.',
         'A <b>coordenação geral</b> autoriza (ou devolve, ou recusa com o motivo). Depois de autorizar, use <b>Copiar texto</b> para mandar o pedido à FUNCERN e registre o protocolo.',
+        'Pedido <b>já autorizado</b>: só a coordenação geral ajusta o valor (conferido de novo contra o teto) ou cancela (o valor volta ao saldo), sempre com o motivo, que fica na observação do pedido e no histórico. Quem pediu cancela o próprio pedido só antes da conferência.',
         'Prazos: passagem <b>40 dias</b> antes da viagem (a FUNCERN exige 30); evento <b>45 dias</b> antes. Fora do prazo, o pedido só vai com justificativa.',
         'Os contadores mostram quantas passagens já foram autorizadas (25 de intercâmbio e 8 de acompanhamento pedagógico, por pessoa) e quantos estados já têm evento (5).'
       ],

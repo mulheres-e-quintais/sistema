@@ -29,7 +29,7 @@ declare
   confirmar text := 'NAO';     -- <<< troque por 'ZERAR' para apagar
   copia_feita_em text := 'SEM COPIA';   -- <<< a data da cópia de segurança que VOCÊ fez e testou, no formato AAAA-MM-DD (ferramentas/backup/LEIA-ME.md)
   eu uuid; meu_login uuid; n int; lista text;
-  ficam text[] := array['equipe', 'equipe_privado', 'parametros', 'kit_itens'];   -- kit_itens: lista de itens e preços de referência (configuração, como os parâmetros)
+  ficam text[] := array['equipe', 'equipe_privado', 'equipe_socio', 'parametros', 'kit_itens'];   -- kit_itens: lista de itens e preços de referência (configuração, como os parâmetros)
 begin
   if confirmar <> 'ZERAR' then
     raise exception 'Nada foi apagado. Para zerar, troque NAO por ZERAR na linha "confirmar" e rode de novo.';
@@ -62,6 +62,7 @@ begin
   alter table public.equipe disable trigger user;
   alter table public.equipe_privado disable trigger user;
   delete from public.equipe_privado where equipe_id <> eu;
+  if to_regclass('public.equipe_socio') is not null then delete from public.equipe_socio where equipe_id <> eu; end if;   -- 70: questionário socioeconômico
   update public.equipe set criado_por = null, substitui_id = null where id = eu;
   delete from public.equipe where id <> eu;
   alter table public.equipe_privado enable trigger user;

@@ -19,6 +19,8 @@
     }
     return { data: tudo, error: null };
   }
+  // 70: servidor ainda sem a tabela do questionário socioeconômico (equipe_socio)
+  const semTabelaSocio = e => !!e && (e.code === 'PGRST205' || e.code === '42P01' || /Could not find the table|relation .*equipe_socio.* does not exist/i.test(String(e.message || '')));
   const erro = e => {
     // mensagens do banco já instalado ainda dizem "professor do FIC": o nome certo é "professor do curso FIC" (12/10/2026)
     const x = new Error(String(R.mensagemErro(e)).replace(/([Pp]rofessor(?:es|a)?) do FIC/g, '$1 do curso FIC')); x.original = e;
@@ -366,13 +368,25 @@
     },
     async lerPrivado(id) {
       const { data, error } = await sb.from('equipe_privado').select('*').eq('equipe_id', id).maybeSingle();
-      if (error) throw erro(error); return data;
+      if (error) throw erro(error);
+      // 70: o questionário socioeconômico fica à parte; só a própria pessoa e a coordenação geral recebem (para as outras volta vazio)
+      const r = await sb.from('equipe_socio').select('socioeconomico').eq('equipe_id', id).maybeSingle();
+      if (r.error) { if (!semTabelaSocio(r.error)) throw erro(r.error); return data; }
+      if (!data && !r.data) return null;
+      return Object.assign({ equipe_id: id }, data || {}, { socioeconomico: r.data ? r.data.socioeconomico : null });
     },
     async salvarPrivado(id, d) {
-      const reg = { equipe_id: id, data_nascimento: d.data_nascimento || null, nis: d.nis || null, endereco: d.endereco || {}, socioeconomico: d.socioeconomico || null, atualizado_em: new Date().toISOString() };
+      const reg = { equipe_id: id, data_nascimento: d.data_nascimento || null, nis: d.nis || null, endereco: d.endereco || {}, atualizado_em: new Date().toISOString() };
       if ('perfil' in d) reg.perfil = d.perfil || null;   // 19_entregas_do_mes.sql
       const { error } = await sb.from('equipe_privado').upsert(reg, { onConflict: 'equipe_id' });
       if (error) throw erro(/equipe_privado|PGRST205/.test(error.message) ? 'Os dados pessoais complementares ainda não foram instalados no servidor: rode o arquivo 08_convites.sql no Supabase.' : error);
+      if (d.socioeconomico === undefined) return;   // 70: a tela não mostrou o questionário (quem não vê as respostas): não mexe
+      const r = d.socioeconomico ? await sb.from('equipe_socio').upsert({ equipe_id: id, socioeconomico: d.socioeconomico, atualizado_em: new Date().toISOString() }, { onConflict: 'equipe_id' })
+        : await sb.from('equipe_socio').delete().eq('equipe_id', id);
+      if (!r.error) return;
+      if (!semTabelaSocio(r.error)) throw erro(r.error);
+      const v = await sb.from('equipe_privado').update({ socioeconomico: d.socioeconomico || null }).eq('equipe_id', id);   // servidor ainda sem o 70
+      if (v.error) throw erro(v.error);
     },
     /* ---------- Dados bancários (só por funções do banco; nunca entram no cache do aparelho) ---------- */
     async meusDadosBancarios() { const { data, error } = await sb.rpc('meus_dados_bancarios'); if (error) throw erro(error); return data; },
@@ -540,6 +554,11 @@
     },
     async avalizarPagamento(id, ok, obs, valor) { const { error } = await sb.rpc('avalizar_pagamento', { p_id: id, p_ok: ok, p_obs: obs || null, p_valor: valor }); if (error) throw erro(error); },
     async registrarNoArlo(id, protocolo) { const { error } = await sb.rpc('registrar_no_arlo', { p_id: id, p_protocolo: protocolo || null }); if (error) throw erro(error); },
+    /* 69: cancelar o pedido (a própria pessoa sem aval; a coordenação com motivo) */
+    async cancelarPagamento(id, motivo) {
+      const { error } = await sb.rpc('cancelar_pagamento', { p_id: id, p_motivo: motivo || null });
+      if (error) throw erro(/cancelar_pagamento|PGRST202/.test(error.message) ? 'O cancelamento de pedidos ainda não foi instalado: a coordenação geral roda o arquivo 69_cancelamentos.sql no Supabase.' : error);
+    },
 
     /* ---------- Documentos do projeto (24_documentos.sql): só a coordenação geral ---------- */
     /* execução (37): planilha de gastos do mês; só a coordenação geral; sem update nem delete */
@@ -655,6 +674,15 @@
     },
     async moverPedido(id, acao, obs, protocolo) {
       const { error } = await sb.rpc('mover_pedido_apoio', { p_id: id, p_acao: acao, p_obs: obs || null, p_protocolo: protocolo || null }); if (error) throw erro(error);
+    },
+    /* 69: pedido já autorizado: só a coordenação geral cancela ou ajusta o valor, com motivo */
+    async cancelarPedidoAutorizado(id, motivo) {
+      const { error } = await sb.rpc('cancelar_pedido_autorizado', { p_id: id, p_motivo: motivo || null });
+      if (error) throw erro(/cancelar_pedido_autorizado|PGRST202/.test(error.message) ? 'O cancelamento de pedido autorizado ainda não foi instalado: rode o arquivo 69_cancelamentos.sql no Supabase.' : error);
+    },
+    async ajustarValorPedido(id, valor, motivo) {
+      const { error } = await sb.rpc('ajustar_valor_pedido', { p_id: id, p_valor: valor, p_motivo: motivo || null });
+      if (error) throw erro(/ajustar_valor_pedido|PGRST202/.test(error.message) ? 'O ajuste de valor de pedido autorizado ainda não foi instalado: rode o arquivo 69_cancelamentos.sql no Supabase.' : error);
     },
 
     /* ---------- Curso FIC: turmas e matrículas (11_fic.sql) ---------- */

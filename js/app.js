@@ -1606,7 +1606,7 @@
       const b = MQ.bancoUI.informou(m.id); if (b) linhas.push(['Conta para a FUNCERN', m.cadastro_arlo ? 'Já está no Arlo (não precisa informar)' : b.ok ? 'Informada por ela' + (b.em ? ' em ' + new Date(b.em).toLocaleDateString('pt-BR') : '') : 'Ainda não informou']);
     }
     if (pv) linhas.push(['Nascimento', pv.data_nascimento && R.fmtData(pv.data_nascimento)], ['PIS/NIS', pv.nis], ['Endereço', MQ.convitesUI.textoEndereco(pv.endereco)],
-      ['Socioeconômico', pv.socioeconomico ? 'Respondido' : null],
+      ['Socioeconômico', pv.socioeconomico ? 'Respondido' : null],   // 70: só aparece para a própria pessoa e a coordenação geral (as outras não leem)
       ['Leitura do guia', MQ.entregasUI && gestao ? MQ.entregasUI.cienciaDe(m.id, m.papel) : null],
       ['Perfil no campo', MQ.convitesUI && MQ.convitesUI.temPerfil(m.papel) ? (MQ.convitesUI.resumoPerfil(pv.perfil) || 'Não respondido') : null]);
     return `<dl class="dl">${linhas.filter(l => l[1]).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`;
@@ -1828,7 +1828,7 @@
           <div class="campo"><label for="c-siape">Matrícula SIAPE <span class="muted">(só se for servidor(a) público(a) federal)</span></label><input id="c-siape" name="siape" inputmode="numeric" value="${v('siape')}" placeholder="Deixe vazio se não for"></div>
           <div class="campo"><label for="c-org">Organização ou movimento</label><input id="c-org" name="organizacao" value="${v('organizacao')}" maxlength="120" placeholder="${bols ? 'Ex.: MPA, associação, sindicato' : ['professor_fic', 'auxiliar_adm'].includes(m.papel) ? 'Ex.: IFRN Campus Apodi' : 'Ex.: MPA'}"></div>
         </div></fieldset>
-        ${MQ.convitesUI ? (priv === undefined ? '<p class="small muted">' + MQ.ampulheta() + '</p>' : MQ.convitesUI.camposPessoais(Object.assign({ nome_social: m.nome_social, municipio: m.municipio, cadastro_arlo: p.id ? !!m.cadastro_arlo : m.cadastro_arlo }, priv || {}), false, m.papel, bols ? munis : null)) : ''}
+        ${MQ.convitesUI ? (priv === undefined ? '<p class="small muted">' + MQ.ampulheta() + '</p>' : MQ.convitesUI.camposPessoais(Object.assign({ nome_social: m.nome_social, municipio: m.municipio, cadastro_arlo: p.id ? !!m.cadastro_arlo : m.cadastro_arlo }, priv || {}), false, m.papel, bols ? munis : null, !!S.eu && (S.eu.papel === 'coord_geral' || (!!p.id && p.id === S.eu.id)))) : ''}
         <fieldset><legend>Bolsa</legend><div class="campos">
           <div class="campo"><label for="c-ini">Início ${m.papel === 'agente' ? 'no projeto' : 'da bolsa'}</label><input id="c-ini" name="data_inicio" type="date" value="${v('data_inicio')}" min="${R.LIM.equipeMin}" max="${R.somaDias(R.hoje(), R.LIM.inicioFuturoDias)}" required>
             ${edit ? '' : '<span class="dica">Sugerimos hoje. Mude se a pessoa começou em outro dia.</span>'}</div>

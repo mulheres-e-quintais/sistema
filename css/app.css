@@ -4279,3 +4279,11 @@ html.sem-rede #painel :is(form[data-form="ficha"], form[data-form="diag"], form[
 .ac-acoes.foto-acoes { display: flex; flex-wrap: wrap; gap: 10px; }
 .ac-acoes.foto-acoes .foto-btn { text-decoration: none; }
 @media (max-width: 700px) { .ac-acoes.foto-acoes .foto-btn { justify-content: center; } }
+
+/* 69: cancelar pedido (pagamento) e ajustar ou cancelar passagem/evento autorizado: fechado, no fim do painel, para não ser clicado por engano */
+details.pag-cancelar > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; font-weight: 600; color: var(--crit); }
+details.pag-cancelar > summary::-webkit-details-marker { display: none; }
+details.pag-cancelar > summary::after { content: "Abrir"; color: var(--accent); font-size: var(--t-sm); font-weight: 500; }
+details.pag-cancelar[open] > summary::after { content: "Fechar"; }
+details.pag-cancelar[open] > summary { margin-bottom: 10px; }
+details.pag-cancelar form .acoes { margin-top: 10px; }

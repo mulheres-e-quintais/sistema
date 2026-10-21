@@ -149,6 +149,12 @@ begin
          case when e.papel in ('coord_tecnico','articulacao','apoio','agente') then jsonb_build_object('agricultora', random() < .7, 'atua_mulheres', true, 'mora_rural', random() < .6,
               'internet', random() < .9, 'outra_bolsa', random() < .1, 'experiencia', pg_temp.pick(array['ate2','3a5','mais5','nenhuma'])) end
     from _eq e;
+  -- 70: as respostas do questionário ficam numa tabela só da própria pessoa e da coordenação geral (os gatilhos estão desligados aqui)
+  if to_regclass('public.equipe_socio') is not null then
+    insert into public.equipe_socio (equipe_id, socioeconomico) select p.equipe_id, p.socioeconomico from public.equipe_privado p join _eq e on e.id = p.equipe_id
+      where p.socioeconomico is not null on conflict (equipe_id) do nothing;
+    update public.equipe_privado p set socioeconomico = null from _eq e where e.id = p.equipe_id and p.socioeconomico is not null;
+  end if;
   insert into public.equipe_bancario (equipe_id, banco_codigo, banco_nome, agencia, conta, conta_dv, tipo_conta, pix_tipo, pix_chave)
   select e.id, '001', 'Banco do Brasil', (1000 + floor(random() * 8000))::int::text, (10000 + floor(random() * 80000))::int::text, (floor(random() * 10))::int::text, 'corrente', 'cpf', q.cpf
     from _eq e join public.equipe q on q.id = e.id where e.papel <> 'professor_fic' or random() < 2;

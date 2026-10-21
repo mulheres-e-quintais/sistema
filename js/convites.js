@@ -59,7 +59,8 @@
     if (pf.outra_bolsa === true) p.push('já recebe outra bolsa');
     const t = p.join(' · '); return t ? t.charAt(0).toUpperCase() + t.slice(1) : null;
   }
-  function camposPessoais(d, pub, papel, munis) {   // munis: municípios do projeto no estado (lista de sugestões)
+  /* socio: o questionário socioeconômico aparece (70: só a própria pessoa e a coordenação geral veem as respostas) */
+  function camposPessoais(d, pub, papel, munis, socio) {   // munis: municípios do projeto no estado (lista de sugestões)
     const campo = R.ehCampo(papel);
     d = d || {}; const en = d.endereco || {}; const se = d.socioeconomico || null; const v = x => E(x == null ? '' : x);
     const op = (lista, sel) => '<option value="">Selecione…</option>' + lista.map(x => `<option ${x === sel ? 'selected' : ''}>${E(x)}</option>`).join('');
@@ -89,26 +90,27 @@
           ${munis && munis.length ? `<datalist id="lista-mun">${munis.map(x => `<option value="${E(x)}">`).join('')}</datalist><span class="dica">A lista traz os municípios do projeto no estado.</span>` : ''}</div>
         <div class="campo" data-arlo-opc ${arlo ? 'hidden' : ''}><label for="dp-uf">Estado</label><select id="dp-uf" name="uf_end">${op(['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE', 'Outro'], en.uf)}</select></div>
       </div></fieldset>
-      <fieldset data-arlo-opc ${arlo ? 'hidden' : ''}><legend>Questionário socioeconômico (opcional)</legend>
-        <label class="check"><input type="checkbox" name="tem_socio" ${se ? 'checked' : ''} data-socio> <span>Responder. As respostas servem só para o perfil da equipe nos relatórios, que mostram os números sem nome. Quem vê as respostas com o nome: a coordenação do projeto e o auxiliar administrativo.</span></label>
+      ${pub || socio ? `<fieldset data-arlo-opc ${arlo ? 'hidden' : ''}><legend>Questionário socioeconômico (opcional)</legend><input type="hidden" name="_socio" value="1">
+        <label class="check"><input type="checkbox" name="tem_socio" ${se ? 'checked' : ''} data-socio> <span>Responder. As respostas servem só para o perfil da equipe, em números, sem nome. ${pub ? 'Quem vê as respostas com o seu nome: só você e a coordenação geral do projeto.' : 'Quem vê as respostas com o nome: só a própria pessoa e a coordenação geral do projeto.'}</span></label>
         <div class="campos" data-socio-campos ${se ? '' : 'hidden'}>
           <div class="campo"><label for="dp-esc">Escolaridade</label><select id="dp-esc" name="escolaridade">${op(ESCOLARIDADE, se && se.escolaridade)}</select></div>
           <div class="campo"><label for="dp-raca">Raça/cor</label><select id="dp-raca" name="raca_etnia">${op(RACA, se && se.raca_etnia)}</select></div>
           <div class="campo"><label for="dp-renda">Renda familiar por mês (R$)</label><input id="dp-renda" name="renda_familiar" type="number" min="0" inputmode="numeric" value="${v(se && se.renda_familiar)}"></div>
           <div class="campo"><label for="dp-pess">Pessoas na casa</label><input id="dp-pess" name="pessoas_casa" type="number" min="1" max="30" inputmode="numeric" value="${v(se && se.pessoas_casa)}"></div>
-        </div></fieldset>`;
+        </div></fieldset>` : `<p class="small muted" data-arlo-opc ${arlo ? 'hidden' : ''} data-socio-restrito>Questionário socioeconômico: as respostas só a própria pessoa e a coordenação geral veem. A pessoa responde no link de cadastro.</p>`}`;
   }
   function lerPessoais(fd) {
     const t = k => String(fd.get(k) || '').trim();
     const endereco = { cep: R.soDigitos(t('cep')), logradouro: t('logradouro'), numero: t('numero'), complemento: t('complemento'), bairro: t('bairro'), cidade: t('cidade'), uf: t('uf_end') };
     Object.keys(endereco).forEach(k => { if (!endereco[k]) delete endereco[k]; });
-    const socio = fd.get('tem_socio') ? { escolaridade: t('escolaridade') || null, raca_etnia: t('raca_etnia') || null,
+    // 70: sem o questionário na tela (quem não vê as respostas), nada muda nelas (undefined = não mexe)
+    const socio = !fd.get('_socio') ? undefined : fd.get('tem_socio') ? { escolaridade: t('escolaridade') || null, raca_etnia: t('raca_etnia') || null,
       renda_familiar: t('renda_familiar') === '' ? null : +t('renda_familiar'), pessoas_casa: t('pessoas_casa') === '' ? null : +t('pessoas_casa') } : null;
     const arlo = fd.get('cadastro_arlo') === 'sim';
     if (arlo) {   // no Arlo: endereço e conta ficam lá. Quem vai a campo informa só o município (cálculo da ajuda de custo)
       ['cep', 'logradouro', 'numero', 'complemento', 'bairro', 'uf'].forEach(k => delete endereco[k]);
       if (!fd.get('_campo')) delete endereco.cidade;
-      return { cadastro_arlo: true, _arlo_resp: fd.get('cadastro_arlo'), nome_social: t('nome_social') || null, data_nascimento: null, nis: null, endereco, socioeconomico: null, perfil: lerPerfil(fd) };
+      return { cadastro_arlo: true, _arlo_resp: fd.get('cadastro_arlo'), nome_social: t('nome_social') || null, data_nascimento: null, nis: null, endereco, socioeconomico: socio === undefined ? undefined : null, perfil: lerPerfil(fd) };
     }
     return { cadastro_arlo: false, _arlo_resp: fd.get('cadastro_arlo'), nome_social: t('nome_social') || null, data_nascimento: t('data_nascimento') || null, nis: R.soDigitos(t('nis')) || null, endereco, socioeconomico: socio, perfil: lerPerfil(fd) };
   }
@@ -208,7 +210,7 @@
     const x = (S().pre || []).find(y => y.id === p.id); if (!x) return '<div class="painel-corpo"><p>Pré-cadastro não encontrado.</p></div>';
     const dl = [['Nome', x.nome], ['CPF', R.fmtCPF(x.cpf)], ['E-mail', x.email], ['Celular', x.telefone], ['Município', x.municipio], ['Organização', x.organizacao],
       ['Cadastro no Arlo', x.cadastro_arlo ? 'Sim: dados completos e conta no Arlo' : 'Não'], ['Matrícula SIAPE', x.siape], ['Nome social', x.nome_social], ['Nascimento', x.data_nascimento && R.fmtData(x.data_nascimento)], ['PIS/NIS', x.nis],
-      ['Endereço', textoEndereco(x.endereco)], ['Socioeconômico', x.socioeconomico ? 'Respondido' : 'Não respondeu'], temPerfil(x.papel) ? ['Perfil no campo', resumoPerfil(x.perfil) || 'Não respondeu'] : null,
+      ['Endereço', textoEndereco(x.endereco)], ['Socioeconômico', x.socioeconomico || x.socio_respondido ? 'Respondido' + (x.socioeconomico ? '' : ' (só a própria pessoa e a coordenação geral veem as respostas)') : 'Não respondeu'], temPerfil(x.papel) ? ['Perfil no campo', resumoPerfil(x.perfil) || 'Não respondeu'] : null,
       ['Termo de dados (LGPD)', 'Aceito por ela no envio'], ['Enviado em', new Date(x.enviado_em).toLocaleString('pt-BR')]].filter(l => l && l[1]);
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">Cadastro enviado pelo link</span><h2 id="painel-t">${E(x.nome)}</h2>
         <span class="small muted">${E(funcao(x.papel, x.uf))}</span></div><button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>

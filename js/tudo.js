@@ -1441,6 +1441,16 @@ MQ.ORCAMENTO = {
   function gravar() { try { if (SIM()) localStorage.setItem(CHAVE_SIM, mem.perfil); else localStorage.setItem(CHAVE, JSON.stringify(mem)); } catch (e) { /* segue só em memória */ } }
   const copia = o => JSON.parse(JSON.stringify(o));
   const falha = msg => { const e = new Error(msg); e.regra = true; return e; };
+  /* 69 (a0b_saida_pagamentos): a data de saída não fica antes de bolsa já aprovada (com aval ou lançada no Arlo) */
+  const saidaChecaBolsas = (d, id, dataFim) => {
+    const ref = String(dataFim).slice(0, 7);
+    const l = (d.solicitacoes || []).filter(x => x.tipo === 'bolsa' && x.equipe_id === id && ['avalizada', 'lancada'].includes(x.situacao) && String(x.mes).slice(0, 7) > ref)
+      .sort((a, b) => String(a.mes).localeCompare(String(b.mes)));
+    if (!l.length) return;
+    const mm = x => String(x.mes).slice(5, 7) + '/' + String(x.mes).slice(0, 4);
+    throw falha('A data de saída (' + R.fmtData(dataFim) + ') fica antes de bolsa já aprovada: ' + l.map(x => mm(x) + (x.situacao === 'lancada' ? ' (já lançada no Arlo)' : ' (com aval)')).join(', ')
+      + '. Use uma data de saída a partir de 01/' + mm(l[0]) + '. Se essa bolsa não era devida, a coordenação geral cancela o aval antes (Pagamentos > abrir o pedido); bolsa já lançada no Arlo não se cancela pelo sistema.');
+  };
 
   // 38: quem estava matriculado na turma na data do encontro; mês com a bolsa do professor pedida (ou com aval) fica fechado
   const matriculadosEm = (d, turma, data) => (d.matriculas || []).filter(m => m.turma_id === turma && String(m.matriculado_em || '').slice(0, 10) <= data
@@ -1832,6 +1842,43 @@ MQ.ORCAMENTO = {
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'pedidos_apoio', registro_id: p.id, acao: 'UPDATE', por: eu.id, em: agora, antes: null, depois: aud });
       gravar();
     },
+    /* 69 (cancelar_pedido_autorizado, ajustar_valor_pedido): pedido já autorizado, só a coordenação geral, sempre com motivo */
+    async cancelarPedidoAutorizado(id, motivo) {
+      const d = ler(); const eu = euMesmo(); const p = (d.pedidos || []).find(x => x.id === id); const mot = String(motivo || '').trim();
+      if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral cancela um pedido já autorizado.');
+      if (mot.length < 5) throw falha('Escreva o motivo do cancelamento.');
+      if (mot.length > 1000) throw falha('Texto muito longo em motivo do cancelamento (máximo 1.000 caracteres).');
+      if (!p) throw falha('Pedido não encontrado.');
+      if (p.situacao !== 'autorizado') throw falha('Só pedido autorizado é cancelado por aqui. Antes disso, use Devolver ou Recusar.');
+      const agora = new Date().toISOString();
+      Object.assign(p, { situacao: 'cancelado', decidido_por: eu.id, decidido_em: agora, obs: ((p.obs ? String(p.obs).trim() + ' · ' : '') + 'Cancelado depois de autorizado (' + R.fmtData(R.hoje()) + '): ' + mot).slice(0, 4000) });
+      const aud = Object.assign({}, p); delete aud.dados;
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'pedidos_apoio', registro_id: p.id, acao: 'UPDATE', por: eu.id, em: agora, antes: null, depois: aud });
+      gravar();
+    },
+    async ajustarValorPedido(id, valor, motivo) {
+      const d = ler(); const eu = euMesmo(); const p = (d.pedidos || []).find(x => x.id === id); const mot = String(motivo || '').trim();
+      if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral ajusta o valor de um pedido autorizado.');
+      const v = Math.round(+valor * 100) / 100;
+      if (!(v >= 0.01)) throw falha('Informe um valor maior que zero (pelo menos R$ 0,01).');
+      if (!(+valor <= 1000000)) throw falha('Valor acima do esperado (' + R.fmtBRL(+valor) + '; o máximo é R$ 1.000.000,00). Confira.');
+      if (mot.length < 5) throw falha('Escreva o motivo do ajuste (por exemplo, o valor da nota fiscal).');
+      if (mot.length > 1000) throw falha('Texto muito longo em motivo do ajuste (máximo 1.000 caracteres).');
+      if (!p) throw falha('Pedido não encontrado.');
+      if (p.situacao !== 'autorizado') throw falha('Só pedido autorizado tem o valor ajustado por aqui. Antes de autorizar, use o campo de valor da conferência.');
+      if (v === +p.valor_autorizado) throw falha('O valor é o mesmo que já está autorizado.');
+      const pedag = ehPedagogico(p);
+      const outros = p.tipo === 'evento' ? (d.pedidos || []).filter(y => y.id !== p.id && y.situacao === 'autorizado' && y.tipo === 'evento' && y.uf === p.uf).reduce((t, y) => t + (+y.valor_autorizado || 0), 0)
+        : usadoPassagem(d, pedag, p.id);
+      const teto = p.tipo === 'evento' ? MQ.TETOS.evento : MQ.tetoPassagem(pedag ? 'pedagogico' : 'intercambio');
+      if (outros + v > teto) throw falha((p.tipo === 'evento' ? 'Passa do teto de eventos de ' + p.uf + ' (R$ 6.000,00)' : pedag ? 'Passa do teto de passagens de acompanhamento pedagógico (R$ 22.400,00)' : 'Passa do teto de passagens de intercâmbio (R$ 70.000,00)') + ': já autorizado ' + R.fmtBRL(outros) + ', saldo ' + R.fmtBRL(teto - outros) + '.');
+      const agora = new Date().toISOString();
+      p.obs = ((p.obs ? String(p.obs).trim() + ' · ' : '') + 'Valor ajustado de ' + R.fmtBRL(+p.valor_autorizado) + ' para ' + R.fmtBRL(v) + ' (' + R.fmtData(R.hoje()) + '): ' + mot).slice(0, 4000);
+      p.valor_autorizado = v;
+      const aud = Object.assign({}, p); delete aud.dados;
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'pedidos_apoio', registro_id: p.id, acao: 'UPDATE', por: eu.id, em: agora, antes: null, depois: aud });
+      gravar();
+    },
 
     /* ---------- Solicitação de pagamento (mesmas regras do 12_pagamentos.sql) ---------- */
     async listarSolicitacoes() {
@@ -1856,8 +1903,8 @@ MQ.ORCAMENTO = {
       //     A bolsa continua uma por mês por pessoa.
       const doMes = d.solicitacoes.filter(x => x.tipo === tipo && x.equipe_id === eu.id && x.mes === m);
       const s = tipo === 'ajuda_custo' ? doMes.filter(x => x.situacao === 'devolvida').sort((a, b) => String(b.aval_em || '').localeCompare(String(a.aval_em || '')))[0] : doMes[0];
-      if (tipo === 'bolsa' && s && s.situacao !== 'devolvida') throw falha('Você já solicitou este mês. Acompanhe a situação na lista.');
-      const complementar = tipo === 'ajuda_custo' && (s ? !!(s.detalhe || {}).complementar : doMes.some(x => x.situacao !== 'devolvida'));
+      if (tipo === 'bolsa' && s && !['devolvida', 'cancelada'].includes(s.situacao)) throw falha('Você já solicitou este mês. Acompanhe a situação na lista.');   // 69: a cancelada volta
+      const complementar = tipo === 'ajuda_custo' && (s ? !!(s.detalhe || {}).complementar : doMes.some(x => !['devolvida', 'cancelada'].includes(x.situacao)));
       if (tipo === 'ajuda_custo') {
         if (!(visitas || []).length) throw falha('Marque as visitas feitas no mês.');
         if (new Set(visitas).size !== visitas.length) throw falha('A mesma visita apareceu duas vezes no pedido. Marque cada visita uma vez só.');
@@ -1887,7 +1934,7 @@ MQ.ORCAMENTO = {
             presencas: (d.ficPresencas || []).filter(p => p.encontro_id === e.id && (p.presente || matriculadosEm(d, e.turma_id, e.data).includes(p.equipe_id))).map(p => Object.assign(nomeP(p.equipe_id), { presente: p.presente, confirmado_em: p.confirmado_em })).sort((a, b) => String(a.nome).localeCompare(String(b.nome))) })) });
       }
       if (!alvo) { alvo = { id: uid(), tipo, equipe_id: eu.id, mes: m }; d.solicitacoes.push(alvo); }
-      Object.assign(alvo, { situacao: 'solicitada', valor_solicitado: valor, valor_avalizado: null, relatorio: relatorio || null, detalhe: detalhe || {}, solicitada_em: agora, aval_por: null, aval_em: null });
+      Object.assign(alvo, { situacao: 'solicitada', valor_solicitado: valor, valor_avalizado: null, relatorio: relatorio || null, detalhe: detalhe || {}, solicitada_em: agora, aval_por: null, aval_em: null, cancelado_por: null, cancelado_em: null, motivo_cancelamento: null });
       Object.keys(d.solic_visitas).forEach(k => { if (d.solic_visitas[k] === alvo.id) delete d.solic_visitas[k]; });
       (visitas || []).forEach(id => { d.solic_visitas[id] = alvo.id; });
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: alvo.id, acao: s ? 'UPDATE' : 'INSERT', por: eu.id, em: agora, antes: null, depois: copia(alvo) });
@@ -1899,7 +1946,7 @@ MQ.ORCAMENTO = {
       const p = (d.equipe || []).find(x => x.id === s.equipe_id) || {};
       if (p.status === 'desligada' && p.data_fim && String(s.mes).slice(0, 7) > String(p.data_fim).slice(0, 7)) {
         const mm = String(s.mes).slice(5, 7) + '/' + String(s.mes).slice(0, 4), df = String(p.data_fim).slice(8, 10) + '/' + String(p.data_fim).slice(5, 7) + '/' + String(p.data_fim).slice(0, 4);
-        throw falha('Bolsa de ' + mm + ' não pode ser paga: ' + (p.nome || 'a pessoa') + ' foi desligada em ' + df + '. Devolva este pedido.');
+        throw falha('Bolsa de ' + mm + ' não pode ser paga: ' + (p.nome || 'a pessoa') + ' foi desligada em ' + df + '. Cancele este pedido, com o motivo.');
       }
     },
     async avalizarPagamento(id, ok, obs, valor) {
@@ -1940,6 +1987,27 @@ MQ.ORCAMENTO = {
       this._bolsaDepoisDaSaida(d, s);
       const agora = new Date().toISOString(); const antesS = copia(s);
       Object.assign(s, { situacao: 'lancada', arlo_por: eu.id, arlo_em: agora, arlo_protocolo: protocolo || null });
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: s.id, acao: 'UPDATE', por: eu.id, em: agora, antes: antesS, depois: copia(s) });
+      gravar();
+    },
+    /* 69 (cancelar_pagamento): a própria pessoa cancela sem aval; a técnica, nos pedidos em que dá o aval, sem aval e com motivo;
+       a coordenação geral também com aval (não lançado), com motivo. Lançado no Arlo não se cancela. */
+    async cancelarPagamento(id, motivo) {
+      const d = ler(); const eu = euMesmo(); const s = (d.solicitacoes || []).find(x => x.id === id); const mot = String(motivo || '').trim();
+      if (!eu) throw falha('Entre no sistema com um cadastro ativo para cancelar.');
+      if (mot.length > 2000) throw falha('Texto muito longo em motivo do cancelamento (máximo 2.000 caracteres).');
+      if (!s) throw falha('Solicitação não encontrada.');
+      if (s.situacao === 'cancelada') throw falha('Esta solicitação já foi cancelada.');
+      if (s.situacao === 'lancada') throw falha('Esta solicitação já foi lançada no Arlo: não dá para cancelar pelo sistema. Se o pagamento não era devido, a coordenação geral trata com a FUNCERN.');
+      const pe = d.equipe.find(x => x.id === s.equipe_id) || {};
+      const quem = s.tipo === 'bolsa' && ['coord_tecnico', 'professor_fic', 'auxiliar_adm'].includes(pe.papel) ? 'coord_geral' : 'coord_tecnico';
+      const semAval = ['solicitada', 'devolvida'].includes(s.situacao);
+      if (s.equipe_id === eu.id || (eu.papel === 'coord_tecnico' && quem === 'coord_tecnico')) { if (!semAval) throw falha('Este pedido já tem o aval: agora só a coordenação geral cancela.'); }
+      else if (eu.papel !== 'coord_geral') throw falha('Quem cancela este pedido é a própria pessoa ou a coordenação.');
+      if (s.equipe_id !== eu.id && mot.length < 5) throw falha('Escreva o motivo do cancelamento (a pessoa vê o motivo).');
+      const agora = new Date().toISOString(); const antesS = copia(s);
+      Object.assign(s, { situacao: 'cancelada', cancelado_por: eu.id, cancelado_em: agora, motivo_cancelamento: mot || 'Cancelado por quem pediu.' });
+      Object.keys(d.solic_visitas || {}).forEach(k => { if (d.solic_visitas[k] === s.id) delete d.solic_visitas[k]; });   // as visitas ficam livres
       d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'solicitacoes_pagamento', registro_id: s.id, acao: 'UPDATE', por: eu.id, em: agora, antes: antesS, depois: copia(s) });
       gravar();
     },
@@ -2249,6 +2317,13 @@ MQ.ORCAMENTO = {
         delete erros.papel;
         if (Object.keys(erros).length) { const e = falha(Object.values(erros)[0]); e.campos = erros; throw e; }
       }
+      if (depois.status === 'desligada' && depois.data_fim && (antes.status !== depois.status || antes.data_fim !== depois.data_fim)) {
+        saidaChecaBolsas(d, id, depois.data_fim);   // 69: a data de saída não fica antes de bolsa já aprovada
+        const ref = String(depois.data_fim).slice(0, 7), agora = new Date().toISOString();   // bolsa sem aval de mês depois da saída: cancelada pelo sistema
+        (d.solicitacoes || []).filter(x => x.tipo === 'bolsa' && x.equipe_id === id && ['solicitada', 'devolvida'].includes(x.situacao) && String(x.mes).slice(0, 7) > ref).forEach(x => {
+          Object.assign(x, { situacao: 'cancelada', cancelado_por: eu ? eu.id : null, cancelado_em: agora, motivo_cancelamento: 'Cancelado pelo sistema: bolsa de mês depois da saída do projeto (' + R.fmtData(depois.data_fim) + ').' });
+          Object.keys(d.solic_visitas || {}).forEach(k => { if (d.solic_visitas[k] === x.id) delete d.solic_visitas[k]; }); });
+      }
       d.equipe[i] = depois; auditar('UPDATE', antes, depois); gravar();
       return copia(depois);
     },
@@ -2545,12 +2620,17 @@ MQ.ORCAMENTO = {
     },
     async lerPrivado(id) {
       const d = ler(); const eu = euMesmo(); if (!eu || !(eu.id === id || /^coord|auxiliar_adm/.test(eu.papel))) return null;
-      return copia((d.privado || {})[id] || null);
+      const r = copia((d.privado || {})[id] || null);
+      if (r && !(eu.id === id || eu.papel === 'coord_geral')) r.socioeconomico = null;   // 70: o questionário, só a própria pessoa e a coordenação geral
+      return r;
     },
     async salvarPrivado(id, dados) {
       const d = ler(); const eu = euMesmo(); const m = d.equipe.find(x => x.id === id);
       if (!eu || !m || !(eu.id === id || R.podeCadastrar(eu.papel, m.papel))) throw falha('Seu perfil não pode alterar estes dados.');
-      d.privado = d.privado || {}; d.privado[id] = Object.assign({ equipe_id: id }, d.privado[id] || {}, copia(dados)); gravar();
+      const novo = copia(dados);
+      // 70: quem não vê o questionário não mexe nele (undefined = a tela não mostrou)
+      if (novo.socioeconomico === undefined || !(eu.id === id || eu.papel === 'coord_geral')) delete novo.socioeconomico;
+      d.privado = d.privado || {}; d.privado[id] = Object.assign({ equipe_id: id }, d.privado[id] || {}, novo); gravar();
     },
     async meusDadosBancarios() { const eu = euMesmo(); return eu ? copia((bancoMem[eu.id]) || null) : null; },
     async salvarMeusDadosBancarios(dd) { const eu = euMesmo(); if (!eu) throw falha('Entre no sistema.'); bancoMem[eu.id] = Object.assign({}, dd, { atualizado_em: new Date().toISOString() }); },
@@ -2573,7 +2653,9 @@ MQ.ORCAMENTO = {
     },
     async listarPreCadastros() {
       const eu = euMesmo(); if (!eu) return [];
-      return copia((ler().pre_cadastros || []).filter(x => x.situacao === 'aguardando' && R.podeCadastrar(eu.papel, x.papel)));
+      // 70: as respostas do questionário ficam só com a coordenação geral (quem confere vê só que foi respondido)
+      return copia((ler().pre_cadastros || []).filter(x => x.situacao === 'aguardando' && R.podeCadastrar(eu.papel, x.papel)))
+        .map(x => Object.assign(x, { socio_respondido: !!x.socioeconomico }, eu.papel === 'coord_geral' ? {} : { socioeconomico: null }));
     },
     /* 47 (aprovar_pre_cadastro): pessoa na equipe + dados pessoais + cadastro enviado aprovado, tudo ou nada */
     async aprovarPreCadastro(pre, m, priv) {
@@ -2584,6 +2666,7 @@ MQ.ORCAMENTO = {
       try {
         const novo = await this.criar(m);
         if (priv) await this.salvarPrivado(novo.id, priv);
+        if (x.socioeconomico) { const dd = ler(); dd.privado = dd.privado || {}; dd.privado[novo.id] = Object.assign({ equipe_id: novo.id }, dd.privado[novo.id] || {}, { socioeconomico: copia(x.socioeconomico) }); gravar(); }   // 70: o banco copia as respostas do link
         await this.decidirPreCadastro(pre, 'aprovado', null, novo.id);
         return novo;
       } catch (e) { mem = JSON.parse(antes); gravar(); throw e; }   // falhou no meio: nada fica gravado
@@ -2681,7 +2764,9 @@ MQ.ORCAMENTO = {
     async desligar(id, data_fim, motivo, semPedido) {
       const d = ler(); const m = d.equipe.find(x => x.id === id);
       { // 57: com pagamento a pedir não se desliga; só a coordenação geral desliga assim mesmo, justificando (fica no histórico)
-        const pe = m ? R.pendenciasPagamento(id, d.visitas, d.solic_visitas, d.solicitacoes) : { total: 0 };
+        if (m && data_fim) saidaChecaBolsas(d, id, data_fim);   // 69
+        const cancelaSaida = x => data_fim && x.tipo === 'bolsa' && x.equipe_id === id && ['solicitada', 'devolvida'].includes(x.situacao) && String(x.mes).slice(0, 7) > String(data_fim).slice(0, 7);
+        const pe = m ? R.pendenciasPagamento(id, d.visitas, d.solic_visitas, (d.solicitacoes || []).filter(x => !cancelaSaida(x))) : { total: 0 };
         var registroPend = null;   // grava no histórico só DEPOIS de desligar (antes ficava registro de desligamento recusado)
         if (semPedido != null) {   // 59: "desligar assim mesmo" só da geral, só com pendência, nunca a coordenação geral
           const eu = euMesmo();
@@ -2768,6 +2853,8 @@ MQ.ORCAMENTO = {
     }
     return { data: tudo, error: null };
   }
+  // 70: servidor ainda sem a tabela do questionário socioeconômico (equipe_socio)
+  const semTabelaSocio = e => !!e && (e.code === 'PGRST205' || e.code === '42P01' || /Could not find the table|relation .*equipe_socio.* does not exist/i.test(String(e.message || '')));
   const erro = e => {
     // mensagens do banco já instalado ainda dizem "professor do FIC": o nome certo é "professor do curso FIC" (12/10/2026)
     const x = new Error(String(R.mensagemErro(e)).replace(/([Pp]rofessor(?:es|a)?) do FIC/g, '$1 do curso FIC')); x.original = e;
@@ -3115,13 +3202,25 @@ MQ.ORCAMENTO = {
     },
     async lerPrivado(id) {
       const { data, error } = await sb.from('equipe_privado').select('*').eq('equipe_id', id).maybeSingle();
-      if (error) throw erro(error); return data;
+      if (error) throw erro(error);
+      // 70: o questionário socioeconômico fica à parte; só a própria pessoa e a coordenação geral recebem (para as outras volta vazio)
+      const r = await sb.from('equipe_socio').select('socioeconomico').eq('equipe_id', id).maybeSingle();
+      if (r.error) { if (!semTabelaSocio(r.error)) throw erro(r.error); return data; }
+      if (!data && !r.data) return null;
+      return Object.assign({ equipe_id: id }, data || {}, { socioeconomico: r.data ? r.data.socioeconomico : null });
     },
     async salvarPrivado(id, d) {
-      const reg = { equipe_id: id, data_nascimento: d.data_nascimento || null, nis: d.nis || null, endereco: d.endereco || {}, socioeconomico: d.socioeconomico || null, atualizado_em: new Date().toISOString() };
+      const reg = { equipe_id: id, data_nascimento: d.data_nascimento || null, nis: d.nis || null, endereco: d.endereco || {}, atualizado_em: new Date().toISOString() };
       if ('perfil' in d) reg.perfil = d.perfil || null;   // 19_entregas_do_mes.sql
       const { error } = await sb.from('equipe_privado').upsert(reg, { onConflict: 'equipe_id' });
       if (error) throw erro(/equipe_privado|PGRST205/.test(error.message) ? 'Os dados pessoais complementares ainda não foram instalados no servidor: rode o arquivo 08_convites.sql no Supabase.' : error);
+      if (d.socioeconomico === undefined) return;   // 70: a tela não mostrou o questionário (quem não vê as respostas): não mexe
+      const r = d.socioeconomico ? await sb.from('equipe_socio').upsert({ equipe_id: id, socioeconomico: d.socioeconomico, atualizado_em: new Date().toISOString() }, { onConflict: 'equipe_id' })
+        : await sb.from('equipe_socio').delete().eq('equipe_id', id);
+      if (!r.error) return;
+      if (!semTabelaSocio(r.error)) throw erro(r.error);
+      const v = await sb.from('equipe_privado').update({ socioeconomico: d.socioeconomico || null }).eq('equipe_id', id);   // servidor ainda sem o 70
+      if (v.error) throw erro(v.error);
     },
     /* ---------- Dados bancários (só por funções do banco; nunca entram no cache do aparelho) ---------- */
     async meusDadosBancarios() { const { data, error } = await sb.rpc('meus_dados_bancarios'); if (error) throw erro(error); return data; },
@@ -3289,6 +3388,11 @@ MQ.ORCAMENTO = {
     },
     async avalizarPagamento(id, ok, obs, valor) { const { error } = await sb.rpc('avalizar_pagamento', { p_id: id, p_ok: ok, p_obs: obs || null, p_valor: valor }); if (error) throw erro(error); },
     async registrarNoArlo(id, protocolo) { const { error } = await sb.rpc('registrar_no_arlo', { p_id: id, p_protocolo: protocolo || null }); if (error) throw erro(error); },
+    /* 69: cancelar o pedido (a própria pessoa sem aval; a coordenação com motivo) */
+    async cancelarPagamento(id, motivo) {
+      const { error } = await sb.rpc('cancelar_pagamento', { p_id: id, p_motivo: motivo || null });
+      if (error) throw erro(/cancelar_pagamento|PGRST202/.test(error.message) ? 'O cancelamento de pedidos ainda não foi instalado: a coordenação geral roda o arquivo 69_cancelamentos.sql no Supabase.' : error);
+    },
 
     /* ---------- Documentos do projeto (24_documentos.sql): só a coordenação geral ---------- */
     /* execução (37): planilha de gastos do mês; só a coordenação geral; sem update nem delete */
@@ -3404,6 +3508,15 @@ MQ.ORCAMENTO = {
     },
     async moverPedido(id, acao, obs, protocolo) {
       const { error } = await sb.rpc('mover_pedido_apoio', { p_id: id, p_acao: acao, p_obs: obs || null, p_protocolo: protocolo || null }); if (error) throw erro(error);
+    },
+    /* 69: pedido já autorizado: só a coordenação geral cancela ou ajusta o valor, com motivo */
+    async cancelarPedidoAutorizado(id, motivo) {
+      const { error } = await sb.rpc('cancelar_pedido_autorizado', { p_id: id, p_motivo: motivo || null });
+      if (error) throw erro(/cancelar_pedido_autorizado|PGRST202/.test(error.message) ? 'O cancelamento de pedido autorizado ainda não foi instalado: rode o arquivo 69_cancelamentos.sql no Supabase.' : error);
+    },
+    async ajustarValorPedido(id, valor, motivo) {
+      const { error } = await sb.rpc('ajustar_valor_pedido', { p_id: id, p_valor: valor, p_motivo: motivo || null });
+      if (error) throw erro(/ajustar_valor_pedido|PGRST202/.test(error.message) ? 'O ajuste de valor de pedido autorizado ainda não foi instalado: rode o arquivo 69_cancelamentos.sql no Supabase.' : error);
     },
 
     /* ---------- Curso FIC: turmas e matrículas (11_fic.sql) ---------- */
@@ -7949,7 +8062,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const longo = n => `Texto muito longo (máximo ${n.toLocaleString('pt-BR')} caracteres).`;
 
   const TIPO = { ajuda_custo: 'Ajuda de custo', bolsa: 'Bolsa' };
-  const SIT = { solicitada: ['pend', 'Aguardando aval'], devolvida: ['crit', 'Devolvida para corrigir'], avalizada: ['ok', 'Com aval · falta lançar no Arlo'], lancada: ['ok', 'Lançada no Arlo'] };
+  const SIT = { solicitada: ['pend', 'Aguardando aval'], devolvida: ['crit', 'Devolvida para corrigir'], avalizada: ['ok', 'Com aval · falta lançar no Arlo'], lancada: ['ok', 'Lançada no Arlo'], cancelada: ['', 'Cancelada'] };
   const sit = s => SIT[s.situacao] || ['', E(s.situacao || '—')];   // situação nova no banco não derruba a tela
   const chip = s => `<span class="chip ${sit(s)[0]}">${sit(s)[1]}</span>`;
   const podeAjuda = papel => R.ehCampo(papel);
@@ -7967,6 +8080,15 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const soGeralLanca = () => lista().filter(s => s.situacao === 'avalizada' && s.equipe_id !== (S().eu || {}).id && (semAuxiliar() || pessoa(s.equipe_id).papel === 'auxiliar_adm'));
   const quemAvaliza = (tipo, papel) => tipo === 'bolsa' && ['coord_tecnico', 'professor_fic', 'auxiliar_adm'].includes(papel) ? 'coord_geral' : 'coord_tecnico';
   const lista = () => S().solic || [];
+  /* 69: quem cancela (mesmas regras do cancelar_pagamento): a própria pessoa sem aval; a técnica, sem aval, nos pedidos em que ela dá o aval;
+     a coordenação geral também com aval, antes do Arlo. Lançado no Arlo não se cancela. */
+  function podeCancelar(s) {
+    const eu = S().eu; if (!eu || !s) return false;
+    const semAval = ['solicitada', 'devolvida'].includes(s.situacao);
+    if (s.equipe_id === eu.id) return semAval;
+    if (eu.papel === 'coord_geral') return semAval || s.situacao === 'avalizada';
+    return eu.papel === 'coord_tecnico' && semAval && quemAvaliza(s.tipo, pessoa(s.equipe_id).papel) === 'coord_tecnico';
+  }
   const vinculadas = () => S().solicVis || {};
   const pessoa = id => U().porId(id) || {};
   const nomeDe = m => (m && (m.nome_social || m.nome)) || '—';
@@ -8005,6 +8127,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   function situacaoTxt(s) {
     return `${chip(s)}${s.situacao === 'devolvida' && s.obs_aval ? `<p class="small"><b>O que corrigir:</b> ${E(s.obs_aval)}</p>` : ''}
+      ${s.situacao === 'cancelada' ? `<p class="small"><b>Motivo do cancelamento:</b> ${E(s.motivo_cancelamento || '—')}</p>` : ''}
+      ${s.equipe_id === (S().eu || {}).id && podeCancelar(s) ? `<p class="small"><button type="button" class="link" data-acao="pag-ver" data-id="${E(s.id)}">Ver o pedido ou cancelar</button></p>` : ''}
       ${s.situacao === 'lancada' ? `<p class="small muted">Lançada no Arlo em ${new Date(s.arlo_em).toLocaleDateString('pt-BR')}${s.arlo_protocolo ? ' · protocolo ' + E(s.arlo_protocolo) : ''}.</p>` : ''}`;
   }
 
@@ -8026,7 +8150,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
 
   function cartaoAjuda(eu, m, pedidos, hab) {
-    pedidos = Array.isArray(pedidos) ? pedidos : pedidos ? [pedidos] : [];
+    pedidos = (Array.isArray(pedidos) ? pedidos : pedidos ? [pedidos] : []).filter(x => x.situacao !== 'cancelada');   // 69: o cancelado fica só no histórico
     const s = pedidos.filter(x => x.situacao === 'devolvida').sort((a, b) => String(b.aval_em || '').localeCompare(String(a.aval_em || '')))[0] || null;   // o devolvido volta para corrigir
     const outros = pedidos.filter(x => x !== s);
     const jaPedidos = outros.map(x => `<div class="pag-ja"><p class="num valor-destaque">${brl(x.valor_avalizado != null ? x.valor_avalizado : x.valor_solicitado)}</p>
@@ -8061,7 +8185,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const valor = P[eu.papel].bolsa;
     // 57: bolsa só nos 12 meses do plano (outubro de 2026 a setembro de 2027); pedido já feito continua aparecendo
     if (!s && !R.mesBolsaOk(m)) return `<div class="bloco pag-c"><h3>Bolsa · ${nomeMes(m)}</h3><p class="small muted">${E(R.MSG_MES_BOLSA.split(' Escolha')[0])}</p></div>`;
-    if (s && s.situacao !== 'devolvida') return `<div class="bloco pag-c"><h3>Bolsa · ${nomeMes(m)}</h3>
+    if (s && !['devolvida', 'cancelada'].includes(s.situacao)) return `<div class="bloco pag-c"><h3>Bolsa · ${nomeMes(m)}</h3>
       <p class="num valor-destaque">${valor ? brl(s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado) : 'Conforme o termo'}</p>${situacaoTxt(s)}</div>`;
     return `<form class="bloco pag-c" data-form="pag-bolsa" data-mes="${m}" novalidate><h3>Bolsa · ${nomeMes(m)}</h3>
       ${s ? situacaoTxt(s) : ''}
@@ -8069,7 +8193,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       ${eu.papel === 'professor_fic' && MQ.encUI && !S().encSemBanco ? MQ.encUI.blocoPedido(eu.id, m) : ''}
       <div class="campo"><label for="pb-rel-${m}">${eu.papel === 'professor_fic' ? 'Ações realizadas no mês' : 'Relatório de atividades do mês'}</label><textarea id="pb-rel-${m}" name="relatorio" rows="5" placeholder="${E(DICA_REL[eu.papel] || DICA_REL.bolsista)}">${E(s ? s.relatorio || '' : '')}</textarea></div>
       <div class="aviso erro" data-erro hidden></div>
-      <button class="btn pri" type="submit" ${hab ? '' : 'disabled'}>${s ? 'Corrigir e reenviar' : 'Solicitar bolsa de ' + nomeMes(m)}</button></form>`;
+      <button class="btn pri" type="submit" ${hab ? '' : 'disabled'}>${s && s.situacao === 'devolvida' ? 'Corrigir e reenviar' : s ? 'Pedir de novo a bolsa de ' + nomeMes(m) : 'Solicitar bolsa de ' + nomeMes(m)}</button></form>`;
   }
 
   function linha(s, comPessoa) {
@@ -8087,7 +8211,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const minhaVez = s => s.situacao === 'solicitada' && s.equipe_id !== eu.id && (quemAvaliza(s.tipo, pessoa(s.equipe_id).papel) === eu.papel || (U().semTecnica && U().semTecnica()));
     const aval = lista().filter(minhaVez);
     const outrasAval = lista().filter(s => s.situacao === 'solicitada' && !minhaVez(s));
-    const arlo = lista().filter(s => s.situacao === 'avalizada'), dev = lista().filter(s => s.situacao === 'devolvida'), lanc = lista().filter(s => s.situacao === 'lancada');
+    const arlo = lista().filter(s => s.situacao === 'avalizada'), dev = lista().filter(s => s.situacao === 'devolvida'), lanc = lista().filter(s => s.situacao === 'lancada'), canc = lista().filter(s => s.situacao === 'cancelada');
     const soma = l => l.reduce((t, s) => t + (+(s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado) || 0), 0);
     const bloco = (t, l, vazio, nivel) => `<section class="secao${MQ.sit(nivel ? l.length : 0, nivel)}"><div class="secao-cab"><h2>${t} <span class="conta-t${l.length ? '' : ' zero'}">${l.length}</span></h2>${l.length ? `<span class="muted">${brl(soma(l))}</span>` : ''}</div>
       ${l.length ? `<div class="pag-lista">${l.map(s => linha(s, true)).join('')}</div>` : `<p class="muted">${vazio}</p>`}</section>`;
@@ -8105,6 +8229,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       ${bloco(eu.papel === 'auxiliar_adm' ? 'Com aval, falta você lançar no Arlo' : 'Com aval, falta o auxiliar lançar no Arlo', souGeral ? arlo.filter(s => !soGeralLanca().includes(s)) : arlo, 'Nenhuma.')}
       ${dev.length ? bloco('Devolvidas para corrigir', dev, '', 'crit') : ''}
       <details class="hist"><summary>Lançadas no Arlo (${lanc.length})</summary><div class="pag-lista" style="padding:0 18px 16px">${lanc.map(s => linha(s, true)).join('') || '<p class="muted">Nenhuma ainda.</p>'}</div></details>
+      ${canc.length ? `<details class="hist" data-pag-canceladas><summary>Canceladas (${canc.length})</summary><div class="pag-lista" style="padding:0 18px 16px">${canc.map(s => linha(s, true)).join('')}</div></details>` : ''}
       ${eu.papel === 'coord_tecnico' ? secaoMinha() : ''}`;
   }
 
@@ -8154,6 +8279,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <dt>Enviada em</dt><dd>${new Date(s.solicitada_em).toLocaleString('pt-BR')}</dd>
           ${s.aval_em ? `<dt>${s.situacao === 'devolvida' ? 'Devolvida' : 'Aval'} em</dt><dd>${new Date(s.aval_em).toLocaleString('pt-BR')} por ${E(nomeDe(pessoa(s.aval_por)))}</dd>` : ''}
           ${s.obs_aval ? `<dt>Observação</dt><dd>${E(s.obs_aval)}</dd>` : ''}
+          ${s.situacao === 'cancelada' ? `<dt>Cancelada em</dt><dd>${s.cancelado_em ? new Date(s.cancelado_em).toLocaleString('pt-BR') : '—'}${s.cancelado_por ? ' por ' + E(nomeDe(pessoa(s.cancelado_por))) : ''}</dd><dt>Motivo</dt><dd>${E(s.motivo_cancelamento || '—')}</dd>` : ''}
           ${s.arlo_em ? `<dt>Lançada no Arlo</dt><dd>${new Date(s.arlo_em).toLocaleDateString('pt-BR')} por ${E(nomeDe(pessoa(s.arlo_por)))}${s.arlo_protocolo ? ' · protocolo ' + E(s.arlo_protocolo) : ''}</dd>` : ''}</dl></div>
         ${pe.papel === 'professor_fic' && s.tipo === 'bolsa' && MQ.encUI && (s.detalhe || {}).fic_encontros ? `<div class="bloco enc-rel-painel">${MQ.encUI.relatorioHTML(s)}
             <div class="acoes"><button type="button" class="btn" data-acao="enc-imprimir" data-id="${E(s.id)}">Imprimir</button></div></div>`
@@ -8164,14 +8290,28 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <div class="campos"><div class="campo"><label for="pa-val">Valor com aval (R$)</label><input id="pa-val" name="valor" inputmode="decimal" value="${val != null ? String((conf != null ? conf : val).toFixed(2)).replace('.', ',') : ''}"></div>
           <div class="campo inteiro"><label for="pa-obs">Observação (obrigatória para devolver)</label><textarea id="pa-obs" name="obs" placeholder="Ex.: falta a foto da implantação de 12/10; conferir o km de Pio IX."></textarea></div></div>
           <div class="aviso erro" data-erro hidden></div>
-          ${pe.status === 'desligada' ? `<div class="aviso">${E(nomeDe(pe))} foi desligada${pe.data_fim ? ' em ' + R.fmtData(pe.data_fim) : ''} e não entra mais no sistema: devolver não adianta, porque ninguém corrigiria o pedido. Se o valor é devido, dê o aval. Se não é, fale com a coordenação geral.</div>` : ''}
+          ${pe.status === 'desligada' ? `<div class="aviso">${E(nomeDe(pe))} foi desligada${pe.data_fim ? ' em ' + R.fmtData(pe.data_fim) : ''} e não entra mais no sistema: devolver não adianta, porque ninguém corrigiria o pedido. Se o valor é devido, dê o aval. Se não é, cancele o pedido com o motivo (no fim deste painel).</div>` : ''}
           <div class="acoes"><button class="btn pri" type="submit" name="ok" value="1">Aprovar (dar aval)</button>${pe.status === 'desligada' ? '' : '<button class="btn perigo" type="submit" name="ok" value="0">Devolver para correção</button>'}</div></form>` : ''}
         ${podeArlo ? `${MQ.bancoUI ? MQ.bancoUI.blocoContaArlo(pe) : ''}<form class="bloco" data-form="pag-arlo" data-id="${E(s.id)}" novalidate><h3>Lançar no Arlo</h3>
           <p class="small muted">Lance <b>${brl(val)}</b> no Arlo para ${E(nomeDe(pe))} (${TIPO[s.tipo].toLowerCase()} de ${nomeMes(s.mes)}) e registre aqui.</p>
           <div class="campo"><label for="pr-prot">Número do protocolo no Arlo <span class="muted">(se houver)</span></label><input id="pr-prot" name="protocolo" autocomplete="off"></div>
           <div class="aviso erro" data-erro hidden></div>
           <div class="acoes"><button class="btn pri" type="submit">Registrar: lançado no Arlo</button></div></form>` : ''}
+        ${podeCancelar(s) ? formCancelar(s) : ''}
       </div>`;
+  }
+
+  /* 69: cancelar o pedido. Fica no fim do painel, fechado, para não ser confundido com o aval */
+  function formCancelar(s) {
+    const dono = s.equipe_id === S().eu.id;
+    const efeito = s.tipo === 'ajuda_custo' ? 'As visitas do pedido ficam livres para um pedido novo.' : 'A bolsa deste mês pode ser pedida de novo depois.';
+    return `<details class="bloco pag-cancelar" data-pag-cancelar><summary>Cancelar este pedido</summary>
+      <form data-form="pag-cancelar" data-id="${E(s.id)}" novalidate>
+        <p class="small muted">${s.situacao === 'avalizada' ? 'O pedido já tem o aval e ainda não foi lançado no Arlo. ' : ''}O pedido sai da fila e fica no histórico como cancelado, com o motivo. ${efeito}</p>
+        <div class="campo"><label for="pc-mot-${E(s.id)}">Motivo do cancelamento ${dono ? '<span class="muted">(opcional)</span>' : '<span class="muted">(obrigatório: a pessoa vê)</span>'}</label>
+          <textarea id="pc-mot-${E(s.id)}" name="motivo" maxlength="2000" placeholder="${dono ? 'Ex.: pedi no mês errado.' : 'Ex.: pedido em duplicidade; mês sem atividade comprovada.'}"></textarea></div>
+        <div class="aviso erro" data-erro hidden></div>
+        <div class="acoes"><button class="btn perigo" type="submit">Cancelar o pedido</button></div></form></details>`;
   }
 
   /* ---------- ações ---------- */
@@ -8228,6 +8368,16 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         // 18/10/2026 (2ª auditoria): sem auxiliar ativo, ou na bolsa do próprio auxiliar, quem lança no Arlo é a coordenação geral
         const quem = (() => { const x = lista().find(y => y.id === form.dataset.id); return x && (semAuxiliar() || pessoa(x.equipe_id).papel === 'auxiliar_adm') ? 'a coordenação geral' : 'o auxiliar'; })();
         await recarregar(); U().fecharPainel(); U().toast(ok ? `Aval registrado. A solicitação foi para ${quem} lançar no Arlo.` : 'Solicitação devolvida. A pessoa vê o motivo e pode corrigir.');
+      });
+    }
+    if (tipo === 'pag-cancelar') {
+      const s = lista().find(x => x.id === form.dataset.id) || {}; const mot = String(fd.get('motivo') || '').trim();
+      if (s.equipe_id !== S().eu.id && mot.length < 5) return U().mostrarErros(form, { motivo: 'Escreva o motivo do cancelamento (a pessoa vê o motivo).' });
+      if (mot.length > 2000) return U().mostrarErros(form, { motivo: longo(2000) });
+      await U().ocupado(form, async () => {
+        await S().api.cancelarPagamento(form.dataset.id, mot || null);
+        await recarregar(); U().fecharPainel();
+        U().toast(s.tipo === 'ajuda_custo' ? 'Pedido cancelado. As visitas ficaram livres para um pedido novo.' : 'Pedido cancelado. Fica no histórico, com o motivo.');
       });
     }
     if (tipo === 'pag-arlo') {
@@ -8593,7 +8743,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (mesmo) acoes.push(`<div class="aviso erro">Você conferiu este pedido, então não pode autorizá-lo: cada pedido passa por duas pessoas. Devolva para ${nomeConf()} conferir.</div>` + formMover(x, 'Devolver ou recusar', [['devolver', 'Devolver para correção', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória)'));
       else acoes.push(formMover(x, 'Autorizar e mandar para a FUNCERN', [['autorizar', 'Autorizar', 'pri'], ['devolver', 'Devolver para correção', 'perigo'], ['recusar', 'Recusar', 'perigo']], 'Observação (obrigatória para devolver ou recusar)', true, true));
     }
-    if (papel === 'coord_geral' && x.situacao === 'autorizado') acoes.push(formMover(x, 'Protocolo da FUNCERN', [['protocolo', 'Salvar protocolo', 'pri']], null, true));
+    if (papel === 'coord_geral' && x.situacao === 'autorizado') acoes.push(formMover(x, 'Protocolo da FUNCERN', [['protocolo', 'Salvar protocolo', 'pri']], null, true), formAutorizado(x));
     const ver = x.tipo === 'passagem' ? `<div class="bloco"><h3>Viagem</h3><dl class="dl">
         <dt>Para quê</dt><dd>${E(FINALIDADE[d.finalidade] || '—')}</dd><dt>Trecho</dt><dd>${E(d.origem || '—')} → ${E(d.destino || '—')}${d.volta_para ? ' · volta para ' + E(d.volta_para) : ''}</dd>
         <dt>Volta</dt><dd>${d.volta ? R.fmtData(d.volta) : '—'}</dd><dt>Voo ou horário</dt><dd>${E(d.sugestao || '—')}</dd><dt>Bagagem</dt><dd>${E(BAGAGEM[d.bagagem] || '—')}</dd></dl></div>
@@ -8621,6 +8771,20 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <div class="acoes">${botoes.map(([a, t, c]) => `<button class="btn ${c}" type="submit" name="acao" value="${a}">${t}</button>`).join('')}</div></form>`;
   }
 
+  /* 69: pedido já autorizado: só a coordenação geral ajusta o valor (conferido de novo contra o teto) ou cancela (o valor volta ao saldo).
+     Sempre com motivo, que fica na observação e no histórico. Fechado, para não ser clicado por engano. */
+  function formAutorizado(x) {
+    const vl = +x.valor_autorizado || '';
+    return `<details class="bloco pag-cancelar" data-viag-autorizado><summary>Ajustar o valor ou cancelar</summary>
+      <form data-form="viag-autorizado" data-id="${E(x.id)}" data-tipo="${E(x.tipo)}" data-uf="${E(x.uf)}" data-fin="${finDe(x)}" novalidate>
+        <p class="small muted">Use quando a FUNCERN comprou por outro valor ou quando ${x.tipo === 'passagem' ? 'a viagem' : 'o evento'} não vai acontecer. Cancelado, o valor volta ao saldo do teto. Avise a FUNCERN também.</p>
+        <div class="campo"><label for="va-valor-${E(x.id)}">Valor autorizado (R$)</label><input id="va-valor-${E(x.id)}" name="valor" inputmode="decimal" value="${E(vl ? String(vl).replace('.', ',') : '')}">
+          <span class="dica">${rotSaldo(x.tipo, x.uf, finDe(x))}</span></div>
+        <div class="campo"><label for="va-mot-${E(x.id)}">Motivo (obrigatório)</label><textarea id="va-mot-${E(x.id)}" name="motivo" maxlength="1000" placeholder="Ex.: valor da nota fiscal; evento adiado para 2027."></textarea></div>
+        <div class="aviso erro" data-erro hidden></div>
+        <div class="acoes"><button class="btn" type="submit" name="acao" value="ajustar">Salvar o valor novo</button><button class="btn perigo" type="submit" name="acao" value="cancelar">Cancelar o pedido</button></div></form></details>`;
+  }
+
   function painel(p) { return p.tipo === 'viag-nova' ? form(p) : painelVer(p); }
 
   /* ---------- ações ---------- */
@@ -8632,7 +8796,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       box.insertAdjacentHTML('beforeend', passBloco(n)); renumerar(box); const f = box.lastElementChild.querySelector('input'); if (f) f.focus(); }
     else if (a === 'viag-rem-pass') { const box = el.closest('[data-passageiros]'); el.closest('[data-pass]').remove(); renumerar(box); }
   }
-  document.addEventListener('click', ev => { const b = ev.target.closest && ev.target.closest('form[data-form=viag-mover] button[name=acao]'); if (b) b.form.dataset.acao = b.value; }, true);
+  document.addEventListener('click', ev => { const b = ev.target.closest && ev.target.closest('form[data-form=viag-mover] button[name=acao], form[data-form=viag-autorizado] button[name=acao]'); if (b) b.form.dataset.acao = b.value; }, true);
   // prazo ao escolher a data
   document.addEventListener('change', ev => {
     const t = ev.target; if (!t.matches || !t.matches('form[data-form=viag-salvar] [name=data_ref]')) return;
@@ -8725,6 +8889,25 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         await S().api.salvarPedido(form.dataset.id || null, t, titulo, data, d, just || null);
         await recarregar(); U().fecharPainel();
         U().toast((form.dataset.id ? 'Pedido reenviado' : 'Pedido enviado') + ' para ' + NOME_CONF[t === 'passagem' && d.finalidade === 'pedagogico' ? 'coord_geral' : conf()] + ' conferir.');
+      });
+    }
+    if (tipo === 'viag-autorizado') {
+      const acao = form.dataset.acao === 'cancelar' ? 'cancelar' : 'ajustar'; const mot = String(fd.get('motivo') || '').trim();
+      const x = lista().find(y => y.id === form.dataset.id) || {};
+      const valor = acao === 'ajustar' ? valorBR(fd.get('valor')) : null;
+      if (acao === 'ajustar') {
+        if (valor < 0) return U().mostrarErros(form, { valor: 'O valor não pode ser negativo.' });
+        if (!(valor > 0)) return U().mostrarErros(form, { valor: 'Informe o valor novo.' });
+        if (Math.round(valor * 100) === Math.round((+x.valor_autorizado || 0) * 100)) return U().mostrarErros(form, { valor: 'O valor é o mesmo que já está autorizado.' });
+        const sd = saldo(form.dataset.tipo, form.dataset.uf, form.dataset.id, form.dataset.fin);
+        if (valor > sd.livre) return U().mostrarErros(form, { valor: 'Passa do teto: o saldo, sem este pedido, é ' + brl(sd.livre) + '.' });
+      }
+      if (mot.length < 5) return U().mostrarErros(form, { motivo: acao === 'cancelar' ? 'Escreva o motivo do cancelamento.' : 'Escreva o motivo do ajuste (por exemplo, o valor da nota fiscal).' });
+      await U().ocupado(form, async () => {
+        if (acao === 'cancelar') await S().api.cancelarPedidoAutorizado(form.dataset.id, mot);
+        else await S().api.ajustarValorPedido(form.dataset.id, valor, mot);
+        await recarregar(); if (acao === 'cancelar') U().fecharPainel();
+        U().toast(acao === 'cancelar' ? 'Pedido cancelado. O valor voltou ao saldo do teto. Avise a FUNCERN.' : 'Valor ajustado para ' + brl(valor) + '.');
       });
     }
     if (tipo === 'viag-mover') {
@@ -10442,7 +10625,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (pf.outra_bolsa === true) p.push('já recebe outra bolsa');
     const t = p.join(' · '); return t ? t.charAt(0).toUpperCase() + t.slice(1) : null;
   }
-  function camposPessoais(d, pub, papel, munis) {   // munis: municípios do projeto no estado (lista de sugestões)
+  /* socio: o questionário socioeconômico aparece (70: só a própria pessoa e a coordenação geral veem as respostas) */
+  function camposPessoais(d, pub, papel, munis, socio) {   // munis: municípios do projeto no estado (lista de sugestões)
     const campo = R.ehCampo(papel);
     d = d || {}; const en = d.endereco || {}; const se = d.socioeconomico || null; const v = x => E(x == null ? '' : x);
     const op = (lista, sel) => '<option value="">Selecione…</option>' + lista.map(x => `<option ${x === sel ? 'selected' : ''}>${E(x)}</option>`).join('');
@@ -10472,26 +10656,27 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           ${munis && munis.length ? `<datalist id="lista-mun">${munis.map(x => `<option value="${E(x)}">`).join('')}</datalist><span class="dica">A lista traz os municípios do projeto no estado.</span>` : ''}</div>
         <div class="campo" data-arlo-opc ${arlo ? 'hidden' : ''}><label for="dp-uf">Estado</label><select id="dp-uf" name="uf_end">${op(['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE', 'Outro'], en.uf)}</select></div>
       </div></fieldset>
-      <fieldset data-arlo-opc ${arlo ? 'hidden' : ''}><legend>Questionário socioeconômico (opcional)</legend>
-        <label class="check"><input type="checkbox" name="tem_socio" ${se ? 'checked' : ''} data-socio> <span>Responder. As respostas servem só para o perfil da equipe nos relatórios, que mostram os números sem nome. Quem vê as respostas com o nome: a coordenação do projeto e o auxiliar administrativo.</span></label>
+      ${pub || socio ? `<fieldset data-arlo-opc ${arlo ? 'hidden' : ''}><legend>Questionário socioeconômico (opcional)</legend><input type="hidden" name="_socio" value="1">
+        <label class="check"><input type="checkbox" name="tem_socio" ${se ? 'checked' : ''} data-socio> <span>Responder. As respostas servem só para o perfil da equipe, em números, sem nome. ${pub ? 'Quem vê as respostas com o seu nome: só você e a coordenação geral do projeto.' : 'Quem vê as respostas com o nome: só a própria pessoa e a coordenação geral do projeto.'}</span></label>
         <div class="campos" data-socio-campos ${se ? '' : 'hidden'}>
           <div class="campo"><label for="dp-esc">Escolaridade</label><select id="dp-esc" name="escolaridade">${op(ESCOLARIDADE, se && se.escolaridade)}</select></div>
           <div class="campo"><label for="dp-raca">Raça/cor</label><select id="dp-raca" name="raca_etnia">${op(RACA, se && se.raca_etnia)}</select></div>
           <div class="campo"><label for="dp-renda">Renda familiar por mês (R$)</label><input id="dp-renda" name="renda_familiar" type="number" min="0" inputmode="numeric" value="${v(se && se.renda_familiar)}"></div>
           <div class="campo"><label for="dp-pess">Pessoas na casa</label><input id="dp-pess" name="pessoas_casa" type="number" min="1" max="30" inputmode="numeric" value="${v(se && se.pessoas_casa)}"></div>
-        </div></fieldset>`;
+        </div></fieldset>` : `<p class="small muted" data-arlo-opc ${arlo ? 'hidden' : ''} data-socio-restrito>Questionário socioeconômico: as respostas só a própria pessoa e a coordenação geral veem. A pessoa responde no link de cadastro.</p>`}`;
   }
   function lerPessoais(fd) {
     const t = k => String(fd.get(k) || '').trim();
     const endereco = { cep: R.soDigitos(t('cep')), logradouro: t('logradouro'), numero: t('numero'), complemento: t('complemento'), bairro: t('bairro'), cidade: t('cidade'), uf: t('uf_end') };
     Object.keys(endereco).forEach(k => { if (!endereco[k]) delete endereco[k]; });
-    const socio = fd.get('tem_socio') ? { escolaridade: t('escolaridade') || null, raca_etnia: t('raca_etnia') || null,
+    // 70: sem o questionário na tela (quem não vê as respostas), nada muda nelas (undefined = não mexe)
+    const socio = !fd.get('_socio') ? undefined : fd.get('tem_socio') ? { escolaridade: t('escolaridade') || null, raca_etnia: t('raca_etnia') || null,
       renda_familiar: t('renda_familiar') === '' ? null : +t('renda_familiar'), pessoas_casa: t('pessoas_casa') === '' ? null : +t('pessoas_casa') } : null;
     const arlo = fd.get('cadastro_arlo') === 'sim';
     if (arlo) {   // no Arlo: endereço e conta ficam lá. Quem vai a campo informa só o município (cálculo da ajuda de custo)
       ['cep', 'logradouro', 'numero', 'complemento', 'bairro', 'uf'].forEach(k => delete endereco[k]);
       if (!fd.get('_campo')) delete endereco.cidade;
-      return { cadastro_arlo: true, _arlo_resp: fd.get('cadastro_arlo'), nome_social: t('nome_social') || null, data_nascimento: null, nis: null, endereco, socioeconomico: null, perfil: lerPerfil(fd) };
+      return { cadastro_arlo: true, _arlo_resp: fd.get('cadastro_arlo'), nome_social: t('nome_social') || null, data_nascimento: null, nis: null, endereco, socioeconomico: socio === undefined ? undefined : null, perfil: lerPerfil(fd) };
     }
     return { cadastro_arlo: false, _arlo_resp: fd.get('cadastro_arlo'), nome_social: t('nome_social') || null, data_nascimento: t('data_nascimento') || null, nis: R.soDigitos(t('nis')) || null, endereco, socioeconomico: socio, perfil: lerPerfil(fd) };
   }
@@ -10591,7 +10776,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const x = (S().pre || []).find(y => y.id === p.id); if (!x) return '<div class="painel-corpo"><p>Pré-cadastro não encontrado.</p></div>';
     const dl = [['Nome', x.nome], ['CPF', R.fmtCPF(x.cpf)], ['E-mail', x.email], ['Celular', x.telefone], ['Município', x.municipio], ['Organização', x.organizacao],
       ['Cadastro no Arlo', x.cadastro_arlo ? 'Sim: dados completos e conta no Arlo' : 'Não'], ['Matrícula SIAPE', x.siape], ['Nome social', x.nome_social], ['Nascimento', x.data_nascimento && R.fmtData(x.data_nascimento)], ['PIS/NIS', x.nis],
-      ['Endereço', textoEndereco(x.endereco)], ['Socioeconômico', x.socioeconomico ? 'Respondido' : 'Não respondeu'], temPerfil(x.papel) ? ['Perfil no campo', resumoPerfil(x.perfil) || 'Não respondeu'] : null,
+      ['Endereço', textoEndereco(x.endereco)], ['Socioeconômico', x.socioeconomico || x.socio_respondido ? 'Respondido' + (x.socioeconomico ? '' : ' (só a própria pessoa e a coordenação geral veem as respostas)') : 'Não respondeu'], temPerfil(x.papel) ? ['Perfil no campo', resumoPerfil(x.perfil) || 'Não respondeu'] : null,
       ['Termo de dados (LGPD)', 'Aceito por ela no envio'], ['Enviado em', new Date(x.enviado_em).toLocaleString('pt-BR')]].filter(l => l && l[1]);
     return `<div class="painel-cab"><div class="t"><span class="eyebrow">Cadastro enviado pelo link</span><h2 id="painel-t">${E(x.nome)}</h2>
         <span class="small muted">${E(funcao(x.papel, x.uf))}</span></div><button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
@@ -11241,7 +11426,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       : { cep: R.soDigitos(t('cep')), logradouro: t('logradouro'), numero: t('numero'), complemento: t('complemento'), bairro: t('bairro'), cidade: t('cidade'), uf: t('uf_end') });
     Object.keys(en).forEach(k => { if (!en[k]) delete en[k]; });
     const d = { data_nascimento: arlo ? pv.data_nascimento || null : t('data_nascimento') || null, nis: arlo ? pv.nis || null : R.soDigitos(t('nis')) || null,
-      endereco: en, socioeconomico: pv.socioeconomico || null };
+      endereco: en };   // 70: o questionário socioeconômico não é mexido aqui
     const e = {};
     if (!arlo && !d.data_nascimento) e.data_nascimento = 'Informe a data de nascimento.';
     else if (!arlo && d.data_nascimento !== (pv.data_nascimento || null)) {   // data antiga que não mudou não trava
@@ -11535,6 +11720,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         ['A pessoa perdeu o código ou ele venceu.', 'Abra a ficha dela e gere outro. O anterior deixa de valer na hora.'],
         ['A pessoa esqueceu a senha.', 'Quando ela toca em "Esqueci a senha" na entrada, o pedido aparece na aba <b>Equipe</b> (com número na aba), em "Pedidos de novo acesso". Só a coordenação geral resolve: abra a ficha, toque em "Liberar novo primeiro acesso" (confirme) e mande o código pelo WhatsApp do cadastro. A senha antiga é apagada; os dados não mudam. Se a pessoa não sabe do pedido, descarte.'],
         ['Errei o CPF.', 'CPF e estado não mudam depois de salvos. Desligue o cadastro errado e faça um novo.'],
+        ['Quem vê o questionário socioeconômico?', 'Com o nome, só a própria pessoa e a coordenação geral. A coordenação técnica e o auxiliar veem só se foi respondido. A pessoa responde no link de cadastro.'],
         ['Preciso corrigir o e-mail de alguém.', 'O e-mail é o login. De quem ainda não entrou no sistema, quem cadastrou corrige à vontade. De quem já entrou, só a coordenação geral troca, porque a troca apaga a senha: depois de salvar, gere um novo código de acesso e mande para a pessoa.'],
         ['A pessoa já tem cadastro no Arlo.', 'Marque "Sim" na pergunta do Arlo: só os dados básicos são pedidos (e a cidade, para quem vai a campo).'],
         ['O CEP não preencheu a rua.', 'Em muitas cidades pequenas o CEP é um só para a cidade toda. O sistema preenche cidade e estado; digite a rua, o sítio ou a comunidade.']
@@ -11609,19 +11795,23 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       t: 'Pagamentos',
       intro: 'Pedidos de ajuda de custo (visitas de campo) e de bolsa mensal. O caminho é sempre: a pessoa pede → a coordenação dá o aval → o auxiliar lança no Arlo (FUNCERN).',
       tarefas: [
-        ['Dar o aval', ['Em <b>Esperando o seu aval</b>, abra o pedido.', 'Confira as visitas e o km (ajuda de custo) ou o relatório e as entregas do mês (bolsa).', 'Toque em <b>Aprovar (dar aval)</b>, ou escreva o que corrigir e toque em <b>Devolver para correção</b>.']]
+        ['Dar o aval', ['Em <b>Esperando o seu aval</b>, abra o pedido.', 'Confira as visitas e o km (ajuda de custo) ou o relatório e as entregas do mês (bolsa).', 'Toque em <b>Aprovar (dar aval)</b>, ou escreva o que corrigir e toque em <b>Devolver para correção</b>.']],
+        ['Cancelar um pedido', ['Abra o pedido (o seu, em <b>Minhas solicitações</b> ou no cartão do mês; o de outra pessoa, na aba Pagamentos).', 'No fim do painel, abra <b>Cancelar este pedido</b>.', 'Escreva o motivo (obrigatório para a coordenação; a pessoa vê) e toque em <b>Cancelar o pedido</b>.']]
       ],
       passos: [
         'Em <b>Esperando o seu aval</b>, abra o pedido e confira: na ajuda de custo, as visitas e o km; na bolsa, o relatório e as <b>entregas do mês</b> (fotos, lista de presença, fichas, AVA e metas).',
         'Toque em <b>Aprovar (dar aval)</b> ou <b>Devolver</b>, dizendo o que corrigir.',
         'Quem dá o aval: a coordenação técnica, para ajuda de custo e bolsa das bolsistas; a coordenação geral, para a bolsa da coordenação técnica, dos professores e do auxiliar.',
-        'Com o aval, o pedido vai para o auxiliar, que lança no Arlo e registra o protocolo.'
+        'Com o aval, o pedido vai para o auxiliar, que lança no Arlo e registra o protocolo.',
+        '<b>Cancelar</b>: a própria pessoa cancela o pedido dela enquanto não tem aval. A coordenação técnica cancela, no mesmo ponto, os pedidos em que ela dá o aval. A coordenação geral cancela também o que já tem aval e ainda não foi lançado no Arlo. A coordenação sempre escreve o motivo. Lançado no Arlo não se cancela pelo sistema.'
       ],
       duvidas: [
         ['Quem começou no meio do mês recebe o mês inteiro?', 'Sim. A bolsa é pedida a partir do mês de início no projeto e, pedida no mês, vale o mês inteiro (decisão da coordenação geral). Antes do mês de início o sistema não deixa pedir.'],
         ['Uma visita pode entrar em dois pedidos?', 'Não. Depois de pedida, a visita fica travada (data, pessoa e situação) até o pedido ser devolvido. Depois que o pedido é lançado no Arlo, o km conferido da visita também não muda mais.'],
         ['A lista de presença está marcada, mas não vi o papel.', 'A marcação é a bolsista quem faz. Confira as listas assinadas antes de dar o aval.'],
         ['Quanto é a ajuda de custo?', 'É calculada na aba Custos: horas da visita, combustível pela distância e refeição.'],
+        ['Pedi errado (mês, visita a mais). Como desfaço?', 'Abra o pedido e use <b>Cancelar este pedido</b> enquanto ele não tem aval. As visitas de um pedido de ajuda de custo cancelado ficam livres para um pedido novo; a bolsa cancelada do mês pode ser pedida de novo. Depois do aval, só a coordenação geral cancela.'],
+        ['A pessoa saiu do projeto e tem bolsa aprovada de um mês depois da saída.', 'A data de saída não pode ficar antes de bolsa já aprovada: o sistema avisa. Se a bolsa era devida, use a data de saída dentro daquele mês. Se não era, a coordenação geral cancela o aval primeiro e depois desliga. Bolsa ainda sem aval de mês depois da saída é cancelada pelo sistema no desligamento, com o motivo.'],
         ['Ficou uma visita fora do pedido de ajuda de custo. E agora?', 'A pessoa faz um <b>pedido complementar</b> do mesmo mês, só com as visitas que ficaram de fora. Ele aparece na lista com a palavra "complementar" e passa pelo mesmo aval. A bolsa continua sendo um pedido só por mês.'],
       ]
     },
@@ -11648,7 +11838,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       intro: 'Pedidos de passagem aérea (intercâmbio e acompanhamento pedagógico) e de estrutura de evento, feitos pela bolsista de articulação estadual. A FUNCERN só compra ou contrata depois da autorização.',
       tarefas: [
         ['Conferir um pedido (coordenação técnica; sem ela, o auxiliar administrativo)', ['Em <b>Esperando a sua conferência</b>, abra o pedido.', 'Confira nomes iguais ao documento, CPF, RG, datas e quantidades.', 'Toque em <b>Conferido</b>, ou escreva o que corrigir e toque em <b>Devolver para correção</b>.']],
-        ['Autorizar e mandar à FUNCERN (coordenação geral)', ['Em <b>Esperando a sua autorização</b>, abra o pedido.', 'Se já tiver, digite o protocolo da FUNCERN.', 'Toque em <b>Autorizar</b> (ou devolva, ou recuse com o motivo).', 'Toque em <b>Copiar texto</b> e cole no e-mail ou sistema da FUNCERN.']]
+        ['Autorizar e mandar à FUNCERN (coordenação geral)', ['Em <b>Esperando a sua autorização</b>, abra o pedido.', 'Se já tiver, digite o protocolo da FUNCERN.', 'Toque em <b>Autorizar</b> (ou devolva, ou recuse com o motivo).', 'Toque em <b>Copiar texto</b> e cole no e-mail ou sistema da FUNCERN.']],
+        ['Ajustar o valor ou cancelar um pedido já autorizado (coordenação geral)', ['Abra o pedido autorizado.', 'No fim do painel, abra <b>Ajustar o valor ou cancelar</b>.', 'Para ajustar: digite o valor novo e o motivo (por exemplo, o valor da nota fiscal) e toque em <b>Salvar o valor novo</b>. O teto é conferido de novo.', 'Para cancelar: escreva o motivo e toque em <b>Cancelar o pedido</b>. O valor volta ao saldo. Avise a FUNCERN.']]
       ],
       passos: [
         'A bolsista de articulação estadual envia o pedido. Ele aparece para a <b>coordenação técnica</b> em "Esperando a sua conferência".',
@@ -11658,6 +11849,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         'O pedido de passagem de <b>acompanhamento pedagógico</b> é diferente: só a <b>coordenação geral</b> confere e autoriza. Para a coordenação técnica ele aparece como "aguardando a coordenação geral".',
         'As passagens têm <b>dois tetos</b>, que não se misturam: R$ 70.000,00 para o intercâmbio e R$ 22.400,00 para o acompanhamento pedagógico. Os eventos têm R$ 6.000,00 por estado.',
         'A <b>coordenação geral</b> autoriza (ou devolve, ou recusa com o motivo). Depois de autorizar, use <b>Copiar texto</b> para mandar o pedido à FUNCERN e registre o protocolo.',
+        'Pedido <b>já autorizado</b>: só a coordenação geral ajusta o valor (conferido de novo contra o teto) ou cancela (o valor volta ao saldo), sempre com o motivo, que fica na observação do pedido e no histórico. Quem pediu cancela o próprio pedido só antes da conferência.',
         'Prazos: passagem <b>40 dias</b> antes da viagem (a FUNCERN exige 30); evento <b>45 dias</b> antes. Fora do prazo, o pedido só vai com justificativa.',
         'Os contadores mostram quantas passagens já foram autorizadas (25 de intercâmbio e 8 de acompanhamento pedagógico, por pessoa) e quantos estados já têm evento (5).'
       ],
@@ -14921,7 +15113,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const b = MQ.bancoUI.informou(m.id); if (b) linhas.push(['Conta para a FUNCERN', m.cadastro_arlo ? 'Já está no Arlo (não precisa informar)' : b.ok ? 'Informada por ela' + (b.em ? ' em ' + new Date(b.em).toLocaleDateString('pt-BR') : '') : 'Ainda não informou']);
     }
     if (pv) linhas.push(['Nascimento', pv.data_nascimento && R.fmtData(pv.data_nascimento)], ['PIS/NIS', pv.nis], ['Endereço', MQ.convitesUI.textoEndereco(pv.endereco)],
-      ['Socioeconômico', pv.socioeconomico ? 'Respondido' : null],
+      ['Socioeconômico', pv.socioeconomico ? 'Respondido' : null],   // 70: só aparece para a própria pessoa e a coordenação geral (as outras não leem)
       ['Leitura do guia', MQ.entregasUI && gestao ? MQ.entregasUI.cienciaDe(m.id, m.papel) : null],
       ['Perfil no campo', MQ.convitesUI && MQ.convitesUI.temPerfil(m.papel) ? (MQ.convitesUI.resumoPerfil(pv.perfil) || 'Não respondido') : null]);
     return `<dl class="dl">${linhas.filter(l => l[1]).map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`;
@@ -15143,7 +15335,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <div class="campo"><label for="c-siape">Matrícula SIAPE <span class="muted">(só se for servidor(a) público(a) federal)</span></label><input id="c-siape" name="siape" inputmode="numeric" value="${v('siape')}" placeholder="Deixe vazio se não for"></div>
           <div class="campo"><label for="c-org">Organização ou movimento</label><input id="c-org" name="organizacao" value="${v('organizacao')}" maxlength="120" placeholder="${bols ? 'Ex.: MPA, associação, sindicato' : ['professor_fic', 'auxiliar_adm'].includes(m.papel) ? 'Ex.: IFRN Campus Apodi' : 'Ex.: MPA'}"></div>
         </div></fieldset>
-        ${MQ.convitesUI ? (priv === undefined ? '<p class="small muted">' + MQ.ampulheta() + '</p>' : MQ.convitesUI.camposPessoais(Object.assign({ nome_social: m.nome_social, municipio: m.municipio, cadastro_arlo: p.id ? !!m.cadastro_arlo : m.cadastro_arlo }, priv || {}), false, m.papel, bols ? munis : null)) : ''}
+        ${MQ.convitesUI ? (priv === undefined ? '<p class="small muted">' + MQ.ampulheta() + '</p>' : MQ.convitesUI.camposPessoais(Object.assign({ nome_social: m.nome_social, municipio: m.municipio, cadastro_arlo: p.id ? !!m.cadastro_arlo : m.cadastro_arlo }, priv || {}), false, m.papel, bols ? munis : null, !!S.eu && (S.eu.papel === 'coord_geral' || (!!p.id && p.id === S.eu.id)))) : ''}
         <fieldset><legend>Bolsa</legend><div class="campos">
           <div class="campo"><label for="c-ini">Início ${m.papel === 'agente' ? 'no projeto' : 'da bolsa'}</label><input id="c-ini" name="data_inicio" type="date" value="${v('data_inicio')}" min="${R.LIM.equipeMin}" max="${R.somaDias(R.hoje(), R.LIM.inicioFuturoDias)}" required>
             ${edit ? '' : '<span class="dica">Sugerimos hoje. Mude se a pessoa começou em outro dia.</span>'}</div>
