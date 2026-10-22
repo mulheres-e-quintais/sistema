@@ -101,6 +101,7 @@ let seq = 100000000; const cpf = () => { const b = String(seq++).padStart(9, '0'
   await p.evaluate(() => MQ.ui.fecharPainel()); await p.waitForTimeout(200);
   // agente PE (sem limite) — duas
   ok('Abre cadastro de agente PE', await abrirManual('[data-acao=novo][data-papel=agente][data-uf=PE]'));
+  ok('Agente de campo: o mesmo aviso de requisitos mínimos, com o perfil da função', await p.evaluate(() => { const r = document.querySelector('#painel .req-min'); return !!r && /Requisitos mínimos · Agente de campo/.test(r.textContent) && /dias de campo/.test(r.textContent) && r.querySelectorAll('li').length === 7; }));
   ok('Agente: formulário sem "Previsão de atividades"', !(await p.$('#c-md')));
   await preencher({ nome: 'Cida Agente Pernambuco', cpf: cpf(), email: 'cida@gmail.com', arlo: false, perfil: pf, exp: 'nenhuma', nasc: '1978-07-07', mun: 'Afogados da Ingazeira/PE' }); await salvar();
   ok('Agente PE cadastrada', !!(await equipe()).find(m => m.email === 'cida@gmail.com'), await erroTxt());

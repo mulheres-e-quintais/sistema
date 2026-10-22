@@ -1898,8 +1898,9 @@
     }
     // cadastro novo: primeiro escolhe como (link para a pessoa preencher ou à mão)
     /* requisitos mínimos da bolsista: no alto do painel, antes de qualquer escolha (link, digitar ou aprovar o que ela enviou) */
-    const reqBols = bols && !edit && MQ.PERFIL_BOLSISTA ? `<div class="perfil-bols req-min" role="note"><b class="req-t">Requisitos mínimos · ${esc(P[m.papel].nome)}</b>
-          <p class="small muted">Antes de ${pre ? 'aprovar' : 'cadastrar'}, confira se a indicada atende (Guia das bolsistas, item 3).</p>
+    // 22/10/2026: o mesmo aviso ao cadastrar agente de campo (ela também vai a campo, com ajuda de custo por dia)
+    const reqBols = (bols || m.papel === 'agente') && !edit && MQ.PERFIL_BOLSISTA ? `<div class="perfil-bols req-min" role="note"><b class="req-t">Requisitos mínimos · ${esc(P[m.papel].nome)}</b>
+          <p class="small muted">Antes de ${pre ? 'aprovar' : 'cadastrar'}, confira se a indicada atende (${m.papel === 'agente' ? 'os mesmos requisitos das bolsistas, Guia das bolsistas, item 3' : 'Guia das bolsistas, item 3'}).</p>
           <p class="perfil-esp">${esc(MQ.PERFIL_BOLSISTA[m.papel] || '')}</p>
           <ul class="perfil-lista">${MQ.PERFIL_BOLSISTA.todas.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : '';
     if (!edit && !pre && MQ.convitesUI && p.modo !== 'manual') {

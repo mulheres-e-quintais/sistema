@@ -491,7 +491,8 @@ MQ.PERFIL_BOLSISTA = {
     'Saber ler e escrever para preencher fichas e relatórios simples.',
     'Ter CPF e conta bancária ou chave Pix no próprio nome.'],
   articulacao: 'Conhecer as comunidades e lideranças locais e ter facilidade para mobilizar e organizar atividades.',
-  apoio: 'Organização com registros, fotos e documentos, e disponibilidade para a logística das visitas.'
+  apoio: 'Organização com registros, fotos e documentos, e disponibilidade para a logística das visitas.',
+  agente: 'Conhecer as comunidades do município e ter disponibilidade para os dias de campo: diagnóstico, implantação e acompanhamento dos quintais atribuídos a ela, com ajuda de custo por dia de campo.'
 };
 MQ.TERMO = {
   finalidade: 'O Projeto Quintais Produtivos para Mulheres Rurais, executado pelo IFRN com recursos do MDA, em parceria com o MPA e a FUNCERN, vai usar os seus dados só para: fazer o diagnóstico e o plano do seu quintal; comprar e entregar o kit e acompanhar a produção; prestar contas ao MDA e aos órgãos de controle (CGU, TCU); e produzir relatórios sem mostrar o seu nome quando os dados forem divulgados em números.',
@@ -9889,11 +9890,13 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
   const sitChip = l => l.situacao === 'comprometido' ? `<span class="chip pend">${E(l.status || 'Comprometido')}</span>` : `<span class="chip ok">${E(l.status && !/^pago$/i.test(l.status) ? l.status : 'Pago')}</span>`;
   const ordemData = (a, b) => String(b.data || '').localeCompare(String(a.data || '')) || (a.linha || 0) - (b.linha || 0);
+  const metaDe = id => { const i = itens().find(x => x.id === id); if (!i) return '—'; if (!i.meta) return '<span class="muted">Comum</span>';
+    return typeof i.meta === 'string' ? i.meta : Object.keys(i.meta).join('/'); };
   function tabelaDespesas(lista, comRubrica) {
     const nomeRub = id => (O().rubricas.find(r => r.id === id) || {}).nome || 'Fora do orçamento';
     const nomeItem = id => { const i = itens().find(x => x.id === id); return i ? i.nome : ''; };
-    return `<div class="fin-wrap"><table class="quadro desp-tab"><thead><tr><th scope="col">Data</th><th scope="col">Descrição</th><th scope="col">Situação</th><th scope="col" class="num">Valor</th></tr></thead>
-      <tbody>${lista.slice().sort(ordemData).map(l => `<tr><td data-rot="Data" class="num">${l.data ? R.fmtData(l.data) : '—'}</td>
+    return `<div class="fin-wrap"><table class="quadro desp-tab"><thead><tr><th scope="col">Data</th><th scope="col">Meta</th><th scope="col">Descrição</th><th scope="col">Situação</th><th scope="col" class="num">Valor</th></tr></thead>
+      <tbody>${lista.slice().sort(ordemData).map(l => `<tr><td data-rot="Data" class="num">${l.data ? R.fmtData(l.data) : '—'}</td><td data-rot="Meta" class="desp-meta">${metaDe(l.item)}</td>
         <td data-rot="Descrição"><span class="desp-d">${E(l.descricao || l.texto || 'Despesa')}</span><span class="desp-s">${[comRubrica ? nomeRub(l.rubrica) : '', l.item ? nomeItem(l.item) : (comRubrica ? '' : 'sem item definido'), l.favorecido, l.documento].filter(Boolean).map(E).join(' · ')}</span></td>
         <td data-rot="Situação">${sitChip(l)}</td><td data-rot="Valor" class="num"><b>${brl(l.valor)}</b></td></tr>`).join('')}</tbody></table></div>`;
   }
@@ -9901,18 +9904,18 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const ds = n.despesas.filter(l => l.rubrica === rid); if (!ds.length) return '';
     return `<tr class="fin-desp"><td colspan="6"><h3 class="fin-desp-t">Despesas desta rubrica <span class="small muted">(${ds.length}, da planilha vigente)</span></h3>${tabelaDespesas(ds, false)}</td></tr>`;
   }
+  /* 22/10/2026: como "Despesas do projeto" do Saberes que Cultivam, no fim da aba, com o único botão de envio (sem lançamento à mão) */
   function secaoDespesas(n) {
-    const ds = n.despesas; if (!ds.length) return '';
-    const LIM = 40, mais = ds.length > LIM;
-    const ord = ds.slice().sort(ordemData);
-    return `<section class="secao" aria-labelledby="t-exd"><div class="secao-cab"><div><h2 id="t-exd">Despesas do projeto <span class="conta-t">${ds.length}</span></h2>
-        <p>Vêm da planilha de solicitações da FUNCERN: envie a planilha atualizada (no fim da página) e os números mudam. Enquanto não estiver paga, a despesa conta como comprometida; cancelada não entra.</p></div></div>
-      ${tabelaDespesas(ord.slice(0, LIM), true)}
-      ${mais ? `<details class="desp-mais"><summary>Ver as outras ${ds.length - LIM} despesas</summary>${tabelaDespesas(ord.slice(LIM), true)}</details>` : ''}</section>`;
+    const ds = n.despesas; const LIM = 40, mais = ds.length > LIM; const ord = ds.slice().sort(ordemData);
+    return `<section class="secao exec-desp" id="exec-desp" aria-labelledby="t-exd"><div class="secao-cab desp-cab"><div><h2 id="t-exd">Despesas do projeto${ds.length ? ` <span class="conta-t">${ds.length}</span>` : ''}</h2>
+        <p>Vêm da planilha de solicitações da FUNCERN: envie a planilha atualizada e o sistema mostra o que mudou antes de gravar. Enquanto não estiver paga, a despesa conta como comprometida; cancelada não entra.</p></div></div>
+      <div class="desp-acoes">${MQ.botaoAcao({ acao: 'exec-enviar', icone: 'enviar', texto: 'Importar planilha da FUNCERN', curto: 'Importar planilha' })}</div>
+      ${ds.length ? tabelaDespesas(ord.slice(0, LIM), true) + (mais ? `<details class="desp-mais"><summary>Ver as outras ${ds.length - LIM} despesas</summary>${tabelaDespesas(ord.slice(LIM), true)}</details>` : '')
+        : '<p class="vazio-pl">Nenhuma despesa ainda. Toque em “Importar planilha da FUNCERN”.</p>'}</section>`;
   }
   function alertas(n) {
     const a = [];
-    if (!n.pl) a.push('Nenhuma planilha de gastos enviada ainda. Sem ela, o pago fica zerado: envie a planilha do mês.');
+    if (!n.pl) a.push('Nenhuma planilha de gastos enviada ainda. Sem ela, o pago fica zerado: importe a planilha da FUNCERN.');
     else if (n.idade > 35) a.push(`A planilha vigente é de <b>${R.fmtData(n.pl.posicao_em)}</b> (${n.idade} dias atrás). Envie a planilha deste mês.`);
     if (n.pl && foraDoPeriodo(n.pl.posicao_em)) a.push(`A planilha vigente é de <b>${R.fmtData(n.pl.posicao_em)}</b>, fora do período do projeto (${R.fmtData(MQ.PROJETO.vigencia.inicio)} a ${R.fmtData(MQ.PROJETO.vigencia.fim)}). Confira a data e, se estiver errada, envie a planilha de novo.`);
     itens().forEach(i => { const x = n.porItem[i.id]; if (x.passou) a.push(`<b>${E(i.nome)}</b>: pago + comprometido (${brl(x.exec + x.comp)}) passa do previsto (${brl(i.total)}).`); });
@@ -9955,7 +9958,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         </div>
       </section>
       <div class="exec-grafs">${graficoRitmo(serie())}${graficoRubricas(n)}</div>
-      ${al.length ? `<div class="aviso erro"><ul class="exec-alertas">${al.map(x => `<li>${x}</li>`).join('')}</ul>${!n.pl || n.idade > 35 ? `<p class="exec-alerta-acao">${MQ.botaoAcao({ acao: 'exec-enviar', icone: 'enviar', texto: 'Enviar planilha de gastos', sec: true, peq: true })}</p>` : ''}</div>` : ''}
+      ${al.length ? `<div class="aviso erro"><ul class="exec-alertas">${al.map(x => `<li>${x}</li>`).join('')}</ul>${/* 22/10/2026: um lugar só para enviar (em Planilhas enviadas, no fim): o aviso só leva até lá */ !n.pl || n.idade > 35 ? '<p class="exec-alerta-acao"><a href="#exec-desp" class="link">Ir para Despesas do projeto, onde se importa a planilha ↓</a></p>' : ''}</div>` : ''}
       <section class="secao" aria-labelledby="t-exr"><div class="secao-cab"><div><h2 id="t-exr">Por rubrica</h2><p>Toque na rubrica para ver os itens; toque no item para ver a composição do valor.</p></div>
           <button type="button" class="btn peq" data-acao="exec-abrir-tudo">${rubAbertas.size ? 'Fechar todas' : 'Abrir todas'}</button></div>
         <div class="fin-wrap"><table class="fin exec-fin"><thead><tr><th scope="col">Rubrica</th><th scope="col">Previsto</th><th scope="col">Pago</th><th scope="col">Comprometido</th><th scope="col">Saldo</th><th scope="col">Execução</th></tr></thead>
@@ -9966,12 +9969,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <tfoot><tr class="fin-tot"><th scope="row">Total do projeto</th><td class="num" data-rot="Previsto"><b>${brl(T)}</b></td><td class="num" data-rot="Pago">${vExec(n.exec)}</td><td class="num" data-rot="Comprometido">${vComp(n.comp)}</td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(n.livre)}</b></td><td data-rot="Execução">${celExec(n.exec, T)}</td></tr></tfoot>
         </table></div></section>
       ${secaoMetas(n)}
-      ${secaoDespesas(n)}
       <section class="secao exec-planilhas" aria-labelledby="t-exl"><div class="secao-cab"><div><h2 id="t-exl">Planilhas enviadas <span class="conta-t${planilhas().filter(p => !p.descartada_em).length ? '' : ' zero'}">${planilhas().filter(p => !p.descartada_em).length}</span></h2>
-          <p>Pelo menos uma vez por mês, envie a planilha de gastos da FUNCERN. Ela é o retrato completo desde o início: a mais nova substitui as anteriores, que ficam guardadas aqui. O sistema mostra a prévia antes de gravar.</p>
+          <p>Pelo menos uma vez por mês, importe a planilha de solicitações da FUNCERN (botão em <b>Despesas do projeto</b>, logo abaixo). Ela é o retrato completo desde o início: a mais nova substitui as anteriores, que ficam guardadas aqui. O sistema mostra a prévia antes de gravar.</p>
           <p class="small muted">Base do previsto: ${E(O().fonte)}, com o remanejamento aprovado pelo MDA.</p></div>
-          ${MQ.botaoAcao({ acao: 'exec-enviar', icone: 'enviar', texto: 'Enviar planilha de gastos', curto: 'Enviar planilha' })}</div>
-        ${planilhas().length ? listaPlanilhas() : '<p class="vazio-pl">Nenhuma planilha enviada ainda. Use “Enviar planilha de gastos”.</p>'}</section>`;
+          </div>
+        ${planilhas().length ? listaPlanilhas() : '<p class="vazio-pl">Nenhuma planilha enviada ainda. Use “Importar planilha da FUNCERN”, logo abaixo.</p>'}</section>
+      ${secaoDespesas(n)}`;
   }
   /* 22/10/2026: cada planilha é um cartão (ícone, nome, situação, valor, botões com ícone); a vigente tem a faixa verde;
      as descartadas ficam recolhidas no fim, com o motivo, sem entrar na conta */
@@ -9999,7 +10002,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
   function listaPlanilhas() {
     const val = planilhas().filter(p => !p.descartada_em), desc = planilhas().filter(p => p.descartada_em);
-    return `${val.length ? `<div class="pl-lista">${val.map(pl => linhaPlanilha(pl, pl === vigente())).join('')}</div>` : '<p class="vazio-pl">Nenhuma planilha valendo. Use “Enviar planilha de gastos”.</p>'}
+    return `${val.length ? `<div class="pl-lista">${val.map(pl => linhaPlanilha(pl, pl === vigente())).join('')}</div>` : '<p class="vazio-pl">Nenhuma planilha valendo. Use “Importar planilha da FUNCERN”, no fim da página.</p>'}
       ${desc.length ? `<details class="pl-descartadas"><summary>Descartadas <span class="conta-t">${desc.length}</span><span class="pl-desc-dica">enviadas por engano, fora das contas</span></summary>
         <div class="pl-lista">${desc.map(pl => linhaPlanilha(pl, false)).join('')}</div></details>` : ''}`;
   }
@@ -10042,7 +10045,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     }
     if (p.tipo !== 'exec-enviar') return '';
     const pr = G.previa;
-    return cab('Financeiro', 'Enviar planilha de gastos') + `<div class="painel-corpo">
+    return cab('Financeiro', 'Importar planilha da FUNCERN') + `<div class="painel-corpo">
       <form class="f" data-form="exec-ler" novalidate><div class="campos">
         <div class="campo inteiro"><label for="ex-arq">Planilha (.xlsx ou .csv)</label><input id="ex-arq" name="arquivo" type="file" accept=".xlsx,.csv">
           <span class="dica">Todos os gastos desde o início, até a data de hoje (ou da última atualização da FUNCERN). Colunas: Data, Item do orçamento, Descrição, Documento, Valor. <a href="modelos/Modelo_planilha_de_gastos_Mulheres_e_Quintais.xlsx" download>Baixar o modelo</a>.</span></div></div>
@@ -12113,8 +12116,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       t: 'Financeiro',
       intro: 'Acompanhamento financeiro, com a mesma tela do sistema do Saberes que Cultivam: previsto × pago × comprometido de cada rubrica e item do TED, com gráficos. Os números vêm da planilha de solicitações da FUNCERN que você envia pelo menos uma vez por mês; o comprometido também traz o que o sistema já sabe e a planilha ainda não trouxe. Só a coordenação geral vê esta aba.',
       tarefas: [
-        ['Enviar a planilha do mês', ['Role até o fim da página, em <b>Planilhas enviadas</b> (se faltar a planilha ou ela tiver mais de 35 dias, o aviso vermelho do meio da página também traz o botão). Toque em <b>Enviar planilha de gastos</b> e escolha o arquivo (.xlsx ou .csv).', 'Toque em <b>Ler a planilha</b> e confira a prévia: total, rubricas e linhas fora do orçamento.', 'Confira a data <b>Gastos até</b> e toque em <b>Enviar e usar esta planilha</b>.']],
-        ['Preparar a planilha', ['Em <b>Enviar planilha de gastos</b>, toque em <b>Baixar o modelo</b> (abaixo do campo do arquivo).', 'Uma linha por pagamento (e por repasse do MDA), com o item escolhido na lista.', 'A planilha é o retrato completo: todos os gastos desde o início, não só os do mês. Não escreva linhas de total.']],
+        ['Enviar a planilha do mês', ['Role até o fim da página, em <b>Despesas do projeto</b> (é o único lugar de envio; se faltar a planilha ou ela tiver mais de 35 dias, o aviso vermelho do meio da página leva até lá). Toque em <b>Importar planilha da FUNCERN</b> e escolha o arquivo (.xlsx ou .csv).', 'Toque em <b>Ler a planilha</b> e confira a prévia: total, rubricas e linhas fora do orçamento.', 'Confira a data <b>Gastos até</b> e toque em <b>Enviar e usar esta planilha</b>.']],
+        ['Preparar a planilha', ['Em <b>Importar planilha da FUNCERN</b>, toque em <b>Baixar o modelo</b> (abaixo do campo do arquivo).', 'Uma linha por pagamento (e por repasse do MDA), com o item escolhido na lista.', 'A planilha é o retrato completo: todos os gastos desde o início, não só os do mês. Não escreva linhas de total.']],
         ['Ler os gráficos', ['<b>Ritmo do gasto</b>: passe o mouse ou toque num mês para ver previsto, pago e recebido até ali; <b>Ver os números em tabela</b> mostra mês a mês.', '<b>Uso de cada rubrica</b>: a barra verde é o pago; a amarela, o comprometido; o traço vertical, o tempo de vigência já passado. Toque numa rubrica para ver os itens na tabela.']]
       ],
       passos: [
@@ -15656,8 +15659,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     }
     // cadastro novo: primeiro escolhe como (link para a pessoa preencher ou à mão)
     /* requisitos mínimos da bolsista: no alto do painel, antes de qualquer escolha (link, digitar ou aprovar o que ela enviou) */
-    const reqBols = bols && !edit && MQ.PERFIL_BOLSISTA ? `<div class="perfil-bols req-min" role="note"><b class="req-t">Requisitos mínimos · ${esc(P[m.papel].nome)}</b>
-          <p class="small muted">Antes de ${pre ? 'aprovar' : 'cadastrar'}, confira se a indicada atende (Guia das bolsistas, item 3).</p>
+    // 22/10/2026: o mesmo aviso ao cadastrar agente de campo (ela também vai a campo, com ajuda de custo por dia)
+    const reqBols = (bols || m.papel === 'agente') && !edit && MQ.PERFIL_BOLSISTA ? `<div class="perfil-bols req-min" role="note"><b class="req-t">Requisitos mínimos · ${esc(P[m.papel].nome)}</b>
+          <p class="small muted">Antes de ${pre ? 'aprovar' : 'cadastrar'}, confira se a indicada atende (${m.papel === 'agente' ? 'os mesmos requisitos das bolsistas, Guia das bolsistas, item 3' : 'Guia das bolsistas, item 3'}).</p>
           <p class="perfil-esp">${esc(MQ.PERFIL_BOLSISTA[m.papel] || '')}</p>
           <ul class="perfil-lista">${MQ.PERFIL_BOLSISTA.todas.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : '';
     if (!edit && !pre && MQ.convitesUI && p.modo !== 'manual') {

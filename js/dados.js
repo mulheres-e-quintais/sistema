@@ -130,7 +130,8 @@ MQ.PERFIL_BOLSISTA = {
     'Saber ler e escrever para preencher fichas e relatórios simples.',
     'Ter CPF e conta bancária ou chave Pix no próprio nome.'],
   articulacao: 'Conhecer as comunidades e lideranças locais e ter facilidade para mobilizar e organizar atividades.',
-  apoio: 'Organização com registros, fotos e documentos, e disponibilidade para a logística das visitas.'
+  apoio: 'Organização com registros, fotos e documentos, e disponibilidade para a logística das visitas.',
+  agente: 'Conhecer as comunidades do município e ter disponibilidade para os dias de campo: diagnóstico, implantação e acompanhamento dos quintais atribuídos a ela, com ajuda de custo por dia de campo.'
 };
 MQ.TERMO = {
   finalidade: 'O Projeto Quintais Produtivos para Mulheres Rurais, executado pelo IFRN com recursos do MDA, em parceria com o MPA e a FUNCERN, vai usar os seus dados só para: fazer o diagnóstico e o plano do seu quintal; comprar e entregar o kit e acompanhar a produção; prestar contas ao MDA e aos órgãos de controle (CGU, TCU); e produzir relatórios sem mostrar o seu nome quando os dados forem divulgados em números.',

@@ -20,7 +20,7 @@ const TELAS = [
   { id: 'pagamentos', perfil: 'coord_geral', aba: 'pagamentos', clip: 'main', m: [['.resumo', 1], ['t:Esperando o seu aval', 2], ['t:Com aval, falta', 3], ['t:Lançadas no Arlo', 4]] },
   { id: 'custos', perfil: 'coord_geral', aba: 'custos', clip: 'main', m: [['t:Pagamento do mês', 1], ['t:Proposta de roteiro', 2], ['t:Visitas do mês', 3], ['t:Valores usados', 4]] },
   { id: 'viagens', perfil: 'coord_geral', aba: 'viagens', clip: 'main', m: [['#t-vp', 1], ['t:Tetos de gasto · passagens', 2], ['t:Esperando a sua autorização', 3], ['#t-ve', 4]] },
-  { id: 'execucao', perfil: 'coord_geral', aba: 'execucao', clip: 'main', m: [['t:Enviar planilha de gastos', 1], ['.fin-resumo', 2], ['.exec-grafs', 3], ['.fin-rub', 4]] },
+  { id: 'execucao', perfil: 'coord_geral', aba: 'execucao', clip: 'main', m: [['t:Importar planilha da FUNCERN', 1], ['.fin-resumo', 2], ['.exec-grafs', 3], ['.fin-rub', 4]] },
   { id: 'execucao_meta', perfil: 'coord_geral', aba: 'execucao', clip: 'el:section[aria-labelledby=t-exm]', m: [['#t-exm', 1], ['.exec-meta .fin-rub', 2], ['.fin-plano', 3]] },
   { id: 'documentos', perfil: 'coord_geral', aba: 'documentos', clip: 'main', m: [['t:Anexar documento', 1], ['t:Gerar relatório da ação', 2], ['#t-imp', 3], ['#t-docs', 4]] },
   { id: 'historico', perfil: 'coord_geral', aba: 'historico', clip: 'main', m: [['#t-acessos', 1], ['#t-reg', 2]] },

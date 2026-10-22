@@ -4448,3 +4448,24 @@ table.quadro.desp-tab th:nth-child(1), table.quadro.desp-tab td:nth-child(1) { w
 table.quadro.desp-tab th:nth-child(3), table.quadro.desp-tab td:nth-child(3) { width: 180px; }
 table.quadro.desp-tab th:nth-child(4), table.quadro.desp-tab td:nth-child(4) { width: 130px; text-align: right; white-space: nowrap; }
 .fin-desp .fin-wrap, .secao .desp-tab { overflow-x: auto; }
+/* 22/10/2026: Despesas do projeto no fim do Financeiro, como no Saberes que Cultivam (sem lançamento à mão) */
+.desp-acoes { display: flex; flex-wrap: wrap; gap: 10px; margin: 4px 0 14px; }
+.exec-desp table.quadro.desp-tab { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; border-collapse: separate; border-spacing: 0; background: var(--surface); }
+.exec-desp table.quadro.desp-tab thead th { background: var(--barra-bg); color: var(--barra-ink); letter-spacing: .06em; text-transform: uppercase; font-size: var(--t-xs); padding: 14px 16px; }
+.exec-desp table.quadro.desp-tab td { padding: 14px 16px; border-top: 1px solid var(--line); }
+table.quadro.desp-tab th:nth-child(2), table.quadro.desp-tab td:nth-child(2) { width: 80px; }
+table.quadro.desp-tab th:nth-child(3), table.quadro.desp-tab td:nth-child(3) { width: auto; }
+table.quadro.desp-tab th:nth-child(4), table.quadro.desp-tab td:nth-child(4) { width: 170px; text-align: left; white-space: normal; }
+table.quadro.desp-tab th:nth-child(5), table.quadro.desp-tab td:nth-child(5) { width: 140px; text-align: right; white-space: nowrap; }
+.desp-meta { font-weight: 700; }
+@media (max-width: 640px) {
+  .exec-desp table.quadro.desp-tab td { padding: 0; border-top: 0; }
+  table.quadro.desp-tab td[data-rot="Meta"] { grid-column: 1; grid-row: 4; font-size: var(--t-xs); }
+  table.quadro.desp-tab td[data-rot="Valor"] { width: auto; }
+  table.quadro.desp-tab td[data-rot="Situação"] { width: auto; }
+}
+@media (max-width: 640px) {
+  .exec-desp table.quadro.desp-tab tr { padding: 12px 14px; }
+  table.quadro.desp-tab tr, table.quadro.desp-tab td { background: transparent !important; }
+  table.quadro.desp-tab td[data-rot="Meta"] { grid-column: 2; grid-row: 3; text-align: right; align-self: center; }
+}
