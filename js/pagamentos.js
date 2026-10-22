@@ -178,7 +178,7 @@
     return `<div class="cab"><div><span class="eyebrow">Pagamentos</span><h1>Solicitações de pagamento</h1>
         <p>Quem visita ou recebe bolsa solicita; ${souGeral ? 'a coordenação técnica dá o aval na ajuda de custo e na bolsa das bolsistas; você, na bolsa da coordenação técnica, dos professores e do auxiliar administrativo (e pode substituir a técnica)' : 'você dá o aval na ajuda de custo e na bolsa das bolsistas'}. Com o aval, o auxiliar administrativo lança no Arlo.</p></div></div>
       <div class="resumo">
-        <div><span class="v num" ${aval.length ? 'style="color:var(--crit)"' : ''}>${aval.length}</span><span class="l">esperando o seu aval</span></div>
+        <div${aval.length ? ' class="vez"' : ''}><span class="v num">${aval.length}</span><span class="l">esperando o seu aval</span></div>
         <div><span class="v num">${arlo.length}</span><span class="l">com aval, falta lançar no Arlo</span></div>
         <div><span class="v num">${dev.length}</span><span class="l">devolvidas para corrigir</span></div>
         <div><span class="v num">${brl(soma(lanc))}</span><span class="l">lançado no Arlo (${lanc.length})</span></div></div>

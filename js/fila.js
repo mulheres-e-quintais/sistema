@@ -91,6 +91,7 @@
       // erro) o item se ele ainda for a versão que saiu; uma correção salva no meio do envio fica na fila e sobe em seguida.
       item.ver = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
       await tx('readwrite', l => { if (l) l.put(item); else memoria.set(item.id, item); });
+      if (F.aoGuardar) { try { F.aoGuardar(item); } catch (e) {} }   // 22/10/2026: a faixa "sem internet" atualiza a contagem
       return item;
     },
     async ler(id) { return tx('readonly', l => l ? l.get(id) : { result: memoria.get(id) }); },

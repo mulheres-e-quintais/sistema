@@ -73,6 +73,7 @@
           'O sistema envia junto a tela, a versão e o tipo de aparelho. Não vai foto da tela; não escreva nome, CPF nem telefone de beneficiária.',
           'Sem internet, o relato fica guardado no aparelho e sobe quando o sinal voltar. A coordenação geral recebe e marca quando resolver.']],
         ['Sem internet', [
+          'Sem sinal, aparece no alto a <b>faixa amarela “Sem internet”</b>, com quantos registros estão guardados no aparelho. Quando o sinal volta, ela some e aparece o aviso verde <b>Internet de volta</b>.',
           'Fichas, diagnósticos, visitas feitas e avaliações podem ser preenchidos sem sinal. Ficam guardados no celular, com as fotos, e sobem sozinhos quando a internet voltar (ou em <b>Enviar agora</b>). Se o servidor não aceitar um registro, ele aparece com o motivo: toque em <b>Abrir e corrigir</b>, ou em <b>Descartar</b> se ele não vale mais (por exemplo, a visita foi cancelada).',
           'Antes de ir a campo, abra o sistema com internet para atualizar a lista de visitas.',
           'Depois de 15 minutos sem uso o sistema sai sozinho, em todos os perfis (aos 13 minutos aparece um aviso: toque em <b>Continuar usando</b>). Sem internet ele não sai (para entrar de novo é preciso conexão); quando o sinal volta, se você continuar parada há 15 minutos, aí ele sai.',

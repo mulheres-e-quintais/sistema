@@ -337,6 +337,8 @@
     } catch (e) { /* nunca atrapalha */ }
   }
   // a fila rodou mais uma volta sozinha (registro salvo enquanto outro subia): atualiza a tela e avisa
+  // 22/10/2026: registro guardado no aparelho: a faixa "sem internet" mostra a contagem nova
+  if (MQ.fila) MQ.fila.aoGuardar = () => { if (!S.eu) return; MQ.fila.listar(S.eu.id).then(l => { S.fila = l; atualizarAvisoRede(); }).catch(() => {}); };
   if (MQ.fila) MQ.fila.aoEnviarDepois = r => { informarFila(); carregar().then(() => renderFundo()).catch(() => {}); toast(r.enviados + (r.enviados > 1 ? ' registros enviados.' : ' registro enviado.')); };
   async function sincronizar(avisar) {
     // 18/10/2026 (auditoria independente): a coordenação também grava visitas pela fila (Roteiro: mudar data, cancelar, visita feita);
@@ -415,12 +417,19 @@
 
   /* ---------- desenho ---------- */
   /* aviso de "Sem internet": também é trocado sozinho quando o desenho da página é adiado (ver renderFundo) */
-  const avisoRede = () => (S.eu && S.api && (S.semRede || S.api.offline || (typeof navigator !== 'undefined' && navigator.onLine === false)))
-    ? `<div class="demo" role="status" data-rede><div class="demo-in"><span><b>Sem internet.</b> O que você preencher fica guardado neste aparelho e é enviado quando a conexão voltar.${S.cacheEm ? ' Dados de ' + new Date(S.cacheEm).toLocaleString('pt-BR') + '.' : ''}</span></div></div>` : '';
+  /* 22/10/2026: faixa âmbar própria, com ícone e presa no alto (antes tinha o mesmo bege da faixa de demonstração e quase não se via);
+     diz quantos registros estão guardados no aparelho. Quando a internet volta, um aviso verde confirma (ver o evento 'online'). */
+  const IC_SEM_SINAL = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8.8a15 15 0 0 1 4.2-2.6M22 8.8a15 15 0 0 0-10-3.8c-.7 0-1.4 0-2 .1"/><path d="M5 12.6a10 10 0 0 1 3.5-2.2M19 12.6a10 10 0 0 0-3-1.9"/><path d="M8.5 16.3a5 5 0 0 1 7 0"/><path d="M12 20h.01"/><path d="M3 3l18 18"/></svg>';
+  const avisoRede = () => {
+    if (!(S.eu && S.api && (S.semRede || S.api.offline || (typeof navigator !== 'undefined' && navigator.onLine === false)))) return '';
+    const n = (S.fila || []).filter(it => !it.erro).length;
+    return `<div class="rede-off" role="status" data-rede><div class="rede-in"><span class="rede-ic">${IC_SEM_SINAL}</span><span><b>Sem internet.</b> Pode continuar usando: o que você preencher fica guardado neste aparelho e é enviado sozinho quando a conexão voltar.${n ? ` <b class="rede-n">${n} ${n === 1 ? 'registro guardado' : 'registros guardados'} aqui.</b>` : ''}${S.cacheEm ? ' <span class="rede-cache">Dados de ' + new Date(S.cacheEm).toLocaleString('pt-BR') + '.</span>' : ''}</span></div></div>`;
+  };
   function atualizarAvisoRede() {
     const app = $('#app'); if (!app || !app.querySelector) return;
     const velho = app.querySelector('[data-rede]'); const h = (S.verEntrada ? '' : avisoRede());
     if (velho && !h) velho.remove();
+    else if (velho && h && velho.outerHTML !== h) velho.outerHTML = h;   // mudou a contagem de registros guardados
     else if (!velho && h) { const ref = app.querySelector('.demo:not([data-rede])') || app.querySelector('header.barra'); if (ref) ref.insertAdjacentHTML('afterend', h); else app.insertAdjacentHTML('afterbegin', h); }
   }
   const selectMudou = i => { const ops = [...i.options]; const temPadrao = ops.some(o => o.defaultSelected); return ops.some((o, n) => o.selected !== (temPadrao ? o.defaultSelected : n === 0)); };
@@ -790,7 +799,7 @@
         S.quemConfere === 'auxiliar_adm' ? ['Conferir passagens e eventos', '#t-conf', false, MQ.viagUI ? MQ.viagUI.contaMinha() : 0] : null])}
       <div class="resumo">
         <div><span class="v num">${pessoas.length}</span><span class="l">pessoas na equipe</span></div>
-        <div><span class="v num" ${semArlo.length ? 'style="color:var(--crit)"' : ''}>${semArlo.length}</span><span class="l">falta cadastrar no Arlo</span></div>
+        <div${semArlo.length ? ' class="vez"' : ''}><span class="v num">${semArlo.length}</span><span class="l">falta cadastrar no Arlo</span></div>
         <div><span class="v num">${semTermo.length}</span><span class="l">no Arlo, falta o termo</span></div>
         <div><span class="v num">${ok.length}</span><span class="l">Arlo e termo registrados</span></div></div>
       <p class="small muted">Abra a pessoa, veja os dados (e a conta, se precisar), cadastre no Arlo e registre a data em <b>Registrar passos da habilitação</b>. Cada consulta de conta bancária fica no histórico.</p>
@@ -1952,13 +1961,13 @@
 
   /* ---------- ações ---------- */
   /* aviso rápido no pé da tela. Nunca mostra "undefined", "null" nem "[object Object]": vira a mensagem simples. */
-  function toast(msg) {
+  function toast(msg, tipo) {
     let m = msg; if (m && typeof m === 'object') m = R.mensagemParaTela(m);
     m = String(m == null ? '' : m).trim();
     if (!m || /^(undefined|null|NaN|\[object [^\]]*\])$/i.test(m)) m = R.MSG_GENERICA;
     let t = $('#toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
     // mensagem longa fica mais tempo (ex.: "Visita guardada no aparelho. Será enviada quando houver internet.")
-    t.textContent = m; t.hidden = false; clearTimeout(t._t); t._t = setTimeout(() => { t.hidden = true; }, Math.min(8000, Math.max(3600, m.length * 70)));
+    t.textContent = m; t.classList.toggle('ok', tipo === 'ok'); t.hidden = false; clearTimeout(t._t); t._t = setTimeout(() => { t.hidden = true; }, Math.min(8000, Math.max(3600, m.length * 70)));
   }
   /* erro apanhado numa ação: a pessoa lê a mensagem simples; o detalhe técnico vai para o console */
   function avisarErro(e) {
@@ -2341,6 +2350,8 @@
     if (/^#aba=/.test(location.hash)) { abaDoHistorico(H && H.state); return; }   // link direto ou endereço digitado
     if (/^#(numeros|convite=|)$|^#convite=/.test(location.hash) || location.hash === '') { render(); window.scrollTo(0, 0); } });
   /* o sinal voltou ou caiu: só o fundo e o aviso de conexão mudam; o formulário aberto fica como está */
+  // 22/10/2026: a internet voltou: aviso verde (os registros guardados sobem e o próprio envio avisa quantos foram)
+  window.addEventListener('online', () => { if (S.eu && !S.verEntrada) toast((S.fila || []).length ? 'Internet de volta. Enviando o que ficou guardado…' : 'Internet de volta.', 'ok'); });
   window.addEventListener('online', () => { if (S.eu) { renderFundo(); sincronizar(); if (MQ.relatosUI) MQ.relatosUI.enviarPendentes().then(n => { if (n) toast(n === 1 ? 'O relato guardado foi enviado.' : 'Os relatos guardados foram enviados.'); }).catch(() => {}); } });
   window.addEventListener('offline', () => { if (S.eu) renderFundo(); });
 
