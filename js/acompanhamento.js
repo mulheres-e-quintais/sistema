@@ -89,7 +89,7 @@
       fic: { encontros: en.length, horas: en.reduce((t, x) => t + (+x.carga_horaria || 0), 0), horas_feitas: en.filter(x => String(x.data) <= hoje).reduce((t, x) => t + (+x.carga_horaria || 0), 0), feitos: en.filter(x => String(x.data) <= hoje).length, presencas: pr.filter(x => x.presente).length, marcacoes: pr.length },
       documentos: { por_tipo: cont(dc, 'tipo'), ultima_data: dc.reduce((o, x) => { if (!o[x.tipo] || String(x.data_documento) > o[x.tipo]) o[x.tipo] = String(x.data_documento); return o; }, {}) } };
     if (orgao === 'mda' && previa) {   // na demonstração, o padrão do banco: o resumo financeiro aparece só na prévia
-      const pl = (d.execPlanilhas || []).slice().sort((a, b) => String(b.posicao_em).localeCompare(String(a.posicao_em)))[0];
+      const pl = (d.execPlanilhas || []).filter(x => !x.descartada_em).sort((a, b) => String(b.enviado_em).localeCompare(String(a.enviado_em)) || String(b.posicao_em).localeCompare(String(a.posicao_em)))[0];   // 72: como o banco
       if (!pl) r.financeiro = { liberado: 'previa', sem_planilha: true };
       else { const pi = {}, pm = {}; (pl.linhas || []).forEach(l => { const k = (l.item || '') + '|' + (l.rubrica || ''); const vl = typeof l.valor === 'number' ? l.valor : 0; pi[k] = (pi[k] || 0) + vl;
           const m = /^\d{4}-\d{2}/.test(String(l.data || '')) ? String(l.data).slice(0, 7) : String(pl.posicao_em).slice(0, 7); pm[m] = pm[m] || { mes: m, gasto: 0, recebido: 0 }; pm[m][l.item === 'repasse_mda' ? 'recebido' : 'gasto'] += vl; });

@@ -142,7 +142,7 @@ select est_caso('as funções chamadas pelo app (js/api-supabase.js) existem com
                          and (e.f in ('pedir_novo_acesso', 'ver_convite', 'enviar_pre_cadastro', 'vitrine', 'vitrine_municipios') or has_function_privilege('authenticated', p.oid, 'EXECUTE')))$q$);
 
 -- ===================================================================== 5. VÍNCULOS (FK)
-select est_lista('os 77 vínculos entre tabelas (tabela.coluna > tabela de destino) existem',
+select est_lista('os 78 vínculos entre tabelas (tabela.coluna > tabela de destino) existem',
   $q$select k.conrelid::regclass::text || '.' || a.attname || '>' || k.confrelid::regclass::text from pg_constraint k
        join pg_attribute a on a.attrelid = k.conrelid and a.attnum = k.conkey[1] where k.contype = 'f' and k.connamespace = 'public'::regnamespace$q$,
   array['fila_celular.equipe_id>equipe','relatos_problema.autor_id>equipe','relatos_problema.resolvido_por>equipe','kit_itens.atualizado_por>equipe','observadores.criado_por>equipe','acesso_codigos.equipe_id>equipe','acessos.equipe_id>equipe','agua_situacoes.ficha_id>fichas','agua_situacoes.registrado_por>equipe','apl_municipios.atualizado_por>equipe',
@@ -151,7 +151,7 @@ select est_lista('os 77 vínculos entre tabelas (tabela.coluna > tabela de desti
         'custos_visita.visita_id>visitas','diagnosticos.aprovado_por>equipe','diagnosticos.conteudo_alterado_por>equipe','diagnosticos.executor_id>equipe','diagnosticos.ficha_id>fichas',
         'diagnosticos.visita_id>visitas','documentos_projeto.arquivado_por>equipe','documentos_projeto.enviado_por>equipe','entregas_mes.equipe_id>equipe','equipe.criado_por>equipe',
         'equipe.substitui_id>equipe','equipe.user_id>auth.users','equipe_bancario.equipe_id>equipe','equipe_privado.equipe_id>equipe','equipe_socio.equipe_id>equipe','execucao_lancamentos.criado_por>equipe',
-        'execucao_lancamentos.estorno_de>execucao_lancamentos','execucao_planilhas.enviado_por>equipe','fic_encontros.cancelado_por>equipe','fic_encontros.professor_id>equipe',
+        'execucao_lancamentos.estorno_de>execucao_lancamentos','execucao_planilhas.descartada_por>equipe','execucao_planilhas.enviado_por>equipe','fic_encontros.cancelado_por>equipe','fic_encontros.professor_id>equipe',
         'fic_encontros.turma_id>turmas_fic','fic_presencas.encontro_id>fic_encontros','fic_presencas.equipe_id>equipe','fic_presencas.marcado_por>equipe','fichas.aprovada_por>equipe',
         'fichas.bolsista_id>equipe','ia_usos.equipe_id>equipe','matriculas_fic.criado_por>equipe','matriculas_fic.equipe_id>equipe','matriculas_fic.turma_id>turmas_fic',
         'orientacoes_venda.feito_por>equipe','orientacoes_venda.ficha_id>fichas','parametros.atualizado_por>equipe','pedidos_apoio.conferido_por>equipe','pedidos_apoio.decidido_por>equipe',
@@ -318,8 +318,9 @@ select est_caso('ordem dos gatilhos: em fichas e diagnósticos, a trava de limit
 select est_lista('pastas de arquivos: sete, nenhuma pública (56: a vitrine abre por link assinado)',
   $q$select id || case when public then ':publica' else '' end from storage.buckets$q$,
   array['campo','documentos','equipe','execucao','fichas','termos','vitrine']);
-select est_caso('pastas de documentos e de execução financeira: sem regra para trocar (UPDATE) nem apagar (DELETE) arquivo',
-  $q$select policyname::text from pg_policies where schemaname = 'storage' and cmd in ('UPDATE', 'DELETE') and (coalesce(qual, '') ~ '''(documentos|execucao)''' and coalesce(qual, '') !~ 'ANY')$q$);
+select est_caso('pastas de documentos e de execução financeira: sem regra para trocar (UPDATE) nem apagar (DELETE) arquivo (72: só o arquivo de planilha DESCARTADA pode sair)',
+  $q$select policyname::text from pg_policies where schemaname = 'storage' and cmd in ('UPDATE', 'DELETE') and (coalesce(qual, '') ~ '''(documentos|execucao)''' and coalesce(qual, '') !~ 'ANY')
+      and not (policyname = 'execucao_apagar_descartada' and cmd = 'DELETE' and qual ~ 'descartada_em IS NOT NULL')$q$);
 
 -- ===================================================================== 11. GARANTIAS QUE PASSARAM A VALER COM O 47_auditoria_bd.sql
 -- (eram os itens P2, P3, P5, P7 e P10 da seção PENDENTES)

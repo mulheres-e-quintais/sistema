@@ -4291,3 +4291,32 @@ details.pag-cancelar form > p { margin: 0 0 12px; }
 
 /* item 5: "Tirar foto aqui, sem sair do sistema" embaixo do campo de foto da ficha e do termo */
 .campo > .foto-agora { justify-self: start; align-self: start; margin-top: 6px; width: auto; }
+
+/* ======================================================================
+   22/10/2026 — menu superior em faixa areia, colada na barra, com a aba aberta em "pílula" marrom
+   (antes a aba aberta era só um sublinhado fino e o menu se confundia com o conteúdo). O celular
+   (menu "Seção") já usava a pílula marrom; agora o botão dele também fica na cor da faixa.
+   ====================================================================== */
+:root { --menu-bg: #EADBC8; --menu-div: #C9B293; --menu-ink: #4A3628; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --menu-bg: #2A211C; --menu-div: #4A3D34; --menu-ink: #E6D8CA; } }
+:root[data-theme="dark"] { --menu-bg: #2A211C; --menu-div: #4A3D34; --menu-ink: #E6D8CA; }
+:root[data-sol] { --menu-bg: #EFE8E0; --menu-div: #8C735C; --menu-ink: #1A0F08; }
+/* a faixa ocupa a largura toda (sombra do mesmo tom) e encosta na barra: o menu é o primeiro item da página */
+.abas.abas-grupos { background: var(--menu-bg); box-shadow: 0 0 0 100vmax var(--menu-bg); clip-path: inset(0 -100vmax); border-bottom: 0;
+  padding: 12px 0 4px; margin: -24px 0 6px; }
+.abas-grupos .aba-g { color: var(--muted); }
+.abas-grupos button { color: var(--menu-ink); border-bottom: 0; border-radius: 999px; padding: 6px 8px; margin: 2px 0 8px; }
+.abas-grupos button:hover { color: var(--ink); background: color-mix(in srgb, var(--sel-bg) 10%, transparent); }
+.abas-grupos button[aria-current="page"] { background: var(--sel-bg); color: var(--sel-ink); font-weight: 600; }
+.abas-grupos button[aria-current="page"] .conta { box-shadow: 0 0 0 1.5px var(--sel-bg); }
+.abas-grupos .aba-grupo + .aba-grupo::before { border-left-color: var(--menu-div); }
+.abas-grupos button:focus-visible { border-radius: 999px; }
+@media (max-width: 1100px) { .abas-m summary { background: var(--menu-bg); } }
+@media print { .abas.abas-grupos { display: none; } }
+
+/* 72: planilha de gastos descartada (enviada por engano) e o botão de descartar */
+.exec-pl-acoes { display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: center; }
+.link.perigo-txt { color: var(--crit); }
+.exec-lanc.descartada { opacity: .78; }
+.exec-lanc.descartada .nm { text-decoration: line-through; text-decoration-thickness: 1px; }
+.exec-lanc.descartada .nm .chip { text-decoration: none; display: inline-block; }

@@ -283,12 +283,12 @@
       ],
       passos: [
         '<b>Por meta do plano de trabalho</b> mostra o mesmo gasto pelas metas: bolsas na Meta 1; a ajuda de custo das visitas dividida entre diagnóstico (M2, 25%), implantação (M3, 25%) e acompanhamento (M4, 50%); taxa da FUNCERN, combustível, notebook e apoio em <b>Comum a todas as metas</b>. Quando o valor do plano de trabalho é diferente da soma dos itens, a meta mostra os dois.',
-        '<b>Executado</b> é o que está na planilha mais recente. As anteriores ficam guardadas em <b>Planilhas enviadas</b>, marcadas como substituídas.',
+        '<b>Executado</b> é o que está na última planilha enviada (que não foi descartada). As anteriores ficam guardadas em <b>Planilhas enviadas</b>, marcadas como substituídas.',
         '<b>Comprometido</b> é o que já foi decidido e ainda não aparece na planilha: bolsa ou ajuda de custo com aval, ou lançada no Arlo depois da data da planilha; passagem e evento autorizados depois dessa data.',
         'O sistema entende planilhas de fora (da FUNCERN, por exemplo) se tiverem as colunas Item (ou Rubrica) e Valor. Linhas de total são ignoradas para não contar duas vezes.'
       ],
       duvidas: [
-        ['Enviei a planilha errada.', 'Envie a certa: a mais nova é a que vale. A errada fica no histórico, marcada como substituída (nada se apaga).'],
+        ['Enviei a planilha errada.', 'Em <b>Planilhas enviadas</b>, toque em <b>Descartar (enviada por engano)</b> na planilha errada e escreva o motivo. Ela sai de todas as contas e o arquivo é apagado; o registro fica na lista como descartada, com o motivo. Se era a vigente, volta a valer a anterior. Descartar não se desfaz: para voltar, envie o arquivo de novo.'],
         ['Apareceram linhas "fora do orçamento".', 'O nome do item na planilha não bate com nenhum item do orçamento. Corrija com o nome da aba Itens do modelo e envie de novo. Enquanto isso, o valor entra no total, fora das rubricas.'],
         ['A planilha é .xls ou .ods.', 'Abra no Excel ou LibreOffice e salve como .xlsx. O .xlsx é lido sem nenhum programa extra.'],
         ['Quem mais vê esta aba?', 'Ninguém. A aba, as planilhas e os arquivos são só da coordenação geral, no sistema e no banco.']

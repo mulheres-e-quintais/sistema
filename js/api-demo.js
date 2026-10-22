@@ -413,6 +413,20 @@
       const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') return [];
       return copia(ler().execPlanilhas || []);
     },
+    async descartarPlanilhaExec(id, motivo) {   // 72 (descartar_planilha_exec)
+      const d = ler(); const eu = euMesmo(); const mot = String(motivo || '').trim(); const pl = (d.execPlanilhas || []).find(x => x.id === id);
+      if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral descarta planilha de gastos.');
+      if (mot.length < 5) throw falha('Escreva o motivo do descarte (por exemplo: arquivo errado, mês errado).');
+      if (mot.length > 1000) throw falha('Texto muito longo em motivo do descarte (máximo 1.000 caracteres).');
+      if (!pl) throw falha('Planilha não encontrada.');
+      if (pl.descartada_em) throw falha('Esta planilha já foi descartada.');
+      const agora = new Date().toISOString(); const antes = Object.assign({}, pl); delete antes.linhas;
+      Object.assign(pl, { descartada_em: agora, descartada_por: eu.id, motivo_descarte: mot });
+      fotosMemoria.delete(pl.arquivo_path);
+      const dep = Object.assign({}, pl); delete dep.linhas;
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'execucao_planilhas', registro_id: id, acao: 'UPDATE', por: eu.id, em: agora, antes, depois: dep });
+      gravar(); return { arquivoFicou: false };
+    },
     async enviarPlanilhaExec(dd, arquivo) {
       const d = ler(); const eu = euMesmo();
       if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral envia a planilha de gastos.');

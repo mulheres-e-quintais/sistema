@@ -1668,6 +1668,20 @@ MQ.ORCAMENTO = {
       const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') return [];
       return copia(ler().execPlanilhas || []);
     },
+    async descartarPlanilhaExec(id, motivo) {   // 72 (descartar_planilha_exec)
+      const d = ler(); const eu = euMesmo(); const mot = String(motivo || '').trim(); const pl = (d.execPlanilhas || []).find(x => x.id === id);
+      if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral descarta planilha de gastos.');
+      if (mot.length < 5) throw falha('Escreva o motivo do descarte (por exemplo: arquivo errado, mês errado).');
+      if (mot.length > 1000) throw falha('Texto muito longo em motivo do descarte (máximo 1.000 caracteres).');
+      if (!pl) throw falha('Planilha não encontrada.');
+      if (pl.descartada_em) throw falha('Esta planilha já foi descartada.');
+      const agora = new Date().toISOString(); const antes = Object.assign({}, pl); delete antes.linhas;
+      Object.assign(pl, { descartada_em: agora, descartada_por: eu.id, motivo_descarte: mot });
+      fotosMemoria.delete(pl.arquivo_path);
+      const dep = Object.assign({}, pl); delete dep.linhas;
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'execucao_planilhas', registro_id: id, acao: 'UPDATE', por: eu.id, em: agora, antes, depois: dep });
+      gravar(); return { arquivoFicou: false };
+    },
     async enviarPlanilhaExec(dd, arquivo) {
       const d = ler(); const eu = euMesmo();
       if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral envia a planilha de gastos.');
@@ -3456,6 +3470,15 @@ MQ.ORCAMENTO = {
       const { data, error } = await sb.from('execucao_planilhas').insert({ posicao_em: d.posicao_em, arquivo_path: path, arquivo_nome: d.arquivo_nome, linhas: d.linhas,
         total_gasto: d.total_gasto, total_recebido: d.total_recebido, nao_classificadas: d.nao_classificadas, obs: d.obs }).select().single();
       if (error) throw erro(error); return data;
+    },
+    /* 72: descartar planilha enviada por engano (o registro fica; o arquivo sai da pasta privada) */
+    async descartarPlanilhaExec(id, motivo) {
+      const { data: pl } = await sb.from('execucao_planilhas').select('arquivo_path').eq('id', id).maybeSingle();
+      const { error } = await sb.rpc('descartar_planilha_exec', { p_id: id, p_motivo: motivo });
+      if (error) throw erro(/descartar_planilha_exec|PGRST202/.test(error.message) ? 'O descarte de planilha ainda não foi instalado: a coordenação geral roda o arquivo 72_descartar_planilha.sql no Supabase.' : error);
+      let arquivoFicou = false;
+      if (pl && pl.arquivo_path) { const r = await sb.storage.from('execucao').remove([pl.arquivo_path]).catch(e => ({ error: e })); arquivoFicou = !!(r && r.error); }
+      return { arquivoFicou };
     },
     async linkPlanilhaExec(path) { const { data, error } = await sb.storage.from('execucao').createSignedUrl(path, 600); if (error) throw erro(error); return data.signedUrl; },
     async listarDocumentos() {
@@ -9589,7 +9612,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const itens = () => O().rubricas.flatMap(r => r.itens.map(i => Object.assign({ rubrica: r.id }, i)));
   // vale a última ENVIADA ("a mais nova passa a valer"), mesmo que corrija uma data anterior
   const planilhas = () => (S().execPlanilhas || []).slice().sort((a, b) => String(b.enviado_em).localeCompare(String(a.enviado_em)) || String(b.posicao_em).localeCompare(String(a.posicao_em)));
-  const vigente = () => planilhas()[0] || null;
+  const vigente = () => planilhas().find(p => !p.descartada_em) || null;   // 72: a descartada não vale; vale a última enviada que não foi descartada
+  const pessoa = id => { const m = (S().equipe || []).find(x => x.id === id); return m ? (m.nome_social || m.nome) : 'a coordenação geral'; };
   const G = {};   // prévia da planilha escolhida (antes de confirmar o envio)
 
   /* ---------- números ---------- */
@@ -9812,16 +9836,19 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <p>Pelo menos uma vez por mês, envie a planilha de gastos da FUNCERN. Ela é o retrato completo desde o início: a mais nova substitui as anteriores, que ficam guardadas aqui. O sistema mostra a prévia antes de gravar.</p>
           <p class="small muted">Base do previsto: ${E(O().fonte)}, com o remanejamento aprovado pelo MDA.</p></div>
           ${MQ.botaoAcao({ acao: 'exec-enviar', icone: 'enviar', texto: 'Enviar planilha de gastos', curto: 'Enviar planilha' })}</div>
-        ${planilhas().length ? `<div class="pag-lista">${planilhas().map((pl, k) => linhaPlanilha(pl, k === 0)).join('')}</div>` : '<p class="vazio-pl">Nenhuma planilha enviada ainda. Use “Enviar planilha de gastos”.</p>'}</section>`;
+        ${planilhas().length ? `<div class="pag-lista">${planilhas().map(pl => linhaPlanilha(pl, pl === vigente())).join('')}</div>` : '<p class="vazio-pl">Nenhuma planilha enviada ainda. Use “Enviar planilha de gastos”.</p>'}</section>`;
   }
   function linhaPlanilha(pl, vale) {
     const nao = (pl.linhas || []).filter(l => l.item !== 'repasse_mda' && !l.rubrica);
-    return `<div class="exec-lanc${vale ? '' : ' antiga'}">
-      <span class="nm">${E(pl.arquivo_nome)} ${vale ? '<span class="chip ok">vigente</span>' : '<span class="chip">substituída</span>'}</span><b class="num">${brl(pl.total_gasto)}</b>
+    const desc = !!pl.descartada_em;
+    return `<div class="exec-lanc${vale ? '' : ' antiga'}${desc ? ' descartada' : ''}" data-planilha="${E(pl.id)}">
+      <span class="nm">${E(pl.arquivo_nome)} ${desc ? '<span class="chip crit">descartada</span>' : vale ? '<span class="chip ok">vigente</span>' : '<span class="chip">substituída</span>'}</span><b class="num">${desc ? '<s>' + brl(pl.total_gasto) + '</s>' : brl(pl.total_gasto)}</b>
       <span class="small muted">Gastos até ${R.fmtData(pl.posicao_em)} · enviada em ${R.fmtData(pl.enviado_em)} · ${(pl.linhas || []).length} linhas · recebido ${brl(pl.total_recebido)}</span>
       ${pl.obs ? `<span class="small">${E(pl.obs)}</span>` : ''}
       ${nao.length ? `<details class="small"><summary>${nao.length} linha${nao.length > 1 ? 's' : ''} fora do orçamento</summary><ul>${nao.slice(0, 30).map(l => `<li>Linha ${l.linha}: “${E(l.texto)}” · ${brl(l.valor)}${l.descricao ? ' · ' + E(l.descricao) : ''}</li>`).join('')}</ul></details>` : ''}
-      <button type="button" class="link small" data-acao="exec-baixar" data-path="${E(pl.arquivo_path)}">Baixar o arquivo enviado</button></div>`;
+      ${desc ? `<span class="small"><b>Descartada</b> em ${R.fmtData(pl.descartada_em)} por ${E(pessoa(pl.descartada_por))}: ${E(pl.motivo_descarte || '')}. Não entra em nenhuma conta; o arquivo foi apagado.</span>`
+        : `<span class="exec-pl-acoes"><button type="button" class="link small" data-acao="exec-baixar" data-path="${E(pl.arquivo_path)}">Baixar o arquivo enviado</button>
+           <button type="button" class="link small perigo-txt" data-acao="exec-descartar" data-id="${E(pl.id)}">Descartar (enviada por engano)</button></span>`}</div>`;
   }
 
   /* ---------- enviar planilha: escolher o arquivo, ver a prévia, confirmar ---------- */
@@ -9846,6 +9873,17 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       ${pr.avisos.filter(a => !(pr.suspeitas || []).length || !/suspeita/.test(a)).map(a => `<p class="small muted">${E(a)}</p>`).join('')}</div>`;
   }
   function painel(p) {
+    if (p.tipo === 'exec-descartar') {   // 72: planilha enviada por engano
+      const pl = planilhas().find(x => x.id === p.id); if (!pl) return cab('Financeiro', 'Descartar planilha') + '<div class="painel-corpo"><p>Planilha não encontrada.</p></div>';
+      const eraVigente = pl === vigente(); const prox = eraVigente ? planilhas().find(x => !x.descartada_em && x !== pl) : null;
+      return cab('Financeiro', 'Descartar planilha') + `<div class="painel-corpo"><form class="f" data-form="exec-descartar" data-id="${E(pl.id)}" novalidate>
+        <div class="bloco"><dl class="dl"><dt>Arquivo</dt><dd><b>${E(pl.arquivo_nome)}</b></dd><dt>Gastos até</dt><dd>${R.fmtData(pl.posicao_em)}</dd><dt>Enviada em</dt><dd>${R.fmtData(pl.enviado_em)}</dd><dt>Total de gastos</dt><dd class="num">${brl(pl.total_gasto)}</dd></dl></div>
+        <div class="aviso">${eraVigente ? (prox ? `Esta é a planilha vigente. Descartada, os números voltam a ser os de <b>${E(prox.arquivo_nome)}</b> (gastos até ${R.fmtData(prox.posicao_em)}).` : 'Esta é a única planilha que vale. Descartada, o painel fica sem planilha até você enviar outra.') : 'Esta planilha já foi substituída: descartar só a tira da lista de planilhas válidas.'}
+          A planilha sai de todas as contas e o arquivo é apagado. O registro continua na lista como descartada, com o motivo. Não se desfaz: para voltar, envie o arquivo de novo.</div>
+        <div class="campo"><label for="exd-mot">Motivo do descarte (obrigatório)</label><textarea id="exd-mot" name="motivo" maxlength="1000" placeholder="Ex.: arquivo errado (planilha de outro projeto); mês errado."></textarea></div>
+        <div class="aviso erro" data-erro hidden></div>
+        <div class="acoes"><button class="btn perigo" type="submit">Descartar esta planilha</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div></form></div>`;
+    }
     if (p.tipo !== 'exec-enviar') return '';
     const pr = G.previa;
     return cab('Financeiro', 'Enviar planilha de gastos') + `<div class="painel-corpo">
@@ -9857,13 +9895,14 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       ${pr ? previaHTML(pr) + `<form class="f" data-form="exec-confirmar" novalidate><div class="campos">
           <div class="campo"><label for="ex-pos">Gastos até (data da planilha)</label><input id="ex-pos" name="posicao_em" type="date" max="${R.hoje()}" value="${pr.posicao}"></div>
           <div class="campo inteiro"><label for="ex-obs">Observação <span class="muted">(opcional)</span></label><input id="ex-obs" name="obs" maxlength="500" placeholder="Ex.: planilha enviada pela FUNCERN em 05/10"></div></div>
-          <p class="small muted">Depois de enviada, a planilha não se altera nem se apaga: se precisar corrigir, envie outra. A mais nova passa a valer.</p>
+          <p class="small muted">Depois de enviada, a planilha não se altera: se precisar corrigir, envie outra (a mais nova passa a valer). Enviou por engano? Descarte na lista de planilhas enviadas.</p>
           <div class="aviso erro" data-erro hidden></div>
           <div class="acoes"><button class="btn pri" type="submit">Enviar e usar esta planilha</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div></form>` : ''}
     </div>`;
   }
   async function clique(a, el) {
     if (a === 'exec-enviar') { G.previa = null; U().abrirPainel({ tipo: 'exec-enviar' }); }
+    else if (a === 'exec-descartar') U().abrirPainel({ tipo: 'exec-descartar', id: el.dataset.id });
     else if (a === 'exec-baixar') { const url = await S().api.linkPlanilhaExec(el.dataset.path); if (url) window.open(url, '_blank', 'noopener'); else U().toast('O arquivo não está disponível neste aparelho.'); }
     else if (a === 'exec-comp') { const tr = document.getElementById('exc-' + el.dataset.id); if (tr) { tr.hidden = !tr.hidden; el.setAttribute('aria-expanded', String(!tr.hidden)); } }
     else if (a === 'exec-abrir') { const tb = document.getElementById('exr-' + el.dataset.id); if (tb) { const ab = !tb.classList.contains('aberta'); tb.classList.toggle('aberta', ab); el.setAttribute('aria-expanded', String(ab)); if (ab) rubAbertas.add(el.dataset.id); else rubAbertas.delete(el.dataset.id);
@@ -9885,6 +9924,15 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       await U().ocupado(form, async () => {
         try { G.previa = await preparar(arq); } catch (e) { return U().mostrarErros(form, { arquivo: e.message }); }
         U().abrirPainel({ tipo: 'exec-enviar' });
+      });
+    }
+    if (tipo === 'exec-descartar') {
+      const mot = String(fd.get('motivo') || '').trim();
+      if (mot.length < 5) return U().mostrarErros(form, { motivo: 'Escreva o motivo do descarte (por exemplo: arquivo errado, mês errado).' });
+      await U().ocupado(form, async () => {
+        const r = await S().api.descartarPlanilhaExec(form.dataset.id, mot);
+        await U().carregar(); U().fecharPainel(); U().render();
+        U().toast('Planilha descartada.' + (r && r.arquivoFicou ? ' O arquivo não foi apagado agora (sem internet?): ele não conta em nada.' : ' Os números já não a usam.'));
       });
     }
     if (tipo === 'exec-confirmar') {
@@ -11548,7 +11596,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         d: `Cadastradas até agora: ${tec ? 'coordenação técnica e ' : 'sem coordenação técnica; '}${bols} de 10 bolsistas.` });
     }
     if (eu.papel === 'coord_geral' && !S().execSemBanco && +hoje.slice(8, 10) >= 20) {   // planilha de gastos: pelo menos uma por mês
-      const doMes = (S().execPlanilhas || []).some(p => String(R.diaLocal(p.enviado_em)).slice(0, 7) === hoje.slice(0, 7));
+      const doMes = (S().execPlanilhas || []).some(p => !p.descartada_em && String(R.diaLocal(p.enviado_em)).slice(0, 7) === hoje.slice(0, 7));   // 72: a descartada não conta
       if (!doMes) out.push({ id: 'planilha-' + hoje.slice(0, 7), t: `Envie a <b>planilha de gastos de ${MESES[+hoje.slice(5, 7) - 1]}</b>.`, d: 'Na aba Execução. Sem ela, o executado do painel fica parado na planilha anterior.' });
     }
     if (MQ.encUI && R.matriculaFIC(eu.papel)) {   // 38: presença no curso FIC para confirmar
@@ -11904,12 +11952,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       ],
       passos: [
         '<b>Por meta do plano de trabalho</b> mostra o mesmo gasto pelas metas: bolsas na Meta 1; a ajuda de custo das visitas dividida entre diagnóstico (M2, 25%), implantação (M3, 25%) e acompanhamento (M4, 50%); taxa da FUNCERN, combustível, notebook e apoio em <b>Comum a todas as metas</b>. Quando o valor do plano de trabalho é diferente da soma dos itens, a meta mostra os dois.',
-        '<b>Executado</b> é o que está na planilha mais recente. As anteriores ficam guardadas em <b>Planilhas enviadas</b>, marcadas como substituídas.',
+        '<b>Executado</b> é o que está na última planilha enviada (que não foi descartada). As anteriores ficam guardadas em <b>Planilhas enviadas</b>, marcadas como substituídas.',
         '<b>Comprometido</b> é o que já foi decidido e ainda não aparece na planilha: bolsa ou ajuda de custo com aval, ou lançada no Arlo depois da data da planilha; passagem e evento autorizados depois dessa data.',
         'O sistema entende planilhas de fora (da FUNCERN, por exemplo) se tiverem as colunas Item (ou Rubrica) e Valor. Linhas de total são ignoradas para não contar duas vezes.'
       ],
       duvidas: [
-        ['Enviei a planilha errada.', 'Envie a certa: a mais nova é a que vale. A errada fica no histórico, marcada como substituída (nada se apaga).'],
+        ['Enviei a planilha errada.', 'Em <b>Planilhas enviadas</b>, toque em <b>Descartar (enviada por engano)</b> na planilha errada e escreva o motivo. Ela sai de todas as contas e o arquivo é apagado; o registro fica na lista como descartada, com o motivo. Se era a vigente, volta a valer a anterior. Descartar não se desfaz: para voltar, envie o arquivo de novo.'],
         ['Apareceram linhas "fora do orçamento".', 'O nome do item na planilha não bate com nenhum item do orçamento. Corrija com o nome da aba Itens do modelo e envie de novo. Enquanto isso, o valor entra no total, fora das rubricas.'],
         ['A planilha é .xls ou .ods.', 'Abra no Excel ou LibreOffice e salve como .xlsx. O .xlsx é lido sem nenhum programa extra.'],
         ['Quem mais vê esta aba?', 'Ninguém. A aba, as planilhas e os arquivos são só da coordenação geral, no sistema e no banco.']
@@ -12870,7 +12918,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       fic: { encontros: en.length, horas: en.reduce((t, x) => t + (+x.carga_horaria || 0), 0), horas_feitas: en.filter(x => String(x.data) <= hoje).reduce((t, x) => t + (+x.carga_horaria || 0), 0), feitos: en.filter(x => String(x.data) <= hoje).length, presencas: pr.filter(x => x.presente).length, marcacoes: pr.length },
       documentos: { por_tipo: cont(dc, 'tipo'), ultima_data: dc.reduce((o, x) => { if (!o[x.tipo] || String(x.data_documento) > o[x.tipo]) o[x.tipo] = String(x.data_documento); return o; }, {}) } };
     if (orgao === 'mda' && previa) {   // na demonstração, o padrão do banco: o resumo financeiro aparece só na prévia
-      const pl = (d.execPlanilhas || []).slice().sort((a, b) => String(b.posicao_em).localeCompare(String(a.posicao_em)))[0];
+      const pl = (d.execPlanilhas || []).filter(x => !x.descartada_em).sort((a, b) => String(b.enviado_em).localeCompare(String(a.enviado_em)) || String(b.posicao_em).localeCompare(String(a.posicao_em)))[0];   // 72: como o banco
       if (!pl) r.financeiro = { liberado: 'previa', sem_planilha: true };
       else { const pi = {}, pm = {}; (pl.linhas || []).forEach(l => { const k = (l.item || '') + '|' + (l.rubrica || ''); const vl = typeof l.valor === 'number' ? l.valor : 0; pi[k] = (pi[k] || 0) + vl;
           const m = /^\d{4}-\d{2}/.test(String(l.data || '')) ? String(l.data).slice(0, 7) : String(pl.posicao_em).slice(0, 7); pm[m] = pm[m] || { mes: m, gasto: 0, recebido: 0 }; pm[m][l.item === 'repasse_mda' ? 'recebido' : 'gasto'] += vl; });
@@ -14423,6 +14471,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (a.tabela === 'solicitacao_visitas') return `${Q} ${a.acao === 'DELETE' ? 'tirou uma visita de' : 'incluiu uma visita em'} um pedido de ajuda de custo.`;
     if (a.tabela === 'entregas_mes') return `${Q} ${a.acao === 'DELETE' ? 'desmarcou' : 'marcou'} uma entrega do mês.`;
     if (a.tabela === 'apl_municipios') return `${Q} atualizou os arranjos produtivos de um município.`;
+    if (a.tabela === 'execucao_planilhas') return a.acao === 'INSERT' ? `${Q} enviou a planilha de gastos <b>${esc(alvo.arquivo_nome || '')}</b>.` : alvo.descartada_em ? `${Q} descartou a planilha de gastos <b>${esc(alvo.arquivo_nome || '')}</b>${alvo.motivo_descarte ? ': ' + esc(alvo.motivo_descarte) : ''}.` : `${Q} alterou a planilha de gastos <b>${esc(alvo.arquivo_nome || '')}</b>.`;   // 72
     if (a.tabela === 'custos_visita') return `${Q} definiu a distância (ajuda de custo) de uma visita${alvo.km_ida != null ? ': ' + esc(alvo.km_ida) + ' km de ida' : ''}.`;
     if (a.tabela === 'solicitacoes_pagamento') {
       const tipo = alvo.tipo === 'ajuda_custo' ? 'ajuda de custo' : 'bolsa';

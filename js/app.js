@@ -881,6 +881,7 @@
     if (a.tabela === 'solicitacao_visitas') return `${Q} ${a.acao === 'DELETE' ? 'tirou uma visita de' : 'incluiu uma visita em'} um pedido de ajuda de custo.`;
     if (a.tabela === 'entregas_mes') return `${Q} ${a.acao === 'DELETE' ? 'desmarcou' : 'marcou'} uma entrega do mês.`;
     if (a.tabela === 'apl_municipios') return `${Q} atualizou os arranjos produtivos de um município.`;
+    if (a.tabela === 'execucao_planilhas') return a.acao === 'INSERT' ? `${Q} enviou a planilha de gastos <b>${esc(alvo.arquivo_nome || '')}</b>.` : alvo.descartada_em ? `${Q} descartou a planilha de gastos <b>${esc(alvo.arquivo_nome || '')}</b>${alvo.motivo_descarte ? ': ' + esc(alvo.motivo_descarte) : ''}.` : `${Q} alterou a planilha de gastos <b>${esc(alvo.arquivo_nome || '')}</b>.`;   // 72
     if (a.tabela === 'custos_visita') return `${Q} definiu a distância (ajuda de custo) de uma visita${alvo.km_ida != null ? ': ' + esc(alvo.km_ida) + ' km de ida' : ''}.`;
     if (a.tabela === 'solicitacoes_pagamento') {
       const tipo = alvo.tipo === 'ajuda_custo' ? 'ajuda de custo' : 'bolsa';

@@ -623,6 +623,15 @@
         total_gasto: d.total_gasto, total_recebido: d.total_recebido, nao_classificadas: d.nao_classificadas, obs: d.obs }).select().single();
       if (error) throw erro(error); return data;
     },
+    /* 72: descartar planilha enviada por engano (o registro fica; o arquivo sai da pasta privada) */
+    async descartarPlanilhaExec(id, motivo) {
+      const { data: pl } = await sb.from('execucao_planilhas').select('arquivo_path').eq('id', id).maybeSingle();
+      const { error } = await sb.rpc('descartar_planilha_exec', { p_id: id, p_motivo: motivo });
+      if (error) throw erro(/descartar_planilha_exec|PGRST202/.test(error.message) ? 'O descarte de planilha ainda não foi instalado: a coordenação geral roda o arquivo 72_descartar_planilha.sql no Supabase.' : error);
+      let arquivoFicou = false;
+      if (pl && pl.arquivo_path) { const r = await sb.storage.from('execucao').remove([pl.arquivo_path]).catch(e => ({ error: e })); arquivoFicou = !!(r && r.error); }
+      return { arquivoFicou };
+    },
     async linkPlanilhaExec(path) { const { data, error } = await sb.storage.from('execucao').createSignedUrl(path, 600); if (error) throw erro(error); return data.signedUrl; },
     async listarDocumentos() {
       const { data, error } = await todas(() => sb.from('documentos_projeto').select('*', CT).order('data_documento', { ascending: false }).order('id')); if (error) throw erro(error); return data;

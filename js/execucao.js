@@ -15,7 +15,8 @@
   const itens = () => O().rubricas.flatMap(r => r.itens.map(i => Object.assign({ rubrica: r.id }, i)));
   // vale a última ENVIADA ("a mais nova passa a valer"), mesmo que corrija uma data anterior
   const planilhas = () => (S().execPlanilhas || []).slice().sort((a, b) => String(b.enviado_em).localeCompare(String(a.enviado_em)) || String(b.posicao_em).localeCompare(String(a.posicao_em)));
-  const vigente = () => planilhas()[0] || null;
+  const vigente = () => planilhas().find(p => !p.descartada_em) || null;   // 72: a descartada não vale; vale a última enviada que não foi descartada
+  const pessoa = id => { const m = (S().equipe || []).find(x => x.id === id); return m ? (m.nome_social || m.nome) : 'a coordenação geral'; };
   const G = {};   // prévia da planilha escolhida (antes de confirmar o envio)
 
   /* ---------- números ---------- */
@@ -238,16 +239,19 @@
           <p>Pelo menos uma vez por mês, envie a planilha de gastos da FUNCERN. Ela é o retrato completo desde o início: a mais nova substitui as anteriores, que ficam guardadas aqui. O sistema mostra a prévia antes de gravar.</p>
           <p class="small muted">Base do previsto: ${E(O().fonte)}, com o remanejamento aprovado pelo MDA.</p></div>
           ${MQ.botaoAcao({ acao: 'exec-enviar', icone: 'enviar', texto: 'Enviar planilha de gastos', curto: 'Enviar planilha' })}</div>
-        ${planilhas().length ? `<div class="pag-lista">${planilhas().map((pl, k) => linhaPlanilha(pl, k === 0)).join('')}</div>` : '<p class="vazio-pl">Nenhuma planilha enviada ainda. Use “Enviar planilha de gastos”.</p>'}</section>`;
+        ${planilhas().length ? `<div class="pag-lista">${planilhas().map(pl => linhaPlanilha(pl, pl === vigente())).join('')}</div>` : '<p class="vazio-pl">Nenhuma planilha enviada ainda. Use “Enviar planilha de gastos”.</p>'}</section>`;
   }
   function linhaPlanilha(pl, vale) {
     const nao = (pl.linhas || []).filter(l => l.item !== 'repasse_mda' && !l.rubrica);
-    return `<div class="exec-lanc${vale ? '' : ' antiga'}">
-      <span class="nm">${E(pl.arquivo_nome)} ${vale ? '<span class="chip ok">vigente</span>' : '<span class="chip">substituída</span>'}</span><b class="num">${brl(pl.total_gasto)}</b>
+    const desc = !!pl.descartada_em;
+    return `<div class="exec-lanc${vale ? '' : ' antiga'}${desc ? ' descartada' : ''}" data-planilha="${E(pl.id)}">
+      <span class="nm">${E(pl.arquivo_nome)} ${desc ? '<span class="chip crit">descartada</span>' : vale ? '<span class="chip ok">vigente</span>' : '<span class="chip">substituída</span>'}</span><b class="num">${desc ? '<s>' + brl(pl.total_gasto) + '</s>' : brl(pl.total_gasto)}</b>
       <span class="small muted">Gastos até ${R.fmtData(pl.posicao_em)} · enviada em ${R.fmtData(pl.enviado_em)} · ${(pl.linhas || []).length} linhas · recebido ${brl(pl.total_recebido)}</span>
       ${pl.obs ? `<span class="small">${E(pl.obs)}</span>` : ''}
       ${nao.length ? `<details class="small"><summary>${nao.length} linha${nao.length > 1 ? 's' : ''} fora do orçamento</summary><ul>${nao.slice(0, 30).map(l => `<li>Linha ${l.linha}: “${E(l.texto)}” · ${brl(l.valor)}${l.descricao ? ' · ' + E(l.descricao) : ''}</li>`).join('')}</ul></details>` : ''}
-      <button type="button" class="link small" data-acao="exec-baixar" data-path="${E(pl.arquivo_path)}">Baixar o arquivo enviado</button></div>`;
+      ${desc ? `<span class="small"><b>Descartada</b> em ${R.fmtData(pl.descartada_em)} por ${E(pessoa(pl.descartada_por))}: ${E(pl.motivo_descarte || '')}. Não entra em nenhuma conta; o arquivo foi apagado.</span>`
+        : `<span class="exec-pl-acoes"><button type="button" class="link small" data-acao="exec-baixar" data-path="${E(pl.arquivo_path)}">Baixar o arquivo enviado</button>
+           <button type="button" class="link small perigo-txt" data-acao="exec-descartar" data-id="${E(pl.id)}">Descartar (enviada por engano)</button></span>`}</div>`;
   }
 
   /* ---------- enviar planilha: escolher o arquivo, ver a prévia, confirmar ---------- */
@@ -272,6 +276,17 @@
       ${pr.avisos.filter(a => !(pr.suspeitas || []).length || !/suspeita/.test(a)).map(a => `<p class="small muted">${E(a)}</p>`).join('')}</div>`;
   }
   function painel(p) {
+    if (p.tipo === 'exec-descartar') {   // 72: planilha enviada por engano
+      const pl = planilhas().find(x => x.id === p.id); if (!pl) return cab('Financeiro', 'Descartar planilha') + '<div class="painel-corpo"><p>Planilha não encontrada.</p></div>';
+      const eraVigente = pl === vigente(); const prox = eraVigente ? planilhas().find(x => !x.descartada_em && x !== pl) : null;
+      return cab('Financeiro', 'Descartar planilha') + `<div class="painel-corpo"><form class="f" data-form="exec-descartar" data-id="${E(pl.id)}" novalidate>
+        <div class="bloco"><dl class="dl"><dt>Arquivo</dt><dd><b>${E(pl.arquivo_nome)}</b></dd><dt>Gastos até</dt><dd>${R.fmtData(pl.posicao_em)}</dd><dt>Enviada em</dt><dd>${R.fmtData(pl.enviado_em)}</dd><dt>Total de gastos</dt><dd class="num">${brl(pl.total_gasto)}</dd></dl></div>
+        <div class="aviso">${eraVigente ? (prox ? `Esta é a planilha vigente. Descartada, os números voltam a ser os de <b>${E(prox.arquivo_nome)}</b> (gastos até ${R.fmtData(prox.posicao_em)}).` : 'Esta é a única planilha que vale. Descartada, o painel fica sem planilha até você enviar outra.') : 'Esta planilha já foi substituída: descartar só a tira da lista de planilhas válidas.'}
+          A planilha sai de todas as contas e o arquivo é apagado. O registro continua na lista como descartada, com o motivo. Não se desfaz: para voltar, envie o arquivo de novo.</div>
+        <div class="campo"><label for="exd-mot">Motivo do descarte (obrigatório)</label><textarea id="exd-mot" name="motivo" maxlength="1000" placeholder="Ex.: arquivo errado (planilha de outro projeto); mês errado."></textarea></div>
+        <div class="aviso erro" data-erro hidden></div>
+        <div class="acoes"><button class="btn perigo" type="submit">Descartar esta planilha</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div></form></div>`;
+    }
     if (p.tipo !== 'exec-enviar') return '';
     const pr = G.previa;
     return cab('Financeiro', 'Enviar planilha de gastos') + `<div class="painel-corpo">
@@ -283,13 +298,14 @@
       ${pr ? previaHTML(pr) + `<form class="f" data-form="exec-confirmar" novalidate><div class="campos">
           <div class="campo"><label for="ex-pos">Gastos até (data da planilha)</label><input id="ex-pos" name="posicao_em" type="date" max="${R.hoje()}" value="${pr.posicao}"></div>
           <div class="campo inteiro"><label for="ex-obs">Observação <span class="muted">(opcional)</span></label><input id="ex-obs" name="obs" maxlength="500" placeholder="Ex.: planilha enviada pela FUNCERN em 05/10"></div></div>
-          <p class="small muted">Depois de enviada, a planilha não se altera nem se apaga: se precisar corrigir, envie outra. A mais nova passa a valer.</p>
+          <p class="small muted">Depois de enviada, a planilha não se altera: se precisar corrigir, envie outra (a mais nova passa a valer). Enviou por engano? Descarte na lista de planilhas enviadas.</p>
           <div class="aviso erro" data-erro hidden></div>
           <div class="acoes"><button class="btn pri" type="submit">Enviar e usar esta planilha</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div></form>` : ''}
     </div>`;
   }
   async function clique(a, el) {
     if (a === 'exec-enviar') { G.previa = null; U().abrirPainel({ tipo: 'exec-enviar' }); }
+    else if (a === 'exec-descartar') U().abrirPainel({ tipo: 'exec-descartar', id: el.dataset.id });
     else if (a === 'exec-baixar') { const url = await S().api.linkPlanilhaExec(el.dataset.path); if (url) window.open(url, '_blank', 'noopener'); else U().toast('O arquivo não está disponível neste aparelho.'); }
     else if (a === 'exec-comp') { const tr = document.getElementById('exc-' + el.dataset.id); if (tr) { tr.hidden = !tr.hidden; el.setAttribute('aria-expanded', String(!tr.hidden)); } }
     else if (a === 'exec-abrir') { const tb = document.getElementById('exr-' + el.dataset.id); if (tb) { const ab = !tb.classList.contains('aberta'); tb.classList.toggle('aberta', ab); el.setAttribute('aria-expanded', String(ab)); if (ab) rubAbertas.add(el.dataset.id); else rubAbertas.delete(el.dataset.id);
@@ -311,6 +327,15 @@
       await U().ocupado(form, async () => {
         try { G.previa = await preparar(arq); } catch (e) { return U().mostrarErros(form, { arquivo: e.message }); }
         U().abrirPainel({ tipo: 'exec-enviar' });
+      });
+    }
+    if (tipo === 'exec-descartar') {
+      const mot = String(fd.get('motivo') || '').trim();
+      if (mot.length < 5) return U().mostrarErros(form, { motivo: 'Escreva o motivo do descarte (por exemplo: arquivo errado, mês errado).' });
+      await U().ocupado(form, async () => {
+        const r = await S().api.descartarPlanilhaExec(form.dataset.id, mot);
+        await U().carregar(); U().fecharPainel(); U().render();
+        U().toast('Planilha descartada.' + (r && r.arquivoFicou ? ' O arquivo não foi apagado agora (sem internet?): ele não conta em nada.' : ' Os números já não a usam.'));
       });
     }
     if (tipo === 'exec-confirmar') {
