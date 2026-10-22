@@ -232,8 +232,17 @@
         <td data-rot="Descrição"><span class="desp-d">${E(l.descricao || l.texto || 'Despesa')}</span><span class="desp-s">${[comRubrica ? nomeRub(l.rubrica) : '', l.item ? nomeItem(l.item) : (comRubrica ? '' : 'sem item definido'), l.favorecido, l.documento].filter(Boolean).map(E).join(' · ')}</span></td>
         <td data-rot="Situação">${sitChip(l)}</td><td data-rot="Valor" class="num"><b>${brl(l.valor)}</b></td></tr>`).join('')}</tbody></table></div>`;
   }
-  function linhaDespesasRub(rid, n) {
+  /* estresse 22/10: com milhares de despesas, a página montava a lista de cada rubrica (escondida) e a lista inteira a cada clique
+     (3,8 MB de HTML e ~1 s por desenho). Agora a lista só é montada quando a rubrica ou "Ver as outras" é aberta (como no Cultivos). */
+  let ultimoN = null;
+  function encherRub(tb) {
+    const ph = tb && tb.querySelector(':scope > tr.fin-desp[data-tarde]'); if (!ph || !ultimoN) return;
+    const h = linhaDespesasRub(ph.dataset.tarde, ultimoN, true); if (!h) { ph.remove(); return; }
+    ph.insertAdjacentHTML('afterend', h); ph.remove();
+  }
+  function linhaDespesasRub(rid, n, agora) {
     const ds = n.despesas.filter(l => l.rubrica === rid); if (!ds.length) return '';
+    if (!agora && !rubAbertas.has(rid)) return `<tr class="fin-desp" data-tarde="${E(rid)}" hidden></tr>`;
     return `<tr class="fin-desp"><td colspan="6"><h3 class="fin-desp-t">Despesas desta rubrica <span class="small muted">(${ds.length}, da planilha vigente)</span></h3>${tabelaDespesas(ds, false)}</td></tr>`;
   }
   /* 22/10/2026: como "Despesas do projeto" do Saberes que Cultivam, no fim da aba, com o único botão de envio (sem lançamento à mão) */
@@ -242,7 +251,7 @@
     return `<section class="secao exec-desp" id="exec-desp" aria-labelledby="t-exd"><div class="secao-cab desp-cab"><div><h2 id="t-exd">Despesas do projeto${ds.length ? ` <span class="conta-t">${ds.length}</span>` : ''}</h2>
         <p>Vêm da planilha de solicitações da FUNCERN: envie a planilha atualizada e o sistema mostra o que mudou antes de gravar. Enquanto não estiver paga, a despesa conta como comprometida; cancelada não entra.</p></div></div>
       <div class="desp-acoes">${MQ.botaoAcao({ acao: 'exec-enviar', icone: 'enviar', texto: 'Importar planilha da FUNCERN', curto: 'Importar planilha' })}</div>
-      ${ds.length ? tabelaDespesas(ord.slice(0, LIM), true) + (mais ? `<details class="desp-mais"><summary>Ver as outras ${ds.length - LIM} despesas</summary>${tabelaDespesas(ord.slice(LIM), true)}</details>` : '')
+      ${ds.length ? tabelaDespesas(ord.slice(0, LIM), true) + (mais ? `<details class="desp-mais"><summary>Ver as outras ${ds.length - LIM} despesas</summary><div data-desp-tarde></div></details>` : '')
         : '<p class="vazio-pl">Nenhuma despesa ainda. Toque em “Importar planilha da FUNCERN”.</p>'}</section>`;
   }
   function alertas(n) {
@@ -258,7 +267,7 @@
   function aba() {
     if (S().execSemBanco) return `<div class="cab"><div><span class="eyebrow">Financeiro</span><h1>Execução do orçamento</h1></div></div>
       <div class="aviso">A execução ainda não está instalada no servidor. Rode o arquivo <b>37_execucao_planilhas.sql</b> no Supabase.</div>`;
-    const n = numeros(); const T = O().total; const al = alertas(n);
+    const n = numeros(); ultimoN = n; const T = O().total; const al = alertas(n);
     const usoPct = pct(n.exec + n.comp, T), tempoPct = Math.round(n.tempo * 1000) / 10;
     const ritmo = usoPct + 10 < tempoPct ? 'abaixo do tempo decorrido: o projeto está gastando devagar' : usoPct > tempoPct + 15 ? 'acima do tempo decorrido: atenção ao ritmo' : 'no ritmo do tempo decorrido';
     let acum = 0; const prox = O().repasses.find(r => { acum += r.valor; return acum > n.recebido + 0.005; });   // o próximo repasse que ainda não entrou
@@ -396,13 +405,13 @@
     else if (a === 'exec-descartar') U().abrirPainel({ tipo: 'exec-descartar', id: el.dataset.id });
     else if (a === 'exec-baixar') { const url = await S().api.linkPlanilhaExec(el.dataset.path); if (url) window.open(url, '_blank', 'noopener'); else U().toast('O arquivo não está disponível neste aparelho.'); }
     else if (a === 'exec-comp') { const tr = document.getElementById('exc-' + el.dataset.id); if (tr) { tr.hidden = !tr.hidden; el.setAttribute('aria-expanded', String(!tr.hidden)); } }
-    else if (a === 'exec-abrir') { const tb = document.getElementById('exr-' + el.dataset.id); if (tb) { const ab = !tb.classList.contains('aberta'); tb.classList.toggle('aberta', ab); el.setAttribute('aria-expanded', String(ab)); if (ab) rubAbertas.add(el.dataset.id); else rubAbertas.delete(el.dataset.id);
+    else if (a === 'exec-abrir') { const tb = document.getElementById('exr-' + el.dataset.id); if (tb) { const ab = !tb.classList.contains('aberta'); if (ab) encherRub(tb); tb.classList.toggle('aberta', ab); el.setAttribute('aria-expanded', String(ab)); if (ab) rubAbertas.add(el.dataset.id); else rubAbertas.delete(el.dataset.id);
       const bt = document.querySelector('[data-acao="exec-abrir-tudo"]'); if (bt) bt.textContent = rubAbertas.size ? 'Fechar todas' : 'Abrir todas'; } }
     else if (a === 'exec-abrir-meta') { const tb = document.getElementById('exm-' + el.dataset.id); if (tb) { const ab = !tb.classList.contains('aberta'); tb.classList.toggle('aberta', ab); el.setAttribute('aria-expanded', String(ab)); if (ab) metaAbertas.add(el.dataset.id); else metaAbertas.delete(el.dataset.id);
       const bt = document.querySelector('[data-acao="exec-abrir-metas"]'); if (bt) bt.textContent = metaAbertas.size ? 'Fechar todas' : 'Abrir todas'; } }
     else if (a === 'exec-abrir-metas') { const abrir = !metaAbertas.size; document.querySelectorAll('.exec-meta tbody.fin-rubrica').forEach(tb => { const id = tb.id.slice(4); tb.classList.toggle('aberta', abrir); const b = tb.querySelector('.fin-rub'); if (b) b.setAttribute('aria-expanded', String(abrir)); if (abrir) metaAbertas.add(id); else metaAbertas.delete(id); }); el.textContent = abrir ? 'Fechar todas' : 'Abrir todas'; }
-    else if (a === 'exec-abrir-tudo') { const abrir = !rubAbertas.size; document.querySelectorAll('.exec-fin:not(.exec-meta) tbody.fin-rubrica').forEach(tb => { const id = tb.id.slice(4); tb.classList.toggle('aberta', abrir); const b = tb.querySelector('.fin-rub'); if (b) b.setAttribute('aria-expanded', String(abrir)); if (abrir) rubAbertas.add(id); else rubAbertas.delete(id); }); el.textContent = abrir ? 'Fechar todas' : 'Abrir todas'; }
-    else if (a === 'exec-rub') { const tb = document.getElementById('exr-' + el.dataset.id); if (tb) { tb.classList.add('aberta'); rubAbertas.add(el.dataset.id); const bb = tb.querySelector('.fin-rub'); if (bb) bb.setAttribute('aria-expanded', 'true'); tb.scrollIntoView({ behavior: 'smooth', block: 'start' }); tb.classList.remove('realce'); void tb.offsetWidth; tb.classList.add('realce'); } }
+    else if (a === 'exec-abrir-tudo') { const abrir = !rubAbertas.size; document.querySelectorAll('.exec-fin:not(.exec-meta) tbody.fin-rubrica').forEach(tb => { const id = tb.id.slice(4); if (abrir) encherRub(tb); tb.classList.toggle('aberta', abrir); const b = tb.querySelector('.fin-rub'); if (b) b.setAttribute('aria-expanded', String(abrir)); if (abrir) rubAbertas.add(id); else rubAbertas.delete(id); }); el.textContent = abrir ? 'Fechar todas' : 'Abrir todas'; }
+    else if (a === 'exec-rub') { const tb = document.getElementById('exr-' + el.dataset.id); if (tb) { encherRub(tb); tb.classList.add('aberta'); rubAbertas.add(el.dataset.id); const bb = tb.querySelector('.fin-rub'); if (bb) bb.setAttribute('aria-expanded', 'true'); tb.scrollIntoView({ behavior: 'smooth', block: 'start' }); tb.classList.remove('realce'); void tb.offsetWidth; tb.classList.add('realce'); } }
   }
   /* como cada status da FUNCERN entra (pago, comprometido, não entra): a escolha fica guardada neste aparelho para a próxima planilha */
   const CH_ST = 'mq-imp-status';
@@ -419,6 +428,9 @@
     const form = document.querySelector('form[data-form=exec-confirmar]'); const pos = form && form.posicao_em ? form.posicao_em.value : pr.posicao, obs = form && form.obs ? form.obs.value : '';   // o que já foi digitado não se perde
     G.previa = Object.assign(r, { resumo: MQ.planilha.resumo(r), posicao: pos || pr.posicao, obsDigitada: obs, nome: pr.nome, arquivo: pr.arquivo, tab: pr.tab }); U().abrirPainel({ tipo: 'exec-enviar' });
   }
+  // "Ver as outras N despesas": a lista só é montada quando abre
+  if (typeof document !== 'undefined') document.addEventListener('toggle', ev => { const d = ev.target; if (!d || !d.matches || !d.matches('details.desp-mais') || !d.open) return;
+    const alvo = d.querySelector('[data-desp-tarde]'); if (!alvo || !ultimoN) return; const ord = ultimoN.despesas.slice().sort(ordemData); alvo.outerHTML = tabelaDespesas(ord.slice(40), true); }, true);
   if (typeof document !== 'undefined') document.addEventListener('change', ev => { const el = ev.target; if (el && el.matches && el.matches('select[data-exec-status]')) mudarStatus(el.dataset.execStatus, el.value); });
   async function preparar(arquivo) {   // lê e interpreta; devolve a prévia (também usado nos testes)
     const tab = await MQ.planilha.ler(arquivo); const r = MQ.planilha.interpretar(tab, { equipe: S().equipe || [], status: escolhasStatus() }); const resumo = MQ.planilha.resumo(r);
