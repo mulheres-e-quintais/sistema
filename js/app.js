@@ -888,6 +888,7 @@
       if (mudou === 'avalizada') return `${Q} avalizou o pagamento da ${tipo} de ${pessoa(alvo.equipe_id)}.`;
       if (mudou === 'lancada') return `${Q} lançou no Arlo o pagamento da ${tipo} de ${pessoa(alvo.equipe_id)}.`;
       if (mudou === 'devolvida') return `${Q} devolveu o pedido de ${tipo} de ${pessoa(alvo.equipe_id)}.`;
+      if (mudou === 'cancelada') return alvo.cancelado_por ? `${Q} cancelou o pedido de ${tipo} de ${pessoa(alvo.equipe_id)}${alvo.motivo_cancelamento ? ': ' + esc(alvo.motivo_cancelamento) : ''}.` : `O sistema cancelou o pedido de ${tipo} de ${pessoa(alvo.equipe_id)} (desligamento).`;   // 69
       return `${Q} atualizou o pedido de ${tipo} de ${pessoa(alvo.equipe_id)}.`;
     }
     if (a.tabela === 'documentos_projeto') return alvo.arquivado_em && a.acao === 'UPDATE'
@@ -1299,6 +1300,7 @@
     clearTimeout(rascT);
     if (S.painel && !op.manterRascunho) { const ch = chavePainel(S.painel); if (rascAtivo === ch) removerRascunho(ch); }
     rascAtivo = null;
+    (MQ.aoFecharPainel || []).forEach(fn => { try { fn(); } catch (e) {} });   // auditoria 22/10: as fotos na memória saem junto (a cópia no aparelho, presa ao rascunho, continua)
     S.painel = null; const f = $('#painel'); if (f) f.remove();
     prenderFundo(false);
     if (S.painelHist) { S.painelHist = false; if (!op.semHistorico) sobraDoPainel(); }
@@ -1456,6 +1458,16 @@
     l.forEach(x => formsDoPainel(el).forEach(f => { const fn = volta[f.dataset.form]; try { if (fn && fn(x.campo, x.blob, f)) n++; } catch (e) {} }));
     if (n) arqNoPainel.add(ch);
     return n;
+  }
+  /* auditoria 22/10: o "Continuar" da tela inicial reabre pelo MESMO caminho de cada módulo (que limpa as fotos da mulher anterior
+     e, na correção de ficha, carrega a ficha), e não abrindo o painel direto (abria a correção como ficha nova, sem os dados). */
+  async function reabrirRascunho(p) {
+    const ds = o => ({ dataset: o });
+    if (p.tipo === 'ficha-form' && MQ.fichasUI) return MQ.fichasUI.clique(p.id ? 'ficha-corrigir' : 'ficha-nova', ds({ id: p.id || '' }));
+    if (p.tipo === 'diag-form' && MQ.campoUI) return MQ.campoUI.clique('campo-diag-novo', ds({ ficha: p.ficha || '', visita: p.visita || '' }));
+    if (p.tipo === 'visita-feita' && MQ.campoUI) return MQ.campoUI.clique('campo-feita', ds({ id: p.id || '' }));
+    if (p.tipo === 'aval-form' && MQ.impactoUI) return MQ.impactoUI.clique('aval-novo', ds({ ficha: p.ficha || '', visita: p.visita || '' }));
+    abrirPainel(Object.assign({}, p));
   }
   /* formulários começados e não salvos (para o aviso da tela inicial): só os que reabrem sozinhos */
   const RASC_AVISO = { 'ficha-form': 'uma ficha de indicação', 'diag-form': 'um diagnóstico', 'aval-form': 'uma avaliação final', 'visita-feita': 'o registro de uma visita' };
@@ -1906,7 +1918,7 @@
           <div class="campo"><label for="c-siape">Matrícula SIAPE <span class="muted">(só se for servidor(a) público(a) federal)</span></label><input id="c-siape" name="siape" inputmode="numeric" value="${v('siape')}" placeholder="Deixe vazio se não for"></div>
           <div class="campo"><label for="c-org">Organização ou movimento</label><input id="c-org" name="organizacao" value="${v('organizacao')}" maxlength="120" placeholder="${bols ? 'Ex.: MPA, associação, sindicato' : ['professor_fic', 'auxiliar_adm'].includes(m.papel) ? 'Ex.: IFRN Campus Apodi' : 'Ex.: MPA'}"></div>
         </div></fieldset>
-        ${MQ.convitesUI ? (priv === undefined ? '<p class="small muted">' + MQ.ampulheta() + '</p>' : MQ.convitesUI.camposPessoais(Object.assign({ nome_social: m.nome_social, municipio: m.municipio, cadastro_arlo: p.id ? !!m.cadastro_arlo : m.cadastro_arlo }, priv || {}), false, m.papel, bols ? munis : null, !!S.eu && (S.eu.papel === 'coord_geral' || (!!p.id && p.id === S.eu.id)))) : ''}
+        ${MQ.convitesUI ? (priv === undefined ? '<p class="small muted">' + MQ.ampulheta() + '</p>' : priv && priv._erro ? '<div class="aviso" data-priv-erro>Nascimento, endereço e questionário desta pessoa não carregaram agora (sem internet ou falha no servidor). O resto do cadastro pode ser salvo; esses dados continuam como estavam. Para mexer neles, feche e abra de novo daqui a pouco.</div>' : MQ.convitesUI.camposPessoais(Object.assign({ nome_social: m.nome_social, municipio: m.municipio, cadastro_arlo: p.id ? !!m.cadastro_arlo : m.cadastro_arlo }, priv || {}), false, m.papel, bols ? munis : null, !!S.eu && (S.eu.papel === 'coord_geral' || (!!p.id && p.id === S.eu.id)))) : ''}
         <fieldset><legend>Bolsa</legend><div class="campos">
           <div class="campo"><label for="c-ini">Início ${m.papel === 'agente' ? 'no projeto' : 'da bolsa'}</label><input id="c-ini" name="data_inicio" type="date" value="${v('data_inicio')}" min="${R.LIM.equipeMin}" max="${R.somaDias(R.hoje(), R.LIM.inicioFuturoDias)}" required>
             ${edit ? '' : '<span class="dica">Sugerimos hoje. Mude se a pessoa começou em outro dia.</span>'}</div>
@@ -2105,7 +2117,7 @@
       if (a === 'painel-ficar') { desistirDeSair(); return; }
       if (a === 'painel-sair') { fecharPainel(); return; }
       if (a === 'rasc-continuar' || a === 'rasc-novo') { responderRascunho(a === 'rasc-continuar'); return; }
-      if (a === 'rasc-abrir') { const it = rascunhosPendentes()[+el.dataset.i || 0]; if (it) abrirPainel(Object.assign({}, it.p)); else render(); return; }
+      if (a === 'rasc-abrir') { const it = rascunhosPendentes()[+el.dataset.i || 0]; if (it) await reabrirRascunho(it.p); else render(); return; }
       if (a === 'versao-nova') { if (painelAlterado() || paginaEmUso()) { toast('Salve ou feche o que você está preenchendo antes de atualizar.'); return; } location.reload(); return; }
       if (a === 'carga-tentar') { el.disabled = true; try { await carregar(); } finally { el.disabled = false; } render(); toast(S.cargaParcial ? 'Ainda não deu para carregar tudo. Tente de novo daqui a pouco.' : 'Dados carregados.'); return; }
       if (a === 'data-hoje') { const i = document.getElementById(el.dataset.alvo); if (i) { i.value = R.hoje(); i.dispatchEvent(new Event('input', { bubbles: true })); i.focus(); } return; }

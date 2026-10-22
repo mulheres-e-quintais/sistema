@@ -76,6 +76,30 @@ const R = []; const ok = (n, c, d = '') => { R.push([c ? 'PASSOU' : 'FALHOU', n,
   await p.evaluate(() => MQ.ui.sair()); await p.waitForTimeout(800);
   ok('5.1 o botão Sair apaga as fotos guardadas (LGPD)', (await copias(p)) === 0, String(await copias(p)));
 
+  /* ---------- 6. (auditoria 22/10) foto de uma mulher não passa para a ficha de outra ---------- */
+  p = await abrir(true); await entrar(p, 'bolsista');
+  await p.click('[data-acao=ficha-nova]'); await p.waitForSelector('form[data-form=ficha]');
+  await p.fill('#fi-nome', 'Maria Primeira Teste'); await foto(p, '#fi-ft'); await p.waitForTimeout(1500);
+  await p.evaluate(() => MQ.ui.fecharPainel());   // saiu sem salvar
+  await p.click('[data-acao=ficha-nova]'); await p.waitForSelector('form[data-form=ficha]'); await p.waitForTimeout(400);
+  if (await p.$('#painel [data-acao=rasc-novo]')) { await p.click('#painel [data-acao=rasc-novo]'); await p.waitForTimeout(400); }
+  const termo = await p.evaluate(() => { const f = document.querySelector('form[data-form=ficha]'); return { dica: document.getElementById('fi-ft-dica').textContent }; });
+  ok('6.1 saiu sem salvar e abriu outra ficha: a foto do termo da anterior não vem junto', !/pronta|recuperad/i.test(termo.dica), termo.dica);
+  await p.evaluate(() => MQ.ui.fecharPainel());
+
+  /* ---------- 7. (auditoria 22/10) correção de ficha: "Continuar" reabre a MESMA ficha, não uma nova ---------- */
+  const alvo = await p.evaluate(() => { const f = (MQ.ui.S.fichas || []).find(x => x.uf === MQ.ui.S.eu.uf && x.situacao !== 'aprovada') || (MQ.ui.S.fichas || []).find(x => x.uf === MQ.ui.S.eu.uf); return f ? { id: f.id, nome: f.nome } : null; });
+  if (alvo) {
+    await p.evaluate(id => MQ.fichasUI.clique('ficha-corrigir', { dataset: { id } }), alvo.id); await p.waitForSelector('form[data-form=ficha]'); await p.waitForTimeout(300);
+    await p.fill('#fi-pess', '7'); await p.waitForTimeout(1400);
+    await p.close({ runBeforeUnload: false });
+    p = await abrir(false); await p.waitForTimeout(800); await p.evaluate(() => MQ.ui.fecharPainel());
+    await p.click('[data-rasc-pendente] [data-acao=rasc-abrir]'); await p.waitForTimeout(500);
+    if (await p.$('#painel [data-acao=rasc-continuar]')) { await p.click('#painel [data-acao=rasc-continuar]'); await p.waitForTimeout(700); }
+    const r = await p.evaluate(() => ({ cab: (document.querySelector('#painel .eyebrow') || {}).textContent || '', nome: (document.getElementById('fi-nome') || {}).value, id: (document.querySelector('form[data-form=ficha]') || { dataset: {} }).dataset.id, pess: (document.getElementById('fi-pess') || {}).value }));
+    ok('7.1 "Continuar" reabre a correção da mesma ficha, com os dados dela e a mudança feita', /Corrigir/.test(r.cab) && r.nome === alvo.nome && r.id === alvo.id && r.pess === '7', r);
+  } else ok('7.1 (sem ficha de exemplo no estado da bolsista para testar a correção)', false);
+
   ok('sem erro de página', !errs.length, errs.slice(0, 3).join(' | '));
   await b.close();
   const f = R.filter(r => r[0] === 'FALHOU').length;

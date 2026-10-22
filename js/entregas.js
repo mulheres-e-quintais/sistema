@@ -24,7 +24,7 @@
     const comRelato = feitas.filter(v => String(v.relato || '').trim() || (S().diagnosticos || []).some(d => d.visita_id === v.id));
     const previstas = vs.filter(v => v.situacao !== 'cancelada' && mesDe(v.data_prevista) === mes);
     const prevFeitas = previstas.filter(v => v.situacao === 'realizada');
-    const bolsa = (S().solic || []).find(s => s.equipe_id === m.id && s.tipo === 'bolsa' && mesDe(s.mes) === mes && s.situacao !== 'devolvida');
+    const bolsa = (S().solic || []).find(s => s.equipe_id === m.id && s.tipo === 'bolsa' && mesDe(s.mes) === mes && ['solicitada', 'avalizada', 'lancada'].includes(s.situacao));   // 69: a cancelada não conta como relatório enviado
     const pres = marcada(m.id, mes, 'presenca'), ava = marcada(m.id, mes, 'ava');
     const n = (k, t) => k + ' ' + t + (k === 1 ? '' : 's');
     return [

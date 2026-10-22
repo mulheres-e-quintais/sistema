@@ -95,6 +95,7 @@
     (S().fila || []).filter(i => i.tipo === 'avaliacao' && i.dados).forEach(i => m.set(i.id, Object.assign(MQ.juntarFila(m.get(i.id), i), { _fila: true, _erro: i.erro })));
     return [...m.values()]; };
   const fotosAv = {};
+  (MQ.aoFecharPainel = MQ.aoFecharPainel || []).push(() => { Object.keys(fotosAv).forEach(k => delete fotosAv[k]); });   // auditoria 22/10
   function painelForm(p) {
     const f = (S().fichas || []).find(x => x.id === p.ficha); if (!f) return '<div class="painel-corpo"><p>Ficha não encontrada.</p></div>';
     // 47: avaliação que ainda está só no aparelho (sem internet, ou recusada porque outra pessoa alterou antes) abre com o que foi preenchido

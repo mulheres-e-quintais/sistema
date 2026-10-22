@@ -90,7 +90,7 @@
   R.mesesBolsaSemPedido = (m, solicitacoes) => {
     if (!m || !['coord_tecnico', 'articulacao', 'apoio', 'professor_fic', 'auxiliar_adm'].includes(m.papel)) return [];
     const ini = [String(m.data_inicio || '').slice(0, 7), R.LIM.bolsaMesMin].sort().pop(), fim = [R.hoje().slice(0, 7), R.LIM.bolsaMesMax].sort()[0];
-    const pedidos = new Set((solicitacoes || []).filter(s => s.equipe_id === m.id && s.tipo === 'bolsa').map(s => String(s.mes).slice(0, 7)));
+    const pedidos = new Set((solicitacoes || []).filter(s => s.equipe_id === m.id && s.tipo === 'bolsa' && s.situacao !== 'cancelada').map(s => String(s.mes).slice(0, 7)));
     const out = []; let [a, mm] = ini.split('-').map(Number);
     for (let i = 0; i < 24; i++) { const k = a + '-' + String(mm).padStart(2, '0'); if (k > fim) break; if (!pedidos.has(k)) out.push(k); mm++; if (mm > 12) { mm = 1; a++; } }
     return out;

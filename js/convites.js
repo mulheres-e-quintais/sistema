@@ -90,7 +90,7 @@
           ${munis && munis.length ? `<datalist id="lista-mun">${munis.map(x => `<option value="${E(x)}">`).join('')}</datalist><span class="dica">A lista traz os municípios do projeto no estado.</span>` : ''}</div>
         <div class="campo" data-arlo-opc ${arlo ? 'hidden' : ''}><label for="dp-uf">Estado</label><select id="dp-uf" name="uf_end">${op(['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE', 'Outro'], en.uf)}</select></div>
       </div></fieldset>
-      ${pub || socio ? `<fieldset data-arlo-opc ${arlo ? 'hidden' : ''}><legend>Questionário socioeconômico (opcional)</legend><input type="hidden" name="_socio" value="1">
+      ${d._socioErro ? `<p class="small muted" data-arlo-opc ${arlo ? 'hidden' : ''} data-socio-erro>O questionário socioeconômico não carregou agora (internet). Ao salvar, ele continua como estava.</p>` : pub || socio ? `<fieldset data-arlo-opc ${arlo ? 'hidden' : ''}><legend>Questionário socioeconômico (opcional)</legend><input type="hidden" name="_socio" value="1">
         <label class="check"><input type="checkbox" name="tem_socio" ${se ? 'checked' : ''} data-socio> <span>Responder. As respostas servem só para o perfil da equipe, em números, sem nome. ${pub ? 'Quem vê as respostas com o seu nome: só você e a coordenação geral do projeto.' : 'Quem vê as respostas com o nome: só a própria pessoa e a coordenação geral do projeto.'}</span></label>
         <div class="campos" data-socio-campos ${se ? '' : 'hidden'}>
           <div class="campo"><label for="dp-esc">Escolaridade</label><select id="dp-esc" name="escolaridade">${op(ESCOLARIDADE, se && se.escolaridade)}</select></div>
@@ -163,9 +163,12 @@
   /* dados pessoais já guardados de alguém da equipe (só coordenação e a própria pessoa conseguem ler) */
   const privCache = {};
   function privado(id) {
-    if (id in privCache) return privCache[id];
+    // auditoria 22/10: leitura que falhou (sem internet) NÃO vira "sem dados": o formulário mostraria tudo vazio e salvar apagaria
+    //   nascimento, endereço e questionário. Fica marcada como erro e tenta de novo depois de 20 segundos.
+    const c = privCache[id];
+    if (id in privCache && !(c && c._erro && Date.now() - c._erro > 20000)) return c;
     privCache[id] = undefined;
-    if (S().api.lerPrivado) S().api.lerPrivado(id).then(d => { privCache[id] = d || null; U().render(); }).catch(() => { privCache[id] = null; });
+    if (S().api.lerPrivado) S().api.lerPrivado(id).then(d => { privCache[id] = d || null; U().render(); }).catch(() => { privCache[id] = { _erro: Date.now() }; U().render(); });
     return undefined;
   }
   const esquecerPrivado = id => { delete privCache[id]; };

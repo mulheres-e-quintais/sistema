@@ -546,6 +546,7 @@
      fechar a página (o Android faz isso quando a câmera abre por cima do navegador), ela volta com "Continuar de onde parou?". */
   function guardarCopia(campo, blob) { try { if (MQ.ui && MQ.ui.guardarArquivoRascunho) MQ.ui.guardarArquivoRascunho(campo, blob); } catch (e) { /* sem cópia: segue */ } }
   MQ.arqVolta = MQ.arqVolta || {};
+  (MQ.aoFecharPainel = MQ.aoFecharPainel || []).push(() => { fotosTemp.ficha = fotosTemp.termo = null; });   // auditoria 22/10: foto de uma mulher não fica para a próxima ficha
   MQ.arqVolta.ficha = (campo, blob, form) => {
     if (!['ficha', 'termo'].includes(campo) || !blob) return false;
     fotosTemp[campo] = blob;
@@ -564,14 +565,23 @@
         const dica = form.querySelector('#fi-' + (campo === 'termo' ? 'ft' : 'ff') + '-dica');
         if (arq.size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; ev.target.value = ''; return; }
         dica.textContent = 'Preparando foto…';
+        // auditoria 22/10: a foto leva segundos para ficar pronta (celular simples). Se nesse meio-tempo a pessoa fechou esta ficha
+        // e abriu a de outra mulher, a foto NÃO entra na ficha nova: fica descartada (ela fotografa de novo nesta ficha).
+        const painelAntes = U().S.painel;
+        const aindaAqui = () => U().S.painel === painelAntes && form.isConnected;
+        let pronto = null;
         if (arq.type === 'application/pdf' || /\.pdf$/i.test(arq.name || '')) {   // ficha digitalizada em PDF: vai como está, se for PDF de verdade
           const falso = MQ.arquivoConfere ? await MQ.arquivoConfere(arq, ['pdf']) : (arq.size > 0 ? '' : 'O arquivo está vazio. Escolha outro.');
+          if (!aindaAqui()) return;
           if (falso) { fotosTemp[campo] = null; ev.target.value = ''; dica.textContent = falso; guardarCopia(campo, null); return; }
-          fotosTemp[campo] = arq; dica.textContent = 'Arquivo pronto (' + Math.max(1, Math.round(arq.size / 1024)) + ' KB). Fica no aparelho até enviar.'; guardarCopia(campo, arq); atualizarForm(form); return; }
-        try { fotosTemp[campo] = await MQ.comprimirFoto(arq, undefined, undefined, { semAviso: true }); }
-        catch (e) { fotosTemp[campo] = null; ev.target.value = ''; dica.textContent = e.message; guardarCopia(campo, null); return; }   // não é foto (txt renomeado, vazio, corrompido)
-        dica.textContent = 'Foto pronta (' + Math.round(fotosTemp[campo].size / 1024) + ' KB). Fica guardada neste aparelho até enviar.';
-        guardarCopia(campo, fotosTemp[campo]);
+          pronto = arq; dica.textContent = 'Arquivo pronto (' + Math.max(1, Math.round(arq.size / 1024)) + ' KB). Fica guardado neste aparelho até enviar.';
+        } else {
+          try { pronto = await MQ.comprimirFoto(arq, undefined, undefined, { semAviso: true }); }
+          catch (e) { if (!aindaAqui()) return; fotosTemp[campo] = null; ev.target.value = ''; dica.textContent = e.message; guardarCopia(campo, null); return; }   // não é foto (txt renomeado, vazio, corrompido)
+          if (!aindaAqui()) return;
+          dica.textContent = 'Foto pronta (' + Math.round(pronto.size / 1024) + ' KB). Fica guardada neste aparelho até enviar.';
+        }
+        fotosTemp[campo] = pronto; guardarCopia(campo, pronto);
       }
       atualizarForm(form);
       const w = ev.target.closest('.criterio, .check'); if (w) w.classList.remove('tem-erro');

@@ -371,7 +371,7 @@
       if (error) throw erro(error);
       // 70: o questionário socioeconômico fica à parte; só a própria pessoa e a coordenação geral recebem (para as outras volta vazio)
       const r = await sb.from('equipe_socio').select('socioeconomico').eq('equipe_id', id).maybeSingle();
-      if (r.error) { if (!semTabelaSocio(r.error)) throw erro(r.error); return data; }
+      if (r.error) return semTabelaSocio(r.error) ? data : Object.assign({ equipe_id: id }, data || {}, { socioeconomico: undefined, _socioErro: true });   // auditoria 22/10: falhou a leitura: o questionário não aparece (e não é apagado ao salvar)
       if (!data && !r.data) return null;
       return Object.assign({ equipe_id: id }, data || {}, { socioeconomico: r.data ? r.data.socioeconomico : null });
     },

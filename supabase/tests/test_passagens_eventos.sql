@@ -3,7 +3,7 @@
 truncate res;
 select logar('apoio.pi@t.com') \gset ap_
 \set AP '''' :ap_logar ''''
-\set PASS '{"finalidade":"intercambio","origem":"Salvador/BA","destino":"Teresina/PI","volta":"2026-12-20","bagagem":"mao","passageiros":[{"nome":"Maria Passageira Um","cpf":"529.982.247-25","rg":"123456","rg_orgao":"SSP/BA","nascimento":"1970-01-01","sexo":"F","celular":"(71) 99999-0000","email":"m@x.com"}]}'
+\set PASS '{"finalidade":"intercambio","origem":"Salvador/BA","destino":"Teresina/PI","volta":"2027-09-20","bagagem":"mao","passageiros":[{"nome":"Maria Passageira Um","cpf":"529.982.247-25","rg":"123456","rg_orgao":"SSP/BA","nascimento":"1970-01-01","sexo":"F","celular":"(71) 99999-0000","email":"m@x.com"}]}'
 create or replace function sp(quem text, id text, tipo text, dias int, dados text, just text default null) returns text language sql as $$
   -- valor estimado padrão de R$ 1.000 (35_tetos_passagens_eventos.sql); o do teste, se vier, vale mais
   select format('select public.salvar_pedido_apoio(%s, %L, %L, current_date + %s, (''{"valor_estimado":1000}''::jsonb || %L::jsonb), %L)', coalesce(id, 'null'), tipo, 'Intercâmbio de beneficiárias', dias, dados, just) $$;
@@ -25,7 +25,7 @@ select t('data no passado recusada', :BB, sp('', null, 'evento', -1, '{}', 'just
 select t('data depois do fim do projeto recusada', :BB, sp('', null, 'evento', 900, '{}'), 'fim do projeto');
 select t('passagem sem passageira recusada', :BB, sp('', null, 'passagem', 50, '{"passageiros":[]}'), 'pelo menos uma');
 select t('passageira sem RG recusada', :BB, sp('', null, 'passagem', 50, replace(:'PASS', '"rg":"123456",', '')), 'RG');
-select t('volta antes da ida recusada', :BB, sp('', null, 'passagem', 50, replace(:'PASS', '2026-12-20', '2026-10-01')), 'volta é antes');
+select t('volta antes da ida recusada', :BB, sp('', null, 'passagem', 50, replace(:'PASS', '2027-09-20', '2026-10-01')), 'volta é antes');
 select t('tipo inventado recusado', :BB, sp('', null, 'diaria', 50, '{}'), 'inválido');
 -- fluxo
 create temp table pid(k text, id uuid); grant all on pid to authenticated;

@@ -75,6 +75,16 @@ select case when (select socioeconomico->>'escolaridade' from public.equipe_soci
              and not exists (select 1 from public.pre_cadastros_socio s join public.pre_cadastros p on p.id = s.pre_id where p.cpf = '70017005337')
   then 'PASSOU' else 'FALHOU' end || ' 70: na aprovação, as respostas passam para a pessoa e saem do cadastro enviado';
 
+-- 2b. (71) quem confere não troca as respostas de OUTRA pessoa aprovando um cadastro do link com o id dela
+insert into public.convites (id, token, papel, uf, expira_em) values ('00000000-0000-0000-0000-0000000070e2', 'token-teste-70-forjado', 'agente', 'PI', now() + interval '1 day');
+select pg_temp.tenta('link_forjado', null, $$select public.enviar_pre_cadastro('token-teste-70-forjado', '{"nome": "Outra Pessoa Do Link", "cpf": "70017006309", "email": "forjado.t70@exemplo.invalid", "telefone": "(89) 99999-7071", "data_nascimento": "1991-05-05", "consentimento_lgpd": true, "cadastro_arlo": false, "endereco": {"cidade": "Pio IX"}, "socioeconomico": {"escolaridade": "FORJADO", "raca_etnia": "Branca", "renda_familiar": 1, "pessoas_casa": 1}}')::text$$);
+select pg_temp.tenta('tec_forja', :'TEC', $$update public.pre_cadastros set situacao = 'aprovado', equipe_id = '00000000-0000-0000-0000-0000000070a3' where cpf = '70017006309' returning 'ok'$$);
+reset role;
+select case when (select socioeconomico->>'escolaridade' from public.equipe_socio where equipe_id = '00000000-0000-0000-0000-0000000070a3') = 'Médio'
+  then 'PASSOU' else 'FALHOU' end || ' 70: aprovar o cadastro do link apontando para outra pessoa NÃO troca as respostas dela (71) | '
+  || coalesce((select socioeconomico->>'escolaridade' from public.equipe_socio where equipe_id = '00000000-0000-0000-0000-0000000070a3'), 'sem respostas')
+  || ' | ' || coalesce((select erro from _r where caso = 'link_forjado'), '') || coalesce((select erro from _r where caso = 'tec_forja'), '');
+
 -- 3. a própria pessoa apaga
 select pg_temp.tenta('art_apaga', :'ART', $$delete from public.equipe_socio where equipe_id = '00000000-0000-0000-0000-0000000070a3' returning 'ok'$$);
 reset role;

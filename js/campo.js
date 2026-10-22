@@ -688,6 +688,7 @@
 
   /* ---------- implantação e acompanhamento: registrar a visita feita ---------- */
   const fotosVis = {};
+  (MQ.aoFecharPainel = MQ.aoFecharPainel || []).push(() => { [fotosTemp, fotosVis].forEach(o => Object.keys(o).forEach(k => delete o[k])); });   // auditoria 22/10
   function painelFeita(p) {
     const v = visitas().find(x => x.id === p.id); if (!v) return '';
     const f = ficha(v.ficha_id) || {}; const q = pessoa(v.executor_id) || {};

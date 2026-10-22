@@ -5,6 +5,7 @@
 #   R4    devolução da coordenação × correção da bolsista ao mesmo tempo (lost update da decisão)
 #   R5    aprovação dupla do mesmo plano (técnica e geral ao mesmo tempo)
 #   R6    caça a deadlock: N sessões gravando em linhas quentes do mesmo estado por SEG segundos
+#   R7-R8 (69) cancelamento × aval do mesmo pedido; dois ajustes de valor ao mesmo tempo perto do teto
 # Uso: bash concorrencia_1410.sh <banco (cópia do bdcarga1410_base)> [N=20] [SEG=60]
 DB=$1; N=${2:-20}; SEG=${3:-60}; W=${W:-/tmp/c1410w}/conc; mkdir -p $W; chmod 777 $W; rm -f $W/*
 Q="sudo -u postgres psql -X -q -tA -d $DB"
@@ -47,12 +48,13 @@ if [ "$n" = 1 ] && ! echo "$err" | grep -q "duplicate key"; then res ok "R3 2 di
 elif [ "$n" = 1 ]; then res ok "R3 2 diagnósticos simultâneos: sem duplicata (quem perde recebe o erro do índice único; a tela traduz em regras.js)" "linhas=$n; $err"
 else res no "R3 diagnóstico duplicado" "linhas=$n; $err"; fi
 
-echo "== R4. devolução (sem marca, como a tela) × correção da bolsista ao mesmo tempo"
+echo "== R4. devolução (com a marca da versão lida, como a tela faz desde 14/10) × correção da bolsista ao mesmo tempo"
 FX=c1410000-0000-4000-8000-0000000000f4
 CPF=$($Q -c "select cpf_t(88800000044)")
 sess "$B" "insert into public.fichas (id, uf, municipio, comunidade, nome, cpf, data_nascimento, endereco, c_agricultora, c_maior18, c_espaco, c_agua, c_disponibilidade, c_sem_kit, c_sem_parentesco, c_casa_unica, autodeclaracao, consent_dados, resultado, data_ficha) values ('$FX', 'SE', 'Município', 'Comunidade', 'Agricultora Corrida Teste', '$CPF', date '1980-01-01', 'Sítio antigo', false, true, true, true, true, true, true, true, true, true, 'nao_atende', date '2026-10-13')" $W/r4_0
+MARCA=$($Q -c "select atualizado_em from public.fichas where id = '$FX'")   # a versão que a técnica leu ao abrir a ficha
 sess "$B" "update public.fichas set endereco = 'Sítio corrigido pela bolsista' where id = '$FX'" $W/r4_1 2 &
-sleep 0.5; sess "$T" "update public.fichas set situacao = 'devolvida', obs_coordenacao = 'Endereço incompleto, corrigir' where id = '$FX'" $W/r4_2 & wait
+sleep 0.5; sess "$T" "update public.fichas set situacao = 'devolvida', obs_coordenacao = 'Endereço incompleto, corrigir', atualizado_em = '$MARCA' where id = '$FX'" $W/r4_2 & wait
 fin=$($Q -c "select situacao || ' / ' || endereco from public.fichas where id = '$FX'")
 if echo "$fin" | grep -q "devolvida / Sítio corrigido"; then res no "R4 (BD-5) a devolução, decidida sobre a versão antiga, ficou por cima da correção (nenhum aviso)" "final: $fin; erros: $(cat $W/r4_1 $W/r4_2 | grep ERROR | tr '\n' ' ')"
 else res ok "R4 conflito detectado" "final: $fin; $(cat $W/r4_1 $W/r4_2 | grep ERROR | tr '\n' ' ')"; fi
@@ -64,7 +66,32 @@ fin=$($Q -c "select situacao || ' por ' || coalesce((select papel from public.eq
 na=$($Q -c "select count(*) from public.auditoria where registro_id = '$DI' and acao = 'UPDATE'")
 res ok "R5 aprovação dupla: estado final coerente" "final: $fin; atualizações na auditoria: $na; erros: $(cat $W/r5_* | grep ERROR | tr '\n' ' ')"
 
+echo "== R7. (69) a pessoa cancela o pedido enquanto a técnica dá o aval, ao mesmo tempo"
+P7=$($Q -c "select equipe_id from carga.pessoas where email = 'articulacao1.se@carga.invalid'"); S7=c1410000-0000-4000-8000-0000000000a7
+$Q -c "set session_replication_role = replica; delete from public.solicitacoes_pagamento where id = '$S7'; insert into public.solicitacoes_pagamento (id, tipo, equipe_id, mes, valor_solicitado, relatorio, situacao) values ('$S7', 'bolsa', '$P7', date '2027-09-01', public.valor_bolsa('articulacao'), 'Relatório da corrida R7 de concorrência entre cancelamento e aval.', 'solicitada')" >/dev/null
+sess "$T" "select public.avalizar_pagamento('$S7', true, null, null)" $W/r7_1 2 &
+sleep 0.5; sess "$B" "select public.cancelar_pagamento('$S7', null)" $W/r7_2 & wait
+fin=$($Q -c "select situacao from public.solicitacoes_pagamento where id = '$S7'"); er=$(cat $W/r7_1 $W/r7_2 | grep -c ERROR)
+if { [ "$fin" = avalizada ] && grep -q "já tem o aval" $W/r7_2; } || { [ "$fin" = cancelada ] && grep -q "não está aguardando aval" $W/r7_1; }; then
+  res ok "R7 um só vence, o outro recebe mensagem clara (final: $fin)" "$(cat $W/r7_1 $W/r7_2 | grep ERROR | tr '\n' ' ')"
+else res no "R7 estado final inesperado: $fin (erros: $er)" "$(cat $W/r7_1 $W/r7_2 | tr '\n' ' ' | cut -c1-400)"; fi
+
+echo "== R8. (69) dois ajustes de valor ao mesmo tempo em eventos do mesmo estado, perto do teto (R\$ 6.000)"
+P8=$($Q -c "select equipe_id from carga.pessoas where email = 'articulacao1.pi@carga.invalid'")
+$Q -c "set session_replication_role = replica; update public.pedidos_apoio set situacao = 'cancelado' where tipo = 'evento' and uf = 'PI' and situacao = 'autorizado';
+  delete from public.pedidos_apoio where id in ('c1410000-0000-4000-8000-0000000000b1', 'c1410000-0000-4000-8000-0000000000b2');
+  insert into public.pedidos_apoio (id, tipo, uf, solicitante_id, titulo, data_ref, dados, situacao, valor_autorizado) values
+   ('c1410000-0000-4000-8000-0000000000b1', 'evento', 'PI', '$P8', 'Evento R8 um', current_date + 60, '{\"valor_estimado\": 2500}', 'autorizado', 2500),
+   ('c1410000-0000-4000-8000-0000000000b2', 'evento', 'PI', '$P8', 'Evento R8 dois', current_date + 60, '{\"valor_estimado\": 2500}', 'autorizado', 2500)" >/dev/null
+sess "$G" "select public.ajustar_valor_pedido('c1410000-0000-4000-8000-0000000000b1', 3400, 'Nota fiscal R8')" $W/r8_1 1 &
+sess "$G" "select public.ajustar_valor_pedido('c1410000-0000-4000-8000-0000000000b2', 3400, 'Nota fiscal R8')" $W/r8_2 1 & wait
+soma=$($Q -c "select sum(valor_autorizado) from public.pedidos_apoio where tipo = 'evento' and uf = 'PI' and situacao = 'autorizado'"); ok8=$(cat $W/r8_1 $W/r8_2 | grep -c "Passa do teto")
+if [ "$ok8" = 1 ] && awk "BEGIN{exit !($soma <= 6000)}"; then res ok "R8 só um ajuste passa; o outro esbarra no teto (soma autorizada: $soma)" ""
+else res no "R8 teto furado ou ajuste perdido (soma: $soma; recusas por teto: $ok8)" "$(cat $W/r8_1 $W/r8_2 | tr '\n' ' ' | cut -c1-400)"; fi
+
 echo "== R6. caça a deadlock: $N sessões x ${SEG}s, gravações cruzadas no mesmo estado (PE); ${MODO:-1} gravação(ões) por transação"
+# 22/10/2026: com 2 gravações, sempre na mesma ordem das LINHAS (tabela + id; a tela faz uma gravação por pedido). Duas linhas em ordem
+# trocada travam em qualquer banco; na mesma ordem, um deadlock só aparece se um GATILHO do sistema trava linhas fora de ordem (o defeito procurado).
 $Q <<'SQL' >/dev/null
 create table if not exists carga.conc_erros (estado text, msg text, n int default 1);
 create or replace function public.g_conc(quem uuid, cmd text) returns void language plpgsql as $f$
@@ -81,13 +108,13 @@ begin
 end $f$;
 drop table if exists carga.r6; create table carga.r6 as
   select row_number() over () n, q.* from (
-    select p.uid, format($q$update public.visitas set relato = 'Relato da corrida R6 com texto suficiente ' || clock_timestamp() where id = %L$q$, v.id) cmd
+    select p.uid, 'visitas:' || v.id chave, format($q$update public.visitas set relato = 'Relato da corrida R6 com texto suficiente ' || clock_timestamp() where id = %L$q$, v.id) cmd
       from public.visitas v join carga.pessoas p on p.equipe_id = v.executor_id where v.uf = 'PE' and v.etapa = 'acompanhamento'
-    union all select (select uid from carga.pessoas where papel = 'coord_geral'), format($q$update public.diagnosticos set area_m2 = area_m2 + 1 where id = %L$q$, d.id) from public.diagnosticos d where d.uf = 'PE'
-    union all select (select uid from carga.pessoas where papel = 'coord_tecnico'), format($q$update public.diagnosticos set situacao = 'aprovado' where id = %L$q$, d.id) from public.diagnosticos d where d.uf = 'PE'
-    union all select (select uid from carga.pessoas where papel = 'coord_geral'), format($q$update public.fichas set comunidade = 'Comunidade R6 ' || (random()*9)::int where id = %L$q$, f.id) from public.fichas f where f.uf = 'PE' and f.resultado = 'selecionada'
-    union all select (select uid from carga.pessoas where papel = 'coord_tecnico'), format($q$update public.visitas set data_prevista = data_prevista where id = %L$q$, v.id) from public.visitas v where v.uf = 'PE'
-    union all select (select uid from carga.pessoas where papel = 'auxiliar_adm'), format($q$update public.equipe set docs_funcern_em = docs_funcern_em where id = %L$q$, p.equipe_id) from carga.pessoas p where p.uf = 'PE'
+    union all select (select uid from carga.pessoas where papel = 'coord_geral'), 'diagnosticos:' || d.id, format($q$update public.diagnosticos set area_m2 = area_m2 + 1 where id = %L$q$, d.id) from public.diagnosticos d where d.uf = 'PE'
+    union all select (select uid from carga.pessoas where papel = 'coord_tecnico'), 'diagnosticos:' || d.id, format($q$update public.diagnosticos set situacao = 'aprovado' where id = %L$q$, d.id) from public.diagnosticos d where d.uf = 'PE'
+    union all select (select uid from carga.pessoas where papel = 'coord_geral'), 'fichas:' || f.id, format($q$update public.fichas set comunidade = 'Comunidade R6 ' || (random()*9)::int where id = %L$q$, f.id) from public.fichas f where f.uf = 'PE' and f.resultado = 'selecionada'
+    union all select (select uid from carga.pessoas where papel = 'coord_tecnico'), 'visitas:' || v.id, format($q$update public.visitas set data_prevista = data_prevista where id = %L$q$, v.id) from public.visitas v where v.uf = 'PE'
+    union all select (select uid from carga.pessoas where papel = 'auxiliar_adm'), 'equipe:' || p.equipe_id, format($q$update public.equipe set docs_funcern_em = docs_funcern_em where id = %L$q$, p.equipe_id) from carga.pessoas p where p.uf = 'PE'
   ) q;
 SQL
 TOT=$($Q -c "select count(*) from carga.r6")
@@ -95,8 +122,7 @@ cat > $W/r6.sql <<SQL
 \set a random(1, $TOT)
 \set b random(1, $TOT)
 begin;
-select public.g_conc(uid, cmd) from carga.r6 where n = :a;
-$( [ "${MODO:-1}" = 2 ] && echo "" || echo "-- " )select public.g_conc(uid, cmd) from carga.r6 where n = :b;
+$( [ "${MODO:-1}" = 2 ] && echo "select public.g_conc(uid, cmd) from (select uid, cmd from carga.r6 where n in (:a, :b) order by chave) x;" || echo "select public.g_conc(uid, cmd) from carga.r6 where n = :a;" )
 commit;
 SQL
 chmod a+r $W/r6.sql

@@ -59,7 +59,7 @@
     const campo = Object.keys(MQ.ETAPAS).map(k => ({ etapa: k, nome: MQ.ETAPAS[k].nome, n: visitas.filter(v => v.etapa === k).length }));
     const diag = (s.diagnosticos || []).filter(d => daUF(d) || !d.uf);
     const faz = ativos.filter(m => R.matriculaFIC(m.papel));
-    const pag = (s.solic || []).filter(x => noPeriodo(x.solicitada_em));
+    const pag = (s.solic || []).filter(x => x.situacao !== 'cancelada' && noPeriodo(x.solicitada_em));   // 69: pedido cancelado não conta
     const valor = l => Math.round(l.reduce((t, x) => t + (+(x.valor_avalizado != null ? x.valor_avalizado : x.valor_solicitado) || 0), 0) * 100) / 100;
     const ped = (s.pedidos || []).filter(p => daUF(p) && noPeriodo(p.enviado_em));
     const docs = (s.documentos || []).filter(d => !d.arquivado_em && noPeriodo(d.data_documento) && (!uf || !d.uf || d.uf === uf));
@@ -93,7 +93,7 @@
     // as bolsas começam em MQ.PROJETO.inicioBolsas: meses antes disso não contam como relatório esperado
     const ini = MQ.PROJETO.inicioBolsas && MQ.PROJETO.inicioBolsas > de ? MQ.PROJETO.inicioBolsas : de;
     const meses = ini.slice(0, 7) <= ate.slice(0, 7) ? mesesEntre(ini, ate) : [];
-    const bolsas = (s.solic || []).filter(x => x.tipo === 'bolsa' && x.mes && meses.includes(String(x.mes).slice(0, 7)));
+    const bolsas = (s.solic || []).filter(x => x.tipo === 'bolsa' && x.situacao !== 'cancelada' && x.mes && meses.includes(String(x.mes).slice(0, 7)));   // 69: cancelada não é relatório enviado
     const ordem = m => [PAPEIS_REL.indexOf(m.papel), m.uf || '', nomeDe(m)];
     const pessoas = (s.equipe || []).filter(m => PAPEIS_REL.includes(m.papel) && (!uf || !m.uf || m.uf === uf) && (m.status === 'ativa' || bolsas.some(b => b.equipe_id === m.id)))
       .sort((a, b) => { const x = ordem(a), y = ordem(b); return x[0] - y[0] || x[1].localeCompare(y[1]) || x[2].localeCompare(y[2], 'pt-BR'); })

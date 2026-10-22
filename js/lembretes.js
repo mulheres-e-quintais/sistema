@@ -67,7 +67,7 @@
     const recebeBolsa = ['coord_tecnico', 'articulacao', 'apoio', 'professor_fic', 'auxiliar_adm'].includes(eu.papel);
     if (recebeBolsa && R.habilitado(eu) && +hoje.slice(8, 10) >= 20) {
       const mes = hoje.slice(0, 7) + '-01'; const ini = String(eu.data_inicio || '').slice(0, 7);
-      const pediu = (S().solic || []).some(s => s.equipe_id === eu.id && s.tipo === 'bolsa' && String(s.mes).slice(0, 7) === mes.slice(0, 7) && s.situacao !== 'devolvida');
+      const pediu = (S().solic || []).some(s => s.equipe_id === eu.id && s.tipo === 'bolsa' && String(s.mes).slice(0, 7) === mes.slice(0, 7) && ['solicitada', 'avalizada', 'lancada'].includes(s.situacao));   // 69: devolvida ou cancelada = ainda falta pedir
       if (!pediu && (!ini || ini <= mes.slice(0, 7)))
         out.push({ id: 'bolsa-' + mes.slice(0, 7), t: `Você ainda não pediu a bolsa de <b>${MESES[+hoje.slice(5, 7) - 1]}</b>.`, d: 'Quem pede no mês recebe o mês todo. O pedido fica em Pagamentos.' });
     }

@@ -8,7 +8,7 @@ sudo -u postgres dropdb --if-exists "$DB"; sudo -u postgres createdb "$DB"
 P="sudo -u postgres psql -X -q -d $DB -v ON_ERROR_STOP=0"
 $P -f "$T/stub_supabase.sql" 2>&1 | grep ERROR | grep -v "already exists"
 sed -i "s/'SEU NOME COMPLETO', 'SEU CPF'/'Cleone Silva Teste', '52998224725'/" "$T/01_criar_banco.sql"
-for f in $(cd "$T" && ls [0-9][0-9]_*.sql | grep -v -E "^(00|05|06|14|16|34|49|54|90|91|99)_|^0[01]_(funcoes|massa)"); do
+for f in $(cd "$T" && ls [0-9][0-9]_*.sql | grep -v -E "^(00|05|06|14|16|34|49|54|90|91|95|96|99)_|^0[01]_(funcoes|massa)"); do
   n=$($P -f "$T/$f" 2>&1 | grep -c ERROR); [ "$n" != 0 ] && echo "$f: $n erros"
 done
 $P -f "$T/00_funcoes.sql"

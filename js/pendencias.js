@@ -24,7 +24,7 @@
     const itens = []; let carregando = false;
     const campo = R.ehCampo(m.papel);
     const pv = MQ.convitesUI && S().api.lerPrivado ? MQ.convitesUI.privado(m.id) : null;
-    if (pv === undefined) carregando = true;
+    if (pv === undefined || (pv && pv._erro)) carregando = true;   // leitura que falhou não vira "falta preencher"
     const en = (pv && pv.endereco) || {};
     const agente = m.papel === 'agente';
     const oQue = agente ? 'a ajuda de custo das visitas' : 'a bolsa';
@@ -119,6 +119,7 @@
 
   function formDados(m) {
     const pv = MQ.convitesUI.privado(m.id) || {}; const en = pv.endereco || {};
+    if (pv._erro) return '<div class="aviso" data-priv-erro>Seus dados pessoais não carregaram agora (sem internet ou falha no servidor). Feche e abra de novo daqui a pouco: assim nada do que já está guardado é apagado.</div><div class="acoes"><button class="btn" data-acao="pend-ver">Voltar</button></div>';
     const v = x => E(x == null ? '' : x);
     const op = sel => '<option value="">Selecione…</option>' + ['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE', 'Outro'].map(x => `<option ${x === sel ? 'selected' : ''}>${x}</option>`).join('');
     const arlo = !!m.cadastro_arlo;

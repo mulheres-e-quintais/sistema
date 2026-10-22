@@ -138,7 +138,7 @@ select t('D. ACHADO BD-6: ficha com visita agendada não muda de "selecionada" p
 select t('D. diagnóstico com data antes da vigência (10/09/2026; ficha de 01/08/2026) é recusado', null,
   format($q$do $x$ begin perform como_dono(); update public.fichas set data_ficha = date '2026-08-01' where id = %L; perform como(%L); %s; end $x$$q$,
          :'f39', :'e', replace(:'DIAG', '2026-10-13', '2026-09-10')), 'vigência');
-select t('D. diagnóstico com data no futuro é recusado', :E, replace(:'DIAG', '2026-10-13', '2026-10-20'), 'futuro');
+select t('D. diagnóstico com data no futuro é recusado', :E, replace(:'DIAG', '2026-10-13', (current_date + 7)::text), 'futuro');
 select t('D. segundo diagnóstico do mesmo quintal (outra visita, outro id) é recusado com mensagem clara', :E,
   format($q$insert into public.diagnosticos (id, ficha_id, visita_id, uf, data_visita, latitude, longitude, agua_seca, sem_agua, lote) values (gen_random_uuid(), %L, (select id from public.visitas where ficha_id = %L and etapa = 'acompanhamento' limit 1), 'AL', date '2026-10-01', -9.5, -37.5, 'sim', false, 1)$q$, :'fi', :'fi'), 'já tem diagnóstico');
 select t('D. ficha com CPF de outra ficha (outro estado) é recusada com mensagem clara', :B,

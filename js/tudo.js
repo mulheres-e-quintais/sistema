@@ -807,7 +807,7 @@ MQ.ORCAMENTO = {
   R.mesesBolsaSemPedido = (m, solicitacoes) => {
     if (!m || !['coord_tecnico', 'articulacao', 'apoio', 'professor_fic', 'auxiliar_adm'].includes(m.papel)) return [];
     const ini = [String(m.data_inicio || '').slice(0, 7), R.LIM.bolsaMesMin].sort().pop(), fim = [R.hoje().slice(0, 7), R.LIM.bolsaMesMax].sort()[0];
-    const pedidos = new Set((solicitacoes || []).filter(s => s.equipe_id === m.id && s.tipo === 'bolsa').map(s => String(s.mes).slice(0, 7)));
+    const pedidos = new Set((solicitacoes || []).filter(s => s.equipe_id === m.id && s.tipo === 'bolsa' && s.situacao !== 'cancelada').map(s => String(s.mes).slice(0, 7)));
     const out = []; let [a, mm] = ini.split('-').map(Number);
     for (let i = 0; i < 24; i++) { const k = a + '-' + String(mm).padStart(2, '0'); if (k > fim) break; if (!pedidos.has(k)) out.push(k); mm++; if (mm > 12) { mm = 1; a++; } }
     return out;
@@ -3205,7 +3205,7 @@ MQ.ORCAMENTO = {
       if (error) throw erro(error);
       // 70: o questionário socioeconômico fica à parte; só a própria pessoa e a coordenação geral recebem (para as outras volta vazio)
       const r = await sb.from('equipe_socio').select('socioeconomico').eq('equipe_id', id).maybeSingle();
-      if (r.error) { if (!semTabelaSocio(r.error)) throw erro(r.error); return data; }
+      if (r.error) return semTabelaSocio(r.error) ? data : Object.assign({ equipe_id: id }, data || {}, { socioeconomico: undefined, _socioErro: true });   // auditoria 22/10: falhou a leitura: o questionário não aparece (e não é apagado ao salvar)
       if (!data && !r.data) return null;
       return Object.assign({ equipe_id: id }, data || {}, { socioeconomico: r.data ? r.data.socioeconomico : null });
     },
@@ -4427,6 +4427,7 @@ MQ.ORCAMENTO = {
      fechar a página (o Android faz isso quando a câmera abre por cima do navegador), ela volta com "Continuar de onde parou?". */
   function guardarCopia(campo, blob) { try { if (MQ.ui && MQ.ui.guardarArquivoRascunho) MQ.ui.guardarArquivoRascunho(campo, blob); } catch (e) { /* sem cópia: segue */ } }
   MQ.arqVolta = MQ.arqVolta || {};
+  (MQ.aoFecharPainel = MQ.aoFecharPainel || []).push(() => { fotosTemp.ficha = fotosTemp.termo = null; });   // auditoria 22/10: foto de uma mulher não fica para a próxima ficha
   MQ.arqVolta.ficha = (campo, blob, form) => {
     if (!['ficha', 'termo'].includes(campo) || !blob) return false;
     fotosTemp[campo] = blob;
@@ -4445,14 +4446,23 @@ MQ.ORCAMENTO = {
         const dica = form.querySelector('#fi-' + (campo === 'termo' ? 'ft' : 'ff') + '-dica');
         if (arq.size > 15 * 1024 * 1024) { dica.textContent = 'Arquivo muito grande (máx. 15 MB).'; ev.target.value = ''; return; }
         dica.textContent = 'Preparando foto…';
+        // auditoria 22/10: a foto leva segundos para ficar pronta (celular simples). Se nesse meio-tempo a pessoa fechou esta ficha
+        // e abriu a de outra mulher, a foto NÃO entra na ficha nova: fica descartada (ela fotografa de novo nesta ficha).
+        const painelAntes = U().S.painel;
+        const aindaAqui = () => U().S.painel === painelAntes && form.isConnected;
+        let pronto = null;
         if (arq.type === 'application/pdf' || /\.pdf$/i.test(arq.name || '')) {   // ficha digitalizada em PDF: vai como está, se for PDF de verdade
           const falso = MQ.arquivoConfere ? await MQ.arquivoConfere(arq, ['pdf']) : (arq.size > 0 ? '' : 'O arquivo está vazio. Escolha outro.');
+          if (!aindaAqui()) return;
           if (falso) { fotosTemp[campo] = null; ev.target.value = ''; dica.textContent = falso; guardarCopia(campo, null); return; }
-          fotosTemp[campo] = arq; dica.textContent = 'Arquivo pronto (' + Math.max(1, Math.round(arq.size / 1024)) + ' KB). Fica no aparelho até enviar.'; guardarCopia(campo, arq); atualizarForm(form); return; }
-        try { fotosTemp[campo] = await MQ.comprimirFoto(arq, undefined, undefined, { semAviso: true }); }
-        catch (e) { fotosTemp[campo] = null; ev.target.value = ''; dica.textContent = e.message; guardarCopia(campo, null); return; }   // não é foto (txt renomeado, vazio, corrompido)
-        dica.textContent = 'Foto pronta (' + Math.round(fotosTemp[campo].size / 1024) + ' KB). Fica guardada neste aparelho até enviar.';
-        guardarCopia(campo, fotosTemp[campo]);
+          pronto = arq; dica.textContent = 'Arquivo pronto (' + Math.max(1, Math.round(arq.size / 1024)) + ' KB). Fica guardado neste aparelho até enviar.';
+        } else {
+          try { pronto = await MQ.comprimirFoto(arq, undefined, undefined, { semAviso: true }); }
+          catch (e) { if (!aindaAqui()) return; fotosTemp[campo] = null; ev.target.value = ''; dica.textContent = e.message; guardarCopia(campo, null); return; }   // não é foto (txt renomeado, vazio, corrompido)
+          if (!aindaAqui()) return;
+          dica.textContent = 'Foto pronta (' + Math.round(pronto.size / 1024) + ' KB). Fica guardada neste aparelho até enviar.';
+        }
+        fotosTemp[campo] = pronto; guardarCopia(campo, pronto);
       }
       atualizarForm(form);
       const w = ev.target.closest('.criterio, .check'); if (w) w.classList.remove('tem-erro');
@@ -6214,6 +6224,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   /* ---------- implantação e acompanhamento: registrar a visita feita ---------- */
   const fotosVis = {};
+  (MQ.aoFecharPainel = MQ.aoFecharPainel || []).push(() => { [fotosTemp, fotosVis].forEach(o => Object.keys(o).forEach(k => delete o[k])); });   // auditoria 22/10
   function painelFeita(p) {
     const v = visitas().find(x => x.id === p.id); if (!v) return '';
     const f = ficha(v.ficha_id) || {}; const q = pessoa(v.executor_id) || {};
@@ -9027,7 +9038,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const campo = Object.keys(MQ.ETAPAS).map(k => ({ etapa: k, nome: MQ.ETAPAS[k].nome, n: visitas.filter(v => v.etapa === k).length }));
     const diag = (s.diagnosticos || []).filter(d => daUF(d) || !d.uf);
     const faz = ativos.filter(m => R.matriculaFIC(m.papel));
-    const pag = (s.solic || []).filter(x => noPeriodo(x.solicitada_em));
+    const pag = (s.solic || []).filter(x => x.situacao !== 'cancelada' && noPeriodo(x.solicitada_em));   // 69: pedido cancelado não conta
     const valor = l => Math.round(l.reduce((t, x) => t + (+(x.valor_avalizado != null ? x.valor_avalizado : x.valor_solicitado) || 0), 0) * 100) / 100;
     const ped = (s.pedidos || []).filter(p => daUF(p) && noPeriodo(p.enviado_em));
     const docs = (s.documentos || []).filter(d => !d.arquivado_em && noPeriodo(d.data_documento) && (!uf || !d.uf || d.uf === uf));
@@ -9061,7 +9072,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     // as bolsas começam em MQ.PROJETO.inicioBolsas: meses antes disso não contam como relatório esperado
     const ini = MQ.PROJETO.inicioBolsas && MQ.PROJETO.inicioBolsas > de ? MQ.PROJETO.inicioBolsas : de;
     const meses = ini.slice(0, 7) <= ate.slice(0, 7) ? mesesEntre(ini, ate) : [];
-    const bolsas = (s.solic || []).filter(x => x.tipo === 'bolsa' && x.mes && meses.includes(String(x.mes).slice(0, 7)));
+    const bolsas = (s.solic || []).filter(x => x.tipo === 'bolsa' && x.situacao !== 'cancelada' && x.mes && meses.includes(String(x.mes).slice(0, 7)));   // 69: cancelada não é relatório enviado
     const ordem = m => [PAPEIS_REL.indexOf(m.papel), m.uf || '', nomeDe(m)];
     const pessoas = (s.equipe || []).filter(m => PAPEIS_REL.includes(m.papel) && (!uf || !m.uf || m.uf === uf) && (m.status === 'ativa' || bolsas.some(b => b.equipe_id === m.id)))
       .sort((a, b) => { const x = ordem(a), y = ordem(b); return x[0] - y[0] || x[1].localeCompare(y[1]) || x[2].localeCompare(y[2], 'pt-BR'); })
@@ -9919,7 +9930,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const comRelato = feitas.filter(v => String(v.relato || '').trim() || (S().diagnosticos || []).some(d => d.visita_id === v.id));
     const previstas = vs.filter(v => v.situacao !== 'cancelada' && mesDe(v.data_prevista) === mes);
     const prevFeitas = previstas.filter(v => v.situacao === 'realizada');
-    const bolsa = (S().solic || []).find(s => s.equipe_id === m.id && s.tipo === 'bolsa' && mesDe(s.mes) === mes && s.situacao !== 'devolvida');
+    const bolsa = (S().solic || []).find(s => s.equipe_id === m.id && s.tipo === 'bolsa' && mesDe(s.mes) === mes && ['solicitada', 'avalizada', 'lancada'].includes(s.situacao));   // 69: a cancelada não conta como relatório enviado
     const pres = marcada(m.id, mes, 'presenca'), ava = marcada(m.id, mes, 'ava');
     const n = (k, t) => k + ' ' + t + (k === 1 ? '' : 's');
     return [
@@ -10384,6 +10395,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     (S().fila || []).filter(i => i.tipo === 'avaliacao' && i.dados).forEach(i => m.set(i.id, Object.assign(MQ.juntarFila(m.get(i.id), i), { _fila: true, _erro: i.erro })));
     return [...m.values()]; };
   const fotosAv = {};
+  (MQ.aoFecharPainel = MQ.aoFecharPainel || []).push(() => { Object.keys(fotosAv).forEach(k => delete fotosAv[k]); });   // auditoria 22/10
   function painelForm(p) {
     const f = (S().fichas || []).find(x => x.id === p.ficha); if (!f) return '<div class="painel-corpo"><p>Ficha não encontrada.</p></div>';
     // 47: avaliação que ainda está só no aparelho (sem internet, ou recusada porque outra pessoa alterou antes) abre com o que foi preenchido
@@ -10674,7 +10686,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           ${munis && munis.length ? `<datalist id="lista-mun">${munis.map(x => `<option value="${E(x)}">`).join('')}</datalist><span class="dica">A lista traz os municípios do projeto no estado.</span>` : ''}</div>
         <div class="campo" data-arlo-opc ${arlo ? 'hidden' : ''}><label for="dp-uf">Estado</label><select id="dp-uf" name="uf_end">${op(['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE', 'Outro'], en.uf)}</select></div>
       </div></fieldset>
-      ${pub || socio ? `<fieldset data-arlo-opc ${arlo ? 'hidden' : ''}><legend>Questionário socioeconômico (opcional)</legend><input type="hidden" name="_socio" value="1">
+      ${d._socioErro ? `<p class="small muted" data-arlo-opc ${arlo ? 'hidden' : ''} data-socio-erro>O questionário socioeconômico não carregou agora (internet). Ao salvar, ele continua como estava.</p>` : pub || socio ? `<fieldset data-arlo-opc ${arlo ? 'hidden' : ''}><legend>Questionário socioeconômico (opcional)</legend><input type="hidden" name="_socio" value="1">
         <label class="check"><input type="checkbox" name="tem_socio" ${se ? 'checked' : ''} data-socio> <span>Responder. As respostas servem só para o perfil da equipe, em números, sem nome. ${pub ? 'Quem vê as respostas com o seu nome: só você e a coordenação geral do projeto.' : 'Quem vê as respostas com o nome: só a própria pessoa e a coordenação geral do projeto.'}</span></label>
         <div class="campos" data-socio-campos ${se ? '' : 'hidden'}>
           <div class="campo"><label for="dp-esc">Escolaridade</label><select id="dp-esc" name="escolaridade">${op(ESCOLARIDADE, se && se.escolaridade)}</select></div>
@@ -10747,9 +10759,12 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   /* dados pessoais já guardados de alguém da equipe (só coordenação e a própria pessoa conseguem ler) */
   const privCache = {};
   function privado(id) {
-    if (id in privCache) return privCache[id];
+    // auditoria 22/10: leitura que falhou (sem internet) NÃO vira "sem dados": o formulário mostraria tudo vazio e salvar apagaria
+    //   nascimento, endereço e questionário. Fica marcada como erro e tenta de novo depois de 20 segundos.
+    const c = privCache[id];
+    if (id in privCache && !(c && c._erro && Date.now() - c._erro > 20000)) return c;
     privCache[id] = undefined;
-    if (S().api.lerPrivado) S().api.lerPrivado(id).then(d => { privCache[id] = d || null; U().render(); }).catch(() => { privCache[id] = null; });
+    if (S().api.lerPrivado) S().api.lerPrivado(id).then(d => { privCache[id] = d || null; U().render(); }).catch(() => { privCache[id] = { _erro: Date.now() }; U().render(); });
     return undefined;
   }
   const esquecerPrivado = id => { delete privCache[id]; };
@@ -11252,7 +11267,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const itens = []; let carregando = false;
     const campo = R.ehCampo(m.papel);
     const pv = MQ.convitesUI && S().api.lerPrivado ? MQ.convitesUI.privado(m.id) : null;
-    if (pv === undefined) carregando = true;
+    if (pv === undefined || (pv && pv._erro)) carregando = true;   // leitura que falhou não vira "falta preencher"
     const en = (pv && pv.endereco) || {};
     const agente = m.papel === 'agente';
     const oQue = agente ? 'a ajuda de custo das visitas' : 'a bolsa';
@@ -11347,6 +11362,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
 
   function formDados(m) {
     const pv = MQ.convitesUI.privado(m.id) || {}; const en = pv.endereco || {};
+    if (pv._erro) return '<div class="aviso" data-priv-erro>Seus dados pessoais não carregaram agora (sem internet ou falha no servidor). Feche e abra de novo daqui a pouco: assim nada do que já está guardado é apagado.</div><div class="acoes"><button class="btn" data-acao="pend-ver">Voltar</button></div>';
     const v = x => E(x == null ? '' : x);
     const op = sel => '<option value="">Selecione…</option>' + ['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE', 'Outro'].map(x => `<option ${x === sel ? 'selected' : ''}>${x}</option>`).join('');
     const arlo = !!m.cadastro_arlo;
@@ -11551,7 +11567,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const recebeBolsa = ['coord_tecnico', 'articulacao', 'apoio', 'professor_fic', 'auxiliar_adm'].includes(eu.papel);
     if (recebeBolsa && R.habilitado(eu) && +hoje.slice(8, 10) >= 20) {
       const mes = hoje.slice(0, 7) + '-01'; const ini = String(eu.data_inicio || '').slice(0, 7);
-      const pediu = (S().solic || []).some(s => s.equipe_id === eu.id && s.tipo === 'bolsa' && String(s.mes).slice(0, 7) === mes.slice(0, 7) && s.situacao !== 'devolvida');
+      const pediu = (S().solic || []).some(s => s.equipe_id === eu.id && s.tipo === 'bolsa' && String(s.mes).slice(0, 7) === mes.slice(0, 7) && ['solicitada', 'avalizada', 'lancada'].includes(s.situacao));   // 69: devolvida ou cancelada = ainda falta pedir
       if (!pediu && (!ini || ini <= mes.slice(0, 7)))
         out.push({ id: 'bolsa-' + mes.slice(0, 7), t: `Você ainda não pediu a bolsa de <b>${MESES[+hoje.slice(5, 7) - 1]}</b>.`, d: 'Quem pede no mês recebe o mês todo. O pedido fica em Pagamentos.' });
     }
@@ -14414,6 +14430,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (mudou === 'avalizada') return `${Q} avalizou o pagamento da ${tipo} de ${pessoa(alvo.equipe_id)}.`;
       if (mudou === 'lancada') return `${Q} lançou no Arlo o pagamento da ${tipo} de ${pessoa(alvo.equipe_id)}.`;
       if (mudou === 'devolvida') return `${Q} devolveu o pedido de ${tipo} de ${pessoa(alvo.equipe_id)}.`;
+      if (mudou === 'cancelada') return alvo.cancelado_por ? `${Q} cancelou o pedido de ${tipo} de ${pessoa(alvo.equipe_id)}${alvo.motivo_cancelamento ? ': ' + esc(alvo.motivo_cancelamento) : ''}.` : `O sistema cancelou o pedido de ${tipo} de ${pessoa(alvo.equipe_id)} (desligamento).`;   // 69
       return `${Q} atualizou o pedido de ${tipo} de ${pessoa(alvo.equipe_id)}.`;
     }
     if (a.tabela === 'documentos_projeto') return alvo.arquivado_em && a.acao === 'UPDATE'
@@ -14825,6 +14842,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     clearTimeout(rascT);
     if (S.painel && !op.manterRascunho) { const ch = chavePainel(S.painel); if (rascAtivo === ch) removerRascunho(ch); }
     rascAtivo = null;
+    (MQ.aoFecharPainel || []).forEach(fn => { try { fn(); } catch (e) {} });   // auditoria 22/10: as fotos na memória saem junto (a cópia no aparelho, presa ao rascunho, continua)
     S.painel = null; const f = $('#painel'); if (f) f.remove();
     prenderFundo(false);
     if (S.painelHist) { S.painelHist = false; if (!op.semHistorico) sobraDoPainel(); }
@@ -14982,6 +15000,16 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     l.forEach(x => formsDoPainel(el).forEach(f => { const fn = volta[f.dataset.form]; try { if (fn && fn(x.campo, x.blob, f)) n++; } catch (e) {} }));
     if (n) arqNoPainel.add(ch);
     return n;
+  }
+  /* auditoria 22/10: o "Continuar" da tela inicial reabre pelo MESMO caminho de cada módulo (que limpa as fotos da mulher anterior
+     e, na correção de ficha, carrega a ficha), e não abrindo o painel direto (abria a correção como ficha nova, sem os dados). */
+  async function reabrirRascunho(p) {
+    const ds = o => ({ dataset: o });
+    if (p.tipo === 'ficha-form' && MQ.fichasUI) return MQ.fichasUI.clique(p.id ? 'ficha-corrigir' : 'ficha-nova', ds({ id: p.id || '' }));
+    if (p.tipo === 'diag-form' && MQ.campoUI) return MQ.campoUI.clique('campo-diag-novo', ds({ ficha: p.ficha || '', visita: p.visita || '' }));
+    if (p.tipo === 'visita-feita' && MQ.campoUI) return MQ.campoUI.clique('campo-feita', ds({ id: p.id || '' }));
+    if (p.tipo === 'aval-form' && MQ.impactoUI) return MQ.impactoUI.clique('aval-novo', ds({ ficha: p.ficha || '', visita: p.visita || '' }));
+    abrirPainel(Object.assign({}, p));
   }
   /* formulários começados e não salvos (para o aviso da tela inicial): só os que reabrem sozinhos */
   const RASC_AVISO = { 'ficha-form': 'uma ficha de indicação', 'diag-form': 'um diagnóstico', 'aval-form': 'uma avaliação final', 'visita-feita': 'o registro de uma visita' };
@@ -15432,7 +15460,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <div class="campo"><label for="c-siape">Matrícula SIAPE <span class="muted">(só se for servidor(a) público(a) federal)</span></label><input id="c-siape" name="siape" inputmode="numeric" value="${v('siape')}" placeholder="Deixe vazio se não for"></div>
           <div class="campo"><label for="c-org">Organização ou movimento</label><input id="c-org" name="organizacao" value="${v('organizacao')}" maxlength="120" placeholder="${bols ? 'Ex.: MPA, associação, sindicato' : ['professor_fic', 'auxiliar_adm'].includes(m.papel) ? 'Ex.: IFRN Campus Apodi' : 'Ex.: MPA'}"></div>
         </div></fieldset>
-        ${MQ.convitesUI ? (priv === undefined ? '<p class="small muted">' + MQ.ampulheta() + '</p>' : MQ.convitesUI.camposPessoais(Object.assign({ nome_social: m.nome_social, municipio: m.municipio, cadastro_arlo: p.id ? !!m.cadastro_arlo : m.cadastro_arlo }, priv || {}), false, m.papel, bols ? munis : null, !!S.eu && (S.eu.papel === 'coord_geral' || (!!p.id && p.id === S.eu.id)))) : ''}
+        ${MQ.convitesUI ? (priv === undefined ? '<p class="small muted">' + MQ.ampulheta() + '</p>' : priv && priv._erro ? '<div class="aviso" data-priv-erro>Nascimento, endereço e questionário desta pessoa não carregaram agora (sem internet ou falha no servidor). O resto do cadastro pode ser salvo; esses dados continuam como estavam. Para mexer neles, feche e abra de novo daqui a pouco.</div>' : MQ.convitesUI.camposPessoais(Object.assign({ nome_social: m.nome_social, municipio: m.municipio, cadastro_arlo: p.id ? !!m.cadastro_arlo : m.cadastro_arlo }, priv || {}), false, m.papel, bols ? munis : null, !!S.eu && (S.eu.papel === 'coord_geral' || (!!p.id && p.id === S.eu.id)))) : ''}
         <fieldset><legend>Bolsa</legend><div class="campos">
           <div class="campo"><label for="c-ini">Início ${m.papel === 'agente' ? 'no projeto' : 'da bolsa'}</label><input id="c-ini" name="data_inicio" type="date" value="${v('data_inicio')}" min="${R.LIM.equipeMin}" max="${R.somaDias(R.hoje(), R.LIM.inicioFuturoDias)}" required>
             ${edit ? '' : '<span class="dica">Sugerimos hoje. Mude se a pessoa começou em outro dia.</span>'}</div>
@@ -15631,7 +15659,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (a === 'painel-ficar') { desistirDeSair(); return; }
       if (a === 'painel-sair') { fecharPainel(); return; }
       if (a === 'rasc-continuar' || a === 'rasc-novo') { responderRascunho(a === 'rasc-continuar'); return; }
-      if (a === 'rasc-abrir') { const it = rascunhosPendentes()[+el.dataset.i || 0]; if (it) abrirPainel(Object.assign({}, it.p)); else render(); return; }
+      if (a === 'rasc-abrir') { const it = rascunhosPendentes()[+el.dataset.i || 0]; if (it) await reabrirRascunho(it.p); else render(); return; }
       if (a === 'versao-nova') { if (painelAlterado() || paginaEmUso()) { toast('Salve ou feche o que você está preenchendo antes de atualizar.'); return; } location.reload(); return; }
       if (a === 'carga-tentar') { el.disabled = true; try { await carregar(); } finally { el.disabled = false; } render(); toast(S.cargaParcial ? 'Ainda não deu para carregar tudo. Tente de novo daqui a pouco.' : 'Dados carregados.'); return; }
       if (a === 'data-hoje') { const i = document.getElementById(el.dataset.alvo); if (i) { i.value = R.hoje(); i.dispatchEvent(new Event('input', { bubbles: true })); i.focus(); } return; }
