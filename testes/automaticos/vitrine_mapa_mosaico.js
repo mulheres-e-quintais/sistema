@@ -88,7 +88,7 @@ const MUN = { PI: 10, BA: 8, AL: 3, PE: 5, SE: 3 };
     ok(`${w}: sem erro de página`, errs.length === 0, errs.join('|'));
     await ctx.close(); }
   // 01/10/2026: paleta do infográfico (pedida pela coordenação), igual nos dois temas (quadro creme); estado pintado com 80% sobre o creme
-  const PAL = { PI: '#75A878', BA: '#7B8FCE', PE: '#D3B45A', AL: '#D9877D', SE: '#6FA3A3' };
+  const PAL = { PI: '#6CBB62', BA: '#8FA3F5', PE: '#FFE27A', AL: '#F2918A', SE: '#6FC7C0' };   // 22/10/2026: a mesma cor de cada estado em todo o sistema
   const mistura = h => '#' + [1, 3, 5].map(i => Math.round(parseInt(h.slice(i, i + 2), 16) * .8 + parseInt('FAF7F1'.slice(i - 1, i + 1), 16) * .2).toString(16).padStart(2, '0')).join('');
   const MDA = { light: Object.fromEntries(Object.entries(PAL).map(([u, h]) => [u, mistura(h)])), dark: Object.fromEntries(Object.entries(PAL).map(([u, h]) => [u, mistura(h)])) };
   const rgb = h => 'rgb(' + [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)).join(', ') + ')';

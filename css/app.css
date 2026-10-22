@@ -337,9 +337,9 @@ fieldset > .fixo { margin: 0; }
 .crit-txt { color: var(--crit); }
 
 /* ---------- mapa dos quintais ---------- */
-:root { --m-ok: #2E7D43; --m-espera: #3478B9; --m-aguarda: #B07800; --m-agua: #B83A32; --m-uf: #EDE5D8; --m-uf-viz: #F7F0E8; --m-borda: #CDBDA8; --m-fundo: #FAF7F1; --m-sigla: #6B594A; --m-texto: #4A3022; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --m-ok: #3F9A44; --m-espera: #4A8FD6; --m-aguarda: #C08410; --m-agua: #E0607A; --m-uf: #2E2520; --m-uf-viz: #1B1512; --m-borda: #54453B; --m-fundo: var(--surface); --m-sigla: #BCA99A; --m-texto: var(--ink); } }
-:root[data-theme="dark"] { --m-ok: #3F9A44; --m-espera: #4A8FD6; --m-aguarda: #C08410; --m-agua: #E0607A; --m-uf: #2E2520; --m-uf-viz: #1B1512; --m-borda: #54453B; --m-fundo: var(--surface); --m-sigla: #BCA99A; --m-texto: var(--ink); }
+:root { --m-ok: #2E7D43; --m-espera: #3478B9; --m-aguarda: #B07800; --m-agua: #C42847; --m-uf: #EDE5D8; --m-uf-viz: #F7F0E8; --m-borda: #CDBDA8; --m-fundo: #FAF7F1; --m-sigla: #6B594A; --m-texto: #4A3022; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --m-ok: #3F9A44; --m-espera: #4A8FD6; --m-aguarda: #C08410; --m-agua: #F27A8C; --m-uf: #2E2520; --m-uf-viz: #1B1512; --m-borda: #54453B; --m-fundo: var(--surface); --m-sigla: #BCA99A; --m-texto: var(--ink); } }
+:root[data-theme="dark"] { --m-ok: #3F9A44; --m-espera: #4A8FD6; --m-aguarda: #C08410; --m-agua: #F27A8C; --m-uf: #2E2520; --m-uf-viz: #1B1512; --m-borda: #54453B; --m-fundo: var(--surface); --m-sigla: #BCA99A; --m-texto: var(--ink); }
 .mapa-caixa { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 16px; align-items: start; }
 @media (max-width: 760px) { .mapa-caixa { grid-template-columns: 1fr; } }
 .mapa { width: 100%; height: auto; max-height: 520px; display: block; }
@@ -1367,10 +1367,12 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 
 /* cada estado com uma cor (paleta validada para daltonismo; a sigla vai escrita no mapa e na legenda) */
 /* cores do MDA (marca do Governo Federal: verde-amazônia, azul-atlântico, amarelo-sol, vermelho-urucum) em versão suave;
-   5 estados e 4 cores: o SE usa um verde mais claro que o do PI (não fazem divisa). Vizinhos conferidos no validador, inclusive para daltonismo. */
-:root { --uf-PI: #6CBB62; --uf-BA: #8FA3F5; --uf-PE: #FFE27A; --uf-AL: #F2918A; --uf-SE: #9FDA90; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --uf-PI: #4F9A47; --uf-BA: #8195DC; --uf-PE: #D2B955; --uf-AL: #D2807A; --uf-SE: #A4D196; } }
-:root[data-theme="dark"] { --uf-PI: #4F9A47; --uf-BA: #8195DC; --uf-PE: #D2B955; --uf-AL: #D2807A; --uf-SE: #A4D196; }
+   o SE fica com verde-água (entre o verde e o azul), para não parecer o PI. Vizinhos conferidos, inclusive para daltonismo. */
+/* 22/10/2026: UMA cor por estado em todo o sistema (antes eram três paletas: painel, mapa informativo e mapa da entrada, e o mesmo estado mudava de cor);
+   o SE passa de verde-claro (quase igual ao PI: diferença 17) para verde-água (diferença 45; vizinhos BA e AL conferidos também para daltonismo) */
+:root { --uf-RN: #C96B4B; --uf-PI: #6CBB62; --uf-BA: #8FA3F5; --uf-PE: #FFE27A; --uf-AL: #F2918A; --uf-SE: #6FC7C0; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --uf-PI: #4F9A47; --uf-BA: #8195DC; --uf-PE: #D2B955; --uf-AL: #D2807A; --uf-SE: #4FA8A2; --uf-RN: #B5654A; } }
+:root[data-theme="dark"] { --uf-PI: #4F9A47; --uf-BA: #8195DC; --uf-PE: #D2B955; --uf-AL: #D2807A; --uf-SE: #4FA8A2; --uf-RN: #B5654A; }
 .mapa-pub .uf-pub { stroke: var(--surface); }
 .mapa-pub .uf-sigla { fill: #1E1510; font-weight: 700; paint-order: stroke; stroke: rgba(255,255,255,.4); stroke-width: .12px; pointer-events: none; }   /* estados em tom suave nos dois temas: sigla sempre escura (contraste ≥ 5:1) */
 .mapa-pub .uf-sigla.sigla-sede { fill: var(--ink); stroke: var(--surface); }   /* RN: fundo segue o tema, sigla também */
@@ -1518,7 +1520,7 @@ table.fin tbody.realce tr { animation: exr-realce 1.8s ease-out; }
 /* 01/10/2026 — mapa da entrada como infográfico institucional: estados como fundo territorial (cores suaves),
    municípios em verde escuro (o elemento principal), Apodi/RN como origem, rotas quase apagadas, fundo creme nos dois temas */
 .vit-mapa.vit-info { background: #FAF7F1; border-color: #E8E0D2; position: relative; }
-.mapa-info { --uf-RN: #C96B4B; --uf-PI: #75A878; --uf-PE: #D3B45A; --uf-AL: #D9877D; --uf-SE: #6FA3A3; --uf-BA: #7B8FCE; }
+.mapa-info { --uf-RN: #C96B4B; --uf-PI: #6CBB62; --uf-BA: #8FA3F5; --uf-PE: #FFE27A; --uf-AL: #F2918A; --uf-SE: #6FC7C0; }   /* fundo creme nos dois temas: as mesmas cores do tema claro */
 .mapa-pub.mapa-info .uf-pub { fill-opacity: .8; stroke: #FAF7F1; }
 .mapa-pub.mapa-info .uf-sede { fill: var(--uf-RN); fill-opacity: .8; stroke: #FAF7F1; }
 .mapa-pub.mapa-info .uf-fundo { fill: #EEE8DD; stroke: #E0D7C8; opacity: 1; }
@@ -1572,8 +1574,9 @@ table.fin tbody.realce tr { animation: exr-realce 1.8s ease-out; }
 .marco-txt { display: grid; gap: 4px; justify-items: start; color: var(--ink); font-size: var(--t-md); }
 
 .marco-prazo { font-size: var(--t-xs); padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); }
-.marco.perto .marco-prazo { background: color-mix(in srgb, var(--m-aguarda) 18%, transparent); color: var(--ink); font-weight: 600; }
-.marco.passou .marco-prazo { background: color-mix(in srgb, var(--m-agua) 15%, transparent); color: var(--ink); font-weight: 600; }
+/* 22/10/2026: as mesmas cores dos selos "atenção" (amarelo) e "requer ação" (vermelho frio) */
+.marco.perto .marco-prazo { background: var(--pend-bg); color: var(--pend); font-weight: 700; }
+.marco.passou .marco-prazo { background: var(--crit-bg); color: var(--crit); font-weight: 700; }
 .marco.passou .marco-cal { opacity: .7; }
 /* município: mapa pequeno no canto com o contorno do estado e a área que está aparecendo */
 .mapa-local { margin: 0; width: 150px; padding: 8px 8px 6px; background: var(--m-fundo); border: 1px solid var(--m-borda); border-radius: 10px; display: grid; gap: 4px; }
@@ -2381,8 +2384,9 @@ p.carregando:has(.carregando-t) { flex-direction: column; gap: 12px; }
    Só apresentação: mesmos estados, municípios, pontos e números. Hierarquia: Apodi > estados > municípios > rotas. */
 /* (02/10/2026) a moldura ao redor do mapa da entrada volta: fundo claro e borda, como antes do v179 */
 .ent-hero .mapa-info {
-  --uf-RN: color-mix(in srgb, #A44934 34%, #FAF7F1); --uf-PI: color-mix(in srgb, #2E7D43 26%, #FAF7F1); --uf-BA: color-mix(in srgb, #885B44 24%, #FAF7F1);
-  --uf-PE: color-mix(in srgb, #C29A2E 30%, #FAF7F1); --uf-AL: color-mix(in srgb, #A44934 17%, #FAF7F1); --uf-SE: color-mix(in srgb, #5C7A3A 30%, #FAF7F1); }
+  /* 22/10/2026: as mesmas cores de estado do resto do sistema, em versão clara (antes: BA marrom e AL terracota, cores só desta tela) */
+  --uf-RN: color-mix(in srgb, #C96B4B 55%, #FAF7F1); --uf-PI: color-mix(in srgb, #6CBB62 50%, #FAF7F1); --uf-BA: color-mix(in srgb, #8FA3F5 50%, #FAF7F1);
+  --uf-PE: color-mix(in srgb, #FFE27A 55%, #FAF7F1); --uf-AL: color-mix(in srgb, #F2918A 50%, #FAF7F1); --uf-SE: color-mix(in srgb, #6FC7C0 50%, #FAF7F1); }
 .ent-hero .mapa-pub.mapa-info .uf-pub { fill-opacity: 1; stroke: #FAF7F1; stroke-width: 1.25px; vector-effect: non-scaling-stroke; transition: filter .2s; }
 .ent-hero .mapa-pub.mapa-info .uf-pub:hover { filter: saturate(1.35) brightness(.97); }
 .ent-hero .mapa-pub.mapa-info .uf-sede { fill: var(--uf-RN); fill-opacity: 1; stroke: #FAF7F1; stroke-width: 1.25px; vector-effect: non-scaling-stroke; }
