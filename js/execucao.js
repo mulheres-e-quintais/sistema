@@ -33,24 +33,29 @@
       .reduce((t, p) => t + (+p.valor_autorizado || +(p.dados || {}).valor_estimado || 0), 0);
   }
   function numeros() {
-    const pl = vigente(); const linhas = pl ? pl.linhas : []; const desde = pl ? String(pl.posicao_em).slice(0, 10) : null;
+    const pl = vigente(); const desde = pl ? String(pl.posicao_em).slice(0, 10) : null;
+    // 22/10/2026: linha da planilha de solicitações da FUNCERN ainda não paga conta como COMPROMETIDO (não como pago), como no Saberes que Cultivam
+    const todas = pl ? pl.linhas : [], linhas = todas.filter(l => l.situacao !== 'comprometido'), pend = todas.filter(l => l.situacao === 'comprometido' && l.item !== 'repasse_mda');
     const somaL = f => Math.round(linhas.filter(f).reduce((t, l) => t + (+l.valor || 0), 0) * 100) / 100;
+    const somaP = f => Math.round(pend.filter(f).reduce((t, l) => t + (+l.valor || 0), 0) * 100) / 100;
     const porItem = {};
-    itens().forEach(i => { const exec = somaL(l => l.item === i.id), comp = comprometidoItem(i, desde);
-      porItem[i.id] = { exec, comp, saldo: i.total - exec - comp, passou: exec + comp > i.total + 0.005 }; });
+    itens().forEach(i => { const exec = somaL(l => l.item === i.id), compF = somaP(l => l.item === i.id), comp = Math.round((comprometidoItem(i, desde) + compF) * 100) / 100;
+      porItem[i.id] = { exec, comp, compF, saldo: i.total - exec - comp, passou: exec + comp > i.total + 0.005 }; });
     const soma = (xs, k) => xs.reduce((t, i) => t + porItem[i.id][k], 0);
     // item antigo ou desconhecido (não está mais no orçamento) com rubrica: entra em "sem item" da rubrica, para a soma das rubricas fechar com o total
     const conhecido = new Set(itens().map(i => i.id)); const rubDe = new Set(O().rubricas.map(r => r.id));
     const semItemDe = l => l.item !== 'repasse_mda' && !conhecido.has(l.item);
-    const rub = O().rubricas.map(r => { const semItem = somaL(l => l.rubrica === r.id && semItemDe(l));
-      return { r, previsto: r.itens.reduce((t, i) => t + i.total, 0), exec: soma(r.itens, 'exec') + semItem, comp: soma(r.itens, 'comp'), semItem }; });
-    const naoClass = somaL(l => semItemDe(l) && !rubDe.has(l.rubrica));
-    const exec = somaL(l => l.item !== 'repasse_mda'), comp = soma(itens(), 'comp');
-    const recebido = somaL(l => l.item === 'repasse_mda');
+    const rub = O().rubricas.map(r => { const semItem = somaL(l => l.rubrica === r.id && semItemDe(l)), semItemC = somaP(l => l.rubrica === r.id && semItemDe(l));
+      return { r, previsto: r.itens.reduce((t, i) => t + i.total, 0), exec: soma(r.itens, 'exec') + semItem, comp: soma(r.itens, 'comp') + semItemC, semItem, semItemC }; });
+    const naoClass = somaL(l => semItemDe(l) && !rubDe.has(l.rubrica)), naoClassC = somaP(l => semItemDe(l) && !rubDe.has(l.rubrica));
+    const exec = somaL(l => l.item !== 'repasse_mda'), comp = Math.round((soma(itens(), 'comp') + rub.reduce((t, x) => t + x.semItemC, 0) + naoClassC) * 100) / 100;
+    // recebido: o repasse que a planilha traz; a de solicitações da FUNCERN não traz repasse: vale o cronograma de desembolso até este mês
+    const recPl = somaL(l => l.item === 'repasse_mda'), hojeYM = R.hoje().slice(0, 7);
+    const recebidoEstimado = !recPl; const recebido = recPl || O().repasses.filter(r => r.mes <= hojeYM).reduce((t, r) => t + r.valor, 0);
     const V = MQ.PROJETO.vigencia; const dia = d => new Date(d + 'T12:00:00').getTime();
     const tempo = Math.max(0, Math.min(1, (dia(R.hoje()) - dia(V.inicio)) / (dia(V.fim) - dia(V.inicio))));
     const idade = pl ? R.diasAte(R.hoje()) - R.diasAte(desde) : null;
-    return { pl, porItem, rub, exec, comp, recebido, naoClass, tempo, idade, livre: O().total - exec - comp, caixa: recebido - exec };
+    return { pl, porItem, rub, exec, comp, recebido, recebidoEstimado, naoClass, naoClassC, tempo, idade, livre: O().total - exec - comp, caixa: recebido - exec, disponivel: recebido - exec - comp, despesas: todas.filter(l => l.item !== 'repasse_mda') };
   }
 
   /* ---------- por meta do plano de trabalho (14/10/2026) ----------
@@ -63,8 +68,8 @@
     const G = Object.fromEntries(grupos.map(g => [g.id, g]));
     itens().forEach(i => { const x = n.porItem[i.id]; Object.entries(partes(i)).forEach(([k, f]) => { if (G[k]) G[k].itens.push({ i, f, previsto: i.total * f, exec: x.exec * f, comp: x.comp * f }); }); });
     // o que a planilha trouxe sem item conhecido (só a rubrica, ou fora do orçamento) não tem meta: entra no comum, para o total fechar
-    const semItem = n.rub.reduce((t, x) => t + x.semItem, 0) + n.naoClass;
-    if (semItem) G._comum.itens.push({ i: { id: '_sem', nome: 'Gastos sem item definido na planilha' }, f: 1, previsto: 0, exec: semItem, comp: 0 });
+    const semItem = n.rub.reduce((t, x) => t + x.semItem, 0) + n.naoClass, semItemC = n.rub.reduce((t, x) => t + (x.semItemC || 0), 0) + (n.naoClassC || 0);
+    if (semItem || semItemC) G._comum.itens.push({ i: { id: '_sem', nome: 'Gastos sem item definido na planilha' }, f: 1, previsto: 0, exec: semItem, comp: semItemC });
     grupos.forEach(g => ['previsto', 'exec', 'comp'].forEach(k => { g[k] = Math.round(g.itens.reduce((t, y) => t + y[k], 0) * 100) / 100; }));
     return grupos.filter(g => g.itens.length);
   }
@@ -74,13 +79,13 @@
     const fr = f => f === 1 ? '' : ` <span class="fin-parte">${Math.round(f * 100)}% do item</span>`;
     return `<section class="secao" aria-labelledby="t-exm"><div class="secao-cab"><div><h2 id="t-exm">Por meta do plano de trabalho</h2><p>O mesmo gasto, visto pelas metas do plano pactuado com o MDA. Toque na meta para ver os itens do orçamento ligados a ela.</p></div>
         <button type="button" class="btn peq" data-acao="exec-abrir-metas">${metaAbertas.size ? 'Fechar todas' : 'Abrir todas'}</button></div>
-      <div class="fin-wrap"><table class="fin exec-fin exec-meta"><thead><tr><th scope="col">Meta</th><th scope="col">Previsto</th><th scope="col">Executado</th><th scope="col">Comprometido</th><th scope="col">Saldo</th><th scope="col">Execução</th></tr></thead>
+      <div class="fin-wrap"><table class="fin exec-fin exec-meta"><thead><tr><th scope="col">Meta</th><th scope="col">Previsto</th><th scope="col">Pago</th><th scope="col">Comprometido</th><th scope="col">Saldo</th><th scope="col">Execução</th></tr></thead>
         ${gs.map(g => { const ab = metaAbertas.has(g.id); const nIt = g.itens.length; const dif = g.plano && Math.abs(g.plano - g.previsto) >= 1;
           return `<tbody id="exm-${g.id}" class="fin-rubrica${ab ? ' aberta' : ''}"><tr class="fin-grupo"><th scope="rowgroup"><button type="button" class="fin-rub" data-acao="exec-abrir-meta" data-id="${g.id}" aria-expanded="${ab}">
               <span class="fin-rub-n">${g.id === '_comum' ? '' : `<span class="fin-meta-id">${g.id}</span> `}${E(g.nome)}</span><small>${nIt} ${nIt === 1 ? 'item' : 'itens'}</small>${dif ? `<span class="fin-plano">no plano de trabalho: ${brl(g.plano)}</span>` : ''}</button></th>
-            <td class="num" data-rot="Previsto">${g.previsto ? brl(g.previsto) : zero}</td><td class="num" data-rot="Executado">${vExec(g.exec)}</td><td class="num" data-rot="Comprometido">${vComp(g.comp)}</td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(g.previsto - g.exec - g.comp)}</b></td><td data-rot="Execução">${celExec(g.exec, g.previsto)}</td></tr>
-            ${g.itens.map(y => `<tr class="fin-item"><th scope="row"><span class="fin-nome sem">${E(y.i.nome)}${fr(y.f)}</span></th><td class="num" data-rot="Previsto">${y.previsto ? brl(y.previsto) : zero}</td><td class="num" data-rot="Executado">${vExec(y.exec)}</td><td class="num" data-rot="Comprometido">${vComp(y.comp)}</td><td class="num fin-saldo" data-rot="Saldo">${y.previsto ? brl(y.previsto - y.exec - y.comp) : zero}</td><td data-rot="Execução">${y.previsto ? celExec(y.exec, y.previsto) : ''}</td></tr>`).join('')}</tbody>`; }).join('')}
-        <tfoot><tr class="fin-tot"><th scope="row">Total do projeto</th><td class="num" data-rot="Previsto"><b>${brl(O().total)}</b></td><td class="num" data-rot="Executado">${vExec(n.exec)}</td><td class="num" data-rot="Comprometido">${vComp(n.comp)}</td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(n.livre)}</b></td><td data-rot="Execução">${celExec(n.exec, O().total)}</td></tr></tfoot>
+            <td class="num" data-rot="Previsto">${g.previsto ? brl(g.previsto) : zero}</td><td class="num" data-rot="Pago">${vExec(g.exec)}</td><td class="num" data-rot="Comprometido">${vComp(g.comp)}</td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(g.previsto - g.exec - g.comp)}</b></td><td data-rot="Execução">${celExec(g.exec, g.previsto)}</td></tr>
+            ${g.itens.map(y => `<tr class="fin-item"><th scope="row"><span class="fin-nome sem">${E(y.i.nome)}${fr(y.f)}</span></th><td class="num" data-rot="Previsto">${y.previsto ? brl(y.previsto) : zero}</td><td class="num" data-rot="Pago">${vExec(y.exec)}</td><td class="num" data-rot="Comprometido">${vComp(y.comp)}</td><td class="num fin-saldo" data-rot="Saldo">${y.previsto ? brl(y.previsto - y.exec - y.comp) : zero}</td><td data-rot="Execução">${y.previsto ? celExec(y.exec, y.previsto) : ''}</td></tr>`).join('')}</tbody>`; }).join('')}
+        <tfoot><tr class="fin-tot"><th scope="row">Total do projeto</th><td class="num" data-rot="Previsto"><b>${brl(O().total)}</b></td><td class="num" data-rot="Pago">${vExec(n.exec)}</td><td class="num" data-rot="Comprometido">${vComp(n.comp)}</td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(n.livre)}</b></td><td data-rot="Execução">${celExec(n.exec, O().total)}</td></tr></tfoot>
       </table></div>
       <p class="small muted fin-nota-meta">Bolsas entram na Meta 1 (equipe e coordenação). A ajuda de custo das visitas é dividida pelas 800 visitas do orçamento: 25% diagnósticos (M2), 25% implantação (M3) e 50% acompanhamento (M4). Quando o valor do plano de trabalho é diferente da soma dos itens, a meta mostra “no plano”.</p></section>`;
   }
@@ -96,8 +101,9 @@
     const hoje = R.hoje().slice(0, 7); const idxHoje = meses.indexOf(hoje);
     const gastoMes = {}; const add = (ym, v) => { gastoMes[ym] = (gastoMes[ym] || 0) + v; };
     const pl = vigente(); const mesPl = pl ? String(pl.posicao_em).slice(0, 7) : hoje; const recMes = {};
-    (pl ? pl.linhas : []).forEach(l => { const ym = l.data ? String(l.data).slice(0, 7) : mesPl;
+    (pl ? pl.linhas : []).filter(l => l.situacao !== 'comprometido').forEach(l => { const ym = l.data ? String(l.data).slice(0, 7) : mesPl;
       if (l.item === 'repasse_mda') recMes[ym] = (recMes[ym] || 0) + (+l.valor || 0); else add(ym, +l.valor || 0); });
+    if (!Object.keys(recMes).length) O().repasses.forEach(r => { recMes[r.mes] = (recMes[r.mes] || 0) + r.valor; });   // planilha sem repasse (a de solicitações da FUNCERN): o cronograma
     const antes = (obj, ym) => Object.entries(obj).filter(([k]) => k < meses[0]).reduce((t, [, v]) => t + v, 0);   // o que veio antes de set/2026 entra no primeiro mês
     let e = antes(gastoMes), r = antes(recMes);
     const executado = [], recebido = [];
@@ -116,17 +122,19 @@
     const pontos = (vs, cls) => { const i = ult(vs); return i < 0 ? '' : `<circle cx="${x(i)}" cy="${y(vs[i])}" r="4" class="${cls}"/>`; };
     const alvos = sr.meses.map((_, i) => `<rect x="${x(i) - (W - ml - mr) / (sr.meses.length - 1) / 2}" y="${mt}" width="${(W - ml - mr) / (sr.meses.length - 1)}" height="${H - mt - mb}" class="eg-alvo" data-exg="${i}" tabindex="0" role="button" aria-label="${rotMes(sr.meses[i])}: previsto ${brl(sr.previsto[i])}${sr.executado[i] == null ? '' : ', executado ' + brl(sr.executado[i]) + ', recebido ' + brl(sr.recebido[i])}"/>`).join('');
     return `<figure class="exec-graf" data-exec-ritmo><figcaption><b>Ritmo do gasto</b> <span class="small muted">acumulado mês a mês</span></figcaption>
-      <ul class="eg-leg small"><li><i class="eg-q prev"></i>Previsto (plano de desembolso)</li><li><i class="eg-q exe"></i>Executado</li><li><i class="eg-q rec"></i>Recebido do MDA</li></ul>
-      <div class="eg-caixa"><svg viewBox="0 0 ${W} ${H}" role="group" aria-label="Ritmo do gasto: previsto, executado e recebido acumulados por mês">${grade}${rot}${hoje}
+      <ul class="eg-leg small"><li><i class="eg-q prev"></i>Previsto (plano de desembolso)</li><li><i class="eg-q exe"></i>Pago</li><li><i class="eg-q rec"></i>Recebido do MDA</li></ul>
+      <div class="eg-caixa"><svg viewBox="0 0 ${W} ${H}" role="group" aria-label="Ritmo do gasto: previsto, pago e recebido acumulados por mês">${grade}${rot}${hoje}
         <path d="${linha(sr.previsto)}" class="eg-prev"/><path d="${linha(sr.recebido, true)}" class="eg-rec"/><path d="${linha(sr.executado)}" class="eg-exe"/>
         ${pontos(sr.recebido, 'eg-pt rec')}${pontos(sr.executado, 'eg-pt exe')}<line class="eg-cruz" x1="0" x2="0" y1="${mt}" y2="${H - mb}" hidden/>${alvos}</svg>
         <div class="exec-dica" role="status" hidden></div></div>
-      <p class="small muted">Passe o mouse ou toque num mês. O previsto usa o ritmo do plano de desembolso (que soma R$ 1.970.308,00), ajustado ao total de R$ 2 milhões.</p></figure>`;
+      <p class="small muted">Passe o mouse ou toque num mês. O previsto usa o ritmo do plano de desembolso (que soma R$ 1.970.308,00), ajustado ao total de R$ 2 milhões.</p>
+      <details class="eg-tab-d"><summary>Ver os números em tabela</summary><div class="fin-wrap"><table class="quadro eg-tab"><thead><tr><th scope="col">Mês</th><th scope="col" class="num">Previsto</th><th scope="col" class="num">Pago</th><th scope="col" class="num">Recebido</th></tr></thead>
+        <tbody>${sr.meses.map((ym, i) => `<tr${i === sr.idxHoje ? ' class="eg-tab-hoje"' : ''}><th scope="row">${rotMes(ym)}${i === sr.idxHoje ? ' <span class="small muted">(mês atual)</span>' : ''}</th><td class="num">${brl(sr.previsto[i])}</td><td class="num">${sr.executado[i] == null ? '—' : brl(sr.executado[i])}</td><td class="num">${sr.recebido[i] == null ? '—' : brl(sr.recebido[i])}</td></tr>`).join('')}</tbody></table></div></details></figure>`;
   }
   function graficoRubricas(n) {
     const tempo = n.tempo * 100;
     return `<figure class="exec-graf" data-exec-rub><figcaption><b>Uso de cada rubrica</b> <span class="small muted">% do previsto · clique para ver os itens</span></figcaption>
-      <ul class="eg-leg small"><li><i class="eg-q exe"></i>Executado</li><li><i class="eg-q comp"></i>Comprometido</li><li><i class="eg-q tempo"></i>Tempo decorrido (${pctBR(Math.round(tempo * 10) / 10)}%)</li></ul>
+      <ul class="eg-leg small"><li><i class="eg-q exe"></i>Pago</li><li><i class="eg-q comp"></i>Comprometido</li><li><i class="eg-q tempo"></i>Tempo decorrido (${pctBR(Math.round(tempo * 10) / 10)}%)</li></ul>
       <div class="eg-barras">${n.rub.map(({ r, previsto, exec, comp }) => { const pe = lim(exec / previsto * 100), pc = Math.min(100 - pe, lim(comp / previsto * 100)); const tot = (exec + comp) / previsto * 100;
         return `<button type="button" class="eg-bar${tot > 100.05 ? ' passou' : ''}" data-acao="exec-rub" data-id="${r.id}" data-dica="${E(r.nome)}|${brl(previsto)}|${brl(exec)}|${brl(comp)}|${brl(previsto - exec - comp)}">
           <span class="eg-nome">${E(r.nome)}</span>
@@ -147,11 +155,11 @@
     if (alvo.dataset.exg != null) {
       const sr = serie(); const i = +alvo.dataset.exg; const v = a => a[i] == null ? '—' : brl(a[i]);
       const c = alvo.closest('svg').querySelector('.eg-cruz'); const xx = +alvo.getAttribute('x') + +alvo.getAttribute('width') / 2; c.setAttribute('x1', xx); c.setAttribute('x2', xx); c.removeAttribute('hidden');
-      dica(null, alvo, `<b>${rotMes(sr.meses[i])}</b><span><i class="eg-q prev"></i>Previsto ${brl(sr.previsto[i])}</span><span><i class="eg-q exe"></i>Executado ${v(sr.executado)}</span><span><i class="eg-q rec"></i>Recebido ${v(sr.recebido)}</span>`
+      dica(null, alvo, `<b>${rotMes(sr.meses[i])}</b><span><i class="eg-q prev"></i>Previsto ${brl(sr.previsto[i])}</span><span><i class="eg-q exe"></i>Pago ${v(sr.executado)}</span><span><i class="eg-q rec"></i>Recebido ${v(sr.recebido)}</span>`
         + (sr.executado[i] != null ? `<span class="muted">${sr.executado[i] < sr.previsto[i] ? 'Abaixo' : 'Acima'} do previsto em ${brl(Math.abs(sr.previsto[i] - sr.executado[i]))}</span>` : ''));
     } else if (alvo.dataset.dica) {
       const [nome, prev, exe, comp, saldo] = alvo.dataset.dica.split('|');
-      dica(null, alvo, `<b>${nome}</b><span>Previsto ${prev}</span><span><i class="eg-q exe"></i>Executado ${exe}</span><span><i class="eg-q comp"></i>Comprometido ${comp}</span><span>Saldo <b>${saldo}</b></span>`);
+      dica(null, alvo, `<b>${nome}</b><span>Previsto ${prev}</span><span><i class="eg-q exe"></i>Pago ${exe}</span><span><i class="eg-q comp"></i>Comprometido ${comp}</span><span>Saldo <b>${saldo}</b></span>`);
     }
   }
   if (typeof document !== 'undefined') {
@@ -181,14 +189,51 @@
   const vExec = v => v > 0 ? `<span class="fin-exec">${brl(v)}</span>` : zero;
   const vComp = v => v > 0 ? `<span class="fin-comp">${brl(v)}</span>` : zero;
   const rubAbertas = new Set();   // rubricas abertas na tabela (começam fechadas; ficam como a pessoa deixou enquanto a página está aberta)
+  /* 22/10/2026 (como no Saberes que Cultivam): cartão do resumo, detalhe do item e lista de despesas */
+  function finKpi(tom, pc, grande, de, rot, sub, fim) {
+    const p = Math.max(0, Math.min(100, +pc || 0)), C = 2 * Math.PI * 18;
+    return `<div class="eq-kpi dx-kpi fin-k fk-${tom}"><div class="dx-kpi-topo"><span class="dx-anel" aria-hidden="true"><svg viewBox="0 0 44 44" width="52" height="52" focusable="false"><circle cx="22" cy="22" r="18" class="tr"/><circle cx="22" cy="22" r="18" class="pg${p > 0 ? '' : ' vazio'}" stroke-dasharray="${(C * p / 100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 22 22)"/><text x="22" y="26" text-anchor="middle" class="dx-anel-t">${Math.round(p)}%</text></svg></span>
+      <span class="eq-n num"><b>${grande}</b><small> ${de}</small></span></div><span class="eq-l">${rot}</span>
+      <span class="medidor fino" aria-hidden="true"><i style="width:${p}%"></i></span><span class="dx-kpi-p"><b class="num">${pctBR(Math.round(p))}%</b> ${fim}</span><span class="dx-kpi-s">${sub}</span></div>`;
+  }
+  function detalheGasto(comp, prev, pago, compr, saldo, nDesp) {
+    const p = v => prev > 0 ? Math.max(0, Math.min(100, v / prev * 100)) : 0, pP = p(pago), pC = Math.min(100 - pP, p(compr));
+    return `<div class="rbx"><p class="rbx-top"><span><b>Previsto: ${brl(prev)}</b> · ${E(comp)}</span><span>${nDesp ? `${nDesp} ${nDesp === 1 ? 'despesa' : 'despesas'} neste item` : 'nenhuma despesa neste item'}</span></p>
+      <span class="rbx-bar" role="img" aria-label="Pago ${brl(pago)}, comprometido ${brl(compr)}, saldo ${brl(saldo)} de ${brl(prev)} previstos"><i class="pg" style="width:${pP}%"></i><i class="cp" style="width:${pC}%"></i></span>
+      <ul class="rbx-l"><li><span class="rbx-s pg" aria-hidden="true"></span><span>Pago<b class="num">${brl(pago)}</b></span></li><li><span class="rbx-s cp" aria-hidden="true"></span><span>Comprometido<b class="num">${brl(compr)}</b></span></li><li><span class="rbx-s sd" aria-hidden="true"></span><span>Saldo<b class="num${saldo < 0 ? ' neg' : ''}">${brl(saldo)}</b></span></li></ul>
+      <p class="rbx-nota">Comprometido: solicitação ainda não paga na FUNCERN, ou o que o sistema já sabe e a planilha ainda não trouxe. Saldo: o que sobra para gastar (previsto − pago − comprometido).</p></div>`;
+  }
+  const sitChip = l => l.situacao === 'comprometido' ? `<span class="chip pend">${E(l.status || 'Comprometido')}</span>` : `<span class="chip ok">${E(l.status && !/^pago$/i.test(l.status) ? l.status : 'Pago')}</span>`;
+  const ordemData = (a, b) => String(b.data || '').localeCompare(String(a.data || '')) || (a.linha || 0) - (b.linha || 0);
+  function tabelaDespesas(lista, comRubrica) {
+    const nomeRub = id => (O().rubricas.find(r => r.id === id) || {}).nome || 'Fora do orçamento';
+    const nomeItem = id => { const i = itens().find(x => x.id === id); return i ? i.nome : ''; };
+    return `<div class="fin-wrap"><table class="quadro desp-tab"><thead><tr><th scope="col">Data</th><th scope="col">Descrição</th><th scope="col">Situação</th><th scope="col" class="num">Valor</th></tr></thead>
+      <tbody>${lista.slice().sort(ordemData).map(l => `<tr><td data-rot="Data" class="num">${l.data ? R.fmtData(l.data) : '—'}</td>
+        <td data-rot="Descrição"><span class="desp-d">${E(l.descricao || l.texto || 'Despesa')}</span><span class="desp-s">${[comRubrica ? nomeRub(l.rubrica) : '', l.item ? nomeItem(l.item) : (comRubrica ? '' : 'sem item definido'), l.favorecido, l.documento].filter(Boolean).map(E).join(' · ')}</span></td>
+        <td data-rot="Situação">${sitChip(l)}</td><td data-rot="Valor" class="num"><b>${brl(l.valor)}</b></td></tr>`).join('')}</tbody></table></div>`;
+  }
+  function linhaDespesasRub(rid, n) {
+    const ds = n.despesas.filter(l => l.rubrica === rid); if (!ds.length) return '';
+    return `<tr class="fin-desp"><td colspan="6"><h3 class="fin-desp-t">Despesas desta rubrica <span class="small muted">(${ds.length}, da planilha vigente)</span></h3>${tabelaDespesas(ds, false)}</td></tr>`;
+  }
+  function secaoDespesas(n) {
+    const ds = n.despesas; if (!ds.length) return '';
+    const LIM = 40, mais = ds.length > LIM;
+    const ord = ds.slice().sort(ordemData);
+    return `<section class="secao" aria-labelledby="t-exd"><div class="secao-cab"><div><h2 id="t-exd">Despesas do projeto <span class="conta-t">${ds.length}</span></h2>
+        <p>Vêm da planilha de solicitações da FUNCERN: envie a planilha atualizada (no fim da página) e os números mudam. Enquanto não estiver paga, a despesa conta como comprometida; cancelada não entra.</p></div></div>
+      ${tabelaDespesas(ord.slice(0, LIM), true)}
+      ${mais ? `<details class="desp-mais"><summary>Ver as outras ${ds.length - LIM} despesas</summary>${tabelaDespesas(ord.slice(LIM), true)}</details>` : ''}</section>`;
+  }
   function alertas(n) {
     const a = [];
-    if (!n.pl) a.push('Nenhuma planilha de gastos enviada ainda. Sem ela, o executado fica zerado: envie a planilha do mês.');
+    if (!n.pl) a.push('Nenhuma planilha de gastos enviada ainda. Sem ela, o pago fica zerado: envie a planilha do mês.');
     else if (n.idade > 35) a.push(`A planilha vigente é de <b>${R.fmtData(n.pl.posicao_em)}</b> (${n.idade} dias atrás). Envie a planilha deste mês.`);
     if (n.pl && foraDoPeriodo(n.pl.posicao_em)) a.push(`A planilha vigente é de <b>${R.fmtData(n.pl.posicao_em)}</b>, fora do período do projeto (${R.fmtData(MQ.PROJETO.vigencia.inicio)} a ${R.fmtData(MQ.PROJETO.vigencia.fim)}). Confira a data e, se estiver errada, envie a planilha de novo.`);
-    itens().forEach(i => { const x = n.porItem[i.id]; if (x.passou) a.push(`<b>${E(i.nome)}</b>: executado + comprometido (${brl(x.exec + x.comp)}) passa do previsto (${brl(i.total)}).`); });
-    if (n.naoClass) a.push(`${brl(n.naoClass)} em linhas que não batem com nenhum item do orçamento (entram no executado total, fora das rubricas). Veja em <b>Planilhas enviadas</b>.`);
-    if (n.caixa < -0.005) a.push(`O executado (${brl(n.exec)}) passa do recebido do MDA na planilha (${brl(n.recebido)}). Confira se a planilha traz os repasses.`);
+    itens().forEach(i => { const x = n.porItem[i.id]; if (x.passou) a.push(`<b>${E(i.nome)}</b>: pago + comprometido (${brl(x.exec + x.comp)}) passa do previsto (${brl(i.total)}).`); });
+    if (n.naoClass) a.push(`${brl(n.naoClass)} em linhas que não batem com nenhum item do orçamento (entram no total pago, fora das rubricas). Veja em <b>Planilhas enviadas</b>.`);
+    if (n.disponivel < -0.005) a.push(`Pago e comprometido (${brl(n.exec + n.comp)}) passam do recebido do MDA (${brl(n.recebido)}${n.recebidoEstimado ? ', pelo cronograma de desembolso' : ''}). Confira os repasses antes de novas despesas.`);
     return a;
   }
   function aba() {
@@ -200,41 +245,44 @@
     let acum = 0; const prox = O().repasses.find(r => { acum += r.valor; return acum > n.recebido + 0.005; });   // o próximo repasse que ainda não entrou
     const linhaItem = i => { const x = n.porItem[i.id];
       return `<tr class="fin-item${x.passou ? ' passou' : ''}"><th scope="row"><button type="button" class="fin-nome" data-acao="exec-comp" data-id="${E(i.id)}" aria-expanded="false" aria-controls="exc-${E(i.id)}">${E(i.nome)}</button></th>
-        <td class="num" data-rot="Previsto">${brl(i.total)}</td><td class="num" data-rot="Executado">${vExec(x.exec)}</td><td class="num" data-rot="Comprometido">${vComp(x.comp)}</td><td class="num fin-saldo" data-rot="Saldo">${brl(x.saldo)}</td><td data-rot="Execução">${celExec(x.exec, i.total)}</td></tr>
-        <tr class="fin-detalhe" id="exc-${E(i.id)}" hidden><td colspan="6"><dl class="fin-det"><div><dt>Composição</dt><dd>${E(composicao(i))}</dd></div><div><dt>Previsto</dt><dd class="num">${brl(i.total)}</dd></div>
-          <div><dt>Executado</dt><dd class="num">${brl(x.exec)}</dd></div><div><dt>Comprometido</dt><dd class="num">${brl(x.comp)}</dd></div><div><dt>Saldo</dt><dd class="num"><b>${brl(x.saldo)}</b></dd></div></dl></td></tr>`; };
-    const semItem = x => x.semItem ? `<tr class="fin-item"><th scope="row"><span class="fin-nome sem">Sem item definido na planilha</span><span class="small muted">a planilha disse só a rubrica ou um item que não está no orçamento</span></th><td class="num" data-rot="Previsto">—</td><td class="num" data-rot="Executado">${vExec(x.semItem)}</td><td class="num" data-rot="Comprometido">—</td><td class="num" data-rot="Saldo">—</td><td></td></tr>` : '';
-    return `<div class="cab"><div><span class="eyebrow">Financeiro</span><h1>Execução do orçamento</h1>
-        <p>Previsto × executado do TED (R$ ${(T / 1e6).toLocaleString('pt-BR')} milhões), por rubrica e por meta. O executado vem da <b>planilha de gastos</b> mais recente; o comprometido, do que o sistema já sabe e a planilha ainda não trouxe. Só você vê esta aba.</p></div></div>
-      ${/* 14/10/2026: o envio da planilha (uma vez por mês) fica no fim da página, junto das planilhas enviadas. Quando falta a planilha
-         ou ela está velha, o aviso vermelho do meio da página traz o botão */ ''}
+        <td class="num" data-rot="Previsto">${brl(i.total)}</td><td class="num" data-rot="Pago">${vExec(x.exec)}</td><td class="num" data-rot="Comprometido">${vComp(x.comp)}</td><td class="num fin-saldo" data-rot="Saldo">${brl(x.saldo)}</td><td data-rot="Execução">${celExec(x.exec, i.total)}</td></tr>
+        <tr class="fin-detalhe" id="exc-${E(i.id)}" hidden><td colspan="6">${detalheGasto(composicao(i), i.total, x.exec, x.comp, x.saldo, n.despesas.filter(l => l.item === i.id).length)}</td></tr>`; };
+    const semItem = x => x.semItem || x.semItemC ? `<tr class="fin-item"><th scope="row"><span class="fin-nome sem">Sem item definido na planilha</span><span class="small muted">a planilha disse só a rubrica ou um item que não está no orçamento</span></th><td class="num" data-rot="Previsto">—</td><td class="num" data-rot="Pago">${vExec(x.semItem)}</td><td class="num" data-rot="Comprometido">${vComp(x.semItemC)}</td><td class="num" data-rot="Saldo">—</td><td></td></tr>` : '';
+    const mil = v => (v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: Math.abs(v) % 1000 ? 1 : 0 });
+    const nPago = n.despesas.filter(l => l.situacao !== 'comprometido').length, nComp = n.despesas.filter(l => l.situacao === 'comprometido').length;
+    const acima = n.exec + n.comp > n.recebido + 0.005, recPct = pct(n.recebido, T);
+    return `<div class="cab"><div><span class="eyebrow">Recursos do TED</span><h1>Acompanhamento financeiro</h1>
+        <p>Valores previstos no plano de trabalho, comparados com a planilha de solicitações da FUNCERN. O registro oficial continua sendo o da FUNCERN; confira os dois antes de cada prestação de contas. Só você vê esta aba.</p></div></div>
+      ${/* 22/10/2026: a mesma tela do Financeiro do Saberes que Cultivam (resumo recebido · pago · comprometido · disponível) */ ''}
       ${n.pl ? `<p class="small muted">Planilha vigente: <b>${E(n.pl.arquivo_nome)}</b>, gastos até ${R.fmtData(n.pl.posicao_em)} (enviada em ${R.fmtData(n.pl.enviado_em)}). O envio da próxima fica no fim da página.</p>` : ''}
-      <section class="fin-resumo dx-topo fin-topo" aria-label="Execução financeira">
-        <div class="dx-exec"><span class="dx-rot">Execução financeira</span>
+      <section class="fin-resumo dx-topo fin-topo" aria-label="Resumo financeiro">
+        <div class="dx-exec"><span class="dx-rot">Execução financeira do projeto</span>
           <div class="dx-exec-num"><b class="num">${pctBR(usoPct)}%</b></div>
-        <div class="fin-barra" role="img" aria-label="Executado ${pctBR(pct(n.exec, T))}%, comprometido ${pctBR(pct(n.comp, T))}%"><i class="e" style="width:${lim(pct(n.exec, T))}%"></i><i class="c" style="width:${Math.min(100 - lim(pct(n.exec, T)), lim(pct(n.comp, T)))}%"></i></div>
-        <p class="fin-sub"><span><b>${pctBR(usoPct)}%</b> do orçamento em uso (executado + comprometido) · tempo de vigência decorrido: ${pctBR(tempoPct)}%: ${ritmo}</span></p>
+          <div><span class="chip ${acima ? 'crit' : 'ok'}">${acima ? 'Acima do que já foi recebido' : 'Dentro do que já foi recebido'}</span></div>
+          <div class="fin-barra fin-barra-rec" role="img" aria-label="Pago ${pctBR(pct(n.exec, T))}%, comprometido ${pctBR(pct(n.comp, T))}% do total; recebido ${pctBR(recPct)}%"><i class="e" style="width:${lim(pct(n.exec, T))}%"></i><i class="c" style="width:${Math.min(100 - lim(pct(n.exec, T)), lim(pct(n.comp, T)))}%"></i><b class="fin-rec-traco" style="left:${lim(recPct)}%"></b></div>
+          <p class="fin-sub fin-sub-2"><span>Pago ou comprometido: <b>${brl(n.exec + n.comp)}</b></span><span>Total do TED: <b>${brl(T)}</b></span></p>
+          <details class="dx-como"><summary>Como é calculado</summary><p class="small">Soma do pago e do comprometido, dividida pelo valor total do TED. <b>Pago</b>: solicitação paga na planilha da FUNCERN. <b>Comprometido</b>: solicitação ainda não paga (em pagamento, em compras, pendente) e o que o sistema já sabe e a planilha ainda não trouxe (bolsa ou ajuda de custo com aval ou lançada no Arlo depois da data da planilha; passagem e evento autorizados depois dessa data). Cancelada não entra. O traço na barra marca quanto já foi repassado à fundação (${pctBR(recPct)}%). Tempo de vigência decorrido: ${pctBR(tempoPct)}%: ${ritmo}.</p></details>
         </div>
-        <div class="eq-kpis fin-nums">
-          ${MQ.ui.kpi(0, 0, 'total previsto', 1, { sem: true, valor: `<span class="fin-v num">${brl(T)}</span>` })}
-          ${MQ.ui.kpi(0, 0, `executado · ${pctBR(pct(n.exec, T))}%`, 2, { pct: pct(n.exec, T), fim: 'do previsto', valor: `<span class="fin-v num fin-exec">${brl(n.exec)}</span>` })}
-          ${MQ.ui.kpi(0, 0, `comprometido · ${pctBR(pct(n.comp, T))}%`, 3, { pct: pct(n.comp, T), fim: 'do previsto', valor: `<span class="fin-v num fin-comp">${brl(n.comp)}</span>` })}
-          ${MQ.ui.kpi(0, 0, 'saldo livre para executar', 4, { pct: pct(n.livre, T), fim: 'do previsto', valor: `<span class="fin-v num"><b>${brl(n.livre)}</b></span>` })}
+        <div class="dx-kpis fin-kpis">
+          ${finKpi('rec', recPct, mil(n.recebido), 'de ' + mil(T) + ' mil', 'recebido', (n.recebidoEstimado ? 'pelo cronograma de desembolso' : 'pela planilha') + (prox ? ` · próxima parcela de ${brl(prox.valor)} prevista para ${prox.mes.slice(5)}/${prox.mes.slice(0, 4)}` : ' · todas as parcelas recebidas'), 'do total')}
+          ${finKpi('pago', pct(n.exec, n.recebido), mil(n.exec), 'de ' + mil(n.recebido) + ' mil', 'pago', `${nPago} ${nPago === 1 ? 'despesa paga' : 'despesas pagas'}`, 'do recebido')}
+          ${finKpi('comp', pct(n.comp, n.recebido), mil(n.comp), 'de ' + mil(n.recebido) + ' mil', 'comprometido', `${nComp} ${nComp === 1 ? 'solicitação' : 'solicitações'} ainda não ${nComp === 1 ? 'paga' : 'pagas'}, mais o que o sistema já sabe`, 'do recebido')}
+          ${finKpi('disp', pct(n.disponivel, n.recebido), mil(n.disponivel), 'de ' + mil(n.recebido) + ' mil', 'disponível do recebido', n.disponivel < 0 ? 'pago e comprometido passam do que já foi recebido' : 'recebido menos pago e comprometido', 'do recebido')}
         </div>
-        <p class="fin-sub muted fin-rodape">Recebido do MDA: <b>${brl(n.recebido)}</b> de ${brl(T)}${prox ? ` · próximo repasse: ${brl(prox.valor)}, previsto para ${prox.mes.slice(5)}/${prox.mes.slice(0, 4)}${prox.mes < R.hoje().slice(0, 7) ? ' (atrasado ou ainda fora da planilha)' : ''}` : ''} · em caixa na FUNCERN (recebido − executado): <b>${brl(n.caixa)}</b>. Comprometido = aval, Arlo ou autorização ${n.pl ? 'depois de ' + R.fmtData(n.pl.posicao_em) : 'ainda sem planilha'}.</p>
       </section>
       <div class="exec-grafs">${graficoRitmo(serie())}${graficoRubricas(n)}</div>
       ${al.length ? `<div class="aviso erro"><ul class="exec-alertas">${al.map(x => `<li>${x}</li>`).join('')}</ul>${!n.pl || n.idade > 35 ? `<p class="exec-alerta-acao">${MQ.botaoAcao({ acao: 'exec-enviar', icone: 'enviar', texto: 'Enviar planilha de gastos', sec: true, peq: true })}</p>` : ''}</div>` : ''}
       <section class="secao" aria-labelledby="t-exr"><div class="secao-cab"><div><h2 id="t-exr">Por rubrica</h2><p>Toque na rubrica para ver os itens; toque no item para ver a composição do valor.</p></div>
           <button type="button" class="btn peq" data-acao="exec-abrir-tudo">${rubAbertas.size ? 'Fechar todas' : 'Abrir todas'}</button></div>
-        <div class="fin-wrap"><table class="fin exec-fin"><thead><tr><th scope="col">Rubrica</th><th scope="col">Previsto</th><th scope="col">Executado</th><th scope="col">Comprometido</th><th scope="col">Saldo</th><th scope="col">Execução</th></tr></thead>
-          ${n.rub.map(x => { const { r, previsto, exec, comp } = x; const nIt = r.itens.length + (x.semItem ? 1 : 0); const ab = rubAbertas.has(r.id);
-            return `<tbody id="exr-${r.id}" class="fin-rubrica${ab ? ' aberta' : ''}"><tr class="fin-grupo"><th scope="rowgroup"><button type="button" class="fin-rub" data-acao="exec-abrir" data-id="${E(r.id)}" aria-expanded="${ab}"><span class="fin-rub-n">${E(r.nome)}</span><small>${nIt} ${nIt === 1 ? 'item' : 'itens'}</small></button></th><td class="num" data-rot="Previsto">${brl(previsto)}</td><td class="num" data-rot="Executado">${vExec(exec)}</td><td class="num" data-rot="Comprometido">${vComp(comp)}</td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(previsto - exec - comp)}</b></td><td data-rot="Execução">${celExec(exec, previsto)}</td></tr>
-            ${r.itens.map(linhaItem).join('')}${semItem(x)}</tbody>`; }).join('')}
-          ${n.naoClass ? `<tbody><tr class="fin-grupo"><th scope="rowgroup">Fora do orçamento (não classificado)</th><td class="num" data-rot="Previsto">—</td><td class="num" data-rot="Executado">${vExec(n.naoClass)}</td><td class="num" data-rot="Comprometido">—</td><td class="num" data-rot="Saldo">—</td><td></td></tr></tbody>` : ''}
-          <tfoot><tr class="fin-tot"><th scope="row">Total do projeto</th><td class="num" data-rot="Previsto"><b>${brl(T)}</b></td><td class="num" data-rot="Executado">${vExec(n.exec)}</td><td class="num" data-rot="Comprometido">${vComp(n.comp)}</td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(n.livre)}</b></td><td data-rot="Execução">${celExec(n.exec, T)}</td></tr></tfoot>
+        <div class="fin-wrap"><table class="fin exec-fin"><thead><tr><th scope="col">Rubrica</th><th scope="col">Previsto</th><th scope="col">Pago</th><th scope="col">Comprometido</th><th scope="col">Saldo</th><th scope="col">Execução</th></tr></thead>
+          ${n.rub.map(x => { const { r, previsto, exec, comp } = x; const nIt = r.itens.length + (x.semItem || x.semItemC ? 1 : 0); const ab = rubAbertas.has(r.id);
+            return `<tbody id="exr-${r.id}" class="fin-rubrica${ab ? ' aberta' : ''}"><tr class="fin-grupo"><th scope="rowgroup"><button type="button" class="fin-rub" data-acao="exec-abrir" data-id="${E(r.id)}" aria-expanded="${ab}"><span class="fin-rub-n">${E(r.nome)}</span><small>${nIt} ${nIt === 1 ? 'item' : 'itens'}</small></button></th><td class="num" data-rot="Previsto">${brl(previsto)}</td><td class="num" data-rot="Pago">${vExec(exec)}</td><td class="num" data-rot="Comprometido">${vComp(comp)}</td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(previsto - exec - comp)}</b></td><td data-rot="Execução">${celExec(exec, previsto)}</td></tr>
+            ${r.itens.map(linhaItem).join('')}${semItem(x)}${linhaDespesasRub(r.id, n)}</tbody>`; }).join('')}
+          ${n.naoClass || n.naoClassC ? `<tbody><tr class="fin-grupo"><th scope="rowgroup">Fora do orçamento (não classificado)</th><td class="num" data-rot="Previsto">—</td><td class="num" data-rot="Pago">${vExec(n.naoClass)}</td><td class="num" data-rot="Comprometido">${vComp(n.naoClassC)}</td><td class="num" data-rot="Saldo">—</td><td></td></tr></tbody>` : ''}
+          <tfoot><tr class="fin-tot"><th scope="row">Total do projeto</th><td class="num" data-rot="Previsto"><b>${brl(T)}</b></td><td class="num" data-rot="Pago">${vExec(n.exec)}</td><td class="num" data-rot="Comprometido">${vComp(n.comp)}</td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(n.livre)}</b></td><td data-rot="Execução">${celExec(n.exec, T)}</td></tr></tfoot>
         </table></div></section>
       ${secaoMetas(n)}
+      ${secaoDespesas(n)}
       <section class="secao exec-planilhas" aria-labelledby="t-exl"><div class="secao-cab"><div><h2 id="t-exl">Planilhas enviadas <span class="conta-t${planilhas().filter(p => !p.descartada_em).length ? '' : ' zero'}">${planilhas().filter(p => !p.descartada_em).length}</span></h2>
           <p>Pelo menos uma vez por mês, envie a planilha de gastos da FUNCERN. Ela é o retrato completo desde o início: a mais nova substitui as anteriores, que ficam guardadas aqui. O sistema mostra a prévia antes de gravar.</p>
           <p class="small muted">Base do previsto: ${E(O().fonte)}, com o remanejamento aprovado pelo MDA.</p></div>
@@ -277,12 +325,15 @@
       <button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>`;
   function previaHTML(pr) {
     const s = pr.resumo; const porRub = {};
-    pr.linhas.filter(l => l.item !== 'repasse_mda').forEach(l => { const k = l.rubrica || '_'; porRub[k] = (porRub[k] || 0) + l.valor; });
+    pr.linhas.filter(l => l.item !== 'repasse_mda').forEach(l => { const k = l.rubrica || '_'; porRub[k] = (porRub[k] || 0) + l.valor; });   // pago + comprometido, por rubrica
     const nomeR = id => id === '_' ? 'Fora do orçamento (não classificado)' : (O().rubricas.find(r => r.id === id) || {}).nome;
     const ant = vigente();
     return `<div class="bloco"><h3>Prévia: ${E(pr.nome)}</h3>
       <p class="small muted">Aba lida: ${E(pr.aba)} · ${pr.linhas.length} linhas com valor${pr.ignoradas ? ` · ${pr.ignoradas === 1 ? '1 linha de total ou sem valor ignorada' : pr.ignoradas + ' linhas de total ou sem valor ignoradas'}` : ''}</p>
-      <ul class="pp"><li><span>Gastos</span><b class="num">${brl(s.gasto)}</b></li><li><span>Recebido do MDA</span><b class="num">${brl(s.recebido)}</b></li>
+      ${pr.formato === 'solicitacoes' ? `<div class="pv-status"><h4>Situação na FUNCERN</h4><p class="small muted">Planilha de solicitações: cada solicitação vale pela situação. Confira como cada status entra na conta (a escolha fica guardada para as próximas planilhas).</p>
+        <table class="quadro"><thead><tr><th scope="col">Status</th><th scope="col" class="num">Solicitações</th><th scope="col" class="num">Valor</th><th scope="col">Entra como</th></tr></thead><tbody>${(pr.status || []).map(x => `<tr><th scope="row">${E(x.txt)}</th><td class="num">${x.n}</td><td class="num">${brl(x.total)}</td>
+          <td><select data-exec-status="${E(x.txt)}" aria-label="Como “${E(x.txt)}” entra na conta">${[['pago', 'Pago'], ['comprometido', 'Comprometido'], ['ignorar', 'Não entra']].map(([v, t]) => `<option value="${v}"${x.destino === v ? ' selected' : ''}>${t}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table></div>` : ''}
+      <ul class="pp"><li><span>Pago</span><b class="num">${brl(s.gasto)}</b></li>${s.comprometido ? `<li><span>Comprometido (ainda não pago)</span><b class="num">${brl(s.comprometido)}</b></li>` : ''}<li><span>Recebido do MDA</span><b class="num">${pr.formato === 'solicitacoes' && !s.recebido ? '<small class="muted">a planilha de solicitações não traz; vale o cronograma</small>' : brl(s.recebido)}</b></li>
         ${ant ? `<li><span>Planilha vigente hoje</span><b class="num">${brl(ant.total_gasto)}<small class="muted"> até ${R.fmtData(ant.posicao_em)}</small></b></li>` : ''}</ul>
       ${ant && s.gasto + 0.005 < +ant.total_gasto ? '<div class="aviso erro">O total desta planilha é <b>menor</b> que o da planilha vigente. Como cada planilha é o retrato completo desde o início, confira se não faltam gastos antigos.</div>' : ''}
       ${ant && s.ultimaData && s.ultimaData < String(ant.posicao_em).slice(0, 10) ? `<div class="aviso">Os gastos desta planilha vão até ${R.fmtData(s.ultimaData)}, antes da vigente (${R.fmtData(ant.posicao_em)}). Se for uma correção, tudo bem: a última enviada é a que vale.</div>` : ''}
@@ -334,10 +385,20 @@
     else if (a === 'exec-abrir-tudo') { const abrir = !rubAbertas.size; document.querySelectorAll('.exec-fin:not(.exec-meta) tbody.fin-rubrica').forEach(tb => { const id = tb.id.slice(4); tb.classList.toggle('aberta', abrir); const b = tb.querySelector('.fin-rub'); if (b) b.setAttribute('aria-expanded', String(abrir)); if (abrir) rubAbertas.add(id); else rubAbertas.delete(id); }); el.textContent = abrir ? 'Fechar todas' : 'Abrir todas'; }
     else if (a === 'exec-rub') { const tb = document.getElementById('exr-' + el.dataset.id); if (tb) { tb.classList.add('aberta'); rubAbertas.add(el.dataset.id); const bb = tb.querySelector('.fin-rub'); if (bb) bb.setAttribute('aria-expanded', 'true'); tb.scrollIntoView({ behavior: 'smooth', block: 'start' }); tb.classList.remove('realce'); void tb.offsetWidth; tb.classList.add('realce'); } }
   }
+  /* como cada status da FUNCERN entra (pago, comprometido, não entra): a escolha fica guardada neste aparelho para a próxima planilha */
+  const CH_ST = 'mq-imp-status';
+  const escolhasStatus = () => { try { return JSON.parse(localStorage.getItem(CH_ST) || '{}') || {}; } catch (e) { return {}; } };
+  function mudarStatus(txt, destino) {
+    const e = escolhasStatus(); e[txt] = destino; try { localStorage.setItem(CH_ST, JSON.stringify(e)); } catch (x) {}
+    const pr = G.previa; if (!pr || !pr.tab) return;
+    const r = MQ.planilha.interpretar(pr.tab, { equipe: S().equipe || [], status: e }); const resumo = MQ.planilha.resumo(r);
+    G.previa = Object.assign(r, { resumo, posicao: pr.posicao, nome: pr.nome, arquivo: pr.arquivo, tab: pr.tab }); U().abrirPainel({ tipo: 'exec-enviar' });
+  }
+  if (typeof document !== 'undefined') document.addEventListener('change', ev => { const el = ev.target; if (el && el.matches && el.matches('select[data-exec-status]')) mudarStatus(el.dataset.execStatus, el.value); });
   async function preparar(arquivo) {   // lê e interpreta; devolve a prévia (também usado nos testes)
-    const tab = await MQ.planilha.ler(arquivo); const r = MQ.planilha.interpretar(tab, { equipe: S().equipe || [] }); const resumo = MQ.planilha.resumo(r);
+    const tab = await MQ.planilha.ler(arquivo); const r = MQ.planilha.interpretar(tab, { equipe: S().equipe || [], status: escolhasStatus() }); const resumo = MQ.planilha.resumo(r);
     const posicao = resumo.ultimaData && resumo.ultimaData <= R.hoje() ? resumo.ultimaData : R.hoje();
-    return Object.assign(r, { resumo, posicao, nome: String(arquivo.name || 'planilha').slice(0, 200), arquivo });
+    return Object.assign(r, { resumo, posicao, nome: String(arquivo.name || 'planilha').slice(0, 200), arquivo, tab });
   }
   async function enviar(tipo, form, fd) {
     if (tipo === 'exec-ler') {

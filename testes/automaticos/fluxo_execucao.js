@@ -21,11 +21,11 @@ const R = []; const ok = (c, cond, det = '') => { R.push([cond ? 'PASSOU' : 'FAL
     ok(`${w}: sem arquivo, pede o arquivo`, /Escolha o arquivo/.test(await p.textContent('#painel')));
     await p.setInputFiles('#ex-arq', FIX('modelo_preenchido.xlsx')); await p.click('form[data-form=exec-ler] button[type=submit]'); await p.waitForTimeout(800);
     const prev = await p.textContent('#painel');
-    ok(`${w}: prévia mostra gasto e recebido`, /Gastos\s*R\$\s?111\.800,00/.test(prev) && /Recebido do MDA\s*R\$\s?1\.000\.000,00/.test(prev), prev.slice(0, 200));
+    ok(`${w}: prévia mostra gasto e recebido`, /Pago\s*R\$\s?111\.800,00/.test(prev) && /Recebido do MDA\s*R\$\s?1\.000\.000,00/.test(prev), prev.slice(0, 200));
     ok(`${w}: data sugerida = última data da planilha`, (await p.inputValue('#ex-pos')) === '2026-09-25');
     await p.click('form[data-form=exec-confirmar] button[type=submit]'); await p.waitForTimeout(700);
     const m = await p.textContent('main');
-    ok(`${w}: depois de enviar, executado da planilha`, /R\$\s?111\.800,00\s*executado/.test(m));
+    ok(`${w}: depois de enviar, pago da planilha (resumo como no Saberes que Cultivam)`, /111,8\s*de 1\.000 mil\s*pago/.test(m) && /Dentro do que já foi recebido/.test(m), m.slice(m.indexOf('Execução financeira'), m.indexOf('Execução financeira') + 400));
     ok(`${w}: histórico com 1 planilha vigente`, /Planilhas enviadas\s*1/.test(m) && /vigente/.test(m));
     // envia a de fora: substitui e mostra fora do orçamento
     await p.click('[data-acao=exec-enviar]'); await p.waitForTimeout(300);

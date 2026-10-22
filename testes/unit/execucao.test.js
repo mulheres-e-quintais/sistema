@@ -22,10 +22,10 @@ test('orçamento: R$ 2 milhões, rubricas da planilha atualizada, códigos váli
 });
 
 test('só a coordenação geral tem a aba, lê e envia planilhas', async () => {
-  const g = await montar('coord_geral'); assert.ok(texto(g.aba('execucao')).includes('Execução do orçamento'));
+  const g = await montar('coord_geral'); assert.ok(texto(g.aba('execucao')).includes('Acompanhamento financeiro'));
   for (const p of ['coord_tecnico', 'bolsista', 'agente', 'professor', 'auxiliar']) {
     const t = await montar(p); const h = t.aba('execucao');
-    assert.ok(!h.includes('Execução do orçamento'), p); assert.ok(!/data-aba="execucao"/.test(h), p);
+    assert.ok(!h.includes('Acompanhamento financeiro'), p); assert.ok(!/data-aba="execucao"/.test(h), p);
     assert.equal((await t.api.listarPlanilhasExec()).length, 0, p);
     await assert.rejects(t.api.enviarPlanilhaExec({ posicao_em: '2026-09-01', linhas: [{ valor: 1 }] }, null), /coordenação geral/, p);
   }

@@ -91,7 +91,7 @@
     if (orgao === 'mda' && previa) {   // na demonstração, o padrão do banco: o resumo financeiro aparece só na prévia
       const pl = (d.execPlanilhas || []).filter(x => !x.descartada_em).sort((a, b) => String(b.enviado_em).localeCompare(String(a.enviado_em)) || String(b.posicao_em).localeCompare(String(a.posicao_em)))[0];   // 72: como o banco
       if (!pl) r.financeiro = { liberado: 'previa', sem_planilha: true };
-      else { const pi = {}, pm = {}; (pl.linhas || []).forEach(l => { const k = (l.item || '') + '|' + (l.rubrica || ''); const vl = typeof l.valor === 'number' ? l.valor : 0; pi[k] = (pi[k] || 0) + vl;
+      else { const pi = {}, pm = {}; (pl.linhas || []).filter(l => l.situacao !== 'comprometido').forEach(l => {   /* 73: só o pago */ const k = (l.item || '') + '|' + (l.rubrica || ''); const vl = typeof l.valor === 'number' ? l.valor : 0; pi[k] = (pi[k] || 0) + vl;
           const m = /^\d{4}-\d{2}/.test(String(l.data || '')) ? String(l.data).slice(0, 7) : String(pl.posicao_em).slice(0, 7); pm[m] = pm[m] || { mes: m, gasto: 0, recebido: 0 }; pm[m][l.item === 'repasse_mda' ? 'recebido' : 'gasto'] += vl; });
         r.financeiro = { liberado: 'previa', posicao_em: pl.posicao_em, enviado_em: pl.enviado_em, por_item: Object.entries(pi).map(([k, v]) => ({ item: k.split('|')[0] || null, rubrica: k.split('|')[1] || null, valor: Math.round(v * 100) / 100 })),
           por_mes: Object.values(pm).sort((a, b) => a.mes.localeCompare(b.mes)) }; }

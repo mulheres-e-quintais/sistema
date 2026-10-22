@@ -44,32 +44,37 @@
     const rels = (await ler('xl/_rels/workbook.xml.rels')) || '';
     const abas = [...wb.matchAll(/<sheet\b[^>]*\bname="([^"]*)"[^>]*\br:id="([^"]*)"/g)].map(m => ({ nome: ent(m[1]), rid: m[2] }));
     if (!abas.length) throw new Error('A planilha não tem abas.');
-    const aba = abas.find(a => /gasto|despesa|execu/i.test(a.nome)) || abas[0];
-    const alvo = (new RegExp(`<Relationship\\b[^>]*\\bId="${aba.rid}"[^>]*\\bTarget="([^"]*)"`).exec(rels) || new RegExp(`<Relationship\\b[^>]*\\bTarget="([^"]*)"[^>]*\\bId="${aba.rid}"`).exec(rels) || [])[1];
-    const caminho = alvo ? (alvo.startsWith('/') ? alvo.slice(1) : 'xl/' + alvo.replace(/^\.\//, '')) : 'xl/worksheets/sheet1.xml';
     const ss = (await ler('xl/sharedStrings.xml')) || '';
     const comp = [...ss.matchAll(/<si>([\s\S]*?)<\/si>/g)].map(m => textoDe(m[1]));
-    const xml = await ler(caminho); if (!xml) throw new Error('Não achei a aba "' + aba.nome + '" dentro do arquivo.');
-    const linhas = []; let reais = 0;
-    for (const r of xml.matchAll(/<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g)) {   // linha vazia vem como <row .../>
-      const cel = []; if (!r[2]) continue;
-      for (const c of r[2].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
-        const at = c[1]; const ref = (/\br="([A-Z]+\d+)"/.exec(at) || [])[1]; const t = (/\bt="(\w+)"/.exec(at) || [])[1]; const corpo = c[2] || '';
-        const v = (/<v>([\s\S]*?)<\/v>/.exec(corpo) || [])[1];
-        let val = null;
-        if (t === 's') val = comp[+v] != null ? comp[+v] : '';
-        else if (t === 'inlineStr') val = textoDe(corpo);
-        else if (t === 'str' || t === 'e') val = v != null ? ent(v) : '';
-        else if (t === 'b') val = v === '1';
-        else if (v != null) val = +v;
-        const i = ref ? colIdx(ref) : cel.length; cel[i] = val;
+    async function lerAba(aba) {
+      const alvo = (new RegExp(`<Relationship\\b[^>]*\\bId="${aba.rid}"[^>]*\\bTarget="([^"]*)"`).exec(rels) || new RegExp(`<Relationship\\b[^>]*\\bTarget="([^"]*)"[^>]*\\bId="${aba.rid}"`).exec(rels) || [])[1];
+      const caminho = alvo ? (alvo.startsWith('/') ? alvo.slice(1) : 'xl/' + alvo.replace(/^\.\//, '')) : 'xl/worksheets/sheet1.xml';
+      const xml = await ler(caminho); if (!xml) throw new Error('Não achei a aba "' + aba.nome + '" dentro do arquivo.');
+      const linhas = []; let reais = 0;
+      for (const r of xml.matchAll(/<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g)) {   // linha vazia vem como <row .../>
+        const cel = []; if (!r[2]) continue;
+        for (const c of r[2].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+          const at = c[1]; const ref = (/\br="([A-Z]+\d+)"/.exec(at) || [])[1]; const t = (/\bt="(\w+)"/.exec(at) || [])[1]; const corpo = c[2] || '';
+          const v = (/<v>([\s\S]*?)<\/v>/.exec(corpo) || [])[1];
+          let val = null;
+          if (t === 's') val = comp[+v] != null ? comp[+v] : '';
+          else if (t === 'inlineStr') val = textoDe(corpo);
+          else if (t === 'str' || t === 'e') val = v != null ? ent(v) : '';
+          else if (t === 'b') val = v === '1';
+          else if (v != null) val = +v;
+          const i = ref ? colIdx(ref) : cel.length; cel[i] = val;
+        }
+        const n = +((/\br="(\d+)"/.exec(r[1]) || [])[1]) || linhas.length + 1;   // número da linha no Excel (pula as vazias)
+        if (++reais > LIMITE_LINHAS + 50 || n > 200000) throw new Error(`A planilha tem mais de ${LIMITE_LINHAS} linhas.`);
+        while (linhas.length < n - 1) linhas.push([]);
+        linhas[n - 1] = Array.from(cel, x => x === undefined ? null : x);
       }
-      const n = +((/\br="(\d+)"/.exec(r[1]) || [])[1]) || linhas.length + 1;   // número da linha no Excel (pula as vazias)
-      if (++reais > LIMITE_LINHAS + 50 || n > 200000) throw new Error(`A planilha tem mais de ${LIMITE_LINHAS} linhas.`);
-      while (linhas.length < n - 1) linhas.push([]);
-      linhas[n - 1] = Array.from(cel, x => x === undefined ? null : x);
+      return linhas;
     }
-    return { aba: aba.nome, linhas };
+    // 22/10/2026: a exportação de solicitações da FUNCERN vem em mais de uma aba (ex.: "Solicitações" e "Solicitações CLT"): lê todas
+    const todas = []; for (const a of abas.slice(0, 12)) todas.push({ nome: a.nome, linhas: await lerAba(a) });
+    const aba = todas.find(a => /gasto|despesa|execu/i.test(a.nome)) || todas.find(a => a.linhas.some(l => l.some(c => norm(c) === 'id solicitacao'))) || todas[0];
+    return { aba: aba.nome, linhas: aba.linhas, abas: todas };
   }
 
   /* ---------- csv ---------- */
@@ -147,7 +152,7 @@
       const cab = (linhas[i] || []).map(norm); const col = {}; let melhor = 0;
       cab.forEach((c, j) => { if (!c) return;
         if (COL.valor.test(c)) { const w = pesoValor(c); if (w > melhor) { melhor = w; col.valor = j; } if (w !== 0) return; }
-        if (COL.descricao.test(c)) (col.descs = col.descs || []).push(j);   // 22/10/2026: todas as colunas de texto (Histórico, Favorecido…) ajudam a achar o item
+        if (COL.descricao.test(c) && !/cpf|cnpj|documento/.test(c)) (col.descs = col.descs || []).push(j);   // 22/10/2026: todas as colunas de texto (Histórico, Favorecido…) ajudam a achar o item
         for (const k of ['item', 'data', 'documento', 'descricao']) if (col[k] == null && COL[k].test(c)) { col[k] = j; break; } });
       if (col.valor != null && col.item != null) return { i, col };
     }
@@ -180,7 +185,7 @@
      paga como "Serviços de terceiros - PJ" (caía na rubrica errada). Quando a coluna do item não acha o item, o texto das outras
      colunas decide; nome de pessoa da equipe em linha de bolsa leva à bolsa do papel dela. */
   const BOLSA_DE_PAPEL = { coord_geral: 'bolsa_coord_geral', coord_tecnico: 'bolsa_coord_tecnico', articulacao: 'bolsa_articulacao', apoio: 'bolsa_apoio', professor_fic: 'bolsa_professor', auxiliar_adm: 'bolsa_auxiliar' };
-  const BOLSA_TEXTO = [[/coord\w*\.? geral/, 'bolsa_coord_geral'], [/coord\w*\.? tecnic/, 'bolsa_coord_tecnico'], [/coord\w*\.? pedagogic/, 'bolsa_coord_pedagogico'], [/secretari/, 'bolsa_secretaria'],
+  const BOLSA_TEXTO = [[/coord\w*\.? geral|coordenador(a)? (do|de) projeto|coordenacao (do|de) projeto/, 'bolsa_coord_geral'], [/coord\w*\.? tecnic/, 'bolsa_coord_tecnico'], [/coord\w*\.? pedagogic/, 'bolsa_coord_pedagogico'], [/secretari/, 'bolsa_secretaria'],
     [/auxiliar administrativ/, 'bolsa_auxiliar'], [/professor|curso fic/, 'bolsa_professor'], [/articulac/, 'bolsa_articulacao'], [/apoio estadual/, 'bolsa_apoio']];
   const DOA = /\bdoa\b|despesas? operacion|taxa (de )?administra|taxa (da )?fundac|custos? (operacionais|indiretos)|ressarcimento (de )?custos/;
   const rubDoItem = id => { const r = MQ.ORCAMENTO.rubricas.find(r => r.itens.some(i => i.id === id)); return r ? r.id : null; };
@@ -202,8 +207,55 @@
     const g = classificar(txt); if (g.item && (!cls.rubrica || g.rubrica === cls.rubrica)) return g;
     return null;
   }
+  /* ---------- 22/10/2026: exportação de SOLICITAÇÕES da FUNCERN (a mesma que o sistema do Saberes que Cultivam importa) ----------
+     Colunas: ID Solicitação, Tipo Solicitação, Beneficiário Nome, Valor, Rubrica Financeira, Subrubrica, Detalhe Rubrica, Status, Data.
+     Cada solicitação vale pela situação: paga = pago; ainda não paga ("Pagamento", "Em compras", "Pendente"…) = comprometido;
+     cancelada, recusada ou estornada = não entra. O CPF do beneficiário nunca é lido. */
+  function destinoStatus(txt) {
+    const s = norm(txt);
+    if (/\b(nao|sem|aguardando|pendente|a) (pago|paga|pagamento|pagar)\b|devolv/.test(s)) return 'comprometido';
+    if (/pendente|aguardando|\bem (liquid|conclu|finaliz|andamento|analise)|\bnao (finaliz|conclu|liquid|pag)/.test(s)) return 'comprometido';
+    return /cancel|recus|reprov|indefer|estorn/.test(s) ? 'ignorar' : /\bpago\b|\bpaga\b|finaliz|conclu|liquid|quitad/.test(s) ? 'pago' : 'comprometido';
+  }
+  const ehSolicitacoes = tab => (tab.abas || [tab]).some(a => (a.linhas || []).slice(0, 20).some(l => (l || []).some(c => norm(c) === 'id solicitacao')));
+  function interpretarSolicitacoes(tab, ctx) {
+    const out = [], avisos = [], vistos = new Set(), status = {}; let ignoradas = 0, erros = 0; const suspeitas = [];
+    (tab.abas || [tab]).forEach(aba => {
+      const ic = (aba.linhas || []).findIndex(l => (l || []).some(c => norm(c) === 'id solicitacao')); if (ic < 0) return;
+      const col = {}; aba.linhas[ic].forEach((c, j) => { const k = norm(c); if (k && col[k] == null) col[k] = j; });
+      const acha = re => { const k = Object.keys(col).find(x => re.test(x)); return k == null ? null : col[k]; };
+      const C = { sol: col['id solicitacao'], tipo: acha(/^tipo/), benef: acha(/^beneficiario( nome)?$|^favorecido/), valor: acha(/^valor/), rub: acha(/^rubrica/), sub: acha(/^subrubrica/), det: acha(/^detalhe/),
+        status: acha(/^status|^situacao/), data: acha(/^data (da )?(pagamento|solicitacao)|^data$/) };
+      const g = (l, k) => C[k] == null ? '' : (l[C[k]] == null ? '' : String(l[C[k]]).trim());
+      for (let i = ic + 1; i < aba.linhas.length; i++) {
+        const l = aba.linhas[i] || []; const sol = g(l, 'sol'); if (!sol) continue;
+        if (vistos.has(sol)) continue; vistos.add(sol);
+        const stx = g(l, 'status') || '(sem status)'; const dest = (ctx && ctx.status && ctx.status[stx]) || destinoStatus(stx); const valor = numeroBR(C.valor == null ? null : l[C.valor]);   // a coordenação pode mudar, na prévia, como cada status entra
+        const st = status[stx] = status[stx] || { txt: stx, destino: dest, n: 0, total: 0 }; st.n++; st.total += valor || 0;
+        if (dest === 'ignorar') { ignoradas++; continue; }
+        if (!(valor > 0)) { erros++; continue; }
+        const rubTxt = g(l, 'rub'), det = g(l, 'det'), tipo = g(l, 'tipo').replace(/^solicita[cç][aã]o de /i, ''), sub = g(l, 'sub'), benef = g(l, 'benef');
+        const limpa = x => x && x !== '-' ? x : '';
+        let cls = DOA.test(norm(det + ' ' + tipo)) ? { item: 'doa', rubrica: rubDoItem('doa') } : classificar(rubTxt);
+        if (!cls.item) { const ou = pelasOutrasColunas([det, tipo, sub, benef].map(limpa).filter(Boolean).join(' · '), cls, ctx); if (ou) cls = ou; }
+        const dt = dataDe(C.data == null ? null : l[C.data]);
+        out.push({ linha: i + 1, aba: aba.nome, data: dt, texto: rubTxt.slice(0, 120), item: cls.item, rubrica: cls.rubrica,
+          descricao: [tipo, det].map(limpa).filter((x, k, a) => x && a.indexOf(x) === k).join(' · ').slice(0, 200) || null, favorecido: limpa(benef).slice(0, 120) || null,
+          documento: ('Solicitação ' + sol).slice(0, 80), situacao: dest, status: stx.slice(0, 60), valor: Math.round(valor * 100) / 100 });
+        if (Math.abs(valor) > LIMITE_VALOR || (dt && (dt < DATA_MIN || dt > DATA_MAX))) suspeitas.push(i + 1);
+        if (out.length > LIMITE_LINHAS) throw new Error(`A planilha tem mais de ${LIMITE_LINHAS} lançamentos.`);
+      }
+    });
+    if (!out.length) throw new Error('A planilha de solicitações não tem nenhuma solicitação valendo (todas canceladas ou sem valor).');
+    const sts = Object.values(status);
+    avisos.push('Situação na FUNCERN: ' + sts.map(x => `${x.txt} (${x.n}, ${x.destino === 'pago' ? 'conta como pago' : x.destino === 'ignorar' ? 'não entra' : 'conta como comprometido'})`).join(' · ') + '.');
+    if (erros) avisos.push(`${erros} solicitaç${erros > 1 ? 'ões' : 'ão'} sem valor reconhecido ficou de fora.`);
+    if (suspeitas.length) avisos.push(`Confira: ${suspeitas.length} linha${suspeitas.length > 1 ? 's suspeitas' : ' suspeita'}, com valor acima de R$ 10 milhões ou data fora de 2026 e 2027.`);
+    return { linhas: out, avisos, ignoradas, suspeitas, aba: (tab.abas || [tab]).filter(a => (a.linhas || []).some(l => (l || []).some(c => norm(c) === 'id solicitacao'))).map(a => a.nome).join(' + '), formato: 'solicitacoes', status: sts };
+  }
   /* devolve { linhas: [{linha, data, texto, item, rubrica, descricao, documento, valor}], avisos, ignoradas } */
   function interpretar(tab, ctx) {
+    if (ehSolicitacoes(tab)) return interpretarSolicitacoes(tab, ctx);
     const c = acharCabecalho(tab.linhas);
     if (!c) throw new Error('Não achei o cabeçalho. A planilha precisa ter as colunas "Item" (ou "Rubrica") e "Valor". Use o modelo.');
     const out = []; let ignoradas = 0, datasRuins = 0; const avisos = []; const textoNoValor = [], suspeitas = []; let centavosPerdidos = 0;
@@ -239,12 +291,13 @@
     return { linhas: out, avisos, ignoradas, suspeitas, aba: tab.aba };
   }
   const resumo = r => {
-    const gasto = r.linhas.filter(l => l.item !== 'repasse_mda').reduce((t, l) => t + l.valor, 0);
+    const gasto = r.linhas.filter(l => l.item !== 'repasse_mda' && l.situacao !== 'comprometido').reduce((t, l) => t + l.valor, 0);
+    const comprometido = r.linhas.filter(l => l.item !== 'repasse_mda' && l.situacao === 'comprometido').reduce((t, l) => t + l.valor, 0);
     const recebido = r.linhas.filter(l => l.item === 'repasse_mda').reduce((t, l) => t + l.valor, 0);
     const nao = r.linhas.filter(l => l.item !== 'repasse_mda' && !l.rubrica);
     const ultima = r.linhas.map(l => l.data).filter(Boolean).sort().pop() || null;
-    return { gasto: Math.round(gasto * 100) / 100, recebido: Math.round(recebido * 100) / 100, naoClassificadas: nao, ultimaData: ultima };
+    return { gasto: Math.round(gasto * 100) / 100, comprometido: Math.round(comprometido * 100) / 100, recebido: Math.round(recebido * 100) / 100, naoClassificadas: nao, ultimaData: ultima };
   };
 
-  MQ.planilha = { ler, lerXlsx, lerCsv, interpretar, resumo, classificar, numeroBR, dataDe, norm };
+  MQ.planilha = { destinoStatus, ler, lerXlsx, lerCsv, interpretar, resumo, classificar, numeroBR, dataDe, norm };
 })();

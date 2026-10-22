@@ -3,7 +3,7 @@ import novo
 import os
 PERFIS = {
  'geral': ('Coordenação geral', ['Coordenação geral e coordenação técnica', 'Professor(a) do curso FIC'], set(), 'Coordenacao_geral'),
- 'tecnica': ('Coordenação técnica', ['Coordenação geral e coordenação técnica'], {'Visão geral', 'Curso FIC', 'Execução do orçamento', 'Documentos', 'Histórico'}, 'Coordenacao_tecnica'),
+ 'tecnica': ('Coordenação técnica', ['Coordenação geral e coordenação técnica'], {'Visão geral', 'Curso FIC', 'Acompanhamento financeiro', 'Documentos', 'Histórico'}, 'Coordenacao_tecnica'),
  'bolsista': ('Bolsista de articulação e de apoio', ['Bolsista de articulação e de apoio'], set(), 'Bolsista'),
  'agente': ('Agente de campo', ['Agente de campo'], set(), 'Agente_de_campo'),
  'professor': ('Professor(a) do curso FIC', ['Professor(a) do curso FIC'], set(), 'Professor_FIC'),
@@ -212,17 +212,17 @@ A(passos('autorizar e mandar à FUNCERN (coordenação geral)', ['Em Esperando a
 A(passos('ajustar o valor ou cancelar um pedido autorizado (coordenação geral)', ['Abra o pedido autorizado.', 'No fim do painel, abra <b class="bt">Ajustar o valor ou cancelar</b>.', 'Escreva o motivo. Para ajustar, digite o valor novo e toque em <b class="bt">Salvar o valor novo</b>; para cancelar, toque em <b class="bt">Cancelar o pedido</b>.'], 'O ajuste é conferido de novo contra o teto. O cancelado devolve o valor ao saldo. O motivo fica na observação do pedido e no histórico. Avise a FUNCERN.'))
 A(caixa('importante', 'Quem confere não autoriza o mesmo pedido.'))
 
-A(sec('Execução do orçamento'))
-A(serve('Compara o previsto com o executado em cada rubrica do TED. O executado vem da planilha de gastos enviada pela coordenação.'))
+A(sec('Acompanhamento financeiro'))
+A(serve('Compara o previsto no plano de trabalho com o pago e o comprometido em cada rubrica e item do TED, como no sistema do Saberes que Cultivam. Os números vêm da planilha de solicitações da FUNCERN enviada pela coordenação geral.'))
 A(acesso(['Abas', 'Financeiro', 'Financeiro'], 'só a coordenação geral.'))
-A(tela('execucao', 'Execução do orçamento', [
-    (1, 'Enviar planilha de gastos', 'Fica no fim da página, em Planilhas enviadas. Quando falta a planilha ou ela tem mais de 35 dias, o aviso vermelho do meio da página também traz o botão.'), (2, 'Execução financeira', 'Total previsto, executado, comprometido e saldo livre.'), (3, 'Gráficos', 'Ritmo do gasto no tempo e uso de cada rubrica.'), (4, 'Rubrica', 'Toque para abrir os itens da rubrica.')]))
-A(passos('enviar a planilha do mês', ['Role até <b>Planilhas enviadas</b>, no fim da página.', 'Toque em ' + b('Enviar planilha de gastos', 'enviar') + ' e escolha o arquivo (.xlsx ou .csv).', 'Toque em <b class="bt">Ler a planilha</b> e confira a prévia.', 'Confira a data <b>Gastos até</b> e toque em <b class="bt">Enviar e usar esta planilha</b>.'], 'Os números de executado, saldo e gráficos passam a refletir a planilha nova.'))
+A(tela('execucao', 'Acompanhamento financeiro', [
+    (1, 'Enviar planilha de gastos', 'Fica no fim da página, em Planilhas enviadas. Quando falta a planilha ou ela tem mais de 35 dias, o aviso vermelho do meio da página também traz o botão.'), (2, 'Resumo', 'Execução financeira do projeto e quatro cartões: recebido, pago, comprometido e disponível do recebido.'), (3, 'Gráficos', 'Ritmo do gasto no tempo e uso de cada rubrica.'), (4, 'Rubrica', 'Toque para abrir os itens da rubrica.')]))
+A(passos('enviar a planilha do mês', ['Role até <b>Planilhas enviadas</b>, no fim da página.', 'Toque em ' + b('Enviar planilha de gastos', 'enviar') + ' e escolha o arquivo (.xlsx ou .csv).', 'Toque em <b class="bt">Ler a planilha</b> e confira a prévia. Na planilha de solicitações da FUNCERN, confira em <b>Situação na FUNCERN</b> como cada status entra (pago, comprometido ou não entra).', 'Confira a data <b>Gastos até</b> e toque em <b class="bt">Enviar e usar esta planilha</b>.'], 'Os números de pago, comprometido, saldo e gráficos passam a refletir a planilha nova.'))
 A(caixa('dica', 'A planilha é o retrato completo: todos os gastos desde o início, uma linha por pagamento, sem linhas de total. Para montar, use <b>Baixar o modelo</b>.'))
 A(passos('descartar uma planilha enviada por engano', ['Em <b>Planilhas enviadas</b>, na planilha errada, toque em <b class="bt">Descartar (enviada por engano)</b>.', 'Escreva o motivo (por exemplo: arquivo errado, mês errado).', 'Toque em <b class="bt">Descartar esta planilha</b>.'], 'A planilha sai de todas as contas e o arquivo é apagado. O registro fica no fim da lista, em <b>Descartadas</b> (toque para abrir), com o motivo, quem descartou e quando. Se era a vigente, volta a valer a anterior.'))
-A(caixa('exemplo', '<b>Executado</b> é o que a planilha trouxe. <b>Comprometido</b> é o que o sistema já sabe (aval, Arlo, autorização) e a planilha ainda não trouxe. <b>Saldo</b> é o previsto menos os dois.'))
+A(caixa('exemplo', '<b>Pago</b> é a solicitação paga na planilha da FUNCERN. <b>Comprometido</b> é a solicitação ainda não paga (em pagamento, em compras, pendente) e o que o sistema já sabe (aval, Arlo, autorização) e a planilha ainda não trouxe. Cancelada não entra. <b>Saldo</b> é o previsto menos os dois. Na prévia do envio, a coordenação confere como cada status da FUNCERN entra na conta e pode mudar (por exemplo, “Pagamento” como pago); a escolha fica guardada para as próximas planilhas.'))
 A(tela('execucao_meta', 'Financeiro: o gasto por meta do plano de trabalho', [
-    (1, 'Por meta do plano de trabalho', 'O mesmo previsto, executado, comprometido e saldo das rubricas, separados pelas metas.'), (2, 'Meta', 'Toque para ver os itens do orçamento ligados a ela.'), (3, 'No plano de trabalho', 'Aparece quando o valor pactuado da meta é diferente da soma dos itens do orçamento.')]))
+    (1, 'Por meta do plano de trabalho', 'O mesmo previsto, pago, comprometido e saldo das rubricas, separados pelas metas.'), (2, 'Meta', 'Toque para ver os itens do orçamento ligados a ela.'), (3, 'No plano de trabalho', 'Aparece quando o valor pactuado da meta é diferente da soma dos itens do orçamento.')]))
 A(caixa('dica', 'Bolsas entram na Meta 1. A ajuda de custo das visitas é dividida pelas 800 visitas do orçamento: 25% diagnóstico (M2), 25% implantação (M3) e 50% acompanhamento (M4). Taxa da FUNCERN, combustível, notebook e apoio ficam em <b>Comum a todas as metas</b>.'))
 
 A(sec('Documentos'))
@@ -422,7 +422,7 @@ rapido = [
     ('Entrar pela primeira vez', 'Entrar no sistema'), ('Recuperar a senha', 'Entrar no sistema'), ('Anexar o termo de compromisso', 'Meus dados e termo de compromisso'),
     ('Instalar no celular e usar sem internet', 'Usar no celular e sem internet'), ('Ver o que pede atenção no projeto', 'Visão geral'), ('Cadastrar uma pessoa da equipe', 'Equipe'),
     ('Mandar o código de acesso', 'Equipe'), ('Desligar e substituir', 'Equipe'), ('Aprovar ou devolver uma ficha', 'Seleção das mulheres'), ('Aprovar o plano do quintal', 'Trabalho de campo'),
-    ('Dar aval em um pagamento', 'Pagamentos'), ('Conferir o km de uma visita', 'Custos'), ('Conferir ou autorizar passagem e evento', 'Viagens e eventos'), ('Enviar a planilha de gastos', 'Execução do orçamento'),
+    ('Dar aval em um pagamento', 'Pagamentos'), ('Conferir o km de uma visita', 'Custos'), ('Conferir ou autorizar passagem e evento', 'Viagens e eventos'), ('Enviar a planilha de gastos', 'Acompanhamento financeiro'),
     ('Anexar documento ou gerar o relatório', 'Documentos'), ('Imprimir relatórios e fichas de cadastro', 'Documentos'), ('Ver quem alterou um registro', 'Histórico'), ('Lançar a ficha de uma mulher', 'Lançar a ficha de uma mulher'), ('Agendar ou registrar uma visita', 'Agendar e registrar visitas'),
     ('Pedir bolsa ou ajuda de custo', 'Entregas do mês e pagamento'), ('Pedir passagem ou evento', 'Pedir passagem ou evento'),
 ]
