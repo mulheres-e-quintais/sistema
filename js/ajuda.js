@@ -288,7 +288,7 @@
         'O sistema entende planilhas de fora (da FUNCERN, por exemplo) se tiverem as colunas Item (ou Rubrica) e Valor. Linhas de total são ignoradas para não contar duas vezes.'
       ],
       duvidas: [
-        ['Enviei a planilha errada.', 'Em <b>Planilhas enviadas</b>, toque em <b>Descartar (enviada por engano)</b> na planilha errada e escreva o motivo. Ela sai de todas as contas e o arquivo é apagado; o registro fica na lista como descartada, com o motivo. Se era a vigente, volta a valer a anterior. Descartar não se desfaz: para voltar, envie o arquivo de novo.'],
+        ['Enviei a planilha errada.', 'Em <b>Planilhas enviadas</b>, toque em <b>Descartar (enviada por engano)</b> na planilha errada e escreva o motivo. Ela sai de todas as contas e o arquivo é apagado; o registro fica no fim da lista, em <b>Descartadas</b> (toque para abrir), com o motivo. Se era a vigente, volta a valer a anterior. Descartar não se desfaz: para voltar, envie o arquivo de novo.'],
         ['Apareceram linhas "fora do orçamento".', 'O nome do item na planilha não bate com nenhum item do orçamento. Corrija com o nome da aba Itens do modelo e envie de novo. Enquanto isso, o valor entra no total, fora das rubricas.'],
         ['A planilha é .xls ou .ods.', 'Abra no Excel ou LibreOffice e salve como .xlsx. O .xlsx é lido sem nenhum programa extra.'],
         ['Quem mais vê esta aba?', 'Ninguém. A aba, as planilhas e os arquivos são só da coordenação geral, no sistema e no banco.']

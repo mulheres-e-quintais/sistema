@@ -235,23 +235,41 @@
           <tfoot><tr class="fin-tot"><th scope="row">Total do projeto</th><td class="num" data-rot="Previsto"><b>${brl(T)}</b></td><td class="num" data-rot="Executado">${vExec(n.exec)}</td><td class="num" data-rot="Comprometido">${vComp(n.comp)}</td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(n.livre)}</b></td><td data-rot="Execução">${celExec(n.exec, T)}</td></tr></tfoot>
         </table></div></section>
       ${secaoMetas(n)}
-      <section class="secao exec-planilhas" aria-labelledby="t-exl"><div class="secao-cab"><div><h2 id="t-exl">Planilhas enviadas <span class="conta-t${planilhas().length ? '' : ' zero'}">${planilhas().length}</span></h2>
+      <section class="secao exec-planilhas" aria-labelledby="t-exl"><div class="secao-cab"><div><h2 id="t-exl">Planilhas enviadas <span class="conta-t${planilhas().filter(p => !p.descartada_em).length ? '' : ' zero'}">${planilhas().filter(p => !p.descartada_em).length}</span></h2>
           <p>Pelo menos uma vez por mês, envie a planilha de gastos da FUNCERN. Ela é o retrato completo desde o início: a mais nova substitui as anteriores, que ficam guardadas aqui. O sistema mostra a prévia antes de gravar.</p>
           <p class="small muted">Base do previsto: ${E(O().fonte)}, com o remanejamento aprovado pelo MDA.</p></div>
           ${MQ.botaoAcao({ acao: 'exec-enviar', icone: 'enviar', texto: 'Enviar planilha de gastos', curto: 'Enviar planilha' })}</div>
-        ${planilhas().length ? `<div class="pag-lista">${planilhas().map(pl => linhaPlanilha(pl, pl === vigente())).join('')}</div>` : '<p class="vazio-pl">Nenhuma planilha enviada ainda. Use “Enviar planilha de gastos”.</p>'}</section>`;
+        ${planilhas().length ? listaPlanilhas() : '<p class="vazio-pl">Nenhuma planilha enviada ainda. Use “Enviar planilha de gastos”.</p>'}</section>`;
   }
+  /* 22/10/2026: cada planilha é um cartão (ícone, nome, situação, valor, botões com ícone); a vigente tem a faixa verde;
+     as descartadas ficam recolhidas no fim, com o motivo, sem entrar na conta */
+  const IC = k => `<span class="pl-bt-ic" aria-hidden="true">${(MQ.ICONES || {})[k] || ''}</span>`;
+  const semPonto = t => String(t || '').trim().replace(/[.\s]+$/, '');
   function linhaPlanilha(pl, vale) {
     const nao = (pl.linhas || []).filter(l => l.item !== 'repasse_mda' && !l.rubrica);
-    const desc = !!pl.descartada_em;
-    return `<div class="exec-lanc${vale ? '' : ' antiga'}${desc ? ' descartada' : ''}" data-planilha="${E(pl.id)}">
-      <span class="nm">${E(pl.arquivo_nome)} ${desc ? '<span class="chip crit">descartada</span>' : vale ? '<span class="chip ok">vigente</span>' : '<span class="chip">substituída</span>'}</span><b class="num">${desc ? '<s>' + brl(pl.total_gasto) + '</s>' : brl(pl.total_gasto)}</b>
-      <span class="small muted">Gastos até ${R.fmtData(pl.posicao_em)} · enviada em ${R.fmtData(pl.enviado_em)} · ${(pl.linhas || []).length} linhas · recebido ${brl(pl.total_recebido)}</span>
-      ${pl.obs ? `<span class="small">${E(pl.obs)}</span>` : ''}
-      ${nao.length ? `<details class="small"><summary>${nao.length} linha${nao.length > 1 ? 's' : ''} fora do orçamento</summary><ul>${nao.slice(0, 30).map(l => `<li>Linha ${l.linha}: “${E(l.texto)}” · ${brl(l.valor)}${l.descricao ? ' · ' + E(l.descricao) : ''}</li>`).join('')}</ul></details>` : ''}
-      ${desc ? `<span class="small"><b>Descartada</b> em ${R.fmtData(pl.descartada_em)} por ${E(pessoa(pl.descartada_por))}: ${E(pl.motivo_descarte || '')}. Não entra em nenhuma conta; o arquivo foi apagado.</span>`
-        : `<span class="exec-pl-acoes"><button type="button" class="link small" data-acao="exec-baixar" data-path="${E(pl.arquivo_path)}">Baixar o arquivo enviado</button>
-           <button type="button" class="link small perigo-txt" data-acao="exec-descartar" data-id="${E(pl.id)}">Descartar (enviada por engano)</button></span>`}</div>`;
+    const desc = !!pl.descartada_em; const n = (pl.linhas || []).length;
+    const meta = [`gastos até <b>${R.fmtData(pl.posicao_em)}</b>`, `enviada em ${R.fmtData(pl.enviado_em)}`, `${n} linha${n === 1 ? '' : 's'}`]
+      .concat(+pl.total_recebido > 0 ? [`recebido ${brl(pl.total_recebido)}`] : []).join(' · ');
+    const sit = desc ? '<span class="chip crit">descartada</span>' : vale ? '<span class="chip ok">vigente</span>' : '<span class="chip">substituída</span>';
+    return `<article class="pl-cartao${vale ? ' vigente' : ''}${desc ? ' descartada' : ''}" data-planilha="${E(pl.id)}">
+      <span class="pl-ic" aria-hidden="true">${(MQ.ICONES || {}).relatorio || ''}</span>
+      <div class="pl-corpo">
+        <div class="pl-topo"><h3 class="pl-nome">${E(pl.arquivo_nome)}</h3>${sit}</div>
+        <p class="pl-meta">${meta}</p>
+        ${pl.obs ? `<p class="pl-obs">${E(pl.obs)}</p>` : ''}
+        ${desc ? `<p class="pl-motivo"><b>Motivo do descarte:</b> ${E(semPonto(pl.motivo_descarte))}. <span>Descartada em ${R.fmtData(pl.descartada_em)} por ${E(pessoa(pl.descartada_por))}. Não entra em nenhuma conta e o arquivo foi apagado.</span></p>`
+          : nao.length ? `<details class="pl-fora"><summary>${nao.length} linha${nao.length > 1 ? 's' : ''} fora do orçamento</summary><ul>${nao.slice(0, 30).map(l => `<li>Linha ${l.linha}: “${E(l.texto)}” · ${brl(l.valor)}${l.descricao ? ' · ' + E(l.descricao) : ''}</li>`).join('')}</ul></details>` : ''}
+        ${desc ? '' : `<div class="pl-acoes"><button type="button" class="pl-bt" data-acao="exec-baixar" data-path="${E(pl.arquivo_path)}">${IC('baixar')}Baixar o arquivo</button>
+          <button type="button" class="pl-bt perigo" data-acao="exec-descartar" data-id="${E(pl.id)}">${IC('lixeira')}Descartar (enviada por engano)</button></div>`}
+      </div>
+      <div class="pl-valor"><b class="num">${brl(pl.total_gasto)}</b><span>${desc ? 'não conta' : 'total de gastos'}</span></div>
+    </article>`;
+  }
+  function listaPlanilhas() {
+    const val = planilhas().filter(p => !p.descartada_em), desc = planilhas().filter(p => p.descartada_em);
+    return `${val.length ? `<div class="pl-lista">${val.map(pl => linhaPlanilha(pl, pl === vigente())).join('')}</div>` : '<p class="vazio-pl">Nenhuma planilha valendo. Use “Enviar planilha de gastos”.</p>'}
+      ${desc.length ? `<details class="pl-descartadas"><summary>Descartadas <span class="conta-t">${desc.length}</span><span class="pl-desc-dica">enviadas por engano, fora das contas</span></summary>
+        <div class="pl-lista">${desc.map(pl => linhaPlanilha(pl, false)).join('')}</div></details>` : ''}`;
   }
 
   /* ---------- enviar planilha: escolher o arquivo, ver a prévia, confirmar ---------- */

@@ -197,7 +197,16 @@
     }));
     if (S.eu && S.eu.id === id && abaAtual() === aba && !S.painel && !digitando()) renderFundo();
   }
-  async function carregar() {
+  /* 22/10/2026: duas cargas ao mesmo tempo (a da atualização em segundo plano, que começa quando a tela volta ao primeiro plano —
+     por exemplo depois de escolher o arquivo — e a que vem depois de gravar) podiam terminar fora de ordem: a mais antiga, sem o que
+     acabou de ser gravado, chegava por último e a tela voltava aos números de antes. Agora só a carga mais nova entra na memória. */
+  let cargaGeracao = 0, cargaUltima = null;
+  async function carregar() {   // quem chamou só segue quando a carga mais nova terminou (se outra começou no meio, espera por ela)
+    const g = ++cargaGeracao; let pr = carregarAgora(g); pr.geracao = g; cargaUltima = pr;   // sempre uma carga nova (pode ter acabado de gravar)
+    await pr;
+    while (cargaUltima !== pr) { pr = cargaUltima; await pr; }   // outra começou depois desta: espera a mais nova
+  }
+  async function carregarAgora(minhaCarga) {
     // perfis de acompanhamento (MDA e MPA): só os números agregados; nada da equipe, das fichas ou dos pagamentos é pedido
     if (S.eu && S.eu.observador) { S.equipe = []; S.fichas = []; S.visitas = []; S.diagnosticos = []; S.aud = []; S.fila = []; S.cargaParcial = null;
       if (MQ.acompUI) { await MQ.acompUI.carregar(); MQ.acompUI.vigiar(); } return; }
@@ -254,6 +263,7 @@
         coord && S.api.listarAgua ? talvez(() => S.api.listarAgua(), semFic) : [true, []],   // 39_agua.sql
         campoPapel && S.api.listarCanaisVenda ? talvez(() => Promise.all([S.api.listarCanaisVenda(), S.api.listarOrientacoesVenda()]), semFic) : [true, [[], []]]   // 44_venda.sql
       ]);
+      if (minhaCarga !== cargaGeracao) return;   // começou outra carga depois desta: a dela é a que vale
       S.equipe = equipe;
       S.ficSemBanco = !fic[0]; [S.turmas, S.matriculas] = fic[0] ? fic[1] : [[], []];
       if (fic[0] && papel === 'professor_fic') { const ids = new Set(S.equipe.map(m => m.id)); S.equipe = S.equipe.concat(fic[1][2].filter(o => !ids.has(o.id))); }

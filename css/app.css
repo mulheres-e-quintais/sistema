@@ -4315,8 +4315,42 @@ details.pag-cancelar form > p { margin: 0 0 12px; }
 @media print { .abas.abas-grupos { display: none; } }
 
 /* 72: planilha de gastos descartada (enviada por engano) e o botão de descartar */
-.exec-pl-acoes { display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: center; }
 .link.perigo-txt { color: var(--crit); }
-.exec-lanc.descartada { opacity: .78; }
-.exec-lanc.descartada .nm { text-decoration: line-through; text-decoration-thickness: 1px; }
-.exec-lanc.descartada .nm .chip { text-decoration: none; display: inline-block; }
+/* 22/10/2026: planilhas enviadas em cartões */
+.pl-lista { display: grid; gap: 10px; margin-top: 8px; }
+.pl-cartao { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "ic corpo valor"; gap: 4px 14px; align-items: start; padding: 14px 16px; border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 12px; background: var(--surface); }
+.pl-cartao.vigente { border-left-color: var(--ok); background: color-mix(in srgb, var(--ok-bg) 35%, var(--surface)); }
+.pl-ic { grid-area: ic; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--surface-2); color: var(--ink-2); }
+.pl-cartao.vigente .pl-ic { background: var(--ok-bg); color: var(--ok); }
+.pl-ic svg { width: 22px; height: 22px; }
+.pl-corpo { grid-area: corpo; min-width: 0; display: grid; gap: 4px; }
+.pl-topo { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.pl-nome { margin: 0; font-size: var(--t-md, 1rem); font-weight: 700; overflow-wrap: anywhere; }
+.pl-meta, .pl-obs, .pl-motivo { margin: 0; font-size: var(--t-sm, .9rem); }
+.pl-meta { color: var(--muted); }
+.pl-meta b { color: var(--ink); font-weight: 600; }
+.pl-valor { grid-area: valor; text-align: right; display: grid; gap: 2px; }
+.pl-valor b { font-size: 1.15rem; white-space: nowrap; }
+.pl-valor span { font-size: var(--t-xs, .8rem); color: var(--muted); }
+.pl-fora { font-size: var(--t-sm, .9rem); }
+.pl-fora summary { cursor: pointer; color: var(--ink-2); }
+.pl-acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.pl-bt { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); font: inherit; font-size: var(--t-sm, .9rem); font-weight: 600; cursor: pointer; }
+.pl-bt:hover { background: var(--surface-2); }
+.pl-bt.perigo { color: var(--crit); border-color: color-mix(in srgb, var(--crit) 45%, var(--line)); background: transparent; }
+.pl-bt.perigo:hover { background: var(--crit-bg); }
+.pl-bt-ic { display: inline-grid; }
+.pl-bt-ic svg { width: 18px; height: 18px; }
+.pl-cartao.descartada { background: var(--surface-2); border-left-color: var(--crit); }
+.pl-cartao.descartada .pl-valor b { color: var(--muted); }
+.pl-motivo { padding: 8px 10px; border-radius: 8px; background: var(--crit-bg); color: var(--ink); }
+.pl-motivo span { display: block; color: var(--ink-2); margin-top: 2px; }
+.pl-descartadas { margin-top: 14px; }
+.pl-descartadas > summary { cursor: pointer; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-height: 40px; font-weight: 600; }
+.pl-desc-dica { font-weight: 400; font-size: var(--t-sm, .9rem); color: var(--muted); }
+@media (max-width: 560px) {
+  .pl-cartao { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "ic valor" "corpo corpo"; gap: 8px 12px; padding: 12px; }
+  .pl-valor { text-align: left; align-self: center; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+  .pl-ic { width: 34px; height: 34px; }
+  .pl-bt { flex: 1 1 100%; justify-content: center; }
+}

@@ -33,7 +33,7 @@
     const a = [];
     const hoje = R.hoje();
     // planilha de gastos do mês (o lembrete não aparece na visão geral; o aviso fica aqui)
-    if (!S.execSemBanco && +hoje.slice(8, 10) >= 20 && !(S.execPlanilhas || []).some(p => String(R.diaLocal(p.enviado_em)).slice(0, 7) === hoje.slice(0, 7))) {
+    if (!S.execSemBanco && +hoje.slice(8, 10) >= 20 && !(S.execPlanilhas || []).some(p => !p.descartada_em && String(R.diaLocal(p.enviado_em)).slice(0, 7) === hoje.slice(0, 7))) {
       const fim = new Date(+hoje.slice(0, 4), +hoje.slice(5, 7), 0).getDate();
       a.push({ nivel: 'pend', prazo: hoje.slice(0, 8) + String(fim).padStart(2, '0'), texto: 'Planilha de gastos do mês ainda não enviada', det: 'Sem ela, o executado do painel fica parado na planilha anterior.', aba: 'execucao' });
     }
