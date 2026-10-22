@@ -72,9 +72,17 @@
       return linhas;
     }
     // 22/10/2026: a exportação de solicitações da FUNCERN vem em mais de uma aba (ex.: "Solicitações" e "Solicitações CLT"): lê todas
-    const todas = []; for (const a of abas.slice(0, 12)) todas.push({ nome: a.nome, linhas: await lerAba(a) });
-    const aba = todas.find(a => /gasto|despesa|execu/i.test(a.nome)) || todas.find(a => a.linhas.some(l => l.some(c => norm(c) === 'id solicitacao'))) || todas[0];
-    return { aba: aba.nome, linhas: aba.linhas, abas: todas };
+    // auditoria 22/10: aba com erro ou grande demais (ex.: uma "Base" de apoio) não derruba a leitura; só a aba que vale precisa abrir
+    const todas = [], falhas = [];
+    for (const a of abas.slice(0, 12)) { try { todas.push({ nome: a.nome, linhas: await lerAba(a) }); } catch (e) { falhas.push({ nome: a.nome, erro: e }); } }
+    const pref = abas.find(a => /gasto|despesa|execu/i.test(a.nome));
+    if (pref && falhas.some(f => f.nome === pref.nome)) throw falhas.find(f => f.nome === pref.nome).erro;
+    if (!todas.length) throw (falhas[0] && falhas[0].erro) || new Error('A planilha não tem abas.');
+    const sol = todas.filter(a => a.linhas.slice(0, 20).some(l => l.some(c => norm(c) === 'id solicitacao')));
+    const aba = (pref && todas.find(a => a.nome === pref.nome)) || sol[0] || todas[0];
+    if (!pref && !sol.length && falhas.length && aba === todas[0] && abas[0].nome !== aba.nome) throw falhas[0].erro;   // a primeira aba (a que valia antes) é que falhou
+    const abasLidas = pref ? [aba] : (sol.length ? sol : [aba]);
+    return { aba: aba.nome, linhas: aba.linhas, abas: abasLidas, abasIgnoradas: falhas.map(f => f.nome) };
   }
 
   /* ---------- csv ---------- */
@@ -176,7 +184,7 @@
     if (parecidos.length && parecidos.every(t => t.rubrica === parecidos[0].rubrica)) {
       const rb = MQ.ORCAMENTO.rubricas.find(r => r.id === parecidos[0].rubrica); return rb.itens.length === 1 ? { item: rb.itens[0].id, rubrica: rb.id } : { item: null, rubrica: rb.id };
     }
-    const r = MQ.ORCAMENTO.rubricas.find(r => { const k = norm(r.nome.replace(/\s*\(.*?\)\s*/g, ' ')); return k === n || n.includes(k) || (k.includes(n) && n.length >= 6); });
+    const r = MQ.ORCAMENTO.rubricas.find(r => { const k = norm(r.nome.replace(/\s*\(.*?\)\s*/g, ' ')); if (r.id === 'r7' && /pessoa fisica/.test(n)) return false; return k === n || n.includes(k) || (k.includes(n) && n.length >= 6); });
     if (r) return r.itens.length === 1 ? { item: r.itens[0].id, rubrica: r.id } : { item: null, rubrica: r.id };
     return { item: null, rubrica: null };
   }
@@ -193,33 +201,48 @@
     const n = norm(txt); if (!n) return null;
     const existe = id => !!rubDoItem(id); const como = id => existe(id) ? { item: id, rubrica: rubDoItem(id) } : null;
     if (DOA.test(n)) return como('doa');
-    const bolsa = !cls.rubrica || /^r[12]$/.test(cls.rubrica);
-    if (bolsa) {
+    // auditoria 22/10: bolsa só em linha de rubrica de bolsa (antes: "INSS sobre bolsa do coordenador" em Obrigações Tributárias virava bolsa)
+    if (/^r[12]$/.test(cls.rubrica || '')) {
       const b = BOLSA_TEXTO.find(([re]) => re.test(n)); if (b) return como(b[1]);
       const eq = (ctx && ctx.equipe) || []; const nomes = m => { const t = norm(m.nome || '').split(' ').filter(Boolean); return [norm(m.nome || ''), norm(m.nome_social || ''), t.length > 1 ? t[0] + ' ' + t[t.length - 1] : ''].filter(x => x && x.includes(' ')); };
       const quem = eq.filter(m => BOLSA_DE_PAPEL[m.papel] && nomes(m).some(k => (' ' + n + ' ').includes(' ' + k + ' ')));
       const itens = [...new Set(quem.map(m => BOLSA_DE_PAPEL[m.papel]))]; if (itens.length === 1) return como(itens[0]);
     }
-    if (!cls.rubrica || cls.rubrica === 'r7') {   // serviços de terceiros: kit do quintal ou estrutura de evento
-      if (/\bkits?\b|quinta(l|is)/.test(n)) return como('quintais');
-      if (/evento|tenda|sonoriza|\bsom\b|coffee|alimentac|lanche|almoco|buffet|intercambio/.test(n)) return como('eventos');
+    if (cls.rubrica === 'r6') {   // passagens e locomoção: qual dos três itens
+      if (/loca[cç]ao|veiculo|carro/.test(n)) return como('locacao_veiculo');
+      if (/pedagogic/.test(n)) return como('passagem_pedagogico');
+      if (/intercambio/.test(n)) return como('passagem_intercambio');
     }
-    const g = classificar(txt); if (g.item && (!cls.rubrica || g.rubrica === cls.rubrica)) return g;
+    if (cls.rubrica === 'r7') {   // serviços de terceiros (PJ): estrutura de evento (vem antes: "tenda do evento Quintais Produtivos") ou kit do quintal
+      if (/evento|tenda|sonoriza|\bsom\b|coffee|alimentac|lanche|almoco|buffet|palco|cadeira/.test(n)) return como('eventos');
+      if (/\bkits?\b|implantac|quinta(l|is)/.test(n)) return como('quintais');
+    }
+    const g = classificar(txt); if (g.item && g.item !== 'repasse_mda' && (g.rubrica === cls.rubrica || (!cls.rubrica && !/^r[12]$/.test(g.rubrica)))) return g;   // bolsa só com rubrica de bolsa   // nunca vira "recebido do MDA"
     return null;
+  }
+  /* rubrica contábil da FUNCERN → rubrica do orçamento (como o Saberes que Cultivam). "Pessoa física" não é a r7 (pessoa jurídica). */
+  function rubricaFuncern(txt) {
+    const r = norm(txt); if (!r) return null;
+    const id = /pesquisador/.test(r) ? 'r1' : /estudante|discente|aluno/.test(r) ? 'r2' : /diaria/.test(r) ? 'r4' : /ajuda de custo/.test(r) ? 'r5'
+      : /passage|locomocao/.test(r) ? 'r6' : /pessoa juridica/.test(r) ? 'r7' : /consumo/.test(r) ? 'r9' : /equipamento|permanente/.test(r) ? 'r10'
+      : /despesas? operacionais|administrativ|\bdoa\b/.test(r) ? 'r13' : null;
+    return id && MQ.ORCAMENTO.rubricas.some(x => x.id === id) ? id : null;
   }
   /* ---------- 22/10/2026: exportação de SOLICITAÇÕES da FUNCERN (a mesma que o sistema do Saberes que Cultivam importa) ----------
      Colunas: ID Solicitação, Tipo Solicitação, Beneficiário Nome, Valor, Rubrica Financeira, Subrubrica, Detalhe Rubrica, Status, Data.
      Cada solicitação vale pela situação: paga = pago; ainda não paga ("Pagamento", "Em compras", "Pendente"…) = comprometido;
-     cancelada, recusada ou estornada = não entra. O CPF do beneficiário nunca é lido. */
+     cancelada, recusada ou estornada = não entra. O CPF do beneficiário nunca é lido para as linhas (o arquivo original, guardado na pasta privada da coordenação geral, continua com ele). */
   function destinoStatus(txt) {
     const s = norm(txt);
+    if (/cancel|recus|reprov|indefer|estorn|rejeit|anulad|exclu/.test(s)) return 'ignorar';   // auditoria 22/10: "Rejeitada", "Anulada", "Excluída" não entram
+    if (/^pago\b|\bpagamento (efetuado|realizado|concluido|confirmado)|\bpaga?s? (em|no|na)\b/.test(s)) return 'pago';   // "Pago - aguardando prestação de contas", "Pagamento efetuado"
     if (/\b(nao|sem|aguardando|pendente|a) (pago|paga|pagamento|pagar)\b|devolv/.test(s)) return 'comprometido';
     if (/pendente|aguardando|\bem (liquid|conclu|finaliz|andamento|analise)|\bnao (finaliz|conclu|liquid|pag)/.test(s)) return 'comprometido';
     return /cancel|recus|reprov|indefer|estorn/.test(s) ? 'ignorar' : /\bpago\b|\bpaga\b|finaliz|conclu|liquid|quitad/.test(s) ? 'pago' : 'comprometido';
   }
   const ehSolicitacoes = tab => (tab.abas || [tab]).some(a => (a.linhas || []).slice(0, 20).some(l => (l || []).some(c => norm(c) === 'id solicitacao')));
   function interpretarSolicitacoes(tab, ctx) {
-    const out = [], avisos = [], vistos = new Set(), status = {}; let ignoradas = 0, erros = 0; const suspeitas = [];
+    const out = [], avisos = [], vistos = new Set(), status = {}; let ignoradas = 0, erros = 0, negativos = 0; const suspeitas = [], repetidas = [];
     (tab.abas || [tab]).forEach(aba => {
       const ic = (aba.linhas || []).findIndex(l => (l || []).some(c => norm(c) === 'id solicitacao')); if (ic < 0) return;
       const col = {}; aba.linhas[ic].forEach((c, j) => { const k = norm(c); if (k && col[k] == null) col[k] = j; });
@@ -229,14 +252,17 @@
       const g = (l, k) => C[k] == null ? '' : (l[C[k]] == null ? '' : String(l[C[k]]).trim());
       for (let i = ic + 1; i < aba.linhas.length; i++) {
         const l = aba.linhas[i] || []; const sol = g(l, 'sol'); if (!sol) continue;
-        if (vistos.has(sol)) continue; vistos.add(sol);
+        const chave = aba.nome + '|' + sol;   // auditoria 22/10: cada aba pode ter a sua numeração (ex.: "Solicitações CLT")
+        if (vistos.has(chave)) { repetidas.push(sol); continue; } vistos.add(chave);
         const stx = g(l, 'status') || '(sem status)'; const dest = (ctx && ctx.status && ctx.status[stx]) || destinoStatus(stx); const valor = numeroBR(C.valor == null ? null : l[C.valor]);   // a coordenação pode mudar, na prévia, como cada status entra
         const st = status[stx] = status[stx] || { txt: stx, destino: dest, n: 0, total: 0 }; st.n++; st.total += valor || 0;
         if (dest === 'ignorar') { ignoradas++; continue; }
+        if (valor != null && valor < 0) { negativos++; continue; }
         if (!(valor > 0)) { erros++; continue; }
         const rubTxt = g(l, 'rub'), det = g(l, 'det'), tipo = g(l, 'tipo').replace(/^solicita[cç][aã]o de /i, ''), sub = g(l, 'sub'), benef = g(l, 'benef');
         const limpa = x => x && x !== '-' ? x : '';
-        let cls = DOA.test(norm(det + ' ' + tipo)) ? { item: 'doa', rubrica: rubDoItem('doa') } : classificar(rubTxt);
+        const rf = rubricaFuncern(rubTxt) || rubricaFuncern(sub);
+        let cls = DOA.test(norm(det + ' ' + tipo)) ? { item: 'doa', rubrica: rubDoItem('doa') } : rf ? (() => { const rb = MQ.ORCAMENTO.rubricas.find(r => r.id === rf); return rb.itens.length === 1 ? { item: rb.itens[0].id, rubrica: rf } : { item: null, rubrica: rf }; })() : classificar(rubTxt);
         if (!cls.item) { const ou = pelasOutrasColunas([det, tipo, sub, benef].map(limpa).filter(Boolean).join(' · '), cls, ctx); if (ou) cls = ou; }
         const dt = dataDe(C.data == null ? null : l[C.data]);
         out.push({ linha: i + 1, aba: aba.nome, data: dt, texto: rubTxt.slice(0, 120), item: cls.item, rubrica: cls.rubrica,
@@ -250,6 +276,9 @@
     const sts = Object.values(status);
     avisos.push('Situação na FUNCERN: ' + sts.map(x => `${x.txt} (${x.n}, ${x.destino === 'pago' ? 'conta como pago' : x.destino === 'ignorar' ? 'não entra' : 'conta como comprometido'})`).join(' · ') + '.');
     if (erros) avisos.push(`${erros} solicitaç${erros > 1 ? 'ões' : 'ão'} sem valor reconhecido ficou de fora.`);
+    if (negativos) avisos.push(`${negativos} solicitaç${negativos > 1 ? 'ões' : 'ão'} com valor negativo (estorno ou devolução) ficou de fora: confira na FUNCERN.`);
+    if (repetidas.length) avisos.push(`${repetidas.length} linha${repetidas.length > 1 ? 's repetem' : ' repete'} o número de uma solicitação já lida na mesma aba e ficou de fora (${repetidas.slice(0, 8).join(', ')}${repetidas.length > 8 ? '…' : ''}). Se for uma solicitação com vários itens, confira o total na FUNCERN.`);
+    if ((tab.abasIgnoradas || []).length) avisos.push(`Aba${tab.abasIgnoradas.length > 1 ? 's' : ''} que não deu para ler e ficou de fora: ${tab.abasIgnoradas.join(', ')}.`);
     if (suspeitas.length) avisos.push(`Confira: ${suspeitas.length} linha${suspeitas.length > 1 ? 's suspeitas' : ' suspeita'}, com valor acima de R$ 10 milhões ou data fora de 2026 e 2027.`);
     return { linhas: out, avisos, ignoradas, suspeitas, aba: (tab.abas || [tab]).filter(a => (a.linhas || []).some(l => (l || []).some(c => norm(c) === 'id solicitacao'))).map(a => a.nome).join(' + '), formato: 'solicitacoes', status: sts };
   }

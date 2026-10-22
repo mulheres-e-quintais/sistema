@@ -283,33 +283,36 @@
       S.acessosSemBanco = !acessos[0]; S.acessos = acessos[0] ? acessos[1] : [];
       // 13/10/2026 (auditoria): estas quatro leituras não dependem umas das outras: vão AO MESMO TEMPO (antes, uma depois da outra:
       // ~1,6 s a mais por carga da coordenação no 3G). Sem internet, qualquer uma derruba a carga, como antes.
+      // auditoria 22/10: a segunda leva também só grava na memória se nenhuma carga mais nova começou (vale())
+      const vale = () => minhaCarga === cargaGeracao;
       const pedAntes = S.pedidos || []; S.pedSemBanco = false; S.pedidos = []; S.kitItensSemBanco = true; S.obsSemBanco = true;
       await Promise.all([
         (async () => {   // 58: registros parados nos celulares (só a coordenação; sem o script, a tela pede para rodar)
-          if (coord && S.api.listarFilaCelular) { try { S.filaCelular = await S.api.listarFilaCelular(); S.filaCelularSemBanco = false; }
-            catch (e) { if (e && e.semRede) throw e; S.filaCelularSemBanco = true; S.filaCelular = S.filaCelular || []; } }   // sem o script (ou erro do banco): a tela diz o que fazer
+          if (coord && S.api.listarFilaCelular) { try { const fc = await S.api.listarFilaCelular(); if (vale()) { S.filaCelular = fc; S.filaCelularSemBanco = false; } }
+            catch (e) { if (e && e.semRede) throw e; if (vale()) { S.filaCelularSemBanco = true; S.filaCelular = S.filaCelular || []; } } }   // sem o script (ou erro do banco): a tela diz o que fazer
         })(),
         (async () => {   // pedidos de viagem: dependem de saber quem confere (22 e 26), e o saldo depende dos pedidos
           if (S.api.listarPedidos && MQ.viagUI && (MQ.viagUI.podeVer(papel) || MQ.viagUI.souConferente())) {
             try {
-              const r = await talvez(() => S.api.listarPedidos(), semFic); S.pedSemBanco = !r[0]; S.pedidos = r[0] ? r[1] : [];
-              if (S.api.saldoPedidos && !S.pedSemBanco) { const sd = await talvez(() => S.api.saldoPedidos(), qualquer); S.saldoPed = sd[0] ? sd[1] : null; }   // 35
-            } catch (e) { if (e && e.semRede) throw e; falhas.push('viagens e eventos'); S.pedidos = pedAntes; }
+              const r = await talvez(() => S.api.listarPedidos(), semFic); if (vale()) { S.pedSemBanco = !r[0]; S.pedidos = r[0] ? r[1] : []; }
+              if (S.api.saldoPedidos && r[0]) { const sd = await talvez(() => S.api.saldoPedidos(), qualquer); if (vale()) S.saldoPed = sd[0] ? sd[1] : null; }   // 35
+            } catch (e) { if (e && e.semRede) throw e; falhas.push('viagens e eventos'); if (vale()) S.pedidos = pedAntes; }
           }
         })(),
         (async () => {   // itens do kit com preço de referência (51_kit_itens.sql): sem a tabela, ou com ela vazia, vale a lista do sistema
           if (S.api.listarKitItens && (campoPapel || coord)) {
-            try { const r = await talvez(() => S.api.listarKitItens(), semFic); S.kitItensSemBanco = !r[0]; S.kitItens = r[0] ? r[1] : []; }
+            try { const r = await talvez(() => S.api.listarKitItens(), semFic); if (vale()) { S.kitItensSemBanco = !r[0]; S.kitItens = r[0] ? r[1] : []; } }
             catch (e) { if (e && e.semRede) throw e; falhas.push('itens do kit'); }
           }
         })(),
         (async () => {   // quem acompanha o projeto de fora (52_acompanhamento.sql): a lista é só da coordenação geral
           if (papel === 'coord_geral' && S.api.listarObservadores) {
-            try { const r = await talvez(() => S.api.listarObservadores(), semFic); S.obsSemBanco = !r[0]; S.observadores = r[0] ? r[1] : []; }
+            try { const r = await talvez(() => S.api.listarObservadores(), semFic); if (vale()) { S.obsSemBanco = !r[0]; S.observadores = r[0] ? r[1] : []; } }
             catch (e) { if (e && e.semRede) throw e; falhas.push('acompanhamento externo'); }
           }
         })()
       ]);
+      if (!vale()) return;   // começou outra carga no meio da segunda leva: a dela é a que vale
       S.cargaParcial = falhas.length ? falhas : null;
       // cálculo de custos carregado em segundo plano: a aba Custos abre pronta, sem "Carregando…" e sem a página pular
       if (coord && MQ.custosUI && !MQ.custosUI.pronto()) MQ.custosUI.garantir().then(() => { if (S.aba === 'custos') renderFundo(); }).catch(() => {});
@@ -317,13 +320,14 @@
       if (!falhas.length) try { const corpo = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.aud, S.kitItens || []]);   // 13/10/2026: só regrava a cópia do aparelho quando os dados mudaram
         if (corpo !== S.cacheGravado) { localStorage.setItem(chaveCache(), JSON.stringify({ equipe: S.equipe, fichas: S.fichas, visitas: S.visitas, diagnosticos: S.diagnosticos, aud: S.aud, kitItens: S.kitItens || [], em: Date.now() })); S.cacheGravado = corpo; } } catch (e) {}
     } catch (e) {
+      if (minhaCarga !== cargaGeracao) return;   // auditoria 22/10: a falha de uma carga antiga (3G que caiu) não desfaz a carga nova que já deu certo
       if (!e.semRede) throw e;
       // Sem internet: mostra a última cópia guardada no aparelho
       S.semRede = true;
       try { const c = JSON.parse(localStorage.getItem(chaveCache()) || 'null'); if (c) { S.equipe = c.equipe; S.fichas = c.fichas; S.visitas = c.visitas || []; S.diagnosticos = c.diagnosticos || []; S.aud = c.aud; S.kitItens = c.kitItens || []; S.cacheEm = c.em; } } catch (x) {}
       if (!S.equipe.length) S.equipe = [S.eu];
     }
-    S.fila = await MQ.fila.listar(S.eu.id);
+    const fila = await MQ.fila.listar(S.eu.id); if (minhaCarga === cargaGeracao) S.fila = fila;
   }
   /* 58: com internet, o celular avisa à coordenação só a CONTAGEM do que guarda sem enviar (quantos, desde quando,
      quantos recusados). Avisa quando muda ou, no máximo, a cada 30 minutos (o "último contato" fica em dia). */
@@ -429,7 +433,7 @@
     const app = $('#app'); if (!app || !app.querySelector) return;
     const velho = app.querySelector('[data-rede]'); const h = (S.verEntrada ? '' : avisoRede());
     if (velho && !h) velho.remove();
-    else if (velho && h && velho.outerHTML !== h) velho.outerHTML = h;   // mudou a contagem de registros guardados
+    else if (velho && h) { const t = document.createElement('div'); t.innerHTML = h; if (velho.textContent !== t.firstElementChild.textContent) velho.replaceWith(t.firstElementChild); }   // só quando a contagem muda (o leitor de tela não repete o aviso à toa)
     else if (!velho && h) { const ref = app.querySelector('.demo:not([data-rede])') || app.querySelector('header.barra'); if (ref) ref.insertAdjacentHTML('afterend', h); else app.insertAdjacentHTML('afterbegin', h); }
   }
   const selectMudou = i => { const ops = [...i.options]; const temPadrao = ops.some(o => o.defaultSelected); return ops.some((o, n) => o.selected !== (temPadrao ? o.defaultSelected : n === 0)); };

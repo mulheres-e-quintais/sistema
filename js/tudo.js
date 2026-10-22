@@ -9452,9 +9452,17 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       return linhas;
     }
     // 22/10/2026: a exportação de solicitações da FUNCERN vem em mais de uma aba (ex.: "Solicitações" e "Solicitações CLT"): lê todas
-    const todas = []; for (const a of abas.slice(0, 12)) todas.push({ nome: a.nome, linhas: await lerAba(a) });
-    const aba = todas.find(a => /gasto|despesa|execu/i.test(a.nome)) || todas.find(a => a.linhas.some(l => l.some(c => norm(c) === 'id solicitacao'))) || todas[0];
-    return { aba: aba.nome, linhas: aba.linhas, abas: todas };
+    // auditoria 22/10: aba com erro ou grande demais (ex.: uma "Base" de apoio) não derruba a leitura; só a aba que vale precisa abrir
+    const todas = [], falhas = [];
+    for (const a of abas.slice(0, 12)) { try { todas.push({ nome: a.nome, linhas: await lerAba(a) }); } catch (e) { falhas.push({ nome: a.nome, erro: e }); } }
+    const pref = abas.find(a => /gasto|despesa|execu/i.test(a.nome));
+    if (pref && falhas.some(f => f.nome === pref.nome)) throw falhas.find(f => f.nome === pref.nome).erro;
+    if (!todas.length) throw (falhas[0] && falhas[0].erro) || new Error('A planilha não tem abas.');
+    const sol = todas.filter(a => a.linhas.slice(0, 20).some(l => l.some(c => norm(c) === 'id solicitacao')));
+    const aba = (pref && todas.find(a => a.nome === pref.nome)) || sol[0] || todas[0];
+    if (!pref && !sol.length && falhas.length && aba === todas[0] && abas[0].nome !== aba.nome) throw falhas[0].erro;   // a primeira aba (a que valia antes) é que falhou
+    const abasLidas = pref ? [aba] : (sol.length ? sol : [aba]);
+    return { aba: aba.nome, linhas: aba.linhas, abas: abasLidas, abasIgnoradas: falhas.map(f => f.nome) };
   }
 
   /* ---------- csv ---------- */
@@ -9556,7 +9564,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (parecidos.length && parecidos.every(t => t.rubrica === parecidos[0].rubrica)) {
       const rb = MQ.ORCAMENTO.rubricas.find(r => r.id === parecidos[0].rubrica); return rb.itens.length === 1 ? { item: rb.itens[0].id, rubrica: rb.id } : { item: null, rubrica: rb.id };
     }
-    const r = MQ.ORCAMENTO.rubricas.find(r => { const k = norm(r.nome.replace(/\s*\(.*?\)\s*/g, ' ')); return k === n || n.includes(k) || (k.includes(n) && n.length >= 6); });
+    const r = MQ.ORCAMENTO.rubricas.find(r => { const k = norm(r.nome.replace(/\s*\(.*?\)\s*/g, ' ')); if (r.id === 'r7' && /pessoa fisica/.test(n)) return false; return k === n || n.includes(k) || (k.includes(n) && n.length >= 6); });
     if (r) return r.itens.length === 1 ? { item: r.itens[0].id, rubrica: r.id } : { item: null, rubrica: r.id };
     return { item: null, rubrica: null };
   }
@@ -9573,33 +9581,48 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const n = norm(txt); if (!n) return null;
     const existe = id => !!rubDoItem(id); const como = id => existe(id) ? { item: id, rubrica: rubDoItem(id) } : null;
     if (DOA.test(n)) return como('doa');
-    const bolsa = !cls.rubrica || /^r[12]$/.test(cls.rubrica);
-    if (bolsa) {
+    // auditoria 22/10: bolsa só em linha de rubrica de bolsa (antes: "INSS sobre bolsa do coordenador" em Obrigações Tributárias virava bolsa)
+    if (/^r[12]$/.test(cls.rubrica || '')) {
       const b = BOLSA_TEXTO.find(([re]) => re.test(n)); if (b) return como(b[1]);
       const eq = (ctx && ctx.equipe) || []; const nomes = m => { const t = norm(m.nome || '').split(' ').filter(Boolean); return [norm(m.nome || ''), norm(m.nome_social || ''), t.length > 1 ? t[0] + ' ' + t[t.length - 1] : ''].filter(x => x && x.includes(' ')); };
       const quem = eq.filter(m => BOLSA_DE_PAPEL[m.papel] && nomes(m).some(k => (' ' + n + ' ').includes(' ' + k + ' ')));
       const itens = [...new Set(quem.map(m => BOLSA_DE_PAPEL[m.papel]))]; if (itens.length === 1) return como(itens[0]);
     }
-    if (!cls.rubrica || cls.rubrica === 'r7') {   // serviços de terceiros: kit do quintal ou estrutura de evento
-      if (/\bkits?\b|quinta(l|is)/.test(n)) return como('quintais');
-      if (/evento|tenda|sonoriza|\bsom\b|coffee|alimentac|lanche|almoco|buffet|intercambio/.test(n)) return como('eventos');
+    if (cls.rubrica === 'r6') {   // passagens e locomoção: qual dos três itens
+      if (/loca[cç]ao|veiculo|carro/.test(n)) return como('locacao_veiculo');
+      if (/pedagogic/.test(n)) return como('passagem_pedagogico');
+      if (/intercambio/.test(n)) return como('passagem_intercambio');
     }
-    const g = classificar(txt); if (g.item && (!cls.rubrica || g.rubrica === cls.rubrica)) return g;
+    if (cls.rubrica === 'r7') {   // serviços de terceiros (PJ): estrutura de evento (vem antes: "tenda do evento Quintais Produtivos") ou kit do quintal
+      if (/evento|tenda|sonoriza|\bsom\b|coffee|alimentac|lanche|almoco|buffet|palco|cadeira/.test(n)) return como('eventos');
+      if (/\bkits?\b|implantac|quinta(l|is)/.test(n)) return como('quintais');
+    }
+    const g = classificar(txt); if (g.item && g.item !== 'repasse_mda' && (g.rubrica === cls.rubrica || (!cls.rubrica && !/^r[12]$/.test(g.rubrica)))) return g;   // bolsa só com rubrica de bolsa   // nunca vira "recebido do MDA"
     return null;
+  }
+  /* rubrica contábil da FUNCERN → rubrica do orçamento (como o Saberes que Cultivam). "Pessoa física" não é a r7 (pessoa jurídica). */
+  function rubricaFuncern(txt) {
+    const r = norm(txt); if (!r) return null;
+    const id = /pesquisador/.test(r) ? 'r1' : /estudante|discente|aluno/.test(r) ? 'r2' : /diaria/.test(r) ? 'r4' : /ajuda de custo/.test(r) ? 'r5'
+      : /passage|locomocao/.test(r) ? 'r6' : /pessoa juridica/.test(r) ? 'r7' : /consumo/.test(r) ? 'r9' : /equipamento|permanente/.test(r) ? 'r10'
+      : /despesas? operacionais|administrativ|\bdoa\b/.test(r) ? 'r13' : null;
+    return id && MQ.ORCAMENTO.rubricas.some(x => x.id === id) ? id : null;
   }
   /* ---------- 22/10/2026: exportação de SOLICITAÇÕES da FUNCERN (a mesma que o sistema do Saberes que Cultivam importa) ----------
      Colunas: ID Solicitação, Tipo Solicitação, Beneficiário Nome, Valor, Rubrica Financeira, Subrubrica, Detalhe Rubrica, Status, Data.
      Cada solicitação vale pela situação: paga = pago; ainda não paga ("Pagamento", "Em compras", "Pendente"…) = comprometido;
-     cancelada, recusada ou estornada = não entra. O CPF do beneficiário nunca é lido. */
+     cancelada, recusada ou estornada = não entra. O CPF do beneficiário nunca é lido para as linhas (o arquivo original, guardado na pasta privada da coordenação geral, continua com ele). */
   function destinoStatus(txt) {
     const s = norm(txt);
+    if (/cancel|recus|reprov|indefer|estorn|rejeit|anulad|exclu/.test(s)) return 'ignorar';   // auditoria 22/10: "Rejeitada", "Anulada", "Excluída" não entram
+    if (/^pago\b|\bpagamento (efetuado|realizado|concluido|confirmado)|\bpaga?s? (em|no|na)\b/.test(s)) return 'pago';   // "Pago - aguardando prestação de contas", "Pagamento efetuado"
     if (/\b(nao|sem|aguardando|pendente|a) (pago|paga|pagamento|pagar)\b|devolv/.test(s)) return 'comprometido';
     if (/pendente|aguardando|\bem (liquid|conclu|finaliz|andamento|analise)|\bnao (finaliz|conclu|liquid|pag)/.test(s)) return 'comprometido';
     return /cancel|recus|reprov|indefer|estorn/.test(s) ? 'ignorar' : /\bpago\b|\bpaga\b|finaliz|conclu|liquid|quitad/.test(s) ? 'pago' : 'comprometido';
   }
   const ehSolicitacoes = tab => (tab.abas || [tab]).some(a => (a.linhas || []).slice(0, 20).some(l => (l || []).some(c => norm(c) === 'id solicitacao')));
   function interpretarSolicitacoes(tab, ctx) {
-    const out = [], avisos = [], vistos = new Set(), status = {}; let ignoradas = 0, erros = 0; const suspeitas = [];
+    const out = [], avisos = [], vistos = new Set(), status = {}; let ignoradas = 0, erros = 0, negativos = 0; const suspeitas = [], repetidas = [];
     (tab.abas || [tab]).forEach(aba => {
       const ic = (aba.linhas || []).findIndex(l => (l || []).some(c => norm(c) === 'id solicitacao')); if (ic < 0) return;
       const col = {}; aba.linhas[ic].forEach((c, j) => { const k = norm(c); if (k && col[k] == null) col[k] = j; });
@@ -9609,14 +9632,17 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const g = (l, k) => C[k] == null ? '' : (l[C[k]] == null ? '' : String(l[C[k]]).trim());
       for (let i = ic + 1; i < aba.linhas.length; i++) {
         const l = aba.linhas[i] || []; const sol = g(l, 'sol'); if (!sol) continue;
-        if (vistos.has(sol)) continue; vistos.add(sol);
+        const chave = aba.nome + '|' + sol;   // auditoria 22/10: cada aba pode ter a sua numeração (ex.: "Solicitações CLT")
+        if (vistos.has(chave)) { repetidas.push(sol); continue; } vistos.add(chave);
         const stx = g(l, 'status') || '(sem status)'; const dest = (ctx && ctx.status && ctx.status[stx]) || destinoStatus(stx); const valor = numeroBR(C.valor == null ? null : l[C.valor]);   // a coordenação pode mudar, na prévia, como cada status entra
         const st = status[stx] = status[stx] || { txt: stx, destino: dest, n: 0, total: 0 }; st.n++; st.total += valor || 0;
         if (dest === 'ignorar') { ignoradas++; continue; }
+        if (valor != null && valor < 0) { negativos++; continue; }
         if (!(valor > 0)) { erros++; continue; }
         const rubTxt = g(l, 'rub'), det = g(l, 'det'), tipo = g(l, 'tipo').replace(/^solicita[cç][aã]o de /i, ''), sub = g(l, 'sub'), benef = g(l, 'benef');
         const limpa = x => x && x !== '-' ? x : '';
-        let cls = DOA.test(norm(det + ' ' + tipo)) ? { item: 'doa', rubrica: rubDoItem('doa') } : classificar(rubTxt);
+        const rf = rubricaFuncern(rubTxt) || rubricaFuncern(sub);
+        let cls = DOA.test(norm(det + ' ' + tipo)) ? { item: 'doa', rubrica: rubDoItem('doa') } : rf ? (() => { const rb = MQ.ORCAMENTO.rubricas.find(r => r.id === rf); return rb.itens.length === 1 ? { item: rb.itens[0].id, rubrica: rf } : { item: null, rubrica: rf }; })() : classificar(rubTxt);
         if (!cls.item) { const ou = pelasOutrasColunas([det, tipo, sub, benef].map(limpa).filter(Boolean).join(' · '), cls, ctx); if (ou) cls = ou; }
         const dt = dataDe(C.data == null ? null : l[C.data]);
         out.push({ linha: i + 1, aba: aba.nome, data: dt, texto: rubTxt.slice(0, 120), item: cls.item, rubrica: cls.rubrica,
@@ -9630,6 +9656,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const sts = Object.values(status);
     avisos.push('Situação na FUNCERN: ' + sts.map(x => `${x.txt} (${x.n}, ${x.destino === 'pago' ? 'conta como pago' : x.destino === 'ignorar' ? 'não entra' : 'conta como comprometido'})`).join(' · ') + '.');
     if (erros) avisos.push(`${erros} solicitaç${erros > 1 ? 'ões' : 'ão'} sem valor reconhecido ficou de fora.`);
+    if (negativos) avisos.push(`${negativos} solicitaç${negativos > 1 ? 'ões' : 'ão'} com valor negativo (estorno ou devolução) ficou de fora: confira na FUNCERN.`);
+    if (repetidas.length) avisos.push(`${repetidas.length} linha${repetidas.length > 1 ? 's repetem' : ' repete'} o número de uma solicitação já lida na mesma aba e ficou de fora (${repetidas.slice(0, 8).join(', ')}${repetidas.length > 8 ? '…' : ''}). Se for uma solicitação com vários itens, confira o total na FUNCERN.`);
+    if ((tab.abasIgnoradas || []).length) avisos.push(`Aba${tab.abasIgnoradas.length > 1 ? 's' : ''} que não deu para ler e ficou de fora: ${tab.abasIgnoradas.join(', ')}.`);
     if (suspeitas.length) avisos.push(`Confira: ${suspeitas.length} linha${suspeitas.length > 1 ? 's suspeitas' : ' suspeita'}, com valor acima de R$ 10 milhões ou data fora de 2026 e 2027.`);
     return { linhas: out, avisos, ignoradas, suspeitas, aba: (tab.abas || [tab]).filter(a => (a.linhas || []).some(l => (l || []).some(c => norm(c) === 'id solicitacao'))).map(a => a.nome).join(' + '), formato: 'solicitacoes', status: sts };
   }
@@ -9705,14 +9734,31 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   const G = {};   // prévia da planilha escolhida (antes de confirmar o envio)
 
   /* ---------- números ---------- */
-  function comprometidoItem(i, desde) {   // o que o sistema sabe e a planilha (até "desde") ainda não trouxe
+  /* auditoria 22/10: a planilha de solicitações da FUNCERN já traz a bolsa ou a ajuda de custo que foi lançada no Arlo (como
+     comprometida ou paga). Para não contar duas vezes, o pedido do sistema que já aparece nela (mesmo item, mesmo valor e,
+     quando a planilha diz, o nome da pessoa) não entra de novo no comprometido. */
+  const nrm = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  function jaNaPlanilha(sol, itemId, linhas, usadas) {
+    const eq = S().equipe || []; const m = eq.find(x => x.id === sol.equipe_id) || {}; const t = nrm(m.nome).split(' ').filter(Boolean);
+    const nomes = [nrm(m.nome), nrm(m.nome_social), t.length > 1 ? t[0] + ' ' + t[t.length - 1] : ''].filter(Boolean);
+    const v = +(sol.valor_avalizado != null ? sol.valor_avalizado : sol.valor_solicitado) || 0;
+    const k = linhas.findIndex((l, j) => !usadas.has(j) && l.item === itemId && Math.abs((+l.valor || 0) - v) < 0.01 && (!l.favorecido || nomes.some(n => (' ' + nrm(l.favorecido) + ' ').includes(' ' + n + ' '))));
+    if (k < 0) return false; usadas.add(k); return true;
+  }
+  function comprometidoItem(i, desde, linhasPl) {   // o que o sistema sabe e a planilha (até "desde") ainda não trouxe
     const a = i.auto; if (!a) return 0;
     const eq = S().equipe || []; const papelDe = id => (eq.find(m => m.id === id) || {}).papel;
+    const sol = (linhasPl || []).some(l => l.situacao) ? linhasPl : null, usadas = new Set();   // só a planilha de solicitações traz pedido por pedido
     const val = s => +(s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado) || 0;
     const depois = d => !desde || (d && R.diaLocal(d) > desde);   // data de Brasília (o banco grava em UTC)
     if (a.bolsa || a.ajuda) {
-      return (S().solic || []).filter(s => (a.ajuda ? s.tipo === 'ajuda_custo' : (s.tipo === 'bolsa' && papelDe(s.equipe_id) === a.bolsa))
-        && (s.situacao === 'avalizada' || (s.situacao === 'lancada' && depois(s.arlo_em)))).reduce((t, s) => t + val(s), 0);
+      const doItem = (S().solic || []).filter(s => a.ajuda ? s.tipo === 'ajuda_custo' : (s.tipo === 'bolsa' && papelDe(s.equipe_id) === a.bolsa));
+      // com a planilha de solicitações: liga cada pedido do sistema já lançado a uma linha dela, do mês mais antigo para o mais novo
+      // (a bolsa de setembro não "pega" a linha que é da de outubro); o que ficou ligado já está na planilha
+      const naPl = new Set();
+      if (sol) doItem.filter(s => ['avalizada', 'lancada'].includes(s.situacao)).sort((x, y) => String(x.mes || x.solicitada_em || '').localeCompare(String(y.mes || y.solicitada_em || '')))
+        .forEach(s => { if (jaNaPlanilha(s, i.id, sol, usadas)) naPl.add(s.id); });
+      return doItem.filter(s => (s.situacao === 'avalizada' || (s.situacao === 'lancada' && depois(s.arlo_em))) && !naPl.has(s.id)).reduce((t, s) => t + val(s), 0);
     }
     return (S().pedidos || []).filter(p => p.situacao === 'autorizado' && depois(p.decidido_em) && (a.evento ? p.tipo === 'evento' : p.tipo === 'passagem' && ((p.dados || {}).finalidade === 'pedagogico' ? 'pedagogico' : 'intercambio') === a.passagem))   // passagem antiga, sem finalidade, conta no intercâmbio (46)
       .reduce((t, p) => t + (+p.valor_autorizado || +(p.dados || {}).valor_estimado || 0), 0);
@@ -9724,7 +9770,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const somaL = f => Math.round(linhas.filter(f).reduce((t, l) => t + (+l.valor || 0), 0) * 100) / 100;
     const somaP = f => Math.round(pend.filter(f).reduce((t, l) => t + (+l.valor || 0), 0) * 100) / 100;
     const porItem = {};
-    itens().forEach(i => { const exec = somaL(l => l.item === i.id), compF = somaP(l => l.item === i.id), comp = Math.round((comprometidoItem(i, desde) + compF) * 100) / 100;
+    itens().forEach(i => { const exec = somaL(l => l.item === i.id), compF = somaP(l => l.item === i.id), comp = Math.round((comprometidoItem(i, desde, todas) + compF) * 100) / 100;
       porItem[i.id] = { exec, comp, compF, saldo: i.total - exec - comp, passou: exec + comp > i.total + 0.005 }; });
     const soma = (xs, k) => xs.reduce((t, i) => t + porItem[i.id][k], 0);
     // item antigo ou desconhecido (não está mais no orçamento) com rubrica: entra em "sem item" da rubrica, para a soma das rubricas fechar com o total
@@ -10022,7 +10068,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           <td><select data-exec-status="${E(x.txt)}" aria-label="Como “${E(x.txt)}” entra na conta">${[['pago', 'Pago'], ['comprometido', 'Comprometido'], ['ignorar', 'Não entra']].map(([v, t]) => `<option value="${v}"${x.destino === v ? ' selected' : ''}>${t}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table></div>` : ''}
       <ul class="pp"><li><span>Pago</span><b class="num">${brl(s.gasto)}</b></li>${s.comprometido ? `<li><span>Comprometido (ainda não pago)</span><b class="num">${brl(s.comprometido)}</b></li>` : ''}<li><span>Recebido do MDA</span><b class="num">${pr.formato === 'solicitacoes' && !s.recebido ? '<small class="muted">a planilha de solicitações não traz; vale o cronograma</small>' : brl(s.recebido)}</b></li>
         ${ant ? `<li><span>Planilha vigente hoje</span><b class="num">${brl(ant.total_gasto)}<small class="muted"> até ${R.fmtData(ant.posicao_em)}</small></b></li>` : ''}</ul>
-      ${ant && s.gasto + 0.005 < +ant.total_gasto ? '<div class="aviso erro">O total desta planilha é <b>menor</b> que o da planilha vigente. Como cada planilha é o retrato completo desde o início, confira se não faltam gastos antigos.</div>' : ''}
+      ${ant && s.gasto + (s.comprometido || 0) + 0.005 < +ant.total_gasto ? '<div class="aviso erro">O total desta planilha (pago e comprometido) é <b>menor</b> que o da planilha vigente. Como cada planilha é o retrato completo desde o início, confira se não faltam gastos antigos.</div>' : ''}
       ${ant && s.ultimaData && s.ultimaData < String(ant.posicao_em).slice(0, 10) ? `<div class="aviso">Os gastos desta planilha vão até ${R.fmtData(s.ultimaData)}, antes da vigente (${R.fmtData(ant.posicao_em)}). Se for uma correção, tudo bem: a última enviada é a que vale.</div>` : ''}
       <table class="quadro viag-tab"><tbody>${Object.entries(porRub).map(([k, v]) => `<tr><th scope="row">${E(nomeR(k))}</th><td class="num">${brl(v)}</td></tr>`).join('')}</tbody></table>
       ${s.naoClassificadas.length ? `<div class="aviso erro"><b>${s.naoClassificadas.length === 1 ? '1 linha não bate' : s.naoClassificadas.length + ' linhas não batem'} com nenhum item do orçamento</b> (${s.naoClassificadas.length === 1 ? 'entra' : 'entram'} no total, fora das rubricas). Se for erro de nome, corrija na planilha com o nome da aba Itens do modelo e escolha de novo.
@@ -10053,7 +10099,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         <div class="acoes"><button class="btn${pr ? '' : ' pri'}" type="submit">${pr ? 'Ler outro arquivo' : 'Ler a planilha'}</button></div></form>
       ${pr ? previaHTML(pr) + `<form class="f" data-form="exec-confirmar" novalidate><div class="campos">
           <div class="campo"><label for="ex-pos">Gastos até (data da planilha)</label><input id="ex-pos" name="posicao_em" type="date" max="${R.hoje()}" value="${pr.posicao}"></div>
-          <div class="campo inteiro"><label for="ex-obs">Observação <span class="muted">(opcional)</span></label><input id="ex-obs" name="obs" maxlength="500" placeholder="Ex.: planilha enviada pela FUNCERN em 05/10"></div></div>
+          <div class="campo inteiro"><label for="ex-obs">Observação <span class="muted">(opcional)</span></label><input id="ex-obs" name="obs" maxlength="500" placeholder="Ex.: planilha enviada pela FUNCERN em 05/10" value="${E(pr.obsDigitada || '')}"></div></div>
           <p class="small muted">Depois de enviada, a planilha não se altera: se precisar corrigir, envie outra (a mais nova passa a valer). Enviou por engano? Descarte na lista de planilhas enviadas.</p>
           <div class="aviso erro" data-erro hidden></div>
           <div class="acoes"><button class="btn pri" type="submit">Enviar e usar esta planilha</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div></form>` : ''}
@@ -10074,12 +10120,18 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
   /* como cada status da FUNCERN entra (pago, comprometido, não entra): a escolha fica guardada neste aparelho para a próxima planilha */
   const CH_ST = 'mq-imp-status';
-  const escolhasStatus = () => { try { return JSON.parse(localStorage.getItem(CH_ST) || '{}') || {}; } catch (e) { return {}; } };
+  const DESTINOS = ['pago', 'comprometido', 'ignorar'];
+  const escolhasStatus = () => { try { const e = JSON.parse(localStorage.getItem(CH_ST) || '{}') || {}; return Object.fromEntries(Object.entries(e).filter(([, v]) => DESTINOS.includes(v))); } catch (e) { return {}; } };
   function mudarStatus(txt, destino) {
-    const e = escolhasStatus(); e[txt] = destino; try { localStorage.setItem(CH_ST, JSON.stringify(e)); } catch (x) {}
+    if (!DESTINOS.includes(destino)) return;
     const pr = G.previa; if (!pr || !pr.tab) return;
-    const r = MQ.planilha.interpretar(pr.tab, { equipe: S().equipe || [], status: e }); const resumo = MQ.planilha.resumo(r);
-    G.previa = Object.assign(r, { resumo, posicao: pr.posicao, nome: pr.nome, arquivo: pr.arquivo, tab: pr.tab }); U().abrirPainel({ tipo: 'exec-enviar' });
+    const e = Object.assign(escolhasStatus(), { [txt]: destino });
+    // auditoria 22/10: primeiro confere se a planilha ainda tem o que valer com a escolha nova; só então guarda (antes, "tudo Não entra" travava as próximas importações)
+    let r; try { r = MQ.planilha.interpretar(pr.tab, { equipe: S().equipe || [], status: e }); }
+    catch (x) { U().toast(x.message + ' A escolha não foi guardada.'); U().abrirPainel({ tipo: 'exec-enviar' }); return; }
+    try { localStorage.setItem(CH_ST, JSON.stringify(e)); } catch (x) {}
+    const form = document.querySelector('form[data-form=exec-confirmar]'); const pos = form && form.posicao_em ? form.posicao_em.value : pr.posicao, obs = form && form.obs ? form.obs.value : '';   // o que já foi digitado não se perde
+    G.previa = Object.assign(r, { resumo: MQ.planilha.resumo(r), posicao: pos || pr.posicao, obsDigitada: obs, nome: pr.nome, arquivo: pr.arquivo, tab: pr.tab }); U().abrirPainel({ tipo: 'exec-enviar' });
   }
   if (typeof document !== 'undefined') document.addEventListener('change', ev => { const el = ev.target; if (el && el.matches && el.matches('select[data-exec-status]')) mudarStatus(el.dataset.execStatus, el.value); });
   async function preparar(arquivo) {   // lê e interpreta; devolve a prévia (também usado nos testes)
@@ -13244,7 +13296,10 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const aviso = fx.liberado !== 'sim' ? '<p class="ac2-previa">Só você vê esta aba, na prévia. O MDA de verdade ainda não vê os recursos. Para liberar, a coordenação muda o parâmetro <b>acomp_mda_financeiro</b> para "sim" (ver o arquivo 65 do banco).</p>' : '';
     if (fx.sem_planilha) return aviso + cartao('Recursos', '<p class="muted">Os números de recursos aparecem quando a primeira planilha de gastos for enviada na aba Financeiro.</p>');
     const O = MQ.ORCAMENTO; const it = fx.por_item || [];
-    const recebido = it.filter(l => l.item === 'repasse_mda').reduce((t, l) => t + +l.valor, 0), gasto = it.filter(l => l.item !== 'repasse_mda').reduce((t, l) => t + +l.valor, 0);
+    const recPl = it.filter(l => l.item === 'repasse_mda').reduce((t, l) => t + +l.valor, 0), gasto = it.filter(l => l.item !== 'repasse_mda').reduce((t, l) => t + +l.valor, 0);
+    // auditoria 22/10: a planilha de solicitações da FUNCERN não traz os repasses: vale o cronograma de desembolso até o mês da planilha (o mesmo que a coordenação vê)
+    const ymRef = String(a.hoje || MQ.regras.hoje()).slice(0, 7);
+    const recebido = recPl || (O.repasses || []).filter(r => r.mes <= ymRef).reduce((t, r) => t + r.valor, 0);
     const V = MQ.PROJETO.vigencia, dia = d => new Date(String(d).slice(0, 10) + 'T12:00:00').getTime(), tempo = pc(dia(a.hoje || MQ.regras.hoje()) - dia(V.inicio), dia(V.fim) - dia(V.inicio));
     const conhecido = new Set(O.rubricas.flatMap(r => r.itens.map(i => i.id))), rubIds = new Set(O.rubricas.map(r => r.id));
     const gastoL = it.filter(l => l.item !== 'repasse_mda');
@@ -14044,33 +14099,36 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       S.acessosSemBanco = !acessos[0]; S.acessos = acessos[0] ? acessos[1] : [];
       // 13/10/2026 (auditoria): estas quatro leituras não dependem umas das outras: vão AO MESMO TEMPO (antes, uma depois da outra:
       // ~1,6 s a mais por carga da coordenação no 3G). Sem internet, qualquer uma derruba a carga, como antes.
+      // auditoria 22/10: a segunda leva também só grava na memória se nenhuma carga mais nova começou (vale())
+      const vale = () => minhaCarga === cargaGeracao;
       const pedAntes = S.pedidos || []; S.pedSemBanco = false; S.pedidos = []; S.kitItensSemBanco = true; S.obsSemBanco = true;
       await Promise.all([
         (async () => {   // 58: registros parados nos celulares (só a coordenação; sem o script, a tela pede para rodar)
-          if (coord && S.api.listarFilaCelular) { try { S.filaCelular = await S.api.listarFilaCelular(); S.filaCelularSemBanco = false; }
-            catch (e) { if (e && e.semRede) throw e; S.filaCelularSemBanco = true; S.filaCelular = S.filaCelular || []; } }   // sem o script (ou erro do banco): a tela diz o que fazer
+          if (coord && S.api.listarFilaCelular) { try { const fc = await S.api.listarFilaCelular(); if (vale()) { S.filaCelular = fc; S.filaCelularSemBanco = false; } }
+            catch (e) { if (e && e.semRede) throw e; if (vale()) { S.filaCelularSemBanco = true; S.filaCelular = S.filaCelular || []; } } }   // sem o script (ou erro do banco): a tela diz o que fazer
         })(),
         (async () => {   // pedidos de viagem: dependem de saber quem confere (22 e 26), e o saldo depende dos pedidos
           if (S.api.listarPedidos && MQ.viagUI && (MQ.viagUI.podeVer(papel) || MQ.viagUI.souConferente())) {
             try {
-              const r = await talvez(() => S.api.listarPedidos(), semFic); S.pedSemBanco = !r[0]; S.pedidos = r[0] ? r[1] : [];
-              if (S.api.saldoPedidos && !S.pedSemBanco) { const sd = await talvez(() => S.api.saldoPedidos(), qualquer); S.saldoPed = sd[0] ? sd[1] : null; }   // 35
-            } catch (e) { if (e && e.semRede) throw e; falhas.push('viagens e eventos'); S.pedidos = pedAntes; }
+              const r = await talvez(() => S.api.listarPedidos(), semFic); if (vale()) { S.pedSemBanco = !r[0]; S.pedidos = r[0] ? r[1] : []; }
+              if (S.api.saldoPedidos && r[0]) { const sd = await talvez(() => S.api.saldoPedidos(), qualquer); if (vale()) S.saldoPed = sd[0] ? sd[1] : null; }   // 35
+            } catch (e) { if (e && e.semRede) throw e; falhas.push('viagens e eventos'); if (vale()) S.pedidos = pedAntes; }
           }
         })(),
         (async () => {   // itens do kit com preço de referência (51_kit_itens.sql): sem a tabela, ou com ela vazia, vale a lista do sistema
           if (S.api.listarKitItens && (campoPapel || coord)) {
-            try { const r = await talvez(() => S.api.listarKitItens(), semFic); S.kitItensSemBanco = !r[0]; S.kitItens = r[0] ? r[1] : []; }
+            try { const r = await talvez(() => S.api.listarKitItens(), semFic); if (vale()) { S.kitItensSemBanco = !r[0]; S.kitItens = r[0] ? r[1] : []; } }
             catch (e) { if (e && e.semRede) throw e; falhas.push('itens do kit'); }
           }
         })(),
         (async () => {   // quem acompanha o projeto de fora (52_acompanhamento.sql): a lista é só da coordenação geral
           if (papel === 'coord_geral' && S.api.listarObservadores) {
-            try { const r = await talvez(() => S.api.listarObservadores(), semFic); S.obsSemBanco = !r[0]; S.observadores = r[0] ? r[1] : []; }
+            try { const r = await talvez(() => S.api.listarObservadores(), semFic); if (vale()) { S.obsSemBanco = !r[0]; S.observadores = r[0] ? r[1] : []; } }
             catch (e) { if (e && e.semRede) throw e; falhas.push('acompanhamento externo'); }
           }
         })()
       ]);
+      if (!vale()) return;   // começou outra carga no meio da segunda leva: a dela é a que vale
       S.cargaParcial = falhas.length ? falhas : null;
       // cálculo de custos carregado em segundo plano: a aba Custos abre pronta, sem "Carregando…" e sem a página pular
       if (coord && MQ.custosUI && !MQ.custosUI.pronto()) MQ.custosUI.garantir().then(() => { if (S.aba === 'custos') renderFundo(); }).catch(() => {});
@@ -14078,13 +14136,14 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (!falhas.length) try { const corpo = JSON.stringify([S.equipe, S.fichas, S.visitas, S.diagnosticos, S.aud, S.kitItens || []]);   // 13/10/2026: só regrava a cópia do aparelho quando os dados mudaram
         if (corpo !== S.cacheGravado) { localStorage.setItem(chaveCache(), JSON.stringify({ equipe: S.equipe, fichas: S.fichas, visitas: S.visitas, diagnosticos: S.diagnosticos, aud: S.aud, kitItens: S.kitItens || [], em: Date.now() })); S.cacheGravado = corpo; } } catch (e) {}
     } catch (e) {
+      if (minhaCarga !== cargaGeracao) return;   // auditoria 22/10: a falha de uma carga antiga (3G que caiu) não desfaz a carga nova que já deu certo
       if (!e.semRede) throw e;
       // Sem internet: mostra a última cópia guardada no aparelho
       S.semRede = true;
       try { const c = JSON.parse(localStorage.getItem(chaveCache()) || 'null'); if (c) { S.equipe = c.equipe; S.fichas = c.fichas; S.visitas = c.visitas || []; S.diagnosticos = c.diagnosticos || []; S.aud = c.aud; S.kitItens = c.kitItens || []; S.cacheEm = c.em; } } catch (x) {}
       if (!S.equipe.length) S.equipe = [S.eu];
     }
-    S.fila = await MQ.fila.listar(S.eu.id);
+    const fila = await MQ.fila.listar(S.eu.id); if (minhaCarga === cargaGeracao) S.fila = fila;
   }
   /* 58: com internet, o celular avisa à coordenação só a CONTAGEM do que guarda sem enviar (quantos, desde quando,
      quantos recusados). Avisa quando muda ou, no máximo, a cada 30 minutos (o "último contato" fica em dia). */
@@ -14190,7 +14249,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const app = $('#app'); if (!app || !app.querySelector) return;
     const velho = app.querySelector('[data-rede]'); const h = (S.verEntrada ? '' : avisoRede());
     if (velho && !h) velho.remove();
-    else if (velho && h && velho.outerHTML !== h) velho.outerHTML = h;   // mudou a contagem de registros guardados
+    else if (velho && h) { const t = document.createElement('div'); t.innerHTML = h; if (velho.textContent !== t.firstElementChild.textContent) velho.replaceWith(t.firstElementChild); }   // só quando a contagem muda (o leitor de tela não repete o aviso à toa)
     else if (!velho && h) { const ref = app.querySelector('.demo:not([data-rede])') || app.querySelector('header.barra'); if (ref) ref.insertAdjacentHTML('afterend', h); else app.insertAdjacentHTML('afterbegin', h); }
   }
   const selectMudou = i => { const ops = [...i.options]; const temPadrao = ops.some(o => o.defaultSelected); return ops.some((o, n) => o.selected !== (temPadrao ? o.defaultSelected : n === 0)); };

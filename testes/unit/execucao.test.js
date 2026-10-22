@@ -51,7 +51,7 @@ test('a mais nova substitui (não soma); a anterior fica no histórico como subs
   const n = t.MQ.execUI.numeros();
   assert.equal(n.pl.arquivo_nome, 'funcern_baguncado.xlsx'); assert.equal(n.porItem.doa.exec, 0, 'a DOA da planilha antiga não soma');
   assert.equal(n.porItem.quintais.exec, 200000); assert.equal(n.naoClass, -1200, 'linha fora do orçamento aparece à parte');
-  assert.equal(n.rub.find(x => x.r.id === 'r6').semItem, 2800, 'rubrica sem item definido');
+  assert.equal(n.porItem.passagem_pedagogico.exec, 2800, 'o histórico "Passagem pedagógica" leva ao item (auditoria 22/10)');
   const h = t.aba('execucao'); assert.equal((h.match(/chip ok">vigente/g) || []).length, 1); assert.equal((h.match(/>substituída</g) || []).length, 1);
   assert.match(texto(h), /Fora do orçamento \(não classificado\)/); assert.match(texto(h), /linha.? fora do orçamento/);
 });

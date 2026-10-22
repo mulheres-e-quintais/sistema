@@ -20,14 +20,31 @@
   const G = {};   // prévia da planilha escolhida (antes de confirmar o envio)
 
   /* ---------- números ---------- */
-  function comprometidoItem(i, desde) {   // o que o sistema sabe e a planilha (até "desde") ainda não trouxe
+  /* auditoria 22/10: a planilha de solicitações da FUNCERN já traz a bolsa ou a ajuda de custo que foi lançada no Arlo (como
+     comprometida ou paga). Para não contar duas vezes, o pedido do sistema que já aparece nela (mesmo item, mesmo valor e,
+     quando a planilha diz, o nome da pessoa) não entra de novo no comprometido. */
+  const nrm = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  function jaNaPlanilha(sol, itemId, linhas, usadas) {
+    const eq = S().equipe || []; const m = eq.find(x => x.id === sol.equipe_id) || {}; const t = nrm(m.nome).split(' ').filter(Boolean);
+    const nomes = [nrm(m.nome), nrm(m.nome_social), t.length > 1 ? t[0] + ' ' + t[t.length - 1] : ''].filter(Boolean);
+    const v = +(sol.valor_avalizado != null ? sol.valor_avalizado : sol.valor_solicitado) || 0;
+    const k = linhas.findIndex((l, j) => !usadas.has(j) && l.item === itemId && Math.abs((+l.valor || 0) - v) < 0.01 && (!l.favorecido || nomes.some(n => (' ' + nrm(l.favorecido) + ' ').includes(' ' + n + ' '))));
+    if (k < 0) return false; usadas.add(k); return true;
+  }
+  function comprometidoItem(i, desde, linhasPl) {   // o que o sistema sabe e a planilha (até "desde") ainda não trouxe
     const a = i.auto; if (!a) return 0;
     const eq = S().equipe || []; const papelDe = id => (eq.find(m => m.id === id) || {}).papel;
+    const sol = (linhasPl || []).some(l => l.situacao) ? linhasPl : null, usadas = new Set();   // só a planilha de solicitações traz pedido por pedido
     const val = s => +(s.valor_avalizado != null ? s.valor_avalizado : s.valor_solicitado) || 0;
     const depois = d => !desde || (d && R.diaLocal(d) > desde);   // data de Brasília (o banco grava em UTC)
     if (a.bolsa || a.ajuda) {
-      return (S().solic || []).filter(s => (a.ajuda ? s.tipo === 'ajuda_custo' : (s.tipo === 'bolsa' && papelDe(s.equipe_id) === a.bolsa))
-        && (s.situacao === 'avalizada' || (s.situacao === 'lancada' && depois(s.arlo_em)))).reduce((t, s) => t + val(s), 0);
+      const doItem = (S().solic || []).filter(s => a.ajuda ? s.tipo === 'ajuda_custo' : (s.tipo === 'bolsa' && papelDe(s.equipe_id) === a.bolsa));
+      // com a planilha de solicitações: liga cada pedido do sistema já lançado a uma linha dela, do mês mais antigo para o mais novo
+      // (a bolsa de setembro não "pega" a linha que é da de outubro); o que ficou ligado já está na planilha
+      const naPl = new Set();
+      if (sol) doItem.filter(s => ['avalizada', 'lancada'].includes(s.situacao)).sort((x, y) => String(x.mes || x.solicitada_em || '').localeCompare(String(y.mes || y.solicitada_em || '')))
+        .forEach(s => { if (jaNaPlanilha(s, i.id, sol, usadas)) naPl.add(s.id); });
+      return doItem.filter(s => (s.situacao === 'avalizada' || (s.situacao === 'lancada' && depois(s.arlo_em))) && !naPl.has(s.id)).reduce((t, s) => t + val(s), 0);
     }
     return (S().pedidos || []).filter(p => p.situacao === 'autorizado' && depois(p.decidido_em) && (a.evento ? p.tipo === 'evento' : p.tipo === 'passagem' && ((p.dados || {}).finalidade === 'pedagogico' ? 'pedagogico' : 'intercambio') === a.passagem))   // passagem antiga, sem finalidade, conta no intercâmbio (46)
       .reduce((t, p) => t + (+p.valor_autorizado || +(p.dados || {}).valor_estimado || 0), 0);
@@ -39,7 +56,7 @@
     const somaL = f => Math.round(linhas.filter(f).reduce((t, l) => t + (+l.valor || 0), 0) * 100) / 100;
     const somaP = f => Math.round(pend.filter(f).reduce((t, l) => t + (+l.valor || 0), 0) * 100) / 100;
     const porItem = {};
-    itens().forEach(i => { const exec = somaL(l => l.item === i.id), compF = somaP(l => l.item === i.id), comp = Math.round((comprometidoItem(i, desde) + compF) * 100) / 100;
+    itens().forEach(i => { const exec = somaL(l => l.item === i.id), compF = somaP(l => l.item === i.id), comp = Math.round((comprometidoItem(i, desde, todas) + compF) * 100) / 100;
       porItem[i.id] = { exec, comp, compF, saldo: i.total - exec - comp, passou: exec + comp > i.total + 0.005 }; });
     const soma = (xs, k) => xs.reduce((t, i) => t + porItem[i.id][k], 0);
     // item antigo ou desconhecido (não está mais no orçamento) com rubrica: entra em "sem item" da rubrica, para a soma das rubricas fechar com o total
@@ -337,7 +354,7 @@
           <td><select data-exec-status="${E(x.txt)}" aria-label="Como “${E(x.txt)}” entra na conta">${[['pago', 'Pago'], ['comprometido', 'Comprometido'], ['ignorar', 'Não entra']].map(([v, t]) => `<option value="${v}"${x.destino === v ? ' selected' : ''}>${t}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table></div>` : ''}
       <ul class="pp"><li><span>Pago</span><b class="num">${brl(s.gasto)}</b></li>${s.comprometido ? `<li><span>Comprometido (ainda não pago)</span><b class="num">${brl(s.comprometido)}</b></li>` : ''}<li><span>Recebido do MDA</span><b class="num">${pr.formato === 'solicitacoes' && !s.recebido ? '<small class="muted">a planilha de solicitações não traz; vale o cronograma</small>' : brl(s.recebido)}</b></li>
         ${ant ? `<li><span>Planilha vigente hoje</span><b class="num">${brl(ant.total_gasto)}<small class="muted"> até ${R.fmtData(ant.posicao_em)}</small></b></li>` : ''}</ul>
-      ${ant && s.gasto + 0.005 < +ant.total_gasto ? '<div class="aviso erro">O total desta planilha é <b>menor</b> que o da planilha vigente. Como cada planilha é o retrato completo desde o início, confira se não faltam gastos antigos.</div>' : ''}
+      ${ant && s.gasto + (s.comprometido || 0) + 0.005 < +ant.total_gasto ? '<div class="aviso erro">O total desta planilha (pago e comprometido) é <b>menor</b> que o da planilha vigente. Como cada planilha é o retrato completo desde o início, confira se não faltam gastos antigos.</div>' : ''}
       ${ant && s.ultimaData && s.ultimaData < String(ant.posicao_em).slice(0, 10) ? `<div class="aviso">Os gastos desta planilha vão até ${R.fmtData(s.ultimaData)}, antes da vigente (${R.fmtData(ant.posicao_em)}). Se for uma correção, tudo bem: a última enviada é a que vale.</div>` : ''}
       <table class="quadro viag-tab"><tbody>${Object.entries(porRub).map(([k, v]) => `<tr><th scope="row">${E(nomeR(k))}</th><td class="num">${brl(v)}</td></tr>`).join('')}</tbody></table>
       ${s.naoClassificadas.length ? `<div class="aviso erro"><b>${s.naoClassificadas.length === 1 ? '1 linha não bate' : s.naoClassificadas.length + ' linhas não batem'} com nenhum item do orçamento</b> (${s.naoClassificadas.length === 1 ? 'entra' : 'entram'} no total, fora das rubricas). Se for erro de nome, corrija na planilha com o nome da aba Itens do modelo e escolha de novo.
@@ -368,7 +385,7 @@
         <div class="acoes"><button class="btn${pr ? '' : ' pri'}" type="submit">${pr ? 'Ler outro arquivo' : 'Ler a planilha'}</button></div></form>
       ${pr ? previaHTML(pr) + `<form class="f" data-form="exec-confirmar" novalidate><div class="campos">
           <div class="campo"><label for="ex-pos">Gastos até (data da planilha)</label><input id="ex-pos" name="posicao_em" type="date" max="${R.hoje()}" value="${pr.posicao}"></div>
-          <div class="campo inteiro"><label for="ex-obs">Observação <span class="muted">(opcional)</span></label><input id="ex-obs" name="obs" maxlength="500" placeholder="Ex.: planilha enviada pela FUNCERN em 05/10"></div></div>
+          <div class="campo inteiro"><label for="ex-obs">Observação <span class="muted">(opcional)</span></label><input id="ex-obs" name="obs" maxlength="500" placeholder="Ex.: planilha enviada pela FUNCERN em 05/10" value="${E(pr.obsDigitada || '')}"></div></div>
           <p class="small muted">Depois de enviada, a planilha não se altera: se precisar corrigir, envie outra (a mais nova passa a valer). Enviou por engano? Descarte na lista de planilhas enviadas.</p>
           <div class="aviso erro" data-erro hidden></div>
           <div class="acoes"><button class="btn pri" type="submit">Enviar e usar esta planilha</button><button class="btn" type="button" data-acao="fechar">Cancelar</button></div></form>` : ''}
@@ -389,12 +406,18 @@
   }
   /* como cada status da FUNCERN entra (pago, comprometido, não entra): a escolha fica guardada neste aparelho para a próxima planilha */
   const CH_ST = 'mq-imp-status';
-  const escolhasStatus = () => { try { return JSON.parse(localStorage.getItem(CH_ST) || '{}') || {}; } catch (e) { return {}; } };
+  const DESTINOS = ['pago', 'comprometido', 'ignorar'];
+  const escolhasStatus = () => { try { const e = JSON.parse(localStorage.getItem(CH_ST) || '{}') || {}; return Object.fromEntries(Object.entries(e).filter(([, v]) => DESTINOS.includes(v))); } catch (e) { return {}; } };
   function mudarStatus(txt, destino) {
-    const e = escolhasStatus(); e[txt] = destino; try { localStorage.setItem(CH_ST, JSON.stringify(e)); } catch (x) {}
+    if (!DESTINOS.includes(destino)) return;
     const pr = G.previa; if (!pr || !pr.tab) return;
-    const r = MQ.planilha.interpretar(pr.tab, { equipe: S().equipe || [], status: e }); const resumo = MQ.planilha.resumo(r);
-    G.previa = Object.assign(r, { resumo, posicao: pr.posicao, nome: pr.nome, arquivo: pr.arquivo, tab: pr.tab }); U().abrirPainel({ tipo: 'exec-enviar' });
+    const e = Object.assign(escolhasStatus(), { [txt]: destino });
+    // auditoria 22/10: primeiro confere se a planilha ainda tem o que valer com a escolha nova; só então guarda (antes, "tudo Não entra" travava as próximas importações)
+    let r; try { r = MQ.planilha.interpretar(pr.tab, { equipe: S().equipe || [], status: e }); }
+    catch (x) { U().toast(x.message + ' A escolha não foi guardada.'); U().abrirPainel({ tipo: 'exec-enviar' }); return; }
+    try { localStorage.setItem(CH_ST, JSON.stringify(e)); } catch (x) {}
+    const form = document.querySelector('form[data-form=exec-confirmar]'); const pos = form && form.posicao_em ? form.posicao_em.value : pr.posicao, obs = form && form.obs ? form.obs.value : '';   // o que já foi digitado não se perde
+    G.previa = Object.assign(r, { resumo: MQ.planilha.resumo(r), posicao: pos || pr.posicao, obsDigitada: obs, nome: pr.nome, arquivo: pr.arquivo, tab: pr.tab }); U().abrirPainel({ tipo: 'exec-enviar' });
   }
   if (typeof document !== 'undefined') document.addEventListener('change', ev => { const el = ev.target; if (el && el.matches && el.matches('select[data-exec-status]')) mudarStatus(el.dataset.execStatus, el.value); });
   async function preparar(arquivo) {   // lê e interpreta; devolve a prévia (também usado nos testes)

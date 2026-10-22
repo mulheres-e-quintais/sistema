@@ -24,7 +24,7 @@ test('planilha de fora: acha o cabeçalho abaixo do título, pula subtotal e tot
   assert.equal(r.linhas.find(l => l.texto === 'Diárias').item, 'diarias');
   const c = r.linhas.find(l => l.texto === 'Material de consumo'); assert.equal(c.item, 'combustivel', 'rubrica com um item só vai para o item'); assert.equal(c.valor, 350.5);
   const cb = r.linhas.find(l => l.texto === 'Coffee break'); assert.equal(cb.item, null); assert.equal(cb.rubrica, null, 'fora do orçamento: não classificada'); assert.equal(cb.valor, -1200);
-  const pa = r.linhas.find(l => l.texto === 'Passagens e locomoção'); assert.equal(pa.rubrica, 'r6'); assert.equal(pa.item, null, 'rubrica com vários itens: fica na rubrica, sem item');
+  const pa = r.linhas.find(l => l.texto === 'Passagens e locomoção'); assert.equal(pa.rubrica, 'r6'); assert.equal(pa.item, 'passagem_pedagogico', 'rubrica com vários itens: o histórico ("Passagem pedagógica") decide o item (auditoria 22/10)');
   assert.equal(P.resumo(r).naoClassificadas.length, 1);
 });
 

@@ -243,7 +243,10 @@
     const aviso = fx.liberado !== 'sim' ? '<p class="ac2-previa">Só você vê esta aba, na prévia. O MDA de verdade ainda não vê os recursos. Para liberar, a coordenação muda o parâmetro <b>acomp_mda_financeiro</b> para "sim" (ver o arquivo 65 do banco).</p>' : '';
     if (fx.sem_planilha) return aviso + cartao('Recursos', '<p class="muted">Os números de recursos aparecem quando a primeira planilha de gastos for enviada na aba Financeiro.</p>');
     const O = MQ.ORCAMENTO; const it = fx.por_item || [];
-    const recebido = it.filter(l => l.item === 'repasse_mda').reduce((t, l) => t + +l.valor, 0), gasto = it.filter(l => l.item !== 'repasse_mda').reduce((t, l) => t + +l.valor, 0);
+    const recPl = it.filter(l => l.item === 'repasse_mda').reduce((t, l) => t + +l.valor, 0), gasto = it.filter(l => l.item !== 'repasse_mda').reduce((t, l) => t + +l.valor, 0);
+    // auditoria 22/10: a planilha de solicitações da FUNCERN não traz os repasses: vale o cronograma de desembolso até o mês da planilha (o mesmo que a coordenação vê)
+    const ymRef = String(a.hoje || MQ.regras.hoje()).slice(0, 7);
+    const recebido = recPl || (O.repasses || []).filter(r => r.mes <= ymRef).reduce((t, r) => t + r.valor, 0);
     const V = MQ.PROJETO.vigencia, dia = d => new Date(String(d).slice(0, 10) + 'T12:00:00').getTime(), tempo = pc(dia(a.hoje || MQ.regras.hoje()) - dia(V.inicio), dia(V.fim) - dia(V.inicio));
     const conhecido = new Set(O.rubricas.flatMap(r => r.itens.map(i => i.id))), rubIds = new Set(O.rubricas.map(r => r.id));
     const gastoL = it.filter(l => l.item !== 'repasse_mda');

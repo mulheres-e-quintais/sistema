@@ -23,6 +23,25 @@ const R = []; const ok = (n, c, d = '') => { R.push([c ? 'PASSOU' : 'FALHOU', n,
   });
   ok('1. depois de gravar, a carga já traz a planilha nova', r.logoDepois === 1, r);
   ok('2. a carga antiga que chega depois não desfaz: a planilha nova continua na memória e na tela', r.fim === 1 && r.tela, r);
+  // auditoria 22/10: a carga antiga que FALHA por falta de rede depois da nova não pode trocar os dados pela cópia do aparelho
+  const r2 = await p.evaluate(async () => {
+    const api = MQ.ui.S.api, orig = api.listarFichas.bind(api); let n = 0;
+    api.listarFichas = async () => { if (n++ === 0) { await new Promise(ok => setTimeout(ok, 1200)); const e = new Error('Failed to fetch'); e.semRede = true; throw e; } return orig(); };
+    const velha = MQ.ui.carregar().catch(() => {}); await new Promise(ok => setTimeout(ok, 100));
+    await MQ.ui.carregar(); await velha; api.listarFichas = orig;
+    return { semRede: MQ.ui.S.semRede, faixa: !!document.querySelector('[data-rede]') };
+  });
+  ok('3. a falha (sem rede) de uma carga antiga não desfaz a nova nem mostra "Sem internet"', !r2.semRede && !r2.faixa, r2);
+  // segunda leva (pedidos): a resposta lenta da carga antiga não sobrescreve a nova
+  const r3 = await p.evaluate(async () => {
+    const api = MQ.ui.S.api; if (!api.listarPedidos) return { pulado: true };
+    const orig = api.listarPedidos.bind(api); let n = 0;
+    api.listarPedidos = async () => { const v = await orig(); if (n++ === 0) { await new Promise(ok => setTimeout(ok, 1200)); return [{ id: 'velho-da-carga-antiga', tipo: 'evento', situacao: 'enviado' }]; } return v; };
+    const velha = MQ.ui.carregar(); await new Promise(ok => setTimeout(ok, 100));
+    await MQ.ui.carregar(); const depois = (MQ.ui.S.pedidos || []).length; await velha; api.listarPedidos = orig;
+    return { chamadas: n, depois, fim: (MQ.ui.S.pedidos || []).length, velho: (MQ.ui.S.pedidos || []).some(x => x.id === 'velho-da-carga-antiga') };
+  });
+  ok('4. a segunda leva (pedidos) da carga antiga não volta os dados', r3.pulado || (r3.chamadas >= 2 && r3.fim === r3.depois && !r3.velho), r3);
   ok('sem erro de página', !errs.length, errs.slice(0, 3).join(' | '));
   await b.close(); const f = R.filter(x => x[0] === 'FALHOU').length; console.log(`\n${R.length - f} passaram, ${f} falharam`); process.exit(f ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });
