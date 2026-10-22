@@ -31,6 +31,7 @@
     if (S().aguaSemBanco) return `<section class="secao dx-agua" aria-labelledby="t-agua"><h2 id="t-agua">Acesso à água</h2>
       <p class="aviso">O acompanhamento da água ainda não está instalado no servidor. A coordenação geral roda o arquivo <b>39_agua.sql</b> no Supabase.</p></section>`;
     const l = lista(); const n = l.length;
+    if (!n) return '';   // 22/10/2026: ninguém com necessidade de água: o quadro não aparece
     const cont = Object.fromEntries(SIT.map(s => [s.id, l.filter(x => x.situacao === s.id).length]));
     const pend = l.filter(x => x.situacao !== 'concluida');
     return `<section class="secao dx-agua" aria-labelledby="t-agua">

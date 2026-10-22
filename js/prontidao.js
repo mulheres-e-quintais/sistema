@@ -39,8 +39,7 @@
     const comoFunciona = `<details class="fc-como"><summary>Como funciona</summary><p class="small muted">O que é salvo sem internet só chega ao servidor quando o celular conecta. Cada celular avisa quantos registros guarda sempre que tem internet (só a contagem, nunca o conteúdo). Quem nunca abriu o sistema atualizado não aparece aqui.</p></details>`;
     if (S().filaCelularSemBanco) return `<div class="bloco fila-cel">${cab('<span class="fc-chip off">Não instalado</span>')}<p class="small muted">Para ver quem tem visita, diagnóstico ou avaliação guardada no celular sem enviar, rode no Supabase o arquivo 58_fila_nos_celulares.sql.</p></div>`;
     const l = parados();
-    if (!l.length) return `<div class="bloco fila-cel">${cab('<span class="fc-chip ok">Tudo enviado</span>')}
-      <div class="fc-vazio"><span class="fc-ok">${IC_OK}</span><div><b>Nenhum registro esperando envio.</b><br><span class="small muted">Tudo o que a equipe salvou sem internet já chegou ao sistema.</span></div></div>${comoFunciona}</div>`;
+    if (!l.length) return '';   // 22/10/2026: nada parado nos celulares: o bloco não aparece (evita poluição visual; volta sozinho quando houver)
     const alertas = l.filter(f => diasDesde(f.mais_antigo) >= DIAS_ALERTA || f.recusados).length;
     const chip = `<span class="fc-chip ${alertas ? 'crit' : 'pend'}">${l.length} pessoa${l.length > 1 ? 's' : ''} com registro por enviar</span>`;
     const linha = f => { const dd = diasDesde(f.mais_antigo), alerta = dd >= DIAS_ALERTA || f.recusados, q = +f.qtd || 0, rec = +f.recusados || 0;

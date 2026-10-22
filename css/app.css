@@ -4376,3 +4376,5 @@ details.pag-cancelar form > p { margin: 0 0 12px; }
 .rede-cache { opacity: .85; }
 .toast.ok { background: var(--toast-ok-bg); color: var(--toast-ok-ink); }
 @media print { .rede-off { display: none; } }
+/* 22/10/2026: Visão geral sem marcos pendentes: as metas ocupam a largura toda */
+.dx-duas.so-metas { grid-template-columns: minmax(0, 1fr); }

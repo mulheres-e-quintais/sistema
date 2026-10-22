@@ -263,6 +263,7 @@
   function mapa(S, d, op) {
     const RES = !!(op && op.resumo);   // resumo: o mesmo desenho, só com totais por município e sem clique (tela de quem acompanha de fora)
     /* 3 níveis: 5 estados (um círculo por município) → estado (círculo por município) → município (cada quintal) */
+    if (!RES && !(d.fichas || []).length) return '';   // 22/10/2026: sem nenhuma ficha, o mapa da Visão geral não aparece
     const foco = S.mapaUF || '';
     const focoMun = foco && S.mapaMun && S.mapaMun.startsWith(foco + '|') ? S.mapaMun : '';
     const ufsProj = MQ.UFS.map(u => u.uf);
@@ -392,6 +393,7 @@
   /* ---------- perfil das mulheres (recorte) e linha de base de renda ---------- */
   function perfil(S, d) {
     const base = d.selAprov.length ? d.selAprov : d.fichas.filter(f => f.resultado === 'selecionada');
+    if (!base.length && !(S.diagnosticos || []).length) return '';   // 22/10/2026: sem mulheres selecionadas nem diagnóstico, o quadro não aparece
     const rotBase = d.selAprov.length ? 'das ' + base.length + ' selecionadas e aprovadas' : 'das ' + base.length + ' fichas marcadas como selecionadas (ainda sem aprovação)';
     const itens = [
       ['p_cadunico', 'Família no CadÚnico'], ['p_sustento', 'Principal responsável pelo sustento'], ['p_sem_ater', 'Sem assistência técnica (ATER)'],
@@ -459,6 +461,7 @@
   /* equipe de execução: quem são e de onde partem (perfil no campo do cadastro) */
   function equipeExec(S) {
     const ativos = (S.equipe || []).filter(m => m.status === 'ativa' && m.papel !== 'coord_geral');
+    if (!ativos.length) return '';   // 22/10/2026: quadro sem dado não aparece
     const campo = ativos.filter(m => ['coord_tecnico', 'articulacao', 'apoio', 'agente'].includes(m.papel));
     const conta = p => ativos.filter(m => m.papel === p).length;
     const bols = conta('articulacao') + conta('apoio');
@@ -559,7 +562,7 @@
       </section>
       ${MQ.prontidaoUI ? MQ.prontidaoUI.secao() : ''}
 
-      <section class="secao dx-atencao dx-topo-${al.some(x => x.nivel === 'crit') ? 'crit' : al.some(x => x.nivel === 'pend') ? 'pend' : 'ok'}" aria-labelledby="t-alertas">
+      ${/* 22/10/2026: sem nada pendente, o quadro não aparece */ al.length ? `<section class="secao dx-atencao dx-topo-${al.some(x => x.nivel === 'crit') ? 'crit' : al.some(x => x.nivel === 'pend') ? 'pend' : 'ok'}" aria-labelledby="t-alertas">
         <div class="secao-cab"><div><h2 id="t-alertas">O que pede atenção</h2></div>${al.length ? `<span class="dx-conta">${[['crit', n => n === 1 ? 'requer ação' : 'requerem ação'], ['pend', () => 'atenção'], ['info', n => n === 1 ? 'aviso' : 'avisos']].map(([k, r]) => { const n = al.filter(x => x.nivel === k).length; return n ? `<span class="dx-ct dx-ct-${k}"><b class="num">${n}</b> ${r(n)}</span>` : ''; }).filter(Boolean).join('<span class="so-leitor"> · </span>')}</span>` : ''}</div>
         ${al.length ? `<div class="dx-tab" role="table" aria-label="Pendências">
           <div class="dx-tr dx-th" role="row"><span role="columnheader">Problema</span><span role="columnheader">Prazo</span><span role="columnheader"><span class="sr">Ação</span></span></div>
@@ -567,9 +570,9 @@
             <span role="cell" class="dx-prazo num">${prazoTxt(x)}</span>
             <span role="cell">${x.aba ? MQ.botaoAcao({ acao: 'aba', texto: x.nivel === 'info' ? 'Consultar' : 'Resolver', icone: x.nivel === 'info' ? 'ver' : 'resolver', sec: x.nivel === 'info', mini: true, cls: 'dx-ir', rotulo: `${x.nivel === 'info' ? 'Consultar' : 'Resolver'}: ${E(x.texto)} (abre ${NOME_ABA[x.aba] || x.aba})`, attrs: `data-aba="${x.aba}" title="Abre ${NOME_ABA[x.aba] || x.aba}"` }) : ''}</span></div>`).join('')}
         </div>` : `<p class="dx-ok">${chipStatus('concluida', 'Nada pendente')} nos dados do sistema.</p>`}
-      </section>
+      </section>` : ''}
 
-      <div class="dx-duas">
+      <div class="dx-duas${marcos.length ? '' : ' so-metas'}">
         <section class="secao" aria-labelledby="t-metas">
           <div class="secao-cab"><div><h2 id="t-metas">Metas do plano de trabalho</h2><p>Barra: realizado · traço: previsto até o mês passado · toque na meta para ver o detalhe</p></div></div>
           <div class="dx-metas">
@@ -579,7 +582,7 @@
           </div>
         </section>
         <div class="dx-lado">
-          <section class="secao" aria-labelledby="t-marcos">
+          ${/* 22/10/2026: sem marco pendente, o quadro não aparece */ marcos.length ? `<section class="secao" aria-labelledby="t-marcos">
             <h2 id="t-marcos">Próximos marcos</h2>
             ${marcos.length ? '' : '<p class="muted">Nenhum marco pendente: os do plano já foram cumpridos.</p>'}<ol class="marcos">${marcos.map((m, k) => { const dd = R.diasAte(m.d);
               const prox = k === marcos.findIndex(x => R.diasAte(x.d) >= 0);
@@ -588,7 +591,7 @@
                 <span class="marco-txt">${E(m.t)}
                 ${m.meta && MQ.METAS.some(x => x.id === m.meta) ? `<button type="button" class="marco-meta" data-meta-ir="${m.meta}" aria-label="Ver a meta ${m.meta.slice(1)}: ${E((MQ.METAS.find(x => x.id === m.meta) || {}).nome || '')}">Meta ${m.meta.slice(1)} · ${E((MQ.METAS.find(x => x.id === m.meta) || {}).nome || '')}</button>` : ''}
                 <span class="marco-prazo">${dd < 0 ? 'passou há ' + (-dd) + ' dia' + (dd === -1 ? '' : 's') : dd === 0 ? 'hoje' : 'em ' + dd + ' dia' + (dd === 1 ? '' : 's')}</span></span></li>`; }).join('')}</ol>
-          </section>
+          </section>` : ''}
           ${/* 15/10/2026: o quadro "Por estado" saiu (repetia a "Situação do campo em cada estado"); a coluna "Sem água" foi para lá */ ''}
         </div>
       </div>

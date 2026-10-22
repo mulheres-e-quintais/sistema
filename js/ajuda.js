@@ -91,7 +91,7 @@
       t: 'Visão geral',
       intro: 'O retrato do projeto em uma tela: em que mês estamos, como está a equipe, a seleção das mulheres, o campo e os avisos que pedem atenção.',
       tarefas: [
-        ['Resolver o que pede atenção', ['Role a página até o quadro <b>O que pede atenção</b> (vem depois de <b>Situação do campo em cada estado</b>). Os itens vêm do mais grave para o menos grave.', 'Toque em <b>Resolver</b> (ou em <b>Consultar</b>, nos avisos): o sistema abre a aba que resolve.', 'Faça a ação e volte à <b>Visão geral</b>: o item some quando o problema acaba.']]
+        ['Resolver o que pede atenção', ['Role a página até o quadro <b>O que pede atenção</b> (vem depois de <b>Situação do campo em cada estado</b>). Os itens vêm do mais grave para o menos grave. Sem nada pendente, o quadro não aparece.', 'Toque em <b>Resolver</b> (ou em <b>Consultar</b>, nos avisos): o sistema abre a aba que resolve.', 'Faça a ação e volte à <b>Visão geral</b>: o item some quando o problema acaba.']]
       ],
       passos: [
         'A linha de 13 quadradinhos mostra os meses do projeto; o quadrado colorido é o mês atual. Ao lado, quantos dias faltam para o fim da vigência.',
@@ -286,7 +286,7 @@
         '<b>Por meta do plano de trabalho</b> mostra o mesmo gasto pelas metas: bolsas na Meta 1; a ajuda de custo das visitas dividida entre diagnóstico (M2, 25%), implantação (M3, 25%) e acompanhamento (M4, 50%); taxa da FUNCERN, combustível, notebook e apoio em <b>Comum a todas as metas</b>. Quando o valor do plano de trabalho é diferente da soma dos itens, a meta mostra os dois.',
         '<b>Executado</b> é o que está na última planilha enviada (que não foi descartada). As anteriores ficam guardadas em <b>Planilhas enviadas</b>, marcadas como substituídas.',
         '<b>Comprometido</b> é o que já foi decidido e ainda não aparece na planilha: bolsa ou ajuda de custo com aval, ou lançada no Arlo depois da data da planilha; passagem e evento autorizados depois dessa data.',
-        'O sistema entende planilhas de fora (da FUNCERN, por exemplo) se tiverem as colunas Item (ou Rubrica) e Valor. Linhas de total são ignoradas para não contar duas vezes.'
+        'O sistema entende planilhas de fora (da FUNCERN, por exemplo) se tiverem as colunas Item (ou Rubrica) e Valor. Quando a rubrica não diz o item, ele lê o histórico e o favorecido: “DOA” ou “despesas operacionais” vão para a taxa da fundação; o nome de alguém da equipe numa linha de bolsa vai para a bolsa do papel da pessoa; “kit” ou “quintal”, para a implantação dos quintais. Linhas de total são ignoradas para não contar duas vezes.'
       ],
       duvidas: [
         ['Enviei a planilha errada.', 'Em <b>Planilhas enviadas</b>, toque em <b>Descartar (enviada por engano)</b> na planilha errada e escreva o motivo. Ela sai de todas as contas e o arquivo é apagado; o registro fica no fim da lista, em <b>Descartadas</b> (toque para abrir), com o motivo. Se era a vigente, volta a valer a anterior. Descartar não se desfaz: para voltar, envie o arquivo de novo.'],

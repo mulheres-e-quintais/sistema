@@ -335,7 +335,7 @@
     else if (a === 'exec-rub') { const tb = document.getElementById('exr-' + el.dataset.id); if (tb) { tb.classList.add('aberta'); rubAbertas.add(el.dataset.id); const bb = tb.querySelector('.fin-rub'); if (bb) bb.setAttribute('aria-expanded', 'true'); tb.scrollIntoView({ behavior: 'smooth', block: 'start' }); tb.classList.remove('realce'); void tb.offsetWidth; tb.classList.add('realce'); } }
   }
   async function preparar(arquivo) {   // lê e interpreta; devolve a prévia (também usado nos testes)
-    const tab = await MQ.planilha.ler(arquivo); const r = MQ.planilha.interpretar(tab); const resumo = MQ.planilha.resumo(r);
+    const tab = await MQ.planilha.ler(arquivo); const r = MQ.planilha.interpretar(tab, { equipe: S().equipe || [] }); const resumo = MQ.planilha.resumo(r);
     const posicao = resumo.ultimaData && resumo.ultimaData <= R.hoje() ? resumo.ultimaData : R.hoje();
     return Object.assign(r, { resumo, posicao, nome: String(arquivo.name || 'planilha').slice(0, 200), arquivo });
   }

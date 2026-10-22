@@ -147,6 +147,7 @@
       const cab = (linhas[i] || []).map(norm); const col = {}; let melhor = 0;
       cab.forEach((c, j) => { if (!c) return;
         if (COL.valor.test(c)) { const w = pesoValor(c); if (w > melhor) { melhor = w; col.valor = j; } if (w !== 0) return; }
+        if (COL.descricao.test(c)) (col.descs = col.descs || []).push(j);   // 22/10/2026: todas as colunas de texto (Histórico, Favorecido…) ajudam a achar o item
         for (const k of ['item', 'data', 'documento', 'descricao']) if (col[k] == null && COL[k].test(c)) { col[k] = j; break; } });
       if (col.valor != null && col.item != null) return { i, col };
     }
@@ -174,8 +175,35 @@
     if (r) return r.itens.length === 1 ? { item: r.itens[0].id, rubrica: r.id } : { item: null, rubrica: r.id };
     return { item: null, rubrica: null };
   }
+  /* 22/10/2026: a planilha da FUNCERN traz na coluna "Rubrica" a rubrica contábil, e o item só no histórico/favorecido.
+     Ex.: bolsa do coordenador geral = "Auxílio financeiro a pesquisador" (5 itens: ficava sem item); a taxa da fundação (DOA) é
+     paga como "Serviços de terceiros - PJ" (caía na rubrica errada). Quando a coluna do item não acha o item, o texto das outras
+     colunas decide; nome de pessoa da equipe em linha de bolsa leva à bolsa do papel dela. */
+  const BOLSA_DE_PAPEL = { coord_geral: 'bolsa_coord_geral', coord_tecnico: 'bolsa_coord_tecnico', articulacao: 'bolsa_articulacao', apoio: 'bolsa_apoio', professor_fic: 'bolsa_professor', auxiliar_adm: 'bolsa_auxiliar' };
+  const BOLSA_TEXTO = [[/coord\w*\.? geral/, 'bolsa_coord_geral'], [/coord\w*\.? tecnic/, 'bolsa_coord_tecnico'], [/coord\w*\.? pedagogic/, 'bolsa_coord_pedagogico'], [/secretari/, 'bolsa_secretaria'],
+    [/auxiliar administrativ/, 'bolsa_auxiliar'], [/professor|curso fic/, 'bolsa_professor'], [/articulac/, 'bolsa_articulacao'], [/apoio estadual/, 'bolsa_apoio']];
+  const DOA = /\bdoa\b|despesas? operacion|taxa (de )?administra|taxa (da )?fundac|custos? (operacionais|indiretos)|ressarcimento (de )?custos/;
+  const rubDoItem = id => { const r = MQ.ORCAMENTO.rubricas.find(r => r.itens.some(i => i.id === id)); return r ? r.id : null; };
+  function pelasOutrasColunas(txt, cls, ctx) {
+    const n = norm(txt); if (!n) return null;
+    const existe = id => !!rubDoItem(id); const como = id => existe(id) ? { item: id, rubrica: rubDoItem(id) } : null;
+    if (DOA.test(n)) return como('doa');
+    const bolsa = !cls.rubrica || /^r[12]$/.test(cls.rubrica);
+    if (bolsa) {
+      const b = BOLSA_TEXTO.find(([re]) => re.test(n)); if (b) return como(b[1]);
+      const eq = (ctx && ctx.equipe) || []; const nomes = m => { const t = norm(m.nome || '').split(' ').filter(Boolean); return [norm(m.nome || ''), norm(m.nome_social || ''), t.length > 1 ? t[0] + ' ' + t[t.length - 1] : ''].filter(x => x && x.includes(' ')); };
+      const quem = eq.filter(m => BOLSA_DE_PAPEL[m.papel] && nomes(m).some(k => (' ' + n + ' ').includes(' ' + k + ' ')));
+      const itens = [...new Set(quem.map(m => BOLSA_DE_PAPEL[m.papel]))]; if (itens.length === 1) return como(itens[0]);
+    }
+    if (!cls.rubrica || cls.rubrica === 'r7') {   // serviços de terceiros: kit do quintal ou estrutura de evento
+      if (/\bkits?\b|quinta(l|is)/.test(n)) return como('quintais');
+      if (/evento|tenda|sonoriza|\bsom\b|coffee|alimentac|lanche|almoco|buffet|intercambio/.test(n)) return como('eventos');
+    }
+    const g = classificar(txt); if (g.item && (!cls.rubrica || g.rubrica === cls.rubrica)) return g;
+    return null;
+  }
   /* devolve { linhas: [{linha, data, texto, item, rubrica, descricao, documento, valor}], avisos, ignoradas } */
-  function interpretar(tab) {
+  function interpretar(tab, ctx) {
     const c = acharCabecalho(tab.linhas);
     if (!c) throw new Error('Não achei o cabeçalho. A planilha precisa ter as colunas "Item" (ou "Rubrica") e "Valor". Use o modelo.');
     const out = []; let ignoradas = 0, datasRuins = 0; const avisos = []; const textoNoValor = [], suspeitas = []; let centavosPerdidos = 0;
@@ -192,7 +220,8 @@
       if (valor == null || valor === 0) { ignoradas++; continue; }
       // CSV separado por vírgula com centavos sem aspas ("1000,50"): os centavos caíram na coluna seguinte
       if (tab.sep === ',' && l.length > nCab && typeof bruto === 'string' && /^-?\d+$/.test(bruto) && /^\d{1,2}$/.test(String(l[c.col.valor + 1] == null ? '' : l[c.col.valor + 1]))) centavosPerdidos++;
-      const cls = classificar(texto);
+      let cls = classificar(texto);
+      if (!cls.item) { const ou = pelasOutrasColunas((c.col.descs || []).map(j => l[j]).filter(x => x != null).join(' · '), cls, ctx); if (ou) cls = ou; }
       const dt = dataDe(pega('data')); if (!dt && pega('data') != null && String(pega('data')).trim() !== '') datasRuins++;
       out.push({ linha: i + 1, data: dt, texto: String(texto == null ? '' : texto).slice(0, 120), item: cls.item, rubrica: cls.rubrica,
         descricao: pega('descricao') == null ? null : String(pega('descricao')).slice(0, 200), documento: pega('documento') == null ? null : String(pega('documento')).slice(0, 80), valor: Math.round(valor * 100) / 100 });

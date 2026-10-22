@@ -4797,6 +4797,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   function mapa(S, d, op) {
     const RES = !!(op && op.resumo);   // resumo: o mesmo desenho, só com totais por município e sem clique (tela de quem acompanha de fora)
     /* 3 níveis: 5 estados (um círculo por município) → estado (círculo por município) → município (cada quintal) */
+    if (!RES && !(d.fichas || []).length) return '';   // 22/10/2026: sem nenhuma ficha, o mapa da Visão geral não aparece
     const foco = S.mapaUF || '';
     const focoMun = foco && S.mapaMun && S.mapaMun.startsWith(foco + '|') ? S.mapaMun : '';
     const ufsProj = MQ.UFS.map(u => u.uf);
@@ -4926,6 +4927,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   /* ---------- perfil das mulheres (recorte) e linha de base de renda ---------- */
   function perfil(S, d) {
     const base = d.selAprov.length ? d.selAprov : d.fichas.filter(f => f.resultado === 'selecionada');
+    if (!base.length && !(S.diagnosticos || []).length) return '';   // 22/10/2026: sem mulheres selecionadas nem diagnóstico, o quadro não aparece
     const rotBase = d.selAprov.length ? 'das ' + base.length + ' selecionadas e aprovadas' : 'das ' + base.length + ' fichas marcadas como selecionadas (ainda sem aprovação)';
     const itens = [
       ['p_cadunico', 'Família no CadÚnico'], ['p_sustento', 'Principal responsável pelo sustento'], ['p_sem_ater', 'Sem assistência técnica (ATER)'],
@@ -4993,6 +4995,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   /* equipe de execução: quem são e de onde partem (perfil no campo do cadastro) */
   function equipeExec(S) {
     const ativos = (S.equipe || []).filter(m => m.status === 'ativa' && m.papel !== 'coord_geral');
+    if (!ativos.length) return '';   // 22/10/2026: quadro sem dado não aparece
     const campo = ativos.filter(m => ['coord_tecnico', 'articulacao', 'apoio', 'agente'].includes(m.papel));
     const conta = p => ativos.filter(m => m.papel === p).length;
     const bols = conta('articulacao') + conta('apoio');
@@ -5093,7 +5096,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       </section>
       ${MQ.prontidaoUI ? MQ.prontidaoUI.secao() : ''}
 
-      <section class="secao dx-atencao dx-topo-${al.some(x => x.nivel === 'crit') ? 'crit' : al.some(x => x.nivel === 'pend') ? 'pend' : 'ok'}" aria-labelledby="t-alertas">
+      ${/* 22/10/2026: sem nada pendente, o quadro não aparece */ al.length ? `<section class="secao dx-atencao dx-topo-${al.some(x => x.nivel === 'crit') ? 'crit' : al.some(x => x.nivel === 'pend') ? 'pend' : 'ok'}" aria-labelledby="t-alertas">
         <div class="secao-cab"><div><h2 id="t-alertas">O que pede atenção</h2></div>${al.length ? `<span class="dx-conta">${[['crit', n => n === 1 ? 'requer ação' : 'requerem ação'], ['pend', () => 'atenção'], ['info', n => n === 1 ? 'aviso' : 'avisos']].map(([k, r]) => { const n = al.filter(x => x.nivel === k).length; return n ? `<span class="dx-ct dx-ct-${k}"><b class="num">${n}</b> ${r(n)}</span>` : ''; }).filter(Boolean).join('<span class="so-leitor"> · </span>')}</span>` : ''}</div>
         ${al.length ? `<div class="dx-tab" role="table" aria-label="Pendências">
           <div class="dx-tr dx-th" role="row"><span role="columnheader">Problema</span><span role="columnheader">Prazo</span><span role="columnheader"><span class="sr">Ação</span></span></div>
@@ -5101,9 +5104,9 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
             <span role="cell" class="dx-prazo num">${prazoTxt(x)}</span>
             <span role="cell">${x.aba ? MQ.botaoAcao({ acao: 'aba', texto: x.nivel === 'info' ? 'Consultar' : 'Resolver', icone: x.nivel === 'info' ? 'ver' : 'resolver', sec: x.nivel === 'info', mini: true, cls: 'dx-ir', rotulo: `${x.nivel === 'info' ? 'Consultar' : 'Resolver'}: ${E(x.texto)} (abre ${NOME_ABA[x.aba] || x.aba})`, attrs: `data-aba="${x.aba}" title="Abre ${NOME_ABA[x.aba] || x.aba}"` }) : ''}</span></div>`).join('')}
         </div>` : `<p class="dx-ok">${chipStatus('concluida', 'Nada pendente')} nos dados do sistema.</p>`}
-      </section>
+      </section>` : ''}
 
-      <div class="dx-duas">
+      <div class="dx-duas${marcos.length ? '' : ' so-metas'}">
         <section class="secao" aria-labelledby="t-metas">
           <div class="secao-cab"><div><h2 id="t-metas">Metas do plano de trabalho</h2><p>Barra: realizado · traço: previsto até o mês passado · toque na meta para ver o detalhe</p></div></div>
           <div class="dx-metas">
@@ -5113,7 +5116,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           </div>
         </section>
         <div class="dx-lado">
-          <section class="secao" aria-labelledby="t-marcos">
+          ${/* 22/10/2026: sem marco pendente, o quadro não aparece */ marcos.length ? `<section class="secao" aria-labelledby="t-marcos">
             <h2 id="t-marcos">Próximos marcos</h2>
             ${marcos.length ? '' : '<p class="muted">Nenhum marco pendente: os do plano já foram cumpridos.</p>'}<ol class="marcos">${marcos.map((m, k) => { const dd = R.diasAte(m.d);
               const prox = k === marcos.findIndex(x => R.diasAte(x.d) >= 0);
@@ -5122,7 +5125,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
                 <span class="marco-txt">${E(m.t)}
                 ${m.meta && MQ.METAS.some(x => x.id === m.meta) ? `<button type="button" class="marco-meta" data-meta-ir="${m.meta}" aria-label="Ver a meta ${m.meta.slice(1)}: ${E((MQ.METAS.find(x => x.id === m.meta) || {}).nome || '')}">Meta ${m.meta.slice(1)} · ${E((MQ.METAS.find(x => x.id === m.meta) || {}).nome || '')}</button>` : ''}
                 <span class="marco-prazo">${dd < 0 ? 'passou há ' + (-dd) + ' dia' + (dd === -1 ? '' : 's') : dd === 0 ? 'hoje' : 'em ' + dd + ' dia' + (dd === 1 ? '' : 's')}</span></span></li>`; }).join('')}</ol>
-          </section>
+          </section>` : ''}
           ${/* 15/10/2026: o quadro "Por estado" saiu (repetia a "Situação do campo em cada estado"); a coluna "Sem água" foi para lá */ ''}
         </div>
       </div>
@@ -7783,6 +7786,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (S().aguaSemBanco) return `<section class="secao dx-agua" aria-labelledby="t-agua"><h2 id="t-agua">Acesso à água</h2>
       <p class="aviso">O acompanhamento da água ainda não está instalado no servidor. A coordenação geral roda o arquivo <b>39_agua.sql</b> no Supabase.</p></section>`;
     const l = lista(); const n = l.length;
+    if (!n) return '';   // 22/10/2026: ninguém com necessidade de água: o quadro não aparece
     const cont = Object.fromEntries(SIT.map(s => [s.id, l.filter(x => x.situacao === s.id).length]));
     const pend = l.filter(x => x.situacao !== 'concluida');
     return `<section class="secao dx-agua" aria-labelledby="t-agua">
@@ -9522,6 +9526,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       const cab = (linhas[i] || []).map(norm); const col = {}; let melhor = 0;
       cab.forEach((c, j) => { if (!c) return;
         if (COL.valor.test(c)) { const w = pesoValor(c); if (w > melhor) { melhor = w; col.valor = j; } if (w !== 0) return; }
+        if (COL.descricao.test(c)) (col.descs = col.descs || []).push(j);   // 22/10/2026: todas as colunas de texto (Histórico, Favorecido…) ajudam a achar o item
         for (const k of ['item', 'data', 'documento', 'descricao']) if (col[k] == null && COL[k].test(c)) { col[k] = j; break; } });
       if (col.valor != null && col.item != null) return { i, col };
     }
@@ -9549,8 +9554,35 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     if (r) return r.itens.length === 1 ? { item: r.itens[0].id, rubrica: r.id } : { item: null, rubrica: r.id };
     return { item: null, rubrica: null };
   }
+  /* 22/10/2026: a planilha da FUNCERN traz na coluna "Rubrica" a rubrica contábil, e o item só no histórico/favorecido.
+     Ex.: bolsa do coordenador geral = "Auxílio financeiro a pesquisador" (5 itens: ficava sem item); a taxa da fundação (DOA) é
+     paga como "Serviços de terceiros - PJ" (caía na rubrica errada). Quando a coluna do item não acha o item, o texto das outras
+     colunas decide; nome de pessoa da equipe em linha de bolsa leva à bolsa do papel dela. */
+  const BOLSA_DE_PAPEL = { coord_geral: 'bolsa_coord_geral', coord_tecnico: 'bolsa_coord_tecnico', articulacao: 'bolsa_articulacao', apoio: 'bolsa_apoio', professor_fic: 'bolsa_professor', auxiliar_adm: 'bolsa_auxiliar' };
+  const BOLSA_TEXTO = [[/coord\w*\.? geral/, 'bolsa_coord_geral'], [/coord\w*\.? tecnic/, 'bolsa_coord_tecnico'], [/coord\w*\.? pedagogic/, 'bolsa_coord_pedagogico'], [/secretari/, 'bolsa_secretaria'],
+    [/auxiliar administrativ/, 'bolsa_auxiliar'], [/professor|curso fic/, 'bolsa_professor'], [/articulac/, 'bolsa_articulacao'], [/apoio estadual/, 'bolsa_apoio']];
+  const DOA = /\bdoa\b|despesas? operacion|taxa (de )?administra|taxa (da )?fundac|custos? (operacionais|indiretos)|ressarcimento (de )?custos/;
+  const rubDoItem = id => { const r = MQ.ORCAMENTO.rubricas.find(r => r.itens.some(i => i.id === id)); return r ? r.id : null; };
+  function pelasOutrasColunas(txt, cls, ctx) {
+    const n = norm(txt); if (!n) return null;
+    const existe = id => !!rubDoItem(id); const como = id => existe(id) ? { item: id, rubrica: rubDoItem(id) } : null;
+    if (DOA.test(n)) return como('doa');
+    const bolsa = !cls.rubrica || /^r[12]$/.test(cls.rubrica);
+    if (bolsa) {
+      const b = BOLSA_TEXTO.find(([re]) => re.test(n)); if (b) return como(b[1]);
+      const eq = (ctx && ctx.equipe) || []; const nomes = m => { const t = norm(m.nome || '').split(' ').filter(Boolean); return [norm(m.nome || ''), norm(m.nome_social || ''), t.length > 1 ? t[0] + ' ' + t[t.length - 1] : ''].filter(x => x && x.includes(' ')); };
+      const quem = eq.filter(m => BOLSA_DE_PAPEL[m.papel] && nomes(m).some(k => (' ' + n + ' ').includes(' ' + k + ' ')));
+      const itens = [...new Set(quem.map(m => BOLSA_DE_PAPEL[m.papel]))]; if (itens.length === 1) return como(itens[0]);
+    }
+    if (!cls.rubrica || cls.rubrica === 'r7') {   // serviços de terceiros: kit do quintal ou estrutura de evento
+      if (/\bkits?\b|quinta(l|is)/.test(n)) return como('quintais');
+      if (/evento|tenda|sonoriza|\bsom\b|coffee|alimentac|lanche|almoco|buffet|intercambio/.test(n)) return como('eventos');
+    }
+    const g = classificar(txt); if (g.item && (!cls.rubrica || g.rubrica === cls.rubrica)) return g;
+    return null;
+  }
   /* devolve { linhas: [{linha, data, texto, item, rubrica, descricao, documento, valor}], avisos, ignoradas } */
-  function interpretar(tab) {
+  function interpretar(tab, ctx) {
     const c = acharCabecalho(tab.linhas);
     if (!c) throw new Error('Não achei o cabeçalho. A planilha precisa ter as colunas "Item" (ou "Rubrica") e "Valor". Use o modelo.');
     const out = []; let ignoradas = 0, datasRuins = 0; const avisos = []; const textoNoValor = [], suspeitas = []; let centavosPerdidos = 0;
@@ -9567,7 +9599,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       if (valor == null || valor === 0) { ignoradas++; continue; }
       // CSV separado por vírgula com centavos sem aspas ("1000,50"): os centavos caíram na coluna seguinte
       if (tab.sep === ',' && l.length > nCab && typeof bruto === 'string' && /^-?\d+$/.test(bruto) && /^\d{1,2}$/.test(String(l[c.col.valor + 1] == null ? '' : l[c.col.valor + 1]))) centavosPerdidos++;
-      const cls = classificar(texto);
+      let cls = classificar(texto);
+      if (!cls.item) { const ou = pelasOutrasColunas((c.col.descs || []).map(j => l[j]).filter(x => x != null).join(' · '), cls, ctx); if (ou) cls = ou; }
       const dt = dataDe(pega('data')); if (!dt && pega('data') != null && String(pega('data')).trim() !== '') datasRuins++;
       out.push({ linha: i + 1, data: dt, texto: String(texto == null ? '' : texto).slice(0, 120), item: cls.item, rubrica: cls.rubrica,
         descricao: pega('descricao') == null ? null : String(pega('descricao')).slice(0, 200), documento: pega('documento') == null ? null : String(pega('documento')).slice(0, 80), valor: Math.round(valor * 100) / 100 });
@@ -9933,7 +9966,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     else if (a === 'exec-rub') { const tb = document.getElementById('exr-' + el.dataset.id); if (tb) { tb.classList.add('aberta'); rubAbertas.add(el.dataset.id); const bb = tb.querySelector('.fin-rub'); if (bb) bb.setAttribute('aria-expanded', 'true'); tb.scrollIntoView({ behavior: 'smooth', block: 'start' }); tb.classList.remove('realce'); void tb.offsetWidth; tb.classList.add('realce'); } }
   }
   async function preparar(arquivo) {   // lê e interpreta; devolve a prévia (também usado nos testes)
-    const tab = await MQ.planilha.ler(arquivo); const r = MQ.planilha.interpretar(tab); const resumo = MQ.planilha.resumo(r);
+    const tab = await MQ.planilha.ler(arquivo); const r = MQ.planilha.interpretar(tab, { equipe: S().equipe || [] }); const resumo = MQ.planilha.resumo(r);
     const posicao = resumo.ultimaData && resumo.ultimaData <= R.hoje() ? resumo.ultimaData : R.hoje();
     return Object.assign(r, { resumo, posicao, nome: String(arquivo.name || 'planilha').slice(0, 200), arquivo });
   }
@@ -11779,7 +11812,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       t: 'Visão geral',
       intro: 'O retrato do projeto em uma tela: em que mês estamos, como está a equipe, a seleção das mulheres, o campo e os avisos que pedem atenção.',
       tarefas: [
-        ['Resolver o que pede atenção', ['Role a página até o quadro <b>O que pede atenção</b> (vem depois de <b>Situação do campo em cada estado</b>). Os itens vêm do mais grave para o menos grave.', 'Toque em <b>Resolver</b> (ou em <b>Consultar</b>, nos avisos): o sistema abre a aba que resolve.', 'Faça a ação e volte à <b>Visão geral</b>: o item some quando o problema acaba.']]
+        ['Resolver o que pede atenção', ['Role a página até o quadro <b>O que pede atenção</b> (vem depois de <b>Situação do campo em cada estado</b>). Os itens vêm do mais grave para o menos grave. Sem nada pendente, o quadro não aparece.', 'Toque em <b>Resolver</b> (ou em <b>Consultar</b>, nos avisos): o sistema abre a aba que resolve.', 'Faça a ação e volte à <b>Visão geral</b>: o item some quando o problema acaba.']]
       ],
       passos: [
         'A linha de 13 quadradinhos mostra os meses do projeto; o quadrado colorido é o mês atual. Ao lado, quantos dias faltam para o fim da vigência.',
@@ -11974,7 +12007,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         '<b>Por meta do plano de trabalho</b> mostra o mesmo gasto pelas metas: bolsas na Meta 1; a ajuda de custo das visitas dividida entre diagnóstico (M2, 25%), implantação (M3, 25%) e acompanhamento (M4, 50%); taxa da FUNCERN, combustível, notebook e apoio em <b>Comum a todas as metas</b>. Quando o valor do plano de trabalho é diferente da soma dos itens, a meta mostra os dois.',
         '<b>Executado</b> é o que está na última planilha enviada (que não foi descartada). As anteriores ficam guardadas em <b>Planilhas enviadas</b>, marcadas como substituídas.',
         '<b>Comprometido</b> é o que já foi decidido e ainda não aparece na planilha: bolsa ou ajuda de custo com aval, ou lançada no Arlo depois da data da planilha; passagem e evento autorizados depois dessa data.',
-        'O sistema entende planilhas de fora (da FUNCERN, por exemplo) se tiverem as colunas Item (ou Rubrica) e Valor. Linhas de total são ignoradas para não contar duas vezes.'
+        'O sistema entende planilhas de fora (da FUNCERN, por exemplo) se tiverem as colunas Item (ou Rubrica) e Valor. Quando a rubrica não diz o item, ele lê o histórico e o favorecido: “DOA” ou “despesas operacionais” vão para a taxa da fundação; o nome de alguém da equipe numa linha de bolsa vai para a bolsa do papel da pessoa; “kit” ou “quintal”, para a implantação dos quintais. Linhas de total são ignoradas para não contar duas vezes.'
       ],
       duvidas: [
         ['Enviei a planilha errada.', 'Em <b>Planilhas enviadas</b>, toque em <b>Descartar (enviada por engano)</b> na planilha errada e escreva o motivo. Ela sai de todas as contas e o arquivo é apagado; o registro fica no fim da lista, em <b>Descartadas</b> (toque para abrir), com o motivo. Se era a vigente, volta a valer a anterior. Descartar não se desfaz: para voltar, envie o arquivo de novo.'],
@@ -13446,8 +13479,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const comoFunciona = `<details class="fc-como"><summary>Como funciona</summary><p class="small muted">O que é salvo sem internet só chega ao servidor quando o celular conecta. Cada celular avisa quantos registros guarda sempre que tem internet (só a contagem, nunca o conteúdo). Quem nunca abriu o sistema atualizado não aparece aqui.</p></details>`;
     if (S().filaCelularSemBanco) return `<div class="bloco fila-cel">${cab('<span class="fc-chip off">Não instalado</span>')}<p class="small muted">Para ver quem tem visita, diagnóstico ou avaliação guardada no celular sem enviar, rode no Supabase o arquivo 58_fila_nos_celulares.sql.</p></div>`;
     const l = parados();
-    if (!l.length) return `<div class="bloco fila-cel">${cab('<span class="fc-chip ok">Tudo enviado</span>')}
-      <div class="fc-vazio"><span class="fc-ok">${IC_OK}</span><div><b>Nenhum registro esperando envio.</b><br><span class="small muted">Tudo o que a equipe salvou sem internet já chegou ao sistema.</span></div></div>${comoFunciona}</div>`;
+    if (!l.length) return '';   // 22/10/2026: nada parado nos celulares: o bloco não aparece (evita poluição visual; volta sozinho quando houver)
     const alertas = l.filter(f => diasDesde(f.mais_antigo) >= DIAS_ALERTA || f.recusados).length;
     const chip = `<span class="fc-chip ${alertas ? 'crit' : 'pend'}">${l.length} pessoa${l.length > 1 ? 's' : ''} com registro por enviar</span>`;
     const linha = f => { const dd = diasDesde(f.mais_antigo), alerta = dd >= DIAS_ALERTA || f.recusados, q = +f.qtd || 0, rec = +f.recusados || 0;
