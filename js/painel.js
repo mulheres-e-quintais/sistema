@@ -445,16 +445,17 @@
     const tabPP = linhasPP.length ? `<table class="pp2-tab${temDepois ? ' com-hoje' : ''}"><thead><tr><th scope="col">Indicador</th><th scope="col">No início</th>${temDepois ? '<th scope="col">Hoje</th><th scope="col">Mudança</th>' : ''}</tr></thead><tbody>
       ${linhasPP.map(([t, a1, d1, u, sobe]) => `<tr><th scope="row">${E(t)}</th><td class="num">${fmtV(a1, u)}</td>${temDepois ? `<td class="num"><b>${fmtV(d1, u)}</b></td><td>${mudanca(a1, d1, u, sobe)}</td>` : ''}</tr>`).join('')}</tbody></table>` : '';
     return `<section class="secao" aria-labelledby="t-perfil">
-      <div class="secao-cab"><div><h2 id="t-perfil">Quem são as mulheres</h2><p>${base.length ? 'Percentual ' + rotBase + ', pelos critérios de prioridade da ficha.' : 'Aparece quando houver mulheres selecionadas.'}</p></div></div>
-      <div class="duas-col perfil-cols">
-        <div class="bloco">${base.length ? `<ul class="perfil2">${barras}</ul>
-          <p class="nota">"Negra, indígena, quilombola ou de comunidade tradicional" é uma única pergunta na ficha: não dá para separar quilombolas.</p>${LEG_RETRATO}` : '<p class="muted">Sem dados ainda.</p>'}</div>
-        <div class="bloco pp2"><h3>Ponto de partida${temDepois ? ' e hoje' : ''}</h3>
+      <div class="secao-cab"><div><h2 id="t-perfil">Quem são as mulheres</h2><p>${base.length ? 'Percentual ' + rotBase + ', pelos critérios de prioridade da ficha.' : 'O ponto de partida das mulheres, pelos diagnósticos. O perfil pelos critérios da ficha aparece quando houver mulheres selecionadas.'}</p></div></div>
+      ${/* 23/10/2026: bloco sem informação não aparece (antes: "Sem dados ainda" e "Ponto de partida" vazio) */ ''}
+      <div class="${base.length && diags.length ? 'duas-col' : 'uma-col'} perfil-cols">
+        ${base.length ? `<div class="bloco"><ul class="perfil2">${barras}</ul>
+          <p class="nota">"Negra, indígena, quilombola ou de comunidade tradicional" é uma única pergunta na ficha: não dá para separar quilombolas.</p>${LEG_RETRATO}</div>` : ''}
+        ${diags.length ? `<div class="bloco pp2"><h3>Ponto de partida${temDepois ? ' e hoje' : ''}</h3>
           ${diags.length ? `<div class="pp2-kpis">${kpiQ}${kpiF}</div>${tabPP}
             ${nSemAgua ? `<p class="pp2-agua"><b>${nSemAgua}</b> diagnóstico${nSemAgua > 1 ? 's' : ''} sem água que dure na seca: não recebe${nSemAgua > 1 ? 'm' : ''} kit e precisa${nSemAgua > 1 ? 'm' : ''} de cisterna.</p>` : ''}
             <p class="nota">${temDepois ? `Início e hoje medidos ${nAv === 1 ? 'na mesma mulher' : 'nas mesmas ' + nAv + ' mulheres'} (as que já tiveram a avaliação final). Verde = melhorou; vermelho = piorou (a seta mostra se o número subiu ou desceu). Detalhe por estado na aba Campo.`
               : nImp ? `Linha de base de ${nImp} diagnóstico${nImp > 1 ? 's' : ''}. O "hoje" aparece quando as avaliações finais (5ª visita) forem registradas.` : 'As medidas de fome, consumo e autonomia aparecem quando os diagnósticos tiverem o bloco "4b".'}</p>`
-            : '<p class="small muted">Vem do diagnóstico (1ª visita): renda, fome (EBIA), consumo do quintal, venda e água. Aparece quando os diagnósticos forem registrados.</p>'}</div>
+            : ''}</div>` : ''}
       </div></section>`;
   }
 
@@ -491,7 +492,7 @@
     const pcHab = ativos.length ? Math.round(habil / ativos.length * 100) : 0;
     return `<section class="secao" aria-labelledby="t-exec">
       <div class="secao-cab"><div><h2 id="t-exec">Quem é a equipe de execução</h2><p>Pessoas ativas no projeto, sem a coordenação geral. O perfil no campo vem do cadastro (coordenação técnica, bolsistas e agentes).</p></div></div>
-      <div class="duas-col perfil-cols">
+      <div class="${resp.length || S.perfisSemBanco ? 'duas-col' : 'uma-col'} perfil-cols">
         <div class="bloco pp2"><h3>Composição</h3>
           <div class="pp2-kpis">
             <div class="pp2-kpi"><span class="pp2-k-rot">Pessoas na equipe</span><span class="pp2-k-val"><b class="num">${ativos.length}</b></span><span class="pp2-k-sub">ativas, de todas as funções</span></div>
@@ -508,11 +509,11 @@
           ${leram.length ? (nLeram >= leram.length
             ? `<p class="ex2-guia ok"><b>Todas leram o guia</b> (${leram.length} bolsistas e agentes).</p>`
             : `<p class="ex2-guia"><b>${leram.length - nLeram} de ${leram.length}</b> bolsistas e agentes ainda não marcaram que leram o guia.</p>`) : ''}${LEG_META}</div>
-        <div class="bloco"><h3>Ponto de partida da equipe</h3>
+        ${resp.length || S.perfisSemBanco ? `<div class="bloco"><h3>Ponto de partida da equipe</h3>
           ${resp.length ? `<ul class="perfil2">${linhas.map(([t, x]) => barraPf(t, x)).join('')}</ul>
             ${outraBolsa && outraBolsa.n ? `<p class="pp2-agua"><b>${outraBolsa.n} pessoa${outraBolsa.n > 1 ? 's' : ''}</b> já recebe${outraBolsa.n > 1 ? 'm' : ''} outra bolsa: confira se pode acumular antes de pagar.</p>` : ''}
             <p class="nota">${resp.length} de ${campo.length} pessoa${campo.length > 1 ? 's' : ''} da equipe de campo responderam o perfil${outraBolsa && !outraBolsa.n ? '; nenhuma recebe outra bolsa' : ''}. O Guia pede bolsistas mulheres, de preferência agricultoras ou com atuação junto às mulheres do território.</p>${LEG_RETRATO}`
-            : `<p class="small muted">${S.perfisSemBanco ? 'O perfil no campo ainda não está instalado no servidor (rode o 19_entregas_do_mes.sql).' : 'Aparece quando a coordenação técnica, as bolsistas e as agentes responderem o perfil no campo no cadastro (pelo link é obrigatório).'}</p>`}</div>
+            : '<p class="small muted">O perfil no campo ainda não está instalado no servidor (rode o 19_entregas_do_mes.sql).</p>'}</div>` : ''}
       </div></section>`;
   }
 

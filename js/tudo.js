@@ -4980,16 +4980,17 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const tabPP = linhasPP.length ? `<table class="pp2-tab${temDepois ? ' com-hoje' : ''}"><thead><tr><th scope="col">Indicador</th><th scope="col">No início</th>${temDepois ? '<th scope="col">Hoje</th><th scope="col">Mudança</th>' : ''}</tr></thead><tbody>
       ${linhasPP.map(([t, a1, d1, u, sobe]) => `<tr><th scope="row">${E(t)}</th><td class="num">${fmtV(a1, u)}</td>${temDepois ? `<td class="num"><b>${fmtV(d1, u)}</b></td><td>${mudanca(a1, d1, u, sobe)}</td>` : ''}</tr>`).join('')}</tbody></table>` : '';
     return `<section class="secao" aria-labelledby="t-perfil">
-      <div class="secao-cab"><div><h2 id="t-perfil">Quem são as mulheres</h2><p>${base.length ? 'Percentual ' + rotBase + ', pelos critérios de prioridade da ficha.' : 'Aparece quando houver mulheres selecionadas.'}</p></div></div>
-      <div class="duas-col perfil-cols">
-        <div class="bloco">${base.length ? `<ul class="perfil2">${barras}</ul>
-          <p class="nota">"Negra, indígena, quilombola ou de comunidade tradicional" é uma única pergunta na ficha: não dá para separar quilombolas.</p>${LEG_RETRATO}` : '<p class="muted">Sem dados ainda.</p>'}</div>
-        <div class="bloco pp2"><h3>Ponto de partida${temDepois ? ' e hoje' : ''}</h3>
+      <div class="secao-cab"><div><h2 id="t-perfil">Quem são as mulheres</h2><p>${base.length ? 'Percentual ' + rotBase + ', pelos critérios de prioridade da ficha.' : 'O ponto de partida das mulheres, pelos diagnósticos. O perfil pelos critérios da ficha aparece quando houver mulheres selecionadas.'}</p></div></div>
+      ${/* 23/10/2026: bloco sem informação não aparece (antes: "Sem dados ainda" e "Ponto de partida" vazio) */ ''}
+      <div class="${base.length && diags.length ? 'duas-col' : 'uma-col'} perfil-cols">
+        ${base.length ? `<div class="bloco"><ul class="perfil2">${barras}</ul>
+          <p class="nota">"Negra, indígena, quilombola ou de comunidade tradicional" é uma única pergunta na ficha: não dá para separar quilombolas.</p>${LEG_RETRATO}</div>` : ''}
+        ${diags.length ? `<div class="bloco pp2"><h3>Ponto de partida${temDepois ? ' e hoje' : ''}</h3>
           ${diags.length ? `<div class="pp2-kpis">${kpiQ}${kpiF}</div>${tabPP}
             ${nSemAgua ? `<p class="pp2-agua"><b>${nSemAgua}</b> diagnóstico${nSemAgua > 1 ? 's' : ''} sem água que dure na seca: não recebe${nSemAgua > 1 ? 'm' : ''} kit e precisa${nSemAgua > 1 ? 'm' : ''} de cisterna.</p>` : ''}
             <p class="nota">${temDepois ? `Início e hoje medidos ${nAv === 1 ? 'na mesma mulher' : 'nas mesmas ' + nAv + ' mulheres'} (as que já tiveram a avaliação final). Verde = melhorou; vermelho = piorou (a seta mostra se o número subiu ou desceu). Detalhe por estado na aba Campo.`
               : nImp ? `Linha de base de ${nImp} diagnóstico${nImp > 1 ? 's' : ''}. O "hoje" aparece quando as avaliações finais (5ª visita) forem registradas.` : 'As medidas de fome, consumo e autonomia aparecem quando os diagnósticos tiverem o bloco "4b".'}</p>`
-            : '<p class="small muted">Vem do diagnóstico (1ª visita): renda, fome (EBIA), consumo do quintal, venda e água. Aparece quando os diagnósticos forem registrados.</p>'}</div>
+            : ''}</div>` : ''}
       </div></section>`;
   }
 
@@ -5026,7 +5027,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const pcHab = ativos.length ? Math.round(habil / ativos.length * 100) : 0;
     return `<section class="secao" aria-labelledby="t-exec">
       <div class="secao-cab"><div><h2 id="t-exec">Quem é a equipe de execução</h2><p>Pessoas ativas no projeto, sem a coordenação geral. O perfil no campo vem do cadastro (coordenação técnica, bolsistas e agentes).</p></div></div>
-      <div class="duas-col perfil-cols">
+      <div class="${resp.length || S.perfisSemBanco ? 'duas-col' : 'uma-col'} perfil-cols">
         <div class="bloco pp2"><h3>Composição</h3>
           <div class="pp2-kpis">
             <div class="pp2-kpi"><span class="pp2-k-rot">Pessoas na equipe</span><span class="pp2-k-val"><b class="num">${ativos.length}</b></span><span class="pp2-k-sub">ativas, de todas as funções</span></div>
@@ -5043,11 +5044,11 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           ${leram.length ? (nLeram >= leram.length
             ? `<p class="ex2-guia ok"><b>Todas leram o guia</b> (${leram.length} bolsistas e agentes).</p>`
             : `<p class="ex2-guia"><b>${leram.length - nLeram} de ${leram.length}</b> bolsistas e agentes ainda não marcaram que leram o guia.</p>`) : ''}${LEG_META}</div>
-        <div class="bloco"><h3>Ponto de partida da equipe</h3>
+        ${resp.length || S.perfisSemBanco ? `<div class="bloco"><h3>Ponto de partida da equipe</h3>
           ${resp.length ? `<ul class="perfil2">${linhas.map(([t, x]) => barraPf(t, x)).join('')}</ul>
             ${outraBolsa && outraBolsa.n ? `<p class="pp2-agua"><b>${outraBolsa.n} pessoa${outraBolsa.n > 1 ? 's' : ''}</b> já recebe${outraBolsa.n > 1 ? 'm' : ''} outra bolsa: confira se pode acumular antes de pagar.</p>` : ''}
             <p class="nota">${resp.length} de ${campo.length} pessoa${campo.length > 1 ? 's' : ''} da equipe de campo responderam o perfil${outraBolsa && !outraBolsa.n ? '; nenhuma recebe outra bolsa' : ''}. O Guia pede bolsistas mulheres, de preferência agricultoras ou com atuação junto às mulheres do território.</p>${LEG_RETRATO}`
-            : `<p class="small muted">${S.perfisSemBanco ? 'O perfil no campo ainda não está instalado no servidor (rode o 19_entregas_do_mes.sql).' : 'Aparece quando a coordenação técnica, as bolsistas e as agentes responderem o perfil no campo no cadastro (pelo link é obrigatório).'}</p>`}</div>
+            : '<p class="small muted">O perfil no campo ainda não está instalado no servidor (rode o 19_entregas_do_mes.sql).</p>'}</div>` : ''}
       </div></section>`;
   }
 
@@ -9970,8 +9971,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
   }
   function alertas(n) {
     const a = [];
-    if (!n.pl) a.push('Nenhuma planilha de gastos enviada ainda. Sem ela, o pago fica zerado: importe a planilha da FUNCERN.');
-    else if (n.idade > 35) a.push(`A planilha vigente é de <b>${R.fmtData(n.pl.posicao_em)}</b> (${n.idade} dias atrás). Envie a planilha deste mês.`);
+    // 23/10/2026: sem planilha, nenhum aviso aqui (Despesas do projeto, no fim, já diz "Nenhuma despesa ainda" e traz o botão)
+    if (n.pl && n.idade > 35) a.push(`A planilha vigente é de <b>${R.fmtData(n.pl.posicao_em)}</b> (${n.idade} dias atrás). Envie a planilha deste mês.`);
     if (n.pl && foraDoPeriodo(n.pl.posicao_em)) a.push(`A planilha vigente é de <b>${R.fmtData(n.pl.posicao_em)}</b>, fora do período do projeto (${R.fmtData(MQ.PROJETO.vigencia.inicio)} a ${R.fmtData(MQ.PROJETO.vigencia.fim)}). Confira a data e, se estiver errada, envie a planilha de novo.`);
     itens().forEach(i => { const x = n.porItem[i.id]; if (x.passou) a.push(`<b>${E(i.nome)}</b>: pago + comprometido (${brl(x.exec + x.comp)}) passa do previsto (${brl(i.total)}).`); });
     if (n.naoClass) a.push(`${brl(n.naoClass)} em linhas que não batem com nenhum item do orçamento (entram no total pago, fora das rubricas). Veja em <b>Planilhas enviadas</b>.`);
@@ -10013,7 +10014,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
         </div>
       </section>
       <div class="exec-grafs">${graficoRitmo(serie())}${graficoRubricas(n)}</div>
-      ${al.length ? `<div class="aviso erro"><ul class="exec-alertas">${al.map(x => `<li>${x}</li>`).join('')}</ul>${/* 22/10/2026: um lugar só para enviar (em Planilhas enviadas, no fim): o aviso só leva até lá */ !n.pl || n.idade > 35 ? '<p class="exec-alerta-acao"><a href="#exec-desp" class="link">Ir para Despesas do projeto, onde se importa a planilha ↓</a></p>' : ''}</div>` : ''}
+      ${al.length ? `<div class="aviso erro"><ul class="exec-alertas">${al.map(x => `<li>${x}</li>`).join('')}</ul>${/* 22/10/2026: um lugar só para enviar (em Planilhas enviadas, no fim): o aviso só leva até lá */ n.pl && n.idade > 35 ? '<p class="exec-alerta-acao"><a href="#exec-desp" class="link">Ir para Despesas do projeto, onde se importa a planilha ↓</a></p>' : ''}</div>` : ''}
       <section class="secao" aria-labelledby="t-exr"><div class="secao-cab"><div><h2 id="t-exr">Por rubrica</h2><p>Toque na rubrica para ver os itens; toque no item para ver a composição do valor.</p></div>
           <button type="button" class="btn peq" data-acao="exec-abrir-tudo">${rubAbertas.size ? 'Fechar todas' : 'Abrir todas'}</button></div>
         <div class="fin-wrap"><table class="fin exec-fin"><thead><tr><th scope="col">Rubrica</th><th scope="col">Previsto</th><th scope="col">Pago</th><th scope="col">Comprometido</th><th scope="col">Saldo</th><th scope="col">Execução</th></tr></thead>
@@ -12180,7 +12181,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       t: 'Financeiro',
       intro: 'Acompanhamento financeiro, com a mesma tela do sistema do Saberes que Cultivam: previsto × pago × comprometido de cada rubrica e item do TED, com gráficos. Os números vêm da planilha de solicitações da FUNCERN que você envia pelo menos uma vez por mês; o comprometido também traz o que o sistema já sabe e a planilha ainda não trouxe. Só a coordenação geral vê esta aba.',
       tarefas: [
-        ['Enviar a planilha do mês', ['Role até o fim da página, em <b>Despesas do projeto</b> (é o único lugar de envio; se faltar a planilha ou ela tiver mais de 35 dias, o aviso vermelho do meio da página leva até lá). Toque em <b>Importar planilha da FUNCERN</b> e escolha o arquivo (.xlsx ou .csv).', 'Toque em <b>Ler a planilha</b> e confira a prévia: total, rubricas e linhas fora do orçamento.', 'Confira a data <b>Gastos até</b> e toque em <b>Enviar e usar esta planilha</b>.']],
+        ['Enviar a planilha do mês', ['Role até o fim da página, em <b>Despesas do projeto</b> (é o único lugar de envio; se a planilha tiver mais de 35 dias, o aviso vermelho do meio da página leva até lá). Toque em <b>Importar planilha da FUNCERN</b> e escolha o arquivo (.xlsx ou .csv).', 'Toque em <b>Ler a planilha</b> e confira a prévia: total, rubricas e linhas fora do orçamento.', 'Confira a data <b>Gastos até</b> e toque em <b>Enviar e usar esta planilha</b>.']],
         ['Preparar a planilha', ['Em <b>Importar planilha da FUNCERN</b>, toque em <b>Baixar o modelo</b> (abaixo do campo do arquivo).', 'Uma linha por pagamento (e por repasse do MDA), com o item escolhido na lista.', 'A planilha é o retrato completo: todos os gastos desde o início, não só os do mês. Não escreva linhas de total.']],
         ['Ler os gráficos', ['<b>Ritmo do gasto</b>: passe o mouse ou toque num mês para ver previsto, pago e recebido até ali; <b>Ver os números em tabela</b> mostra mês a mês.', '<b>Uso de cada rubrica</b>: a barra verde é o pago; a amarela, o comprometido; o traço vertical, o tempo de vigência já passado. Toque numa rubrica para ver os itens na tabela.']]
       ],
@@ -15732,7 +15733,7 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     /* requisitos mínimos da bolsista: no alto do painel, antes de qualquer escolha (link, digitar ou aprovar o que ela enviou) */
     // 22/10/2026: o mesmo aviso ao cadastrar agente de campo (ela também vai a campo, com ajuda de custo por dia)
     const reqBols = (bols || m.papel === 'agente') && !edit && MQ.PERFIL_BOLSISTA ? `<div class="perfil-bols req-min" role="note"><b class="req-t">Requisitos mínimos · ${esc(P[m.papel].nome)}</b>
-          <p class="small muted">Antes de ${pre ? 'aprovar' : 'cadastrar'}, confira se a indicada atende (${m.papel === 'agente' ? 'os mesmos requisitos das bolsistas, Guia das bolsistas, item 3' : 'Guia das bolsistas, item 3'}).</p>
+          <p class="small muted">Antes de ${pre ? 'aprovar' : 'cadastrar'}, confira se a indicada atende${m.papel === 'agente' ? ' (os mesmos requisitos das bolsistas)' : ''}.</p>
           <p class="perfil-esp">${esc(MQ.PERFIL_BOLSISTA[m.papel] || '')}</p>
           <ul class="perfil-lista">${MQ.PERFIL_BOLSISTA.todas.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : '';
     if (!edit && !pre && MQ.convitesUI && p.modo !== 'manual') {

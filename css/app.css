@@ -4469,3 +4469,5 @@ table.quadro.desp-tab th:nth-child(5), table.quadro.desp-tab td:nth-child(5) { w
   table.quadro.desp-tab tr, table.quadro.desp-tab td { background: transparent !important; }
   table.quadro.desp-tab td[data-rot="Meta"] { grid-column: 2; grid-row: 3; text-align: right; align-self: center; }
 }
+/* 23/10/2026: quadro da Visão geral com um bloco só (o outro ainda sem informação) */
+.uma-col.perfil-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }

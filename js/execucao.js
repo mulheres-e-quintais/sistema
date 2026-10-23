@@ -256,8 +256,8 @@
   }
   function alertas(n) {
     const a = [];
-    if (!n.pl) a.push('Nenhuma planilha de gastos enviada ainda. Sem ela, o pago fica zerado: importe a planilha da FUNCERN.');
-    else if (n.idade > 35) a.push(`A planilha vigente é de <b>${R.fmtData(n.pl.posicao_em)}</b> (${n.idade} dias atrás). Envie a planilha deste mês.`);
+    // 23/10/2026: sem planilha, nenhum aviso aqui (Despesas do projeto, no fim, já diz "Nenhuma despesa ainda" e traz o botão)
+    if (n.pl && n.idade > 35) a.push(`A planilha vigente é de <b>${R.fmtData(n.pl.posicao_em)}</b> (${n.idade} dias atrás). Envie a planilha deste mês.`);
     if (n.pl && foraDoPeriodo(n.pl.posicao_em)) a.push(`A planilha vigente é de <b>${R.fmtData(n.pl.posicao_em)}</b>, fora do período do projeto (${R.fmtData(MQ.PROJETO.vigencia.inicio)} a ${R.fmtData(MQ.PROJETO.vigencia.fim)}). Confira a data e, se estiver errada, envie a planilha de novo.`);
     itens().forEach(i => { const x = n.porItem[i.id]; if (x.passou) a.push(`<b>${E(i.nome)}</b>: pago + comprometido (${brl(x.exec + x.comp)}) passa do previsto (${brl(i.total)}).`); });
     if (n.naoClass) a.push(`${brl(n.naoClass)} em linhas que não batem com nenhum item do orçamento (entram no total pago, fora das rubricas). Veja em <b>Planilhas enviadas</b>.`);
@@ -299,7 +299,7 @@
         </div>
       </section>
       <div class="exec-grafs">${graficoRitmo(serie())}${graficoRubricas(n)}</div>
-      ${al.length ? `<div class="aviso erro"><ul class="exec-alertas">${al.map(x => `<li>${x}</li>`).join('')}</ul>${/* 22/10/2026: um lugar só para enviar (em Planilhas enviadas, no fim): o aviso só leva até lá */ !n.pl || n.idade > 35 ? '<p class="exec-alerta-acao"><a href="#exec-desp" class="link">Ir para Despesas do projeto, onde se importa a planilha ↓</a></p>' : ''}</div>` : ''}
+      ${al.length ? `<div class="aviso erro"><ul class="exec-alertas">${al.map(x => `<li>${x}</li>`).join('')}</ul>${/* 22/10/2026: um lugar só para enviar (em Planilhas enviadas, no fim): o aviso só leva até lá */ n.pl && n.idade > 35 ? '<p class="exec-alerta-acao"><a href="#exec-desp" class="link">Ir para Despesas do projeto, onde se importa a planilha ↓</a></p>' : ''}</div>` : ''}
       <section class="secao" aria-labelledby="t-exr"><div class="secao-cab"><div><h2 id="t-exr">Por rubrica</h2><p>Toque na rubrica para ver os itens; toque no item para ver a composição do valor.</p></div>
           <button type="button" class="btn peq" data-acao="exec-abrir-tudo">${rubAbertas.size ? 'Fechar todas' : 'Abrir todas'}</button></div>
         <div class="fin-wrap"><table class="fin exec-fin"><thead><tr><th scope="col">Rubrica</th><th scope="col">Previsto</th><th scope="col">Pago</th><th scope="col">Comprometido</th><th scope="col">Saldo</th><th scope="col">Execução</th></tr></thead>

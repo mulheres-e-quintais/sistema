@@ -12,7 +12,7 @@ const R = []; const ok = (c, cond, det = '') => { R.push([cond ? 'PASSOU' : 'FAL
     await p.evaluate(() => { MQ.ui.S.verEntrada = false; document.querySelector('button[data-p=coord_geral]').click(); }); await p.waitForTimeout(500); await p.evaluate(() => MQ.ui.fecharPainel());
     await p.evaluate(() => document.querySelector('[data-aba=execucao]').click()); await p.waitForTimeout(300);
     ok(`${w}: aba Financeiro com o nome curto`, (await p.textContent('[data-aba=execucao]')).trim().startsWith('Financeiro') && !/financeira/.test(await p.textContent('[data-aba=execucao]')));
-    ok(`${w}: sem planilha, aviso para enviar`, /Nenhuma planilha de gastos enviada ainda/.test(await p.textContent('main')));
+    ok(`${w}: sem planilha, sem aviso vermelho; Despesas do projeto diz o que fazer`, !/Nenhuma planilha de gastos enviada ainda/.test(await p.textContent('main')) && /Nenhuma despesa ainda/.test(await p.textContent('main')) && !(await p.$('main .aviso.erro .exec-alertas')));
     ok(`${w}: modelo fora da aba (só no painel de envio)`, !(await p.$('main a[href*="Modelo_planilha_de_gastos"]')));
     await p.click('[data-acao=exec-enviar]'); await p.waitForTimeout(300);
     const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#painel a[href*="Modelo_planilha_de_gastos"]')]);
