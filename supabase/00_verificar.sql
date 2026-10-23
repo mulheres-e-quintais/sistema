@@ -2,7 +2,7 @@
 -- Mulheres & Quintais — VERIFICAR o banco (só lê, não muda nada)
 -- Supabase > SQL Editor > New query > cole este arquivo inteiro > Run.
 -- Mostra, etapa por etapa, o que já está instalado. Onde aparecer "FALTA", rode aquele script
--- (na ordem dos números: 01, 02, 03, 04, 07 a 13, 15, 17 a 33, 35 a 48, 50 a 53, 55 a 75; os arquivos 05, 06, 14, 16, 34, 49, 54, 90, 91, 95, 96 e 99 não são etapas).
+-- (na ordem dos números: 01, 02, 03, 04, 07 a 13, 15, 17 a 33, 35 a 48, 50 a 53, 55 a 76; os arquivos 05, 06, 14, 16, 34, 49, 54, 90, 91, 95, 96 e 99 não são etapas).
 -- Num banco que já está em uso, rode só o que aparecer como FALTA: reexecutar um script antigo pode trocar uma função já corrigida pela versão velha.
 -- =====================================================================
 with col as (select table_name, column_name from information_schema.columns where table_schema = 'public'),
@@ -248,6 +248,9 @@ chk as (
   union all select '74_restaurar_versao e 75_sem_restaurar (histórico com a coluna obs; a função de restaurar não fica no banco)',
                    exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'auditoria' and column_name = 'obs')
                    and not exists (select 1 from fn where proname = 'restaurar_versao')
+  union all select '76_auditoria_2310 (cadastro novo sem habilitação; e-mail do link é o da pessoa)',
+                   exists (select 1 from pg_trigger where tgname = 'equipe_a0_sem_habilitacao') and exists (select 1 from pg_trigger where tgname = 'pre_cadastros_email_da_pessoa')
+                   and exists (select 1 from pg_trigger where tgname = 'equipe_email_com_questionario')
 )
 -- o SQL Editor do Supabase mostra só o último resultado: por isso vai tudo numa tabela só
 , conta as (

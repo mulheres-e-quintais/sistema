@@ -1945,8 +1945,9 @@
             ${edit ? '<span class="dica">CPF não muda. Se estiver errado, desligue e cadastre de novo.</span>' : ''}</div>
           <div class="campo"><label for="c-fone">Celular com WhatsApp</label><input id="c-fone" name="telefone" inputmode="tel" autocomplete="tel" value="${esc(MQ.mascaras ? MQ.mascaras.fmtTel(String(m.telefone || '').replace(/\D/g, '')) : (m.telefone || ''))}" placeholder="(89) 90000-0000" required></div>
           ${(() => { const entrou = edit && !!m.user_id, geral = S.eu && S.eu.papel === 'coord_geral';   // 68: trocar o e-mail de quem já entrou apaga a senha
-            return `<div class="campo inteiro"><label for="c-email">E-mail</label><input id="c-email" name="email" type="email" autocomplete="email" value="${v('email')}" maxlength="254" ${entrou && !geral ? 'readonly' : ''} required>
-            <span class="dica">${entrou ? (geral ? '<b>Esta pessoa já entrou no sistema.</b> Trocar o e-mail apaga a senha dela: depois de salvar, gere um novo código de primeiro acesso e mande para ela.'
+            const doLink = !!pre && !geral;   // 76: o e-mail que ela mandou pelo link é o login dela; outro, só a coordenação geral
+            return `<div class="campo inteiro"><label for="c-email">E-mail</label><input id="c-email" name="email" type="email" autocomplete="email" value="${v('email')}" maxlength="254" ${(entrou || doLink) && !geral ? 'readonly' : ''} required>
+            <span class="dica">${doLink ? 'É o e-mail que ela mandou pelo link e será o login dela. Se estiver errado, peça à coordenação geral para aprovar com o e-mail certo.' : entrou ? (geral ? '<b>Esta pessoa já entrou no sistema.</b> Trocar o e-mail apaga a senha dela: depois de salvar, gere um novo código de primeiro acesso e mande para ela.'
               : 'Esta pessoa já entrou no sistema: o e-mail é o login dela e trocar apaga a senha. Só a coordenação geral faz essa troca.')
               : 'É o login no sistema. Nenhum e-mail é enviado: depois de salvar, mande para ela o aviso de acesso (aparece na ficha dela).'}</span></div>`; })()}
           ${MQ.convitesUI && priv !== undefined ? '' : `<div class="campo"><label for="c-mun">Município onde mora</label><input id="c-mun" name="municipio" value="${v('municipio')}" maxlength="120" ${bols ? 'list="lista-mun"' : 'placeholder="Município/UF"'}>

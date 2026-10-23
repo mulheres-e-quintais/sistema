@@ -1039,6 +1039,7 @@
       const agora = new Date().toISOString();
       const novo = Object.assign({}, m, { id: uid(), cpf: R.soDigitos(m.cpf), email: m.email.trim().toLowerCase(), status: 'ativa', user_id: null,
         data_fim: null, motivo_desligamento: null, criado_por: eu.id, criado_em: agora, atualizado_em: agora });
+      if (eu.papel !== 'coord_geral') Object.assign(novo, { matricula_fic_em: null, matricula_fic_numero: null, docs_funcern_em: null, termo_path: null, termo_assinado_em: null, obs_habilitacao: null });   // como o banco (76): cadastro novo sem habilitação
       d.equipe.push(novo); auditar('INSERT', null, novo); gravar();
       return copia(novo);
     },
@@ -1421,6 +1422,8 @@
       const d0 = ler(); const x = (d0.pre_cadastros || []).find(y => y.id === pre);
       if (!x) throw falha('Cadastro enviado não encontrado (ou o seu perfil não pode aprová-lo).');
       if (x.situacao !== 'aguardando') throw falha('Este pré-cadastro já foi decidido.');
+      const eu0 = euMesmo();   // como o banco (76): o e-mail do link é o login da pessoa; outro, só a coordenação geral
+      if (eu0 && eu0.papel !== 'coord_geral' && String(m.email || '').trim().toLowerCase() !== String(x.email || '').trim().toLowerCase()) throw falha('O e-mail do cadastro é o que a pessoa mandou pelo link (é o login dela). Para aprovar com outro e-mail, peça à coordenação geral.');
       const antes = JSON.stringify(mem);
       try {
         const novo = await this.criar(m);

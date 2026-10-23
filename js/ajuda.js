@@ -124,7 +124,7 @@
         'Para bolsistas, antes de salvar aparece o <b>perfil da bolsista</b> do Guia: confira se a indicada atende.',
         'Para coordenação técnica, bolsistas e agentes há o <b>Perfil no campo</b> (é agricultora, atua com mulheres rurais, experiência…). Pelo link é obrigatório; digitando, marque o que souber.',
         'Depois de salvar, abra a ficha da pessoa e toque em <b>Gerar código de acesso</b>. Mande a mensagem pronta pelo WhatsApp: ela traz o endereço, o e-mail e o código.',
-        'Cadastros que chegam pelo link aparecem em <b>Cadastros enviados pelo link</b>. Abra, confira, complete e salve: ao salvar, o cadastro é aprovado.',
+        'Cadastros que chegam pelo link aparecem em <b>Cadastros enviados pelo link</b>. Abra, confira, complete e salve: ao salvar, o cadastro é aprovado. O e-mail que a pessoa mandou é o login dela: se estiver errado, só a coordenação geral aprova com outro.',
         'Na ficha da pessoa ficam a <b>habilitação</b> (FIC, Arlo e termo), a <b>leitura do guia</b> e o <b>perfil no campo</b>. O botão <b>Hoje</b> preenche a data do dia.',
         '<b>Desligar</b> não apaga o cadastro: a vaga fica livre para a substituta e o histórico guarda quem desligou, quando e por quê.',
         '<b>Acompanhamento externo:</b> quem acompanha pelo MDA ou pelo MPA entra numa área própria, só de leitura e só com números. Não vê nome, CPF, endereço, pagamento nem a equipe. Os dois veem o projeto em abas: resumo, metas e cronograma, território, mulheres e impacto, equipe e formação. A aba <b>Recursos</b> é só do MDA e só aparece quando a coordenação liberar (parâmetro acomp_mda_financeiro no banco; até lá, só você a vê na prévia). Os números são ao vivo; os dados de exemplo só entram na sua prévia.'
