@@ -12,7 +12,7 @@ const R = []; const ok = (n, c, d = '') => R.push([c ? 'PASSOU' : 'FALHOU', n, d
     await p.evaluate(() => { S = MQ.ui.S; S.aba = 'historico'; MQ.ui.render(); }); await p.waitForTimeout(300);
     const txt = await p.textContent('main');
     ok(`${w}: Histórico mostra "Últimos acessos"`, /Últimos acessos/.test(txt));
-    const n = await p.$$eval('#lista-acessos li', l => l.length);
+    const n = await p.$$eval('#lista-acessos tbody tr', l => l.filter(r => /Em uso/.test(r.textContent)).length);
     ok(`${w}: bolsista e agente aparecem com a última entrada`, n >= 2, 'itens: ' + n);
     ok(`${w}: mostra o aparelho`, /· (Chrome|Chromium|navegador)/.test(await p.textContent('#lista-acessos')));
     ok(`${w}: conta quem entrou nos últimos 7 dias`, /entraram nos últimos 7 dias|entrou nos últimos 7 dias/.test(txt));

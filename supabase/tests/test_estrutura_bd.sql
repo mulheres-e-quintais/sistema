@@ -123,7 +123,8 @@ select est_caso('o único SQL montado em tempo de execução (EXECUTE) é o de v
   $q$select p.oid::regprocedure::text from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prolang = (select oid from pg_language where lanname = 'plpgsql')
       and (p.prosecdef or p.prorettype = 'trigger'::regtype or has_function_privilege('anon', p.oid, 'EXECUTE') is false)   -- funções do sistema (as de apoio dos testes ficam de fora)
       and p.proname not in ('est_caso', 'est_lista', 't', 'f', 'logar')
-      and p.prosrc ~* '\mexecute\M\s+(''|format|[a-z_]+\s*(\|\||;))' and not (p.proname = 'vitrine_municipios' and p.pronargs = 0)$q$);
+      and p.prosrc ~* '\mexecute\M\s+(''|format|[a-z_]+\s*(\|\||;))' and not (p.proname = 'vitrine_municipios' and p.pronargs = 0)
+      and not (p.proname = 'restaurar_versao' and p.pronargs = 2)$q$);   -- 74: nome de tabela da lista fixa e colunas do catálogo, sempre com %I; os valores vão por USING
 select est_caso('as funções chamadas pelo app (js/api-supabase.js) existem com os mesmos nomes de parâmetro',
   $q$select e.f || '(' || array_to_string(e.args, ',') || ')' from (values
       ('vincular_conta', '{}'::text[]), ('pedir_novo_acesso', '{p_email}'), ('registrar_acesso', '{p_tipo,p_aparelho}'), ('gerar_codigo_acesso', '{p_equipe}'),

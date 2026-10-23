@@ -100,11 +100,11 @@ describe('Histórico', () => {
     await t.api.criar({ papel: 'agente', uf: 'SE', nome: 'Agente Do Historico', cpf: '47602436075', email: 'hist@gmail.com', telefone: '(79) 99999-0000', data_inicio: diaMais(0), consentimento_lgpd: true });
     await t.trocar('coord_geral'); t.aba('historico'); await t.MQ.ui.carregarDaAba();   // o histórico é buscado quando a aba abre
     const h = texto(t.aba('historico'));
-    assert.ok(h.includes('Histórico de alterações')); assert.ok(h.includes('cadastrou') && h.includes('Agente Do Historico'));
+    assert.ok(h.includes('Alterações Inclusões, alterações e exclusões')); assert.ok(h.includes('cadastrou') && h.includes('Agente Do Historico'));
   });
   test('coordenação técnica e perfis pessoais não têm histórico', async () => {
     for (const p of ['coord_tecnico', 'bolsista', 'agente', 'professor', 'auxiliar']) {
-      const t = await montar(p); assert.ok(!texto(t.aba('historico')).includes('Histórico de alterações'), p);
+      const t = await montar(p); assert.ok(!t.aba('historico').includes('id="t-reg"'), p);
       assert.equal(t.S.aud.length, 0, p + ' não recebe o histórico');
     }
   });

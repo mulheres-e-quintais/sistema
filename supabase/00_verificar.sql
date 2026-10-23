@@ -2,7 +2,7 @@
 -- Mulheres & Quintais — VERIFICAR o banco (só lê, não muda nada)
 -- Supabase > SQL Editor > New query > cole este arquivo inteiro > Run.
 -- Mostra, etapa por etapa, o que já está instalado. Onde aparecer "FALTA", rode aquele script
--- (na ordem dos números: 01, 02, 03, 04, 07 a 13, 15, 17 a 33, 35 a 48, 50 a 53, 55 a 73; os arquivos 05, 06, 14, 16, 34, 49, 54, 90, 91, 95, 96 e 99 não são etapas).
+-- (na ordem dos números: 01, 02, 03, 04, 07 a 13, 15, 17 a 33, 35 a 48, 50 a 53, 55 a 74; os arquivos 05, 06, 14, 16, 34, 49, 54, 90, 91, 95, 96 e 99 não são etapas).
 -- Num banco que já está em uso, rode só o que aparecer como FALTA: reexecutar um script antigo pode trocar uma função já corrigida pela versão velha.
 -- =====================================================================
 with col as (select table_name, column_name from information_schema.columns where table_schema = 'public'),
@@ -245,6 +245,8 @@ chk as (
                    and exists (select 1 from pg_proc where proname = 'acompanhamento_extra' and prosrc like '%descartada_em is null%')
   union all select '73_financeiro_solicitacoes (resumo do MDA conta só o pago; solicitação não paga é comprometido)',
                    exists (select 1 from pg_proc where proname = 'acompanhamento_extra' and prosrc like '%<> ''comprometido''%')
+  union all select '74_restaurar_versao (Histórico: restaurar como estava antes)', exists (select 1 from fn where proname = 'restaurar_versao')
+                   and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'auditoria' and column_name = 'obs')
 )
 -- o SQL Editor do Supabase mostra só o último resultado: por isso vai tudo numa tabela só
 , conta as (

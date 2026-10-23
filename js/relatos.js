@@ -68,7 +68,7 @@
   /* lista para a coordenação geral, no Histórico */
   function blocoCoord() {
     const s = S(); if (!s.eu || s.eu.papel !== 'coord_geral') return '';
-    const cab = `<div class="secao-cab"><div><h2 id="t-relatos">Problemas relatados pela equipe</h2><p>O que cada pessoa escreveu em <b>Ajuda › Relatar problema</b>, com a tela, a versão e o aparelho. Marque como resolvido quando tratar.</p></div><button type="button" class="btn peq" data-acao="relato-atualizar">Atualizar</button></div>`;
+    const cab = `<div class="secao-cab"><div><h2 id="t-relatos">Problemas relatados pela equipe</h2><p>O que cada pessoa escreveu em <b>Ajuda › Relatar problema</b>, com a tela, a versão e o aparelho. Marque como resolvido quando tratar.</p></div><button type="button" class="btn peq hs-bt" data-acao="relato-atualizar"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/></svg><span>Atualizar</span></button></div>`;
     if (s.relatosSemBanco) return `<section class="secao" id="relatos" aria-labelledby="t-relatos">${cab}<div class="bloco"><p class="nota">Para receber os relatos da equipe, rode o arquivo <b>55_relatos_problema.sql</b> no Supabase.</p></div></section>`;
     if (s.relatos === undefined) { carregar(); return `<section class="secao" id="relatos" aria-labelledby="t-relatos">${cab}<div class="bloco"><p class="muted" role="status">Carregando os relatos…</p></div></section>`; }
     const l = s.relatos || [], ab = l.filter(x => x.status === 'aberto').length;

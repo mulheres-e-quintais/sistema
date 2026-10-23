@@ -139,7 +139,7 @@ let seq = 300000000; const cpf = () => { const b = String(seq++).padStart(9, '0'
     await p.selectOption('#hf-quem', quem[0][0]); await p.waitForTimeout(300);
     const st = await txt('.hist-filtros + p, p[role=status]');
     const esperado = await p.evaluate(id => MQ.ui.S.aud.filter(a => a.por === id).length, quem[0][0]);
-    ok('11.1 filtro "Quem fez" mostra só os registros da pessoa (contagem certa)', new RegExp('^' + esperado + ' de ' + total).test(st), st + ' esperado ' + esperado);
+    ok('11.1 filtro "Quem fez" mostra só os registros da pessoa (contagem certa)', new RegExp('mostrando ' + esperado + '$').test(st.trim()), st + ' esperado ' + esperado);
     ok('11.2 filtro preservado: o select continua na pessoa depois de redesenhar', await p.inputValue('#hf-quem') === quem[0][0]);
     // CSV do filtrado
     const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 5000 }).catch(() => null), p.click('[data-acao=hist-csv]')]);
@@ -155,12 +155,12 @@ let seq = 300000000; const cpf = () => { const b = String(seq++).padStart(9, '0'
   await p.fill('#hf-busca', 'zzzz-nada-assim'); await p.press('#hf-busca', 'Enter'); await p.waitForTimeout(300);
   ok('11.6 busca sem resultado diz o que fazer', /Nenhum registro com este filtro/.test(await txt('main')));
   await p.click('[data-acao=hist-limpar]'); await p.waitForTimeout(300);
-  const temMudou = await p.evaluate(() => document.querySelectorAll('details.hist-mudou').length);
+  const temMudou = await p.evaluate(() => document.querySelectorAll('details.hs-d').length);
   ok('11.7 há "ver o que mudou" nas alterações (UPDATE) do histórico', temMudou > 0, 'qtde=' + temMudou);
   const mudouPag = await p.evaluate(() => MQ.ui.S.aud.filter(a => a.tabela === 'solicitacoes_pagamento' && a.acao === 'UPDATE').map(a => !!a.antes));
   ok('11.8 alterações de pagamento (aval, Arlo) têm o "antes" para mostrar o que mudou', mudouPag.length > 0 && mudouPag.every(Boolean), JSON.stringify(mudouPag));
   // dado protegido não aparece
-  const html = await p.evaluate(() => [...document.querySelectorAll('details.hist-mudou')].map(d => d.textContent).join(' '));
+  const html = await p.evaluate(() => [...document.querySelectorAll('details.hs-d')].map(d => d.textContent).join(' '));
   ok('11.9 "ver o que mudou" não mostra CPF/conta/PIX', !/\d{3}\.?\d{3}\.?\d{3}-?\d{2}/.test(html), html.slice(0, 160));
 
   /* ============ 12. Ver como o MDA/MPA vê: sai e volta ao mesmo ponto (inclusive pelo Voltar do navegador) ============ */

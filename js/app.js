@@ -677,11 +677,12 @@
     else if (aba === 'documentos') corpo = MQ.docsUI && souGeral ? (esperandoDaAba('docs') ? '<div class="cab"><div><span class="eyebrow">Documentos</span><h1>Documentos</h1></div></div>' + carregandoAba() : MQ.docsUI.aba()) : '';
     else if (aba === 'execucao') corpo = MQ.execUI && souGeral ? MQ.execUI.aba() : '';
     else if (aba === 'campo') corpo = (MQ.campoUI ? MQ.campoUI.abaCoord() : '') + (MQ.vendaUI && !S.campoSemBanco ? MQ.vendaUI.secaoCanais('') : '') + (MQ.vitrineUI && !S.campoSemBanco ? MQ.vitrineUI.secaoCoord() : '');
-    else corpo = `<div class="cab"><div><span class="eyebrow">Histórico</span><h1 id="t-h">Histórico de alterações</h1>
-        <p>Quem fez o quê, e quando: cadastros, aprovações, pagamentos, códigos de acesso e consultas a dados bancários. Serve para a prestação de contas.</p></div></div>
+    else corpo = `<div class="cab"><div><span class="eyebrow">Histórico</span><h1 id="t-h">Histórico</h1>
+        <p>Quem entrou no sistema e tudo o que foi incluído, alterado ou excluído, com quem fez e quando: cadastros, aprovações, pagamentos, códigos de acesso e consultas a dados bancários. Serve para a prestação de contas. Só a coordenação geral vê.</p></div></div>
       ${MQ.relatosUI ? MQ.relatosUI.blocoCoord() : ''}
       ${secaoAcessos()}
-      <section class="secao" aria-label="Registros"><div class="secao-cab"><div><h2 id="t-reg">Alterações</h2></div></div>${historico()}</section>`;
+      <section class="secao" aria-labelledby="t-reg"><div class="secao-cab"><div><h2 id="t-reg">Alterações</h2><p>Inclusões, alterações e exclusões em qualquer cadastro, e quem baixou planilhas ou a cópia dos dados. Carrega de 200 em 200.</p></div>${esperandoDaAba('aud') ? '' : btnHs('atualizar', 'Atualizar', 'data-acao="hist-atualizar"')}</div>
+        <div class="hs-quadro">${historico()}</div></section>`;
     const avisoEx = S.exemplo ? `<details class="aviso-ex" role="status"><summary><span aria-hidden="true">⚠</span> <b>Dados de exemplo no servidor</b> · ${S.exemplo} registros inventados <span class="link">Ver detalhes</span></summary>
       <p>Servem para testar; não aparecem na vitrine pública. Antes de cadastrar a equipe e as fichas de verdade, a coordenação geral roda o arquivo 06_apagar_exemplo.sql no Supabase.</p></details>` : '';
     if (aba === 'equipe' && souGeral && MQ.acompUI) corpo += MQ.acompUI.blocoCoord();   // quem acompanha o projeto de fora (MDA e MPA)
@@ -975,30 +976,49 @@
       <div class="campo"><label for="hf-quem">Quem fez</label><select id="hf-quem" name="quem" data-hist-f="quem"><option value="">Todas as pessoas</option>${quem.map(([id, n]) => `<option value="${esc(id)}"${f.quem === id ? ' selected' : ''}>${esc(n)}</option>`).join('')}${(S.aud || []).some(a => !a.por) ? `<option value="_sistema"${f.quem === '_sistema' ? ' selected' : ''}>Sistema (automático)</option>` : ''}</select></div>
       <div class="campo"><label for="hf-grupo">Assunto</label><select id="hf-grupo" name="grupo" data-hist-f="grupo"><option value="">Todos</option>${Object.keys(NOME_GRUPO_HIST).filter(k => grupos.includes(k)).map(k => `<option value="${k}"${f.grupo === k ? ' selected' : ''}>${NOME_GRUPO_HIST[k]}</option>`).join('')}</select></div>
       <div class="campo hf-busca"><label for="hf-busca">Procurar</label><input id="hf-busca" name="busca" type="search" autocomplete="off" placeholder="nome, ação, planilha…" value="${esc(f.busca)}" data-hist-f="busca" enterkeyhint="search"></div>
-      <div class="hf-acoes">${ativo ? '<button type="button" class="btn peq" data-acao="hist-limpar">Limpar filtros</button>' : ''}<button type="button" class="btn peq" data-acao="hist-csv">Baixar planilha (.csv)</button></div></div>`;
+      <div class="hf-acoes">${ativo ? btnHs('limpar', 'Limpar filtros', 'data-acao="hist-limpar"') : ''}${btnHs('baixar', 'Baixar planilha (.csv)', 'data-acao="hist-csv"')}</div></div>`;
+  }
+  /* 23/10/2026: Histórico no padrão do Saberes que Cultivam (mesmo layout e "Restaurar como estava antes", 74_restaurar_versao.sql),
+     com as cores deste sistema; ficam os extras daqui: filtro por pessoa e assunto, planilha (.csv) e dados protegidos escondidos */
+  const ICH = d => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
+  const IC_HS = { atualizar: ICH('<path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/>'), descer: ICH('<path d="M12 5v14M6 13l6 6 6-6"/>'),
+    baixar: ICH('<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>'), restaurar: ICH('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>'), limpar: ICH('<path d="M6 6l12 12M18 6 6 18"/>') };
+  const btnHs = (ic, txt, attrs, cls) => `<button type="button" class="btn peq hs-bt${cls ? ' ' + cls : ''}" ${attrs}>${IC_HS[ic] || ''}<span>${txt}</span></button>`;
+  const RESTAURAVEIS = ['fichas', 'visitas', 'diagnosticos', 'avaliacoes', 'kit_itens', 'fic_encontros', 'turmas_fic', 'canais_venda'];   // como o 74 (o banco confere de novo)
+  const podeRestaurar = a => S.eu && S.eu.papel === 'coord_geral' && a.id != null && a.registro_id && a.acao === 'UPDATE' && a.antes && a.depois && RESTAURAVEIS.includes(a.tabela) && oQueMudou(a).length;
+  S.histRest = S.histRest || null;   // { id, conflito } enquanto a pessoa confirma
+  function blocoRestaurar(a) {
+    if (!podeRestaurar(a)) return '';
+    const R0 = S.histRest && String(S.histRest.id) === String(a.id) ? S.histRest : null;
+    if (!R0) return `<div class="hs-rest">${btnHs('restaurar', 'Restaurar como estava antes', `data-acao="hist-restaurar" data-id="${esc(String(a.id))}"`)}</div>`;
+    const volta = oQueMudou(a).map(x => `<li><b>${esc(x.campo)}</b>: ${x.antes == null ? 'volta ao valor anterior (dado protegido)' : `${esc(x.depois)} <span aria-label="volta para">→</span> ${esc(x.antes)}`}</li>`).join('');
+    return `<div class="hs-rest hs-rest-conf" role="group" aria-label="Confirmar a restauração">
+      ${R0.conflito ? '<p class="hs-rest-av"><b>Este registro mudou de novo depois desta alteração.</b> Restaurar agora desfaz também o que foi mudado depois.</p>' : '<p><b>Vai voltar:</b></p>'}
+      <ul>${volta}</ul><p class="small muted">Arquivo, foto e login não voltam por aqui. As regras do sistema continuam valendo: se a versão antiga não couber mais, o sistema recusa e diz por quê.</p>
+      <div class="hs-rest-acoes"><button type="button" class="btn peq pri" data-acao="hist-rest-ok" data-id="${esc(String(a.id))}">${R0.conflito ? 'Restaurar mesmo assim' : 'Confirmar'}</button><button type="button" class="btn peq" data-acao="hist-rest-nao">Cancelar</button></div></div>`;
   }
   function itemHist(a) {
     const m = oQueMudou(a);
-    const det = m.length ? `<details class="hist-mudou"><summary>ver o que mudou</summary><ul>${m.map(x => `<li><b>${esc(x.campo)}</b>: ${x.antes == null ? 'alterado (dado protegido, o valor não aparece aqui)' : `${esc(x.antes)} <span aria-label="passou para">→</span> ${esc(x.depois)}`}</li>`).join('')}</ul></details>` : '';
-    return `<li><time datetime="${esc(a.em)}">${new Date(a.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time><span>${descreverAud(a)}${det}</span></li>`;
+    const det = m.length ? `<details class="hs-d"><summary>O que mudou (${m.length})</summary><dl>${m.map(x => `<dt>${esc(x.campo)}</dt><dd>${x.antes == null ? 'alterado (dado protegido, o valor não aparece aqui)' : `<s>${esc(x.antes)}</s> <span aria-label="passou para">→</span> <b>${esc(x.depois)}</b>`}</dd>`).join('')}</dl></details>` : '';
+    return `<li class="hs-i"><time datetime="${esc(a.em)}">${new Date(a.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time><div>${descreverAud(a)}${a.obs ? ' <span class="chip info">restauração</span>' : ''}${det}${blocoRestaurar(a)}</div></li>`;
   }
   function historico() {
+    const nfmt = n => Number(n).toLocaleString('pt-BR');
     if (esperandoDaAba('aud')) return carregandoAba();
     if (!S.aud.length) return `<div class="vazio-hist"><p><b>Nada registrado ainda.</b></p>
-      <p class="small muted">Aqui aparece, com data, hora e autor, tudo o que muda na equipe: cadastros, códigos de acesso, habilitação (FIC, Arlo e termo), consultas à conta bancária, desligamentos e o primeiro acesso de cada pessoa.</p></div>`;
+      <p class="small muted">Aqui aparece, com data, hora e autor, tudo o que muda no sistema: cadastros, códigos de acesso, habilitação (FIC, Arlo e termo), fichas, visitas, pagamentos, consultas à conta bancária, desligamentos e quem baixou planilhas.</p></div>`;
     const dia = t => { const d = new Date(t), h = new Date(); const ontem = new Date(h); ontem.setDate(h.getDate() - 1);
       const k = x => x.toLocaleDateString('pt-BR'); return k(d) === k(h) ? 'Hoje' : k(d) === k(ontem) ? 'Ontem' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }); };
-    const lista = arr => { let ult = ''; return arr.map(a => { const d = dia(a.em); const cab = d !== ult ? `<li class="hist-dia">${esc(d)}</li>` : ''; ult = d; return cab + itemHist(a); }).join(''); };
+    const lista = arr => { let ult = ''; return arr.map(a => { const d = dia(a.em); const cab = d !== ult ? `<li class="hs-dia">${esc(d)}</li>` : ''; ult = d; return cab + itemHist(a); }).join(''); };
     const semana = S.aud.filter(a => Date.now() - new Date(a.em) < 7 * 864e5).length;
     const f = S.histF, filtrando = !!(f.quem || f.grupo || f.busca.trim());
-    const ord = audFiltrado().sort((x, y) => String(y.em).localeCompare(String(x.em)));
-    const N = 12, rec = filtrando ? ord : ord.slice(0, N), resto = filtrando ? [] : ord.slice(N);
-    // 13/10/2026 (auditoria): o histórico inteiro, 200 por vez (antes só os 200 últimos; os downloads de planilha sumiam em dias)
-    const mais = S.audFim ? '' : (S.aud.length >= 200 ? '<p><button type="button" class="btn peq" data-acao="hist-mais">Carregar registros mais antigos</button></p>' : '');
+    const ord = audFiltrado().sort((x, y) => String(y.em).localeCompare(String(x.em)) || (+y.id || 0) - (+x.id || 0));
+    // 13/10/2026 (auditoria): o histórico inteiro, 200 por vez
+    const fim = S.audFim || S.aud.length < 200;
     return `${filtrosHist()}
-      <p class="small muted" role="status">${filtrando ? `${ord.length} de ${S.aud.length} registro${S.aud.length > 1 ? 's' : ''} carregado${S.aud.length > 1 ? 's' : ''} com este filtro` : `${S.aud.length} registro${S.aud.length > 1 ? 's' : ''} carregado${S.aud.length > 1 ? 's' : ''} · ${semana} nos últimos 7 dias`}</p>
-      ${ord.length ? `<ul class="linha-tempo lt-hora">${lista(rec)}</ul>` : '<p class="vazio-hist">Nenhum registro com este filtro. Toque em <b>Limpar filtros</b>.</p>'}
-      ${resto.length ? dobra('hist-antigos', `Ver ${resto.length} registro${resto.length > 1 ? 's' : ''} anterior${resto.length > 1 ? 'es' : ''}`, `<ul class="linha-tempo lt-hora">${lista(resto)}</ul>${mais}`) : mais}`;
+      <p class="small muted hs-conta" role="status">${nfmt(S.aud.length)} registro${S.aud.length > 1 ? 's' : ''} carregado${S.aud.length > 1 ? 's' : ''} · ${nfmt(semana)} nos últimos 7 dias${filtrando ? ` · mostrando ${nfmt(ord.length)}` : ''}</p>
+      ${ord.length ? `<ul class="hs-l">${lista(ord)}</ul>` : '<p class="vazio-hist">Nenhum registro com este filtro. Toque em <b>Limpar filtros</b>.</p>'}
+      ${fim ? '<p class="small muted hs-comeco">Esse é o começo do histórico.</p>' : `<div class="hs-mais">${btnHs('descer', 'Carregar registros mais antigos', 'data-acao="hist-mais"')}</div>`}`;
   }
   /* planilha do que está filtrado: data, hora, quem, assunto, o que aconteceu (frase) e os campos que mudaram (sem os protegidos) */
   async function baixarHistorico() {
@@ -1037,26 +1057,26 @@
   }
   function secaoAcessos() {
     if (!S.eu || S.eu.papel !== 'coord_geral') return '';
-    const cab = `<div class="secao-cab"><div><h2 id="t-acessos">Últimos acessos</h2><p>Quem entrou no sistema, quando e de que aparelho. Só a coordenação geral vê. Registros com mais de 6 meses são apagados sozinhos.</p></div></div>`;
+    const cab = `<div class="secao-cab"><div><h2 id="t-acessos">Últimos acessos</h2><p>Quando cada pessoa da equipe entrou pela última vez, e de que aparelho. Só a coordenação geral vê. Registros com mais de 6 meses são apagados sozinhos.</p></div>${S.acessosSemBanco ? '' : btnHs('atualizar', 'Atualizar', 'data-acao="acessos-atualizar"')}</div>`;
     if (S.acessosSemBanco) return `<section class="secao" aria-labelledby="t-acessos">${cab}<div class="aviso">Para ver quem entrou no sistema, quando e de que aparelho, rode no Supabase o arquivo <b>30_ultimos_acessos.sql</b>. O registro começa a partir daí.</div></section>`;
     const acessos = (S.acessos || []).slice().sort((x, y) => String(y.em).localeCompare(String(x.em)));
     const pessoas = (S.equipe || []).filter(m => m.status === 'ativa' && m.id !== S.eu.id);
-    const com = pessoas.map(m => [m, ultimoAcessoDe(m.id)]).filter(([, a]) => a).sort((x, y) => String(y[1].em).localeCompare(String(x[1].em)));
-    const nunca = pessoas.filter(m => !m.user_id && !ultimoAcessoDe(m.id)), semReg = pessoas.filter(m => m.user_id && !ultimoAcessoDe(m.id));
-    const parados = com.filter(([, a]) => Date.now() - new Date(a.em) > 30 * 864e5).map(([m]) => m);   // do Saberes que Cultivam: quem sumiu há mais de um mês
     const semana = new Set(acessos.filter(a => Date.now() - new Date(a.em) < 7 * 864e5 && a.equipe_id !== S.eu.id).map(a => a.equipe_id)).size;
     const detalhe = a => [a.aparelho, ipCurto(a.ip) && 'rede ' + ipCurto(a.ip)].filter(Boolean).map(esc).join(' · ');
     const papelDe = m => esc(P[m.papel] ? P[m.papel].nome : m.papel) + (m.uf ? ' · ' + esc(m.uf) : '');
-    const itemPessoa = ([m, a]) => `<li><time datetime="${esc(a.em)}">${esc(quandoAcesso(a.em))}</time><span><b>${esc(nomeDe(m))}</b> <span class="small muted">${papelDe(m)}</span>${detalhe(a) ? `<br><span class="small muted">${detalhe(a)}</span>` : ''}</span></li>`;
+    const ha = t => { const n = Math.floor((Date.now() - new Date(t)) / 864e5); return n <= 0 ? 'hoje' : n === 1 ? 'ontem' : `há ${n} dias`; };
+    /* do Saberes que Cultivam: uma linha por pessoa, com a situação (em uso, sumiu há mais de um mês, nunca entrou) */
+    const linhas = pessoas.map(m => [m, ultimoAcessoDe(m.id)]).sort((x, y) => (y[1] ? String(y[1].em) : '').localeCompare(x[1] ? String(x[1].em) : '') || nomeDe(x[0]).localeCompare(nomeDe(y[0]), 'pt-BR'));
+    const sit = (m, a) => !a ? (m.user_id ? '<span class="chip off">Sem registro em 6 meses</span>' : '<span class="chip pend">Nunca entrou</span>')
+      : Date.now() - new Date(a.em) > 30 * 864e5 ? '<span class="chip pend">Sem entrar há mais de 30 dias</span>' : '<span class="chip ok">Em uso</span>';
+    const linha = ([m, a]) => `<tr><th scope="row" data-rot="Pessoa"><b>${esc(nomeDe(m))}</b></th><td data-rot="Função">${papelDe(m)}</td>
+      <td data-rot="Último acesso">${a ? `${esc(quandoAcesso(a.em))}<div class="small muted">${ha(a.em)}${detalhe(a) ? ' · ' + detalhe(a) : ''}</div>` : '<span class="muted">—</span>'}</td><td data-rot="Situação">${sit(m, a)}</td></tr>`;
     const itemReg = a => { const m = porId(a.equipe_id) || { nome: 'Pessoa' };
       return `<li><time datetime="${esc(a.em)}">${esc(quandoAcesso(a.em))}</time><span><b>${esc(nomeDe(m))}</b> ${esc(TIPO_ACESSO[a.tipo] || a.tipo)}${detalhe(a) ? `<br><span class="small muted">${detalhe(a)}</span>` : ''}</span></li>`; };
-    const nomes = l => l.map(m => esc(nomeDe(m))).join(', ');
     return `<section class="secao" aria-labelledby="t-acessos">${cab}
-      <p class="small muted">${semana} de ${pessoas.length} pessoa${pessoas.length === 1 ? '' : 's'} da equipe entr${semana === 1 ? 'ou' : 'aram'} nos últimos 7 dias.</p>
-      ${com.length ? `<ul class="linha-tempo lt-acesso" id="lista-acessos">${com.map(itemPessoa).join('')}</ul>` : '<p class="small muted">Ninguém da equipe entrou desde que o registro começou.</p>'}
-      ${nunca.length ? `<p class="small"><b>Ainda não entraram (${nunca.length}):</b> ${nomes(nunca)}. Na ficha de cada uma está o código de acesso.</p>` : ''}
-      ${parados.length ? `<p class="small"><b>Sem entrar há mais de 30 dias (${parados.length}):</b> ${nomes(parados)}.</p>` : ''}
-      ${semReg.length ? `<p class="small muted">Sem registro de entrada nos últimos 6 meses (${semReg.length}): ${nomes(semReg)}.</p>` : ''}
+      <p class="hs-r"><b>${semana}</b> de ${pessoas.length} pessoa${pessoas.length === 1 ? '' : 's'} da equipe entr${semana === 1 ? 'ou' : 'aram'} nos últimos 7 dias.</p>
+      ${pessoas.length ? `<div class="hs-tab-cx" tabindex="0" role="region" aria-labelledby="t-acessos"><table class="hs-tab" id="lista-acessos"><thead><tr><th scope="col">Pessoa</th><th scope="col">Função</th><th scope="col">Último acesso</th><th scope="col">Situação</th></tr></thead>
+        <tbody>${linhas.map(linha).join('')}</tbody></table></div>` : '<p class="small muted">Ninguém da equipe cadastrado ainda.</p>'}
       ${acessos.length ? dobra('acessos-todos', `Ver entradas e saídas (${acessos.length})`, `<ul class="linha-tempo lt-acesso">${acessos.slice(0, 300).map(itemReg).join('')}</ul>`) : ''}
     </section>`;
   }
@@ -2198,10 +2218,30 @@
       else if (a === 'hist-csv') { el.disabled = true; try { await baixarHistorico(); } finally { el.disabled = false; } }
       else if (a === 'hist-mais') {
         const ord = (S.aud || []).slice().sort((x, y) => String(y.em).localeCompare(String(x.em)) || (+y.id || 0) - (+x.id || 0)); const ult = ord[ord.length - 1];
-        el.disabled = true; el.textContent = 'Carregando…';
+        const sp = el.querySelector('span') || el; el.disabled = true; sp.textContent = 'Carregando…';
         try { const v = await S.api.auditoria(ult ? ult.em : null, ult ? ult.id : null); const ja = new Set(S.aud.map(x => x.id)); const novos = (v || []).filter(x => !ja.has(x.id));
-          S.aud = S.aud.concat(novos); if ((v || []).length < 200) S.audFim = true; (S.aberto = S.aberto || {})['hist-antigos'] = true; renderFundo(); }
-        catch (e) { el.disabled = false; el.textContent = 'Carregar registros mais antigos'; toast(avisarErro(e)); }
+          S.aud = S.aud.concat(novos); if ((v || []).length < 200) S.audFim = true; renderFundo(); }
+        catch (e) { el.disabled = false; sp.textContent = 'Carregar registros mais antigos'; toast(avisarErro(e)); }
+      }
+      else if (a === 'hist-atualizar' || a === 'acessos-atualizar') {   // 23/10/2026: como no Saberes que Cultivam, cada seção do Histórico tem o seu Atualizar
+        const sp = el.querySelector('span') || el; el.disabled = true; sp.textContent = 'Atualizando…';
+        try {
+          if (a === 'hist-atualizar') { const v = await S.api.auditoria(); S.aud = v || []; S.audFim = (v || []).length < 200; veio().aud = true; }
+          else { S.acessos = await S.api.listarAcessos(); }
+          render(); toast(a === 'hist-atualizar' ? 'Histórico atualizado.' : 'Últimos acessos atualizados.', 'ok');
+        } catch (e) { el.disabled = false; sp.textContent = 'Atualizar'; toast(avisarErro(e)); }
+      }
+      else if (a === 'hist-restaurar') { S.histRest = { id: el.dataset.id, conflito: false }; render(); const b = document.querySelector('[data-acao=hist-rest-ok]'); if (b) b.focus(); }
+      else if (a === 'hist-rest-nao') { const id = S.histRest && S.histRest.id; S.histRest = null; render(); const b = id && document.querySelector(`[data-acao=hist-restaurar][data-id="${id}"]`); if (b) b.focus(); }
+      else if (a === 'hist-rest-ok') {
+        if (!S.api.restaurarVersao) return toast('Esta versão do sistema não restaura pelo histórico.');
+        const id = el.dataset.id, forcar = !!(S.histRest && S.histRest.conflito); el.disabled = true;
+        try {
+          const r = await S.api.restaurarVersao(id, forcar);
+          if (r && r.conflito) { S.histRest = { id, conflito: true }; render(); const b = document.querySelector('[data-acao=hist-rest-ok]'); if (b) b.focus(); return; }
+          S.histRest = null; await carregar(); const v = await S.api.auditoria(); S.aud = v || []; S.audFim = (v || []).length < 200;
+          render(); toast('Restaurado. A restauração ficou registrada no histórico.', 'ok');
+        } catch (e) { el.disabled = false; toast(e.semFuncao ? e.message : 'Não deu para restaurar: ' + avisarErro(e)); }
       }
       else if (a === 'ir-atencao') { const s = document.querySelector('.dx-atencao'); if (s) { s.scrollIntoView({ behavior: 'smooth', block: 'start' }); if (!s.hasAttribute('tabindex')) s.setAttribute('tabindex', '-1'); s.focus({ preventScroll: true }); } }
       else if (a === 'pular') { if (MQ.teclado) MQ.teclado.pular(); }

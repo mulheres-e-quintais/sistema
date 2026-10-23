@@ -1029,6 +1029,21 @@
       const l = copia(ler().auditoria).sort((x, y) => String(y.em).localeCompare(String(x.em)) || (+y.id || 0) - (+x.id || 0));
       return l.filter(a => !antesDe || String(a.em) < String(antesDe) || (antesId != null && String(a.em) === String(antesDe) && (+a.id || 0) < +antesId)).slice(0, 200);
     },
+    /* 74: Histórico, "Restaurar como estava antes" (como o banco: só a coordenação geral, só alteração, conflito avisa, fica no histórico) */
+    async restaurarVersao(audId, forcar) {
+      const d = ler(); const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral restaura versões pelo histórico.');
+      const a = d.auditoria.find(x => String(x.id) === String(audId)); if (!a) throw falha('Esta linha do histórico não existe mais.');
+      const CH = { fichas: 'fichas', visitas: 'visitas', diagnosticos: 'diagnosticos', avaliacoes: 'avaliacoes', kit_itens: 'kitItens' };
+      if (!CH[a.tabela]) throw falha('Este tipo de registro não se restaura pelo histórico.');
+      if (a.acao !== 'UPDATE' || !a.antes) throw falha('Só uma alteração pode ser desfeita.');
+      if (!forcar && d.auditoria.some(x => x.tabela === a.tabela && x.registro_id === a.registro_id && (+x.id || 0) > (+a.id || 0))) return { ok: false, conflito: true };
+      const lista = d[CH[a.tabela]] || [], r = lista.find(x => x.id === a.registro_id); if (!r) throw falha('O registro não existe mais.');
+      const antes = copia(r);
+      Object.keys(a.antes).filter(k => !/^(id|criado_em|criado_por|atualizado_em|user_id)$/.test(k) && !/(arquivo|foto|_path$|_url$)/.test(k)).forEach(k => { r[k] = copia(a.antes[k]); });
+      r.atualizado_em = new Date().toISOString();
+      d.auditoria.push({ id: d.auditoria.length + 1, tabela: a.tabela, registro_id: r.id, acao: 'UPDATE', por: eu.id, em: r.atualizado_em, antes, depois: copia(r), obs: 'restauração da linha ' + a.id + ' do histórico' });
+      gravar(); return { ok: true, tabela: a.tabela, id: r.id };
+    },
 
     async criar(m) {
       const d = ler(); const eu = euMesmo();

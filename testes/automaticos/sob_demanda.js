@@ -28,7 +28,7 @@ const R = []; const ok = (n, c, d = '') => R.push([c ? 'PASSOU' : 'FALHOU', n, d
     await p.goBack(); await p.waitForTimeout(600);
     ok(`${w}: Voltar do navegador chega ao Histórico com os registros`, /Agente Da Aba/.test(await p.textContent('main')));
     await p.reload(); await p.waitForTimeout(1200);
-    ok(`${w}: recarregar a página na aba Histórico mostra os registros`, /Histórico de alterações/.test(await p.textContent('main')) && /Agente Da Aba/.test(await p.textContent('main')) && !(await p.$('[data-carregando-aba]')), (await p.textContent('main')).slice(0, 100));
+    ok(`${w}: recarregar a página na aba Histórico mostra os registros`, /Alterações/.test(await p.textContent('main')) && /Agente Da Aba/.test(await p.textContent('main')) && !(await p.$('[data-carregando-aba]')), (await p.textContent('main')).slice(0, 100));
     await contar();
     // atalho de outro módulo: muda a aba sem passar pelo clique
     await p.evaluate(() => { MQ.ui.irParaAba('visao'); MQ.ui.render(); }); await p.waitForTimeout(200);

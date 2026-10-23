@@ -733,6 +733,17 @@
       if (error) throw erro(error);
       return data;
     },
+    /* 74 (23/10/2026): Histórico, "Restaurar como estava antes". Devolve {ok} ou {conflito: true} (mudou de novo depois daquela versão) */
+    async restaurarVersao(audId, forcar) {
+      const { data, error } = await sb.rpc('restaurar_versao', { p_aud: +audId, p_forcar: !!forcar });
+      if (error) {
+        if (error.code === 'PGRST202' || /Could not find the function|restaurar_versao.*(does not exist|schema cache)/i.test(String(error.message || ''))) {
+          const x = new Error('Restaurar pelo histórico ainda não foi instalado no servidor: rode o arquivo 74_restaurar_versao.sql no Supabase.'); x.semFuncao = true; x.original = error; throw x;
+        }
+        throw erro(error);
+      }
+      return data;
+    },
     async criar(m) {
       const r = limpar(Object.assign({}, m, { cpf: R.soDigitos(m.cpf), email: m.email.trim().toLowerCase() }));
       delete r.status;

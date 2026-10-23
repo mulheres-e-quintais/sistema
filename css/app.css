@@ -4478,3 +4478,44 @@ table.quadro.desp-tab th:nth-child(5), table.quadro.desp-tab td:nth-child(5) { w
 
 /* texto justificado (23/10/2026); no celular fica à esquerda: coluna estreita abre buracos entre as palavras */
 @media (min-width: 600px) { .txt-just { text-align: justify; hyphens: auto; -webkit-hyphens: auto; } }
+
+/* 23/10/2026: Histórico no padrão do Saberes que Cultivam, com as cores deste sistema */
+.hs-bt svg { flex: none; }
+.secao-cab > .hs-bt { align-self: flex-start; }
+.hs-r { margin: 6px 0 10px; font-size: var(--t-md); color: var(--ink-2); } .hs-r b { color: var(--ink); }
+.hs-tab-cx { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); overflow-x: auto; }
+.hs-tab { width: 100%; border-collapse: collapse; font-size: var(--t-md); }
+.hs-tab thead th { text-align: left; padding: 12px 16px; background: var(--surface-2); color: var(--ink-2); font: 700 var(--t-xs)/1.2 var(--sans); letter-spacing: .08em; text-transform: uppercase; border-bottom: 1px solid var(--line); }
+.hs-tab tbody th, .hs-tab td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; font-weight: 400; }
+.hs-tab tbody tr:last-child > * { border-bottom: 0; }
+.hs-tab td .small { margin-top: 2px; }
+@media (max-width: 640px) {
+  .hs-tab thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .hs-tab, .hs-tab tbody, .hs-tab tr, .hs-tab tbody th, .hs-tab td { display: block; width: 100%; }
+  .hs-tab tr { padding: 10px 14px; border-bottom: 1px solid var(--line); } .hs-tab tbody tr:last-child { border-bottom: 0; }
+  .hs-tab tbody th, .hs-tab td { padding: 3px 0; border: 0; }
+  .hs-tab td[data-rot]::before { content: attr(data-rot) ": "; color: var(--muted); font-size: var(--t-sm); }
+  .hs-tab td[data-rot="Situação"]::before { content: none; }
+}
+.hs-quadro { margin-top: 10px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.hs-quadro .hist-filtros { padding: 0 0 4px; border: 0; background: transparent; margin: 0; }
+.hs-conta { margin: 8px 0 0; }
+.hs-l { list-style: none; margin: 6px 0 0; padding: 0; }
+.hs-dia { margin: 18px 0 4px; padding-bottom: 6px; border-bottom: 1px solid var(--line); font: 700 var(--t-xs)/1.2 var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+.hs-l .hs-dia:first-child { margin-top: 6px; }
+.hs-i { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--line); font-size: var(--t-md); line-height: 1.5; }
+.hs-i time { font: 600 var(--t-sm)/1.5 var(--sans); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.hs-d { margin-top: 4px; } .hs-d summary { cursor: pointer; color: var(--accent); font-size: var(--t-sm); width: fit-content; border-radius: 4px; }
+.hs-d summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.hs-d dl { display: grid; grid-template-columns: minmax(120px, max-content) minmax(0, 1fr); gap: 4px 16px; margin: 8px 0 0; font-size: var(--t-sm); }
+.hs-d dt { color: var(--ink-2); } .hs-d dd { margin: 0; overflow-wrap: anywhere; } .hs-d s { color: var(--muted); }
+@media (max-width: 640px) { .hs-d dl { grid-template-columns: 1fr; } .hs-d dd { margin-bottom: 6px; } .hs-i { grid-template-columns: 44px minmax(0, 1fr); gap: 8px; } }
+.hs-rest { margin-top: 8px; }
+.hs-rest-conf { padding: 12px 14px; border: 1px solid var(--line-2); border-left: 3px solid var(--accent); border-radius: 0 10px 10px 0; background: var(--surface-2); font-size: var(--t-sm); }
+.hs-rest-conf ul { margin: 4px 0 8px; padding-left: 18px; } .hs-rest-conf p { margin: 0 0 4px; }
+.hs-rest-av { color: var(--ink); } .hs-rest-av b { color: var(--crit); }
+.hs-rest-acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.chip.info { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent-ink, var(--accent)); }
+.hs-mais { display: flex; justify-content: center; margin-top: 14px; }
+.hs-comeco { margin: 12px 0 0; }
+@media (min-width: 641px) { .secao-cab:has(> .hs-bt) { flex-wrap: nowrap; align-items: flex-start; } .secao-cab:has(> .hs-bt) > div { flex: 1 1 auto; } .secao-cab > .hs-bt { flex: none; } }
