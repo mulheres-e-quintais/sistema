@@ -26,8 +26,8 @@ const R = []; const ok = (n, c, d = '') => { R.push([c ? 'PASSOU' : 'FALHOU', n,
   ok('5. descartada: a certa volta a valer', (await vig()) === 'certa.csv', await vig());
   const linha = await p.evaluate(id => { const e = document.querySelector(`[data-planilha="${id}"]`); return e ? e.textContent.replace(/\s+/g, ' ') : ''; }, id);
   ok('6. a descartada continua na lista, marcada, com o motivo e sem o botão de baixar', /descartada/.test(linha) && /outro projeto/.test(linha) && !/Baixar o arquivo/.test(linha), linha.slice(0, 200));
-  const arr = await p.evaluate(id => ({ recolhida: !!document.querySelector(`details.pl-descartadas [data-planilha="${id}"]`), conta: (document.querySelector('#t-exl .conta-t') || {}).textContent, vigente: !!document.querySelector('.pl-cartao.vigente [data-acao=exec-baixar]') }), id);
-  ok('6.1 a descartada fica recolhida em "Descartadas", o número do título conta só as que valem e a vigente tem o botão de baixar', arr.recolhida && arr.conta === '1' && arr.vigente, arr);
+  const arr = await p.evaluate(id => ({ recolhida: (e => !!e && !e.closest('details') && e.offsetHeight > 0 && e.offsetHeight < 90)(document.querySelector(`.pl-descartadas li.pl-desc[data-planilha="${id}"]`)), conta: (document.querySelector('#t-exl .conta-t') || {}).textContent, vigente: !!document.querySelector('.pl-cartao.vigente [data-acao=exec-baixar]') }), id);
+  ok('6.1 a descartada fica em "Descartadas" como linha curta, à vista sem clicar, o número do título conta só as que valem e a vigente tem o botão de baixar', arr.recolhida && arr.conta === '1' && arr.vigente, arr);
   const hist = await p.evaluate(() => (MQ.apiDemo ? 1 : 1) && JSON.parse(localStorage.getItem('mq-demo-v4')).auditoria.some(a => a.tabela === 'execucao_planilhas' && a.acao === 'UPDATE' && (a.depois || {}).motivo_descarte));
   ok('7. o descarte fica no histórico', hist);
   const de = await p.evaluate(id => MQ.ui.S.api.descartarPlanilhaExec(id, 'De novo por engano').then(() => 'gravou', e => e.message), id);

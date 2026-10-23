@@ -103,8 +103,7 @@
             <td class="num" data-rot="Previsto">${g.previsto ? brl(g.previsto) : zero}</td><td class="num" data-rot="Pago">${vExec(g.exec)}</td><td class="num" data-rot="Comprometido">${vComp(g.comp)}</td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(g.previsto - g.exec - g.comp)}</b></td><td data-rot="Execução">${celExec(g.exec, g.previsto)}</td></tr>
             ${g.itens.map(y => `<tr class="fin-item"><th scope="row"><span class="fin-nome sem">${E(y.i.nome)}${fr(y.f)}</span></th><td class="num" data-rot="Previsto">${y.previsto ? brl(y.previsto) : zero}</td><td class="num" data-rot="Pago">${vExec(y.exec)}</td><td class="num" data-rot="Comprometido">${vComp(y.comp)}</td><td class="num fin-saldo" data-rot="Saldo">${y.previsto ? brl(y.previsto - y.exec - y.comp) : zero}</td><td data-rot="Execução">${y.previsto ? celExec(y.exec, y.previsto) : ''}</td></tr>`).join('')}</tbody>`; }).join('')}
         <tfoot><tr class="fin-tot"><th scope="row">Total do projeto</th><td class="num" data-rot="Previsto"><b>${brl(O().total)}</b></td><td class="num" data-rot="Pago">${vExec(n.exec)}</td><td class="num" data-rot="Comprometido">${vComp(n.comp)}</td><td class="num fin-saldo" data-rot="Saldo"><b>${brl(n.livre)}</b></td><td data-rot="Execução">${celExec(n.exec, O().total)}</td></tr></tfoot>
-      </table></div>
-      <p class="small muted fin-nota-meta">Bolsas entram na Meta 1 (equipe e coordenação). A ajuda de custo das visitas é dividida pelas 800 visitas do orçamento: 25% diagnósticos (M2), 25% implantação (M3) e 50% acompanhamento (M4). Quando o valor do plano de trabalho é diferente da soma dos itens, a meta mostra “no plano”.</p></section>`;
+      </table></div></section>`;
   }
 
   /* ---------- gráficos (SVG/HTML próprios: funcionam sem internet) ---------- */
@@ -280,7 +279,7 @@
     const nPago = n.despesas.filter(l => l.situacao !== 'comprometido').length, nComp = n.despesas.filter(l => l.situacao === 'comprometido').length;
     const acima = n.exec + n.comp > n.recebido + 0.005, recPct = pct(n.recebido, T);
     return `<div class="cab"><div><span class="eyebrow">Recursos do TED</span><h1>Acompanhamento financeiro</h1>
-        <p>Valores previstos no plano de trabalho, comparados com a planilha de solicitações da FUNCERN. O registro oficial continua sendo o da FUNCERN; confira os dois antes de cada prestação de contas. Só você vê esta aba.</p></div></div>
+        <p>Valores previstos no plano de trabalho, comparados com as despesas lançadas aqui. O registro oficial continua sendo o da FUNCERN; confira os dois antes de cada prestação de contas.</p></div></div>
       ${/* 22/10/2026: a mesma tela do Financeiro do Saberes que Cultivam (resumo recebido · pago · comprometido · disponível) */ ''}
       ${n.pl ? `<p class="small muted">Planilha vigente: <b>${E(n.pl.arquivo_nome)}</b>, gastos até ${R.fmtData(n.pl.posicao_em)} (enviada em ${R.fmtData(n.pl.enviado_em)}). O envio da próxima fica no fim da página.</p>` : ''}
       <section class="fin-resumo dx-topo fin-topo" aria-label="Resumo financeiro">
@@ -311,14 +310,14 @@
         </table></div></section>
       ${secaoMetas(n)}
       <section class="secao exec-planilhas" aria-labelledby="t-exl"><div class="secao-cab"><div><h2 id="t-exl">Planilhas enviadas <span class="conta-t${planilhas().filter(p => !p.descartada_em).length ? '' : ' zero'}">${planilhas().filter(p => !p.descartada_em).length}</span></h2>
-          <p>Pelo menos uma vez por mês, importe a planilha de solicitações da FUNCERN (botão em <b>Despesas do projeto</b>, logo abaixo). Ela é o retrato completo desde o início: a mais nova substitui as anteriores, que ficam guardadas aqui. O sistema mostra a prévia antes de gravar.</p>
-          <p class="small muted">Base do previsto: ${E(O().fonte)}, com o remanejamento aprovado pelo MDA.</p></div>
+          <p class="txt-just">Pelo menos uma vez por mês, importe a planilha de solicitações da FUNCERN (botão em <b>Despesas do projeto</b>, logo abaixo). Ela é o retrato completo desde o início: a mais nova substitui as anteriores, que ficam guardadas aqui. O sistema mostra a prévia antes de gravar.</p>
+          <p class="small muted txt-just">Base do previsto: ${E(O().fonte)}, com o remanejamento aprovado pelo MDA.</p></div>
           </div>
         ${planilhas().length ? listaPlanilhas() : '<p class="vazio-pl">Nenhuma planilha enviada ainda. Use “Importar planilha da FUNCERN”, logo abaixo.</p>'}</section>
       ${secaoDespesas(n)}`;
   }
   /* 22/10/2026: cada planilha é um cartão (ícone, nome, situação, valor, botões com ícone); a vigente tem a faixa verde;
-     as descartadas ficam recolhidas no fim, com o motivo, sem entrar na conta */
+     as descartadas ficam no fim, uma linha curta cada, com o motivo, sem entrar na conta */
   const IC = k => `<span class="pl-bt-ic" aria-hidden="true">${(MQ.ICONES || {})[k] || ''}</span>`;
   const semPonto = t => String(t || '').trim().replace(/[.\s]+$/, '');
   function linhaPlanilha(pl, vale) {
@@ -341,11 +340,18 @@
       <div class="pl-valor"><b class="num">${brl(pl.total_gasto)}</b><span>${desc ? 'não conta' : 'total de gastos'}</span></div>
     </article>`;
   }
+  /* 23/10/2026: descartada vira uma linha curta, sempre à vista (sem clicar), com o motivo; não é cartão */
+  function linhaDescartada(pl) {
+    const quem = pessoa(pl.descartada_por);
+    return `<li class="pl-desc" data-planilha="${E(pl.id)}"><span class="pl-desc-nome">${E(pl.arquivo_nome)}</span>
+      <span class="pl-desc-val num"><s>${brl(pl.total_gasto)}</s></span>
+      <span class="pl-desc-info">${E(semPonto(pl.motivo_descarte))} · enviada em ${R.fmtData(pl.enviado_em)}, descartada em ${R.fmtData(pl.descartada_em)}${quem ? ' por ' + E(quem) : ''}</span></li>`;
+  }
   function listaPlanilhas() {
     const val = planilhas().filter(p => !p.descartada_em), desc = planilhas().filter(p => p.descartada_em);
     return `${val.length ? `<div class="pl-lista">${val.map(pl => linhaPlanilha(pl, pl === vigente())).join('')}</div>` : '<p class="vazio-pl">Nenhuma planilha valendo. Use “Importar planilha da FUNCERN”, no fim da página.</p>'}
-      ${desc.length ? `<details class="pl-descartadas"><summary>Descartadas <span class="conta-t">${desc.length}</span><span class="pl-desc-dica">enviadas por engano, fora das contas</span></summary>
-        <div class="pl-lista">${desc.map(pl => linhaPlanilha(pl, false)).join('')}</div></details>` : ''}`;
+      ${desc.length ? `<div class="pl-descartadas"><h3 class="pl-desc-tit">Descartadas <span class="conta-t">${desc.length}</span><span class="pl-desc-dica">enviadas por engano, não entram nas contas</span></h3>
+        <ul class="pl-desc-lista">${desc.map(linhaDescartada).join('')}</ul></div>` : ''}`;
   }
 
   /* ---------- enviar planilha: escolher o arquivo, ver a prévia, confirmar ---------- */

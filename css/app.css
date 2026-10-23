@@ -3575,7 +3575,6 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 /* "Por meta do plano de trabalho" na aba Execução (14/10/2026): mesma tabela de "Por rubrica" */
 .fin-meta-id { display: inline-block; margin-right: 4px; padding: 2px 7px; border-radius: 6px; background: var(--surface-2); color: var(--ink-2); font: 600 var(--t-xs)/1.4 var(--sans); vertical-align: 1px; }
 .fin-parte { display: inline-block; margin-left: 6px; font-size: var(--t-xs); color: var(--muted); font-weight: 400; }
-.fin-nota-meta { margin-top: 10px; max-width: 80ch; }
 .exec-meta .fin-rub { flex-wrap: wrap; }
 .fin-plano { flex-basis: 100%; order: 9; font-size: var(--t-xs); font-weight: 400; color: var(--muted); }
 .exec-alerta-acao { margin: 10px 0 0; }
@@ -4349,9 +4348,14 @@ details.pag-cancelar form > p { margin: 0 0 12px; }
 .pl-cartao.descartada .pl-valor b { color: var(--muted); }
 .pl-motivo { padding: 8px 10px; border-radius: 8px; background: var(--crit-bg); color: var(--ink); }
 .pl-motivo span { display: block; color: var(--ink-2); margin-top: 2px; }
-.pl-descartadas { margin-top: 14px; }
-.pl-descartadas > summary { cursor: pointer; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-height: 40px; font-weight: 600; }
+.pl-descartadas { margin-top: 18px; }
+.pl-desc-tit { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 1rem; font-weight: 600; margin: 0 0 6px; }
 .pl-desc-dica { font-weight: 400; font-size: var(--t-sm, .9rem); color: var(--muted); }
+.pl-desc-lista { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--linha, rgba(0,0,0,.12)); }
+.pl-desc { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 8px 2px 8px 12px; border-bottom: 1px solid var(--linha, rgba(0,0,0,.12)); border-left: 3px solid var(--crit); font-size: var(--t-sm, .9rem); }
+.pl-desc-nome { font-weight: 600; overflow-wrap: anywhere; }
+.pl-desc-val { color: var(--muted); white-space: nowrap; }
+.pl-desc-info { grid-column: 1 / -1; color: var(--muted); }
 @media (max-width: 560px) {
   .pl-cartao { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "ic valor" "corpo corpo"; gap: 8px 12px; padding: 12px; }
   .pl-valor { text-align: left; align-self: center; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
@@ -4471,3 +4475,6 @@ table.quadro.desp-tab th:nth-child(5), table.quadro.desp-tab td:nth-child(5) { w
 }
 /* 23/10/2026: quadro da Visão geral com um bloco só (o outro ainda sem informação) */
 .uma-col.perfil-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
+
+/* texto justificado (23/10/2026); no celular fica à esquerda: coluna estreita abre buracos entre as palavras */
+@media (min-width: 600px) { .txt-just { text-align: justify; hyphens: auto; -webkit-hyphens: auto; } }
