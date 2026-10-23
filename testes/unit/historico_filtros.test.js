@@ -29,22 +29,11 @@ describe('Histórico: filtros e o que mudou', () => {
     assert.match(texto(t.aba('historico')), /Nenhum registro com este filtro/);
     S.histF = { quem: '', grupo: '', busca: '' };
   });
-  test('23/10: "Restaurar como estava antes" pede confirmação, mostra o que volta (sem dado protegido) e grava a versão antiga', async () => {
+  test('23/10: sem "Restaurar como estava antes" (a correção de ficha e visita é pela devolução)', async () => {
     const t = await montar('coord_geral'); const S = t.S; const eu = S.eu;
-    const f = S.fichas[0]; const antes = Object.assign({}, f);
-    { const d = JSON.parse(t.janela.localStorage.getItem('mq-demo-v4')); const x = d.fichas.find(y => y.id === f.id); const ant = JSON.parse(JSON.stringify(x)); x.comunidade = 'Comunidade Errada';   // uma alteração feita por outra pessoa
-      d.auditoria.push({ id: d.auditoria.length + 1, tabela: 'fichas', registro_id: x.id, acao: 'UPDATE', por: eu.id, em: new Date().toISOString(), antes: ant, depois: JSON.parse(JSON.stringify(x)) }); t.janela.localStorage.setItem('mq-demo-v4', JSON.stringify(d)); await t.api.reler(); }
-    S.aud = await t.api.auditoria(); S.veio = { de: eu.id, aud: true };
-    const a = S.aud.find(x => x.tabela === 'fichas' && x.acao === 'UPDATE' && x.registro_id === f.id); assert.ok(a, 'a alteração está no histórico');
-    let h = t.aba('historico'); assert.match(h, new RegExp(`data-acao="hist-restaurar" data-id="${a.id}"`));
-    assert.ok(!S.aud.filter(x => x.tabela === 'equipe').some(x => h.includes(`data-acao="hist-restaurar" data-id="${x.id}"`)), 'equipe não tem restaurar');
-    S.histRest = { id: String(a.id), conflito: false }; h = texto(t.aba('historico'));
-    assert.match(h, /Vai voltar:.*comunidade\s*:?\s*Comunidade Errada\s*→\s*/); assert.match(h, /Confirmar/);
-    const r = await t.api.restaurarVersao(a.id); assert.ok(r.ok);
-    const aud2 = await t.api.auditoria(); const rest = aud2.find(x => x.obs && x.registro_id === f.id); assert.ok(rest, 'a restauração fica no histórico, marcada');
-    assert.equal(rest.depois.comunidade, antes.comunidade, 'a comunidade voltou');
-    await assert.rejects(() => t.api.restaurarVersao(S.aud.find(x => x.tabela === 'equipe').id), /não se restaura/);
-    S.histRest = null;
+    S.aud = [{ id: 9, em: new Date().toISOString(), por: eu.id, tabela: 'fichas', acao: 'UPDATE', registro_id: 'f1', antes: { id: 'f1', comunidade: 'A' }, depois: { id: 'f1', comunidade: 'B' } }]; S.veio = { de: eu.id, aud: true };
+    const h = t.aba('historico'); assert.match(h, /O que mudou \(1\)/); assert.doesNotMatch(h, /Restaurar|hist-restaurar/);
+    assert.equal(t.api.restaurarVersao, undefined);
   });
   test('o download da planilha do Histórico fica registrado (só a coordenação geral)', async () => {
     const t = await montar('coord_geral');

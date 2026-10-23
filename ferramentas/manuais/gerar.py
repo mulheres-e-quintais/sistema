@@ -237,10 +237,9 @@ A(caixa('atencao', 'Essas impressões trazem nomes e, nas fichas, CPF e contato.
 A(sec('Histórico'))
 A(serve('Registra tudo o que foi feito no sistema: quem cadastrou, alterou, aprovou, devolveu e desligou, e quando.'))
 A(acesso(['Abas', 'Documentação', 'Histórico'], 'só a coordenação geral.'))
-A(tela('historico', 'Histórico', [(1, 'Últimos acessos', 'Uma linha por pessoa: a última entrada, o aparelho e a situação (em uso, nunca entrou, sem entrar há mais de 30 dias).'), (2, 'Alterações', 'Os registros, do mais novo para o mais antigo, com filtro por pessoa, por assunto e por texto, "O que mudou" em cada alteração, "Restaurar como estava antes" e a planilha do que está filtrado.')]))
+A(tela('historico', 'Histórico', [(1, 'Últimos acessos', 'Uma linha por pessoa: a última entrada, o aparelho e a situação (em uso, nunca entrou, sem entrar há mais de 30 dias).'), (2, 'Alterações', 'Os registros, do mais novo para o mais antigo, com filtro por pessoa, por assunto e por texto, "O que mudou" em cada alteração e a planilha do que está filtrado.')]))
 A(caixa('dica', 'Em <b>O que mudou</b>, CPF, NIS, CAF, conta, telefone, endereço e nascimento aparecem só como "alterado". O download da planilha do Histórico também fica registrado.'))
 A(passos('achar um registro', ['Role pelos dias.', 'No fim da lista, toque em <b class="bt">Carregar registros mais antigos</b>.'], 'A lista mostra os registros mais antigos. Cada seção tem o seu <b>Atualizar</b>.'))
-A(passos('desfazer uma alteração feita por engano', ['Na alteração, toque em <b class="bt">Restaurar como estava antes</b>.', 'Confira o que vai voltar.', 'Toque em <b class="bt">Confirmar</b>.'], 'O registro volta como era e a restauração fica no Histórico. Se o registro mudou de novo depois, o sistema avisa e pede <b>Restaurar mesmo assim</b>. Vale para fichas, visitas, diagnósticos, avaliações, itens do kit, turmas e encontros do FIC e canais de venda. Equipe, pagamentos, pedidos, planilhas e documentos não se restauram por aqui.'))
 A(fimcap())
 
 # =========================== 5. BOLSISTA ===========================

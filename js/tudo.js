@@ -2285,21 +2285,6 @@ MQ.ORCAMENTO = {
       const l = copia(ler().auditoria).sort((x, y) => String(y.em).localeCompare(String(x.em)) || (+y.id || 0) - (+x.id || 0));
       return l.filter(a => !antesDe || String(a.em) < String(antesDe) || (antesId != null && String(a.em) === String(antesDe) && (+a.id || 0) < +antesId)).slice(0, 200);
     },
-    /* 74: Histórico, "Restaurar como estava antes" (como o banco: só a coordenação geral, só alteração, conflito avisa, fica no histórico) */
-    async restaurarVersao(audId, forcar) {
-      const d = ler(); const eu = euMesmo(); if (!eu || eu.papel !== 'coord_geral') throw falha('Só a coordenação geral restaura versões pelo histórico.');
-      const a = d.auditoria.find(x => String(x.id) === String(audId)); if (!a) throw falha('Esta linha do histórico não existe mais.');
-      const CH = { fichas: 'fichas', visitas: 'visitas', diagnosticos: 'diagnosticos', avaliacoes: 'avaliacoes', kit_itens: 'kitItens' };
-      if (!CH[a.tabela]) throw falha('Este tipo de registro não se restaura pelo histórico.');
-      if (a.acao !== 'UPDATE' || !a.antes) throw falha('Só uma alteração pode ser desfeita.');
-      if (!forcar && d.auditoria.some(x => x.tabela === a.tabela && x.registro_id === a.registro_id && (+x.id || 0) > (+a.id || 0))) return { ok: false, conflito: true };
-      const lista = d[CH[a.tabela]] || [], r = lista.find(x => x.id === a.registro_id); if (!r) throw falha('O registro não existe mais.');
-      const antes = copia(r);
-      Object.keys(a.antes).filter(k => !/^(id|criado_em|criado_por|atualizado_em|user_id)$/.test(k) && !/(arquivo|foto|_path$|_url$)/.test(k)).forEach(k => { r[k] = copia(a.antes[k]); });
-      r.atualizado_em = new Date().toISOString();
-      d.auditoria.push({ id: d.auditoria.length + 1, tabela: a.tabela, registro_id: r.id, acao: 'UPDATE', por: eu.id, em: r.atualizado_em, antes, depois: copia(r), obs: 'restauração da linha ' + a.id + ' do histórico' });
-      gravar(); return { ok: true, tabela: a.tabela, id: r.id };
-    },
 
     async criar(m) {
       const d = ler(); const eu = euMesmo();
@@ -3595,17 +3580,6 @@ MQ.ORCAMENTO = {
       else if (antesDe) q = q.lt('em', antesDe);
       const { data, error } = await q;
       if (error) throw erro(error);
-      return data;
-    },
-    /* 74 (23/10/2026): Histórico, "Restaurar como estava antes". Devolve {ok} ou {conflito: true} (mudou de novo depois daquela versão) */
-    async restaurarVersao(audId, forcar) {
-      const { data, error } = await sb.rpc('restaurar_versao', { p_aud: +audId, p_forcar: !!forcar });
-      if (error) {
-        if (error.code === 'PGRST202' || /Could not find the function|restaurar_versao.*(does not exist|schema cache)/i.test(String(error.message || ''))) {
-          const x = new Error('Restaurar pelo histórico ainda não foi instalado no servidor: rode o arquivo 74_restaurar_versao.sql no Supabase.'); x.semFuncao = true; x.original = error; throw x;
-        }
-        throw erro(error);
-      }
       return data;
     },
     async criar(m) {
@@ -12257,7 +12231,6 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       intro: 'Registro de tudo o que foi feito no sistema: quem cadastrou, alterou, aprovou, devolveu, desligou, gerou código de acesso, consultou conta bancária, e quando.',
       tarefas: [
         ['Achar um registro', ['Em <b>Alterações</b>, escolha <b>Quem fez</b>, o <b>Assunto</b> (equipe, seleção, campo, curso FIC, pagamentos, planilhas) ou escreva em <b>Procurar</b> e aperte Enter.', 'Com filtro, todos os registros que batem aparecem de uma vez. <b>Limpar filtros</b> volta à lista inteira.', 'Role pelos dias (Hoje, Ontem, datas) e, no fim, toque em <b>Carregar registros mais antigos</b>.', 'Cada seção tem o seu <b>Atualizar</b>, para ler de novo sem sair da aba.']],
-        ['Desfazer uma alteração feita por engano', ['Na alteração, toque em <b>Restaurar como estava antes</b>.', 'Confira o que vai voltar e toque em <b>Confirmar</b>. A restauração fica no Histórico, com o selo "restauração".', 'Se o registro mudou de novo depois, o sistema avisa e pede <b>Restaurar mesmo assim</b> (desfaz também o que veio depois).', 'Vale para fichas, visitas, diagnósticos, avaliações, itens do kit, turmas e encontros do FIC e canais de venda. Equipe, pagamentos, pedidos, planilhas e documentos não se restauram por aqui. As regras do sistema continuam valendo: se a versão antiga não couber mais, ele recusa e diz por quê.']],
         ['Ver o que mudou numa alteração', ['Toque em <b>O que mudou</b>, embaixo do registro.', 'Aparece cada campo com o valor de antes e o de depois. CPF, NIS, CAF, conta, telefone, endereço e nascimento aparecem só como "alterado": o valor não é mostrado.']],
         ['Baixar o histórico em planilha', ['Aplique os filtros que quiser e toque em <b>Baixar planilha (.csv)</b>.', 'Sai só o que está filtrado: data, hora, quem fez, assunto, o que aconteceu e o que mudou.', 'O download fica registrado no próprio Histórico. A planilha traz nomes: guarde em pasta do projeto.']],
         ['Ver quem entrou no sistema', ['Em <b>Últimos acessos</b>, cada pessoa aparece numa linha, com a última entrada, o aparelho e a situação: em uso, nunca entrou ou sem entrar há mais de 30 dias.', 'Toque em "Ver entradas e saídas" para ver tudo, inclusive quem saiu por 15 minutos sem uso.', 'Na ficha de cada pessoa aparece o último acesso dela.']]
@@ -14839,29 +14812,17 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
       <div class="campo hf-busca"><label for="hf-busca">Procurar</label><input id="hf-busca" name="busca" type="search" autocomplete="off" placeholder="nome, ação, planilha…" value="${esc(f.busca)}" data-hist-f="busca" enterkeyhint="search"></div>
       <div class="hf-acoes">${ativo ? btnHs('limpar', 'Limpar filtros', 'data-acao="hist-limpar"') : ''}${btnHs('baixar', 'Baixar planilha (.csv)', 'data-acao="hist-csv"')}</div></div>`;
   }
-  /* 23/10/2026: Histórico no padrão do Saberes que Cultivam (mesmo layout e "Restaurar como estava antes", 74_restaurar_versao.sql),
-     com as cores deste sistema; ficam os extras daqui: filtro por pessoa e assunto, planilha (.csv) e dados protegidos escondidos */
+  /* 23/10/2026: Histórico no padrão do Saberes que Cultivam (mesmo layout), com as cores deste sistema; ficam os extras daqui:
+     filtro por pessoa e assunto, planilha (.csv) e dados protegidos escondidos. "Restaurar como estava antes" não veio: aqui quem
+     altera ficha e visita é a equipe de campo, e a correção é pela devolução (decisão da coordenação, 23/10; o 75 apaga a função do 74) */
   const ICH = d => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
   const IC_HS = { atualizar: ICH('<path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/>'), descer: ICH('<path d="M12 5v14M6 13l6 6 6-6"/>'),
-    baixar: ICH('<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>'), restaurar: ICH('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>'), limpar: ICH('<path d="M6 6l12 12M18 6 6 18"/>') };
+    baixar: ICH('<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>'), limpar: ICH('<path d="M6 6l12 12M18 6 6 18"/>') };
   const btnHs = (ic, txt, attrs, cls) => `<button type="button" class="btn peq hs-bt${cls ? ' ' + cls : ''}" ${attrs}>${IC_HS[ic] || ''}<span>${txt}</span></button>`;
-  const RESTAURAVEIS = ['fichas', 'visitas', 'diagnosticos', 'avaliacoes', 'kit_itens', 'fic_encontros', 'turmas_fic', 'canais_venda'];   // como o 74 (o banco confere de novo)
-  const podeRestaurar = a => S.eu && S.eu.papel === 'coord_geral' && a.id != null && a.registro_id && a.acao === 'UPDATE' && a.antes && a.depois && RESTAURAVEIS.includes(a.tabela) && oQueMudou(a).length;
-  S.histRest = S.histRest || null;   // { id, conflito } enquanto a pessoa confirma
-  function blocoRestaurar(a) {
-    if (!podeRestaurar(a)) return '';
-    const R0 = S.histRest && String(S.histRest.id) === String(a.id) ? S.histRest : null;
-    if (!R0) return `<div class="hs-rest">${btnHs('restaurar', 'Restaurar como estava antes', `data-acao="hist-restaurar" data-id="${esc(String(a.id))}"`)}</div>`;
-    const volta = oQueMudou(a).map(x => `<li><b>${esc(x.campo)}</b>: ${x.antes == null ? 'volta ao valor anterior (dado protegido)' : `${esc(x.depois)} <span aria-label="volta para">→</span> ${esc(x.antes)}`}</li>`).join('');
-    return `<div class="hs-rest hs-rest-conf" role="group" aria-label="Confirmar a restauração">
-      ${R0.conflito ? '<p class="hs-rest-av"><b>Este registro mudou de novo depois desta alteração.</b> Restaurar agora desfaz também o que foi mudado depois.</p>' : '<p><b>Vai voltar:</b></p>'}
-      <ul>${volta}</ul><p class="small muted">Arquivo, foto e login não voltam por aqui. As regras do sistema continuam valendo: se a versão antiga não couber mais, o sistema recusa e diz por quê.</p>
-      <div class="hs-rest-acoes"><button type="button" class="btn peq pri" data-acao="hist-rest-ok" data-id="${esc(String(a.id))}">${R0.conflito ? 'Restaurar mesmo assim' : 'Confirmar'}</button><button type="button" class="btn peq" data-acao="hist-rest-nao">Cancelar</button></div></div>`;
-  }
   function itemHist(a) {
     const m = oQueMudou(a);
     const det = m.length ? `<details class="hs-d"><summary>O que mudou (${m.length})</summary><dl>${m.map(x => `<dt>${esc(x.campo)}</dt><dd>${x.antes == null ? 'alterado (dado protegido, o valor não aparece aqui)' : `<s>${esc(x.antes)}</s> <span aria-label="passou para">→</span> <b>${esc(x.depois)}</b>`}</dd>`).join('')}</dl></details>` : '';
-    return `<li class="hs-i"><time datetime="${esc(a.em)}">${new Date(a.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time><div>${descreverAud(a)}${a.obs ? ' <span class="chip info">restauração</span>' : ''}${det}${blocoRestaurar(a)}</div></li>`;
+    return `<li class="hs-i"><time datetime="${esc(a.em)}">${new Date(a.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time><div>${descreverAud(a)}${det}</div></li>`;
   }
   function historico() {
     const nfmt = n => Number(n).toLocaleString('pt-BR');
@@ -16091,18 +16052,6 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
           else { S.acessos = await S.api.listarAcessos(); }
           render(); toast(a === 'hist-atualizar' ? 'Histórico atualizado.' : 'Últimos acessos atualizados.', 'ok');
         } catch (e) { el.disabled = false; sp.textContent = 'Atualizar'; toast(avisarErro(e)); }
-      }
-      else if (a === 'hist-restaurar') { S.histRest = { id: el.dataset.id, conflito: false }; render(); const b = document.querySelector('[data-acao=hist-rest-ok]'); if (b) b.focus(); }
-      else if (a === 'hist-rest-nao') { const id = S.histRest && S.histRest.id; S.histRest = null; render(); const b = id && document.querySelector(`[data-acao=hist-restaurar][data-id="${id}"]`); if (b) b.focus(); }
-      else if (a === 'hist-rest-ok') {
-        if (!S.api.restaurarVersao) return toast('Esta versão do sistema não restaura pelo histórico.');
-        const id = el.dataset.id, forcar = !!(S.histRest && S.histRest.conflito); el.disabled = true;
-        try {
-          const r = await S.api.restaurarVersao(id, forcar);
-          if (r && r.conflito) { S.histRest = { id, conflito: true }; render(); const b = document.querySelector('[data-acao=hist-rest-ok]'); if (b) b.focus(); return; }
-          S.histRest = null; await carregar(); const v = await S.api.auditoria(); S.aud = v || []; S.audFim = (v || []).length < 200;
-          render(); toast('Restaurado. A restauração ficou registrada no histórico.', 'ok');
-        } catch (e) { el.disabled = false; toast(e.semFuncao ? e.message : 'Não deu para restaurar: ' + avisarErro(e)); }
       }
       else if (a === 'ir-atencao') { const s = document.querySelector('.dx-atencao'); if (s) { s.scrollIntoView({ behavior: 'smooth', block: 'start' }); if (!s.hasAttribute('tabindex')) s.setAttribute('tabindex', '-1'); s.focus({ preventScroll: true }); } }
       else if (a === 'pular') { if (MQ.teclado) MQ.teclado.pular(); }
