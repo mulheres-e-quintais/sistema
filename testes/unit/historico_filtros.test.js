@@ -35,6 +35,16 @@ describe('Histórico: filtros e o que mudou', () => {
     const h = t.aba('historico'); assert.match(h, /O que mudou \(1\)/); assert.doesNotMatch(h, /Restaurar|hist-restaurar/);
     assert.equal(t.api.restaurarVersao, undefined);
   });
+  test('auditoria 23/10: "há N dias" conta pelo calendário e "N de M" só conta quem está na equipe', async () => {
+    const t = await montar('coord_geral'); const S = t.S; const eu = S.eu; S.veio = { de: eu.id, aud: true }; S.acessosSemBanco = false;
+    const ativa = S.equipe.find(m => m.id !== eu.id && m.status === 'ativa');
+    const ontem2359 = new Date(); ontem2359.setHours(0, 0, 0, 0); ontem2359.setMinutes(-1);
+    S.acessos = [{ equipe_id: ativa.id, em: ontem2359.toISOString(), tipo: 'entrada', aparelho: 'Chrome' }, { equipe_id: 'desligada-x', em: new Date().toISOString(), tipo: 'entrada' }];
+    const tx = texto(t.aba('historico'));
+    assert.match(tx, /ontem, 23:59\s*ontem/); assert.doesNotMatch(tx, /ontem, 23:59\s*hoje/);
+    const ativas = S.equipe.filter(m => m.status === 'ativa' && m.id !== eu.id).length;
+    assert.match(tx, new RegExp('1 de ' + ativas + ' pessoas? da equipe'), 'quem não está na equipe não entra na conta');
+  });
   test('o download da planilha do Histórico fica registrado (só a coordenação geral)', async () => {
     const t = await montar('coord_geral');
     await t.api.registrarPlanilha('historico', 3, 'assunto: Campo');

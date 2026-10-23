@@ -4329,7 +4329,7 @@ details.pag-cancelar form > p { margin: 0 0 12px; }
 .pl-corpo { grid-area: corpo; min-width: 0; display: grid; gap: 4px; }
 .pl-topo { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 .pl-nome { margin: 0; font-size: var(--t-md, 1rem); font-weight: 700; overflow-wrap: anywhere; }
-.pl-meta, .pl-obs, .pl-motivo { margin: 0; font-size: var(--t-sm, .9rem); }
+.pl-meta, .pl-obs { margin: 0; font-size: var(--t-sm, .9rem); }
 .pl-meta { color: var(--muted); }
 .pl-meta b { color: var(--ink); font-weight: 600; }
 .pl-valor { grid-area: valor; text-align: right; display: grid; gap: 2px; }
@@ -4344,10 +4344,6 @@ details.pag-cancelar form > p { margin: 0 0 12px; }
 .pl-bt.perigo:hover { background: var(--crit-bg); }
 .pl-bt-ic { display: inline-grid; }
 .pl-bt-ic svg { width: 18px; height: 18px; }
-.pl-cartao.descartada { background: var(--surface-2); border-left-color: var(--crit); }
-.pl-cartao.descartada .pl-valor b { color: var(--muted); }
-.pl-motivo { padding: 8px 10px; border-radius: 8px; background: var(--crit-bg); color: var(--ink); }
-.pl-motivo span { display: block; color: var(--ink-2); margin-top: 2px; }
 .pl-descartadas { margin-top: 18px; }
 .pl-desc-tit { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 1rem; font-weight: 600; margin: 0 0 6px; }
 .pl-desc-dica { font-weight: 400; font-size: var(--t-sm, .9rem); color: var(--muted); }

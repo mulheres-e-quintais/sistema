@@ -963,6 +963,7 @@
   }
   const semTags = h => String(h).replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
   S.histF = S.histF || { quem: '', grupo: '', busca: '' };
+  S.histGen = S.histGen || 0;   // sobe a cada Atualizar do Histórico
   function audFiltrado() {
     const f = S.histF, q = f.busca.trim().toLowerCase();
     return (S.aud || []).filter(a => (!f.quem || (f.quem === '_sistema' ? !a.por : a.por === f.quem)) && (!f.grupo || grupoDe(a) === f.grupo)
@@ -1049,10 +1050,12 @@
     if (S.acessosSemBanco) return `<section class="secao" aria-labelledby="t-acessos">${cab}<div class="aviso">Para ver quem entrou no sistema, quando e de que aparelho, rode no Supabase o arquivo <b>30_ultimos_acessos.sql</b>. O registro começa a partir daí.</div></section>`;
     const acessos = (S.acessos || []).slice().sort((x, y) => String(y.em).localeCompare(String(x.em)));
     const pessoas = (S.equipe || []).filter(m => m.status === 'ativa' && m.id !== S.eu.id);
-    const semana = new Set(acessos.filter(a => Date.now() - new Date(a.em) < 7 * 864e5 && a.equipe_id !== S.eu.id).map(a => a.equipe_id)).size;
+    const ativas = new Set(pessoas.map(m => m.id));   // auditoria 23/10: só quem está na equipe (antes contava desligadas e dava "5 de 4")
+    const semana = new Set(acessos.filter(a => Date.now() - new Date(a.em) < 7 * 864e5 && ativas.has(a.equipe_id)).map(a => a.equipe_id)).size;
     const detalhe = a => [a.aparelho, ipCurto(a.ip) && 'rede ' + ipCurto(a.ip)].filter(Boolean).map(esc).join(' · ');
     const papelDe = m => esc(P[m.papel] ? P[m.papel].nome : m.papel) + (m.uf ? ' · ' + esc(m.uf) : '');
-    const ha = t => { const n = Math.floor((Date.now() - new Date(t)) / 864e5); return n <= 0 ? 'hoje' : n === 1 ? 'ontem' : `há ${n} dias`; };
+    // auditoria 23/10: por dia do calendário, como o quandoAcesso ao lado (contar 24 h dava "ontem, 23:00 · hoje")
+    const ha = t => { const d0 = x => { const d = new Date(x); return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()); }; const n = Math.round((d0(Date.now()) - d0(t)) / 864e5); return n <= 0 ? 'hoje' : n === 1 ? 'ontem' : `há ${n} dias`; };
     /* do Saberes que Cultivam: uma linha por pessoa, com a situação (em uso, sumiu há mais de um mês, nunca entrou) */
     const linhas = pessoas.map(m => [m, ultimoAcessoDe(m.id)]).sort((x, y) => (y[1] ? String(y[1].em) : '').localeCompare(x[1] ? String(x[1].em) : '') || nomeDe(x[0]).localeCompare(nomeDe(y[0]), 'pt-BR'));
     const sit = (m, a) => !a ? (m.user_id ? '<span class="chip off">Sem registro em 6 meses</span>' : '<span class="chip pend">Nunca entrou</span>')
@@ -2207,15 +2210,17 @@
       else if (a === 'hist-mais') {
         const ord = (S.aud || []).slice().sort((x, y) => String(y.em).localeCompare(String(x.em)) || (+y.id || 0) - (+x.id || 0)); const ult = ord[ord.length - 1];
         const sp = el.querySelector('span') || el; el.disabled = true; sp.textContent = 'Carregando…';
-        try { const v = await S.api.auditoria(ult ? ult.em : null, ult ? ult.id : null); const ja = new Set(S.aud.map(x => x.id)); const novos = (v || []).filter(x => !ja.has(x.id));
+        const quem = S.eu && S.eu.id, gen = S.histGen;   // auditoria 23/10: um Atualizar no meio descarta esta página (senão ficava um buraco na lista)
+        try { const v = await S.api.auditoria(ult ? ult.em : null, ult ? ult.id : null); if (!S.eu || S.eu.id !== quem || gen !== S.histGen) return; const ja = new Set(S.aud.map(x => x.id)); const novos = (v || []).filter(x => !ja.has(x.id));
           S.aud = S.aud.concat(novos); if ((v || []).length < 200) S.audFim = true; renderFundo(); }
         catch (e) { el.disabled = false; sp.textContent = 'Carregar registros mais antigos'; toast(avisarErro(e)); }
       }
       else if (a === 'hist-atualizar' || a === 'acessos-atualizar') {   // 23/10/2026: como no Saberes que Cultivam, cada seção do Histórico tem o seu Atualizar
         const sp = el.querySelector('span') || el; el.disabled = true; sp.textContent = 'Atualizando…';
+        const quem = S.eu && S.eu.id, gen = a === 'hist-atualizar' ? ++S.histGen : 0;   // auditoria 23/10: resposta que chega depois de sair (ou de outro Atualizar) não vale
         try {
-          if (a === 'hist-atualizar') { const v = await S.api.auditoria(); S.aud = v || []; S.audFim = (v || []).length < 200; veio().aud = true; }
-          else { S.acessos = await S.api.listarAcessos(); }
+          if (a === 'hist-atualizar') { const v = await S.api.auditoria(); if (!S.eu || S.eu.id !== quem || gen !== S.histGen) return; S.aud = v || []; S.audFim = (v || []).length < 200; veio().aud = true; }
+          else { const v = await S.api.listarAcessos(); if (!S.eu || S.eu.id !== quem) return; S.acessos = v; }
           render(); toast(a === 'hist-atualizar' ? 'Histórico atualizado.' : 'Últimos acessos atualizados.', 'ok');
         } catch (e) { el.disabled = false; sp.textContent = 'Atualizar'; toast(avisarErro(e)); }
       }

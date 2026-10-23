@@ -1,6 +1,6 @@
 /* Guarda o sistema no aparelho para abrir e preencher fichas sem internet.
    Os dados vão para o servidor pela fila do próprio app quando a conexão volta. */
-const VERSAO = 'mq-v311';
+const VERSAO = 'mq-v312';
 const ARQUIVOS = ['./', 'index.html', 'css/app.css', 'js/config.js', 'js/tudo.js',
   'assets/logo-claro.svg', 'assets/isotipo.svg', 'assets/icon-192.png', 'manifest.webmanifest'];
 const EXTERNOS = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
@@ -23,9 +23,15 @@ self.addEventListener('fetch', e => {
   const proprio = u.origin === location.origin;
   if (!proprio && !EXTERNOS.includes(u.hostname)) return;   // API do Supabase passa direto
   if (proprio && u.pathname.includes('/manuais/')) return;   // manuais em PDF: direto da internet, sem guardar no aparelho (são grandes)
-  // a página: internet com prazo de 3 s (para pegar versão nova); sem sinal, abre a guardada
+  /* a página: 23/10/2026 (teste de desempenho) abre NA HORA com a cópia do aparelho e confere a internet por trás.
+     Antes esperava a internet até 3 s a cada abertura: no sinal fraco do campo, toda abertura demorava. A página guardada
+     não fica velha: versão nova do sistema chega por este arquivo (VERSAO), que guarda tudo de novo e mostra
+     "Há uma versão nova. Toque para atualizar". Página que não está guardada (simulação, primeira visita) vem da internet. */
   if (e.request.mode === 'navigate') {
-    e.respondWith(comPrazo(e.request, 3000).catch(() => caches.match('index.html')));
+    const rede = comPrazo(e.request, 3000);
+    e.respondWith(caches.match(e.request, { ignoreSearch: true }).then(r => { if (r) { rede.catch(() => {}); return r; } return rede; })
+      .catch(() => caches.match('index.html')));
+    e.waitUntil(rede.catch(() => {}));
     return;
   }
   // arquivos do sistema, biblioteca e fontes: abre do aparelho na hora; o que não estiver guardado vem da internet

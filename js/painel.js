@@ -393,7 +393,7 @@
   /* ---------- perfil das mulheres (recorte) e linha de base de renda ---------- */
   function perfil(S, d) {
     const base = d.selAprov.length ? d.selAprov : d.fichas.filter(f => f.resultado === 'selecionada');
-    if (!base.length && !(S.diagnosticos || []).length) return '';   // 22/10/2026: sem mulheres selecionadas nem diagnóstico, o quadro não aparece
+    if (!base.length && !(S.diagnosticos || []).some(x => x.renda_quintal != null || x.renda_familiar != null)) return '';   // 22/10/2026: sem mulheres selecionadas nem diagnóstico com renda (o filtro do bloco Ponto de partida), o quadro não aparece
     const rotBase = d.selAprov.length ? 'das ' + base.length + ' selecionadas e aprovadas' : 'das ' + base.length + ' fichas marcadas como selecionadas (ainda sem aprovação)';
     const itens = [
       ['p_cadunico', 'Família no CadÚnico'], ['p_sustento', 'Principal responsável pelo sustento'], ['p_sem_ater', 'Sem assistência técnica (ATER)'],

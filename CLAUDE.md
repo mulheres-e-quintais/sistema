@@ -1,6 +1,6 @@
 # Mulheres & Quintais — regras para quem mexe neste repositório
 
-- Depois de mudar qualquer arquivo em `js/`, rode `node ferramentas/montar.js` (gera `js/tudo.js`) e suba o número em `VERSAO` no `sw.js`.
+- Depois de mudar qualquer arquivo em `js/`, rode `node ferramentas/montar.js` (gera `js/tudo.js`, compactado com o esbuild; se faltar, `npm install`) e suba o número em `VERSAO` no `sw.js`.
 - Antes de enviar: `npm test`.
 - **Manuais.** Toda mudança de funcionalidade ou de tela exige atualizar os manuais no mesmo envio:
   ajuste o texto em `ferramentas/manuais/` (ver `LEIA-ME.md` lá) e rode `bash ferramentas/manuais/gerar_tudo.sh`.

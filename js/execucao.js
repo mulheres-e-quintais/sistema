@@ -321,22 +321,21 @@
   const semPonto = t => String(t || '').trim().replace(/[.\s]+$/, '');
   function linhaPlanilha(pl, vale) {
     const nao = (pl.linhas || []).filter(l => l.item !== 'repasse_mda' && !l.rubrica);
-    const desc = !!pl.descartada_em; const n = (pl.linhas || []).length;
+    const n = (pl.linhas || []).length;   // 23/10: descartada não passa por aqui (linhaDescartada)
     const meta = [`gastos até <b>${R.fmtData(pl.posicao_em)}</b>`, `enviada em ${R.fmtData(pl.enviado_em)}`, `${n} linha${n === 1 ? '' : 's'}`]
       .concat(+pl.total_recebido > 0 ? [`recebido ${brl(pl.total_recebido)}`] : []).join(' · ');
-    const sit = desc ? '<span class="chip crit">descartada</span>' : vale ? '<span class="chip ok">vigente</span>' : '<span class="chip">substituída</span>';
-    return `<article class="pl-cartao${vale ? ' vigente' : ''}${desc ? ' descartada' : ''}" data-planilha="${E(pl.id)}">
+    const sit = vale ? '<span class="chip ok">vigente</span>' : '<span class="chip">substituída</span>';
+    return `<article class="pl-cartao${vale ? ' vigente' : ''}" data-planilha="${E(pl.id)}">
       <span class="pl-ic" aria-hidden="true">${(MQ.ICONES || {}).relatorio || ''}</span>
       <div class="pl-corpo">
         <div class="pl-topo"><h3 class="pl-nome">${E(pl.arquivo_nome)}</h3>${sit}</div>
         <p class="pl-meta">${meta}</p>
         ${pl.obs ? `<p class="pl-obs">${E(pl.obs)}</p>` : ''}
-        ${desc ? `<p class="pl-motivo"><b>Motivo do descarte:</b> ${E(semPonto(pl.motivo_descarte))}. <span>Descartada em ${R.fmtData(pl.descartada_em)} por ${E(pessoa(pl.descartada_por))}. Não entra em nenhuma conta e o arquivo foi apagado.</span></p>`
-          : nao.length ? `<details class="pl-fora"><summary>${nao.length} linha${nao.length > 1 ? 's' : ''} fora do orçamento</summary><ul>${nao.slice(0, 30).map(l => `<li>Linha ${l.linha}: “${E(l.texto)}” · ${brl(l.valor)}${l.descricao ? ' · ' + E(l.descricao) : ''}</li>`).join('')}</ul></details>` : ''}
-        ${desc ? '' : `<div class="pl-acoes"><button type="button" class="pl-bt" data-acao="exec-baixar" data-path="${E(pl.arquivo_path)}">${IC('baixar')}Baixar o arquivo</button>
-          <button type="button" class="pl-bt perigo" data-acao="exec-descartar" data-id="${E(pl.id)}">${IC('lixeira')}Descartar (enviada por engano)</button></div>`}
+        ${nao.length ? `<details class="pl-fora"><summary>${nao.length} linha${nao.length > 1 ? 's' : ''} fora do orçamento</summary><ul>${nao.slice(0, 30).map(l => `<li>Linha ${l.linha}: “${E(l.texto)}” · ${brl(l.valor)}${l.descricao ? ' · ' + E(l.descricao) : ''}</li>`).join('')}</ul></details>` : ''}
+        <div class="pl-acoes"><button type="button" class="pl-bt" data-acao="exec-baixar" data-path="${E(pl.arquivo_path)}">${IC('baixar')}Baixar o arquivo</button>
+          <button type="button" class="pl-bt perigo" data-acao="exec-descartar" data-id="${E(pl.id)}">${IC('lixeira')}Descartar (enviada por engano)</button></div>
       </div>
-      <div class="pl-valor"><b class="num">${brl(pl.total_gasto)}</b><span>${desc ? 'não conta' : 'total de gastos'}</span></div>
+      <div class="pl-valor"><b class="num">${brl(pl.total_gasto)}</b><span>total de gastos</span></div>
     </article>`;
   }
   /* 23/10/2026: descartada vira uma linha curta, sempre à vista (sem clicar), com o motivo; não é cartão */

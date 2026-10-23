@@ -21,3 +21,10 @@ test('com dados, os quadros aparecem', async () => {
   assert.match(x, /Quem é a equipe de execução/); assert.match(x, /O que pede atenção/);
   if ((t.S.fichas || []).length) assert.match(x, /Onde estão os quintais produtivos/);
 });
+test('auditoria 23/10: diagnóstico sem renda e ninguém selecionado: "Quem são as mulheres" não aparece vazio', async () => {
+  const t = await montar('coord_geral'); const S = t.S;
+  S.fichas = []; S.diagnosticos = [{ id: 'd1', ficha_id: 'f1', renda_quintal: null, renda_familiar: null }];
+  assert.doesNotMatch(texto(t.aba('visao')), /Quem são as mulheres/);
+  S.diagnosticos = [{ id: 'd1', ficha_id: 'f1', renda_quintal: 200, renda_familiar: 900 }];
+  assert.match(texto(t.aba('visao')), /Quem são as mulheres/);
+});
