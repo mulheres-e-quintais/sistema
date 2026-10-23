@@ -4490,7 +4490,7 @@ table.quadro.desp-tab th:nth-child(5), table.quadro.desp-tab td:nth-child(5) { w
 .hs-tab tbody tr:last-child > * { border-bottom: 0; }
 .hs-tab td .small { margin-top: 2px; }
 @media (max-width: 640px) {
-  .hs-tab thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .hs-tab thead { display: none; }   /* no celular cada linha vira cartão, com o rótulo em cada campo; o cabeçalho escondido de outro jeito ficava "cortado à direita" no zoom de 400% */
   .hs-tab, .hs-tab tbody, .hs-tab tr, .hs-tab tbody th, .hs-tab td { display: block; width: 100%; }
   .hs-tab tr { padding: 10px 14px; border-bottom: 1px solid var(--line); } .hs-tab tbody tr:last-child { border-bottom: 0; }
   .hs-tab tbody th, .hs-tab td { padding: 3px 0; border: 0; }
