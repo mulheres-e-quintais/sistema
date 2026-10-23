@@ -9994,9 +9994,8 @@ MQ.GEO = {"uf":{"AL":{"r":[[[-35.53,-8.82],[-35.15,-8.91],[-35.3,-9.18],[-35.35,
     const nPago = n.despesas.filter(l => l.situacao !== 'comprometido').length, nComp = n.despesas.filter(l => l.situacao === 'comprometido').length;
     const acima = n.exec + n.comp > n.recebido + 0.005, recPct = pct(n.recebido, T);
     return `<div class="cab"><div><span class="eyebrow">Recursos do TED</span><h1>Acompanhamento financeiro</h1>
-        <p>Valores previstos no plano de trabalho, comparados com as despesas lançadas aqui. O registro oficial continua sendo o da FUNCERN; confira os dois antes de cada prestação de contas.</p></div></div>
+        <p class="txt-just">Valores previstos no plano de trabalho, comparados com as despesas lançadas aqui. O registro oficial continua sendo o da FUNCERN; confira os dois antes de cada prestação de contas.</p></div></div>
       ${/* 22/10/2026: a mesma tela do Financeiro do Saberes que Cultivam (resumo recebido · pago · comprometido · disponível) */ ''}
-      ${n.pl ? `<p class="small muted">Planilha vigente: <b>${E(n.pl.arquivo_nome)}</b>, gastos até ${R.fmtData(n.pl.posicao_em)} (enviada em ${R.fmtData(n.pl.enviado_em)}). O envio da próxima fica no fim da página.</p>` : ''}
       <section class="fin-resumo dx-topo fin-topo" aria-label="Resumo financeiro">
         <div class="dx-exec"><span class="dx-rot">Execução financeira do projeto</span>
           <div class="dx-exec-num"><b class="num">${pctBR(usoPct)}%</b></div>

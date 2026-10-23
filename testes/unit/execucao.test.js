@@ -43,7 +43,7 @@ test('planilha do modelo: executado por item, recebido do MDA, caixa; tabela e h
   const n = t.MQ.execUI.numeros();
   assert.equal(n.porItem.doa.exec, 100000); assert.equal(n.porItem.diarias.exec, 800); assert.equal(n.porItem.bolsa_articulacao.exec, 11000);
   assert.equal(n.exec, 111800); assert.equal(n.recebido, 1000000); assert.equal(n.caixa, 888200);
-  const h = texto(t.aba('execucao')); assert.match(h, /Planilha vigente:\s*modelo_preenchido\.xlsx\s*, gastos até 25\/09\/2026/); assert.match(h, /Planilhas enviadas\s*1/);
+  const h = texto(t.aba('execucao')); assert.ok(!/Planilha vigente:/.test(h), 'a frase da planilha vigente saiu do topo (23/10)'); assert.match(h, /modelo_preenchido\.xlsx\s*vigente\s*gastos até 25\/09\/2026/); assert.match(h, /Planilhas enviadas\s*1/);
 });
 
 test('a mais nova substitui (não soma); a anterior fica no histórico como substituída', async () => {
