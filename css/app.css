@@ -4726,12 +4726,6 @@ a[data-nova-aba]:not(:has(img))::after { content: ""; display: inline-block; wid
 .demo-dias { font-size: var(--t-sm); color: var(--ink-2); }
 .demo-dias a { color: inherit; text-decoration: underline; text-underline-offset: 3px; display: inline-block; min-height: 24px; line-height: 24px; }
 .demo-dias b { color: var(--ink); }
-/* v330: tela de entrada mais leve — o mapa e as fotos do bloco "em números" abrem ao tocar */
-.vit-mais > summary { cursor: pointer; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 600; color: var(--accent); list-style: none; }
-.vit-mais > summary::-webkit-details-marker { display: none; }
-.vit-mais > summary::before { content: ""; width: 8px; height: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .15s; }
-.vit-mais[open] > summary::before { transform: rotate(45deg); }
-.vit-mais[open] > summary { margin-bottom: 12px; }
 /* v330: quadro "Habilitação da equipe" (aba Equipe), como no Saberes que Cultivam */
 .hab-ns { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 4px 0 12px; }
 .hab-n { display: flex; align-items: baseline; gap: 8px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); min-width: 0; }
@@ -4747,3 +4741,16 @@ a[data-nova-aba]:not(:has(img))::after { content: ""; display: inline-block; wid
 .hab-p small { color: var(--ink-2); font-size: var(--t-sm); }
 .hab-c { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
 @media (max-width: 640px) { .hab-l li { grid-template-columns: minmax(0, 1fr) auto; } .hab-c { grid-column: 1 / -1; justify-content: flex-start; } }
+/* v330: etapas do TED e calendário da equipe no cronograma (Visão geral), como no Saberes que Cultivam */
+.cg-et-bt { margin-left: auto; }
+.cg-linha.cg-etapa, .cg-linha.cg-eqp { min-height: 34px; border-top: 1px dashed color-mix(in srgb, var(--line) 70%, transparent); }
+.cg-etapa .cg-trilho, .cg-eqp .cg-trilho { min-height: 26px; }
+.cg-nome-et { cursor: default; padding: 4px 8px 4px 28px; font-size: var(--t-sm); color: var(--ink-2); }
+.cg-nome-et:hover span:last-child { text-decoration: none; }
+.cg-nome-et .cg-id { background: none; border: 1px solid var(--line); }
+.cg-barra.cg-et { height: 10px; margin-top: -5px; background: color-mix(in srgb, var(--line-2) 35%, var(--surface)); }
+.cg-barra.cg-eqb { height: 10px; margin-top: -5px; background: repeating-linear-gradient(135deg, var(--accent) 0 3px, transparent 3px 6px); border: 1.5px solid var(--accent); }
+.cg-etapa .cg-num small, .cg-eqp .cg-num small { font-size: var(--t-xs); }
+.cg-leg .lg-et { height: 8px; background: color-mix(in srgb, var(--line-2) 35%, var(--surface)); border: 1px solid var(--line-2); }
+.cg-leg .lg-eq { height: 8px; background: repeating-linear-gradient(135deg, var(--accent) 0 3px, transparent 3px 6px); border: 1.5px solid var(--accent); }
+@media (max-width: 640px) { .cg-nome-et { padding-left: 8px; } .cg-et-bt { margin-left: 0; width: 100%; } }
