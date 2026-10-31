@@ -4627,3 +4627,87 @@ table.quadro.desp-tab th:nth-child(5), table.quadro.desp-tab td:nth-child(5) { w
 .resumo > div.vez .v { color: var(--pend); }
 .resumo:not(.bloco .resumo):not(.painel .resumo) > div.vez::before { background: var(--cont-bg) !important; }
 .dx-kpi.cumprido { --kc: var(--st-ok); }
+
+/* ======================================================================
+   v329 (31/10/2026, pedido da coordenação): padrão de acessibilidade do governo (eMAG 3.1), js/acessibilidade.js
+   ====================================================================== */
+/* barra de acessibilidade: no alto de toda tela, antes do cabeçalho (primeiro item do Tab) */
+.barra-acess { background: var(--barra-bg); color: var(--barra-ink); border-bottom: 1px solid rgba(246, 237, 228, .22); font-size: var(--t-xs); }
+.ba-in { max-width: var(--wrap); margin: 0 auto; padding: 2px max(20px, env(safe-area-inset-right, 0px)) 2px max(20px, env(safe-area-inset-left, 0px));
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 16px; }
+.barra-acess ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 2px 6px; }
+.barra-acess li[hidden] { display: none; }
+.barra-acess button { font: inherit; font-weight: 600; color: inherit; background: none; border: 0; border-radius: 6px; padding: 3px 8px; min-height: 28px;
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.barra-acess button:hover { background: rgba(246, 237, 228, .14); }
+.barra-acess button:focus-visible { outline: 2px solid #F6EDE4; outline-offset: 1px; }
+.barra-acess kbd { font: inherit; font-weight: 800; min-width: 18px; padding: 0 4px; border-radius: 4px; border: 1px solid currentColor; text-align: center; line-height: 16px; }
+.barra-acess .ba-ic { display: inline-grid; }
+.barra-acess .pular, .barra-acess .pular:focus { position: static; top: auto; left: auto; z-index: auto; box-shadow: none; background: none; color: inherit; padding: 3px 8px; font: inherit; font-weight: 600; border-radius: 6px; }   /* o antigo "Pular" ficava escondido no alto; na barra ele aparece */
+.barra-acess .ba-ic svg { width: 15px; height: 15px; }
+.barra-acess .ba-contraste[aria-pressed="true"] { background: #F6EDE4; color: #1A0F08; text-decoration: none; }
+@media (pointer: coarse) { .barra-acess button, .barra-acess .pular, .barra-acess .pular:focus { min-height: var(--alvo); } .ba-in { padding-top: 0; padding-bottom: 0; } }   /* toque: 44 px, o padrão do sistema */
+/* no celular, os três "Ir para" ficam guardados até receber o foco do teclado (continuam sendo o primeiro item do Tab) */
+@media (max-width: 640px) {
+  .ba-in { justify-content: flex-end; }
+  .ba-atalhos:not(:focus-within) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .ba-atalhos:focus-within { width: 100%; }
+}
+.ap-chave.sem-ic { grid-template-columns: minmax(0, 1fr) 52px; }
+.acess-pg .bloco { margin-top: 18px; }
+.acess-pg kbd, .ajuda kbd { font: inherit; font-size: .92em; font-weight: 700; padding: 0 5px; border: 1px solid var(--line-2); border-bottom-width: 2px; border-radius: 5px; background: var(--surface-2); color: var(--ink); white-space: nowrap; }
+.acess-teclas { margin: 8px 0 10px; display: grid; gap: 6px; }
+.acess-teclas > div { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; align-items: center; }
+.acess-teclas dd { margin: 0; }
+.acess-pg, .acess-pg * { min-width: 0; overflow-wrap: anywhere; }
+.acess-pg kbd { overflow-wrap: normal; }
+.acess-siglas { margin: 0; display: grid; gap: 6px; }
+.acess-siglas > div { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 10px; font-size: var(--t-sm); }
+.acess-siglas dt { font-weight: 800; }
+.acess-siglas dd { margin: 0; color: var(--ink-2); }
+.acess-siglas abbr { text-decoration: none; }
+.novidades .demo-in { justify-content: space-between; }
+/* link que abre outra aba: ícone pequeno (o leitor de tela ouve "abre em outra aba") */
+a[data-nova-aba]:not(:has(img))::after { content: ""; display: inline-block; width: .8em; height: .8em; margin-left: .3em; vertical-align: -.05em; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5'/%3E%3C/svg%3E") center / contain no-repeat; }
+@media print { .barra-acess, .novidades { display: none !important; } }
+
+/* parar as animações (eMAG 5.5), escolhido na página Acessibilidade */
+:root[data-sem-mov] *, :root[data-sem-mov] *::before, :root[data-sem-mov] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+:root[data-sem-mov] .ent-broto .caule { stroke-dashoffset: 0; }
+:root[data-sem-mov] .ent-broto .folha, :root[data-sem-mov] .ent-broto .flor { transform: none; }
+
+/* alto contraste (eMAG): fundo preto, letra branca, links e botões em amarelo, bordas brancas. Vale por cima do tema e do modo sol
+   (o aparencia.js põe também data-theme="dark", para as regras do escuro valerem; este bloco vem depois e ganha). */
+:root[data-contraste] {
+  color-scheme: dark;
+  --verde: #FFFFFF; --verde-2: #FFFFFF; --ocre: #FFFF00; --terracota: #FFFF00; --terracota-2: #FFFF00;
+  --sel-bg: #FFFF00; --sel-ink: #000000; --barra-bg: #000000; --barra-ink: #FFFFFF; --barra-sub: #FFFFFF;
+  --bg: #000000; --surface: #000000; --surface-2: #141414; --ink: #FFFFFF; --ink-2: #FFFFFF; --muted: #F0F0F0;
+  --line: #FFFFFF; --line-2: #FFFFFF; --campo-borda: #FFFFFF; --accent: #FFFF00; --accent-ink: #000000; --focus: #00FFFF;
+  --ok: #8CFF8C; --ok-bg: #000000; --pend: #FFD54A; --pend-bg: #000000; --off: #FFFFFF; --off-bg: #000000; --crit: #FF9E9E; --crit-bg: #000000;
+  --cont-bg: #FFFF00; --cont-ink: #000000; --cont-borda: #FFFF00;
+  --st-ok-bg: #000000; --st-and-bg: #000000; --st-aten-bg: #000000; --st-atr-bg: #000000; --st-nao-bg: #000000; --fin-grupo: #141414;
+  --m-uf: #000000; --m-uf-viz: #000000; --m-borda: #FFFFFF; --m-fundo: #000000; --m-sigla: #FFFFFF; --m-texto: #FFFFFF;
+  --vaga-bg: repeating-linear-gradient(135deg, transparent 0 7px, rgba(255, 255, 255, .14) 7px 8px);
+  --shadow: none;
+}
+:root[data-contraste] body { background: #000; color: #fff; }
+:root[data-contraste] a:not(.btn) { color: #FFFF00; text-decoration: underline; }
+:root[data-contraste] .link { color: #FFFF00; }
+:root[data-contraste] .btn, :root[data-contraste] .chip, :root[data-contraste] .cartao, :root[data-contraste] .bloco, :root[data-contraste] .secao,
+:root[data-contraste] .campo input, :root[data-contraste] .campo select, :root[data-contraste] .campo textarea { border-color: currentColor; }
+:root[data-contraste] .btn { border-width: 2px; border-style: solid; }
+:root[data-contraste] .chip { border: 1.5px solid currentColor; }
+:root[data-contraste] :focus-visible { outline: 3px solid #00FFFF !important; outline-offset: 2px; }
+:root[data-contraste] .barra-acess button:focus-visible, :root[data-contraste] header.barra :focus-visible { outline-color: #00FFFF; }
+:root[data-contraste] .barra-acess { border-bottom-color: #FFFFFF; }
+:root[data-contraste] .barra-acess button { color: #FFFF00; }
+:root[data-contraste] .barra-acess .ba-contraste[aria-pressed="true"] { background: #FFFF00; color: #000; }
+:root[data-contraste] .ent-fundo { display: none; }
+:root[data-contraste] { --menu-bg: #000000; --menu-div: #FFFFFF; --menu-ink: #FFFFFF; }
+:root[data-contraste] .abas.abas-grupos { border-bottom: 1px solid #fff; }
+:root[data-contraste] .bar, :root[data-contraste] .medidor, :root[data-contraste] .pf-bar { background: #333 !important; }
+:root[data-contraste] img:not([src$=".svg"]) { filter: none; }
+:root[data-contraste] .av { background: #000 !important; color: #fff !important; box-shadow: inset 0 0 0 2px #fff; }
