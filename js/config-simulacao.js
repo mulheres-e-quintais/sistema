@@ -7,7 +7,11 @@ window.MQ = window.MQ || {};
 MQ.CONFIG = { supabaseUrl: '', supabaseAnonKey: '', semServiceWorker: true, cenario: 'fim' };
 (function () {
   const Real = Date;
-  const desloc = new Real('2027-09-30T09:00:00-03:00').getTime() - Real.now();
+  /* v330 (como no Saberes): ?data=AAAA-MM-DD mostra o projeto naquele dia (entre o início e o fim da vigência); sem ela, o fim */
+  let dia = '2027-09-30';
+  try { const q = new URLSearchParams(window.location.search).get('data'); if (/^\d{4}-\d{2}-\d{2}$/.test(q || '') && q >= '2026-09-14' && q <= '2027-09-30' && !isNaN(new Real(q + 'T12:00:00').getTime())) dia = q; } catch (e) { /* sem endereço */ }
+  MQ.CONFIG.simDia = dia;
+  const desloc = new Real(dia + 'T09:00:00-03:00').getTime() - Real.now();
   function Simulada(...a) {
     if (!(this instanceof Simulada)) return new Real(Real.now() + desloc).toString();   // Date() sem new devolve texto
     return a.length ? new Real(...a) : new Real(Real.now() + desloc);

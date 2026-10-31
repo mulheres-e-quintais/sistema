@@ -4647,12 +4647,18 @@ table.quadro.desp-tab th:nth-child(5), table.quadro.desp-tab td:nth-child(5) { w
 .barra-acess .ba-ic svg { width: 15px; height: 15px; }
 .barra-acess .ba-contraste[aria-pressed="true"] { background: #F6EDE4; color: #1A0F08; text-decoration: none; }
 @media (pointer: coarse) { .barra-acess button, .barra-acess .pular, .barra-acess .pular:focus { min-height: var(--alvo); } .ba-in { padding-top: 0; padding-bottom: 0; } }   /* toque: 44 px, o padrão do sistema */
-/* no celular, os três "Ir para" ficam guardados até receber o foco do teclado (continuam sendo o primeiro item do Tab) */
-@media (max-width: 640px) {
-  .ba-in { justify-content: flex-end; }
-  .ba-atalhos:not(:focus-within) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .ba-atalhos:focus-within { width: 100%; }
-}
+/* v330 (como no Saberes que Cultivam): a barra fica guardada até receber o foco do teclado (continua sendo o primeiro item do Tab);
+   com o foco, aparece por cima do alto da tela, sem empurrar nada. "Acessibilidade" e "Alto contraste" ficam também no rodapé, sempre à vista. */
+.barra-acess { position: absolute; top: 0; left: 0; right: 0; z-index: 60; }
+.barra-acess:focus-within { position: fixed; }
+.barra-acess:not(:focus-within) { width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+#app { position: relative; }
+.rodape-acess { display: flex; flex-wrap: wrap; gap: 4px 14px; justify-content: flex-end; margin: 4px 0 0; }
+.rodape-acess button { font: inherit; font-size: var(--t-sm); color: inherit; background: none; border: 0; padding: 2px 0; min-height: 24px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; display: inline-flex; align-items: center; gap: 6px; }
+.rodape-acess button[aria-pressed="true"] { font-weight: 700; }
+.rodape-acess .ba-ic svg { width: 14px; height: 14px; }
+@media (pointer: coarse) { .rodape-acess button { min-height: var(--alvo); } }
+@media (max-width: 640px) { .rodape-acess { justify-content: center; } }
 .ap-chave.sem-ic { grid-template-columns: minmax(0, 1fr) 52px; }
 .acess-pg .bloco { margin-top: 18px; }
 .acess-pg kbd, .ajuda kbd { font: inherit; font-size: .92em; font-weight: 700; padding: 0 5px; border: 1px solid var(--line-2); border-bottom-width: 2px; border-radius: 5px; background: var(--surface-2); color: var(--ink); white-space: nowrap; }
@@ -4711,3 +4717,33 @@ a[data-nova-aba]:not(:has(img))::after { content: ""; display: inline-block; wid
 :root[data-contraste] .bar, :root[data-contraste] .medidor, :root[data-contraste] .pf-bar { background: #333 !important; }
 :root[data-contraste] img:not([src$=".svg"]) { filter: none; }
 :root[data-contraste] .av { background: #000 !important; color: #fff !important; box-shadow: inset 0 0 0 2px #fff; }
+/* v330: a lista das agentes (Equipe) tem a mesma classe das listas agrupadas (v319, .ag-lista) e ganhava a moldura delas por cima dos cartões */
+.ag-tr .ag-lista { border: 0; border-radius: 0; background: none; overflow: visible; }
+/* v330: no Financeiro, "1.982,9 de 2.000 mil" estourava a coluna a 1280 px (o "mil" saía cortado): o "de … mil" desce inteiro para a linha de baixo */
+.fin-k .eq-n { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 5px; white-space: normal; min-width: 0; max-width: 100%; }
+.fin-k .eq-n small { white-space: nowrap; }
+.fin-k .dx-kpi-topo { min-width: 0; }
+.demo-dias { font-size: var(--t-sm); color: var(--ink-2); }
+.demo-dias a { color: inherit; text-decoration: underline; text-underline-offset: 3px; display: inline-block; min-height: 24px; line-height: 24px; }
+.demo-dias b { color: var(--ink); }
+/* v330: tela de entrada mais leve — o mapa e as fotos do bloco "em números" abrem ao tocar */
+.vit-mais > summary { cursor: pointer; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 600; color: var(--accent); list-style: none; }
+.vit-mais > summary::-webkit-details-marker { display: none; }
+.vit-mais > summary::before { content: ""; width: 8px; height: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .15s; }
+.vit-mais[open] > summary::before { transform: rotate(45deg); }
+.vit-mais[open] > summary { margin-bottom: 12px; }
+/* v330: quadro "Habilitação da equipe" (aba Equipe), como no Saberes que Cultivam */
+.hab-ns { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 4px 0 12px; }
+.hab-n { display: flex; align-items: baseline; gap: 8px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); min-width: 0; }
+.hab-n b { font-size: var(--t-2xl); font-weight: 700; color: var(--ink); white-space: nowrap; }
+.hab-n span { font-size: var(--t-sm); color: var(--ink-2); }
+.hab-n.ok { border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); background: var(--ok-bg); }
+.hab-l { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.hab-l li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px 14px; padding: 10px 14px; }
+.hab-l li + li { border-top: 1px solid var(--line); }
+.hab-p { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.hab-p > span:last-child { display: grid; min-width: 0; }
+.hab-p b { overflow-wrap: anywhere; }
+.hab-p small { color: var(--ink-2); font-size: var(--t-sm); }
+.hab-c { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+@media (max-width: 640px) { .hab-l li { grid-template-columns: minmax(0, 1fr) auto; } .hab-c { grid-column: 1 / -1; justify-content: flex-start; } }
