@@ -1,5 +1,7 @@
 /* Mulheres & Quintais — cores da identidade visual do projeto (marrom, terracota, areia e creme);
-   tudo em Manrope; só o nome "Mulheres & Quintais" em Lora */
+   tudo em Manrope; só o nome "Mulheres & Quintais" em Cormorant Garamond (v334; era Lora) */
+@font-face { font-family: "Manrope"; font-style: normal; font-weight: 200 800; font-display: swap; src: url(../assets/fontes/manrope-latin-wght-normal.woff2) format("woff2"); }
+@font-face { font-family: "Cormorant Garamond"; font-style: normal; font-weight: 700; font-display: swap; src: url(../assets/fontes/cormorant-garamond-latin-700-normal.woff2) format("woff2"); }   /* v334: a marca na letra do Saberes que Cultivam (era Lora) */
 :root {
   color-scheme: light;
   --marrom: #452B1A;      /* marrom escuro da marca */
@@ -46,7 +48,7 @@
   --sans: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
   --cond: "Manrope", system-ui, sans-serif;
   --serif: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;   /* 03/10/2026: títulos também em Manrope (o nome da variável ficou) */
-  --marca: "Lora", Georgia, "Times New Roman", serif;   /* só o nome "Mulheres & Quintais" */
+  --marca: "Cormorant Garamond", Georgia, "Times New Roman", serif;   /* só o nome "Mulheres & Quintais" (v334: era Lora) */
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -2881,7 +2883,7 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 @-moz-document url-prefix() { .eq-quadro tbody td { height: 100%; } }
 .eq-quadro tbody td > .vagabtn.com-foto { height: 100%; box-sizing: border-box; align-items: center; }
 
-/* --- TIPOGRAFIA (03/10/2026): Manrope em todo texto e número; Lora 600 só no nome "Mulheres & Quintais" ---
+/* --- TIPOGRAFIA (03/10/2026): Manrope em todo texto e número; Cormorant Garamond 700 (v334; era Lora 600) só no nome "Mulheres & Quintais" ---
    Os controles nativos não herdam a fonte sozinhos: a regra abaixo garante campos, botões, listas e tabelas. Só a família muda. */
 html, body, button, input, select, textarea, option, optgroup, label, legend, fieldset, table, caption, th, td, summary, dialog { font-family: var(--sans); }
 svg text, svg tspan { font-family: var(--sans); }
@@ -2953,7 +2955,7 @@ small { font-size: max(12px, .85em); }
 /* perfis de acompanhamento, MDA e MPA (v223): tela só de leitura, com números agregados */
 .ac { display: grid; gap: 28px; padding-bottom: 32px; }
 .ac-cab { align-items: end; }
-.ac-cab h1 { font-family: var(--serif, Lora, serif); }
+.ac-cab h1 { font-family: var(--serif); }
 .ac-vivo { display: inline-flex; align-items: center; gap: 8px; margin: 6px 0 0; color: var(--ink-2); font-size: var(--t-sm); }
 .ac-pulso { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 var(--ok); animation: ac-pulso 2.4s ease-out infinite; flex: none; }
 @keyframes ac-pulso { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent); } 70%, 100% { box-shadow: 0 0 0 9px transparent; } }
@@ -4809,3 +4811,41 @@ a[data-nova-aba]:not(:has(img))::after { content: ""; display: inline-block; wid
   .dsp-m > summary .dsp-v { flex-basis: 100%; margin-left: 17px; order: 9; }
   .dsp-m > .fin-wrap { padding: 4px 12px 10px; }
 }
+
+
+/* =====================================================================
+   v334 (31/10/2026, pedido da coordenação: "tipografia igual do sistema de cultivos" e "quadros do mesmo tamanho"):
+   as mesmas medidas do Saberes que Cultivam. Fontes guardadas no sistema (Manrope variável; Cormorant Garamond 700 só na marca),
+   menos negrito, algarismos de mesma largura, letra pequena do celular um pouco maior e quadros na largura e nos espaços de lá.
+   ===================================================================== */
+/* largura do conteúdo: 1180 px com 16 px de margem (era 1120 com 20) */
+.wrap, .barra-in, .demo-in, .pend-in, .rodape-in, .lembrete-in { max-width: 1180px; padding-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right)); }
+.wrap { gap: 22px; }
+/* marca */
+.ent-marca b, .rodape-marca b { font-family: var(--marca); font-weight: 700; letter-spacing: 0; line-height: 1.05; }
+.ent-marca b { font-size: var(--t-2xl); }
+.rodape-marca b { font-size: var(--t-xl); }
+/* títulos */
+.cab h1, main h1, .dx-cab h1, .eq-cab h1 { font-size: var(--t-h1); }
+.secao-cab h2, .dx-atencao h2, .dx-duas > section.secao h2, .dx-lado > section.secao h2, .dx-agua h2, main .secao h2 { font-size: var(--t-2xl); font-weight: 600; letter-spacing: -.01em; }
+/* menos negrito: 600 no lugar de 700 no texto corrido, nos rótulos e nas pílulas; números grandes e marca continuam fortes */
+:where(b, strong) { font-weight: 600; }
+.dx-rot, .dx-th, .aba-g, .quadro th, table.fin thead th, .fin-det dt, .dx-selo, .marco.perto .marco-prazo, .marco.passou .marco-prazo, .imp-bom, .imp-ruim, .tm-v,
+.fin-v b, .dx-kpi-p b, .marco-cal b, .ac-obr, .rot-lista li.agora .link, .fic-ufs .sigla, .linha-tempo .hist-dia, .dx-uf th[scope="row"], .eq-quadro thead th,
+.quadro-sel thead th, .tab-campo-uf thead th, table.exec-fin thead th, .mapa-destaque span { font-weight: 600; }
+/* quadros do topo (Visão geral e as outras abas): como os do Saberes */
+.dx-topo { border-radius: 20px; grid-template-columns: minmax(300px, 1.35fr) minmax(0, 4fr); }
+.dx-exec { padding: 32px; }
+.dx-kpi { padding: 32px 24px; }
+.dx-kpi-n b, .eq-kpi .eq-n b { font-size: clamp(28px, 2.4vw, 34px); font-weight: 700; letter-spacing: -.03em; }
+.dx-kpi-r { font-size: var(--t-lg); font-weight: 600; line-height: 1.3; }
+.dx-kpi-p { font-size: var(--t-base); }
+.dx-kpi-s { font-size: var(--t-sm); }
+.dx-exec-num b { font-size: clamp(56px, 5vw, 72px); font-weight: 800; letter-spacing: -.04em; }
+.secao.dx-atencao, main > .secao { border-radius: 18px; }
+@media (max-width: 1180px) { .dx-topo { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .dx-exec { padding: 22px 18px; } .dx-kpi { padding: 20px 16px; } }
+/* algarismos de mesma largura onde se comparam números */
+td, th, .chip, .num, .dsp-n, .dsp-v, .dx-kpi-n, .dx-kpi-p, .eq-n, time { font-variant-numeric: tabular-nums; }
+/* celular: letra pequena um degrau maior (fora do modo sol, que já tem a sua escala) */
+@media (max-width: 640px) { :root:not([data-sol]):not([data-contraste]) { --t-xs: 13px; --t-sm: 14px; } }
