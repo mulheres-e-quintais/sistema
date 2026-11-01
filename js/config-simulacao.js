@@ -26,7 +26,7 @@ MQ.CONFIG = { supabaseUrl: '', supabaseAnonKey: '', semServiceWorker: true, cena
       só na memória. Assim a simulação não enche o espaço do sistema nem mexe no "último uso" que tira do sistema quem fica parado. */
 (function () {
   try {
-    const real = window.localStorage, P = 'mq-sim:', mem = new Map(), soMemoria = k => /^mq-cache-/.test(String(k));
+    const real = window.localStorage, P = 'mq-sim:', mem = new Map(), soMemoria = k => /^mq-(cache-|vitrine)/.test(String(k));
     const loja = {
       getItem: k => soMemoria(k) ? (mem.has(k) ? mem.get(k) : null) : real.getItem(P + k),
       setItem: (k, v) => { if (soMemoria(k)) mem.set(k, String(v)); else real.setItem(P + k, String(v)); },

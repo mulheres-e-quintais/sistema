@@ -273,7 +273,7 @@ legend { font: 600 var(--t-xs)/1.2 var(--cond); letter-spacing: .09em; text-tran
 .bloco { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: grid; gap: 12px; box-shadow: 0 1px 2px rgba(69, 43, 26, .04); }
 
 /* bolsista */
-.forms { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.forms { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 12px; }
 .forms li { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
 .forms .n { font: 600 var(--t-xl)/1 var(--serif); color: var(--ocre); }
 
@@ -369,7 +369,7 @@ fieldset > .fixo { margin: 0; }
 .pf-bar { height: 10px; border-radius: 5px; background: var(--surface-2); position: relative; }
 .pf-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--verde-2); border-radius: 5px; }
 .pf-v { text-align: right; white-space: nowrap; }
-.grade-uf { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.grade-uf { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 12px; }
 
 /* ---------- Trabalho de campo ---------- */
 .pils { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -699,7 +699,7 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .quadro-sel .bar { width: 100%; }
 .criterio .erro { grid-column: 1 / -1; }
 /* ---------- solicitação de pagamento ---------- */
-.pag-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; align-items: start; }
+.pag-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 14px; align-items: start; }
 .pag-c { display: grid; gap: 10px; }
 .pag-c h3 { margin: 0; }
 .pag-vis { display: grid; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
@@ -2814,7 +2814,7 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
   .quadro-scroll:has(> .tab-campo-uf) ~ .dica-cols { display: none; }
   table.quadro.tab-campo-uf, table.quadro.tab-campo-uf tbody { display: block; width: 100%; min-width: 0 !important; }
   table.quadro.tab-campo-uf thead { display: none; }
-  table.quadro.tab-campo-uf tbody { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  table.quadro.tab-campo-uf tbody { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); }
   table.quadro.tab-campo-uf tr { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 8px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 1px 2px rgba(69, 43, 26, .04); }
   table.quadro.tab-campo-uf td { display: block; padding: 0 !important; border: 0 !important; background: transparent !important; width: auto !important; min-width: 0 !important; text-align: left; white-space: normal; }
   table.quadro.tab-campo-uf td.uf { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; }
@@ -2990,7 +2990,7 @@ small { font-size: max(12px, .85em); }
 .ac-col-n { font: 600 12px var(--sans); fill: var(--ink); }
 .ac-col-m { font: 400 12px var(--sans); fill: var(--ink-2); }
 .ac-eixo { stroke: var(--line-2, var(--line)); stroke-width: 1; }
-.ac-ufs { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
+.ac-ufs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(270px, 100%), 1fr)); gap: 14px; }
 .ac-uf { display: grid; gap: 10px; align-content: start; }
 .ac-uf h3 { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; }
 .ac-dl { margin-top: 4px; }
@@ -4850,3 +4850,50 @@ td, th, .chip, .num, .dsp-n, .dsp-v, .dx-kpi-n, .dx-kpi-p, .eq-n, time { font-va
 /* celular: letra pequena um degrau maior (fora do modo sol, que já tem a sua escala) */
 @media (max-width: 640px) { :root:not([data-sol]):not([data-contraste]) { --t-xs: 13px; --t-sm: 14px; } }
 .pl-bt.perigo.confirmar { background: var(--crit); color: #fff; border-color: var(--crit); }   /* 01/11/2026: segundo toque do "Desfazer esta importação" */
+/* 01/11/2026 (varredura por aparelho, aparelhos.js): a 320 px os perfis da simulação quebram em duas linhas e a 2ª linha encostava em "Ver detalhes";
+   no alto, com cinco botões, o nome "Sistema do projeto" ficava cortado no meio da palavra: até 420 px fica só o símbolo (o nome está no rodapé e na tela de entrada) */
+@media (max-width: 640px) { .demo-ver .seg { height: auto; } .demo-mais { display: block; margin-top: 8px; } }
+@media (max-width: 340px) { .demo-ver .seg { overflow: visible; row-gap: 0; } }
+@media (max-width: 420px) { header.barra .marca .sis, header.barra .marca .sep { display: none; } }
+/* 01/11/2026 (aparelhos.js, 320 px): rótulo do cartão ("acompanhamento") e valor do resumo ("R$ 589.764,33") cortados no celular estreito */
+.dx-kpi-r, .eq-kpi .eq-l { overflow-wrap: anywhere; hyphens: auto; }
+@media (max-width: 380px) { .dx-kpi { padding: 18px 14px; } .dx-kpi-r { font-size: var(--t-md); } .resumo .v { font-size: clamp(18px, 6.6vw, var(--t-3xl)); overflow-wrap: anywhere; } }
+@media (max-width: 380px) { .dx-kpi-topo { flex-wrap: wrap; gap: 6px 8px; } .dx-kpi-n, .eq-kpi .eq-n { min-width: 0; } .dx-kpi-n b, .eq-kpi .eq-n b { font-size: 26px; } }
+/* 01/11/2026 (aparelhos.js): de 861 a 1100 px (celular deitado, iPad deitado) o "Adicionar agente" saía do quadro e cobria o cartão da agente, e o nome do
+   estado ("Pernambuco") passava da coluna de 106 px: coluna do estado com 146 px e o botão numa linha própria, à direita */
+@media (min-width: 861px) and (max-width: 960px) {   /* 2 estados por linha (como até 860): cada um empilhado, sem o cabeçalho */
+  .ag-th { display: none; } .ag-tr { grid-template-columns: 1fr; gap: 12px; padding: 16px; }
+  .ag-lista .vagabtn.com-foto { flex: 1 1 100%; } .ag-acao { min-width: 0; justify-content: stretch; } .ag-acao .btn-acao { width: 100%; }
+}
+@media (min-width: 961px) and (max-width: 1100px) {
+  .ag-th, .ag-tr { grid-template-columns: 146px minmax(0, 1fr); }
+  .ag-th > :nth-child(3) { display: none; }
+  .ag-acao { grid-column: 1 / -1; min-width: 0; justify-content: flex-end; }
+}
+.ag-tr > :first-child, .ag-tr > :first-child * { overflow-wrap: anywhere; }
+/* resumo de Pagamentos: o valor em reais cabe no cartão em qualquer largura (cortava de 390 a 860 px) */
+.resumo > div { min-width: 0; }
+.resumo .v { font-size: clamp(18px, 1.2vw + 12px, var(--t-3xl)); overflow-wrap: anywhere; }
+/* caminho das fichas no acompanhamento do MDA/MPA: de 761 a 900 px "Acompanhamentos" encavalava em "Avaliação final" */
+.ac2-et { overflow-wrap: anywhere; hyphens: auto; }
+@media (min-width: 761px) and (max-width: 900px) { .ac2-et { font-size: var(--t-xs); } .ac2-caminho li { padding: 0 2px; } }
+/* faixa da simulação: perfis com 28 px de altura (eram 23) */
+.demo-ver .seg button { min-height: 28px; }
+
+/* 01/11/2026: simulação como a do Saberes — entrada com "Entrar como…" por perfil e faixa da simulação em uma linha cor de terra */
+.ent-sim { display: grid; gap: 14px; }
+.ent-sim-esc { margin: 6px 0 0; color: var(--ink-2); }
+.ent-sim-l { display: grid; gap: 10px; }
+.ent-perfil { width: 100%; min-height: 52px; justify-content: center; font-size: var(--t-base); border-radius: 14px; }
+.ent-perfil.pri span { margin-left: 8px; }
+.demo-sim { background: #9C5F22; color: #FFF7EC; border-bottom: 0; }
+.demo-sim .demo-selo, .demo-sim .demo-dias, .demo-sim .demo-ver, .demo-sim .demo-mais summary, .demo-sim b { color: #FFF7EC; }
+.demo-sim .demo-dias a, .demo-sim .demo-mais summary { color: #FFF7EC; text-decoration: underline; text-underline-offset: 2px; }
+.demo-sim .demo-dias b, .demo-sim .demo-selo b { color: #fff; }
+.demo-sim .demo-ver .seg { background: rgba(255, 255, 255, .92); }
+.demo-sim .demo-mais p, .demo-sim .demo-mais .link { color: #FFF7EC; }
+:root[data-contraste] .demo-sim { background: #000; color: #fff; border-bottom: 1px solid #fff; }
+:root[data-contraste] .demo-sim a, :root[data-contraste] .demo-sim summary { color: #FFE600; }
+/* 01/11/2026 (aparelhos.js, telas diversas): dobrável fechado (280 px) e smart TV (960 × 540) */
+@media (max-width: 300px) { .chip { white-space: normal; max-width: 100%; } .rl-item, .rl-item * { min-width: 0; overflow-wrap: anywhere; } }
+@media (min-width: 641px) and (max-width: 1000px) { table.exec-fin { width: 100%; } table.exec-fin th, table.exec-fin td { padding-left: 8px; padding-right: 8px; } table.exec-fin th:first-child, table.exec-fin td:first-child { overflow-wrap: anywhere; } }
