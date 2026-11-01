@@ -4849,3 +4849,4 @@ a[data-nova-aba]:not(:has(img))::after { content: ""; display: inline-block; wid
 td, th, .chip, .num, .dsp-n, .dsp-v, .dx-kpi-n, .dx-kpi-p, .eq-n, time { font-variant-numeric: tabular-nums; }
 /* celular: letra pequena um degrau maior (fora do modo sol, que já tem a sua escala) */
 @media (max-width: 640px) { :root:not([data-sol]):not([data-contraste]) { --t-xs: 13px; --t-sm: 14px; } }
+.pl-bt.perigo.confirmar { background: var(--crit); color: #fff; border-color: var(--crit); }   /* 01/11/2026: segundo toque do "Desfazer esta importação" */
