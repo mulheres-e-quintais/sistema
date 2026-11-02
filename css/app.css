@@ -4897,3 +4897,4 @@ td, th, .chip, .num, .dsp-n, .dsp-v, .dx-kpi-n, .dx-kpi-p, .eq-n, time { font-va
 /* 01/11/2026 (aparelhos.js, telas diversas): dobrável fechado (280 px) e smart TV (960 × 540) */
 @media (max-width: 300px) { .chip { white-space: normal; max-width: 100%; } .rl-item, .rl-item * { min-width: 0; overflow-wrap: anywhere; } }
 @media (min-width: 641px) and (max-width: 1000px) { table.exec-fin { width: 100%; } table.exec-fin th, table.exec-fin td { padding-left: 8px; padding-right: 8px; } table.exec-fin th:first-child, table.exec-fin td:first-child { overflow-wrap: anywhere; } }
+button.atalho { font: inherit; text-align: left; cursor: pointer; width: auto; }
