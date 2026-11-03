@@ -5095,3 +5095,26 @@ input.procura { min-height: 24px; }
   .rl-res { grid-template-columns: 1fr; }
   .rl-atalhos { display: flex; flex-wrap: wrap; border-radius: 14px; } .rl-atalhos button { flex: 1 1 45%; border-left: 0 !important; border-top: 1px solid var(--line); }
 }
+/* 03/11/2026 (pedido da coordenação: "igual à seção O que pede atenção, com borda visível, realçando"): Primeiros passos e Projeção no
+   mesmo quadro do "O que pede atenção" — fundo de cartão, borda, sombra e o fio de cor no alto — e cada passo ou meta num cartão com a faixa
+   de cor à esquerda (pendente em âmbar, feito em verde, não chega no ritmo em vermelho) */
+.mts.pp, .mts.pj { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--accent); border-radius: 16px; padding: 22px 24px 20px;
+  box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 8px 22px rgba(69, 43, 26, .06); }
+.mts.pp .mts-cab, .mts.pj .mts-cab { margin: 0 0 14px; padding-bottom: 14px; }
+.pp-l, .pj-l { display: grid; gap: 8px; margin: 0; }
+.pp .pp-l > li.pp-i, .pj .pj-l > li.pj-i { position: relative; padding: 14px 16px 14px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
+.pp .pp-l > li.pp-i:last-child, .pj .pj-l > li.pj-i:last-child { border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+.pp-i::before, .pj-i::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; border-radius: 12px 0 0 12px; background: var(--pend); }
+.pp-i.feito::before { background: var(--ok); }
+.pj-i.f::before { background: var(--pend); }
+.pj-i.bad::before { background: var(--crit); }
+.pj-i.ok::before { background: var(--ok); }
+.pj-i.info::before, .pj-i.pj-antes::before { background: var(--line-2, #B9A48F); }
+@media (max-width: 640px) { .mts.pp, .mts.pj { padding: 18px 14px; } .pp .pp-l > li.pp-i, .pj .pj-l > li.pj-i { padding: 12px 12px 12px 16px; } }
+
+.cab > div:has(> p.txt-just) { flex: 1 1 auto; min-width: 0; }
+.cab p.txt-just { max-width: none; }
+/* 03/11/2026 (pedidos da coordenação, Financeiro e Histórico): o texto de abertura de toda aba vai até o fim da linha, justificado, e quebra só quando precisa */
+.cab > div { flex: 1 1 auto; min-width: 0; }
+.cab > div > p { max-width: none; }
+@media (min-width: 600px) { .cab > div > p { text-align: justify; hyphens: auto; -webkit-hyphens: auto; } }
