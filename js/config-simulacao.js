@@ -27,12 +27,14 @@ MQ.CONFIG = { supabaseUrl: '', supabaseAnonKey: '', semServiceWorker: true, cena
 (function () {
   try {
     const real = window.localStorage, P = 'mq-sim:', mem = new Map(), soMemoria = k => /^mq-(cache-|vitrine)/.test(String(k));
+    const lista = () => [...mem.keys(), ...Object.keys(real).filter(k => k.indexOf(P) === 0).map(k => k.slice(P.length))];
     const loja = {
       getItem: k => soMemoria(k) ? (mem.has(k) ? mem.get(k) : null) : real.getItem(P + k),
       setItem: (k, v) => { if (soMemoria(k)) mem.set(k, String(v)); else real.setItem(P + k, String(v)); },
       removeItem: k => { mem.delete(k); real.removeItem(P + k); },
       clear: () => { mem.clear(); Object.keys(real).filter(k => k.indexOf(P) === 0).forEach(k => real.removeItem(k)); },
-      key: () => null, get length() { return 0; }
+      /* 03/11/2026: as chaves da simulação também se listam (o "Refazer o texto" do relatório procura as suas pelo começo do nome) */
+      key: i => lista()[i] || null, get length() { return lista().length; }
     };
     Object.defineProperty(window, 'localStorage', { value: loja, configurable: true });
   } catch (e) { /* sem armazenamento: o sistema segue só na memória */ }
