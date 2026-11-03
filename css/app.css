@@ -5118,3 +5118,80 @@ input.procura { min-height: 24px; }
 .cab > div { flex: 1 1 auto; min-width: 0; }
 .cab > div > p { max-width: none; }
 @media (min-width: 600px) { .cab > div > p { text-align: justify; hyphens: auto; -webkit-hyphens: auto; } }
+/* 03/11/2026: aba Dados (como a do Saberes que Cultivam): planilhas por assunto, cópia de segurança, Meus dados, pessoas com acesso */
+.dd-sec { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px 20px; box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 8px 22px rgba(69, 43, 26, .06); }
+.dd-sec > .secao-cab { margin: 0 0 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.dd-sec .acoes { margin: 0; }
+.dd-g + .dd-g { margin-top: 18px; }
+.dd-g h3 { margin: 0 0 8px; font-size: var(--t-xs); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; }
+.dd-gl { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr)); gap: 10px; }
+.dd-pl { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink); text-align: left; font: inherit; cursor: pointer; transition: border-color .15s, background .15s; }
+.dd-pl:hover:not(:disabled) { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); background: color-mix(in srgb, var(--accent) 5%, var(--bg)); }
+.dd-pl:disabled { opacity: .6; cursor: default; }
+.dd-pl > svg { flex: none; color: var(--accent); }
+.dd-pl-t { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.dd-pl-t b { font-weight: 600; } .dd-pl-t span { font-size: var(--t-sm); color: var(--ink-2); }
+.dd-pes { font-style: normal; color: var(--cont-ink, #7A4F00); font-weight: 600; }
+.dd-bt { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
+.dd-sec > .secao-cab > .dd-bt { flex: none; align-self: flex-start; }
+@media (max-width: 640px) { .dd-sec { padding: 18px 14px; } .dd-sec .acoes .dd-bt { width: 100%; justify-content: center; } }
+/* 03/11/2026 (pedido da coordenação): Vitrine pública da coordenação no quadro do "O que pede atenção" e em cartões */
+.vit-coord-sec { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px 20px; box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 8px 22px rgba(69, 43, 26, .06); }
+.vit-coord-sec > .secao-cab { margin: 0 0 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line); align-items: flex-start; }
+.vit-coord-sec .vit-n { flex: none; }
+.vit-gal { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 14px; }
+.vit-card { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--bg); }
+.vit-card figure { margin: 0; flex: 1 1 auto; display: flex; flex-direction: column; }
+.vit-card img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: var(--surface-2); }
+.vit-card figcaption { padding: 12px 14px 8px; display: flex; flex-direction: column; gap: 2px; }
+.vit-rot { font-size: var(--t-xs); color: var(--ink-2); }
+.vit-card figcaption b { font-size: var(--t-md); font-weight: 600; color: var(--ink); line-height: 1.3; }
+.vit-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: var(--t-sm); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.vit-uf { padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 12%, var(--surface)); color: var(--accent); font-weight: 600; font-size: var(--t-xs); }
+.vit-ret { margin: 4px 14px 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; color: var(--ink-2); }
+.vit-ret:hover, .vit-ret:focus-visible, .vit-ret.perigo { color: var(--crit); border-color: var(--crit); }
+@media (max-width: 640px) { .vit-coord-sec { padding: 18px 14px; } }
+/* 03/11/2026 (relato da coordenação: "o rodapé tá largo/alto demais"): rodapé mais baixo — no computador, os botões de ajuda e de relatar lado a lado,
+   a frase da LGPD numa linha e acessibilidade/contraste/versão na mesma linha; no celular, tudo mais junto */
+.rodape { margin-top: 32px; }
+.rodape-in { max-width: 1180px; padding: 14px 16px 16px; gap: 10px 28px; }
+.rodape-marca img { height: 30px; }
+.rodape-lgpd { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px 10px; max-width: 60ch; }
+.rodape-lgpd > p:not(.rodape-acess):not(.rodape-v) { flex-basis: 100%; }
+.rodape-lgpd > .rodape-acess { margin: 0; }
+.rodape-lgpd .rodape-ajuda { min-height: 32px; padding: 2px 12px 2px 3px; }
+.rodape-lgpd .rodape-ajuda-ic { width: 24px; height: 24px; }
+.rodape-lgpd > *:not(p):not(button) { margin: 0; }
+.rodape-v { flex-basis: auto; }
+@media (max-width: 800px) {
+  .rodape { margin-top: 24px; }
+  .rodape-in { gap: 8px; padding: 16px 16px calc(14px + env(safe-area-inset-bottom)); }
+  .rodape-marca { flex-direction: row; gap: 8px; }
+  .rodape-marca img { height: 30px; }
+  .rodape-lgpd { justify-content: center; padding-top: 10px; gap: 8px; max-width: none; }
+  .rodape-lgpd .rodape-ajuda { min-height: 44px; padding-right: 12px; font-size: var(--t-xs); }
+  .rodape-lgpd > p:not(.rodape-acess):not(.rodape-v) { max-width: none; }
+}
+/* 03/11/2026 (pedido da coordenação: "visite todo o sistema e melhore o aspecto visual, em especial dos painéis", no desenho dos cadastros pelo link e do
+   "O que pede atenção"): toda seção de primeiro nível vira um painel — fundo de cartão, borda, cantos de 16 px, sombra leve e o título separado do conteúdo
+   por um fio. Seções dentro de seções continuam lisas (o painel não se repete). Os quadros que já têm desenho próprio ficam como estão. */
+main .secao:not(.secao .secao):not(.hs-sec):not(.pre-sec):not(.dx-atencao):not(.mts):not(.dd-sec):not(.vit-coord-sec):not(.dx-duas > .secao):not(.dx-lado > .secao):not(.dx-agua) {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px 22px;
+  box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 8px 22px rgba(69, 43, 26, .06); min-width: 0; }
+main .secao:not(.secao .secao):not(.hs-sec):not(.pre-sec):not(.dx-atencao):not(.mts):not(.dd-sec):not(.vit-coord-sec):not(.dx-duas > .secao):not(.dx-lado > .secao):not(.dx-agua) > .secao-cab {
+  margin: 0 0 4px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+@media (min-width: 641px) and (max-width: 900px) {
+  main .secao:not(.secao .secao):not(.hs-sec):not(.pre-sec):not(.dx-atencao):not(.mts):not(.dd-sec):not(.vit-coord-sec):not(.dx-duas > .secao):not(.dx-lado > .secao):not(.dx-agua) { padding: 18px 14px; }   /* tablet: a tabela da Seleção cabe sem rolar */
+}
+@media (max-width: 640px) {
+  main .secao:not(.secao .secao):not(.hs-sec):not(.pre-sec):not(.dx-atencao):not(.mts):not(.dd-sec):not(.vit-coord-sec):not(.dx-duas > .secao):not(.dx-lado > .secao):not(.dx-agua) { padding: 18px 14px; border-radius: 14px; }
+}
+:root[data-contraste] main .secao:not(.secao .secao) { box-shadow: none; }
+/* 03/11/2026 (pedido da coordenação: "as mesmas letras, tamanho de títulos e formato de números do Saberes que Cultivam", em todo o sistema e todos os perfis):
+   título da tela 30 a 42 px em 700 e de seção 22 px em 700 (já iguais); o percentual grande da execução física como o do Saberes (52 a 84 px, 800);
+   os números dos cartões até 42 px em 800 (o Saberes usa 42 px), ainda encolhendo com a largura do cartão; no Financeiro, 26 a 34 px como lá */
+.dx-exec-num b { font-size: clamp(52px, 6.2vw, 84px); font-weight: 800; letter-spacing: -.055em; line-height: .95; }
+.dx-kpi-n b, .eq-kpi .eq-n b { font-size: clamp(28px, 3.3vw, 42px); font-weight: 800; letter-spacing: -.045em; }
+@supports (width: 1cqw) { .dx-kpi-n b, .eq-kpi .eq-n b { font-size: clamp(20px, 19cqw, 42px); } }
+.fin-k .eq-n b { font-size: clamp(26px, 3.2vw, 34px); font-weight: 800; letter-spacing: -.035em; }
+main .secao h2, .mts h2, .dd-sec h2 { font-size: var(--t-2xl); font-weight: 700; letter-spacing: -.02em; }
