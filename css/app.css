@@ -5166,3 +5166,16 @@ main .secao h2, .mts h2, .dd-sec h2 { font-size: var(--t-2xl); font-weight: 700;
 .pp-feitos { margin: 10px 0 0; }
 .pp-feitos summary { cursor: pointer; color: var(--muted); font-size: var(--t-sm); padding: 6px 0; }
 .pp-feitos ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; font-size: var(--t-sm); }
+
+/* v345 (03/11/2026, pedido da coordenação, revisão das cores sem trocar a paleta):
+   1. "Resolver" do "O que pede atenção" é contornado (o terracota cheio dentro do cartão vermelho sumia: dois tons quentes iguais);
+   2. "Lista de espera · Nª" é pílula neutra (o âmbar fica só para "Aguardando aprovação");
+   3. cartões da execução física: a cor diz a situação — verde cumprido, neutro em andamento, âmbar abaixo do previsto (com o texto). */
+.dx-kpi.neutro { --kc: var(--ink-2); }
+.dx-kpi.abaixo { --kc: var(--cont-borda); }
+.dx-kpi-ab { justify-self: start; align-self: start; width: fit-content; color: var(--cont-ink); background: color-mix(in srgb, var(--cont-bg) 35%, transparent); border-radius: 6px; padding: 0 6px; font-weight: 600; white-space: nowrap; }
+:root[data-theme="dark"] .dx-kpi-ab { color: var(--ink); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .dx-kpi-ab { color: var(--ink); } }
+:root[data-contraste] .dx-kpi.neutro { --kc: #FFFFFF; }
+:root[data-contraste] .dx-kpi.abaixo { --kc: #FFE600; }
+:root[data-contraste] .dx-kpi-ab { color: #000; background: #FFE600; }
