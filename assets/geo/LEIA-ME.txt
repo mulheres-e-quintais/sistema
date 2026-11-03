@@ -1,0 +1,3 @@
+Contorno dos municípios de AL, BA, PE, PI e SE para o mapa "Onde estão os quintais produtivos" (no município).
+Fonte: malha municipal do IBGE (dado público), na cópia aberta tbrugz/geodata-br, simplificada.
+Gerado por ferramentas/geo_municipios.py (instruções no começo do arquivo). Não edite à mão.

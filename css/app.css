@@ -5195,3 +5195,14 @@ main .secao:not(.secao .secao):not(.hs-sec):not(.pre-sec):not(.dx-atencao):not(.
 @supports (width: 1cqw) { .dx-kpi-n b, .eq-kpi .eq-n b { font-size: clamp(20px, 19cqw, 42px); } }
 .fin-k .eq-n b { font-size: clamp(26px, 3.2vw, 34px); font-weight: 800; letter-spacing: -.035em; }
 main .secao h2, .mts h2, .dd-sec h2 { font-size: var(--t-2xl); font-weight: 700; letter-spacing: -.02em; }
+/* v342: atalho para as impressões por tipo, na aba Relatórios */
+.rl-ir-imp { margin: 4px 0 14px; font-size: var(--t-sm); color: var(--ink-2); }
+.rl-ir-imp .link { font-weight: 600; text-align: left; }
+/* v342: no município, a divisa de verdade (malha do IBGE): vizinhos em traço fino, o município em destaque */
+.mapa .mun-viz path { fill: none; stroke: color-mix(in srgb, var(--ink-2) 45%, transparent); stroke-linejoin: round; }
+.mapa .mun-ctn path { fill: color-mix(in srgb, var(--surface) 62%, transparent); stroke: var(--accent); stroke-linejoin: round; }
+.mapa .mun-ctn text { fill: var(--ink); font-weight: 600; paint-order: stroke; stroke: var(--surface); stroke-width: .6%; }
+.mapa-local .ml-mun { fill: color-mix(in srgb, var(--m-ok) 55%, transparent); stroke: var(--m-ok); stroke-linejoin: round; }
+:root[data-contraste] .mapa .mun-viz path { stroke: #BDBDBD; }
+:root[data-contraste] .mapa .mun-ctn path { fill: #000; stroke: #FFE600; }
+:root[data-contraste] .mapa .mun-ctn text { fill: #fff; stroke: #000; }
