@@ -4587,12 +4587,14 @@ table.quadro.desp-tab th:nth-child(5), table.quadro.desp-tab td:nth-child(5) { w
 
 /* 30/10/2026 (revisão de cores e do modo sol): o menu da coordenação geral (11 abas) descia o grupo Documentação para uma 2ª linha
    entre 1101 e 1150 px, e no modo sol (letra maior) até 1599 px. As pílulas apertam nessas larguras, como no Saberes que Cultivam. */
-@media (min-width: 1101px) and (max-width: 1300px) {
-  .abas.abas-grupos { gap: 6px 10px; }
+/* 03/11/2026 (v343, pedido da coordenação: "tudo em uma linha"): com Relatórios e Dados (13 abas), o grupo Documentação descia também
+   em telas largas (1440 px); as pílulas justas valem agora em toda largura a partir de 1101 px, no normal e no modo sol */
+@media (min-width: 1101px) {
+  .abas.abas-grupos { gap: 6px 10px; flex-wrap: nowrap; }
   .abas-grupos button { padding: 6px 6px; }
   .abas-grupos .aba-grupo + .aba-grupo::before { left: -6px; }
 }
-@media (min-width: 1101px) and (max-width: 1599px) {
+@media (min-width: 1101px) {
   :root[data-sol] .abas.abas-grupos { gap: 6px 8px; }
   :root[data-sol] .abas-grupos button { padding: 6px 5px; font-size: var(--t-sm); }
   :root[data-sol] .abas-grupos .aba-g { letter-spacing: .06em; }
@@ -5206,3 +5208,22 @@ main .secao h2, .mts h2, .dd-sec h2 { font-size: var(--t-2xl); font-weight: 700;
 :root[data-contraste] .mapa .mun-viz path { stroke: #BDBDBD; }
 :root[data-contraste] .mapa .mun-ctn path { fill: #000; stroke: #FFE600; }
 :root[data-contraste] .mapa .mun-ctn text { fill: #fff; stroke: #000; }
+
+/* v343: Dados > Pessoas com acesso, coluna dos avisos no aparelho (92) */
+.dd-av { color: var(--muted); }
+.dd-avl { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; color: var(--muted); }
+/* v343 (pedido da coordenação): "Visitas feitas por mês" (MDA/MPA e coordenação) com os números centralizados embaixo do título da coluna */
+@media (min-width: 641px) { .ac-tab th.num, .ac-tab td.num { text-align: center; } }
+/* v343: a coluna dos avisos quebra em linhas no tablet (a tabela não rola de lado) */
+#dd-acessos td[data-rot^="Avisos"] { min-width: 0; }
+#dd-acessos .dd-av { display: block; }
+@media (min-width: 641px) and (max-width: 1023px) {
+  #dd-acessos { table-layout: fixed; width: 100%; }
+  #dd-acessos th, #dd-acessos td { overflow-wrap: anywhere; white-space: normal; }
+}
+@media (min-width: 641px) and (max-width: 1023px) {
+  #dd-acessos th:nth-child(1) { width: 22%; } #dd-acessos th:nth-child(2) { width: 20%; } #dd-acessos th:nth-child(3) { width: 17%; }
+  #dd-acessos th:nth-child(4) { width: 15%; } #dd-acessos th:nth-child(5) { width: 26%; }
+  #dd-acessos th, #dd-acessos td { padding-left: 8px; padding-right: 8px; }
+  #dd-acessos .chip { white-space: normal; max-width: 100%; }
+}
