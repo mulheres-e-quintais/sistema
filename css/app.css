@@ -1852,8 +1852,8 @@ table.fin tbody + tbody .fin-grupo > * { border-top: 14px solid var(--bg); }
 .fin-tot > * { border-top: 2px solid var(--ink); padding-top: 14px; }
 .fin-tot th { text-align: left; font: 600 var(--t-lg) var(--serif); padding-left: 0; }
 .passou .fin-saldo { color: var(--crit) !important; }
-/* celular e tablet: cada linha vira um bloco com rótulos */
-@media (max-width: 900px) {
+/* celular e tablet: cada linha vira um bloco com rótulos */  /* v347: era até 900 px; no iPad em pé o Financeiro fica tabela com cabeçalho, como no Saberes */
+@media (max-width: 640px) {
   table.fin, table.fin tbody, table.fin tfoot, table.fin tr, table.fin th, table.fin td { display: block; width: 100%; }
   table.fin thead { display: none; }
   table.fin tbody + tbody .fin-grupo > * { border-top: 0; }
@@ -1870,7 +1870,7 @@ table.fin tbody + tbody .fin-grupo > * { border-top: 14px solid var(--bg); }
 }
 table.fin .fin-item > th { padding-left: 28px; } table.fin .fin-grupo > th { padding-left: 14px; } table.fin .fin-tot > th { padding-left: 14px; }
 table.fin .fin-detalhe > td { padding-left: 28px; }
-@media (max-width: 900px) { table.fin .fin-item > th, table.fin .fin-grupo > th, table.fin .fin-tot > th, table.fin .fin-detalhe > td { padding-left: 0; } }
+@media (max-width: 640px) { table.fin .fin-item > th, table.fin .fin-grupo > th, table.fin .fin-tot > th, table.fin .fin-detalhe > td { padding-left: 0; } }
 
 /* ======================================================================
    BOTÃO DE AÇÃO (design system, 01/10/2026): um componente só para cadastrar, enviar, registrar, pedir.
@@ -2666,7 +2666,7 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 
 /* --- Execução, "Por rubrica" (03/10/2026): quadro em cartão, cabeçalho em faixa, rubricas como títulos de grupo, itens limpos --- */
 .fin-wrap:has(> .exec-fin) { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); overflow: hidden; box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 8px 22px rgba(69, 43, 26, .06); }
-@media (min-width: 901px) {
+@media (min-width: 641px) {
   table.exec-fin thead th { background: var(--surface-2); color: var(--ink); padding: 14px 14px; border-bottom: 1px solid var(--line); font-size: var(--t-xs); }
   table.exec-fin thead th:first-child { padding-left: 24px; } table.exec-fin thead th:last-child, table.exec-fin td:last-child { padding-right: 24px; }
   table.exec-fin tbody + tbody .fin-grupo > * { border-top: 0; }
@@ -2685,7 +2685,7 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 .exec-fin .fin-nome:not(.sem)::before { content: ""; flex: none; width: 6px; height: 6px; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transform: translateY(-2px) rotate(-45deg); transition: transform .15s; }
 .exec-fin .fin-nome[aria-expanded="true"]::before { transform: translateY(-3px) rotate(45deg); border-color: var(--accent); }
 .exec-fin .fin-nome:not(.sem):hover { color: var(--accent); }
-@media (max-width: 900px) { .fin-wrap:has(> .exec-fin) { padding: 4px 10px 10px; } }
+@media (max-width: 640px) { .fin-wrap:has(> .exec-fin) { padding: 4px 10px 10px; } }
 
 /* --- Campo, "Roteiro de campo" em telas largas (03/10/2026): cabeçalho em faixa, UF em selo, data compacta, nomes em destaque --- */
 @media (min-width: 961px) {
@@ -2721,7 +2721,7 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 .exec-fin .fin-exe .medidor { width: 96px; height: 8px; border-radius: 4px; overflow: hidden; }
 .exec-fin .fin-exe .medidor i { border-radius: 4px; }
 .exec-fin .fin-exe b { font-size: var(--t-sm); color: var(--ink); min-width: 40px; }
-@media (min-width: 901px) {
+@media (min-width: 641px) {
   table.exec-fin .fin-grupo > * { background: var(--surface); padding-top: 16px; padding-bottom: 16px; border-bottom: 0; }
   table.exec-fin .fin-grupo > th { box-shadow: none; padding-left: 20px; }
   table.exec-fin tbody.aberta .fin-grupo > * { background: color-mix(in srgb, var(--surface-2) 55%, var(--surface)); border-bottom: 1px solid var(--line); }
@@ -2732,7 +2732,7 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
   table.exec-fin thead th { font-weight: 700; }
 }
 @media print { .exec-fin tbody.fin-rubrica > tr.fin-item { display: table-row !important; } .fin-rub::before { display: none; } }
-@media (max-width: 900px) { .exec-fin .fin-exe { min-width: 0; } .exec-fin .fin-exe .medidor { flex: 1 1 auto; width: auto; background: color-mix(in srgb, var(--ink) 10%, transparent); } }
+@media (max-width: 640px) { .exec-fin .fin-exe { min-width: 0; } .exec-fin .fin-exe .medidor { flex: 1 1 auto; width: auto; background: color-mix(in srgb, var(--ink) 10%, transparent); } }
 
 /* --- Campo, tabela por estado em tela pequena (03/10/2026): um cartão por estado, nada cortado nem rolando para o lado --- */
 @media (max-width: 900px) {
@@ -4248,7 +4248,7 @@ details.pag-cancelar form > p { margin: 0 0 12px; }
 .fin-rec-traco { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); border-radius: 1px; transform: translateX(-1px); }
 .fin-sub-2 { display: grid; gap: 2px; }
 .fin-resumo .dx-como summary { cursor: pointer; font-size: var(--t-sm); color: var(--ink-2); }
-@media (max-width: 1100px) { .fin-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .fin-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }   /* v347: no iPad em pé (701 a 1100 px) os 4 cartões lado a lado, como no Saberes */
 @media (max-width: 520px) { .fin-kpis { grid-template-columns: minmax(0, 1fr); } }
 /* tabela do gráfico */
 .eg-tab-d { margin-top: 6px; } .eg-tab-d summary { cursor: pointer; font-size: var(--t-sm); color: var(--ink-2); min-height: 36px; display: flex; align-items: center; }
@@ -5211,3 +5211,91 @@ summary.imh-cab:hover { background: color-mix(in srgb, var(--accent) 5%, var(--s
 :root[data-contraste] .imh, :root[data-contraste] .imh-i { border-color: #FFFFFF; }
 :root[data-contraste] .imh-ic { background: #000; color: #FFE600; border: 1px solid #FFE600; }
 :root[data-contraste] .imh-b.perigo { color: #FFE600; border-color: #FFE600; }
+
+/* v346 (pedido da coordenação, Primeiros passos): o número do passo pendente no âmbar de "pendente" (era o terracota, a cor de ação) e o botão com ícone */
+.pp-i:not(.feito) .pp-n { background: color-mix(in srgb, var(--cont-bg) 22%, var(--surface)); border-color: color-mix(in srgb, var(--cont-borda) 55%, transparent); color: var(--cont-ink); }
+:root[data-theme="dark"] .pp-i:not(.feito) .pp-n { color: var(--ink); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pp-i:not(.feito) .pp-n { color: var(--ink); } }
+:root[data-contraste] .pp-i:not(.feito) .pp-n { background: #000; border-color: #FFE600; color: #FFE600; }
+.pp-bt { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.pp-bic { display: inline-flex; flex: none; } .pp-bic svg { width: 18px; height: 18px; }
+
+/* v347 (pedido da coordenação): o caminho de cada quintal (aba Campo, "Ver os N quintais") — 6 traços, um por etapa: feito em verde,
+   a etapa atual em âmbar (pendente), as que faltam em cinza; ao lado, "N de 6 · Próximo: …" e, embaixo, o botão da próxima ação */
+.cq { display: grid; gap: 6px; min-width: 0; }
+.cq-l { display: flex; gap: 4px; list-style: none; margin: 0; padding: 0; max-width: 360px; }
+.cq-l li { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
+.cq-l li.ok { background: var(--st-ok); } .cq-l li.atual { background: var(--cont-bg); }
+.cq-t { font-size: var(--t-sm); color: var(--ink-2); line-height: 1.4; } .cq-t b { color: var(--ink); }
+:root[data-contraste] .cq-l li { background: #555; } :root[data-contraste] .cq-l li.ok { background: #7CF29A; } :root[data-contraste] .cq-l li.atual { background: #FFE600; }
+/* v347: no cartão do quintal, nome | caminho | botões em colunas fixas (a largura do texto da próxima etapa não empurra os botões para baixo) */
+@media (min-width: 1100px) {
+  .quintal.cq-q { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 30rem; align-items: center; }
+  .quintal.cq-q > .acoes { justify-content: flex-end; flex-wrap: nowrap; } .quintal.cq-q > .acoes > .btn { white-space: nowrap; }
+}
+:root[data-sol] .quintal.cq-q { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 34rem; }
+@media (max-width: 1099px) { .quintal.cq-q > .cq { flex: 1 1 100%; } .quintal.cq-q > .acoes { flex: 1 1 100%; flex-direction: row; flex-wrap: wrap; }
+  .quintal.cq-q > .acoes > .btn { width: auto; flex: 0 1 auto; } }
+/* v347 (pedido da coordenação): o texto de abertura dos quadros (Primeiros passos, Seus primeiros passos, Projeção) vai até o fim da linha; só quebra lá */
+.mts-cab > div:first-child { flex: 1 1 auto; min-width: 0; } .mts-cab p { max-width: none; }
+/* v347 (pedidos da coordenação, 04/11/2026): "Ainda não começaram" em colunas; botões dos passos e da aba Dados do mesmo tamanho; textos dos quadros até o fim da linha */
+.pj-at { display: grid; gap: 0; margin-top: 10px; font-size: var(--t-sm); }
+.pj-ah, .pj-ar { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, .9fr) minmax(0, 1.5fr) minmax(0, 1fr); gap: 4px 16px; align-items: baseline; padding: 10px 0; }
+.pj-ah { padding-top: 0; color: var(--muted); font-size: var(--t-xs); font-weight: 600; text-transform: none; border-bottom: 1px solid var(--line); }
+.pj-ar + .pj-ar { border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.pj-ar .pj-an { font-size: var(--t-md); } .pj-ae { font-weight: 400; color: var(--muted); font-size: var(--t-sm); }
+@media (max-width: 760px) { .pj-ah { display: none; } .pj-ar { grid-template-columns: 1fr; gap: 2px; }
+  .pj-ar > span[data-r]::before { content: attr(data-r) ": "; color: var(--muted); } }
+.pre-cab p { max-width: none; }
+@media (min-width: 641px) { .pp-l .pp-bt { width: 19.5rem; } .pp-l .pp-ok { width: 19.5rem; justify-content: center; text-align: center; } .dd-sec .acoes .dd-bt:not(.peq) { min-width: 17rem; justify-content: center; } }
+@media (max-width: 640px) { .pp-l .pp-bt { width: 100%; } }
+:root[data-sol] .pp-l .pp-bt, :root[data-sol] .pp-l .pp-ok { width: auto; min-width: 19.5rem; }
+/* v347 (pedido da coordenação: "usar até o fim da linha"): todo texto de explicação dos quadros ocupa a largura toda e só quebra no fim da linha */
+main .secao p, main .bloco p, main .mts p, main .secao-cab p, main .rl-nota, main [class*="-nota"] { max-width: none; }
+
+/* v347 (auditoria de 04/11/2026): pílulas longas quebram linha (no celular a de "desfeita em … por …" alargava o quadro das importações e cortava o
+   "Desfazer"; a de "Cabe ao auxiliar administrativo" passava da tela a 320 px); quadros de grade não esticam além da largura */
+.imh-c, .imh-l, .imh-i, .imh-d { min-width: 0; } .imh-p .chip { white-space: normal; text-align: left; }
+.pp-ok { white-space: normal; max-width: 100%; } .pp-i, .pj-i, .pj-t { min-width: 0; }
+@media (max-width: 380px) { .pj-i { grid-template-columns: 1fr; } .pj-i > .pj-n { display: none; } .pj-bl { flex-wrap: wrap; } }
+
+/* v347 (pedido da coordenação: Financeiro no iPad em pé como no Saberes): cartões em 4 colunas com números um degrau menores e menos margem */
+@media (min-width: 701px) and (max-width: 1100px) {
+  .fin-kpis .dx-kpi { padding: 22px 16px; }
+  .fin-k .eq-n b { font-size: clamp(20px, 2.5vw, 28px); }
+  .fin-k .eq-n small { font-size: var(--t-xs); }
+}
+/* v347: tabela do Financeiro no tablet em pé (641 a 1100 px), como a do Saberes: nome da rubrica ao lado do botão e a contagem de itens embaixo,
+   só o percentual na coluna Execução (sem a barra), letra e margens um degrau menores; a tabela não rola de lado */
+@media (min-width: 641px) and (max-width: 1100px) {
+  table.exec-fin { table-layout: fixed; font-size: var(--t-sm); }
+  table.exec-fin thead th { padding: 12px 8px !important; font-size: var(--t-2xs); letter-spacing: .06em; }
+  table.exec-fin thead th:first-child { width: 30%; padding-left: 16px !important; }
+  table.exec-fin td, table.exec-fin th { padding-left: 8px !important; padding-right: 8px !important; }
+  table.exec-fin .fin-grupo > th, table.exec-fin .fin-tot > th { padding-left: 14px !important; }
+  table.exec-fin .fin-item > th, table.exec-fin .fin-detalhe > td { padding-left: 24px !important; }
+  table.exec-fin td.num { white-space: normal; overflow-wrap: anywhere; }
+  .exec-fin .fin-rub, .exec-meta .fin-rub { display: grid !important; grid-template-columns: 28px minmax(0, 1fr); column-gap: 10px; row-gap: 4px; align-items: center; }
+  .exec-fin .fin-rub::before { grid-row: 1 / span 2; grid-column: 1; align-self: center; }
+  .exec-fin .fin-rub-n { grid-column: 2; font-size: var(--t-sm); overflow-wrap: break-word; }
+  .exec-fin .fin-rub small { grid-column: 2; justify-self: start; margin-left: 0; }
+  .exec-fin .fin-exe { min-width: 0; } .exec-fin .fin-exe .medidor { display: none; }
+  table.exec-fin thead th:last-child, table.exec-fin td:last-child { width: 9%; padding-right: 14px !important; }
+}
+@media (min-width: 641px) and (max-width: 1100px) {
+  .exec-fin .fin-rub::before, .exec-meta .fin-rub::before { grid-row: 1 / span 3; grid-column: 1; }
+  .exec-fin .fin-rub .fin-rub-n, .exec-meta .fin-rub .fin-rub-n { grid-row: 1; grid-column: 2; }
+  .exec-fin .fin-rub small, .exec-meta .fin-rub small { grid-row: 2; grid-column: 2; justify-self: start; margin-left: 0; }
+  .exec-fin .fin-rub .fin-plano, .exec-meta .fin-rub .fin-plano { grid-row: 3; grid-column: 2; }
+  .exec-meta .fin-rub { grid-template-columns: 28px minmax(0, 1fr) !important; }
+  table.exec-fin td.num { white-space: nowrap; overflow-wrap: normal; font-size: var(--t-xs); }
+  table.exec-fin thead th { white-space: normal; overflow-wrap: anywhere; }
+  table.exec-fin thead th:nth-child(2), table.exec-fin thead th:nth-child(4), table.exec-fin thead th:nth-child(5) { width: 16%; }
+  table.exec-fin thead th:nth-child(3) { width: 12%; }
+  table.exec-fin thead th:first-child { width: auto; }
+}
+@media (min-width: 641px) and (max-width: 1100px) {
+  table.exec-fin thead th { overflow-wrap: normal; word-break: keep-all; letter-spacing: .02em; }
+  table.exec-fin thead th:nth-child(3) { width: 10%; }
+  table.exec-fin thead th:last-child, table.exec-fin td:last-child { width: 12%; }
+}
