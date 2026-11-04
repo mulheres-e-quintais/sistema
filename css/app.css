@@ -329,8 +329,8 @@ fieldset > .fixo { margin: 0; }
 
 /* ---------- mapa dos quintais ---------- */
 :root { --m-ok: #2E7D43; --m-espera: #3478B9; --m-aguarda: #B07800; --m-agua: #C42847; --m-uf: #EDE5D8; --m-uf-viz: #F7F0E8; --m-borda: #CDBDA8; --m-fundo: #FAF7F1; --m-sigla: #6B594A; --m-texto: #4A3022; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --m-ok: #3F9A44; --m-espera: #4A8FD6; --m-aguarda: #C08410; --m-agua: #F27A8C; --m-uf: #2E2520; --m-uf-viz: #1B1512; --m-borda: #54453B; --m-fundo: var(--surface); --m-sigla: #BCA99A; --m-texto: var(--ink); } }
-:root[data-theme="dark"] { --m-ok: #3F9A44; --m-espera: #4A8FD6; --m-aguarda: #C08410; --m-agua: #F27A8C; --m-uf: #2E2520; --m-uf-viz: #1B1512; --m-borda: #54453B; --m-fundo: var(--surface); --m-sigla: #BCA99A; --m-texto: var(--ink); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --m-ok: #3F9A44; --m-espera: #4A8FD6; --m-aguarda: #C08410; --m-agua: #F27A8C; --m-uf: #463A31; --m-uf-viz: #1B1512; --m-borda: #54453B; --m-fundo: var(--surface); --m-sigla: #BCA99A; --m-texto: var(--ink); } }
+:root[data-theme="dark"] { --m-ok: #3F9A44; --m-espera: #4A8FD6; --m-aguarda: #C08410; --m-agua: #F27A8C; --m-uf: #463A31; --m-uf-viz: #1B1512; --m-borda: #54453B; --m-fundo: var(--surface); --m-sigla: #BCA99A; --m-texto: var(--ink); }
 .mapa-caixa { position: relative; border: 1px solid var(--line); border-radius: var(--r); display: grid; gap: 16px; align-items: start; }
 .mapa { width: 100%; height: auto; max-height: 520px; display: block; }
 .uf-proj { fill: var(--m-uf); stroke: var(--m-borda); }
@@ -5402,3 +5402,12 @@ svg.mapa.mapa-arrasta.arrastando { cursor: grabbing; }
    acompanhamento no mesmo tamanho e peso dos títulos de seção do resto do sistema, com o fio embaixo */
 .ac2-cartao > h2 { font: 700 var(--t-2xl)/1.2 var(--sans); letter-spacing: -.02em; color: var(--ink); padding-bottom: 12px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
 @media (max-width: 640px) { .ac2-cartao > h2 { font-size: var(--t-xl); } }
+/* v351 (pedido da coordenação: mapa mais elegante, nos mapas da Visão geral e do MDA/MPA): divisas na cor do fundo do mapa (o estado fica
+   recortado), siglas por cima com contorno, círculos com anel branco e sombra leve, legenda de tamanho num quadrinho */
+.mapa-caixa .uf-proj[data-div] { stroke: var(--m-fundo); stroke-linejoin: round; }
+.mapa-caixa .uf-rot { fill: var(--m-sigla); paint-order: stroke; stroke: var(--m-fundo); stroke-linejoin: round; letter-spacing: .08em; }
+.q-tam-cx { fill: color-mix(in srgb, var(--surface) 88%, transparent); stroke: var(--m-borda); }
+.q-tam-tit { fill: var(--m-texto); font-family: var(--sans); font-weight: 700; }
+:root[data-contraste] .mapa-caixa .uf-proj[data-div] { stroke: #fff; }
+:root[data-contraste] .q-tam-cx { fill: #000; stroke: #fff; } :root[data-contraste] .q-tam-tit { fill: #fff; }
+/* v351 (pedido da coordenação): no modo escuro os estados quase sumiam no fundo; --m-uf um tom mais claro (#2E2520 → #463A31, nas duas regras do escuro) */
