@@ -5497,3 +5497,6 @@ svg.mapa.mapa-arrasta.arrastando { cursor: grabbing; }
 :root[data-contraste] .lembrete li.lb { background: #000; border-color: #fff; box-shadow: none; }
 :root[data-contraste] .lembrete li.lb::before, :root[data-contraste] .lembrete .lb-ic { background: #FFE600; color: #000; }
 :root[data-contraste] .lembrete .lb-tit, :root[data-contraste] .lembrete .lb-mais { color: #FFE600; }
+/* v356: nas coordenações o lembrete vem dentro do conteúdo, logo abaixo do menu */
+main .lembrete { background: none; }
+main .lembrete .lembrete-in { max-width: none; padding: 0 0 18px; }
