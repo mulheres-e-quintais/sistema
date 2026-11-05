@@ -3543,7 +3543,7 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 }
 /* 15/10/2026: no município, cada quintal é um alfinete com broto (também na legenda) */
 .lg-alf { flex: none; vertical-align: -3px; margin-right: 6px; overflow: visible; }
-.q-pt .q-pino { filter: drop-shadow(0 1px 1px rgba(69, 43, 26, .28)); }
+/* v354: o drop-shadow saiu do alfinete (no SVG a medida é a do desenho: no zoom do município virava uma sombra enorme e o mapa travava) */
 
 /* 15/10/2026: tablet em pé (iPad, 601 a 960 px). Os cartões por estado (Situação do campo, Bolsistas por estado, Agentes de campo)
    ficam em 2 colunas em vez de um cartão de celular esticado na largura toda (barras de 650 px, rótulo longe do número). */
@@ -5140,7 +5140,7 @@ main .secao h2, .mts h2, .dd-sec h2 { font-size: var(--t-2xl); font-weight: 700;
 :root[data-contraste] .ac3-cifra.ok b.num { color: #FFE600; }
 @media print { .ac3-ufs, .ac3-mapa .ac-mapa > p, .ac-vivo .link { display: none !important; } }
 .ac3-mapa .q-clic.sel circle:last-of-type { stroke: var(--ink); stroke-width: .6%; }
-.ac3-mapa .q-clic.sel { filter: drop-shadow(0 0 3px color-mix(in srgb, var(--ink) 50%, transparent)); }
+.ac3-mapa .q-clic.sel .q-anel { stroke: var(--ink); stroke-width: 3px; vector-effect: non-scaling-stroke; }   /* v354: no lugar do drop-shadow (medida do desenho) */
 /* v344, regra visual 1: coluna só de números centralizada embaixo do título (a classe nc é posta pela tela, teclado.js marcarNumeros) */
 @media (min-width: 641px) { table th.nc, table td.nc { text-align: center !important; } }
 /* v344 (revisão independente): nas listas que esperam a sua decisão, cada linha mostra a ação "Conferir" à direita */
@@ -5418,3 +5418,43 @@ svg.mapa.mapa-arrasta.arrastando { cursor: grabbing; }
 :root[data-contraste] .hs-rec-t h2 .hs-n { background: #FFE600; color: #000; box-shadow: none; }
 /* v353: a linha da própria coordenação nos Últimos acessos, num fundo leve para se distinguir da equipe */
 .hs-tab tr.hs-eu > * { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+
+/* v354 (auditoria das v348–v353): a linha do tempo "Ainda não começaram" vira lista também no tablet em pé (até 1000 px; de 761 a ~950 px os meses se
+   amontoavam e o texto das barras saía cortado) */
+@media (min-width: 761px) and (max-width: 1000px) {
+  .pj-tl-cab, .pj-tl-tr, .pj-tl-leg { display: none; }
+  .pj-tl-l { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 10px 0; }
+  .pj-tl-c1 { padding: 0; } .pj-tl-c3 { padding: 0; grid-row: 1 / span 2; grid-column: 2; align-self: center; } .pj-tl-c3 small { display: none; }
+  .pj-tl-c2 { grid-column: 1; } .pj-tl-q { position: static; width: auto; height: auto; clip: auto; white-space: normal; font-size: var(--t-xs); color: var(--pj-plan-ink); background: var(--pj-plan-bg); border-radius: 8px; padding: 4px 8px; }
+  .pj-tl-l.pj-tl-sim { display: none; }
+}
+/* v354 (05/11/2026): dobrável fechado (280 px) — nada passa da tela */
+@media (max-width: 300px) {
+  main :where(h1, h2, h3, h4, p, li, b, strong, span, small, dd, dt, td, th, label, a) { overflow-wrap: anywhere; }
+  .cg-meses { display: none; }
+  .cg-linha { grid-template-columns: minmax(0, 1fr); grid-template-areas: "nome" "num" "trilho"; }
+  .cg-num { min-width: 0; text-align: left; }
+  .hab-p, .hab-p * { white-space: normal; max-width: 100%; min-width: 0; }
+  .resumo .v { font-size: var(--t-xl); }
+  button.cg-nome { min-height: 24px; }
+  .fin-grupo, .fin-item, .fin-tot { grid-template-columns: minmax(0, 1fr) !important; }
+  .exec-fin .fin-exe, .fin-exe { min-width: 0; }
+  .ft-linha { grid-template-columns: 30px minmax(0, 1fr); grid-template-areas: "av pes" "av mat" "av cx"; }
+  .ft-cancelar { justify-self: start; }
+  .ft-mat { flex-wrap: wrap; }
+  .rl-capa, .rl-folha, .rl-ass, .rl-folha.rel-previa { max-width: 100%; min-width: 0; box-sizing: border-box; padding-left: 12px; padding-right: 12px; }
+}
+/* v354 (05/11/2026): dobrável aberto (673 px) e projetor (1024 × 768) — tabelas sem rolar de lado */
+@media (min-width: 641px) and (max-width: 720px) {
+  .quadro-sel .nomeuf { display: none; }
+  .quadro-sel td.uf { padding-right: 6px; }
+  table.exec-fin td.num { font-size: 12px; letter-spacing: -.02em; }
+  table.exec-fin thead th { letter-spacing: 0; hyphens: auto; word-break: normal; overflow-wrap: anywhere; }
+  table.exec-fin thead th:first-child, table.exec-fin .fin-grupo > th, table.exec-fin .fin-tot > th { padding-left: 10px !important; }
+  table.exec-fin td, table.exec-fin th { padding-left: 5px !important; padding-right: 5px !important; }
+}
+@media (min-width: 961px) and (max-width: 1100px) {
+  table.quadro.tab-rot td:last-child { white-space: normal; }
+  table.quadro.tab-rot td:last-child .small { overflow-wrap: anywhere; }
+}
+.rl-dl dd, .rl-dl dd span { overflow-wrap: anywhere; min-width: 0; }
