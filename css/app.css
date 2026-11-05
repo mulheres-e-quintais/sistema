@@ -5416,3 +5416,5 @@ svg.mapa.mapa-arrasta.arrastando { cursor: grabbing; }
 .hs-rec-t h2 .hs-n { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; padding: 3px 12px; border-radius: 999px; vertical-align: middle;
   background: var(--cont-bg); color: var(--cont-ink); box-shadow: inset 0 0 0 1px var(--cont-borda); font: 700 var(--t-sm)/1.2 var(--sans); letter-spacing: 0; white-space: nowrap; }
 :root[data-contraste] .hs-rec-t h2 .hs-n { background: #FFE600; color: #000; box-shadow: none; }
+/* v353: a linha da própria coordenação nos Últimos acessos, num fundo leve para se distinguir da equipe */
+.hs-tab tr.hs-eu > * { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
