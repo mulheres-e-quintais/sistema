@@ -5411,3 +5411,8 @@ svg.mapa.mapa-arrasta.arrastando { cursor: grabbing; }
 :root[data-contraste] .mapa-caixa .uf-proj[data-div] { stroke: #fff; }
 :root[data-contraste] .q-tam-cx { fill: #000; stroke: #fff; } :root[data-contraste] .q-tam-tit { fill: #fff; }
 /* v351 (pedido da coordenação): no modo escuro os estados quase sumiam no fundo; --m-uf um tom mais claro (#2E2520 → #463A31, nas duas regras do escuro) */
+/* v352 (relato da coordenação: "esse número 6 não tem destaque de nada"): relatos em aberto no título do Histórico numa pílula âmbar de pendência,
+   como os números do menu, e com o texto "em aberto" (o número solto não dizia o que era) */
+.hs-rec-t h2 .hs-n { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; padding: 3px 12px; border-radius: 999px; vertical-align: middle;
+  background: var(--cont-bg); color: var(--cont-ink); box-shadow: inset 0 0 0 1px var(--cont-borda); font: 700 var(--t-sm)/1.2 var(--sans); letter-spacing: 0; white-space: nowrap; }
+:root[data-contraste] .hs-rec-t h2 .hs-n { background: #FFE600; color: #000; box-shadow: none; }
