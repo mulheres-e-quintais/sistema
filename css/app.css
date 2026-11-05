@@ -5458,3 +5458,42 @@ svg.mapa.mapa-arrasta.arrastando { cursor: grabbing; }
   table.quadro.tab-rot td:last-child .small { overflow-wrap: anywhere; }
 }
 .rl-dl dd, .rl-dl dd span { overflow-wrap: anywhere; min-width: 0; }
+/* v355 (05/11/2026, relato da coordenação com foto do iPad em pé): no Safari o campo de data tem largura própria e passava por cima do "Estado" */
+.rl-datas .campo { flex: 1 1 11em; }
+.rl-datas input, .rl-datas select { width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; }
+.rl-datas input[type="date"] { -webkit-appearance: none; appearance: none; display: block; }
+@media (min-width: 641px) and (max-width: 1100px) {
+  .rl-datas .campo:has(select) { flex: 1 1 calc(100% - 9em); }
+}
+@media (max-width: 640px) { .rl-datas .campo { flex: 1 1 40%; } .rl-datas .campo:has(select) { flex-basis: 100%; } }
+/* v355 (05/11/2026, pedido da coordenação: lembrete "chamativo e bonito"): cartões com faixa de cor, ícone num círculo e "Entendi" como botão */
+.lembrete { background: var(--bg); border-bottom: 0; }
+.lembrete-in { padding-top: 14px; padding-bottom: 4px; display: block; }
+.lembrete ul.lb-l { display: grid; gap: 10px; }
+.lembrete li.lb { --lb: var(--pend); --lb-bg: var(--pend-bg);
+  position: relative; display: flex; align-items: center; gap: 14px; padding: 14px 16px 14px 20px; border-radius: 16px;
+  background: linear-gradient(100deg, color-mix(in srgb, var(--lb-bg) 92%, var(--surface)) 0%, var(--surface) 70%);
+  border: 1px solid color-mix(in srgb, var(--lb) 30%, var(--line)); box-shadow: 0 2px 10px color-mix(in srgb, var(--lb) 14%, transparent); overflow: hidden; }
+.lembrete li.lb::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--lb); }
+.lembrete li.lb + li.lb { padding-top: 14px; border-top: 1px solid color-mix(in srgb, var(--lb) 30%, var(--line)); }
+.lembrete li.lb-data { --lb: var(--accent); --lb-bg: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+.lembrete li.lb-num { --lb: var(--ok); --lb-bg: var(--ok-bg); }
+.lembrete .lb-ic { flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--lb); color: var(--surface); margin: 0; }
+.lembrete .lb-dia { border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; line-height: 1; gap: 2px; }
+.lembrete .lb-dia b { font-size: var(--t-xl); font-weight: 800; }
+.lembrete .lb-dia small { font-size: var(--t-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.lembrete .lb-tit { display: block; font-size: var(--t-xs); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--lb); margin-bottom: 2px; }
+.lembrete .lb-txt p, .lembrete .lb-txt summary { font-size: var(--t-md); color: var(--ink); }
+.lembrete .lb-txt b { font-weight: 700; }
+.lembrete .lb-mais { color: var(--lb); font-weight: 600; }
+.lembrete .lb-txt details p.small { margin-top: 6px; color: var(--ink-2); }
+.lembrete .lb-ok { flex: none; min-height: 40px; padding: 6px 16px; border-color: color-mix(in srgb, var(--lb) 55%, var(--line)); color: var(--ink); background: var(--surface); }
+@media (max-width: 640px) {
+  .lembrete li.lb { flex-wrap: wrap; align-items: flex-start; padding: 12px 14px 12px 18px; gap: 10px 12px; }
+  .lembrete .lb-ic { width: 40px; height: 40px; }
+  .lembrete .lb-txt { flex: 1 1 calc(100% - 60px); }
+  .lembrete .lb-ok { margin-left: 52px; }
+}
+:root[data-contraste] .lembrete li.lb { background: #000; border-color: #fff; box-shadow: none; }
+:root[data-contraste] .lembrete li.lb::before, :root[data-contraste] .lembrete .lb-ic { background: #FFE600; color: #000; }
+:root[data-contraste] .lembrete .lb-tit, :root[data-contraste] .lembrete .lb-mais { color: #FFE600; }
