@@ -4885,6 +4885,7 @@ button.atalho { font: inherit; text-align: left; cursor: pointer; width: auto; }
 .pp-t > b { font-weight: 600; font-size: var(--t-lg); line-height: 1.3; color: var(--ink); }
 .pp-i.feito .pp-t > b { color: var(--ink-2); }
 .pp-d { font-size: var(--t-sm); line-height: 1.5; color: var(--ink-2); }
+.pp-f { font-size: var(--t-sm); line-height: 1.45; font-weight: 600; color: var(--pend); }   /* 06/11/2026: o que falta no passo (âmbar = pendência, D-19) */
 .pp-i > .btn, .pp-ok { flex: none; }
 .pj { margin: 24px 0; }
 .pj-ey { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 4px 12px; border-radius: 999px;
