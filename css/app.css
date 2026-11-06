@@ -73,7 +73,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
-html { scrollbar-gutter: stable; }   /* a largura não muda entre telas curtas e longas */
+html { scrollbar-gutter: stable; scroll-padding-top: calc(var(--topo-fixo, 0px) + var(--menu-fixo, 0px) + 12px); }   /* a largura não muda entre telas curtas e longas */
 body { background: var(--bg); color: var(--ink); font: var(--t-base)/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
 h1, h2, h3 { margin: 0; line-height: 1.15; text-wrap: balance; }
 h1, h2, .serif { font-family: var(--serif); font-optical-sizing: auto; letter-spacing: -.01em; }
@@ -127,7 +127,7 @@ a { color: var(--accent); }
 /* linha de resumo */
 .resumo { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .resumo > div { display: grid; gap: 2px; }
-.resumo > div + div { border-left: 1px solid var(--line); }
+.resumo > div + div { border-left: 1px solid var(--line); padding-left: 18px; }
 .resumo .v { font: 600 var(--t-3xl)/1.05 var(--serif); font-variant-numeric: tabular-nums lining-nums; }
 .resumo .v small { font: 500 var(--t-sm) var(--sans); color: var(--muted); }
 .resumo .l { font-size: var(--t-sm); color: var(--ink-2); }
@@ -249,6 +249,7 @@ legend { font: 600 var(--t-xs)/1.2 var(--cond); letter-spacing: .09em; text-tran
 .dl { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 8px 14px; font-size: var(--t-md); margin: 0; }
 .dl dt { color: var(--muted); }
 .dl dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 420px) { .dl { grid-template-columns: minmax(0, 38%) minmax(0, 1fr); } }
 .passos { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
 .passos li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); font-size: var(--t-md); }
 .passos li:first-child { border-top: 0; }
@@ -385,6 +386,8 @@ fieldset > .fixo { margin: 0; }
 .duas-col.perfil-cols { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
 .resumo.r2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 760px) { .duas-col.perfil-cols { grid-template-columns: minmax(0, 1fr); } }
+.duas-col.perfil-cols > .bloco > .nota:last-child { margin-top: auto; }
+.duas-col.perfil-cols > .bloco > .nota:last-child, .duas-col.perfil-cols > .bloco > .nota + .leg-cores { margin-top: 10px; }
 @media (max-width: 420px) { .resumo.r2 { grid-template-columns: minmax(0, 1fr); } }
 .resumo.r3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 520px) { .resumo.r3 { grid-template-columns: minmax(0, 1fr); } }
@@ -422,7 +425,7 @@ form[data-form=diag] fieldset + fieldset { margin-top: 20px; padding-top: 18px; 
 .mapa-lista li { display: inline-flex; align-items: center; gap: 5px; }
 .lg-q { width: 11px; height: 11px; border-radius: 3px; border: 1px solid var(--line-2); }
 .mapa-pub .uf-rot { fill: var(--ink-2); paint-order: stroke; stroke: var(--surface); stroke-width: .4px; }
-#vit-foto { display: grid; }
+#vit-foto { display: grid; height: 300px; min-height: 0; }
 .vit-foto, .gal-item { margin: 0; border-radius: var(--r); overflow: hidden; background: var(--surface); border: 1px solid var(--line); display: grid; grid-template-rows: minmax(0, 1fr) auto; }
 .vit-foto img, .gal-item img { width: 100%; height: 100%; min-height: 180px; max-height: 280px; object-fit: cover; display: block; background: var(--surface-2); }
 .vit-foto figcaption, .gal-item figcaption { padding: 8px 12px; font-size: var(--t-sm); color: var(--ink-2); }
@@ -453,6 +456,7 @@ form[data-form=diag] fieldset + fieldset { margin-top: 20px; padding-top: 18px; 
 .barra-mini i { display: block; height: 100%; background: var(--verde-2); border-radius: 3px; }
 @media (max-width: 560px) { .pub-l { grid-template-columns: 1fr 1fr; } .pub-l > span:first-child { grid-column: 1 / -1; } .pub-l.cab { display: none; }
   .pub-c::before { content: attr(data-rot); font-size: var(--t-2xs); color: var(--muted); } }
+@media (max-width: 720px) { .pub-l { grid-template-columns: 1fr 1fr; } }
 .galeria { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 
 .aviso.ok { background: var(--ok-bg); color: var(--ok); }
@@ -493,6 +497,7 @@ details.hab.completa .hab-ic { background: var(--ok); color: var(--accent-ink); 
 .hab-t { gap: 2px; flex: 1; }
 .hab-seta { width: 10px; height: 10px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform .15s; margin-right: 4px; }
 details.hab[open] .hab-seta { transform: rotate(-135deg); }
+@media (max-width: 820px) { .hab-seta { grid-column: 3; grid-row: 1; } }
 details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .vagabtn.com-foto { grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 12px; }
 .vb-t { display: grid; gap: 4px; min-width: 0; }
@@ -625,6 +630,7 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
   .fm-l { grid-template-columns: auto auto minmax(0, 1fr); }
   .fm-num { grid-column: 3; }
 }
+.fm-l:has(> input[type=checkbox]:not(:checked)) .fm-num { opacity: .55; }
 .cab-sub { margin-top: 8px; padding-top: 20px; border-top: 1px solid var(--line); }
 .cab-sub h2 { margin: 2px 0 6px; font-size: var(--t-2xl); }
 .fp-d .link { font-size: var(--t-sm); }
@@ -774,7 +780,7 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
   gap: clamp(28px, 7vw, 140px); align-items: center; padding: clamp(24px, 5vw, 64px) clamp(16px, 5vw, 72px); overflow: hidden; isolation: isolate;
   background: linear-gradient(160deg, var(--surface-2) 0%, var(--bg) 55%, color-mix(in srgb, var(--line-2) 30%, var(--bg)) 100%); min-height: auto; min-height: calc(100dvh - 1px); }
 .ent-fundo { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
-.ent-fundo i { position: absolute; border-radius: 50%; filter: blur(60px); animation: ent-flutua 22s ease-in-out infinite alternate; }
+.ent-fundo i { position: absolute; border-radius: 50%; filter: blur(60px); animation: ent-flutua 22s ease-in-out infinite alternate; opacity: .38; }
 .ent-fundo .b1 { width: 46vmax; height: 46vmax; left: -14vmax; top: -16vmax; background: radial-gradient(circle, color-mix(in srgb, var(--terracota) 55%, transparent), transparent 65%); }
 .ent-fundo .b2 { width: 38vmax; height: 38vmax; right: -12vmax; bottom: -14vmax; background: radial-gradient(circle, rgba(122, 140, 64, .55), transparent 65%); animation-duration: 26s; animation-delay: -6s; }
 .ent-fundo .b3 { width: 26vmax; height: 26vmax; left: 38%; top: 55%; background: radial-gradient(circle, rgba(232, 176, 74, .5), transparent 65%); animation-duration: 30s; animation-delay: -12s; }
@@ -786,7 +792,7 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .ent-marca small { display: block; font-size: var(--t-sm); color: var(--ink-2); }
 .ent-t { margin: 0; color: var(--ink); animation: ent-sobe .8s .08s ease both; }
 .ent-t em { font-style: italic; color: var(--accent); position: relative; white-space: nowrap; }
-.ent-t em::after { content: ""; position: absolute; border-radius: 99px; background: currentColor; transform-origin: left; animation: ent-risco 1s .9s ease both; }
+.ent-t em::after { content: ""; position: absolute; border-radius: 99px; background: currentColor; transform-origin: left; animation: ent-risco 1s .9s ease both; left: 0; right: 0; bottom: -.04em; height: 2px; opacity: .45; }
 .ent-s { margin: 0; font-size: clamp(1rem, 1.4vw, 1.15rem); line-height: 1.55; color: var(--ink-2); animation: ent-sobe .8s .16s ease both; }
 .ent-ufs { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; }
 .ent-ufs li { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; backdrop-filter: blur(6px);
@@ -850,7 +856,7 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 /* ---------- celular: barra numa linha só ---------- */
 @media (max-width: 640px) {
   .barra-in { flex-wrap: nowrap; padding: 8px 14px; gap: 10px; }
-  .marca { gap: 10px; }
+  .marca { gap: 10px; min-width: 0; }
   .marca img.emb { height: 38px; }
   .marca img:not(.emb), .marca .sep { display: none; }
   .marca .sis { font-size: var(--t-2xs); line-height: 1.25; }
@@ -862,7 +868,8 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 }
 
 @media (max-width: 640px) { .barra-in .marca { flex: 1; min-width: 0; } }
-@media (max-width: 640px) { .marca .sis { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .marca { min-width: 0; } }
+@media (min-width: 641px) and (max-width: 900px) { .barra-in { flex-wrap: nowrap; } }
+@media (max-width: 640px) { .marca .sis { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }  }
 
 /* ---------- ajuda ---------- */
 .btn-ajuda { width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(246, 237, 228, .45); background: transparent; color: var(--barra-ink); font: 700 var(--t-base) var(--sans); cursor: pointer; flex: none; }
@@ -879,13 +886,14 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 .ajuda-duvidas summary::before { content: "+ "; color: var(--accent); }
 .ajuda-duvidas details[open] summary::before { content: "− "; }
 .ajuda-duvidas p { margin: 0; padding: 0 12px 12px; color: var(--ink-2); line-height: 1.5; }
+.ajuda-duvidas details ol, .ajuda-duvidas details ul { padding-right: 16px; }
 .ajuda-outros { display: flex; flex-wrap: wrap; gap: 6px; }
 .ent-ajuda { font-size: var(--t-md); }
 
 /* ---------- celular e tablet: menu de seções (grade) no lugar das abas ---------- */
 .abas-m { display: none; }
 @media (max-width: 1100px) {   /* 13/10/2026: até 1100 (tablet deitado também usa o menu "Seção") */
-  .abas-m summary { list-style: none; display: flex; align-items: center; gap: 8px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; font-size: var(--t-lg); box-shadow: var(--shadow); }
+  .abas-m summary { list-style: none; display: flex; align-items: center; gap: 8px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; font-size: var(--t-lg); box-shadow: var(--shadow); background: var(--menu-bg); }
   .abas-m summary::-webkit-details-marker { display: none; }
   .abas-m summary b { flex: 1; font-weight: 600; }
   .abas-m-seta { transition: transform .2s; color: var(--muted); }
@@ -957,6 +965,7 @@ input.invalido { border-color: var(--crit) !important; box-shadow: 0 0 0 3px col
 @media (max-width: 800px) {
   .rodape-in { grid-template-columns: 1fr; justify-items: center; text-align: center; }
   .rodape-marca small { font-size: var(--t-xs); }
+.rodape-marca img { height: 30px; }
   .rodape-org { font-size: var(--t-xs); }
   .rodape-lgpd { justify-self: center; justify-items: center; text-align: center; border-top: 1px solid rgba(246, 237, 228, .15); width: 100%; }
   .rodape-lgpd p { font-size: var(--t-2xs); opacity: .85; max-width: 34ch; }
@@ -1173,13 +1182,13 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 /* atalhos das telas pessoais (mesmos botões do sistema) */
 .atalhos { display: grid; gap: 8px; margin: 0 0 18px; }
 .atalhos-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
-.atalhos-grade .btn { justify-content: center; min-height: 44px; }
+.atalhos-grade .btn { justify-content: center; min-height: 44px; min-width: 0; white-space: normal; text-align: center; }
 .atalhos-grade .btn[hidden] { display: none; }
 /* número de pendências no botão (contraste com o fundo do botão principal e do comum) */
 .atalhos-grade .btn .conta { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; margin-left: 6px; border-radius: 999px;
   background: var(--accent); color: var(--accent-ink); font: 700 var(--t-xs) var(--sans); }
 @media (max-width: 520px) { .atalhos-grade { grid-template-columns: repeat(2, minmax(0, 1fr)); } .atalhos-grade .btn.pri { grid-column: 1 / -1; } }
-.atalhos-grade .btn { min-width: 0; white-space: normal; text-align: center; }   /* 30/10/2026 (extremos): contagem grande (400 visitas) quebra a linha no botão em vez de empurrar a tela em 320 px */
+   /* 30/10/2026 (extremos): contagem grande (400 visitas) quebra a linha no botão em vez de empurrar a tela em 320 px */
 .ajuda-tarefas .ajuda-passos { margin: 6px 0 4px; }
 /* documentos e relatório da ação */
 .doc-linha { display: grid; gap: 3px; text-align: left; }
@@ -1276,10 +1285,10 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .mos-selo { position: absolute; top: 6px; left: 6px; padding: 2px 8px; border-radius: 999px; font-size: var(--t-2xs); font-weight: 600; background: rgba(255,255,255,.88); color: #3B2A20; }
 
 /* mosaico pequeno da tela de entrada: 4 colunas × 3 linhas, altura fixa (a página não pula quando as fotos chegam) */
-#vit-foto { height: 300px; min-height: 0; }
+
 .mini-mos { position: relative; height: 100%; min-height: 0; overflow: hidden; display: grid; grid-auto-flow: dense; gap: 6px; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: minmax(0, 1.7fr) minmax(0, 1fr); }
 .mini-mos > span:not(.mos-selo) { position: relative; overflow: hidden; border-radius: 10px; background: var(--surface-2); min-height: 0; }
-.mini-mos img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s ease; }
+.mini-mos img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s ease; object-position: 50% 22%; transform-origin: 50% 30%; }
 .mm-g { grid-column: span 2; grid-row: span 2; }
 .mm-leg { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px 8px 6px; font-style: normal; font-size: var(--t-xs); color: #fff; background: linear-gradient(transparent, rgba(0,0,0,.6)); }
 .mini-mos .mos-selo { z-index: 1; }
@@ -1293,7 +1302,7 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 /* mosaico de retratos: quadros em pé, com o rosto no alto da foto preservado */
 .mosaico { grid-auto-rows: 170px; }
 @media (max-width: 520px) { .mosaico { grid-auto-rows: 40vw; } }
- .mini-mos img { object-position: 50% 22%; transform-origin: 50% 30%; }
+ 
 /* entrada: no computador o mosaico tem a mesma altura do quadro do mapa */
 @media (min-width: 561px) { #vit-foto { height: auto; min-height: 300px; align-self: stretch; } }
 @media (max-width: 560px) { #vit-foto { height: 340px; } }
@@ -1351,6 +1360,8 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   .ent-hero .vit-duo { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
   .ent-hero .ent-broto { display: none !important; }
 }
+:root[data-sem-mov] .ent-broto .folha, :root[data-sem-mov] .ent-broto .flor { transform: none; }
+:root[data-sem-mov] .ent-broto .caule { stroke-dashoffset: 0; }
 @media (max-width: 900px) { .ent-marca, .ent-t, .ent-s, .ent-ufs, .ent-acesso, .ent-hero .vitrine { grid-column: auto; grid-row: auto; } }
 @media (min-width: 901px) {
   
@@ -1401,6 +1412,7 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .lembrete details[open] .lb-mais { display: none; }
 .lembrete li > button { flex: none; }
 .lembrete li + li { padding-top: 8px; border-top: 1px dashed var(--line); }
+.lembrete .lb-txt details p.small { margin-top: 6px; color: var(--ink-2); }
 
 /* Execução financeira (só a coordenação geral) */
 
@@ -1521,10 +1533,12 @@ table.fin tbody.realce tr { animation: exr-realce 1.8s ease-out; }
 .marcos li.marco { position: relative; gap: 14px; padding: 12px 0; border-top: 0; align-items: start; grid-template-columns: auto minmax(0, 1fr); }
 .marcos li.marco::before { content: ""; position: absolute; top: 0; bottom: 0; width: 2px; background: var(--line); z-index: 0; left: 30px; }
 .marcos li.marco:first-child::before { top: 24px; } .marcos li.marco:last-child::before { bottom: calc(100% - 24px); }
+.marcos li.marco .marco-cal { min-width: 64px; }
 .marco-cal { position: relative; z-index: 1; display: grid; justify-items: center; align-content: center; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); line-height: 1.05; height: 58px; }
 .marco-cal b { font-size: var(--t-lg); color: var(--ink); font-weight: 700; }
 .marco-cal span { text-transform: uppercase; color: var(--muted); font-size: 12px; letter-spacing: .04em; white-space: nowrap; }
 .marco.prox .marco-cal { background: var(--accent); border-color: var(--accent); } .marco.prox .marco-cal b, .marco.prox .marco-cal span { color: var(--accent-ink); }
+.marco-cal b, .marco-cal span { letter-spacing: 0; }
 .marco-txt { display: grid; gap: 4px; justify-items: start; color: var(--ink); font-size: var(--t-md); }
 
 .marco-prazo { font-size: var(--t-xs); padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); }
@@ -1538,6 +1552,8 @@ table.fin tbody.realce tr { animation: exr-realce 1.8s ease-out; }
 .mapa-local .ml-janela { fill: none; stroke: var(--m-agua); }
 .mapa-local .ml-pt { fill: var(--m-ok); stroke: #fff; }
 .mapa-local figcaption { font-size: var(--t-2xs); color: var(--m-texto); text-align: center; line-height: 1.2; }
+@media (max-width: 760px) { .mapa-local svg { height: 84px; } }
+.mapa-local .ml-mun { fill: color-mix(in srgb, var(--m-ok) 55%, transparent); stroke: var(--m-ok); stroke-linejoin: round; }
 
 /* ======================================================================
    01/10/2026 — versão 2.0 (etapa 1): padrão único de status e visão geral como painel executivo
@@ -1602,7 +1618,7 @@ table.fin tbody.realce tr { animation: exr-realce 1.8s ease-out; }
 .dx-lado { display: grid; align-content: start; gap: 28px; }
 .dx-metas { display: grid; border-top: 1px solid var(--line); }
 .dx-meta { border-bottom: 1px solid var(--line); }
-.dx-meta summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 6px 10px; align-items: center; padding: 14px 0; }
+.dx-meta summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 6px 10px; align-items: center; padding: 14px 0; grid-template-areas: "id nome st" "id barra barra" "id num ver"; }
 .dx-meta summary::-webkit-details-marker { display: none; }
 .dx-meta .meta-id { grid-area: id; align-self: start; font: 600 var(--t-lg)/1.2 var(--serif); color: var(--accent); }
 .dx-meta .meta-nome { grid-area: nome; font-weight: 600; color: var(--ink); }
@@ -1683,6 +1699,7 @@ table.fin tbody.realce tr { animation: exr-realce 1.8s ease-out; }
 @media (max-width: 560px) { .vitrine .vts, .vts.vts-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; } .vitrine .vt { padding: 10px 8px; } .vitrine .vt-n { font-size: var(--t-2xl); } }
 .vt:nth-child(2) .vt-n { color: var(--verde); }
 @media (min-width: 561px) { .ent-hero .vit-duo { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); } }
+.vit-duo.so-mapa, .ent-hero .vit-duo.so-mapa { grid-template-columns: minmax(0, 1fr); }
 
 .mini-mos .mm-g { grid-column: span 2; grid-row: span 1; }
 /* círculos por município (página pública) */
@@ -1707,6 +1724,8 @@ table.fin tbody.realce tr { animation: exr-realce 1.8s ease-out; }
 @media (max-width: 760px) { .parceiros { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* rodapé: o texto jurídico mais leve */
 .rodape-lgpd p { font-size: var(--t-2xs); opacity: .78; }
+@media (max-width: 800px) { .rodape-lgpd > p:not(.rodape-acess):not(.rodape-v) { max-width: none; } }
+.rodape-lgpd > p:not(.rodape-acess):not(.rodape-v) { flex-basis: 100%; }
 .pub-fotos.n-2 { grid-template-columns: 1.4fr 1fr; grid-template-rows: 1fr; } .pub-fotos.n-2 .pf-prin { grid-row: auto; }
 .pub-fotos.n-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; } .pub-fotos.n-1 .pf-prin { grid-row: auto; }
 @media (max-width: 560px) { .pub-fotos.n-2 { grid-template-columns: 1fr; grid-template-rows: 1.4fr 1fr; } .pub-fotos.n-2 .pf-prin { grid-column: auto; } }
@@ -1757,7 +1776,7 @@ table.fin tbody.realce tr { animation: exr-realce 1.8s ease-out; }
 /* números do topo das abas: sem caixa, só linhas (como a visão geral e a equipe) */
 .resumo { border: 0; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; box-shadow: none; }
 .resumo > div { padding: 16px 18px 16px 0; }
-.resumo > div + div { padding-left: 18px; }
+
 .resumo .v { color: var(--ink); }
 .bloco .resumo, .painel .resumo { border-top-width: 1px; }
 /* blocos: cartão leve (sem sombra), para agrupar só o que precisa */
@@ -1794,6 +1813,7 @@ table.fin tbody.realce tr { animation: exr-realce 1.8s ease-out; }
 .fin-exec { color: var(--fin-exec); font-weight: 600; } .fin-comp { color: var(--fin-comp); font-weight: 600; } .fin-zero { color: var(--muted); }
 /* resumo executivo antes da tabela */
 .fin-resumo { display: grid; gap: 10px; padding: 18px 0 16px; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--line); }
+.fin-resumo .dx-como summary { cursor: pointer; font-size: var(--t-sm); color: var(--ink-2); }
 
 .fin-barra { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--surface-2); }
 .fin-barra i.e { background: var(--st-ok); } .fin-barra i.c { background: repeating-linear-gradient(135deg, var(--st-and) 0 4px, color-mix(in srgb, var(--st-and) 55%, var(--surface)) 4px 8px); }
@@ -1959,6 +1979,9 @@ table.fin .fin-detalhe > td { padding-left: 28px; }
   .ft-mat { grid-area: mat; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; white-space: normal; min-width: 0; row-gap: 0; column-gap: 8px; }
   .ft-obs, .ft-vazio { padding-left: 16px; padding-right: 16px; }
 }
+.ft-cancelar svg { flex: none; opacity: .8; }
+@media (max-width: 640px) { .ft-cancelar svg { opacity: 1; } }
+.ft-linha { grid-template-columns: 30px minmax(0, 1fr) auto auto; }
 
 /* painel lateral mais largo em tela grande (01/10/2026): 720 px, campos em duas colunas com folga */
 @media (min-width: 1100px) {
@@ -1967,6 +1990,7 @@ table.fin .fin-detalhe > td { padding-left: 28px; }
   .painel-corpo { padding: 22px 28px calc(28px + env(safe-area-inset-bottom, 0px)); }
   .painel .campos { column-gap: 20px; }
 }
+.campos.tres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
 /* diagnóstico, "O que produz hoje" (01/10/2026): cada produto em duas linhas, sem rolar para o lado.
    linha 1: nome + Consumo / Venda · linha 2: quantidade | onde vende */
@@ -2038,6 +2062,7 @@ details.hist > summary::after { font-weight: 500; }
 .lista-custo > .custo-l.prev { border-style: solid; opacity: 1; }
 .ficha-linha .nm, .pag-l .nm { font-weight: 600; }
 .quintal { padding: 10px 4px; border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+:root[data-sol] .quintal.cq-q { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 34rem; }
 
 /* --- 3. tabelas: cabeçalho discreto, só linhas horizontais --- */
 .quadro-scroll { border: 0; border-top: 1px solid var(--line-2); border-radius: 0; }
@@ -2076,7 +2101,7 @@ main .secao + .secao, main .secao + .bloco, main .bloco + .secao { margin-top: 1
     background: var(--bg); border-top: 1px solid var(--line); }
 }
 .painel fieldset { gap: 12px; padding-top: 4px; }
-.painel legend { margin-bottom: 10px; padding-bottom: 6px; width: 100%; border-bottom: 1px solid var(--line); color: var(--ink-2); }
+.painel legend { margin-bottom: 10px; padding-bottom: 6px; width: 100%; border-bottom: 1px solid var(--line); color: var(--ink-2); font-size: var(--t-xs); }
 .painel-corpo { gap: 22px; }
 
 /* --- 8. campos: mesma altura e foco discreto --- */
@@ -2085,7 +2110,7 @@ main .secao + .secao, main .secao + .bloco, main .bloco + .secao { margin-top: 1
 .campo .dica { color: var(--muted); }
 
 /* --- tabelas por estado: linha única, compacta (01/10/2026) --- */
-.quadro-sel td.uf, .tab-campo-uf td.uf { width: auto; white-space: nowrap; }
+.quadro-sel td.uf, .tab-campo-uf td.uf { width: auto; white-space: nowrap; padding: 10px 12px 10px 8px; }
 .quadro-sel td, .tab-campo-uf td { padding-top: 9px; padding-bottom: 9px; }
 @media (min-width: 1100px) {
   .tab-campo-uf .dias-cel { display: grid; align-items: center; gap: 12px; max-width: none; grid-template-columns: auto minmax(60px, 1fr) auto; }
@@ -2136,6 +2161,7 @@ main .secao + .secao, main .secao + .bloco, main .bloco + .secao { margin-top: 1
   
   .ft-mat > * { white-space: nowrap; }
 }
+@media (max-width: 300px) { .ft-mat { flex-wrap: wrap; } }
 
 /* --- 13b. Turma do encontro (select) no celular: o navegador não quebra o texto de uma lista de escolha em duas linhas;
        o nome é abreviado pelo meio em js/app.js (encurtarEscolhas), mantendo o estado à vista. Aqui, só a folga lateral. --- */
@@ -2161,6 +2187,8 @@ main .secao + .secao, main .secao + .bloco, main .bloco + .secao { margin-top: 1
   .linha-din > input, .linha-din > select, .prod-l > input, .cl-km > input, .fm-num { min-height: 40px; }
   .btn-add { min-height: 40px; }
 }
+@media (pointer: coarse) { .demo-mais > summary { min-height: var(--alvo); } }
+@media (min-width: 641px) and (max-width: 900px) { .quem { flex: none; } }
 
 /* --- 13d. contraste (só opacidade e variáveis que já existem) --- */
                        /* valor previsto e etiqueta "prev": 4,4 → acima de 4,5 */
@@ -2225,12 +2253,17 @@ main .secao + .secao, main .secao + .bloco, main .bloco + .secao { margin-top: 1
   #painel .painel-cab { border-bottom: 1px solid #bbb; margin-bottom: 8px; }
   @page { margin: 14mm 12mm; }
 }
+@media (max-width: 640px) { .eg-caixa svg { min-width: 0; } }
+@media (max-width: 480px) { .eg-caixa svg { min-width: 520px; } }
+@media (max-width: 900px) { table.fin.viag-fin tr > td:last-child { grid-column: 1 / -1; }
+table.fin.viag-fin tr > td::before { content: attr(data-rot); font: 700 12px/1.25 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+table.fin.viag-fin tr > td { display: grid; gap: 2px; padding: 0 !important; border: 0 !important; text-align: left; background: none !important; } }
 
 /* --- EQUIPE: quadro Coordenação e bolsistas (01/10/2026): um componente só — tabela + cartões + progresso --- */
 .quadro-scroll.eq-cx { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 6px 18px rgba(69, 43, 26, .05); overflow: hidden; }
 .eq-quadro { table-layout: fixed; }
-.eq-quadro thead th { background: var(--surface-2); border: 0; border-bottom: 1px solid var(--line); padding: 13px 20px; font-size: var(--t-xs); letter-spacing: .08em; }
-.eq-quadro tbody td { padding: 16px 20px; border: 0; border-top: 1px solid var(--line); vertical-align: middle; background: transparent; }
+.eq-quadro thead th { background: var(--surface-2); border: 0; border-bottom: 1px solid var(--line); padding: 13px 20px; font-size: var(--t-xs); letter-spacing: .08em; text-align: center; font-weight: 700; color: var(--ink); }
+.eq-quadro tbody td { padding: 16px 20px; border: 0; border-top: 1px solid var(--line); vertical-align: middle; background: transparent; height: inherit; }
 .eq-quadro tbody tr:first-child td { border-top: 0; }
 .eq-quadro tbody tr:hover td { background: color-mix(in srgb, var(--surface-2) 38%, transparent); }
 .eq-quadro td.uf { width: auto; white-space: normal; }
@@ -2262,6 +2295,7 @@ main .secao + .secao, main .secao + .bloco, main .bloco + .secao { margin-top: 1
 .eq-quadro .vagabtn .nm, .eq-cartoes .vagabtn .nm { font-weight: 600; }
 /* tablet em pé: a tabela de 4 colunas não cabe — usa os blocos por estado até 960 px; entre 961 e 1100 px, colunas mais estreitas */
 @media (max-width: 960px) { .quadro-scroll.eq-cx { display: none; } .cartoes.eq-cartoes { display: grid; } }
+@media (min-width: 600px) and (max-width: 760px) { .cartoes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 961px) and (max-width: 1100px) { .eq-quadro col.c-uf { width: 104px; } .eq-quadro col.c-plano { width: 200px; } .eq-quadro thead th, .eq-quadro tbody td { padding-left: 12px; padding-right: 12px; } }
 
 /* ---------- fichas que ainda estão só no aparelho (topo da lista da bolsista) ---------- */
@@ -2314,7 +2348,7 @@ p.carregando:has(.carregando-t) { flex-direction: column; gap: 12px; }
 .ent-hero .mapa-pub.mapa-info .mun-pt:hover .mun-vazio, .ent-hero .mapa-pub.mapa-info .mun-pt:focus-visible .mun-vazio { transform: scale(1.3); opacity: 1; stroke: #315C45; }
 /* rotas: quase invisíveis; aparecem quando o município é apontado */
 .ent-hero .mapa-pub.mapa-info .rota { stroke: #A44934; stroke-width: .7px; vector-effect: non-scaling-stroke; stroke-dasharray: none; opacity: .16; animation: none; }
-.ent-hero .mapa-pub.mapa-info .rota.ativa { stroke-width: 1.25px; }
+.ent-hero .mapa-pub.mapa-info .rota.ativa { stroke-width: 1.25px; opacity: .8 !important; }
 @media (prefers-reduced-motion: no-preference) {
   .ent-hero .mapa-pub.mapa-info.saindo .rota { stroke-dasharray: var(--len) var(--len); opacity: .16; }
 }
@@ -2333,7 +2367,7 @@ p.carregando:has(.carregando-t) { flex-direction: column; gap: 12px; }
 .ent-hero .mapa-leg-info .pt:not(.pt-sede):not(.pt-vazio) { background: #E3EEE2; box-shadow: 0 0 0 1.5px #315C45; }
 
 .ent-hero .mapa-pub.mapa-info .rota, .ent-hero .mapa-pub.mapa-info.saindo .rota { stroke-dasharray: none !important; stroke-dashoffset: 0 !important; animation: none !important; opacity: .11; }
-.ent-hero .mapa-pub.mapa-info .rota.ativa { opacity: .8 !important; }
+
 /* mapa da entrada no tema escuro: o cartão continua claro (os estados e os rótulos foram desenhados para fundo claro) */
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ent-hero .vit-mapa.vit-info { background: #FAF7F1; border-radius: 16px; } }
 :root[data-theme="dark"] .ent-hero .vit-mapa.vit-info { background: #FAF7F1; border-radius: 16px; }
@@ -2342,7 +2376,6 @@ p.carregando:has(.carregando-t) { flex-direction: column; gap: 12px; }
 .btn-acao .ba-seta { display: none; }
 @media (max-width: 640px) { .btn-acao.mini { padding: 0 14px; } }
 
-.dx-meta summary { grid-template-areas: "id nome st" "id barra barra" "id num ver"; }
 .dx-meta .meta-ver { grid-area: ver; justify-self: end; font-size: var(--t-sm); font-weight: 600; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
 .dx-meta .meta-ver::after { content: "Ver detalhes"; }
 .dx-meta[open] .meta-ver::after { content: "Fechar detalhes"; }
@@ -2414,6 +2447,7 @@ p.carregando:has(.carregando-t) { flex-direction: column; gap: 12px; }
   .dx-duas .dx-meta .dx-meta-mais { padding-left: 54px; }
   .dx-agua .agua-sit { grid-template-columns: 1fr 1fr; }
 }
+.dx-agua, .dx-agua *, .agua-cards, .agua-cards * { overflow-wrap: normal; word-break: normal; hyphens: auto; }
 /* --- 47. habilitação: data, "Hoje" e "Limpar" juntos na mesma linha; termo anexado pela própria pessoa; explicação que abre com um toque --- */
 .hab .data-hoje { flex-wrap: nowrap; }
 .hab .data-hoje input { flex: 0 1 220px; }
@@ -2424,6 +2458,7 @@ fieldset.hab-termo > legend { padding: 0 6px; margin: 0; }
 .termo-arq { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); overflow-wrap: anywhere; }
 .rot-com-link { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
 .rot-com-link > label { font-size: var(--t-sm); font-weight: 500; color: var(--ink-2); }
+@media (pointer: coarse) { :is(#app, #painel) .rot-com-link a { display: inline-flex; align-items: center; } }
 .termo-passos { margin: 0; }
 .termo-acoes { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
 details.explica { font-size: var(--t-sm); min-width: 0; }
@@ -2442,8 +2477,10 @@ details.explica > p:last-child { margin-bottom: 0; }
 .btn:focus-visible, .btn-acao:focus-visible, .btn-add:focus-visible, .btn-voz:focus-visible, .cad-modo:focus-visible, .vagabtn:focus-visible { outline-offset: 3px; box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 16%, transparent); }
 .campo input:focus, .campo select:focus, .campo textarea:focus, .campo input:focus-visible, .campo select:focus-visible, .campo textarea:focus-visible,
 .linha-din input:focus, .linha-din select:focus, .prod-l input:focus { outline: 2px solid var(--focus); outline-offset: 0; border-color: transparent; box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent); }
+@media (pointer: coarse) { .linha-din .fechar, .painel-cab .fechar { min-width: 40px; min-height: 40px; } }
 /* sobre fundo escuro (barra do topo, rodapé, opção marcada): o contorno é claro */
 header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="true"]:focus-visible, .seg button.ativo:focus-visible { outline-color: #F6EDE4; }
+.rodape { margin-top: 32px; }
 .seg button:focus-visible { outline-width: 2px; }
 @media (prefers-reduced-motion: reduce) { :focus-visible { transition: none; } }
 
@@ -2463,6 +2500,8 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 .mm-marcos time b { font: 600 var(--t-md)/1 var(--serif); }
 .mm-marcos li.passou { color: var(--muted); } .mm-marcos li.passou time { background: var(--surface-2); border-color: var(--line); color: var(--muted); }
 @media (max-width: 640px) { .dx-duas .dx-meta .dx-meta-mais { margin: 2px 4px 12px 4px; padding: 12px; } .mm-marcos li { grid-template-columns: 1fr; gap: 4px; } .mm-marcos time { justify-self: start; } }
+@media (max-width: 420px) { .dx-meta summary, .dx-duas .dx-meta summary { grid-template-columns: 40px minmax(0, 1fr); grid-template-areas: "id nome" "id st" "id barra" "id num" "id ver"; }
+.dx-meta .st-chip { justify-self: start; } }
 
 /* --- ROTEIRO DE CAMPO no celular: um cartão por visita (02/10/2026) ---
    data e situação no topo, a mulher em destaque, etapa e quem visita lado a lado, ação em largura inteira */
@@ -2477,10 +2516,10 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
   table.quadro.tab-rot td.rt-uf { display: none; }   /* o estado já aparece no município e no título da seção */
   table.quadro.tab-rot td.rt-sit { grid-area: sit; justify-self: end; align-self: center; }
   table.quadro.tab-rot td.rt-mulher { grid-area: mulher; font-weight: 600; color: var(--ink); }
-  table.quadro.tab-rot td.rt-mulher .small { font-weight: 400; }
+  table.quadro.tab-rot td.rt-mulher .small { font-weight: 400; font-size: var(--t-md); }
   table.quadro.tab-rot td.rt-etapa { grid-area: etapa; } table.quadro.tab-rot td.rt-quem { grid-area: quem; }
   table.quadro.tab-rot td.rt-etapa, table.quadro.tab-rot td.rt-quem { color: var(--ink); }
-  table.quadro.tab-rot td.rt-etapa::before, table.quadro.tab-rot td.rt-quem::before { display: block; font: 600 var(--t-2xs)/1.2 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  table.quadro.tab-rot td.rt-etapa::before, table.quadro.tab-rot td.rt-quem::before { display: block; font: 600 var(--t-2xs)/1.2 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-size: var(--t-xs); margin-bottom: 4px; }
   table.quadro.tab-rot td.rt-etapa::before { content: "Etapa"; } table.quadro.tab-rot td.rt-quem::before { content: "Quem visita"; }
   table.quadro.tab-rot td.rt-acao { grid-area: acao; }
   table.quadro.tab-rot td.rt-acao:empty, table.quadro.tab-rot td.rt-acao:has(.rot-acoes:empty) { display: none; }
@@ -2494,13 +2533,12 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
    cartão claro com sombra leve, sigla do estado em selo, barra mais cheia e linha que acende ao passar --- */
 .quadro-scroll:has(> .quadro-sel), .quadro-scroll:has(> .tab-campo-uf) { border: 1px solid var(--line); border-radius: 16px; background: var(--surface);
   box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 8px 22px rgba(69, 43, 26, .06); }
-.quadro-sel thead th, .tab-campo-uf thead th { border-top: 0; }
+.quadro-sel thead th, .tab-campo-uf thead th { border-top: 0; background: var(--surface-2); text-align: center; font-weight: 700; color: var(--ink); padding-top: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .quadro-sel tbody td, .tab-campo-uf tbody td { background: transparent; transition: background .15s; padding-top: 12px; padding-bottom: 12px; }
 .quadro-sel tbody tr:hover td, .tab-campo-uf tbody tr:hover td { background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
 .quadro-sel tbody tr:hover td:first-child, .tab-campo-uf tbody tr:hover td:first-child { border-radius: 10px 0 0 10px; }
 .quadro-sel tbody tr:hover td:last-child, .tab-campo-uf tbody tr:hover td:last-child { border-radius: 0 10px 10px 0; }
 
-.quadro-sel td.uf, .tab-campo-uf td.uf { padding: 10px 12px 10px 8px; }
 .quadro-sel .uf .sigla, .tab-campo-uf .uf .sigla { display: inline-grid; place-items: center; width: 44px; height: 44px; min-width: 44px; margin-right: 12px; vertical-align: middle; border-radius: 12px;
   background: color-mix(in srgb, var(--accent) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line)); font: 600 var(--t-md)/1 var(--serif); letter-spacing: 0; color: var(--accent); }
 .quadro-sel .uf .nomeuf, .tab-campo-uf .uf .nomeuf { font-size: var(--t-md); font-weight: 600; color: var(--ink); vertical-align: middle; }
@@ -2522,10 +2560,10 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
   table.quadro.tab-rot tbody tr:hover { border-color: var(--line-2); }
   table.quadro.tab-rot td.rt-data { font: 600 var(--t-xl)/1.15 var(--serif); letter-spacing: 0; }
   table.quadro.tab-rot td.rt-mulher { font-size: var(--t-lg); line-height: 1.3; }
-  table.quadro.tab-rot td.rt-mulher .small { font-size: var(--t-md); }
+  
   table.quadro.tab-rot td.rt-etapa, table.quadro.tab-rot td.rt-quem { font-size: var(--t-md); line-height: 1.35; }
   table.quadro.tab-rot td.rt-quem .small { font-size: var(--t-sm); }
-  table.quadro.tab-rot td.rt-etapa::before, table.quadro.tab-rot td.rt-quem::before { font-size: var(--t-xs); margin-bottom: 4px; }
+  
   table.quadro.tab-rot td.rt-sit .chip { font-size: var(--t-sm); padding: 4px 12px; }
   table.quadro.tab-rot .rot-acoes .btn { min-height: 48px; font-size: var(--t-md); }
 }
@@ -2539,6 +2577,7 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 .vt-alc .vt-n { white-space: nowrap; }
 .vt-alc .vt-n small { font-size: var(--t-sm); }
 @media (max-width: 560px) { .vitrine .vt-alc .vt-n small { font-size: var(--t-xs); } .vitrine .vt-alc .vt-n small:first-child { display: block; margin-bottom: 2px; } }
+@media (max-width: 400px) { .vitrine .vts, .vts.vts-3 { grid-template-columns: 1fr; } }
 
 /* "O que pede atenção": cada linha diz o seu nível (mesma cor do contador do alto); aviso não tem nada a resolver */
 .dx-selo { display: inline-block; margin: 0 0 4px; padding: 2px 9px; border-radius: 99px; font-size: var(--t-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
@@ -2548,6 +2587,7 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 .dx-selo-info, .dx-ct-info { background: color-mix(in srgb, var(--muted) 16%, transparent); color: var(--ink-2); }
 .dx-atencao .dx-tr.dx-n-info::before { background: color-mix(in srgb, var(--muted) 55%, transparent); }
 .dx-atencao .dx-tr.dx-n-pend { background: color-mix(in srgb, var(--pend-bg) 40%, var(--surface)); border-color: color-mix(in srgb, var(--pend) 22%, var(--line)); }
+@media (max-width: 640px) { .dx-tr { grid-template-columns: minmax(0, 1fr) auto; } }
 .dx-atencao .dx-prob .st-pt { display: none; }
 /* a faixa do alto do quadro segue o item mais grave: vermelha só se algo requer ação; âmbar se há atenção; sem cor se está tudo em dia */
 .dx-atencao.dx-topo-pend { border-top-color: var(--pend); }
@@ -2582,7 +2622,6 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 .dx-atencao .btn-acao.dx-ir { min-width: 144px; justify-content: center; }
 
 /* Equipe, "Bolsistas por estado": cabeçalho centralizado e em negrito */
-.eq-quadro thead th { text-align: center; font-weight: 700; color: var(--ink); }
 
 /* Equipe: botão de cadastro centralizado na vaga; o texto nunca é cortado com "…" (quebra em duas linhas só se faltar espaço) */
 
@@ -2593,12 +2632,13 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 
 /* Seleção e Campo (tabelas por estado): cabeçalho igual ao de "Bolsistas por estado" — faixa de fundo, centralizado, negrito */
 .quadro-scroll:has(> .quadro-sel), .quadro-scroll:has(> .tab-campo-uf) { padding: 0 0 6px; }
-.quadro-sel thead th, .tab-campo-uf thead th { background: var(--surface-2); text-align: center; font-weight: 700; color: var(--ink); padding-top: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+
 .quadro-sel thead tr.grupo th { padding-bottom: 2px; border-bottom: 0; }
 .quadro-sel thead tr.grupo + tr th { padding-top: 4px; }
 .quadro-sel td:first-child, .tab-campo-uf td:first-child, .quadro-sel th:first-child, .tab-campo-uf th:first-child { padding-left: 20px; }
 .quadro-sel td:last-child, .tab-campo-uf td:last-child, .quadro-sel th:last-child, .tab-campo-uf th:last-child { padding-right: 18px; }
 .quadro-sel tbody tr:hover td:first-child, .tab-campo-uf tbody tr:hover td:first-child, .quadro-sel tbody tr:hover td:last-child, .tab-campo-uf tbody tr:hover td:last-child { border-radius: 0; }
+@media (max-width: 420px) { .quadro-sel th, .quadro-sel td { padding-left: 6px; padding-right: 6px; } }
 
 /* vagas da coordenação técnica, do auxiliar e do professor do FIC: os três botões com a mesma largura e a mesma altura */
 .vaga-aberta > .btn-acao { width: 400px; max-width: 100%; flex: 0 0 auto; height: var(--h); min-height: var(--h); }
@@ -2634,7 +2674,7 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 /* --- Execução, "Por rubrica" (03/10/2026): quadro em cartão, cabeçalho em faixa, rubricas como títulos de grupo, itens limpos --- */
 .fin-wrap:has(> .exec-fin) { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); overflow: hidden; box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 8px 22px rgba(69, 43, 26, .06); }
 @media (min-width: 641px) {
-  table.exec-fin thead th { background: var(--surface-2); color: var(--ink); padding: 14px 14px; border-bottom: 1px solid var(--line); font-size: var(--t-xs); }
+  table.exec-fin thead th { background: var(--surface-2); color: var(--ink); padding: 14px 14px; border-bottom: 1px solid var(--line); font-size: var(--t-xs); font-weight: 700; }
   table.exec-fin thead th:first-child { padding-left: 24px; } table.exec-fin thead th:last-child, table.exec-fin td:last-child { padding-right: 24px; }
   table.exec-fin tbody + tbody .fin-grupo > * { border-top: 0; }
   table.exec-fin .fin-grupo > * { border-radius: 0 !important; border-top: 1px solid var(--line) !important; }
@@ -2643,7 +2683,7 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
   table.exec-fin .fin-item > * { padding-top: 11px; padding-bottom: 11px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
   table.exec-fin tbody tr.fin-item:last-of-type > * { border-bottom: 0; }
   table.exec-fin .fin-item:hover > * { background: color-mix(in srgb, var(--surface-2) 30%, transparent); }
-  table.exec-fin .fin-detalhe > td { padding-right: 24px; background: color-mix(in srgb, var(--surface-2) 30%, transparent); }
+  table.exec-fin .fin-detalhe > td { padding-right: 24px; background: color-mix(in srgb, var(--surface-2) 30%, transparent); padding-left: 60px; }
   table.exec-fin .fin-tot > * { background: var(--surface-2); border-top: 2px solid var(--ink); padding-top: 16px; padding-bottom: 16px; }
   table.exec-fin .fin-tot > th { padding-left: 24px; }
 }
@@ -2695,11 +2735,23 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
   table.exec-fin tbody.aberta .fin-grupo > th { box-shadow: inset 4px 0 0 var(--accent); }
   table.exec-fin .fin-grupo:hover > * { background: color-mix(in srgb, var(--surface-2) 40%, var(--surface)); }
   table.exec-fin .fin-item > th { padding-left: 60px; }
-  table.exec-fin .fin-detalhe > td { padding-left: 60px; }
-  table.exec-fin thead th { font-weight: 700; }
+  
+  
 }
+@media (max-width: 300px) { .fin-grupo, .fin-item, .fin-tot { grid-template-columns: minmax(0, 1fr) !important; } }
 @media print { .exec-fin tbody.fin-rubrica > tr.fin-item { display: table-row !important; } .fin-rub::before { display: none; } }
 @media (max-width: 640px) { .exec-fin .fin-exe { min-width: 0; } .exec-fin .fin-exe .medidor { flex: 1 1 auto; width: auto; background: color-mix(in srgb, var(--ink) 10%, transparent); } }
+@media (min-width: 641px) and (max-width: 1000px) { table.exec-fin th, table.exec-fin td { padding-left: 8px; padding-right: 8px; } }
+@media (min-width: 1100px) { table.exec-fin thead th:first-child { width: 34%; } }
+@media (min-width: 641px) and (max-width: 1100px) { table.exec-fin thead th { overflow-wrap: normal; word-break: keep-all; letter-spacing: .02em; white-space: normal; }
+table.exec-fin thead th:nth-child(2), table.exec-fin thead th:nth-child(4), table.exec-fin thead th:nth-child(5) { width: 16%; }
+table.exec-fin .fin-grupo > th, table.exec-fin .fin-tot > th { padding-left: 14px !important; }
+table.exec-fin td, table.exec-fin th { padding-left: 8px !important; padding-right: 8px !important; }
+table.exec-fin { table-layout: fixed; font-size: var(--t-sm); } }
+@media (min-width: 641px) and (max-width: 1000px) { table.exec-fin th:first-child, table.exec-fin td:first-child { overflow-wrap: anywhere; }
+table.exec-fin { width: 100%; } }
+@media (min-width: 641px) and (max-width: 720px) { table.exec-fin td, table.exec-fin th { padding-left: 5px !important; padding-right: 5px !important; }
+table.exec-fin thead th { letter-spacing: 0; hyphens: auto; word-break: normal; overflow-wrap: anywhere; } }
 
 /* --- Campo, tabela por estado em tela pequena (03/10/2026): um cartão por estado, nada cortado nem rolando para o lado --- */
 @media (max-width: 900px) {
@@ -2710,14 +2762,14 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
   table.quadro.tab-campo-uf tbody { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); }
   table.quadro.tab-campo-uf tr { display: grid; gap: 12px 8px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 1px 2px rgba(69, 43, 26, .04); }
   table.quadro.tab-campo-uf td { display: block; padding: 0 !important; border: 0 !important; background: transparent !important; width: auto !important; min-width: 0 !important; text-align: left; white-space: normal; }
-  table.quadro.tab-campo-uf td.uf { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; }
-  table.quadro.tab-campo-uf td.uf .sigla { margin-right: 0; } table.quadro.tab-campo-uf td.uf .nomeuf { font: 600 var(--t-lg)/1.2 var(--serif); }
+  table.quadro.tab-campo-uf td.uf { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; width: auto !important; }
+  table.quadro.tab-campo-uf td.uf .sigla { margin-right: 0; } table.quadro.tab-campo-uf td.uf .nomeuf { font: 600 var(--t-lg)/1.2 var(--serif); display: inline !important; }
   table.quadro.tab-campo-uf td.cu-dias { grid-column: 1 / -1; padding-top: 12px !important; border-top: 1px solid var(--line) !important; }
   table.quadro.tab-campo-uf td.cu-dias .dias-cel { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 12px; align-items: center; }
   table.quadro.tab-campo-uf td.cu-dias .dias-cel .small { grid-column: 1 / -1; }
-  table.quadro.tab-campo-uf td.c { gap: 3px; align-content: start; padding: 10px 8px !important; background: var(--bg) !important; text-align: center; font: 600 var(--t-lg)/1.1 var(--serif); color: var(--ink); }
+  table.quadro.tab-campo-uf td.c { gap: 3px; align-content: start; padding: 10px 8px !important; background: var(--bg) !important; text-align: center; font: 600 var(--t-lg)/1.1 var(--serif); color: var(--ink); border-radius: 10px !important; display: grid !important; }
   table.quadro.tab-campo-uf td.c .muted { font: 400 var(--t-xs)/1 var(--sans); }
-  table.quadro.tab-campo-uf td[data-rot]::before { content: attr(data-rot); display: block; font: 700 12px/1.25 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  table.quadro.tab-campo-uf td[data-rot]::before { content: attr(data-rot); display: block; font: 700 12px/1.25 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-size: 12px; }
   table.quadro.tab-campo-uf td.cu-dias::before { margin-bottom: 6px; }
   table.quadro.tab-campo-uf tbody tr:hover td { background: transparent !important; } table.quadro.tab-campo-uf tbody tr:hover td.c { background: var(--bg) !important; }
 }
@@ -2741,9 +2793,9 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 }
 @media (max-width: 900px) {
   table.quadro.tab-campo-uf tr { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  table.quadro.tab-campo-uf td.c { border-radius: 10px !important; display: grid !important; }
-  table.quadro.tab-campo-uf td.uf .nomeuf { display: inline !important; }
-  table.quadro.tab-campo-uf td[data-rot]::before { font-size: 12px; }
+  
+  
+  
 }
 @media (max-width: 720px) {
   table.quadro.tab-rot td.rt-etapa, table.quadro.tab-rot td.rt-quem { background: var(--bg) !important; border-radius: 12px !important; }
@@ -2772,7 +2824,7 @@ header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="t
 
 /* Equipe, "Bolsistas por estado": os cartões de articulação e de apoio da mesma linha ficam com a mesma altura */
 .eq-quadro tbody tr { height: 1px; }
-.eq-quadro tbody td { height: inherit; }
+
 @-moz-document url-prefix() { .eq-quadro tbody td { height: 100%; } }
 .eq-quadro tbody td > .vagabtn.com-foto { height: 100%; box-sizing: border-box; align-items: center; max-width: 270px; min-height: 0; }
 
@@ -2794,6 +2846,9 @@ details.termo-gov > p { margin: 10px 0 0; }
 /* abas agrupadas: o realce de foco fica por dentro do botão e o nome do grupo ganha folga, para a borda não encostar em "Gestão", "Execução"… */
 
 .abas-grupos button:focus-visible { outline-offset: -3px; }
+@media (min-width: 1101px) { :root[data-sol] .abas-grupos .aba-g { letter-spacing: .06em; }
+.abas-grupos .aba-grupo + .aba-grupo::before { left: -6px; } }
+.abas-grupos .aba-g { color: var(--muted); }
 
 /* Documentos: quadro de impressões (relatórios por tipo e fichas de cadastro) */
 .imp-uf { display: grid; gap: 4px; font-size: var(--t-sm); color: var(--ink-2); }
@@ -2805,6 +2860,8 @@ details.termo-gov > p { margin: 10px 0 0; }
 .imp-lista .btn { flex: none; }
 .secao-cab:has(.imp-uf) { align-items: end; }
 .secao-cab:has(.imp-uf) > div { flex: 1 1 320px; }
+@media (pointer: coarse) { .imp-uf select { font-size: 16px; } }
+.imp-uf select { font-size: max(16px, 1em); }
 
 /* listas longas (roteiro do campo, visitas do mês em Custos): botão para desenhar mais linhas */
 .mais-linhas { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 12px 0 0; }
@@ -2885,10 +2942,17 @@ small { font-size: max(12px, .85em); }
 
 @media (max-width: 700px) {  .ac-duo { grid-template-columns: 1fr; } .ac-acoes .btn { flex: 1 1 100%; justify-content: center; } }
 @media print { .ac-acoes, .demo, .barra .btn-sair, .ac-pulso { display: none !important; } .ac { gap: 16px; } .ac-sec { break-inside: avoid; } }
+.demo .seg button { flex: none; }
+@media (max-width: 700px) { .ac-acoes.foto-acoes .foto-btn { justify-content: center; } }
+.ac-acoes.foto-acoes .foto-btn { text-decoration: none; }
+.foto-acoes .foto-btn:focus-visible, .foto-acoes label.foto-btn:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
 .ac-tab th { white-space: normal; vertical-align: bottom; line-height: 1.25; letter-spacing: .02em; padding-inline: 8px; }
 .ac-duo .ac-tab { width: 100%; table-layout: auto; }
+@media (min-width: 601px) and (max-width: 960px) { .ac-duo { grid-template-columns: minmax(0, 1fr) !important; } }
 
 .ac-tab { min-width: 0; }
+@media (min-width: 641px) { .ac-tab th.num, .ac-tab td.num { text-align: center; } }
+@media (min-width: 601px) and (max-width: 960px) { .ac-tab th, .ac-tab td { padding-left: 6px; padding-right: 6px; } }
 
 @media (max-width: 340px) { .demo-ver .seg { flex-wrap: wrap; max-width: 100%; } }   /* 9 perfis na demonstração: em tela muito estreita quebra a linha em vez de empurrar a página */
 /* telas de 320 a 360 px (v225): nada empurra a página para o lado */
@@ -2905,6 +2969,12 @@ small { font-size: max(12px, .85em); }
   .agua-topo, .agua-sit, .agua-sit li, .secao-cab, .secao-cab > div { min-width: 0; }
   .agua-sit li span, .secao-cab p { overflow-wrap: anywhere; }
 }
+@media (max-width: 380px) { .agua-sit { grid-template-columns: 1fr; } }
+@media (min-width: 600px) { .cab > div > p { text-align: justify; hyphens: auto; -webkit-hyphens: auto; } }
+.cab p.txt-just { max-width: none; }
+.cab h1, main h1, .dx-cab h1, .eq-cab h1 { font-size: var(--t-h1); }
+h1, .cab h1, main h1, .dx-cab h1, .eq-cab h1 { font-weight: 700; letter-spacing: -.025em; line-height: 1.08; overflow-wrap: break-word; }
+@media (min-width: 600px) { .txt-just { text-align: justify; hyphens: auto; -webkit-hyphens: auto; } }
 
 /* mapa: município afastado do vizinho para não ficar por cima; o traço liga o círculo ao lugar verdadeiro */
 .q-fio { stroke: var(--ink-3, #7A5A44); fill: none; opacity: .45; pointer-events: none; }
@@ -2922,6 +2992,16 @@ small { font-size: max(12px, .85em); }
 /* prévia de quem acompanha: janela no meio da tela (usa o mesmo painel, com foco preso, Esc e Voltar) */
 .painel.centro { top: 4vh; bottom: 4vh; left: 50%; right: auto; width: min(1120px, 94vw); transform: translateX(-50%); border-radius: 18px; overflow: hidden; animation: none; }
 .painel.centro .painel-corpo { padding-top: 16px; }
+.painel-corpo fieldset[id^="gf-"]:focus { outline: none; }
+@media (orientation: landscape) and (max-height: 500px) { .painel-corpo { scroll-padding-top: 60px; } }
+@media (max-width: 520px) { .painel-corpo form.f > .acoes:last-child > [data-acao="campo-visita-cancelar"] { grid-column: 1 / -1; grid-row: 2; }
+.painel-corpo form.f > .acoes:last-child > .btn { line-height: 1.2; text-wrap: balance; } }
+.painel-corpo fieldset[id^="gf-"]:focus-visible > legend { outline: 2px solid var(--focus); outline-offset: 2px; }
+.painel-corpo fieldset[id^="gf-"] { scroll-margin-top: 120px; }
+.painel-corpo:has(.guia-form) { scroll-padding-top: 120px; }
+@media (orientation: landscape) and (max-height: 500px) { .painel-corpo:has(.guia-form) { scroll-padding-top: 60px; } }
+.painel-corpo .campo, .painel-corpo .criterio, .painel-corpo [id^="w-"] { scroll-margin-bottom: 110px; scroll-margin-top: 120px; }
+@media print { .guia-form { display: none !important; } }
 @media (max-width: 700px) { .painel.centro { top: 0; bottom: 0; width: 100%; border-radius: 0; } }
 .ac-obr { color: var(--accent); font-weight: 700; }
 
@@ -2929,6 +3009,7 @@ small { font-size: max(12px, .85em); }
 
 .eq-quadro .vagabtn.com-foto .av { --av: 44px !important; }
 .eq-quadro .vagabtn.com-foto .sub, .ag-lista .vagabtn.com-foto .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (min-width: 861px) and (max-width: 960px) { .ag-lista .vagabtn.com-foto { flex: 1 1 100%; } }
 @media (max-width: 760px) { .eq-quadro tbody td > .vagabtn.com-foto { max-width: none; } }
 
 /* Painel largo (ficha da Seleção, "Todas as fichas"): a largura acompanha a tela do aparelho.
@@ -2938,7 +3019,9 @@ small { font-size: max(12px, .85em); }
 /* o mesmo no formato de cartões (telas estreitas) */
 .eq-cartoes .vagabtn.com-foto { padding: 10px 12px; min-height: 0; }
 .eq-cartoes .vagabtn.com-foto .av { --av: 44px !important; }
+:root[data-contraste] .av { background: #000 !important; color: #fff !important; box-shadow: inset 0 0 0 2px #fff; }
 .eq-cartoes .vagabtn.com-foto .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (min-width: 601px) and (max-width: 960px) { .eq-cartoes .cartao .cab-uf { margin-bottom: 2px; } }
 
 /* Equipe: a mesma distância (24 px) entre cartões vizinhos, tanto entre agentes de campo quanto entre a bolsista de
    articulação e a de apoio. Na tabela, as duas colunas de bolsista têm largura fixa (cartão de 270 px + 24 px) e a
@@ -2950,6 +3033,8 @@ small { font-size: max(12px, .85em); }
   .ag-th, .ag-tr { grid-template-columns: 146px minmax(0, 1fr) auto; }   /* primeiro cartão na mesma coluna do quadro de bolsistas */
   .eq-quadro tbody td:nth-child(2), .eq-quadro tbody td:nth-child(3), .eq-quadro thead th:nth-child(2), .eq-quadro thead th:nth-child(3) { padding-left: 0; padding-right: 24px; }
 }
+@media (min-width: 961px) and (max-width: 1100px) { .eq-quadro td.uf { padding-left: 16px; }
+.eq-quadro td.uf .ag-uf .sigla { display: none; } }
 
 /* Visão geral, "Execução física do projeto" (04/10/2026): um painel só, em 5 áreas. A primeira (o percentual geral) é
    maior e tem fundo próprio; as outras quatro explicam esse número, cada uma com anel, número, barra e complemento. */
@@ -2982,6 +3067,7 @@ small { font-size: max(12px, .85em); }
 @media (max-width: 1180px) { .dx-exec { border-right: 0; border-bottom: 1px solid var(--line); } }
 @media (max-width: 640px) { .dx-kpi, .dx-kpi:nth-child(even) { padding: 18px 16px; } .dx-kpi-topo { gap: 10px; } .dx-anel, .dx-anel svg { width: 44px; height: 44px; } }
 @media print { .dx-topo { box-shadow: none; } }
+.dx-topo { border-radius: 20px; grid-template-columns: minmax(300px, 1.35fr) minmax(0, 4fr); }
 @media (max-width: 1180px) { .dx-kpi-r { min-height: 2.6em; } } @media (max-width: 640px) { .dx-kpi-r { min-height: 0; } }
 
 /* Equipe: o resumo no mesmo padrão do painel de execução física da Visão geral */
@@ -3027,6 +3113,15 @@ small { font-size: max(12px, .85em); }
 /* indicadores dos resumos: param no Tab e mostram o foco, mas não são link (sem mãozinha, sem sublinhado, sem ação) */
 .dx-exec[tabindex], .dx-kpi[tabindex], .eq-kpi[tabindex], .resumo > div[tabindex] { cursor: default; outline: none; }
 .dx-exec[tabindex]:focus-visible, .dx-kpi[tabindex]:focus-visible, .eq-kpi[tabindex]:focus-visible, .resumo > div[tabindex]:focus-visible { outline: 2px solid var(--focus); outline-offset: -3px; border-radius: 12px; background-color: color-mix(in srgb, var(--surface-2) 45%, var(--surface)); }
+@media (max-width: 520px) { .resumo.vg-resumo > div + div { border-top: 1px solid var(--line); border-left: 0 !important; } }
+.resumo:not(.bloco .resumo):not(.painel .resumo) > div::before,
+.resumo:not(.bloco .resumo):not(.painel .resumo) > div:nth-child(n)::before { background: var(--line-2); }
+.resumo:not(.bloco .resumo):not(.painel .resumo) > div.vez::before { width: 44px; background: var(--cont-bg) !important; }
+
+.painel form.f > fieldset + fieldset, .painel form.f > fieldset + div > fieldset:first-child, .painel form.f > div + fieldset { margin-top: 10px; }
+@media (max-width: 520px) { .resumo.vg-resumo > div { grid-column: auto !important; } }
+.resumo.vg-resumo > div::before { display: none !important; }
+.dx-exec { padding: 32px; }
 /* números de 3 dígitos ("200 / 200", "400 / 400") não podem sair da área do indicador: a coluna encolhe o conteúdo,
    o número é menor e, se ainda assim não couber, o total desce para a linha de baixo */
 .dx-kpi, .eq-kpi { min-width: 0; overflow: hidden; }
@@ -3048,10 +3143,36 @@ small { font-size: max(12px, .85em); }
   .eq-kpi.sem-total .eq-n b { font-size: clamp(24px, 20cqw, 46px); }
   .fin-topo .dx-kpi-topo { flex-wrap: nowrap; }
 }
+.eq-kpi.enxuto .medidor.so-espaco { visibility: hidden; }
+.eq-kpi.enxuto .medidor.fino { margin-top: 4px; }
+.eq-kpi.enxuto .medidor.fino i { background: color-mix(in srgb, var(--ink-2) 55%, transparent); }
+.eq-kpi.enxuto .eq-l { align-self: start; }
+.dx-kpi, .dx-kpi *, .eq-kpis, .eq-kpis * { hyphens: manual; -webkit-hyphens: manual; }
+.dx-kpi { padding: 32px 24px; }
+.dx-kpi, .dx-kpi.k1, .dx-kpi.k2, .dx-kpi.k3, .dx-kpi.k4 { --kc: var(--verde-2); }
+.dx-kpi.cumprido { --kc: var(--st-ok); }
+:root[data-theme="dark"] .dx-kpi.cumprido { --kc: #7CC77F; }
+:root[data-contraste] .dx-kpi.neutro { --kc: #FFFFFF; }
+.dx-kpi.neutro { --kc: var(--ink-2); }
+:root[data-contraste] .dx-kpi.abaixo { --kc: #FFE600; }
+.dx-kpi.abaixo { --kc: var(--cont-borda); }
 
 /* acompanhamento (MDA e MPA): o mapa da Visão geral, sem clique e só com totais */
 .mapa-caixa.mapa-resumo { grid-template-columns: minmax(0, 1fr); }
+.mapa-caixa .uf-proj[data-div] { stroke: var(--m-fundo); stroke-linejoin: round; }
+.mapa-caixa .uf-proj.uf-tom, .uf-proj.uf-tom { fill: color-mix(in srgb, var(--m-ok) var(--tom, 10%), var(--m-uf)); }
+:root[data-contraste] .mapa-caixa .uf-proj[data-div] { stroke: #fff; }
 .ac-mapa .mapa-resumo svg.mapa { width: 100%; height: auto; max-height: 460px; }
+svg.mapa.mapa-arrasta { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.mapa .mun-area circle { fill: color-mix(in srgb, var(--surface) 55%, transparent); stroke: var(--accent); }
+svg.mapa.mapa-arrasta.arrastando { cursor: grabbing; }
+:root[data-contraste] .mapa .mun-ctn text { fill: #fff; stroke: #000; }
+:root[data-contraste] .mapa .mun-viz path { stroke: #BDBDBD; }
+.mapa .mun-viz path { fill: none; stroke: color-mix(in srgb, var(--ink-2) 45%, transparent); stroke-linejoin: round; }
+.mapa .mun-area text { fill: var(--ink); font-weight: 600; paint-order: stroke; stroke: var(--surface); stroke-width: .6%; }
+:root[data-contraste] .mapa .mun-ctn path { fill: #000; stroke: #FFE600; }
+.mapa .mun-ctn text { fill: var(--ink); font-weight: 600; paint-order: stroke; stroke: var(--surface); stroke-width: .6%; }
+.mapa .mun-ctn path { fill: color-mix(in srgb, var(--surface) 62%, transparent); stroke: var(--accent); stroke-linejoin: round; }
 .ac-mapa .mapa-tam-nota { margin: 6px 0 0; }
 
 /* relatar problema: lista da coordenação geral no Histórico */
@@ -3066,10 +3187,10 @@ small { font-size: max(12px, .85em); }
 
 /* ===== Tela de entrada: refinamento (06/10/2026). Mesma identidade, mesma paleta, mesmos textos (só o sobretítulo do
    cartão virou "Área de acesso") e uma função nova (mostrar/ocultar senha). Medidas em múltiplos de 8 px. ===== */
-.ent-fundo i { opacity: .38; }
+
 .ent-hero { gap: 24px; }
 .ent-t { font-size: clamp(2.2rem, 4.6vw, 3.9rem); font-weight: 600; line-height: 1.06; letter-spacing: -.025em; }
-.ent-t em::after { left: 0; right: 0; bottom: -.04em; height: 2px; opacity: .45; }
+
 .ent-s1 { font-weight: 500; font-size: clamp(1.15rem, 1.7vw, 1.4rem); letter-spacing: -.005em; }
 .ent-s2 { display: block; margin-top: 8px; max-width: 46ch; line-height: 1.6; }
 .ent-ufs { gap: 8px; }
@@ -3122,6 +3243,7 @@ small { font-size: max(12px, .85em); }
 .ent-seg.seg button[aria-pressed="true"]:focus-visible { outline-color: var(--focus); box-shadow: 0 0 0 2px var(--surface) inset; }
 @media (max-width: 900px) { .ent-ufs li { border: 0; background: none; padding: 0; }  .ent-card.login { padding: 24px; } .ent-t { font-size: clamp(2rem, 8.4vw, 2.7rem); }  .ent-acesso { margin-top: 8px; } }
 @media (prefers-reduced-motion: reduce) { .ent-seg.seg button, .ent-btn, .ent-olho, .ent-olho .risco, .ent-card .link, .ent-card input { transition: none !important; } .ent-btn:hover { transform: none; } }
+:root[data-contraste] .link { color: #FFFF00; }
 
 /* --- Relatório da ação: relatórios mensais da equipe (12/10/2026) --- */
 .rel .rel-larga { overflow-x: auto; max-width: 100%; }
@@ -3135,6 +3257,8 @@ small { font-size: max(12px, .85em); }
 .pr-quadro tbody td { padding-left: 14px; padding-right: 14px; }
 .pr-quadro td.uf .ag-nome small { display: block; }
 .pr-quadro .plano > span, .pr-cartoes .plano > span { font-size: var(--t-xs); color: var(--ink-2); }
+.pr-quadro tbody td:nth-child(n+5) .pr-n { justify-items: center; }
+.pr-quadro thead th:nth-child(n+5), .pr-quadro tbody td:nth-child(n+5) { text-align: center; }
 .pr-n { display: grid; gap: 2px; } .pr-n b { font: 600 var(--t-xl)/1 var(--serif, inherit); color: var(--ink); } .pr-n small { font-size: var(--t-xs); color: var(--ink-2); }
 .pr-vazio { font-size: var(--t-sm); color: var(--muted); font-style: italic; }
  
@@ -3146,6 +3270,8 @@ small { font-size: max(12px, .85em); }
 .pr-cel .bar { height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--line) 70%, transparent); }
 .pr-cel .bar i { background: color-mix(in srgb, var(--ink-2) 55%, transparent); border-radius: 4px; }
 .pr-cel .bar i.cheio { background: var(--ok); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bar, :root:not([data-theme="light"]) .medidor, :root:not([data-theme="light"]) .pf-bar { background: #4A3D34; } }
+:root[data-contraste] .bar, :root[data-contraste] .medidor, :root[data-contraste] .pf-bar { background: #333 !important; }
 .pr-sub { display: flex; align-items: baseline; gap: 6px; font-size: var(--t-xs); color: var(--ink-2); line-height: 1.3; }
 .pr-sub::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); transform: translateY(-1px); }
 .pr-sub.ok::before { background: var(--st-ok); }
@@ -3207,10 +3333,41 @@ small { font-size: max(12px, .85em); }
 :root[data-sol] body { font-weight: 500; -webkit-font-smoothing: auto; }
 :root[data-sol] .campo input, :root[data-sol] .campo select, :root[data-sol] .campo textarea, :root[data-sol] .fm-num,
 :root[data-sol] .cl-km input, :root[data-sol] .conv-url input, :root[data-sol] .rot-conte textarea { border-width: 2px; }
+.campo.tem-erro:focus, .criterio.tem-erro:focus, [id^="w-"].tem-erro:focus { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: 6px; }
 :root[data-sol] .chip { border: 1.5px solid currentColor; font-weight: 700; }
+.chip.pend { background: var(--pend-bg); color: var(--pend); }
+@media (min-width: 641px) and (max-width: 1023px) { #dd-acessos .chip { white-space: normal; max-width: 100%; } }
 :root[data-sol] .btn { border-width: 2px; font-weight: 700; }
 :root[data-sol] .check, :root[data-sol] .cartao, :root[data-sol] .pessoa, :root[data-sol] .quadro-scroll, :root[data-sol] details.hist { border-color: var(--line-2); }
+@media (pointer: coarse) { label.check, label.mini-chk { min-height: var(--alvo); display: inline-flex; align-items: center; } }
+.quadro-scroll {
+  background:
+    linear-gradient(to right, var(--surface) 30%, transparent) left / 24px 100% no-repeat local,
+    linear-gradient(to left, var(--surface) 30%, transparent) right / 24px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, .18), transparent) left / 10px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, .18), transparent) right / 10px 100% no-repeat scroll,
+    var(--surface);
+}
 :root[data-sol] .quadro th { color: var(--ink); }
+@media (min-width: 601px) and (max-width: 960px) { table.quadro.tab-rot tbody { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.quadro.ac-tab { table-layout: auto; min-width: 520px; }
+@media (min-width: 961px) and (max-width: 1100px) { table.quadro.tab-rot td:last-child .small { overflow-wrap: anywhere; } }
+@media (max-width: 640px) { table.quadro.desp-tab tr, table.quadro.desp-tab td { background: transparent !important; } }
+table.quadro.desp-tab { table-layout: auto; min-width: 640px; }
+@media (max-width: 640px) { table.quadro.desp-tab td::before { display: none !important; content: none !important; }
+table.quadro.desp-tab td[data-rot="Data"] { grid-column: 1; grid-row: 1; color: var(--muted); font-size: var(--t-xs); text-align: left; }
+table.quadro.desp-tab td { display: block; border: 0; padding: 0; min-width: 0; }
+.desp-tab tr { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.desp-tab thead { display: none; } }
+@media (max-width: 900px) { table.quadro.tab-campo-uf td.uf { padding-bottom: 12px !important; border-bottom: 1px solid var(--line) !important; } }
+@media (min-width: 601px) and (max-width: 960px) { table.quadro.quadro-sel, table.quadro.ac-tab, .ac-duo table.quadro.ac-tab { min-width: 0 !important; }
+.quadro-sel .uf .sigla, .tab-campo-uf .uf .sigla { display: none; }
+.quadro-sel td.uf, .quadro-sel thead th:first-child, .tab-campo-uf td.uf, .tab-campo-uf thead th:first-child { width: 112px; min-width: 0; } }
+.ac-duo .quadro.ac-tab { min-width: 420px; }
+@media (max-width: 640px) { table.quadro.desp-tab { min-width: 0 !important; width: 100% !important; }
+table.quadro.desp-tab td[data-rot="Descrição"] { grid-column: 1 / -1; grid-row: 2; } }
+.desp-tab td { vertical-align: top; }
+.tab-rot td:first-child, .tab-rot td.num { overflow-wrap: normal; white-space: nowrap; }
 
 /* ---------- Aparência da tela: botão da barra e painel ---------- */
 .btn-aparencia { display: inline-flex; align-items: center; justify-content: center; padding: 0; }
@@ -3229,6 +3386,7 @@ small { font-size: max(12px, .85em); }
 .ap-chave[aria-checked="true"] { border-color: var(--ink); border-width: 2px; }
 .ap-chave[aria-checked="true"] .ap-trilho { background: var(--ok); }
 .ap-chave[aria-checked="true"] .ap-trilho span { transform: translateX(22px); }
+.ap-chave.sem-ic { grid-template-columns: minmax(0, 1fr) 52px; }
 .ap-sol { margin-bottom: 16px; }
 .ap-temas { display: flex; margin: 10px 0 8px; }
 .ap-temas button { flex: 1; min-height: 44px; padding: 6px 12px; }
@@ -3252,11 +3410,31 @@ small { font-size: max(12px, .85em); }
 [data-tab-bloco]:focus { outline: none; }
 [data-tab-bloco]:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: var(--r); }
 section.secao[data-tab-bloco]:focus-visible { outline-offset: 8px; }
+main .secao p, main .bloco p, main .mts p, main .secao-cab p, main .rl-nota, main [class*="-nota"] { max-width: none; }
+:root[data-contraste] main .secao:not(.secao .secao) { box-shadow: none; }
+main .secao:not(.secao .secao):not(.hs-sec):not(.pre-sec):not(.dx-atencao):not(.mts):not(.dd-sec):not(.vit-coord-sec):not(.dx-duas > .secao):not(.dx-lado > .secao):not(.dx-agua) > .secao-cab {
+  margin: 0 0 4px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+@media (min-width: 641px) { .secao-cab:has(> .hs-bt) > div { flex: 1 1 auto; } }
+main .secao:not(.secao .secao):not(.hs-sec):not(.pre-sec):not(.dx-atencao):not(.mts):not(.dd-sec):not(.vit-coord-sec):not(.dx-duas > .secao):not(.dx-lado > .secao):not(.dx-agua) {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px 22px;
+  box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 8px 22px rgba(69, 43, 26, .06); min-width: 0; }
+@media (min-width: 641px) and (max-width: 900px) { main .secao:not(.secao .secao):not(.hs-sec):not(.pre-sec):not(.dx-atencao):not(.mts):not(.dd-sec):not(.vit-coord-sec):not(.dx-duas > .secao):not(.dx-lado > .secao):not(.dx-agua) { padding: 18px 14px; } }
+@media (max-width: 640px) { main .secao:not(.secao .secao):not(.hs-sec):not(.pre-sec):not(.dx-atencao):not(.mts):not(.dd-sec):not(.vit-coord-sec):not(.dx-duas > .secao):not(.dx-lado > .secao):not(.dx-agua) { padding: 18px 14px; border-radius: 14px; } }
+.dx-agua .agua-sit li span { overflow-wrap: normal; word-break: normal; }
+.mts { padding: 32px; border-radius: 20px; }
 
 /* ---------- v261: abas do menu de cima: foco pelo teclado com fundo realçado, além do contorno ---------- */
 .abas button:focus-visible { background: color-mix(in srgb, var(--accent) 26%, var(--surface)); color: var(--ink); outline: 2px solid var(--focus); outline-offset: -2px; border-radius: 10px; }
-.abas button[aria-current="page"]:focus-visible { background: color-mix(in srgb, var(--accent) 32%, var(--surface)); color: var(--ink); }   /* 80 (auditoria F5-01): a aba ativa com foco do teclado tinha 1,4:1 de contraste */
+.abas button[aria-current="page"]:focus-visible { background: color-mix(in srgb, var(--accent) 32%, var(--surface)); color: var(--ink); }
+.abas.abas-grupos { background: var(--menu-bg); box-shadow: 0 0 0 100vmax var(--menu-bg); clip-path: inset(0 -100vmax); border-bottom: 0;
+  padding: 12px 0 4px; margin: -24px 0 6px; }
+@media (pointer: coarse) { :is(#app) .abas button { min-height: var(--alvo); } }
+.abas-grupos button[aria-current="page"] .conta { box-shadow: inset 0 0 0 1px var(--cont-borda), 0 0 0 1.5px var(--sel-bg); }
+@media (min-width: 1101px) and (max-width: 1240px) { .abas-grupos .aba-grupo + .aba-grupo::before { left: -5px; } }
+@media (min-width: 1101px) { :root[data-sol] .abas-grupos .aba-grupo + .aba-grupo::before { left: -5px; } }
+.abas-grupos .aba-grupo + .aba-grupo::before { border-left-color: var(--menu-div); }   /* 80 (auditoria F5-01): a aba ativa com foco do teclado tinha 1,4:1 de contraste */
 .abas-m summary:focus-visible, .abas-m-grade button:focus-visible:not([aria-current="page"]) { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); outline: 2px solid var(--focus); outline-offset: 1px; }
+
 .pr-falta { display: inline-grid; gap: 2px; justify-items: start; } .pr-falta small { font-size: var(--t-xs); color: var(--ink-2); }
 
 /* ---------- v264: "Baixar planilha" da Seleção com duas opções (sem documentos / completa) ---------- */
@@ -3269,6 +3447,9 @@ section.secao[data-tab-bloco]:focus-visible { outline-offset: 8px; }
   background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r); box-shadow: var(--shadow); }
 .menu-planilha-op .btn { display: grid; justify-items: start; gap: 2px; text-align: left; white-space: normal; width: 100%; }
 .menu-planilha-op .btn small { font: 400 var(--t-sm)/1.35 var(--sans); color: var(--ink-2); }
+@media (pointer: coarse) { .btn.peq, button.link, .btn-voz, .seg button { min-height: 40px; }
+.seg button[aria-label="Mês anterior"], .seg button[aria-label="Próximo mês"] { min-width: 40px; }
+.link.perigo, a.link, .ent-link { display: inline-flex; align-items: center; min-height: 40px; } }
 @media (max-width: 760px) { .menu-planilha-op { position: static; width: 100%; margin-top: 6px; } }
 
 /* v265: "Pular para o conteúdo" — primeiro item do Tab, escondido até receber o foco */
@@ -3278,21 +3459,18 @@ section.secao[data-tab-bloco]:focus-visible { outline-offset: 8px; }
 
 /* ---------- v265: ajustes da auditoria de telas (13/10/2026) ---------- */
 /* MDA e MPA no celular: tabelas com largura própria e rolagem para o lado (antes cabeçalhos e números se sobrepunham) */
-.quadro.ac-tab { table-layout: auto; min-width: 520px; }
-.ac-duo .quadro.ac-tab { min-width: 420px; }
+
 /* metas da Visão geral no celular: o selo de situação vai para uma linha própria (antes ficava por cima do nome) */
-@media (max-width: 420px) {
-  .dx-meta .st-chip { justify-self: start; }
-}
+
 /* barra "Ver como" da demonstração: rola para o lado em vez de sobrepor os botões */
 .demo .seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
-.demo .seg button { flex: none; }
+
 /* roteiro de visitas: data inteira numa linha */
-.tab-rot td:first-child, .tab-rot td.num { overflow-wrap: normal; white-space: nowrap; }
+
 /* cartões em duas colunas no celular não quebram palavra no meio */
-.dx-agua, .dx-agua *, .agua-cards, .agua-cards * { overflow-wrap: normal; word-break: normal; hyphens: auto; }
+
 /* tema escuro: trilho das barras de progresso visível (antes quase da cor do fundo) */
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bar, :root:not([data-theme="light"]) .medidor, :root:not([data-theme="light"]) .pf-bar { background: #4A3D34; } }
+
 :root[data-theme="dark"] .bar, :root[data-theme="dark"] .medidor, :root[data-theme="dark"] .pf-bar { background: #4A3D34; }
 
 /* =====================================================================
@@ -3308,24 +3486,24 @@ section.secao[data-tab-bloco]:focus-visible { outline-offset: 8px; }
   input, select, textarea { font-size: max(16px, 1em); }
   /* com o id na frente para vencer as regras de cada formulário (.campo input etc.), que têm 15 px */
   :is(#app, #painel) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea) { font-size: max(16px, 1em); }
-  .imp-uf select { font-size: 16px; }
+  
 }
-.imp-uf select { font-size: max(16px, 1em); }
+
 /* 7. alvos de toque com 40–44 px em qualquer tela de toque (antes só até 640/700 px; no tablet ficavam com 20–32 px) */
 @media (pointer: coarse) {
-  .btn.peq, button.link, .btn-voz, .seg button { min-height: 40px; }
-  .seg button[aria-label="Mês anterior"], .seg button[aria-label="Próximo mês"] { min-width: 40px; }
-  .linha-din .fechar, .painel-cab .fechar { min-width: 40px; min-height: 40px; }
+  
+  
+  
   main summary, #painel summary { min-height: 44px; display: flex; align-items: center; gap: 6px; }
-  .link.perigo, a.link, .ent-link { display: inline-flex; align-items: center; min-height: 40px; }
+  
   .marco-meta { min-height: 40px; }
 }
 /* 6. tablet em pé (641–900 px): barra de cima numa linha só (antes quebrava em duas e comia a primeira tela) */
 @media (min-width: 641px) and (max-width: 900px) {
-  .barra-in { flex-wrap: nowrap; }
+  
   .barra-in .marca { flex: 1; min-width: 0; }
   .marca .sis { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  .quem { flex: none; } .quem > span { display: none; }   /* nome e função: tocando na foto (Meus dados) */
+   .quem > span { display: none; }   /* nome e função: tocando na foto (Meus dados) */
 }
 /* 17. tablet deitado (até 1100 px): menu "Seção" no lugar das abas em grupos (o grupo Documentação caía sozinho numa 2ª linha) */
 @media (max-width: 1100px) {
@@ -3335,15 +3513,15 @@ section.secao[data-tab-bloco]:focus-visible { outline-offset: 8px; }
 }
 /* 3. página pública "O projeto em números" entre 561 e 720 px: nada rola para o lado */
 .pub-l > span { min-width: 0; }
-@media (max-width: 720px) { .pub-l { grid-template-columns: 1fr 1fr; } .pub-l > span:first-child { grid-column: 1 / -1; } .pub-l.cab { display: none; } }
+@media (max-width: 720px) {  .pub-l > span:first-child { grid-column: 1 / -1; } .pub-l.cab { display: none; } }
 /* 9. números da tela de entrada a 320 px: um embaixo do outro (antes "selecionadas" vazava do quadro) */
-@media (max-width: 400px) { .vitrine .vts, .vts.vts-3 { grid-template-columns: 1fr; } }
+
 /* 5. celular deitado (altura até 500 px): cabeçalho do painel enxuto e botão de salvar sempre à mão */
 @media (orientation: landscape) and (max-height: 500px) {
   .painel-cab { padding-top: 8px; padding-bottom: 8px; }
   .painel-cab h2 { font-size: var(--t-lg); }
   .painel-cab .sub, .painel-cab .vb-foto, .painel-cab .eyebrow { display: none; }
-  .painel-corpo { scroll-padding-top: 60px; }
+  
   .painel-corpo > form.f:last-child > .acoes:last-child, .painel-corpo > form.f:only-of-type > .acoes:last-child {
     position: sticky; bottom: calc(-28px - env(safe-area-inset-bottom, 0px)); z-index: 2; margin: 4px -4px 0; padding: 8px 4px calc(10px + env(safe-area-inset-bottom, 0px));
     background: var(--bg); border-top: 1px solid var(--line); }
@@ -3352,35 +3530,25 @@ section.secao[data-tab-bloco]:focus-visible { outline-offset: 8px; }
 
 html:has(#painel .painel) { overflow: hidden; }
 /* 8. quadro que rola para o lado mostra uma sombra na borda onde há mais conteúdo */
-.quadro-scroll {
-  background:
-    linear-gradient(to right, var(--surface) 30%, transparent) left / 24px 100% no-repeat local,
-    linear-gradient(to left, var(--surface) 30%, transparent) right / 24px 100% no-repeat local,
-    radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, .18), transparent) left / 10px 100% no-repeat scroll,
-    radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, .18), transparent) right / 10px 100% no-repeat scroll,
-    var(--surface);
-}
-@media (max-width: 420px) { .quadro-sel th, .quadro-sel td { padding-left: 6px; padding-right: 6px; } }
+
 /* 11. metas no celular: a área "ver detalhes" também (sem ela o navegador criava colunas sobrando) */
 @media (max-width: 420px) {
-  .dx-meta summary, .dx-duas .dx-meta summary { grid-template-columns: 40px minmax(0, 1fr); grid-template-areas: "id nome" "id st" "id barra" "id num" "id ver"; }
+  
   .dx-meta .meta-ver { justify-self: start; }
 }
 /* 12. Acesso à água: palavra inteira (a regra antiga "anywhere" vencia a correção) */
-.dx-agua .agua-sit li span { overflow-wrap: normal; word-break: normal; }
-@media (max-width: 380px) { .agua-sit { grid-template-columns: 1fr; } }
-/* 13. selo do mês nos próximos marcos: cabe "OUT 2026"; marco passado sem a linha atravessando a data */ .marco-cal b, .marco-cal span { letter-spacing: 0; }
+
+/* 13. selo do mês nos próximos marcos: cabe "OUT 2026"; marco passado sem a linha atravessando a data */ 
 .marco.passou .marco-cal { opacity: 1; }
 .marco.passou .marco-cal b, .marco.passou .marco-cal span { color: var(--muted); }
 /* 16. tablet em pé (600–760 px): cartões em duas colunas (antes um cartão esticado por linha) */
-@media (min-width: 600px) and (max-width: 760px) { .cartoes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
 /* 19. gráfico do ritmo do gasto: rola para o lado só nos celulares estreitos */
-@media (max-width: 640px) { .eg-caixa svg { min-width: 0; } }
-@media (max-width: 480px) { .eg-caixa svg { min-width: 520px; } }
+
 /* 22. lista rótulo/valor no celular: valor com mais espaço (e-mail e data inteiros) */
-@media (max-width: 420px) { .dl { grid-template-columns: minmax(0, 38%) minmax(0, 1fr); } }
+
 /* 23. ajuda: listas numeradas não encostam na borda */
-.ajuda-duvidas details ol, .ajuda-duvidas details ul { padding-right: 16px; }
+
 /* 20. app no segundo plano (lista de apps recentes): a tela fica desfocada, sem CPF nem endereço legíveis */
 html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 
@@ -3515,13 +3683,13 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
   .eq-cartoes .cartao { border-top: 1px solid var(--line); padding: 16px 18px; align-content: start; }
   .eq-cartoes .cartao:nth-child(-n+2) { border-top: 0; }
   .eq-cartoes .cartao:nth-child(even) { border-left: 1px solid var(--line); }
-  .eq-cartoes .cartao .cab-uf { margin-bottom: 2px; }
+  
   
 }
 /* tablet deitado (961 a 1100 px): a coluna Estado não aperta o nome (Pernambuco encostava na coluna ao lado) */
 @media (min-width: 961px) and (max-width: 1100px) {
-  .eq-quadro td.uf .ag-uf .sigla { display: none; }   /* o nome do estado já diz qual é; a sigla tirava o espaço do nome */
-  .eq-quadro td.uf { padding-left: 16px; }
+     /* o nome do estado já diz qual é; a sigla tirava o espaço do nome */
+  
 }
 /* mesmo para "Agentes de campo" e "Acompanhamento externo" (ag-quadro): 2 colunas no tablet em pé; o 1º filho é o cabeçalho escondido */
 @media (min-width: 601px) and (max-width: 960px) {
@@ -3554,32 +3722,30 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 /* 15/10/2026: iPad em pé (até 960 px): nenhuma tabela rola para o lado.
    Roteiro de campo vira cartões (antes só até 720 px) em 2 colunas; Seleção sem a sigla e com colunas justas; tabelas do MDA/MPA encolhem */
 @media (min-width: 601px) and (max-width: 960px) {
-  table.quadro.tab-rot tbody { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .quadro-sel td.uf, .quadro-sel thead th:first-child, .tab-campo-uf td.uf, .tab-campo-uf thead th:first-child { width: 112px; min-width: 0; }
-  .quadro-sel .uf .sigla, .tab-campo-uf .uf .sigla { display: none; }
+  
+  
+  
   .quadro-sel th, .quadro-sel td { padding-left: 6px; padding-right: 6px; }
   .quadro-sel thead th { font-size: var(--t-2xs, 11px); letter-spacing: .03em; }
   .quadro-sel .bar { min-width: 0; }
-  table.quadro.quadro-sel, table.quadro.ac-tab, .ac-duo table.quadro.ac-tab { min-width: 0 !important; }
-  .ac-tab th, .ac-tab td { padding-left: 6px; padding-right: 6px; }
-  .ac-duo { grid-template-columns: minmax(0, 1fr) !important; }
+  
+  
+  
 }
 /* 15/10/2026: cartões de número "enxutos" (Curso FIC): mesma altura e mesma ordem nos quatro — número, rótulo, barra, situação */
 .eq-kpi.enxuto { display: grid; grid-template-rows: auto 1fr auto auto; gap: 8px; align-content: start; }
-.eq-kpi.enxuto .eq-l { align-self: start; }
-.eq-kpi.enxuto .medidor.fino { margin-top: 4px; }
-.eq-kpi.enxuto .medidor.fino i { background: color-mix(in srgb, var(--ink-2) 55%, transparent); }
+
 .eq-kpi.enxuto .medidor.fino i[style*="width:100%"] { background: var(--st-ok); }
-.eq-kpi.enxuto .medidor.so-espaco { visibility: hidden; }
+
 .eq-ok.tom-neutro { color: var(--ink-2); } .eq-ok.tom-neutro::before { background: var(--muted); } .eq-ok.tom-aviso::before { background: var(--st-aten); }
 .eq-ok.tom-crit { color: var(--crit); } .eq-ok.tom-crit::before { background: var(--crit); }
 /* 15/10/2026: "Cancelar matrícula" como botão discreto (contorno e ícone), que só fica vermelho ao passar o mouse ou focar */
 .ft-cancelar { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 6px 12px; margin: 0; border: 1px solid var(--line-2, var(--line)); border-radius: 999px;
   background: var(--surface); color: var(--ink-2); font: 600 var(--t-xs)/1 var(--sans); letter-spacing: .01em; white-space: nowrap; transition: color .15s, border-color .15s, background-color .15s; }
-.ft-cancelar svg { flex: none; opacity: .8; }
+
 .ft-cancelar:hover, .ft-cancelar:focus-visible { text-decoration: none; color: var(--crit); border-color: color-mix(in srgb, var(--crit) 55%, var(--line)); background: color-mix(in srgb, var(--crit) 7%, var(--surface)); }
-@media (max-width: 640px) { .ft-cancelar { padding: 8px 12px; margin: 0; min-width: 44px; min-height: 44px; justify-content: center; } .ft-cancelar span { display: none; } .ft-cancelar svg { opacity: 1; } }
-.ft-linha { grid-template-columns: 30px minmax(0, 1fr) auto auto; }
+@media (max-width: 640px) { .ft-cancelar { padding: 8px 12px; margin: 0; min-width: 44px; min-height: 44px; justify-content: center; } .ft-cancelar span { display: none; }  }
+
 /* 15/10/2026: "Onde vender" visual — ícone por tipo, semana das feiras e cobertura dos municípios */
 .vd2 { --t-feira: var(--accent); --t-merenda: var(--st-ok); --t-paa: var(--st-and); --t-grupo: var(--m-espera, #3478B9); --t-comprador: var(--verde-2); --t-outro: var(--muted); }
 .vd2-painel { display: grid; gap: 14px; margin-bottom: 14px; }
@@ -3619,7 +3785,6 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 /* 15/10/2026: painéis lado a lado ficam com a mesma altura (Quem é a equipe, Quem são as mulheres, Ponto de partida) */
 .duas-col.perfil-cols { align-items: stretch; }
 .duas-col.perfil-cols > .bloco { height: 100%; box-sizing: border-box; margin: 0; display: flex; flex-direction: column; }
-.duas-col.perfil-cols > .bloco > .nota:last-child { margin-top: auto; }
 
 /* 15/10/2026: tela de quem acompanha (MDA e MPA) em abas — leve: muito respiro, números grandes, pouca cor, uma ideia por cartão */
 .ac2-abas { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 18px; padding: 5px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); width: fit-content; max-width: 100%; }
@@ -3724,7 +3889,6 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 .leg-cores i:first-child { margin-left: 0; }
 .lc-ok { background: var(--st-ok); }  .lc-ret { background: var(--verde-2); }
 .duas-col.perfil-cols > .bloco > .leg-cores { margin-top: auto; padding-top: 10px; }
-.duas-col.perfil-cols > .bloco > .nota:last-child, .duas-col.perfil-cols > .bloco > .nota + .leg-cores { margin-top: 10px; }
 
 /* 15/10/2026 (auditoria): contraste e teclado */
 .q-lista .link { justify-content: flex-start; align-items: baseline; gap: 8px; padding: 6px 0; min-height: 32px; }
@@ -3788,15 +3952,11 @@ html.mq-oculto #app main, html.mq-oculto #painel { filter: blur(14px); }
 /* painel largo (diagnóstico, ficha, avaliação em tela grande): os botões quebram em linhas, sem rolar para o lado */
 /* uma linha só em qualquer largura (com 13 seções, quebrar em 3 linhas presas no topo comia 190 px da tela) */
 /* o campo focado não fica escondido atrás do guia nem da barra de salvar */
-.painel-corpo:has(.guia-form) { scroll-padding-top: 120px; }
-.painel-corpo fieldset[id^="gf-"] { scroll-margin-top: 120px; }
-.painel-corpo fieldset[id^="gf-"]:focus { outline: none; }
-.painel-corpo fieldset[id^="gf-"]:focus-visible > legend { outline: 2px solid var(--focus); outline-offset: 2px; }
+
 /* teclado do celular aberto ou celular deitado: o guia deixa de ficar preso (sobra pouca tela) */
 html.teclado-aberto .guia-form { position: static; }
 @media (orientation: landscape) and (max-height: 500px) { .guia-form { position: static; z-index: auto; }   /* F5-03: solta, não passa por cima do Salvar */
-  .painel-corpo:has(.guia-form) { scroll-padding-top: 60px; } }
-@media print { .guia-form { display: none !important; } }
+   }
 
 /* C. largura do conteúdo: um token. 1120 px até 1599; 1280 a partir de 1600; 1440 a partir de 2200 (antes o monitor
    grande deixava 58% da tela vazia). Texto corrido continua limitado pela regra de cada parágrafo. */
@@ -3809,7 +3969,6 @@ html.teclado-aberto .guia-form { position: static; }
    Classes de largura: .mini (1/6: UF, idade, nº), .curto (2/6: data, CPF, telefone, R$, horas), .medio (3/6), .longo (4/6), .inteiro.
    Em 2 colunas: .mini/.curto/.medio = meia linha; .longo/.inteiro = linha toda. No celular (até 520 px), tudo em uma coluna. */
 
-.campos.tres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 520px) { .campos.tres { grid-template-columns: 1fr; } }
 .campos > .longo { grid-column: 1 / -1; }
 @container corpo (min-width: 760px) {
@@ -3826,8 +3985,6 @@ html.teclado-aberto .guia-form { position: static; }
 .obr { color: var(--crit); font-weight: 700; }
 
 /* E. seções dos formulários: fio e respiro entre uma e outra em todos os painéis (antes só no diagnóstico) */
-.painel form.f > fieldset + fieldset, .painel form.f > fieldset + div > fieldset:first-child, .painel form.f > div + fieldset { margin-top: 10px; }
-.painel legend { font-size: var(--t-xs); }
 
 /* F. barra de salvar: presa embaixo em qualquer painel com altura de pelo menos 480 px (antes só a partir de 700 px)
    e em qualquer formulário direto do painel (antes só no último). */
@@ -3839,17 +3996,13 @@ html.teclado-aberto .guia-form { position: static; }
 /* celular: Salvar e Cancelar lado a lado, mesma largura; rótulo longo quebra em duas linhas no máximo, sem cortar */
 @media (max-width: 520px) {
   .painel-corpo form.f > .acoes:last-child { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); grid-auto-flow: row; }   /* 20/10: a regra antiga (form .acoes:last-child) encaixava em colunas e espremia os botões quando havia o aviso de sem internet ou o Cancelar esta visita */
-  .painel-corpo form.f > .acoes:last-child > .btn { line-height: 1.2; text-wrap: balance; }
+  
 }
 /* conta bancária na tela de pendências: o "Voltar" mora dentro do formulário; o de fora só aparece sem formulário */
 .banco-painel:has(form) + .acoes { display: none; }
 
 /* G. indicadores: cor só com significado. Antes a cor vinha da posição (1º vermelho, 2º verde...): 100% aparecia em
    vermelho e 30% em verde. Agora: marrom neutro; verde só quando chegou à meta. Traço dos resumos sem cor de posição. */
-.dx-kpi, .dx-kpi.k1, .dx-kpi.k2, .dx-kpi.k3, .dx-kpi.k4 { --kc: var(--verde-2); }
-:root[data-theme="dark"] .dx-kpi.cumprido { --kc: #7CC77F; }
-.resumo:not(.bloco .resumo):not(.painel .resumo) > div::before,
-.resumo:not(.bloco .resumo):not(.painel .resumo) > div:nth-child(n)::before { background: var(--line-2); }
 
 /* H. Financeiro: nome da rubrica em até duas linhas no celular (antes cortava justo a parte que diferencia uma da outra) */
 @media (max-width: 600px) { .eg-nome { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.25; } }
@@ -3857,7 +4010,7 @@ html.teclado-aberto .guia-form { position: static; }
 .marco-cal { width: auto; min-width: 58px; padding-inline: 6px; box-sizing: border-box; }
 /* I. linhas com caixa de marcar: o que depende da marca só aparece (ou só fica forte) quando a linha está marcada */
 .vd-s:has(> .mini-chk input[type=checkbox]:not(:checked)) .vd-reg { display: none; }
-.fm-l:has(> input[type=checkbox]:not(:checked)) .fm-num { opacity: .55; }
+
 .fm-data { max-width: 260px; }
 [data-mostra-se][hidden] { display: none !important; }
 /* código do quintal no subtítulo do painel não quebra no meio ("PI-" / "87AH4") */
@@ -3869,7 +4022,7 @@ html.teclado-aberto .guia-form { position: static; }
 .exec-meta .fin-rub .fin-rub-n { grid-row: 1; grid-column: 2; }
 .exec-meta .fin-rub small { grid-row: 1; grid-column: 3; margin-left: 0; }
 .exec-meta .fin-rub .fin-plano { grid-row: 2; grid-column: 2 / -1; }
-@media (min-width: 1100px) { table.exec-fin thead th:first-child { width: 34%; } }
+
 /* K. linha dos 13 meses: alinhada à margem quando o cabeçalho vira coluna (tablet em pé) */
 @media (max-width: 900px) { .linha-tempo-mini { align-self: start; justify-self: start; } }
 /* L. uso em campo (revisão de 18/10/2026) */
@@ -3877,17 +4030,16 @@ html.teclado-aberto .guia-form { position: static; }
 @media (pointer: coarse) {
   .rodape-ajuda, button.link.small, main summary, #painel summary, summary { min-height: var(--alvo); }
   .link.small, button.link.small { min-width: var(--alvo); }
-  .demo-mais > summary { min-height: var(--alvo); }
-  label.check, label.mini-chk { min-height: var(--alvo); display: inline-flex; align-items: center; }
+  
+  
 }
 /* teclado aberto: a barra de salvar deixa de ficar presa (cobria a mensagem de erro do campo focado) */
 html.teclado-aberto .painel-corpo form.f > .acoes:last-child, html.teclado-aberto .painel-corpo > div > form.f:last-child > .acoes:last-child { position: static; box-shadow: none; }
-.painel-corpo .campo, .painel-corpo .criterio, .painel-corpo [id^="w-"] { scroll-margin-bottom: 110px; scroll-margin-top: 120px; }
-.campo.tem-erro:focus, .criterio.tem-erro:focus, [id^="w-"].tem-erro:focus { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: 6px; }
+
 /* "Cancelar esta visita" numa linha à parte, longe do Salvar */
 .acoes > [data-acao="campo-visita-cancelar"] { flex-basis: 100%; order: 9; margin-top: 12px; }
 /* 20/10/2026 (iPhone SE): sem a linha definida, a grade punha o Cancelar primeiro e espremia Salvar e Fechar em colunas de 8 px, um por cima do outro */
-@media (max-width: 520px) { .painel-corpo form.f > .acoes:last-child > [data-acao="campo-visita-cancelar"] { grid-column: 1 / -1; grid-row: 2; } }
+
 html.sem-rede #painel :is(form[data-form="ficha"], form[data-form="diag"], form[data-form="aval"], form[data-form="visita-feita"]) > .acoes:last-child::before {
   content: "Sem internet: ao salvar, fica guardado neste aparelho e sobe sozinho quando o sinal voltar."; flex-basis: 100%; grid-column: 1 / -1; grid-row: 1; order: -1;   /* 20/10: grid-row fixa o aviso na 1ª linha (sem ele, Salvar e Cancelar ficavam espremidos ao lado, no celular) */
   font-size: var(--t-sm); color: var(--pend); background: var(--pend-bg); border-radius: 8px; padding: 6px 10px; }
@@ -3895,10 +4047,9 @@ html.sem-rede #painel :is(form[data-form="ficha"], form[data-form="diag"], form[
 @media (pointer: coarse) {
   :is(#app, #painel) :is(.btn, .btn.peq, button.link, button.link.small, .cg-nome, .ft-cancelar, summary, .rot-com-link a, .seg button) { min-height: var(--alvo); }
   :is(#app, #painel) :is(.seg button, button.link, .link.perigo, .link.small) { min-width: var(--alvo); }
-  :is(#app, #painel) .rot-com-link a { display: inline-flex; align-items: center; }
+  
   .pular { min-height: var(--alvo); }
 }
-@media (pointer: coarse) { :is(#app) .abas button { min-height: var(--alvo); } }
 
 /* ===================== Documentos (18/10/2026): cartões de ação, impressões em dois grupos, botão de imprimir com ícone ===================== */
 .doc-acoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 14px; }
@@ -3957,16 +4108,15 @@ html.sem-rede #painel :is(form[data-form="ficha"], form[data-form="diag"], form[
 /* ===== Revisão independente (18/10/2026) ===== */
 /* próximos marcos: a coluna do selo acompanha o texto ("OUT 2026"); antes a coluna tinha 62 px fixos e o selo vazava */
 
-.marcos li.marco .marco-cal { min-width: 64px; }
 /* "O que pede atenção" no celular: a descrição encolhe; abaixo de 360 px o prazo e o botão vão para a linha de baixo */
-@media (max-width: 640px) { .dx-tr { grid-template-columns: minmax(0, 1fr) auto; } }
+
 @media (max-width: 360px) { .dx-tr { grid-template-columns: minmax(0, 1fr); } .dx-tr .dx-ir { justify-self: start; } .dx-prazo { padding-left: 0; } }
 /* Acesso à água a 320 px: uma coluna (a regra do painel, mais específica, mantinha duas e o texto vazava) */
 @media (max-width: 380px) { .dx-agua .agua-sit { grid-template-columns: 1fr; } }
 /* "Ver como" da demonstração em tela muito estreita: cantos menos redondos quando quebra em várias linhas (cortava "Coord. geral") */
 @media (max-width: 340px) { .demo-ver .seg { border-radius: 12px; } .demo-ver .seg button { border-radius: 8px; } }
 /* tela de entrada sem foto real publicada (18/10/2026): o mapa ocupa a faixa, centralizado e com largura de leitura */
-.vit-duo.so-mapa, .ent-hero .vit-duo.so-mapa { grid-template-columns: minmax(0, 1fr); }
+
 .vit-duo.so-mapa .vit-mapa { max-width: 760px; width: 100%; justify-self: center; }
 
 /* ===== Situação do campo em cada estado, celular e tablet (18/10/2026): um cartão por estado, como na aba Campo ===== */
@@ -4016,11 +4166,11 @@ html.sem-rede #painel :is(form[data-form="ficha"], form[data-form="diag"], form[
 /* Aba Campo no tablet (18/10/2026): o cartão de cada estado volta a ter a sigla no selo, igual à Visão geral e à Equipe
    (uma regra do tempo em que ali era tabela escondia a sigla entre 601 e 960 px) */
 @media (max-width: 900px) {
-  table.quadro.tab-campo-uf td.uf { width: auto !important; }
+  
   table.quadro.tab-campo-uf td.uf .sigla, table.quadro.tab-campo-uf .uf .sigla { display: inline-grid; place-items: center; width: auto; min-width: 36px; height: 36px; padding: 0 6px; margin: 0;
     border-radius: 10px; border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line)); background: color-mix(in srgb, var(--accent) 9%, var(--surface));
     color: var(--accent); font: 700 var(--t-sm)/1 var(--sans); letter-spacing: .04em; }
-  table.quadro.tab-campo-uf td.uf { padding-bottom: 12px !important; border-bottom: 1px solid var(--line) !important; }
+  
 }
 
 /* ===================== Viagens e eventos (18/10/2026): aba redesenhada ===================== */
@@ -4044,12 +4194,12 @@ html.sem-rede #painel :is(form[data-form="ficha"], form[data-form="diag"], form[
 }
 /* indicadores com ícone (mesmo cartão das outras abas, sem os tracinhos de cor) */
 .resumo.vg-resumo > div { grid-template-columns: auto minmax(0, 1fr); column-gap: 14px; align-items: center; }
-.resumo.vg-resumo > div::before { display: none !important; }
+
 .vg-k-ic { grid-row: span 2; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--surface-2); color: var(--verde-2); }
 .vg-k-ic svg { width: 22px; height: 22px; }
 .resumo.vg-resumo .vg-k-vez .vg-k-ic { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
 .resumo.vg-resumo .vg-k-vez .v { color: var(--accent); }
-@media (max-width: 520px) { .resumo.vg-resumo { grid-template-columns: minmax(0, 1fr); } .resumo.vg-resumo > div + div { border-top: 1px solid var(--line); border-left: 0 !important; } .resumo.vg-resumo > div { grid-column: auto !important; } }
+@media (max-width: 520px) { .resumo.vg-resumo { grid-template-columns: minmax(0, 1fr); }   }
 .resumo.vg-resumo .v { overflow-wrap: anywhere; min-width: 0; }
 /* atalhos para as duas seções */
 .viag-ir { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -4104,9 +4254,9 @@ html.sem-rede #painel :is(form[data-form="ficha"], form[data-form="diag"], form[
   table.fin.viag-fin thead { display: none; }
   table.fin.viag-fin tr { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; padding: 16px !important; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 1px 2px rgba(69, 43, 26, .04); }
   table.fin.viag-fin tr > th { grid-column: 1 / -1; padding: 0 0 12px !important; border: 0 !important; border-bottom: 1px solid var(--line) !important; text-align: left; }
-  table.fin.viag-fin tr > td { display: grid; gap: 2px; padding: 0 !important; border: 0 !important; text-align: left; background: none !important; }
-  table.fin.viag-fin tr > td::before { content: attr(data-rot); font: 700 12px/1.25 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-  table.fin.viag-fin tr > td:last-child { grid-column: 1 / -1; }
+  
+  
+  
   table.fin.viag-fin .fin-exe { display: flex; align-items: center; gap: 10px; } table.fin.viag-fin .fin-exe .medidor { flex: 1; }
   table.fin.viag-fin .vg-uf .fin-nome { font: 600 var(--t-lg)/1.2 var(--serif); }
   table.fin.viag-fin tfoot tr { background: color-mix(in srgb, var(--surface-2) 45%, var(--surface)); border-color: var(--line-2); }
@@ -4120,7 +4270,7 @@ html.sem-rede #painel :is(form[data-form="ficha"], form[data-form="diag"], form[
 .foto-acoes .foto-btn svg { width: 18px; height: 18px; flex: none; color: var(--verde-2); transition: color .15s; }
 .foto-acoes .foto-btn:hover, .foto-acoes .btn.peq.foto-btn:hover { background: var(--marrom); border-color: var(--marrom); color: var(--creme); }
 .foto-acoes .foto-btn:hover svg { color: var(--creme); }
-.foto-acoes .foto-btn:focus-visible, .foto-acoes label.foto-btn:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+
 :root[data-theme="dark"] .foto-acoes .foto-btn:hover, :root[data-theme="dark"] .foto-acoes .btn.peq.foto-btn:hover { background: var(--areia); border-color: var(--areia); color: var(--marrom); }
 :root[data-theme="dark"] .foto-acoes .foto-btn:hover svg { color: var(--marrom); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .foto-acoes .foto-btn:hover, :root:not([data-theme="light"]) .foto-acoes .btn.peq.foto-btn:hover { background: var(--areia); border-color: var(--areia); color: var(--marrom); } :root:not([data-theme="light"]) .foto-acoes .foto-btn:hover svg { color: var(--marrom); } }
@@ -4132,8 +4282,6 @@ html.sem-rede #painel :is(form[data-form="ficha"], form[data-form="diag"], form[
 .fila-campo .fila-acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 /* MDA e MPA: botões do cabeçalho no formato dos de Meus dados (18/10/2026) */
 .ac-acoes.foto-acoes { display: flex; flex-wrap: wrap; gap: 10px; }
-.ac-acoes.foto-acoes .foto-btn { text-decoration: none; }
-@media (max-width: 700px) { .ac-acoes.foto-acoes .foto-btn { justify-content: center; } }
 
 /* 69: cancelar pedido (pagamento) e ajustar ou cancelar passagem/evento autorizado: fechado, no fim do painel, para não ser clicado por engano */
 details.pag-cancelar > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; font-weight: 600; color: var(--crit); }
@@ -4154,15 +4302,13 @@ details.pag-cancelar form > p { margin: 0 0 12px; }
    ====================================================================== */
 
 /* a faixa ocupa a largura toda (sombra do mesmo tom) e encosta na barra: o menu é o primeiro item da página */
-.abas.abas-grupos { background: var(--menu-bg); box-shadow: 0 0 0 100vmax var(--menu-bg); clip-path: inset(0 -100vmax); border-bottom: 0;
-  padding: 12px 0 4px; margin: -24px 0 6px; }
-.abas-grupos .aba-g { color: var(--muted); }
+
 .abas-grupos button { color: var(--menu-ink); border-bottom: 0; border-radius: 999px; padding: 6px 8px; margin: 2px 0 8px; }
 .abas-grupos button:hover { color: var(--ink); background: color-mix(in srgb, var(--sel-bg) 10%, transparent); }
 .abas-grupos button[aria-current="page"] { background: var(--sel-bg); color: var(--sel-ink); font-weight: 600; }
-.abas-grupos .aba-grupo + .aba-grupo::before { border-left-color: var(--menu-div); }
+
 .abas-grupos button:focus-visible { border-radius: 999px; }
-@media (max-width: 1100px) { .abas-m summary { background: var(--menu-bg); } }
+
 @media print { .abas.abas-grupos { display: none; } }
 
 /* 72: planilha de gastos descartada (enviada por engano) e o botão de descartar */
@@ -4171,7 +4317,7 @@ details.pag-cancelar form > p { margin: 0 0 12px; }
 
 /* 22/10/2026: número que espera uma ação SUA (sua vez) fica na cor de ação (terracota), não na de erro; o vermelho frio (--crit) é só erro e atraso */
 .resumo > div.vez .l { color: var(--ink); font-weight: 700; }
-.resumo:not(.bloco .resumo):not(.painel .resumo) > div.vez::before { width: 44px; background: var(--cont-bg) !important; }
+
 /* 22/10/2026: sem internet — faixa âmbar própria, presa no alto (antes: o mesmo bege da faixa de demonstração) */
 
 .rede-off { position: sticky; top: 0; z-index: 55; background: var(--rede-bg); color: var(--rede-ink); border-bottom: 2px solid var(--rede-borda); }
@@ -4194,13 +4340,13 @@ details.pag-cancelar form > p { margin: 0 0 12px; }
 .fin-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .fin-k .dx-anel .pg { stroke: var(--fk-c); } .fin-k .medidor i { background: var(--fk-c); }
 .fin-k.fk-rec { --fk-c: var(--fk-rec); } .fin-k.fk-pago { --fk-c: var(--fk-pago); } .fin-k.fk-comp { --fk-c: var(--fk-comp); } .fin-k.fk-disp { --fk-c: var(--fk-disp); }
-.fin-k .eq-n small { display: block; font-size: var(--t-sm); color: var(--muted); font-weight: 500; }
+.fin-k .eq-n small { display: block; font-size: var(--t-sm); color: var(--muted); font-weight: 500; white-space: nowrap; }
 .fin-k .dx-kpi-s { font-size: var(--t-xs); color: var(--ink-2); line-height: 1.4; }
 .dx-anel-t { font-size: 9px; font-weight: 700; fill: var(--ink); }
 .fin-barra-rec { position: relative; overflow: visible; }
 .fin-rec-traco { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); border-radius: 1px; transform: translateX(-1px); }
 .fin-sub-2 { display: grid; gap: 2px; }
-.fin-resumo .dx-como summary { cursor: pointer; font-size: var(--t-sm); color: var(--ink-2); }
+
 @media (max-width: 700px) { .fin-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }   /* v347: no iPad em pé (701 a 1100 px) os 4 cartões lado a lado, como no Saberes */
 @media (max-width: 520px) { .fin-kpis { grid-template-columns: minmax(0, 1fr); } }
 /* tabela do gráfico */
@@ -4220,11 +4366,11 @@ details.pag-cancelar form > p { margin: 0 0 12px; }
 /* despesas (da planilha vigente) */
 table.fin tr.fin-desp > td { padding: 12px 14px 16px; background: var(--surface-2); }
 .fin-desp-t { margin: 0 0 8px; font-size: var(--t-md); }
-.desp-tab { width: 100%; } .desp-tab td { vertical-align: top; }
+.desp-tab { width: 100%; } 
 .desp-d { display: block; font-weight: 600; } .desp-s { display: block; font-size: var(--t-xs); color: var(--muted); margin-top: 2px; }
-.chip.pend { background: var(--pend-bg); color: var(--pend); }
+
 @media (max-width: 640px) {
-  .desp-tab thead { display: none; } .desp-tab tr { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+   
   .desp-tab td { border: 0; padding: 0; } .desp-tab td[data-rot="Descrição"] { grid-column: 1 / -1; grid-row: 2; } .desp-tab td[data-rot="Situação"] { grid-row: 3; } .desp-tab td[data-rot="Valor"] { grid-row: 3; text-align: right; }
 }
 /* prévia: como cada status entra */
@@ -4235,17 +4381,17 @@ table.fin tr.fin-desp > td { padding: 12px 14px 16px; background: var(--surface-
   table.quadro.desp-tab, table.quadro.desp-tab tbody { display: block; width: 100%; }
   table.quadro.desp-tab thead { display: none; }
   table.quadro.desp-tab tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
-  table.quadro.desp-tab td { display: block; border: 0; padding: 0; min-width: 0; }
-  table.quadro.desp-tab td[data-rot="Data"] { grid-column: 1; grid-row: 1; color: var(--muted); font-size: var(--t-xs); text-align: left; }
-  table.quadro.desp-tab td[data-rot="Descrição"] { grid-column: 1 / -1; grid-row: 2; }
+  
+  
+  
   table.quadro.desp-tab td[data-rot="Situação"] { grid-column: 1; grid-row: 3; }
   table.quadro.desp-tab td[data-rot="Valor"] { grid-column: 2; grid-row: 1 / span 1; text-align: right; }
-  table.quadro.desp-tab td::before { display: none !important; content: none !important; }
+  
 }
-@media (max-width: 640px) { table.quadro.desp-tab { min-width: 0 !important; width: 100% !important; } }
+
 .exec-fin tbody.fin-rubrica:not(.aberta) > tr.fin-desp { display: none !important; }
 .fin-kpis .fin-k .medidor i { background: var(--fk-c) !important; } .fin-kpis .fin-k .dx-anel .pg { stroke: var(--fk-c) !important; }
-table.quadro.desp-tab { table-layout: auto; min-width: 640px; }
+
 table.quadro.desp-tab th:nth-child(1), table.quadro.desp-tab td:nth-child(1) { width: 110px; text-align: left; white-space: nowrap; }
 .fin-desp .fin-wrap, .secao .desp-tab { overflow-x: auto; }
 /* 22/10/2026: Despesas do projeto no fim do Financeiro, como no Saberes que Cultivam (sem lançamento à mão) */
@@ -4266,14 +4412,13 @@ table.quadro.desp-tab th:nth-child(5), table.quadro.desp-tab td:nth-child(5) { w
 }
 @media (max-width: 640px) {
   .exec-desp table.quadro.desp-tab tr { padding: 12px 14px; }
-  table.quadro.desp-tab tr, table.quadro.desp-tab td { background: transparent !important; }
+  
   
 }
 /* 23/10/2026: quadro da Visão geral com um bloco só (o outro ainda sem informação) */
 .uma-col.perfil-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
 
 /* texto justificado (23/10/2026); no celular fica à esquerda: coluna estreita abre buracos entre as palavras */
-@media (min-width: 600px) { .txt-just { text-align: justify; hyphens: auto; -webkit-hyphens: auto; } }
 
 /* 23/10/2026: Histórico no padrão do Saberes que Cultivam, com as cores deste sistema */
 .hs-bt svg { flex: none; }
@@ -4308,7 +4453,7 @@ table.quadro.desp-tab th:nth-child(5), table.quadro.desp-tab td:nth-child(5) { w
 @media (max-width: 640px) { .hs-d dl { grid-template-columns: 1fr; } .hs-d dd { margin-bottom: 6px; } .hs-i { grid-template-columns: 44px minmax(0, 1fr); gap: 8px; } }
 .hs-mais { display: flex; justify-content: center; margin-top: 14px; }
 .hs-comeco { margin: 12px 0 0; }
-@media (min-width: 641px) { .secao-cab:has(> .hs-bt) { flex-wrap: nowrap; align-items: flex-start; } .secao-cab:has(> .hs-bt) > div { flex: 1 1 auto; } .secao-cab > .hs-bt { flex: none; } }
+@media (min-width: 641px) { .secao-cab:has(> .hs-bt) { flex-wrap: nowrap; align-items: flex-start; }  .secao-cab > .hs-bt { flex: none; } }
 
 /* 77 (28/10/2026): resposta aos relatos (do Saberes que Cultivam) */
 .rl-av .pend-ic svg { width: 16px; height: 16px; }
@@ -4340,11 +4485,11 @@ table.quadro.desp-tab th:nth-child(5), table.quadro.desp-tab td:nth-child(5) { w
 /* 30/10/2026 (item 5): listas agrupadas (js/grupos.js) — um quadro só, cada grupo uma linha que abre ao tocar */
 .ag-lista { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
 .ag-g + .ag-g { border-top: 1px solid var(--line); }
-.ag-g > summary { list-style: none; cursor: pointer; display: grid; align-items: center; gap: 6px 12px; padding: 12px 14px; min-height: 48px; }
+.ag-g > summary { list-style: none; cursor: pointer; display: grid; align-items: center; gap: 6px 12px; padding: 12px 14px; min-height: 48px; grid-template-columns: 14px auto auto minmax(0, 1fr); }
 .ag-g > summary::-webkit-details-marker { display: none; }
 .ag-g > summary::before { content: ""; width: 8px; height: 8px; border-right: 2px solid var(--ink-2); border-bottom: 2px solid var(--ink-2); transform: rotate(-45deg); transition: transform .15s; grid-row: 1; grid-column: 1; margin-right: 2px; }
 .ag-g[open] > summary::before { transform: rotate(45deg); }
-.ag-g > summary { grid-template-columns: 14px auto auto minmax(0, 1fr); }
+
 .ag-g > summary:hover { background: var(--surface-2); }
 .ag-g > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .ag-t { font-weight: 600; }
@@ -4389,19 +4534,19 @@ table.quadro.desp-tab th:nth-child(5), table.quadro.desp-tab td:nth-child(5) { w
 @media (min-width: 1101px) {
   .abas.abas-grupos { gap: 6px 10px; flex-wrap: nowrap; }
   .abas-grupos button { padding: 6px 6px; }
-  .abas-grupos .aba-grupo + .aba-grupo::before { left: -6px; }
+  
 }
 @media (min-width: 1101px) {
   :root[data-sol] .abas.abas-grupos { gap: 6px 8px; }
   :root[data-sol] .abas-grupos button { padding: 6px 5px; font-size: var(--t-sm); }
-  :root[data-sol] .abas-grupos .aba-g { letter-spacing: .06em; }
-  :root[data-sol] .abas-grupos .aba-grupo + .aba-grupo::before { left: -5px; }
+  
+  
 }
 /* v344: de 1101 a 1240 px (tablet Android deitado, 1138) as 13 abas da coordenação geral passavam 11 px da borda: letra um degrau menor */
 @media (min-width: 1101px) and (max-width: 1240px) {
   .abas.abas-grupos { gap: 6px 8px; }
   .abas-grupos button { padding: 6px 4px; font-size: var(--t-sm); }
-  .abas-grupos .aba-grupo + .aba-grupo::before { left: -5px; }
+  
 }
 
 /* ======================================================================
@@ -4421,16 +4566,14 @@ table.quadro.desp-tab th:nth-child(5), table.quadro.desp-tab td:nth-child(5) { w
 .abas .conta, .abas-m-grade .conta, .abas-m-pend, .atalhos-grade .btn .conta, .conta-t:not(.zero) {
   background: var(--cont-bg); color: var(--cont-ink); box-shadow: inset 0 0 0 1px var(--cont-borda); }
 .atalhos-grade .btn.pri .conta { background: var(--cont-bg); color: var(--cont-ink); }
-.abas-grupos button[aria-current="page"] .conta { box-shadow: inset 0 0 0 1px var(--cont-borda), 0 0 0 1.5px var(--sel-bg); }
-.resumo > div.vez .v { color: var(--pend); }
 
-.dx-kpi.cumprido { --kc: var(--st-ok); }
+.resumo > div.vez .v { color: var(--pend); }
 
 /* ======================================================================
    v329 (31/10/2026, pedido da coordenação): padrão de acessibilidade do governo (eMAG 3.1), js/acessibilidade.js
    ====================================================================== */
 /* barra de acessibilidade: no alto de toda tela, antes do cabeçalho (primeiro item do Tab) */
-.barra-acess { background: var(--barra-bg); color: var(--barra-ink); border-bottom: 1px solid rgba(246, 237, 228, .22); font-size: var(--t-xs); }
+.barra-acess { background: var(--barra-bg); color: var(--barra-ink); border-bottom: 1px solid rgba(246, 237, 228, .22); font-size: var(--t-xs); position: absolute; top: 0; left: 0; right: 0; z-index: 60; }
 .ba-in { max-width: var(--wrap); margin: 0 auto; padding: 2px max(20px, env(safe-area-inset-right, 0px)) 2px max(20px, env(safe-area-inset-left, 0px));
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 16px; }
 .barra-acess ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 2px 6px; }
@@ -4447,7 +4590,7 @@ table.quadro.desp-tab th:nth-child(5), table.quadro.desp-tab td:nth-child(5) { w
 @media (pointer: coarse) { .barra-acess button, .barra-acess .pular, .barra-acess .pular:focus { min-height: var(--alvo); } .ba-in { padding-top: 0; padding-bottom: 0; } }   /* toque: 44 px, o padrão do sistema */
 /* v330 (como no Saberes que Cultivam): a barra fica guardada até receber o foco do teclado (continua sendo o primeiro item do Tab);
    com o foco, aparece por cima do alto da tela, sem empurrar nada. "Acessibilidade" e "Alto contraste" ficam também no rodapé, sempre à vista. */
-.barra-acess { position: absolute; top: 0; left: 0; right: 0; z-index: 60; }
+
 .barra-acess:focus-within { position: fixed; }
 .barra-acess:not(:focus-within) { width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
 
@@ -4457,7 +4600,7 @@ table.quadro.desp-tab th:nth-child(5), table.quadro.desp-tab td:nth-child(5) { w
 .rodape-acess .ba-ic svg { width: 14px; height: 14px; }
 @media (pointer: coarse) { .rodape-acess button { min-height: var(--alvo); } }
 @media (max-width: 640px) { .rodape-acess { justify-content: center; } }
-.ap-chave.sem-ic { grid-template-columns: minmax(0, 1fr) 52px; }
+
 .acess-pg .bloco { margin-top: 18px; }
 .acess-pg kbd, .ajuda kbd { font: inherit; font-size: .92em; font-weight: 700; padding: 0 5px; border: 1px solid var(--line-2); border-bottom-width: 2px; border-radius: 5px; background: var(--surface-2); color: var(--ink); white-space: nowrap; }
 .acess-teclas { margin: 8px 0 10px; display: grid; gap: 6px; }
@@ -4479,8 +4622,6 @@ a[data-nova-aba]:not(:has(img))::after { content: ""; display: inline-block; wid
 
 /* parar as animações (eMAG 5.5), escolhido na página Acessibilidade */
 :root[data-sem-mov] *, :root[data-sem-mov] *::before, :root[data-sem-mov] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
-:root[data-sem-mov] .ent-broto .caule { stroke-dashoffset: 0; }
-:root[data-sem-mov] .ent-broto .folha, :root[data-sem-mov] .ent-broto .flor { transform: none; }
 
 /* alto contraste (eMAG): fundo preto, letra branca, links e botões em amarelo, bordas brancas. Vale por cima do tema e do modo sol
    (o aparencia.js põe também data-theme="dark", para as regras do escuro valerem; este bloco vem depois e ganha). */
@@ -4498,7 +4639,7 @@ a[data-nova-aba]:not(:has(img))::after { content: ""; display: inline-block; wid
   --shadow: none; --menu-bg: #000000; --menu-div: #FFFFFF; --menu-ink: #FFFFFF; }
 :root[data-contraste] body { background: #000; color: #fff; }
 :root[data-contraste] a:not(.btn) { color: #FFFF00; text-decoration: underline; }
-:root[data-contraste] .link { color: #FFFF00; }
+
 :root[data-contraste] .btn, :root[data-contraste] .chip, :root[data-contraste] .cartao, :root[data-contraste] .bloco, :root[data-contraste] .secao,
 :root[data-contraste] .campo input, :root[data-contraste] .campo select, :root[data-contraste] .campo textarea { border-color: currentColor; }
 :root[data-contraste] .btn { border-width: 2px; border-style: solid; }
@@ -4511,14 +4652,14 @@ a[data-nova-aba]:not(:has(img))::after { content: ""; display: inline-block; wid
 :root[data-contraste] .ent-fundo { display: none; }
 
 :root[data-contraste] .abas.abas-grupos { border-bottom: 1px solid #fff; }
-:root[data-contraste] .bar, :root[data-contraste] .medidor, :root[data-contraste] .pf-bar { background: #333 !important; }
+
 :root[data-contraste] img:not([src$=".svg"]) { filter: none; }
-:root[data-contraste] .av { background: #000 !important; color: #fff !important; box-shadow: inset 0 0 0 2px #fff; }
+
 /* v330: a lista das agentes (Equipe) tem a mesma classe das listas agrupadas (v319, .ag-lista) e ganhava a moldura delas por cima dos cartões */
 .ag-tr .ag-lista { border: 0; border-radius: 0; background: none; overflow: visible; }
-/* v330: no Financeiro, "1.982,9 de 2.000 mil" estourava a coluna a 1280 px (o "mil" saía cortado): o "de … mil" desce inteiro para a linha de baixo */
+/* ===== Componente (desde a v330): no Financeiro, "1.982,9 de 2.000 mil" estourava a coluna a 1280 px (o "mil" saía cortado): o "de … mil" desce inteiro para a linha de baixo */
 .fin-k .eq-n { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 5px; white-space: normal; min-width: 0; max-width: 100%; }
-.fin-k .eq-n small { white-space: nowrap; }
+
 .fin-k .dx-kpi-topo { min-width: 0; }
 .demo-dias { font-size: var(--t-sm); color: var(--ink-2); }
 .demo-dias a { color: inherit; text-decoration: underline; text-underline-offset: 3px; display: inline-block; min-height: 24px; line-height: 24px; }
@@ -4548,6 +4689,7 @@ a[data-nova-aba]:not(:has(img))::after { content: ""; display: inline-block; wid
 .hab-t b { font-size: var(--t-md); font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
 .hab-t small { font-size: var(--t-xs); color: var(--ink-2); }
 .hab-ps { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.hab-i .chip { max-width: 100%; white-space: normal; text-align: center; }   /* a pílula da situação quebra linha: no servidor do GitHub "Habilitada para visitas" passava 2 px do quadro a 320 e 375 px */
 .hab-p { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px; border: 1px dashed var(--line-2); font-size: var(--t-xs); color: var(--ink-2); white-space: nowrap; }
 .hab-p i { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid currentColor; font-style: normal; font-size: 11px; line-height: 1; }
 .hab-p.ok { border-style: solid; border-color: color-mix(in srgb, var(--ok) 40%, var(--line)); color: var(--ok); background: var(--ok-bg); }
@@ -4562,10 +4704,10 @@ a[data-nova-aba]:not(:has(img))::after { content: ""; display: inline-block; wid
   .hab-i { grid-template-columns: auto minmax(0, 1fr) auto; row-gap: 8px; gap: 12px; }
   .hab-ps { grid-column: 2 / -1; grid-row: 2; justify-content: flex-start; }
   .hab-i > .chip { grid-column: 2 / -1; grid-row: 3; justify-self: start; }
-  .hab-seta { grid-column: 3; grid-row: 1; }
+  
 }
 :root[data-contraste] .hab-p.ok i { color: #000; }
-/* v330: etapas do TED e calendário da equipe no cronograma (Visão geral), como no Saberes que Cultivam */
+/* ===== Componente (desde a v330): etapas do TED e calendário da equipe no cronograma (Visão geral), como no Saberes que Cultivam */
 .cg-et-bt { margin-left: auto; }
 .cg-linha.cg-etapa, .cg-linha.cg-eqp { min-height: 34px; border-top: 1px dashed color-mix(in srgb, var(--line) 70%, transparent); }
 .cg-etapa .cg-trilho, .cg-eqp .cg-trilho { min-height: 26px; }
@@ -4578,7 +4720,7 @@ a[data-nova-aba]:not(:has(img))::after { content: ""; display: inline-block; wid
 .cg-leg .lg-et { height: 8px; background: color-mix(in srgb, var(--line-2) 35%, var(--surface)); border: 1px solid var(--line-2); }
 .cg-leg .lg-eq { height: 8px; background: repeating-linear-gradient(135deg, var(--accent) 0 3px, transparent 3px 6px); border: 1.5px solid var(--accent); }
 @media (max-width: 640px) { .cg-nome-et { padding-left: 8px; } .cg-et-bt { margin-left: 0; width: 100%; } }
-/* v333 (pedido da coordenação, como no Saberes): botão do alto contraste ao lado da Aparência — no cabeçalho e no cartão de acesso */
+/* ===== Componente (desde a v333) (pedido da coordenação, como no Saberes): botão do alto contraste ao lado da Aparência — no cabeçalho e no cartão de acesso */
 .ent-aps { display: inline-flex; align-items: center; gap: 6px; flex: none; }
 .ent-contraste { padding: 4px; width: 36px; justify-content: center; }
 .ent-contraste svg { color: currentColor; }
@@ -4629,7 +4771,7 @@ a[data-nova-aba]:not(:has(img))::after { content: ""; display: inline-block; wid
 .ent-marca b { font-size: var(--t-2xl); }
 .rodape-marca b { font-size: var(--t-xl); }
 /* títulos */
-.cab h1, main h1, .dx-cab h1, .eq-cab h1 { font-size: var(--t-h1); }
+
 .secao-cab h2, .dx-atencao h2, .dx-duas > section.secao h2, .dx-lado > section.secao h2, .dx-agua h2, main .secao h2 { font-size: var(--t-2xl); font-weight: 600; letter-spacing: -.01em; }
 /* menos negrito: 600 no lugar de 700 no texto corrido, nos rótulos e nas pílulas; números grandes e marca continuam fortes */
 :where(b, strong) { font-weight: 600; }
@@ -4637,9 +4779,7 @@ a[data-nova-aba]:not(:has(img))::after { content: ""; display: inline-block; wid
 .fin-v b, .dx-kpi-p b, .marco-cal b, .ac-obr, .rot-lista li.agora .link, .fic-ufs .sigla, .linha-tempo .hist-dia, .dx-uf th[scope="row"], .eq-quadro thead th,
 .quadro-sel thead th, .tab-campo-uf thead th, table.exec-fin thead th, .mapa-destaque span { font-weight: 600; }
 /* quadros do topo (Visão geral e as outras abas): como os do Saberes */
-.dx-topo { border-radius: 20px; grid-template-columns: minmax(300px, 1.35fr) minmax(0, 4fr); }
-.dx-exec { padding: 32px; }
-.dx-kpi { padding: 32px 24px; }
+
 .dx-kpi-r { font-size: var(--t-lg); font-weight: 600; line-height: 1.3; }
 .dx-kpi-p { font-size: var(--t-base); }
 .dx-kpi-s { font-size: var(--t-sm); }
@@ -4664,7 +4804,7 @@ td, th, .chip, .num, .dsp-n, .dsp-v, .dx-kpi-n, .dx-kpi-p, .eq-n, time { font-va
    estado ("Pernambuco") passava da coluna de 106 px: coluna do estado com 146 px e o botão numa linha própria, à direita */
 @media (min-width: 861px) and (max-width: 960px) {   /* 2 estados por linha (como até 860): cada um empilhado, sem o cabeçalho */
   .ag-th { display: none; } .ag-tr { grid-template-columns: 1fr; gap: 12px; padding: 16px; }
-  .ag-lista .vagabtn.com-foto { flex: 1 1 100%; } .ag-acao { min-width: 0; justify-content: stretch; } .ag-acao .btn-acao { width: 100%; }
+   .ag-acao { min-width: 0; justify-content: stretch; } .ag-acao .btn-acao { width: 100%; }
 }
 @media (min-width: 961px) and (max-width: 1100px) {
   .ag-th, .ag-tr { grid-template-columns: 146px minmax(0, 1fr); }
@@ -4697,18 +4837,13 @@ td, th, .chip, .num, .dsp-n, .dsp-v, .dx-kpi-n, .dx-kpi-p, .eq-n, time { font-va
 :root[data-contraste] .demo-sim a, :root[data-contraste] .demo-sim summary { color: #FFE600; }
 /* 01/11/2026 (aparelhos.js, telas diversas): dobrável fechado (280 px) e smart TV (960 × 540) */
 @media (max-width: 300px) { .chip { white-space: normal; max-width: 100%; } .rl-item, .rl-item * { min-width: 0; overflow-wrap: anywhere; } }
-@media (min-width: 641px) and (max-width: 1000px) { table.exec-fin { width: 100%; } table.exec-fin th, table.exec-fin td { padding-left: 8px; padding-right: 8px; } table.exec-fin th:first-child, table.exec-fin td:first-child { overflow-wrap: anywhere; } }
+
 button.atalho { font: inherit; text-align: left; cursor: pointer; width: auto; }
 
 /* v338 (03/11/2026, pedido da coordenação: "dados centralizados"): em "Situação do campo em cada estado", as colunas de número
    (Sem água na seca, Próximos 7 dias, Falta enviar) ficam centralizadas como o título delas */
-.pr-quadro thead th:nth-child(n+5), .pr-quadro tbody td:nth-child(n+5) { text-align: center; }
-.pr-quadro tbody td:nth-child(n+5) .pr-n { justify-items: center; }
-.pr-quadro tbody td:nth-child(n+5) .pr-falta { display: inline-grid; justify-items: center; }
-/* v338 (03/11/2026): no zoom do município, um círculo tracejado com o nome marca a área dos quintais (antes, só o preenchimento do estado, sem contorno à vista) */
-.mapa .mun-area circle { fill: color-mix(in srgb, var(--surface) 55%, transparent); stroke: var(--accent); }
-.mapa .mun-area text { fill: var(--ink); font-weight: 600; paint-order: stroke; stroke: var(--surface); stroke-width: .6%; }
 
+.pr-quadro tbody td:nth-child(n+5) .pr-falta { display: inline-grid; justify-items: center; }
 /* v338 (03/11/2026, pedido da coordenação: "Cadastros enviados pelo link" mais bonito e chamativo) */
 .secao.pre-sec, .secao.pre-sec.painel-sit { background: linear-gradient(135deg, var(--pend-bg) 0%, var(--surface) 62%); border: 1px solid color-mix(in srgb, var(--pend) 35%, var(--line)); }
 .pre-cab { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
@@ -4731,7 +4866,7 @@ button.atalho { font: inherit; text-align: left; cursor: pointer; width: auto; }
 :root[data-sem-mov] .pre-card, :root[data-sem-mov] .pre-cta span { transition: none; } :root[data-sem-mov] .pre-card:hover { transform: none; }
 
 /* v338 (03/11/2026, pedido da coordenação: "Primeiros passos" e "Projeção no ritmo atual" como no Saberes que Cultivam, mesmo desenho dos quadros) */
-.mts { padding: 32px; border-radius: 20px; }
+
 .mts-cab { padding-bottom: 16px; border-bottom: 1px solid var(--line); }
 .mts-cab h2 { margin: 0; }
 .mts-cab p { margin: 6px 0 0; font-size: var(--t-sm); color: var(--ink-2); max-width: 80ch; max-width: none; }
@@ -4788,14 +4923,13 @@ button.atalho { font: inherit; text-align: left; cursor: pointer; width: auto; }
 :root[data-contraste] .pj-i.bad .pj-b > s { background: repeating-linear-gradient(135deg, #FF9E94 0 4px, transparent 4px 8px); }
 .pp-t, .pj-t { align-items: stretch; text-align: left; }
 .pp-t > b, .pp-d, .pj-f, .pj-an { text-align: left; }
-.pp .pp-l > li.pp-i, .pj .pj-l > li.pj-i { display: flex; grid-template-columns: none; }
+.pp .pp-l > li.pp-i, .pj .pj-l > li.pj-i { display: flex; grid-template-columns: none; position: relative; padding: 14px 16px 14px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
 @media (max-width: 640px) { .pp .pp-l > li.pp-i { display: grid; grid-template-columns: 40px minmax(0, 1fr); } }
 
 /* v338 (03/11/2026, pedido da coordenação: "as mesmas regras de tipografia nos textos e painéis do sistema de cultivos"; o mesmo bloco v200 do Saberes):
    Plus Jakarta Sans; título da tela maior e mais pesado; títulos de seção em 700; números grandes em 800 e mais justos; sobretítulo mais aberto.
    Os tamanhos continuam na escala --t-* (título de seção no --t-2xl). */
 
-h1, .cab h1, main h1, .dx-cab h1, .eq-cab h1 { font-weight: 700; letter-spacing: -.025em; line-height: 1.08; overflow-wrap: break-word; }
 .eyebrow { font-weight: 600; letter-spacing: .16em; }
 h2, .secao-cab h2, .mts-cab h2, .dx-atencao h2, .dx-duas > section.secao h2, .dx-lado > section.secao h2, .dx-agua h2, main .secao h2 { font-weight: 700; letter-spacing: -.02em; }
 /* 03/11/2026: versão do sistema no rodapé (só a coordenação geral) e campo "Procurar documento" com 24 px também no modo sol */
@@ -4898,7 +5032,7 @@ input.procura { min-height: 24px; }
   box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 8px 22px rgba(69, 43, 26, .06); }
 .mts.pp .mts-cab, .mts.pj .mts-cab { margin: 0 0 14px; padding-bottom: 14px; }
 .pp-l, .pj-l { display: grid; gap: 8px; margin: 0; }
-.pp .pp-l > li.pp-i, .pj .pj-l > li.pj-i { position: relative; padding: 14px 16px 14px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
+
 .pp .pp-l > li.pp-i:last-child, .pj .pj-l > li.pj-i:last-child { border-bottom: 1px solid var(--line); padding-bottom: 14px; }
 .pp-i::before, .pj-i::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; border-radius: 12px 0 0 12px; background: var(--pend); }
 .pp-i.feito::before { background: var(--ok); }
@@ -4909,11 +5043,11 @@ input.procura { min-height: 24px; }
 @media (max-width: 640px) { .mts.pp, .mts.pj { padding: 18px 14px; } .pp .pp-l > li.pp-i, .pj .pj-l > li.pj-i { padding: 12px 12px 12px 16px; } }
 
 .cab > div:has(> p.txt-just) { flex: 1 1 auto; min-width: 0; }
-.cab p.txt-just { max-width: none; }
+
 /* 03/11/2026 (pedidos da coordenação, Financeiro e Histórico): o texto de abertura de toda aba vai até o fim da linha, justificado, e quebra só quando precisa */
 .cab > div { flex: 1 1 auto; min-width: 0; }
 .cab > div > p { max-width: none; }
-@media (min-width: 600px) { .cab > div > p { text-align: justify; hyphens: auto; -webkit-hyphens: auto; } }
+
 /* 03/11/2026: aba Dados (como a do Saberes que Cultivam): planilhas por assunto, cópia de segurança, Meus dados, pessoas com acesso */
 .dd-sec { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px 20px; box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 8px 22px rgba(69, 43, 26, .06); }
 .dd-sec > .secao-cab { margin: 0 0 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
@@ -4949,11 +5083,11 @@ input.procura { min-height: 24px; }
 @media (max-width: 640px) { .vit-coord-sec { padding: 18px 14px; } }
 /* 03/11/2026 (relato da coordenação: "o rodapé tá largo/alto demais"): rodapé mais baixo — no computador, os botões de ajuda e de relatar lado a lado,
    a frase da LGPD numa linha e acessibilidade/contraste/versão na mesma linha; no celular, tudo mais junto */
-.rodape { margin-top: 32px; }
+
 .rodape-in { max-width: 1180px; padding: 14px 16px 16px; gap: 10px 28px; }
 
 .rodape-lgpd { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px 10px; max-width: 60ch; }
-.rodape-lgpd > p:not(.rodape-acess):not(.rodape-v) { flex-basis: 100%; }
+
 .rodape-lgpd > .rodape-acess { margin: 0; }
 .rodape-lgpd .rodape-ajuda { min-height: 32px; padding: 2px 12px 2px 3px; }
 .rodape-lgpd .rodape-ajuda-ic { width: 24px; height: 24px; }
@@ -4963,26 +5097,19 @@ input.procura { min-height: 24px; }
   .rodape { margin-top: 24px; }
   .rodape-in { gap: 8px; padding: 16px 16px calc(14px + env(safe-area-inset-bottom)); }
   .rodape-marca { flex-direction: row; gap: 8px; }
-  .rodape-marca img { height: 30px; }
+  
   .rodape-lgpd { justify-content: center; padding-top: 10px; gap: 8px; max-width: none; }
   .rodape-lgpd .rodape-ajuda { min-height: 44px; padding-right: 12px; font-size: var(--t-xs); }
-  .rodape-lgpd > p:not(.rodape-acess):not(.rodape-v) { max-width: none; }
+  
 }
 /* 03/11/2026 (pedido da coordenação: "visite todo o sistema e melhore o aspecto visual, em especial dos painéis", no desenho dos cadastros pelo link e do
    "O que pede atenção"): toda seção de primeiro nível vira um painel — fundo de cartão, borda, cantos de 16 px, sombra leve e o título separado do conteúdo
    por um fio. Seções dentro de seções continuam lisas (o painel não se repete). Os quadros que já têm desenho próprio ficam como estão. */
-main .secao:not(.secao .secao):not(.hs-sec):not(.pre-sec):not(.dx-atencao):not(.mts):not(.dd-sec):not(.vit-coord-sec):not(.dx-duas > .secao):not(.dx-lado > .secao):not(.dx-agua) {
-  background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px 22px;
-  box-shadow: 0 1px 2px rgba(69, 43, 26, .04), 0 8px 22px rgba(69, 43, 26, .06); min-width: 0; }
-main .secao:not(.secao .secao):not(.hs-sec):not(.pre-sec):not(.dx-atencao):not(.mts):not(.dd-sec):not(.vit-coord-sec):not(.dx-duas > .secao):not(.dx-lado > .secao):not(.dx-agua) > .secao-cab {
-  margin: 0 0 4px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+
 @media (min-width: 641px) and (max-width: 900px) {
-  main .secao:not(.secao .secao):not(.hs-sec):not(.pre-sec):not(.dx-atencao):not(.mts):not(.dd-sec):not(.vit-coord-sec):not(.dx-duas > .secao):not(.dx-lado > .secao):not(.dx-agua) { padding: 18px 14px; }   /* tablet: a tabela da Seleção cabe sem rolar */
+     /* tablet: a tabela da Seleção cabe sem rolar */
 }
-@media (max-width: 640px) {
-  main .secao:not(.secao .secao):not(.hs-sec):not(.pre-sec):not(.dx-atencao):not(.mts):not(.dd-sec):not(.vit-coord-sec):not(.dx-duas > .secao):not(.dx-lado > .secao):not(.dx-agua) { padding: 18px 14px; border-radius: 14px; }
-}
-:root[data-contraste] main .secao:not(.secao .secao) { box-shadow: none; }
+
 /* 03/11/2026 (pedido da coordenação: "as mesmas letras, tamanho de títulos e formato de números do Saberes que Cultivam", em todo o sistema e todos os perfis):
    título da tela 30 a 42 px em 700 e de seção 22 px em 700 (já iguais); o percentual grande da execução física como o do Saberes (52 a 84 px, 800);
    os números dos cartões até 42 px em 800 (o Saberes usa 42 px), ainda encolhendo com a largura do cartão; no Financeiro, 26 a 34 px como lá */
@@ -4991,23 +5118,12 @@ main .secao:not(.secao .secao):not(.hs-sec):not(.pre-sec):not(.dx-atencao):not(.
 @supports (width: 1cqw) { .dx-kpi-n b, .eq-kpi .eq-n b { font-size: clamp(20px, 19cqw, 42px); } }
 .fin-k .eq-n b { font-size: clamp(26px, 3.2vw, 34px); font-weight: 800; letter-spacing: -.035em; }
 main .secao h2, .mts h2, .dd-sec h2 { font-size: var(--t-2xl); font-weight: 700; letter-spacing: -.02em; }
-/* v342: atalho para as impressões por tipo, na aba Relatórios */
+/* ===== Componente (desde a v342): atalho para as impressões por tipo, na aba Relatórios */
 .rl-ir-imp { margin: 4px 0 14px; font-size: var(--t-sm); color: var(--ink-2); }
 .rl-ir-imp .link { font-weight: 600; text-align: left; }
-/* v342: no município, a divisa de verdade (malha do IBGE): vizinhos em traço fino, o município em destaque */
-.mapa .mun-viz path { fill: none; stroke: color-mix(in srgb, var(--ink-2) 45%, transparent); stroke-linejoin: round; }
-.mapa .mun-ctn path { fill: color-mix(in srgb, var(--surface) 62%, transparent); stroke: var(--accent); stroke-linejoin: round; }
-.mapa .mun-ctn text { fill: var(--ink); font-weight: 600; paint-order: stroke; stroke: var(--surface); stroke-width: .6%; }
-.mapa-local .ml-mun { fill: color-mix(in srgb, var(--m-ok) 55%, transparent); stroke: var(--m-ok); stroke-linejoin: round; }
-:root[data-contraste] .mapa .mun-viz path { stroke: #BDBDBD; }
-:root[data-contraste] .mapa .mun-ctn path { fill: #000; stroke: #FFE600; }
-:root[data-contraste] .mapa .mun-ctn text { fill: #fff; stroke: #000; }
-
-/* v343: Dados > Pessoas com acesso, coluna dos avisos no aparelho (92) */
+/* ===== Componente (desde a v343): Dados > Pessoas com acesso, coluna dos avisos no aparelho (92) */
 .dd-av { color: var(--muted); }
 .dd-avl { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; color: var(--muted); }
-/* v343 (pedido da coordenação): "Visitas feitas por mês" (MDA/MPA e coordenação) com os números centralizados embaixo do título da coluna */
-@media (min-width: 641px) { .ac-tab th.num, .ac-tab td.num { text-align: center; } }
 /* v343: a coluna dos avisos quebra em linhas no tablet (a tabela não rola de lado) */
 #dd-acessos td[data-rot^="Avisos"] { min-width: 0; }
 #dd-acessos .dd-av { display: block; }
@@ -5019,7 +5135,7 @@ main .secao h2, .mts h2, .dd-sec h2 { font-size: var(--t-2xl); font-weight: 700;
   #dd-acessos th:nth-child(1) { width: 22%; } #dd-acessos th:nth-child(2) { width: 20%; } #dd-acessos th:nth-child(3) { width: 17%; }
   #dd-acessos th:nth-child(4) { width: 15%; } #dd-acessos th:nth-child(5) { width: 26%; }
   
-  #dd-acessos .chip { white-space: normal; max-width: 100%; }
+  
 }
 
 /* ======================================================================
@@ -5089,8 +5205,7 @@ main .secao h2, .mts h2, .dd-sec h2 { font-size: var(--t-2xl); font-weight: 700;
 :root[data-contraste] .ac3-cifra.ok b.num { color: #FFE600; }
 @media print { .ac3-ufs, .ac3-mapa .ac-mapa > p, .ac-vivo .link { display: none !important; } }
 .ac3-mapa .q-clic.sel circle:last-of-type { stroke: var(--ink); stroke-width: .6%; }
-.ac3-mapa .q-clic.sel .q-anel { stroke: var(--ink); stroke-width: 3px; vector-effect: non-scaling-stroke; }   /* v354: no lugar do drop-shadow (medida do desenho) */
-/* v344, regra visual 1: coluna só de números centralizada embaixo do título (a classe nc é posta pela tela, teclado.js marcarNumeros) */
+.ac3-mapa .q-clic.sel .q-anel { stroke: var(--ink); stroke-width: 3px; vector-effect: non-scaling-stroke; }   /* v344, regra visual 1: coluna só de números centralizada embaixo do título (a classe nc é posta pela tela, teclado.js marcarNumeros) */
 @media (min-width: 641px) { table th.nc, table td.nc { text-align: center !important; } }
 /* v344 (revisão independente): nas listas que esperam a sua decisão, cada linha mostra a ação "Conferir" à direita */
 .lista-acao .vagabtn { grid-template-columns: minmax(0, 1fr) auto; column-gap: 14px; }
@@ -5100,7 +5215,7 @@ main .secao h2, .mts h2, .dd-sec h2 { font-size: var(--t-2xl); font-weight: 700;
 .lista-acao .vagabtn:hover::after { border-color: var(--accent); }
 @media (max-width: 380px) { .lista-acao .vagabtn::after { content: "›"; padding: 6px 12px; } }
 /* rótulos dos cartões de número sem hífen de quebra no meio da palavra ("seleciona-das") */
-.dx-kpi, .dx-kpi *, .eq-kpis, .eq-kpis * { hyphens: manual; -webkit-hyphens: manual; }
+
 /* menu de cima: as abas de um grupo também não quebram linha a partir de 1101 px */
 @media (min-width: 1101px) { .abas-grupos .aba-btns { flex-wrap: nowrap; } }
 /* cartões de conquista e documentos esticam e ocupam a linha toda (sem metade vazia) */
@@ -5110,22 +5225,20 @@ main .secao h2, .mts h2, .dd-sec h2 { font-size: var(--t-2xl); font-weight: 700;
 .lc-feito { background: color-mix(in srgb, var(--ink-2) 72%, transparent); }
 .lc-trilho { background: color-mix(in srgb, var(--line) 70%, transparent); outline: 1px solid var(--line); }
 .eq-cab .prazo.ok { background: var(--ok-bg); color: var(--ok); }
-/* v344 (revisão independente): Primeiros passos mostra só o que falta; os feitos ficam numa linha que abre */
+/* ===== Componente (desde a v344) (revisão independente): Primeiros passos mostra só o que falta; os feitos ficam numa linha que abre */
 .pp-feitos { margin: 10px 0 0; }
 .pp-feitos summary { cursor: pointer; color: var(--muted); font-size: var(--t-sm); padding: 6px 0; }
 .pp-feitos ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; font-size: var(--t-sm); }
 
-/* v345 (03/11/2026, pedido da coordenação, revisão das cores sem trocar a paleta):
+/* ===== Componente (desde a v345) (03/11/2026, pedido da coordenação, revisão das cores sem trocar a paleta):
    1. "Resolver" do "O que pede atenção" é contornado (o terracota cheio dentro do cartão vermelho sumia: dois tons quentes iguais);
    2. "Lista de espera · Nª" é pílula neutra (o âmbar fica só para "Aguardando aprovação");
    3. cartões da execução física: a cor diz a situação — verde cumprido, neutro em andamento, âmbar abaixo do previsto (com o texto). */
-.dx-kpi.neutro { --kc: var(--ink-2); }
-.dx-kpi.abaixo { --kc: var(--cont-borda); }
+
 .dx-kpi-ab { justify-self: start; align-self: start; width: fit-content; color: var(--cont-ink); background: color-mix(in srgb, var(--cont-bg) 35%, transparent); border-radius: 6px; padding: 0 6px; font-weight: 600; white-space: nowrap; }
 :root[data-theme="dark"] .dx-kpi-ab { color: var(--ink); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .dx-kpi-ab { color: var(--ink); } }
-:root[data-contraste] .dx-kpi.neutro { --kc: #FFFFFF; }
-:root[data-contraste] .dx-kpi.abaixo { --kc: #FFE600; }
+
 :root[data-contraste] .dx-kpi-ab { color: #000; background: #FFE600; }
 
 /* v346 (04/11/2026, pedido da coordenação: "igual ao sistema de cultivos"): "Importações da planilha" logo abaixo do botão de importar, no
@@ -5160,7 +5273,7 @@ summary.imh-cab:hover { background: color-mix(in srgb, var(--accent) 5%, var(--s
 :root[data-contraste] .imh-ic { background: #000; color: #FFE600; border: 1px solid #FFE600; }
 :root[data-contraste] .imh-b.perigo { color: #FFE600; border-color: #FFE600; }
 
-/* v346 (pedido da coordenação, Primeiros passos): o número do passo pendente no âmbar de "pendente" (era o terracota, a cor de ação) e o botão com ícone */
+/* ===== Componente (desde a v346) (pedido da coordenação, Primeiros passos): o número do passo pendente no âmbar de "pendente" (era o terracota, a cor de ação) e o botão com ícone */
 .pp-i:not(.feito) .pp-n { background: color-mix(in srgb, var(--cont-bg) 22%, var(--surface)); border-color: color-mix(in srgb, var(--cont-borda) 55%, transparent); color: var(--cont-ink); }
 :root[data-theme="dark"] .pp-i:not(.feito) .pp-n { color: var(--ink); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pp-i:not(.feito) .pp-n { color: var(--ink); } }
@@ -5168,7 +5281,7 @@ summary.imh-cab:hover { background: color-mix(in srgb, var(--accent) 5%, var(--s
 .pp-bt { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .pp-bic { display: inline-flex; flex: none; } .pp-bic svg { width: 18px; height: 18px; }
 
-/* v347 (pedido da coordenação): o caminho de cada quintal (aba Campo, "Ver os N quintais") — 6 traços, um por etapa: feito em verde,
+/* ===== Componente (desde a v347) (pedido da coordenação): o caminho de cada quintal (aba Campo, "Ver os N quintais") — 6 traços, um por etapa: feito em verde,
    a etapa atual em âmbar (pendente), as que faltam em cinza; ao lado, "N de 6 · Próximo: …" e, embaixo, o botão da próxima ação */
 .cq { display: grid; gap: 6px; min-width: 0; }
 .cq-l { display: flex; gap: 4px; list-style: none; margin: 0; padding: 0; max-width: 360px; }
@@ -5181,10 +5294,10 @@ summary.imh-cab:hover { background: color-mix(in srgb, var(--accent) 5%, var(--s
   .quintal.cq-q { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 30rem; align-items: center; }
   .quintal.cq-q > .acoes { justify-content: flex-end; flex-wrap: nowrap; } .quintal.cq-q > .acoes > .btn { white-space: nowrap; }
 }
-:root[data-sol] .quintal.cq-q { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 34rem; }
+
 @media (max-width: 1099px) { .quintal.cq-q > .cq { flex: 1 1 100%; } .quintal.cq-q > .acoes { flex: 1 1 100%; flex-direction: row; flex-wrap: wrap; }
   .quintal.cq-q > .acoes > .btn { width: auto; flex: 0 1 auto; } }
-/* v347 (pedido da coordenação): o texto de abertura dos quadros (Primeiros passos, Seus primeiros passos, Projeção) vai até o fim da linha; só quebra lá */
+/* ===== Componente (desde a v347) (pedido da coordenação): o texto de abertura dos quadros (Primeiros passos, Seus primeiros passos, Projeção) vai até o fim da linha; só quebra lá */
 .mts-cab > div:first-child { flex: 1 1 auto; min-width: 0; } 
 /* v347 (pedidos da coordenação, 04/11/2026): "Ainda não começaram" em colunas; botões dos passos e da aba Dados do mesmo tamanho; textos dos quadros até o fim da linha */
 
@@ -5193,16 +5306,13 @@ summary.imh-cab:hover { background: color-mix(in srgb, var(--accent) 5%, var(--s
 @media (min-width: 641px) { .pp-l .pp-bt { width: 19.5rem; } .pp-l .pp-ok { width: 19.5rem; justify-content: center; text-align: center; } .dd-sec .acoes .dd-bt:not(.peq) { min-width: 17rem; justify-content: center; } }
 @media (max-width: 640px) { .pp-l .pp-bt { width: 100%; } }
 :root[data-sol] .pp-l .pp-bt, :root[data-sol] .pp-l .pp-ok { width: auto; min-width: 19.5rem; }
-/* v347 (pedido da coordenação: "usar até o fim da linha"): todo texto de explicação dos quadros ocupa a largura toda e só quebra no fim da linha */
-main .secao p, main .bloco p, main .mts p, main .secao-cab p, main .rl-nota, main [class*="-nota"] { max-width: none; }
-
-/* v347 (auditoria de 04/11/2026): pílulas longas quebram linha (no celular a de "desfeita em … por …" alargava o quadro das importações e cortava o
+/* ===== Componente (desde a v347) (auditoria de 04/11/2026): pílulas longas quebram linha (no celular a de "desfeita em … por …" alargava o quadro das importações e cortava o
    "Desfazer"; a de "Cabe ao auxiliar administrativo" passava da tela a 320 px); quadros de grade não esticam além da largura */
 .imh-c, .imh-l, .imh-i, .imh-d { min-width: 0; } .imh-p .chip { white-space: normal; text-align: left; }
 .pp-ok { white-space: normal; max-width: 100%; } .pp-i, .pj-i, .pj-t { min-width: 0; }
 @media (max-width: 380px) { .pj-i { grid-template-columns: 1fr; } .pj-i > .pj-n { display: none; } .pj-bl { flex-wrap: wrap; } }
 
-/* v347 (pedido da coordenação: Financeiro no iPad em pé como no Saberes): cartões em 4 colunas com números um degrau menores e menos margem */
+/* ===== Componente (desde a v347) (pedido da coordenação: Financeiro no iPad em pé como no Saberes): cartões em 4 colunas com números um degrau menores e menos margem */
 @media (min-width: 701px) and (max-width: 1100px) {
   .fin-kpis .dx-kpi { padding: 22px 16px; }
   .fin-k .eq-n b { font-size: clamp(20px, 2.5vw, 28px); }
@@ -5211,11 +5321,11 @@ main .secao p, main .bloco p, main .mts p, main .secao-cab p, main .rl-nota, mai
 /* v347: tabela do Financeiro no tablet em pé (641 a 1100 px), como a do Saberes: nome da rubrica ao lado do botão e a contagem de itens embaixo,
    só o percentual na coluna Execução (sem a barra), letra e margens um degrau menores; a tabela não rola de lado */
 @media (min-width: 641px) and (max-width: 1100px) {
-  table.exec-fin { table-layout: fixed; font-size: var(--t-sm); }
+  
   table.exec-fin thead th { padding: 12px 8px !important; font-size: var(--t-2xs); }
-  table.exec-fin thead th:first-child { padding-left: 16px !important; }
-  table.exec-fin td, table.exec-fin th { padding-left: 8px !important; padding-right: 8px !important; }
-  table.exec-fin .fin-grupo > th, table.exec-fin .fin-tot > th { padding-left: 14px !important; }
+  table.exec-fin thead th:first-child { padding-left: 16px !important; width: auto; }
+  
+  
   table.exec-fin .fin-item > th, table.exec-fin .fin-detalhe > td { padding-left: 24px !important; }
   .exec-fin .fin-rub, .exec-meta .fin-rub { display: grid !important; grid-template-columns: 28px minmax(0, 1fr); column-gap: 10px; row-gap: 4px; align-items: center; }
   .exec-fin .fin-rub::before { grid-row: 1 / span 2; grid-column: 1; align-self: center; }
@@ -5231,12 +5341,12 @@ main .secao p, main .bloco p, main .mts p, main .secao-cab p, main .rl-nota, mai
   .exec-fin .fin-rub .fin-plano, .exec-meta .fin-rub .fin-plano { grid-row: 3; grid-column: 2; }
   .exec-meta .fin-rub { grid-template-columns: 28px minmax(0, 1fr) !important; }
   table.exec-fin td.num { white-space: nowrap; overflow-wrap: normal; font-size: var(--t-xs); }
-  table.exec-fin thead th { white-space: normal; }
-  table.exec-fin thead th:nth-child(2), table.exec-fin thead th:nth-child(4), table.exec-fin thead th:nth-child(5) { width: 16%; }
-  table.exec-fin thead th:first-child { width: auto; }
+  
+  
+  
 }
 @media (min-width: 641px) and (max-width: 1100px) {
-  table.exec-fin thead th { overflow-wrap: normal; word-break: keep-all; letter-spacing: .02em; }
+  
   table.exec-fin thead th:nth-child(3) { width: 10%; }
   table.exec-fin thead th:last-child, table.exec-fin td:last-child { width: 12%; }
 }
@@ -5244,7 +5354,7 @@ main .secao p, main .bloco p, main .mts p, main .secao-cab p, main .rl-nota, mai
    no alto, como no Saberes que Cultivam. Computador: só a faixa das abas (a marca e o nome rolam junto). Celular e tablet: só o botão "Seção".
    A faixa "sem internet" (também presa) fica em cima: --topo-fixo é a altura dela (ajustarTopo, app.js). scroll-padding: o que a tela leva
    até a vista (Tab, "Ver quem falta habilitar", erro do formulário) não fica escondido atrás do menu. */
-html { scroll-padding-top: calc(var(--topo-fixo, 0px) + var(--menu-fixo, 0px) + 12px); }
+
 @media screen and (min-width: 1101px) {
   .abas.abas-grupos { position: sticky; top: var(--topo-fixo, 0px); z-index: 12; box-shadow: 0 0 0 100vmax var(--menu-bg), 0 1px 0 100vmax var(--menu-div); clip-path: inset(0 -100vmax -1px); }   /* fio embaixo: o conteúdo passa por trás com um limite claro */
 }
@@ -5255,7 +5365,7 @@ html { scroll-padding-top: calc(var(--topo-fixo, 0px) + var(--menu-fixo, 0px) + 
 /* v348: no celular, "acompanhamento" no cartão quebrava sem hífen ("acompanhament / o"); com hífen do português fica "acompanha- / mento" */
 .dx-kpi-r { hyphens: auto; -webkit-hyphens: auto; }
 /* v349 (04/11/2026, pedidos da coordenação: aproximar o mapa "para ficar mais fácil clicar nos pontos" e deixá-lo mais atrativo) */
-.mapa-caixa .uf-proj.uf-tom, .uf-proj.uf-tom { fill: color-mix(in srgb, var(--m-ok) var(--tom, 10%), var(--m-uf)); }   /* mais mulheres, tom mais forte */
+   /* mais mulheres, tom mais forte */
 .mapa-zoom { position: absolute; top: 24px; left: 24px; z-index: 2; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .mapa-zoom button { min-width: 40px; min-height: 40px; display: grid; place-items: center; border: 1px solid var(--m-borda); background: var(--surface); color: var(--ink); border-radius: 10px;
   font: 600 var(--t-xl)/1 var(--sans); cursor: pointer; box-shadow: 0 2px 8px rgba(69, 43, 26, .12); }
@@ -5264,8 +5374,7 @@ html { scroll-padding-top: calc(var(--topo-fixo, 0px) + var(--menu-fixo, 0px) + 
 .mapa-zoom button[disabled] { opacity: .45; cursor: default; box-shadow: none; }
 .mapa-zoom button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 @media (pointer: coarse) { .mapa-zoom button { min-width: var(--alvo); min-height: var(--alvo); } }
-svg.mapa.mapa-arrasta { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
-svg.mapa.mapa-arrasta.arrastando { cursor: grabbing; }
+
 .mapa-pil { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 8px; }
 .mapa-pil li { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--m-fundo); border: 1px solid var(--m-borda); color: var(--m-texto); font-size: var(--t-sm); }
 .mapa-pil li b { font-weight: 700; color: var(--ink); }
@@ -5277,7 +5386,7 @@ svg.mapa.mapa-arrasta.arrastando { cursor: grabbing; }
 .mun-nomes > summary:hover { color: var(--accent); }
 @media (max-width: 760px) {
   .mapa-zoom { top: 20px; left: 20px; flex-direction: row; }
-  .mapa-local { width: 112px; padding: 6px; } .mapa-local svg { height: 84px; }
+  .mapa-local { width: 112px; padding: 6px; } 
   .mapa-lado:has(.mapa-local) { grid-template-columns: auto 1fr; align-items: center; }
   .mapa-lado:has(.mapa-local) > :not(.mapa-local):not(.mapa-destaque) { grid-column: 1 / -1; }
 }
@@ -5287,7 +5396,7 @@ svg.mapa.mapa-arrasta.arrastando { cursor: grabbing; }
 .ac3-mun-etapas i { display: block; height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
 .ac3-mun-etapas i b { display: block; height: 100%; background: var(--m-ok); border-radius: 4px; }
 
-/* v350: "Ainda não começaram" em linha do tempo (pedido da coordenação, opção B). Azul = período planejado (calmo, não é alerta),
+/* ===== Componente (desde a v350): "Ainda não começaram" em linha do tempo (pedido da coordenação, opção B). Azul = período planejado (calmo, não é alerta),
    terracota = hoje, âmbar = meses com várias metas juntas, ritmo em marrom-escuro (destaque sem parecer erro). */
 
 .pj-tl-pico { margin: 8px 0 2px; font-size: var(--t-sm); color: var(--ink); }
@@ -5337,28 +5446,27 @@ svg.mapa.mapa-arrasta.arrastando { cursor: grabbing; }
 
 @media (max-width: 760px) { .pj-tl-l.pj-tl-sim { display: none; } }   /* no celular o pico já está na frase do alto */
 :root[data-contraste] .pj-tl-lb { background: #000; border-color: #FFE600; } :root[data-contraste] .pj-tl-ln { background: #FFE600; }
-/* v350 (pedido da coordenação: "no MDA e no MPA os títulos de seção estão pequenos e sem realce"): os títulos dos quadros do painel de
+/* ===== Componente (desde a v350) (pedido da coordenação: "no MDA e no MPA os títulos de seção estão pequenos e sem realce"): os títulos dos quadros do painel de
    acompanhamento no mesmo tamanho e peso dos títulos de seção do resto do sistema, com o fio embaixo */
 .ac2-cartao > h2 { font: 700 var(--t-2xl)/1.2 var(--sans); letter-spacing: -.02em; color: var(--ink); padding-bottom: 12px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
 @media (max-width: 640px) { .ac2-cartao > h2 { font-size: var(--t-xl); } }
 /* v351 (pedido da coordenação: mapa mais elegante, nos mapas da Visão geral e do MDA/MPA): divisas na cor do fundo do mapa (o estado fica
    recortado), siglas por cima com contorno, círculos com anel branco e sombra leve, legenda de tamanho num quadrinho */
-.mapa-caixa .uf-proj[data-div] { stroke: var(--m-fundo); stroke-linejoin: round; }
+
 .mapa-caixa .uf-rot { fill: var(--m-sigla); paint-order: stroke; stroke: var(--m-fundo); stroke-linejoin: round; letter-spacing: .08em; }
 .q-tam-cx { fill: color-mix(in srgb, var(--surface) 88%, transparent); stroke: var(--m-borda); }
 .q-tam-tit { fill: var(--m-texto); font-family: var(--sans); font-weight: 700; }
-:root[data-contraste] .mapa-caixa .uf-proj[data-div] { stroke: #fff; }
+
 :root[data-contraste] .q-tam-cx { fill: #000; stroke: #fff; } :root[data-contraste] .q-tam-tit { fill: #fff; }
-/* v351 (pedido da coordenação): no modo escuro os estados quase sumiam no fundo; --m-uf um tom mais claro (#2E2520 → #463A31, nas duas regras do escuro) */
-/* v352 (relato da coordenação: "esse número 6 não tem destaque de nada"): relatos em aberto no título do Histórico numa pílula âmbar de pendência,
+/* ===== Componente (desde a v352) (relato da coordenação: "esse número 6 não tem destaque de nada"): relatos em aberto no título do Histórico numa pílula âmbar de pendência,
    como os números do menu, e com o texto "em aberto" (o número solto não dizia o que era) */
 .hs-rec-t h2 .hs-n { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; padding: 3px 12px; border-radius: 999px; vertical-align: middle;
   background: var(--cont-bg); color: var(--cont-ink); box-shadow: inset 0 0 0 1px var(--cont-borda); font: 700 var(--t-sm)/1.2 var(--sans); letter-spacing: 0; white-space: nowrap; }
 :root[data-contraste] .hs-rec-t h2 .hs-n { background: #FFE600; color: #000; box-shadow: none; }
-/* v353: a linha da própria coordenação nos Últimos acessos, num fundo leve para se distinguir da equipe */
+/* ===== Componente (desde a v353): a linha da própria coordenação nos Últimos acessos, num fundo leve para se distinguir da equipe */
 .hs-tab tr.hs-eu > * { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
 
-/* v354 (auditoria das v348–v353): a linha do tempo "Ainda não começaram" vira lista também no tablet em pé (até 1000 px; de 761 a ~950 px os meses se
+/* ===== Componente (desde a v354) (auditoria das v348–v353): a linha do tempo "Ainda não começaram" vira lista também no tablet em pé (até 1000 px; de 761 a ~950 px os meses se
    amontoavam e o texto das barras saía cortado) */
 @media (min-width: 761px) and (max-width: 1000px) {
   .pj-tl-cab, .pj-tl-tr, .pj-tl-leg { display: none; }
@@ -5376,11 +5484,11 @@ svg.mapa.mapa-arrasta.arrastando { cursor: grabbing; }
   .hab-p, .hab-p * { white-space: normal; max-width: 100%; min-width: 0; }
   .resumo .v { font-size: var(--t-xl); }
   button.cg-nome { min-height: 24px; }
-  .fin-grupo, .fin-item, .fin-tot { grid-template-columns: minmax(0, 1fr) !important; }
+  
   .exec-fin .fin-exe, .fin-exe { min-width: 0; }
   .ft-linha { grid-template-columns: 30px minmax(0, 1fr); grid-template-areas: "av pes" "av mat" "av cx"; }
   .ft-cancelar { justify-self: start; }
-  .ft-mat { flex-wrap: wrap; }
+  
   .rl-capa, .rl-folha, .rl-ass, .rl-folha.rel-previa { max-width: 100%; min-width: 0; box-sizing: border-box; padding-left: 12px; padding-right: 12px; }
 }
 /* v354 (05/11/2026): dobrável aberto (673 px) e projetor (1024 × 768) — tabelas sem rolar de lado */
@@ -5388,16 +5496,16 @@ svg.mapa.mapa-arrasta.arrastando { cursor: grabbing; }
   .quadro-sel .nomeuf { display: none; }
   .quadro-sel td.uf { padding-right: 6px; }
   table.exec-fin td.num { font-size: 12px; letter-spacing: -.02em; }
-  table.exec-fin thead th { letter-spacing: 0; hyphens: auto; word-break: normal; overflow-wrap: anywhere; }
+  
   table.exec-fin thead th:first-child, table.exec-fin .fin-grupo > th, table.exec-fin .fin-tot > th { padding-left: 10px !important; }
-  table.exec-fin td, table.exec-fin th { padding-left: 5px !important; padding-right: 5px !important; }
+  
 }
 @media (min-width: 961px) and (max-width: 1100px) {
   table.quadro.tab-rot td:last-child { white-space: normal; }
-  table.quadro.tab-rot td:last-child .small { overflow-wrap: anywhere; }
+  
 }
 .rl-dl dd, .rl-dl dd span { overflow-wrap: anywhere; min-width: 0; }
-/* v355 (05/11/2026, relato da coordenação com foto do iPad em pé): no Safari o campo de data tem largura própria e passava por cima do "Estado" */
+/* ===== Componente (desde a v355) (05/11/2026, relato da coordenação com foto do iPad em pé): no Safari o campo de data tem largura própria e passava por cima do "Estado" */
 
 .rl-datas input[type="date"] { -webkit-appearance: none; appearance: none; display: block; }
 @media (min-width: 641px) and (max-width: 1100px) {
@@ -5424,7 +5532,7 @@ svg.mapa.mapa-arrasta.arrastando { cursor: grabbing; }
 .lembrete .lb-txt p, .lembrete .lb-txt summary { font-size: var(--t-md); color: var(--ink); }
 .lembrete .lb-txt b { font-weight: 700; }
 .lembrete .lb-mais { color: var(--lb); font-weight: 600; }
-.lembrete .lb-txt details p.small { margin-top: 6px; color: var(--ink-2); }
+
 .lembrete .lb-ok { flex: none; min-height: 40px; padding: 6px 16px; border-color: color-mix(in srgb, var(--lb) 55%, var(--line)); color: var(--ink); background: var(--surface); }
 @media (max-width: 640px) {
   .lembrete li.lb { flex-wrap: wrap; align-items: flex-start; padding: 12px 14px 12px 18px; gap: 10px 12px; }
