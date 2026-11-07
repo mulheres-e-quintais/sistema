@@ -104,6 +104,8 @@ a { color: var(--accent); }
 .quem { display: flex; align-items: center; gap: 10px; font-size: var(--t-sm); }
 .quem .nome { color: var(--barra-ink); font-weight: 500; }
 .quem .papel { color: var(--barra-sub); }
+.quem-txt { background: none; border: 0; padding: 0; margin: 0; font: inherit; line-height: 1.35; text-align: left; color: inherit; cursor: pointer; }   /* 07/11/2026 (coordenação): tocar no nome também abre Meus dados; para o teclado e o leitor de tela o botão é a foto (este fica fora do Tab) */
+.quem-txt:hover .nome { text-decoration: underline; text-underline-offset: 3px; }
 .btn-barra { text-decoration: none; background: transparent; border: 1px solid rgba(238, 243, 238, .35); color: var(--barra-ink); padding: 5px 12px; font: 500 var(--t-sm) var(--sans); cursor: pointer; }
 .btn-barra:hover { background: rgba(238, 243, 238, .1); }
 
@@ -864,7 +866,7 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
   .marca .sis { font-size: var(--t-2xs); line-height: 1.25; }
   .marca .sis b { font-size: var(--t-base); }
   .quem { gap: 8px; flex: none; }
-  .quem > span { display: none; }              /* nome e papel: aparecem ao tocar na foto (Meus dados) */
+  .quem > span, .quem > .quem-txt { display: none; }              /* nome e papel: aparecem ao tocar na foto (Meus dados) */
   .quem .btn-barra { padding: 4px 10px; font-size: var(--t-xs); }
   .cab .eyebrow { font-size: var(--t-2xs); }
 }
@@ -3508,7 +3510,7 @@ main .secao:not(.secao .secao):not(.hs-sec):not(.pre-sec):not(.dx-atencao):not(.
   
   .barra-in .marca { flex: 1; min-width: 0; }
   .marca .sis { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-   .quem > span { display: none; }   /* nome e função: tocando na foto (Meus dados) */
+   .quem > span, .quem > .quem-txt { display: none; }   /* nome e função: tocando na foto (Meus dados) */
 }
 /* 17. tablet deitado (até 1100 px): menu "Seção" no lugar das abas em grupos (o grupo Documentação caía sozinho numa 2ª linha) */
 @media (max-width: 1100px) {
