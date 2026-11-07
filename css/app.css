@@ -12,7 +12,7 @@
      papel levemente esverdeado de fundo. Verde de "cumprido", âmbar de "pendência" e vermelho de erro continuam com o seu significado. */
   --mandacaru: #17452F;      /* marca: barra do alto, botão escolhido, foco */
   --mandacaru-2: #3E7A5A;    /* verde médio */
-  --anil: #2C4A9A;   /* ação */
+  --anil: #17452F;   /* ação: desde 07/11/2026 (D-33) no mesmo verde-mandacaru da marca; o nome ficou por compatibilidade */
   --palha: #C9D4CA;
   --papel: #EEF3EE;
   --dado: #4A6076;       /* números e títulos pequenos: ardósia (o verde fica para a marca e para "cumprido") */
@@ -30,7 +30,7 @@
   --line: #B8C4BA;   /* v261: era #CDD9D1 (bordas de cartões e tabelas sumiam com luz forte) */
   --line-2: #B3C0B5;
   --campo-borda: #6E8075;   /* borda dos campos de formulário: um tom mais escuro que --line-2, para dar 3:1 com o fundo (só em input, select e textarea) */
-  --accent: #2C4A9A;
+  --accent: #17452F;
   --accent-ink: #FFFFFF;
   --focus: #17452F;   /* foco do teclado: o verde da marca */
   --ok: #1F6032; --ok-bg: #DDEBDD;   /* v261: texto das etiquetas um tom abaixo (5,2 → 6,1) */   /* verde #2E7D43 nas barras e pontos; texto um tom abaixo (contraste ≥ 4,5) */   /* era #2F7D32: 4,4 → 4,9 */
@@ -53,7 +53,7 @@
   --sans: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --cond: "Plus Jakarta Sans", system-ui, sans-serif;
   --serif: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;   /* 03/10/2026: títulos também em Manrope (o nome da variável ficou) */
-  --marca: "Cormorant Garamond", Georgia, "Times New Roman", serif;   /* só o nome "Mulheres & Quintais" (v334: era Lora) */; --pj-plan: #2F6FA8; --pj-plan-bg: #DCE9F6; --pj-plan-ink: #1B4A76; --t-h1: clamp(30px, 3.4vw, 42px); --cont-bg: #F2B33D; --cont-ink: #1C2721; --cont-borda: #B57F12; --eg-exe: #2E7D43; --eg-comp: #D2A23A; --fk-rec: #2E6FB0; --fk-pago: #2E7D43; --fk-comp: #C08A1E; --fk-disp: #728478; --rede-bg: #F5C04A; --rede-ink: #2E1E00; --rede-borda: #A87410; --toast-ok-bg: #1F6032; --toast-ok-ink: #FFFFFF; --menu-bg: #D5E1D9; --menu-div: #A8BCAF; --menu-ink: #254232; --wrap: 1120px; --alvo: 44px; --fin-exec: #276B3A; --fin-comp: #8A5A00; --fin-grupo: #E3EAE6; --st-ok: #2E7D43; --st-and: #C9A227; --st-aten: #C26A2E; --st-atr: #C42847; --st-nao: #85938A; --st-ok-bg: #DDEBDD; --st-and-bg: #F6EDCB; --st-aten-bg: #DDE9E1; --st-atr-bg: #FAE0E5; --st-nao-bg: #E3E8E5; --anil-2: #607EC4; --eg-rec: #2E6FB0; --uf-RN: #7E6BAA; --uf-PI: #6CBB62; --uf-BA: #8FA3F5; --uf-PE: #FFE27A; --uf-AL: #F2918A; --uf-SE: #6FC7C0; --m-ok: #2E7D43; --m-espera: #3478B9; --m-aguarda: #B07800; --m-agua: #C42847; --m-uf: #E1E8E3; --m-uf-viz: #EDF3EF; --m-borda: #B6C4BB; --m-fundo: #FAF7F1; --m-sigla: #506257; --m-texto: #1A402C; }
+  --marca: "Cormorant Garamond", Georgia, "Times New Roman", serif;   /* só o nome "Mulheres & Quintais" (v334: era Lora) */; --pj-plan: #2F6FA8; --pj-plan-bg: #DCE9F6; --pj-plan-ink: #1B4A76; --t-h1: clamp(30px, 3.4vw, 42px); --cont-bg: #F2B33D; --cont-ink: #1C2721; --cont-borda: #B57F12; --eg-exe: #2E7D43; --eg-comp: #D2A23A; --fk-rec: #2E6FB0; --fk-pago: #2E7D43; --fk-comp: #C08A1E; --fk-disp: #728478; --rede-bg: #F5C04A; --rede-ink: #2E1E00; --rede-borda: #A87410; --toast-ok-bg: #1F6032; --toast-ok-ink: #FFFFFF; --menu-bg: #D5E1D9; --menu-div: #A8BCAF; --menu-ink: #254232; --wrap: 1120px; --alvo: 44px; --fin-exec: #276B3A; --fin-comp: #8A5A00; --fin-grupo: #E3EAE6; --st-ok: #2E7D43; --st-and: #C9A227; --st-aten: #C26A2E; --st-atr: #C42847; --st-nao: #85938A; --st-ok-bg: #DDEBDD; --st-and-bg: #F6EDCB; --st-aten-bg: #DDE9E1; --st-atr-bg: #FAE0E5; --st-nao-bg: #E3E8E5; --anil-2: #7FC29B; --eg-rec: #2E6FB0; --uf-RN: #7E6BAA; --uf-PI: #6CBB62; --uf-BA: #8FA3F5; --uf-PE: #FFE27A; --uf-AL: #F2918A; --uf-SE: #6FC7C0; --m-ok: #2E7D43; --m-espera: #3478B9; --m-aguarda: #B07800; --m-agua: #C42847; --m-uf: #E1E8E3; --m-uf-viz: #EDF3EF; --m-borda: #B6C4BB; --m-fundo: #FAF7F1; --m-sigla: #506257; --m-texto: #1A402C; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
@@ -2349,14 +2349,14 @@ p.carregando:has(.carregando-t) { flex-direction: column; gap: 12px; }
 .ent-hero .mapa-pub.mapa-info .mun-pt:hover .mun-dot, .ent-hero .mapa-pub.mapa-info .mun-pt:focus-visible .mun-dot { transform: scale(1.25); }
 .ent-hero .mapa-pub.mapa-info .mun-pt:hover .mun-vazio, .ent-hero .mapa-pub.mapa-info .mun-pt:focus-visible .mun-vazio { transform: scale(1.3); opacity: 1; stroke: #315C45; }
 /* rotas: quase invisíveis; aparecem quando o município é apontado */
-.ent-hero .mapa-pub.mapa-info .rota { stroke: #2C4A9A; stroke-width: .7px; vector-effect: non-scaling-stroke; stroke-dasharray: none; opacity: .16; animation: none; }
+.ent-hero .mapa-pub.mapa-info .rota { stroke: #17452F; stroke-width: .7px; vector-effect: non-scaling-stroke; stroke-dasharray: none; opacity: .16; animation: none; }
 .ent-hero .mapa-pub.mapa-info .rota.ativa { stroke-width: 1.25px; opacity: .8 !important; }
 @media (prefers-reduced-motion: no-preference) {
   .ent-hero .mapa-pub.mapa-info.saindo .rota { stroke-dasharray: var(--len) var(--len); opacity: .16; }
 }
 /* Apodi: anel branco, miolo terracota, halo suave que respira devagar */
-.ent-hero .mapa-pub.mapa-info .sede-dot { fill: #2C4A9A; stroke: #FFFFFF; stroke-width: 3px; vector-effect: non-scaling-stroke; filter: drop-shadow(0 1px 2px rgba(23, 69, 47, .35)); }
-.ent-hero .mapa-pub.mapa-info .sede-halo { fill: #2C4A9A; opacity: .16; transform-box: fill-box; transform-origin: center; }
+.ent-hero .mapa-pub.mapa-info .sede-dot { fill: #17452F; stroke: #FFFFFF; stroke-width: 3px; vector-effect: non-scaling-stroke; filter: drop-shadow(0 1px 2px rgba(23, 69, 47, .35)); }
+.ent-hero .mapa-pub.mapa-info .sede-halo { fill: #17452F; opacity: .16; transform-box: fill-box; transform-origin: center; }
 @media (prefers-reduced-motion: no-preference) { .ent-hero .mapa-pub.mapa-info .sede-halo { animation: sede-respira 3.6s ease-in-out infinite; } }
 @keyframes sede-respira { 0%, 100% { transform: scale(1); opacity: .18; } 50% { transform: scale(1.45); opacity: .06; } }
 .ent-hero .mapa-pub.mapa-info .sede-rot { fill: #1C2721; font-family: var(--serif); font-weight: 600; stroke: #FAF7F1; stroke-width: .14px; paint-order: stroke; }
@@ -2364,7 +2364,7 @@ p.carregando:has(.carregando-t) { flex-direction: column; gap: 12px; }
 /* legenda: pequena e discreta, no canto inferior */
 .ent-hero .mapa-leg-info { background: transparent; border: 0; box-shadow: none; padding: 0; font-size: var(--t-xs); color: #506257; gap: 4px; max-width: 26ch; }
 .mapa-leg-info p { margin: 0; display: flex; align-items: center; gap: 8px; }
-.mapa-leg-info .pt.pt-sede { background: #2C4A9A; box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(44, 74, 154, .35); }
+.mapa-leg-info .pt.pt-sede { background: #17452F; box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(44, 74, 154, .35); }
 .mapa-leg-info .leg-sede { display: none; } .ent-hero .mapa-leg-info .leg-sede { display: flex; }
 .ent-hero .mapa-leg-info .pt:not(.pt-sede):not(.pt-vazio) { background: #E3EEE2; box-shadow: 0 0 0 1.5px #315C45; }
 
@@ -3209,7 +3209,10 @@ svg.mapa.mapa-arrasta.arrastando { cursor: grabbing; }
 .ent-seg.seg button + button { border-left: 0; }
 @media (max-width: 900px) { .ent-seg.seg button { min-height: 44px; font-size: var(--t-sm); padding: 0 6px; } }   /* toque de 44 px no celular; a caixa cresce junto e a margem fica igual em cima e embaixo */
 .ent-seg.seg button:hover:not([aria-pressed="true"]) { background: color-mix(in srgb, var(--surface) 70%, transparent); color: var(--ink); }
-.ent-seg.seg button[aria-pressed="true"] { background: var(--sel-bg); color: var(--sel-ink); box-shadow: 0 2px 6px -2px rgba(23, 69, 47, .45); }
+.ent-seg.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 700; box-shadow: 0 1px 2px rgba(23, 69, 47, .14), 0 2px 8px -2px rgba(23, 69, 47, .22); }   /* 06/11/2026 (coordenação: o verde cheio ao lado do botão anil "Entrar" brigava): a opção escolhida é a pílula clara; o único bloco forte é o Entrar */
+:root[data-theme="dark"] .ent-seg.seg button[aria-pressed="true"] { background: #2C3D33; box-shadow: inset 0 0 0 1px #4A6155; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ent-seg.seg button[aria-pressed="true"] { background: #2C3D33; box-shadow: inset 0 0 0 1px #4A6155; } }
+.ent-card input:-webkit-autofill, .ent-card input:-webkit-autofill:hover, .ent-card input:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 60px var(--surface) inset; -webkit-text-fill-color: var(--ink); caret-color: var(--ink); }   /* o navegador pintava de amarelo o e-mail e a senha lembrados */
 /* campos */
 .ent-card .campo { gap: 8px; }
 .ent-card .campo > label { font: 600 var(--t-sm)/1.2 var(--sans); color: var(--ink); }
@@ -4561,10 +4564,10 @@ table.quadro.desp-tab th:nth-child(5), table.quadro.desp-tab td:nth-child(5) { w
    ====================================================================== */
 
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --cont-bg: #F0B94A; --cont-ink: #121815; --cont-borda: #F0B94A;
-  --surface: #18231C; --surface-2: #1E2C24; --line: #3F5648; --line-2: #526459; --accent: #8FA9EE; --destaque: #86C9A2; } }
+  --surface: #18231C; --surface-2: #1E2C24; --line: #3F5648; --line-2: #526459; --accent: #86C9A2; --destaque: #86C9A2; } }
 :root[data-theme="dark"] { --cont-bg: #F0B94A; --cont-ink: #121815; --cont-borda: #F0B94A;
-  --surface: #18231C; --surface-2: #1E2C24; --line: #3F5648; --line-2: #526459; --accent: #8FA9EE; --destaque: #86C9A2; }   /* anil claro no escuro: 7,0:1 sobre os cartões (D-32) */
-:root[data-sol] { --cont-bg: #6B4500; --cont-ink: #FFFFFF; --cont-borda: #6B4500; --accent: #223D85; --destaque: #1F5039; }
+  --surface: #18231C; --surface-2: #1E2C24; --line: #3F5648; --line-2: #526459; --accent: #86C9A2; --destaque: #86C9A2; }   /* ação no escuro: verde-claro (D-33) */
+:root[data-sol] { --cont-bg: #6B4500; --cont-ink: #FFFFFF; --cont-borda: #6B4500; --accent: #12382A; --destaque: #1F5039; }
 .abas .conta, .abas-m-grade .conta, .abas-m-pend, .atalhos-grade .btn .conta, .conta-t:not(.zero) {
   background: var(--cont-bg); color: var(--cont-ink); box-shadow: inset 0 0 0 1px var(--cont-borda); }
 .atalhos-grade .btn.pri .conta { background: var(--cont-bg); color: var(--cont-ink); }
