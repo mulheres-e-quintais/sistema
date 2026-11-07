@@ -3209,9 +3209,7 @@ svg.mapa.mapa-arrasta.arrastando { cursor: grabbing; }
 .ent-seg.seg button + button { border-left: 0; }
 @media (max-width: 900px) { .ent-seg.seg button { min-height: 44px; font-size: var(--t-sm); padding: 0 6px; } }   /* toque de 44 px no celular; a caixa cresce junto e a margem fica igual em cima e embaixo */
 .ent-seg.seg button:hover:not([aria-pressed="true"]) { background: color-mix(in srgb, var(--surface) 70%, transparent); color: var(--ink); }
-.ent-seg.seg button[aria-pressed="true"] { background: #D3EBDC; color: var(--accent); font-weight: 700; box-shadow: inset 0 0 0 1.5px var(--accent), 0 1px 3px rgba(23, 69, 47, .12); }   /* 07/11/2026 (coordenação: "sem cor tá feio"): a opção escolhida em verde-claro com letra e contorno verdes; o verde cheio fica só no Entrar, para os dois não brigarem */
-:root[data-theme="dark"] .ent-seg.seg button[aria-pressed="true"], :root[data-contraste] .ent-seg.seg button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ent-seg.seg button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); } }
+.ent-seg.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; box-shadow: 0 1px 3px rgba(20, 38, 27, .22); }   /* 07/11/2026 (coordenação: "igual ao sistema de manejo"): a opção escolhida em verde cheio com letra clara, como no Manejo */
 .ent-card input:-webkit-autofill, .ent-card input:-webkit-autofill:hover, .ent-card input:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 60px var(--surface) inset; -webkit-text-fill-color: var(--ink); caret-color: var(--ink); }   /* o navegador pintava de amarelo o e-mail e a senha lembrados */
 /* campos */
 .ent-card .campo { gap: 8px; }
