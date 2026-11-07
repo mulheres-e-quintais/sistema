@@ -2364,7 +2364,7 @@ p.carregando:has(.carregando-t) { flex-direction: column; gap: 12px; }
 /* legenda: pequena e discreta, no canto inferior */
 .ent-hero .mapa-leg-info { background: transparent; border: 0; box-shadow: none; padding: 0; font-size: var(--t-xs); color: #506257; gap: 4px; max-width: 26ch; }
 .mapa-leg-info p { margin: 0; display: flex; align-items: center; gap: 8px; }
-.mapa-leg-info .pt.pt-sede { background: #17452F; box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(44, 74, 154, .35); }
+.mapa-leg-info .pt.pt-sede { background: #17452F; box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(47, 107, 76, .35); }
 .mapa-leg-info .leg-sede { display: none; } .ent-hero .mapa-leg-info .leg-sede { display: flex; }
 .ent-hero .mapa-leg-info .pt:not(.pt-sede):not(.pt-vazio) { background: #E3EEE2; box-shadow: 0 0 0 1.5px #315C45; }
 
@@ -3209,9 +3209,9 @@ svg.mapa.mapa-arrasta.arrastando { cursor: grabbing; }
 .ent-seg.seg button + button { border-left: 0; }
 @media (max-width: 900px) { .ent-seg.seg button { min-height: 44px; font-size: var(--t-sm); padding: 0 6px; } }   /* toque de 44 px no celular; a caixa cresce junto e a margem fica igual em cima e embaixo */
 .ent-seg.seg button:hover:not([aria-pressed="true"]) { background: color-mix(in srgb, var(--surface) 70%, transparent); color: var(--ink); }
-.ent-seg.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 700; box-shadow: 0 1px 2px rgba(23, 69, 47, .14), 0 2px 8px -2px rgba(23, 69, 47, .22); }   /* 06/11/2026 (coordenação: o verde cheio ao lado do botão anil "Entrar" brigava): a opção escolhida é a pílula clara; o único bloco forte é o Entrar */
-:root[data-theme="dark"] .ent-seg.seg button[aria-pressed="true"] { background: #2C3D33; box-shadow: inset 0 0 0 1px #4A6155; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ent-seg.seg button[aria-pressed="true"] { background: #2C3D33; box-shadow: inset 0 0 0 1px #4A6155; } }
+.ent-seg.seg button[aria-pressed="true"] { background: #D3EBDC; color: var(--accent); font-weight: 700; box-shadow: inset 0 0 0 1.5px var(--accent), 0 1px 3px rgba(23, 69, 47, .12); }   /* 07/11/2026 (coordenação: "sem cor tá feio"): a opção escolhida em verde-claro com letra e contorno verdes; o verde cheio fica só no Entrar, para os dois não brigarem */
+:root[data-theme="dark"] .ent-seg.seg button[aria-pressed="true"], :root[data-contraste] .ent-seg.seg button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ent-seg.seg button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); } }
 .ent-card input:-webkit-autofill, .ent-card input:-webkit-autofill:hover, .ent-card input:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 60px var(--surface) inset; -webkit-text-fill-color: var(--ink); caret-color: var(--ink); }   /* o navegador pintava de amarelo o e-mail e a senha lembrados */
 /* campos */
 .ent-card .campo { gap: 8px; }
