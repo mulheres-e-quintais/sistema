@@ -105,7 +105,6 @@ a { color: var(--accent); }
 .quem .nome { color: var(--barra-ink); font-weight: 500; }
 .quem .papel { color: var(--barra-sub); }
 .quem-txt { background: none; border: 0; padding: 0; margin: 0; font: inherit; line-height: 1.35; text-align: left; color: inherit; cursor: pointer; }   /* 07/11/2026 (coordenação): tocar no nome também abre Meus dados; para o teclado e o leitor de tela o botão é a foto (este fica fora do Tab) */
-.quem-txt:hover .nome { text-decoration: underline; text-underline-offset: 3px; }
 .btn-barra { text-decoration: none; background: transparent; border: 1px solid rgba(238, 243, 238, .35); color: var(--barra-ink); padding: 5px 12px; font: 500 var(--t-sm) var(--sans); cursor: pointer; }
 .btn-barra:hover { background: rgba(238, 243, 238, .1); }
 
