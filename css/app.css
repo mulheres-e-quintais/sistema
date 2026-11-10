@@ -19,7 +19,7 @@
   --dado-2: #A44934;     /* barras de andamento; ao cumprir a meta, a barra passa ao verde de cumprido */
   --destaque: #A44934;        /* destaque de enfeite (traço do sobretítulo, número da meta, ponto no mapa): verde, nunca o anil da ação */
   --sel-bg: #452B1A; --sel-ink: #FFFFFF;   /* botão escolhido */
-  --barra-bg: #F6EDE4; --barra-ink: #2E1D12; --barra-sub: #6E5243; --barra-borda: #E8DDD0;   /* 10/11/2026: cabeçalho creme (o branco era igual aos cartões) */
+  --barra-bg: #2E1D12; --barra-ink: #F6EDE4; --barra-sub: #DAC9B5; --barra-borda: #2E1D12;   /* 10/11/2026: cabeçalho marrom-escuro, igual ao rodapé (antes creme) */
 
   --bg: #FBF8F4;
   --surface: #FFFFFF;
@@ -99,11 +99,8 @@ a { color: var(--accent); }
 .barra-in { max-width: 1120px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: space-between; }
 .marca { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .marca img.emb { height: 48px; width: auto; display: block; }
-.marca-nome { font: 600 1.25rem/1.05 var(--marca); color: #452B1A; white-space: nowrap; }   /* D-35: o nome em texto, na letra da identidade (Libertinus Sans) */
-:root[data-theme="dark"] .marca-nome { color: #F6EDE4; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .marca-nome { color: #F6EDE4; } }
-:root[data-sol] .marca-nome { color: #000000; }
-.marca .sep { width: 1px; align-self: stretch; background: var(--line); }
+.marca-nome { font: 600 1.25rem/1.05 var(--marca); color: var(--barra-ink); white-space: nowrap; }   /* D-35: o nome em texto, na letra da identidade (Libertinus Sans) */
+.marca .sep { width: 1px; align-self: stretch; background: color-mix(in srgb, var(--barra-ink) 30%, transparent); }
 .marca .sis { font: 400 var(--t-xs)/1.3 var(--sans); color: var(--barra-sub); }
 .marca .sis b { display: block; color: var(--barra-ink); font: 600 var(--t-lg)/1.2 var(--serif); }
 .quem { display: flex; align-items: center; gap: 10px; font-size: var(--t-sm); }
@@ -227,6 +224,9 @@ details.hist[open] summary::after { content: "Recolher"; }
 .painel { position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100%); background: var(--bg); z-index: 21; display: flex; flex-direction: column; box-shadow: var(--shadow); padding-top: env(safe-area-inset-top, 0px); }
 .painel-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 18px 20px 14px; background: var(--surface); border-bottom: 1px solid var(--line); }
 .painel-cab .t { display: grid; gap: 4px; min-width: 0; }
+.painel-cab-acoes { display: flex; align-items: center; gap: 8px; flex: none; }
+.aj-ler { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.aj-ler[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
 .fechar { border: 0; background: transparent; font-size: 24px; line-height: 1; cursor: pointer; color: var(--ink-2); padding: 2px 6px; border-radius: 6px; }
 /* 07/11/2026 (pedido da coordenação): o × de fechar gira um quarto de volta ao passar o mouse ou receber o foco e encolhe ao tocar.
    Só transform (a placa de vídeo faz, sem redesenhar a página); o × que remove uma linha não gira. Sem animação com "reduzir movimento" ou "Parar as animações". */
@@ -2535,7 +2535,7 @@ details.explica > p:last-child { margin-bottom: 0; }
 .linha-din input:focus, .linha-din select:focus, .prod-l input:focus { outline: 3px solid var(--focus); outline-offset: 0; border-color: transparent; box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent); }
 @media (pointer: coarse) { .linha-din .fechar, .painel-cab .fechar { min-width: 40px; min-height: 40px; } }
 /* foco: no cabeçalho creme, a cor de foco do tema; no rodapé escuro e na opção marcada (contorno por dentro), o contorno é claro (10/11/2026) */
-header.barra :focus-visible { outline-color: var(--focus); }
+header.barra :focus-visible { outline-color: var(--barra-ink); }
 .rodape :focus-visible { outline-color: var(--rodape-ink); }
 .seg button[aria-pressed="true"]:focus-visible, .seg button.ativo:focus-visible { outline-color: var(--sel-ink); }
 .rodape { margin-top: 32px; }
@@ -4622,11 +4622,11 @@ table.quadro.desp-tab th:nth-child(5), table.quadro.desp-tab td:nth-child(5) { w
    3. Barra de progresso: verde quando a meta está cumprida, em todo cartão (antes a barra do topo ficava verde e as dos cartões, marrons).
    ====================================================================== */
 
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --cont-bg: #4A3A10; --barra-bg: #211915; --barra-ink: #F6EDE4; --barra-sub: #C6AB8B; --barra-borda: #3A2C24; --rodape-bg: #0E0A08; --rodape-ink: #F6EDE4; --rodape-sub: #C6AB8B; --rodape-borda: #3A2C24; --rodape-borda-bt: #6B5546; --resolver: #A9C98F; --resolver-ink: #16110E; --cont-ink: #F7D774; --cont-borda: #F7D774;
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --cont-bg: #4A3A10; --barra-bg: #0E0A08; --barra-ink: #F6EDE4; --barra-sub: #C6AB8B; --barra-borda: #3A2C24; --rodape-bg: #0E0A08; --rodape-ink: #F6EDE4; --rodape-sub: #C6AB8B; --rodape-borda: #3A2C24; --rodape-borda-bt: #6B5546; --resolver: #A9C98F; --resolver-ink: #16110E; --cont-ink: #F7D774; --cont-borda: #F7D774;
   --surface: #211915; --surface-2: #2A201B; --line: #3A2C24; --line-2: #6B5546; --accent: #EC8D72; --destaque: #EC8D72; } }
-:root[data-theme="dark"] { --cont-bg: #4A3A10; --barra-bg: #211915; --barra-ink: #F6EDE4; --barra-sub: #C6AB8B; --barra-borda: #3A2C24; --rodape-bg: #0E0A08; --rodape-ink: #F6EDE4; --rodape-sub: #C6AB8B; --rodape-borda: #3A2C24; --rodape-borda-bt: #6B5546; --resolver: #A9C98F; --resolver-ink: #16110E; --cont-ink: #F7D774; --cont-borda: #F7D774;
+:root[data-theme="dark"] { --cont-bg: #4A3A10; --barra-bg: #0E0A08; --barra-ink: #F6EDE4; --barra-sub: #C6AB8B; --barra-borda: #3A2C24; --rodape-bg: #0E0A08; --rodape-ink: #F6EDE4; --rodape-sub: #C6AB8B; --rodape-borda: #3A2C24; --rodape-borda-bt: #6B5546; --resolver: #A9C98F; --resolver-ink: #16110E; --cont-ink: #F7D774; --cont-borda: #F7D774;
   --surface: #211915; --surface-2: #2A201B; --line: #3A2C24; --line-2: #6B5546; --accent: #EC8D72; --destaque: #EC8D72; }   /* ação no escuro: verde-claro (D-33) */
-:root[data-sol] { --barra-bg: #FFFFFF; --barra-borda: #000000; --rodape-bg: #2A1A10; --rodape-ink: #FFFFFF; --rodape-sub: #FFFFFF; --rodape-borda: #000000; --rodape-borda-bt: #FFFFFF; --resolver: #1F4A1A; --resolver-ink: #FFFFFF; --alvo: 48px; --cont-bg: #FFE38A; --cont-ink: #000000; --cont-borda: #000000; --accent: #2A1A10; --destaque: #7A2E1E; }
+:root[data-sol] { --barra-bg: #2A1A10; --barra-ink: #FFFFFF; --barra-sub: #FFFFFF; --barra-borda: #000000; --rodape-bg: #2A1A10; --rodape-ink: #FFFFFF; --rodape-sub: #FFFFFF; --rodape-borda: #000000; --rodape-borda-bt: #FFFFFF; --resolver: #1F4A1A; --resolver-ink: #FFFFFF; --alvo: 48px; --cont-bg: #FFE38A; --cont-ink: #000000; --cont-borda: #000000; --accent: #2A1A10; --destaque: #7A2E1E; }
 .abas .conta, .abas-m-grade .conta, .abas-m-pend, .atalhos-grade .btn .conta, .conta-t:not(.zero) {
   background: var(--cont-bg); color: var(--cont-ink); box-shadow: inset 0 0 0 1px var(--cont-borda); }
 .atalhos-grade .btn.pri .conta { background: var(--cont-bg); color: var(--cont-ink); }
@@ -4645,7 +4645,7 @@ table.quadro.desp-tab th:nth-child(5), table.quadro.desp-tab td:nth-child(5) { w
 .barra-acess button { font: inherit; font-weight: 600; color: inherit; background: none; border: 0; border-radius: 6px; padding: 3px 8px; min-height: 28px;
   display: inline-flex; align-items: center; gap: 6px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
 .barra-acess button:hover { background: color-mix(in srgb, var(--barra-ink) 10%, transparent); }
-.barra-acess button:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }   /* 10/11/2026: o contorno era quase branco (feito para a barra verde-escura) e sumia na barra creme */
+.barra-acess button:focus-visible { outline: 3px solid var(--barra-ink); outline-offset: 1px; }   /* 10/11/2026: o contorno era quase branco (feito para a barra verde-escura) e sumia na barra creme */
 .barra-acess kbd { font: inherit; font-weight: 600; min-width: 18px; padding: 0 4px; border-radius: 4px; border: 1px solid currentColor; text-align: center; line-height: 16px; }
 .barra-acess .ba-ic { display: inline-grid; }
 .barra-acess .pular, .barra-acess .pular:focus { position: static; top: auto; left: auto; z-index: auto; box-shadow: none; background: none; color: inherit; padding: 3px 8px; font: inherit; font-weight: 600; border-radius: 6px; }   /* o antigo "Pular" ficava escondido no alto; na barra ele aparece */
