@@ -3513,6 +3513,8 @@ main .secao:not(.secao .secao):not(.hs-sec):not(.pre-sec):not(.dx-atencao):not(.
 .seg button[aria-label="Mês anterior"], .seg button[aria-label="Próximo mês"] { min-width: 40px; }
 .link.perigo, a.link, .ent-link { display: inline-flex; align-items: center; min-height: 40px; } }
 @media (max-width: 760px) { .menu-planilha-op { position: static; width: 100%; margin-top: 6px; } }
+.cab > .menu-planilha, .cab > :first-child + :is(button, a, details, .btn) { margin-left: auto; }   /* 10/11/2026: o botão do cabeçalho da seção fica à direita também quando desce para a linha de baixo (Nova turma, Baixar planilha…) */
+@media (max-width: 760px) { .cab > .menu-planilha { flex-basis: 100%; text-align: right; } .cab > .menu-planilha > summary { display: inline-flex; } .cab > .menu-planilha .menu-planilha-op { text-align: left; } }   /* celular: o botão não pula para a esquerda ao abrir */
 
 /* v265: "Pular para o conteúdo" — primeiro item do Tab, escondido até receber o foco */
 .pular { position: absolute; left: 8px; top: -60px; z-index: 50; padding: 10px 16px; border-radius: 10px; border: 0; background: var(--surface); color: var(--ink);
@@ -4458,6 +4460,7 @@ table.quadro.desp-tab th:nth-child(1), table.quadro.desp-tab td:nth-child(1) { w
 .fin-desp .fin-wrap, .secao .desp-tab { overflow-x: auto; }
 /* 22/10/2026: Despesas do projeto no fim do Financeiro, como no Saberes que Cultivam (sem lançamento à mão) */
 .desp-acoes { display: flex; flex-wrap: wrap; gap: 10px; margin: 4px 0 14px; }
+@media (min-width: 521px) { .desp-acoes { justify-content: flex-end; } }   /* 10/11/2026: "Importar planilha da FUNCERN" à direita, como os botões dos formulários */
 .exec-desp table.quadro.desp-tab { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; border-collapse: separate; border-spacing: 0; background: var(--surface); }
 .exec-desp table.quadro.desp-tab thead th { background: var(--barra-bg); color: var(--barra-ink); letter-spacing: 0; text-transform: none; font-size: var(--t-xs); padding: 14px 16px; }
 .exec-desp table.quadro.desp-tab td { padding: 14px 16px; border-top: 1px solid var(--line); }
