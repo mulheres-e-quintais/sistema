@@ -110,8 +110,8 @@ a { color: var(--accent); }
 .quem .nome { color: var(--barra-ink); font-weight: 400; }
 .quem .papel { color: var(--barra-sub); }
 .quem-txt { background: none; border: 0; padding: 0; margin: 0; font: inherit; line-height: 1.35; text-align: left; color: inherit; cursor: pointer; }   /* 07/11/2026 (coordenação): tocar no nome também abre Meus dados; para o teclado e o leitor de tela o botão é a foto (este fica fora do Tab) */
-.btn-barra { text-decoration: none; background: transparent; border: 1px solid rgba(238, 243, 238, .35); color: var(--barra-ink); padding: 5px 12px; font: 500 var(--t-sm) var(--sans); cursor: pointer; }
-.btn-barra:hover { background: rgba(238, 243, 238, .1); }
+.btn-barra { text-decoration: none; background: transparent; border: 1px solid color-mix(in srgb, var(--barra-ink) 35%, transparent); color: var(--barra-ink); padding: 5px 12px; font: 500 var(--t-sm) var(--sans); cursor: pointer; }
+.btn-barra:hover { background: color-mix(in srgb, var(--barra-ink) 10%, transparent); }
 
 .demo { background: var(--surface-2); border-bottom: 1px solid var(--line); }
 .demo-in { max-width: 1120px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; font-size: var(--t-sm); color: var(--ink-2); }
@@ -777,8 +777,9 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 }
 .kit-proj.passou .bar i { background: var(--crit); }
 /* botão "Meus dados" (foto) na barra */
-.btn-meus { background: none; border: 2px solid rgba(238, 243, 238, .45); border-radius: 50%; padding: 0; cursor: pointer; line-height: 0; flex: none; }
-.btn-meus:hover, .btn-meus:focus-visible { border-color: var(--barra-ink); outline: none; }
+.btn-meus { background: none; border: 2px solid color-mix(in srgb, var(--barra-ink) 30%, transparent); border-radius: 50%; padding: 0; cursor: pointer; line-height: 0; flex: none; }
+.btn-meus:hover { border-color: var(--barra-ink); }
+.btn-meus:focus-visible { border-color: var(--barra-ink); outline: 3px solid var(--focus); outline-offset: 2px; }
 .rot-acoes { flex-wrap: wrap; align-items: center; min-width: 170px; display: grid; gap: 8px; }
 .fazer { list-style: none; margin: 0; padding: 0; display: grid; }
 .fazer li { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
@@ -888,8 +889,9 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 @media (max-width: 640px) { .marca .sis { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }  }
 
 /* ---------- ajuda ---------- */
-.btn-ajuda { width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(238, 243, 238, .45); background: transparent; color: var(--barra-ink); font: 700 var(--t-base) var(--sans); cursor: pointer; flex: none; }
-.btn-ajuda:hover, .btn-ajuda:focus-visible { background: rgba(238, 243, 238, .12); outline: none; }
+.btn-ajuda { width: 32px; height: 32px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--barra-ink) 35%, transparent); background: transparent; color: var(--barra-ink); font: 700 var(--t-base) var(--sans); cursor: pointer; flex: none; }
+.btn-ajuda:hover { background: color-mix(in srgb, var(--barra-ink) 10%, transparent); }
+.btn-ajuda:focus-visible { background: color-mix(in srgb, var(--barra-ink) 10%, transparent); outline: 3px solid var(--focus); outline-offset: 2px; }
 .ajuda { display: grid; gap: 12px; }
 .ajuda h3 { margin: 6px 0 0; }
 .ajuda-intro { margin: 0; font-size: var(--t-base); line-height: 1.55; color: var(--ink); }
@@ -993,6 +995,16 @@ input.invalido { border-color: var(--crit) !important; box-shadow: 0 0 0 3px col
 .rodape-ajuda:hover { background: color-mix(in srgb, var(--rodape-ink) 10%, transparent); }
 .rodape .rodape-acess { justify-content: flex-start; }
 .rodape a, .rodape .rodape-acess button { color: var(--rodape-ink); }
+/* 10/11/2026 (pedido da coordenação): um desenho só, igual na entrada e dentro do sistema (dentro aparecem só os botões e a versão).
+   Celular: tudo centralizado e a frase da LGPD sempre na mesma largura (quebra igual nos dois). */
+@media (max-width: 768px) {
+  .rodape-in { justify-items: center; text-align: center; }
+  .rodape-l1, .rodape-acoes, .rodape-links, .rodape .rodape-acess { justify-content: center; }
+  .rodape-dados, .rodape-dir { justify-items: center; }
+  .rodape-nome { display: block; }   /* o nome também no celular: o mesmo desenho do computador */
+  .rodape-dir > p { max-width: none; }
+}
+@media (min-width: 769px) { .rodape br.so-cel { display: none; } }
 @media (min-width: 769px) {
   .rodape-in { gap: 0; padding-block: 32px calc(32px + env(safe-area-inset-bottom)); }
   .rodape-nome { display: block; }
@@ -2516,8 +2528,10 @@ details.explica > p:last-child { margin-bottom: 0; }
 .campo input:focus, .campo select:focus, .campo textarea:focus, .campo input:focus-visible, .campo select:focus-visible, .campo textarea:focus-visible,
 .linha-din input:focus, .linha-din select:focus, .prod-l input:focus { outline: 3px solid var(--focus); outline-offset: 0; border-color: transparent; box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent); }
 @media (pointer: coarse) { .linha-din .fechar, .painel-cab .fechar { min-width: 40px; min-height: 40px; } }
-/* sobre fundo escuro (barra do topo, rodapé, opção marcada): o contorno é claro */
-header.barra :focus-visible, .rodape :focus-visible, .seg button[aria-pressed="true"]:focus-visible, .seg button.ativo:focus-visible { outline-color: #EEF3EE; }
+/* foco: no cabeçalho creme, a cor de foco do tema; no rodapé escuro e na opção marcada (contorno por dentro), o contorno é claro (10/11/2026) */
+header.barra :focus-visible { outline-color: var(--focus); }
+.rodape :focus-visible { outline-color: var(--rodape-ink); }
+.seg button[aria-pressed="true"]:focus-visible, .seg button.ativo:focus-visible { outline-color: var(--sel-ink); }
 .rodape { margin-top: 32px; }
 .seg button:focus-visible { outline-width: 2px; }
 @media (prefers-reduced-motion: reduce) { :focus-visible { transition: none; } }
@@ -4617,20 +4631,20 @@ table.quadro.desp-tab th:nth-child(5), table.quadro.desp-tab td:nth-child(5) { w
    v329 (31/10/2026, pedido da coordenação): padrão de acessibilidade do governo (eMAG 3.1), js/acessibilidade.js
    ====================================================================== */
 /* barra de acessibilidade: no alto de toda tela, antes do cabeçalho (primeiro item do Tab) */
-.barra-acess { background: var(--barra-bg); color: var(--barra-ink); border-bottom: 1px solid rgba(238, 243, 238, .22); font-size: var(--t-xs); position: absolute; top: 0; left: 0; right: 0; z-index: 60; }
+.barra-acess { background: var(--barra-bg); color: var(--barra-ink); border-bottom: 1px solid var(--barra-borda, transparent); font-size: var(--t-xs); position: absolute; top: 0; left: 0; right: 0; z-index: 60; }
 .ba-in { max-width: var(--wrap); margin: 0 auto; padding: 2px max(20px, env(safe-area-inset-right, 0px)) 2px max(20px, env(safe-area-inset-left, 0px));
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 16px; }
 .barra-acess ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 2px 6px; }
 .barra-acess li[hidden] { display: none; }
 .barra-acess button { font: inherit; font-weight: 600; color: inherit; background: none; border: 0; border-radius: 6px; padding: 3px 8px; min-height: 28px;
   display: inline-flex; align-items: center; gap: 6px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
-.barra-acess button:hover { background: rgba(238, 243, 238, .14); }
-.barra-acess button:focus-visible { outline: 2px solid #EEF3EE; outline-offset: 1px; }
+.barra-acess button:hover { background: color-mix(in srgb, var(--barra-ink) 10%, transparent); }
+.barra-acess button:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }   /* 10/11/2026: o contorno era quase branco (feito para a barra verde-escura) e sumia na barra creme */
 .barra-acess kbd { font: inherit; font-weight: 600; min-width: 18px; padding: 0 4px; border-radius: 4px; border: 1px solid currentColor; text-align: center; line-height: 16px; }
 .barra-acess .ba-ic { display: inline-grid; }
 .barra-acess .pular, .barra-acess .pular:focus { position: static; top: auto; left: auto; z-index: auto; box-shadow: none; background: none; color: inherit; padding: 3px 8px; font: inherit; font-weight: 600; border-radius: 6px; }   /* o antigo "Pular" ficava escondido no alto; na barra ele aparece */
 .barra-acess .ba-ic svg { width: 15px; height: 15px; }
-.barra-acess .ba-contraste[aria-pressed="true"] { background: #EEF3EE; color: #06160D; text-decoration: none; }
+.barra-acess .ba-contraste[aria-pressed="true"] { background: var(--barra-ink); color: var(--barra-bg); text-decoration: none; }
 @media (pointer: coarse) { .barra-acess button, .barra-acess .pular, .barra-acess .pular:focus { min-height: var(--alvo); } .ba-in { padding-top: 0; padding-bottom: 0; } }   /* toque: 44 px, o padrão do sistema */
 /* v330 (como no Saberes que Cultivam): a barra fica guardada até receber o foco do teclado (continua sendo o primeiro item do Tab);
    com o foco, aparece por cima do alto da tela, sem empurrar nada. "Acessibilidade" e "Alto contraste" ficam também no rodapé, sempre à vista. */
