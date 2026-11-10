@@ -1132,6 +1132,7 @@ input[type=file]::file-selector-button { margin-right: 12px; min-height: 36px; p
 input[type=file]::file-selector-button:hover { border-color: var(--dado-2); background: var(--surface); }
 /* ações no fim da ficha */
 form .acoes:last-child .btn.pri { min-width: 160px; }
+@media (min-width: 521px) { form .acoes:last-child { justify-content: flex-end; } }   /* 10/11/2026 (pedido da coordenação): botões do fim do formulário à direita; no celular continuam lado a lado na largura toda */
 @media (max-width: 520px) { .criterio .sn-par { width: 100%; } form .acoes:last-child { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); } form .acoes:last-child .btn.pri { min-width: 0; } }
 .sn-par:has(> .sn:nth-child(3)) { display: flex; flex-wrap: wrap; }
 .sn-par:has(> .sn:nth-child(3)) .sn { flex: 1 1 auto; white-space: nowrap; }
