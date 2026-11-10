@@ -19,7 +19,7 @@
   --dado-2: #A44934;     /* barras de andamento; ao cumprir a meta, a barra passa ao verde de cumprido */
   --destaque: #A44934;        /* destaque de enfeite (traço do sobretítulo, número da meta, ponto no mapa): verde, nunca o anil da ação */
   --sel-bg: #452B1A; --sel-ink: #FFFFFF;   /* botão escolhido */
-  --barra-bg: #FFFFFF; --barra-ink: #2E1D12; --barra-sub: #6E5243;
+  --barra-bg: #F6EDE4; --barra-ink: #2E1D12; --barra-sub: #6E5243; --barra-borda: #E8DDD0;   /* 10/11/2026: cabeçalho creme (o branco era igual aos cartões) */
 
   --bg: #FBF8F4;
   --surface: #FFFFFF;
@@ -33,6 +33,7 @@
   --accent: #452B1A;
   --accent-ink: #FFFFFF;
   --resolver: #3F6B34; --resolver-ink: #FFFFFF;   /* D-35: botão "Resolver" */
+  --rodape-bg: #2E1D12; --rodape-ink: #F6EDE4; --rodape-sub: #DAC9B5; --rodape-borda: #2E1D12; --rodape-borda-bt: #6B5546;   /* 10/11/2026: rodapé marrom-escuro */
   --focus: #452B1A;   /* foco do teclado: o verde da marca */
   --ok: #2F5A26; --ok-bg: #E3F0DC;   /* v261: texto das etiquetas um tom abaixo (5,2 → 6,1) */   /* verde #2E7D43 nas barras e pontos; texto um tom abaixo (contraste ≥ 4,5) */   /* era #2F7D32: 4,4 → 4,9 */
   --pend: #5C4200; --pend-bg: #FCE7A1;
@@ -93,7 +94,8 @@ a { color: var(--accent); }
 [hidden] { display: none !important; }
 
 /* barra da marca */
-.barra { background: var(--barra-bg); color: var(--barra-ink); position: relative; }
+.barra { background: var(--barra-bg); color: var(--barra-ink); position: relative; border-bottom: 1px solid var(--barra-borda, transparent); }
+:root[data-sol] .barra { border-bottom-width: 2px; }
 .barra-in { max-width: 1120px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: space-between; }
 .marca { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .marca img.emb { height: 48px; width: auto; display: block; }
@@ -962,24 +964,44 @@ input.invalido { border-color: var(--crit) !important; box-shadow: 0 0 0 3px col
 /* ---------- rodapé ---------- */
 #app { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; position: relative; }
 #app > main { flex: 1 0 auto; }
-.rodape { background: var(--barra-bg); color: var(--barra-sub); }
+.rodape { background: var(--rodape-bg); color: var(--rodape-sub); border-top: 1px solid var(--rodape-borda); }
 .ent + .rodape, .ent-conv + .rodape { margin-top: 0; }
 
 /* D-35 (08/11/2026): 1) ações (Ajuda desta página, Relatar problema), 2) dados do projeto em texto secundário, 3) faixa das marcas oficiais.
    A marca do sistema fica só no cabeçalho. As marcas oficiais ficam em fundo branco também no escuro (não se recolore marca de ninguém). */
 .rodape-in { margin: 0 auto; display: grid; gap: 16px; padding-block: 24px calc(24px + env(safe-area-inset-bottom)); font-size: var(--t-sm); line-height: 1.5; }
 .rodape p { margin: 0; }
-.rodape-acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+/* 10/11/2026 (pedido da coordenação): rodapé na disposição do Saberes que Cultivam. Tela grande: linha 1 = nome do sistema à esquerda e
+   Ajuda/Relatar à direita; linha fina; linha 2 = instituições à esquerda, LGPD, acessibilidade e versão à direita. No celular: ações,
+   dados, marcas (sem o nome do sistema, que fica no cabeçalho). Cores da opção B: cabeçalho creme, rodapé marrom-escuro (--rodape-*). */
+.rodape-l1 { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+.rodape-nome { display: none; }
+.rodape-nome b { display: block; font-size: var(--t-xl); font-weight: 600; color: var(--rodape-ink); }
+.rodape-nome span { display: block; color: var(--rodape-sub); }
+.rodape-acoes { display: flex; flex-wrap: wrap; gap: 8px; flex: 1 1 auto; }
+@media (min-width: 769px) { .rodape-acoes { flex: 0 1 auto; justify-content: flex-end; } }
 .rodape-acoes:empty { display: none; }
-.rodape-dados { display: grid; gap: 4px; color: var(--ink-2); }
-.rodape-org span { opacity: 1; }
+.rodape-dados { display: grid; gap: 4px; color: var(--rodape-sub); }
+.rodape-org { color: var(--rodape-ink); }
+.rodape-dir { display: grid; gap: 4px; }
+.rodape-links { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.rodape-links .rodape-acess { margin: 0; }
 .rodape-marcas { list-style: none; margin: 0; padding: 8px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 24px; background: #FFFFFF; border: 1px solid var(--line); border-radius: 16px; }
 .rodape-marcas img { height: 32px; width: auto; display: block; }
-.rodape-ajuda { display: inline-flex; align-items: center; gap: 8px; min-height: var(--alvo); padding: 4px 16px 4px 8px; border: 1px solid var(--line-2);
-  border-radius: 14px; background: transparent; color: var(--ink); font: 600 var(--t-sm) var(--sans); cursor: pointer; }
-.rodape-ajuda:hover { background: var(--surface-2); }
+.rodape-ajuda { display: inline-flex; align-items: center; gap: 8px; min-height: var(--alvo); padding: 4px 12px 4px 10px; border: 1px solid var(--rodape-borda-bt);
+  border-radius: 999px; background: transparent; color: var(--rodape-ink); font: 600 var(--t-sm) var(--sans); cursor: pointer; }
+.rodape-ajuda:hover { background: color-mix(in srgb, var(--rodape-ink) 10%, transparent); }
 .rodape .rodape-acess { justify-content: flex-start; }
-@media (max-width: 420px) { header.barra .btn-contraste { display: none; } }   /* D-35: no iPhone em pé, o nome da marca não some; o alto contraste continua na barra de acessibilidade do alto e no rodapé */
+.rodape a, .rodape .rodape-acess button { color: var(--rodape-ink); }
+@media (min-width: 769px) {
+  .rodape-in { gap: 0; padding-block: 32px calc(32px + env(safe-area-inset-bottom)); }
+  .rodape-nome { display: block; }
+  .rodape-l1 { padding-bottom: 24px; border-bottom: 1px solid var(--rodape-borda-bt); }
+  .rodape-dados { padding-top: 24px; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px 32px; }
+  .rodape-dir { justify-items: end; text-align: right; }
+  .rodape-links { justify-content: flex-end; }
+  .rodape-marcas { margin-top: 24px; }
+}
 .rodape-ajuda-ic { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--line-2); font: 600 var(--t-sm) var(--sans); }
 .cad-modo-2 { margin-top: 12px; padding: 12px 16px; display: grid !important; grid-template-columns: 1fr auto; column-gap: 12px; row-gap: 2px; align-items: center; }
 .cad-modo-2 b { font-size: var(--t-base); grid-column: 1; }
@@ -1360,13 +1382,17 @@ body.com-teste .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .vit-mapa .mapa-lista li, .mapa-pub ~ .mapa-lista li { white-space: nowrap; }
 /* tela de entrada no computador: frase e estados à esquerda, login à direita; os números do projeto
    (mapa e mosaico) ocupam a largura toda embaixo — o mapa fica maior e nada some */
+/* 09/11/2026 (pedido da coordenação): a frase fica na mesma posição do Saberes que Cultivam — conteúdo com até 1200 px no centro da tela,
+   colunas 1,1fr | 380–464 px com 80 px entre elas, e o bloco da marca, frase e estados centrado na altura do cartão de acesso
+   (as linhas 1 e 6 dividem a sobra; antes a frase ficava colada no alto e o cartão no meio) */
 @media (min-width: 901px) {
-  .ent { row-gap: 18px; align-items: start; grid-template-rows: auto auto auto 1fr auto; }
+  .ent { width: 100%; max-width: 1200px; margin: 0 auto; padding: 64px 40px; grid-template-columns: minmax(0, 1.1fr) minmax(380px, 464px); column-gap: 80px;
+    row-gap: 16px; align-items: start; grid-template-rows: 1fr auto auto auto auto 1fr auto; }
   .ent-hero { display: contents; }
   .ent-hero > * { position: relative; z-index: 1; }
-  .ent-marca { grid-column: 1; grid-row: 1; } .ent-t { grid-column: 1; grid-row: 2; } .ent-s { grid-column: 1; grid-row: 3; } .ent-ufs { grid-column: 1; grid-row: 4; align-self: start; }
-  .ent-acesso { grid-column: 2; grid-row: 1 / span 4; align-self: center; }
-  .ent-hero .vitrine { grid-column: 1 / -1; grid-row: 5; margin-top: 10px; }
+  .ent-marca { grid-column: 1; grid-row: 2; margin-bottom: 24px; } .ent-t { grid-column: 1; grid-row: 3; } .ent-s { grid-column: 1; grid-row: 4; } .ent-ufs { grid-column: 1; grid-row: 5; align-self: start; margin-top: 8px; }
+  .ent-acesso { grid-column: 2; grid-row: 1 / span 6; align-self: center; }
+  .ent-hero .vitrine { grid-column: 1 / -1; grid-row: 7; margin-top: 10px; }
   .ent-hero .vit-duo { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
   .ent-hero .ent-broto { display: none !important; }
 }
@@ -4576,11 +4602,11 @@ table.quadro.desp-tab th:nth-child(5), table.quadro.desp-tab td:nth-child(5) { w
    3. Barra de progresso: verde quando a meta está cumprida, em todo cartão (antes a barra do topo ficava verde e as dos cartões, marrons).
    ====================================================================== */
 
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --cont-bg: #4A3A10; --barra-bg: #211915; --barra-ink: #F6EDE4; --barra-sub: #C6AB8B; --resolver: #A9C98F; --resolver-ink: #16110E; --cont-ink: #F7D774; --cont-borda: #F7D774;
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --cont-bg: #4A3A10; --barra-bg: #211915; --barra-ink: #F6EDE4; --barra-sub: #C6AB8B; --barra-borda: #3A2C24; --rodape-bg: #0E0A08; --rodape-ink: #F6EDE4; --rodape-sub: #C6AB8B; --rodape-borda: #3A2C24; --rodape-borda-bt: #6B5546; --resolver: #A9C98F; --resolver-ink: #16110E; --cont-ink: #F7D774; --cont-borda: #F7D774;
   --surface: #211915; --surface-2: #2A201B; --line: #3A2C24; --line-2: #6B5546; --accent: #EC8D72; --destaque: #EC8D72; } }
-:root[data-theme="dark"] { --cont-bg: #4A3A10; --barra-bg: #211915; --barra-ink: #F6EDE4; --barra-sub: #C6AB8B; --resolver: #A9C98F; --resolver-ink: #16110E; --cont-ink: #F7D774; --cont-borda: #F7D774;
+:root[data-theme="dark"] { --cont-bg: #4A3A10; --barra-bg: #211915; --barra-ink: #F6EDE4; --barra-sub: #C6AB8B; --barra-borda: #3A2C24; --rodape-bg: #0E0A08; --rodape-ink: #F6EDE4; --rodape-sub: #C6AB8B; --rodape-borda: #3A2C24; --rodape-borda-bt: #6B5546; --resolver: #A9C98F; --resolver-ink: #16110E; --cont-ink: #F7D774; --cont-borda: #F7D774;
   --surface: #211915; --surface-2: #2A201B; --line: #3A2C24; --line-2: #6B5546; --accent: #EC8D72; --destaque: #EC8D72; }   /* ação no escuro: verde-claro (D-33) */
-:root[data-sol] { --resolver: #1F4A1A; --resolver-ink: #FFFFFF; --alvo: 48px; --cont-bg: #FFE38A; --cont-ink: #000000; --cont-borda: #000000; --accent: #2A1A10; --destaque: #7A2E1E; }
+:root[data-sol] { --barra-bg: #FFFFFF; --barra-borda: #000000; --rodape-bg: #2A1A10; --rodape-ink: #FFFFFF; --rodape-sub: #FFFFFF; --rodape-borda: #000000; --rodape-borda-bt: #FFFFFF; --resolver: #1F4A1A; --resolver-ink: #FFFFFF; --alvo: 48px; --cont-bg: #FFE38A; --cont-ink: #000000; --cont-borda: #000000; --accent: #2A1A10; --destaque: #7A2E1E; }
 .abas .conta, .abas-m-grade .conta, .abas-m-pend, .atalhos-grade .btn .conta, .conta-t:not(.zero) {
   background: var(--cont-bg); color: var(--cont-ink); box-shadow: inset 0 0 0 1px var(--cont-borda); }
 .atalhos-grade .btn.pri .conta { background: var(--cont-bg); color: var(--cont-ink); }
@@ -4649,7 +4675,7 @@ a[data-nova-aba]:not(:has(img))::after { content: ""; display: inline-block; wid
   --bg: #000000; --surface: #000000; --surface-2: #141414; --ink: #FFFFFF; --ink-2: #FFFFFF; --muted: #F0F0F0;
   --line: #FFFFFF; --line-2: #FFFFFF; --campo-borda: #FFFFFF; --accent: #7DFFC0; --accent-ink: #000000; --focus: #7DFFC0;
   --ok: #7DFFC0; --ok-bg: #000000; --pend: #FFD24D; --pend-bg: #000000; --off: #FFFFFF; --off-bg: #000000; --crit: #FF8A8A; --crit-bg: #000000;
-  --cont-bg: #FFD24D; --cont-ink: #000000; --cont-borda: #FFD24D; --resolver: #7DFFC0; --resolver-ink: #000000;
+  --cont-bg: #FFD24D; --cont-ink: #000000; --cont-borda: #FFD24D; --rodape-bg: #000000; --rodape-ink: #FFFFFF; --rodape-sub: #FFFFFF; --rodape-borda: #FFFFFF; --rodape-borda-bt: #FFFFFF; --resolver: #7DFFC0; --resolver-ink: #000000;
   --st-ok-bg: #000000; --st-and-bg: #000000; --st-aten-bg: #000000; --st-atr-bg: #000000; --st-nao-bg: #000000; --fin-grupo: #141414;
   --m-uf: #000000; --m-uf-viz: #000000; --m-borda: #FFFFFF; --m-fundo: #000000; --m-sigla: #FFFFFF; --m-texto: #FFFFFF;
   --vaga-bg: repeating-linear-gradient(135deg, transparent 0 7px, rgba(255, 255, 255, .14) 7px 8px);
