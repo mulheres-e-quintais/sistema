@@ -706,6 +706,9 @@ details.hab > form { padding: 0 14px 14px; margin-top: 4px !important; }
 @media (max-width: 640px) { .pag-l { grid-template-columns: auto minmax(0, 1fr); } .pag-l > span:last-child { grid-column: 2; } }
 
 .pag-c > .btn { justify-self: start; }
+.pag-resumo { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.pag-resumo p, .pag-resumo ul { margin: 0; }
+.pag-resumo ul { padding-left: 1.2em; margin-top: 4px; }
 /* ---------- impacto: antes × depois ---------- */
 .tab-imp { min-width: 0; table-layout: auto; }
 .tab-imp td:first-child { width: 55%; }
