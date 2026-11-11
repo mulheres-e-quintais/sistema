@@ -11,7 +11,9 @@ MQ.CONFIG = { supabaseUrl: '', supabaseAnonKey: '', semServiceWorker: true, cena
   let dia = '2027-09-30';
   try { const q = new URLSearchParams(window.location.search).get('data'); if (/^\d{4}-\d{2}-\d{2}$/.test(q || '') && q >= '2026-09-14' && q <= '2027-09-30' && !isNaN(new Real(q + 'T12:00:00').getTime())) dia = q; } catch (e) { /* sem endereço */ }
   MQ.CONFIG.simDia = dia;
-  const desloc = new Real(dia + 'T09:00:00-03:00').getTime() - Real.now();
+  /* 11/11/2026: ?hora=HH:MM (de Fortaleza; padrão 09:00) — o teste do fuso põe o relógio perto da meia-noite, onde o dia muda entre os fusos */
+  let hora = '09:00'; try { const h = new URLSearchParams(window.location.search).get('hora'); if (/^([01]\d|2[0-3]):[0-5]\d$/.test(h || '')) hora = h; } catch (e) { /* sem endereço */ }
+  const desloc = new Real(dia + 'T' + hora + ':00-03:00').getTime() - Real.now();
   function Simulada(...a) {
     if (!(this instanceof Simulada)) return new Real(Real.now() + desloc).toString();   // Date() sem new devolve texto
     return a.length ? new Real(...a) : new Real(Real.now() + desloc);
