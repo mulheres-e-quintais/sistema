@@ -101,6 +101,21 @@
   fixo('UFS', NE.map(([uf, nome]) => ({ uf, nome })));
   fixo('META_UF', { diagnosticos: porUf, quintais: porUf, visitas: porUf * 2 });
   fixo('VAGAS_UF', porUf); fixo('DIAS_CAMPO_UF', porUf * 5); fixo('VAGAS_POR_UF', vagasPorUf);
-  multiplicado('METAS', m => ['diagnostico', 'implantacao', 'visitas'].includes(m.fonte)); multiplicado('ORCAMENTO');
+  multiplicado('METAS', m => ['diagnostico', 'implantacao', 'visitas'].includes(m.fonte));
+  /* orçamento (pedidos do usuário, 21/11/2026: "é 10 mil por quintal" e "aumente valores das rubricas por proporcionalidade"): o plano
+     custa R$ 2 milhões para 200 quintais (R$ 10.000 por quintal); na escala, cada item e cada rubrica crescem na mesma proporção (× K),
+     o total fica em R$ 10.000 por quintal e o item quintais continua R$ 5.000 por quintal. Repasses, cronograma mensal e a planilha de
+     gastos da simulação acompanham. A memória de cálculo de cada item diz que foi multiplicada. */
+  const ajustar = o => { if (!o || !Array.isArray(o.rubricas) || o._escala) return;
+    o.rubricas.forEach(rb => { rb.itens.forEach(i => { i.total = Math.round(i.total * K * 100) / 100; if (i.calc) i.calc += ` · × ${K} na simulação`; });
+      if (typeof rb.total === 'number') rb.total = rb.itens.reduce((t, i) => t + i.total, 0); });
+    o.total = Math.round(o.rubricas.reduce((t, rb) => t + rb.itens.reduce((u, i) => u + i.total, 0), 0) * 100) / 100;
+    (o.repasses || []).forEach(x => { x.valor = Math.round(x.valor * K * 100) / 100; });
+    if (o.cronograma && Array.isArray(o.cronograma.meses)) o.cronograma.meses = o.cronograma.meses.map(v => Math.round(v * K * 100) / 100);
+    (d.execPlanilhas || []).forEach(pl => { (pl.linhas || []).forEach(l => { l.valor = Math.round((+l.valor || 0) * K * 100) / 100; });
+      pl.total_gasto = Math.round(pl.linhas.filter(l => l.item !== 'repasse_mda').reduce((t, l) => t + l.valor, 0) * 100) / 100;
+      pl.total_recebido = Math.round(pl.linhas.filter(l => l.item === 'repasse_mda').reduce((t, l) => t + l.valor, 0) * 100) / 100; });
+    Object.defineProperty(o, '_escala', { value: true }); };
+  { let v = MQ.ORCAMENTO; ajustar(v); Object.defineProperty(MQ, 'ORCAMENTO', { configurable: true, enumerable: true, get: () => v, set: x => { ajustar(x); v = x; } }); }
   MQ.ESCALA = { quintais: K * 200, estados: 9, fator: K, porArea: true, vagas: vagasPorUf };
 })();
