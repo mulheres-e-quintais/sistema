@@ -1,6 +1,6 @@
 /* Guarda o sistema no aparelho para abrir e preencher fichas sem internet.
    Os dados vão para o servidor pela fila do próprio app quando a conexão volta. */
-const VERSAO = 'mq-v414';
+const VERSAO = 'mq-v415';
 const ARQUIVOS = ['./', 'index.html', 'css/app.css', 'js/config.js', 'js/tudo.js', 'js/vendor/supabase-2.117.2.js', 'js/montado/resto.js',
   'assets/logo-claro.svg', 'assets/isotipo.svg', 'assets/fontes/libertinus-sans-marca-700.woff2', 'assets/fontes/plus-jakarta-sans-latin-wght-normal.woff2', 'assets/fontes/cormorant-garamond-latin-700-normal.woff2', 'assets/icon-192.png', 'manifest.webmanifest'];
 const EXTERNOS = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
@@ -30,6 +30,12 @@ self.addEventListener('fetch', e => {
      Antes esperava a internet até 3 s a cada abertura: no sinal fraco do campo, toda abertura demorava. A página guardada
      não fica velha: versão nova do sistema chega por este arquivo (VERSAO), que guarda tudo de novo e mostra
      "Há uma versão nova. Toque para atualizar". Página que não está guardada (simulação, primeira visita) vem da internet. */
+  /* v415 (21/11/2026, "Não abriu" — simulação de 20.000): a página da simulação não é usada no campo; vem sempre da internet (a cópia
+     guardada só sem sinal), senão quem já tinha aberto via a versão anterior, sem a escala */
+  if (e.request.mode === 'navigate' && u.pathname.endsWith('simulacao.html')) {
+    e.respondWith(fetch(e.request).catch(() => caches.match(e.request, { ignoreSearch: true })));
+    return;
+  }
   if (e.request.mode === 'navigate') {
     const rede = comPrazo(e.request, 3000);
     e.respondWith(caches.match(e.request, { ignoreSearch: true }).then(r => { if (r) { rede.catch(() => {}); return r; } return rede; })

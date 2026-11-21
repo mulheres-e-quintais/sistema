@@ -10,10 +10,20 @@
   if (!N || !window.MQ || !MQ.SIM_FIM) return;
   const K = Math.max(1, Math.round(N / 200));
   const NE = [['AL', 'Alagoas'], ['BA', 'Bahia'], ['CE', 'Ceará'], ['MA', 'Maranhão'], ['PB', 'Paraíba'], ['PE', 'Pernambuco'], ['PI', 'Piauí'], ['RN', 'Rio Grande do Norte'], ['SE', 'Sergipe']];
-  const MUN = { CE: ['Russas', 'Limoeiro do Norte', 'Quixadá', 'Crateús', 'Iguatu', 'Tauá', 'Aracati', 'Itapipoca'],
-    MA: ['Codó', 'Caxias', 'Bacabal', 'Pedreiras', 'Chapadinha', 'Barra do Corda', 'Grajaú', 'Itapecuru Mirim'],
-    PB: ['Sousa', 'Cajazeiras', 'Patos', 'Pombal', 'Catolé do Rocha', 'Monteiro', 'Princesa Isabel', 'Esperança'],
-    RN: ['Apodi', 'Caraúbas', 'Pau dos Ferros', 'Umarizal', 'Caicó', 'Currais Novos', 'Assu', 'João Câmara'] };
+  /* municípios dos quatro estados que não estão no plano, com o ponto aproximado da sede (lon, lat) para o mapa */
+  const PONTOS = {
+    CE: { 'Russas': [-37.976, -4.940], 'Limoeiro do Norte': [-38.098, -5.146], 'Quixadá': [-39.015, -4.971], 'Crateús': [-40.678, -5.178],
+      'Iguatu': [-39.299, -6.359], 'Tauá': [-40.293, -6.003], 'Aracati': [-37.770, -4.562], 'Itapipoca': [-39.578, -3.494] },
+    MA: { 'Codó': [-43.886, -4.455], 'Caxias': [-43.356, -4.859], 'Bacabal': [-44.780, -4.225], 'Pedreiras': [-44.600, -4.570],
+      'Chapadinha': [-43.354, -3.742], 'Barra do Corda': [-45.243, -5.506], 'Grajaú': [-46.139, -5.819], 'Itapecuru Mirim': [-44.359, -3.392] },
+    PB: { 'Sousa': [-38.229, -6.759], 'Cajazeiras': [-38.558, -6.889], 'Patos': [-37.280, -7.025], 'Pombal': [-37.801, -6.770],
+      'Catolé do Rocha': [-37.746, -6.344], 'Monteiro': [-37.120, -7.889], 'Princesa Isabel': [-37.993, -7.737], 'Esperança': [-35.858, -7.023] },
+    RN: { 'Apodi': [-37.799, -5.664], 'Caraúbas': [-37.556, -5.784], 'Pau dos Ferros': [-38.204, -6.109], 'Umarizal': [-37.818, -5.982],
+      'Caicó': [-37.097, -6.458], 'Currais Novos': [-36.517, -6.260], 'Assu': [-36.909, -5.577], 'João Câmara': [-35.820, -5.537] } };
+  const MUN = Object.fromEntries(Object.entries(PONTOS).map(([uf, o]) => [uf, Object.keys(o)]));
+  /* o mapa (js/geo.js, depois deste arquivo) recebe esses pontos: MQ.GEO passa por um guardião que acrescenta os quatro estados */
+  { let g; Object.defineProperty(MQ, 'GEO', { configurable: true, enumerable: true, get: () => g,
+    set: x => { g = x; if (x && x.mun) for (const [uf, o] of Object.entries(PONTOS)) x.mun[uf] = Object.assign({}, o, x.mun[uf] || {}); } }); }
   const d = MQ.SIM_FIM; const UFS0 = ['AL', 'BA', 'PE', 'PI', 'SE'];
   /* id novo: troca 4 letras do meio pelo número da cópia (continua no formato uuid, sem repetir) */
   const nid = (id, c) => c ? id.slice(0, 19) + (c + 0x8000).toString(16).slice(-4) + id.slice(23) : id;
@@ -25,6 +35,9 @@
   const bols = {}; d.equipe.filter(m => ativo(m) && (m.papel === 'articulacao' || m.papel === 'apoio')).forEach(m => { bols[m.papel + m.uf] = m; });
   const novos = { equipe: [], fichas: [], visitas: [], diagnosticos: [], avaliacoes: [], custos: [], orientacoesVenda: [], solicitacoes: [], entregas: [], privado: {}, solic_visitas: {} };
   let kcpf = 0;
+  /* nos cinco estados do plano, os municípios do próprio plano (as fichas da simulação), para não amontoar tudo em poucos */
+  const munPlano = uf => [...new Set(d.fichas.filter(f => f.uf === uf && f.municipio).map(f => f.municipio))];
+  const ponto = (uf, nome) => (PONTOS[uf] && PONTOS[uf][nome]) || null;
   for (let c = 1; c < K; c++) {
     const mapa = new Map();
     for (const uf0 of UFS0) {
@@ -48,7 +61,9 @@
     const doEstado = x => UFS0.includes(x.uf);
     d.fichas.filter(doEstado).forEach((f, i) => { const uf = ufDe(f.uf, c); const n = Object.assign({}, f, { id: nid(f.id, c), uf, cpf: cpf(800000000 + c * 1000 + i),
       nome: f.nome.replace(/\s*\(.*\)$/, '') + ' ' + uf + '-' + c, bolsista_id: id(f.bolsista_id), criado_por: id(f.criado_por), exemplo: true });
-      if (MUN[uf]) n.municipio = MUN[uf][i % 8]; mapa.set(f.id, n.id); novos.fichas.push(n); });
+      const lista = MUN[uf] || munPlano(uf); if (lista.length) n.municipio = lista[(i + c * 3) % lista.length];
+      const pt = ponto(uf, n.municipio); if (pt && n.latitude != null) { n.latitude = +(pt[1] + ((i * 37 + c * 11) % 21 - 10) * 0.004).toFixed(5); n.longitude = +(pt[0] + ((i * 23 + c * 7) % 21 - 10) * 0.004).toFixed(5); }
+      mapa.set(f.id, n.id); novos.fichas.push(n); });
     const uf = x => ufDe(x.uf, c);
     d.visitas.forEach(v => { const n = Object.assign({}, v, { id: nid(v.id, c), ficha_id: id(v.ficha_id), uf: uf(v), executor_id: id(v.executor_id), criado_por: id(v.criado_por) });
       mapa.set(v.id, n.id); novos.visitas.push(n); });
