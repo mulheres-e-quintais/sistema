@@ -8,7 +8,8 @@
 (function () {
   'use strict';
   const q = new URLSearchParams(location.search); const N = +q.get('escala');
-  if (!N || !window.MQ || !MQ.SIM_FIM) return;
+  /* só as escalas da faixa (auditoria de 22/11/2026: escala=10000000 derrubava a aba de quem abrisse o link; negativo virava 200 "em escala") */
+  if (![1000, 5000, 10000, 20000].includes(N) || !window.MQ || !MQ.SIM_FIM) return;
   const K = Math.max(1, Math.round(N / 200));
   const NE = [['AL', 'Alagoas'], ['BA', 'Bahia'], ['CE', 'Ceará'], ['MA', 'Maranhão'], ['PB', 'Paraíba'], ['PE', 'Pernambuco'], ['PI', 'Piauí'], ['RN', 'Rio Grande do Norte'], ['SE', 'Sergipe']];
   /* municípios dos quatro estados que não estão no plano, com o ponto aproximado da sede (lon, lat) para o mapa */
@@ -26,8 +27,9 @@
   { let g; Object.defineProperty(MQ, 'GEO', { configurable: true, enumerable: true, get: () => g,
     set: x => { g = x; if (x && x.mun) for (const [uf, o] of Object.entries(PONTOS)) x.mun[uf] = Object.assign({}, o, x.mun[uf] || {}); } }); }
   const d = MQ.SIM_FIM; const UFS0 = ['AL', 'BA', 'PE', 'PI', 'SE'];
-  /* id novo: troca 4 letras do meio pelo número da cópia (continua no formato uuid, sem repetir) */
-  const nid = (id, c) => c ? id.slice(0, 19) + (c + 0x8000).toString(16).slice(-4) + id.slice(23) : id;
+  /* id novo: troca 4 letras do meio por "c" e o número da cópia. O original tem ali 8, 9, a ou b (variante do uuid), então a cópia
+     nunca repete o original (auditoria de 22/11/2026: com "8" + número, a cópia nº 251 de um código "80fb…" repetia o original) */
+  const nid = (id, c) => c ? id.slice(0, 19) + 'c' + c.toString(16).padStart(3, '0') + id.slice(23) : id;
   const dv = s => { let t = 0; for (let i = 0; i < s.length; i++) t += +s[i] * (s.length + 1 - i); const r = (t * 10) % 11; return r === 10 ? 0 : r; };
   const cpf = n => { let s = String(n).padStart(9, '0').slice(-9); s += dv(s); return s + dv(s); };
   const ativo = m => m.status === 'ativa';
