@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<title>O sistema no celular · Mulheres &amp; Quintais</title>
+<meta name="description" content="O sistema do projeto Quintais Produtivos para Mulheres Rurais visto como aplicativo de celular, com a simulação de dados fictícios.">
+<link rel="icon" href="assets/icon-192.png">
+<!-- Página "o sistema no celular" (desde a versão 437, 27/11/2026, pedido do usuário: "use o que já tem no sistema atual, só usando a ideia de um
+     app com esse simulador"). Não é um sistema à parte: a moldura de celular mostra a própria simulacao.html, a mesma tela que a bolsista vê no
+     celular (barra de baixo, cadastro sem internet, mapa), com os dados inventados da simulação. Os botões ao lado escolhem o perfil, a data e
+     quantos quintais; a página entra no perfil clicando no mesmo botão "Entrar como…" da simulação (mesma origem). Nada vai para o banco. -->
+<style>
+@font-face { font-family: "Libertinus Sans"; font-weight: 400; font-display: swap; src: url(assets/fontes/libertinus-sans-marca-400.woff2) format("woff2"); }
+@font-face { font-family: "Libertinus Sans"; font-weight: 600 700; font-display: swap; src: url(assets/fontes/libertinus-sans-marca-700.woff2) format("woff2"); }
+:root { --bg: #FAF7F1; --surface: #FFFFFF; --ink: #2E1D12; --ink-2: #5A4636; --line: #E3D7C9; --marrom: #452B1A; --marrom-ink: #FFFFFF; --terra: #A44934; --foco: #1F5FBF; --marca: "Libertinus Sans", Georgia, serif; --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+@media (prefers-color-scheme: dark) { :root { --bg: #1C140E; --surface: #2A1E16; --ink: #F6EDE4; --ink-2: #D6C6B6; --line: #4A3A2E; --marrom: #E8C9A8; --marrom-ink: #2A1A10; --foco: #8AB4FF; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); }
+a { color: inherit; }
+.ap { max-width: 1180px; margin: 0 auto; padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 48px max(16px, env(safe-area-inset-left));
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 48px; align-items: center; min-height: 100vh; }
+.marca { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+.marca img { width: 48px; height: 48px; border-radius: 12px; background: #452B1A; padding: 6px; }
+.marca b { display: block; font: 700 22px/1.1 var(--marca); }
+.marca small { color: var(--ink-2); font-size: 13px; }
+.olho { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--ink-2); margin: 0 0 8px; }
+.olho::before { content: ""; width: 24px; height: 2px; background: var(--terra); }
+h1 { margin: 0 0 14px; font-size: clamp(30px, 3.8vw, 42px); line-height: 1.1; letter-spacing: -.01em; }
+.lead { margin: 0 0 22px; max-width: 34em; color: var(--ink-2); font-size: 16px; }
+.lista { margin: 0 0 26px; padding: 0; list-style: none; display: grid; gap: 10px; max-width: 34em; }
+.lista li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; }
+.lista svg { margin-top: 2px; color: var(--terra); }
+fieldset { border: 0; margin: 0 0 16px; padding: 0; }
+legend { font-size: 13px; font-weight: 600; color: var(--ink-2); margin-bottom: 8px; }
+.op { display: flex; flex-wrap: wrap; gap: 8px; }
+.op button { font: 600 14px/1 var(--sans); min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.op button[aria-pressed="true"] { background: var(--marrom); border-color: var(--marrom); color: var(--marrom-ink); }
+.op button:focus-visible, .abrir:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
+.abrir { display: inline-flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 14px; font-weight: 600; }
+.nota { margin: 18px 0 0; font-size: 13px; color: var(--ink-2); max-width: 34em; }
+.cel { position: relative; width: 390px; height: 800px; padding: 14px; border-radius: 52px; background: #1A120C; box-shadow: 0 30px 60px -30px rgb(46 29 18 / .55); }
+.cel::before { content: ""; position: absolute; top: 22px; left: 50%; width: 96px; height: 24px; margin-left: -48px; border-radius: 999px; background: #000; z-index: 2; }
+.tela { width: 362px; height: 772px; border-radius: 40px; overflow: hidden; background: var(--bg); position: relative; }
+.tela iframe { width: 100%; height: 100%; border: 0; display: block; padding-top: 34px; background: #2E1D12; }
+.carr { position: absolute; inset: 0; display: grid; place-items: center; background: var(--bg); color: var(--ink-2); font-size: 14px; }
+.carr[hidden] { display: none; }
+@media (max-width: 900px) {
+  .ap { grid-template-columns: minmax(0, 1fr); gap: 28px; min-height: 0; }
+  .cel { justify-self: center; }
+}
+@media (max-width: 430px) {
+  .cel { width: 100%; height: 78vh; padding: 0; border-radius: 16px; box-shadow: none; }
+  .cel::before { display: none; }
+  .tela { width: 100%; height: 100%; border-radius: 16px; border: 1px solid var(--line); }
+  .tela iframe { padding-top: 0; }
+}
+@media (prefers-reduced-motion: no-preference) { .op button { transition: background .15s, color .15s; } }
+</style>
+</head>
+<body>
+<main class="ap">
+  <section aria-labelledby="t">
+    <div class="marca"><img src="assets/isotipo.svg" alt="" width="48" height="48"><span><b>Mulheres &amp; Quintais</b><small>Quintais Produtivos para Mulheres Rurais</small></span></div>
+    <p class="olho">O sistema no celular · simulação</p>
+    <h1 id="t">O mesmo sistema, no bolso de quem vai a campo.</h1>
+    <p class="lead">Ao lado está o sistema do projeto como ele abre no celular, com dados inventados. Escolha o perfil e mexa à vontade: nada vai para o banco do projeto.</p>
+    <ul class="lista">
+      <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Ficha de indicação, diagnóstico e plano do quintal, visitas e avaliação no mesmo lugar, com foto e ponto no mapa.</span></li>
+      <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 12h16M12 4v16"/></svg><span>Sem internet, o registro fica guardado no aparelho e sobe sozinho quando o sinal volta.</span></li>
+      <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Cada perfil vê só o que precisa; o MDA e o MPA acompanham por totais, sem dado pessoal.</span></li>
+    </ul>
+    <fieldset><legend>Ver como</legend><div class="op" data-grupo="perfil">
+      <button type="button" data-v="bolsista" aria-pressed="true">Bolsista</button>
+      <button type="button" data-v="agente" aria-pressed="false">Agente de campo</button>
+      <button type="button" data-v="coord_geral" aria-pressed="false">Coordenação geral</button>
+      <button type="button" data-v="coord_tecnico" aria-pressed="false">Coordenação técnica</button>
+      <button type="button" data-v="obs_mda" aria-pressed="false">MDA</button>
+    </div></fieldset>
+    <fieldset><legend>Momento do projeto</legend><div class="op" data-grupo="data">
+      <button type="button" data-v="2026-11-15" aria-pressed="false">Começo (nov/26)</button>
+      <button type="button" data-v="2027-04-15" aria-pressed="true">Meio (abr/27)</button>
+      <button type="button" data-v="2027-09-30" aria-pressed="false">Fim (set/27)</button>
+    </div></fieldset>
+    <fieldset><legend>Quintais na simulação</legend><div class="op" data-grupo="escala">
+      <button type="button" data-v="200" aria-pressed="true">200 (o projeto)</button>
+      <button type="button" data-v="1000" aria-pressed="false">1.000</button>
+      <button type="button" data-v="5000" aria-pressed="false">5.000</button>
+    </div></fieldset>
+    <a class="abrir" id="abrir" href="simulacao.html?data=2027-04-15">Abrir em tela cheia <span aria-hidden="true">↗</span></a>
+    <p class="nota">No celular de verdade, o sistema pode ser instalado pelo navegador (“Adicionar à tela de início”) e abre como um aplicativo.</p>
+  </section>
+  <div class="cel"><div class="tela">
+    <iframe id="sim" title="Sistema Mulheres &amp; Quintais na simulação, como no celular" src="simulacao.html?data=2027-04-15"></iframe>
+    <div class="carr" id="carr" role="status">Abrindo o sistema…</div>
+  </div></div>
+</main>
+<script src="js/aplicativo.js"></script>
+</body>
+</html>
