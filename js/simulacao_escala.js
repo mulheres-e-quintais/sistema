@@ -44,6 +44,7 @@
   let kcpf = 0;
   /* nos cinco estados do plano, os municípios do próprio plano (as fichas da simulação), para não amontoar tudo em poucos */
   const munPlano = uf => [...new Set(d.fichas.filter(f => f.uf === uf && f.municipio).map(f => f.municipio))];
+  const gpsMun = {}; d.fichas.forEach(f => { if (f.latitude != null && f.longitude != null) (gpsMun[f.uf + '|' + f.municipio] = gpsMun[f.uf + '|' + f.municipio] || []).push([+f.latitude, +f.longitude]); });
   const ponto = (uf, nome) => (PONTOS[uf] && PONTOS[uf][nome]) || null;
   /* o que cada estado do plano tem (a fonte de cada bloco) */
   const visDe = {}; d.visitas.forEach(v => { (visDe[v.uf] = visDe[v.uf] || new Set()).add(v.id); });
@@ -70,7 +71,10 @@
     d.fichas.filter(daFonte).forEach((f, i) => { const n = Object.assign({}, f, { id: nid(f.id, c), uf, cpf: cpf(800000000 + c * 1000 + i),
       nome: f.nome.replace(/\s*\(.*\)$/, '') + ' ' + uf + '-' + c, bolsista_id: id(f.bolsista_id), criado_por: id(f.criado_por), exemplo: true });
       const ms = MUN[uf] || munPlano(uf); if (ms.length) n.municipio = ms[(i + c * 3) % ms.length];
-      const pt = ponto(uf, n.municipio); if (pt && n.latitude != null) { n.latitude = +(pt[1] + ((i * 37 + c * 11) % 21 - 10) * 0.004).toFixed(5); n.longitude = +(pt[0] + ((i * 23 + c * 7) % 21 - 10) * 0.004).toFixed(5); }
+      /* v437 (relato do usuário: "fora do contorno do mapa"): nos estados do plano, o GPS de outro quintal inventado do mesmo município (a uns
+         50 m dele), que já está dentro do contorno; antes a cópia mudava de município e ficava com o GPS do quintal de origem */
+      const viz = n.latitude != null && gpsMun[uf + '|' + n.municipio]; if (viz) { const [la, lo] = viz[(i + c) % viz.length]; n.latitude = +(la + ((i * 7 + c) % 11 - 5) * 0.0001).toFixed(5); n.longitude = +(lo + ((i * 5 + c * 3) % 11 - 5) * 0.0001).toFixed(5); }
+      const pt = !viz && ponto(uf, n.municipio); if (pt && n.latitude != null) { n.latitude = +(pt[1] + ((i * 37 + c * 11) % 21 - 10) * 0.002).toFixed(5); n.longitude = +(pt[0] + ((i * 23 + c * 7) % 21 - 10) * 0.002).toFixed(5); }
       mapa.set(f.id, n.id); novos.fichas.push(n); });
     d.visitas.filter(daFonte).forEach(v => { const n = Object.assign({}, v, { id: nid(v.id, c), ficha_id: id(v.ficha_id), uf, executor_id: id(v.executor_id), criado_por: id(v.criado_por) });
       mapa.set(v.id, n.id); novos.visitas.push(n); });
